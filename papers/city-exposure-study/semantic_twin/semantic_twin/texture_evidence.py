@@ -31,10 +31,14 @@ tile texture sees a facade obliquely from above and mostly in shadow. Every
 opaque class collapses into one, and only vegetation separates cleanly.
 
 Coordinates are handled in float64 from the glTF node matrix onwards.
-``build_inhouse_mesh.py`` currently rounds its placement through Blender's
-single-precision ``Object.matrix_world``, which displaces whole tiles by up to
+``build_inhouse_mesh.py`` used to round its placement through Blender's
+single-precision ``Object.matrix_world``, which displaced whole tiles by up to
 0.61 m, so :func:`match_support_faces` estimates and removes a per-tile offset
-before it trusts a correspondence.
+before it trusts a correspondence. That offset now measures 97 nanometres and
+the compensation is a no-op, which is itself the cleanest independent check
+that the placement fix landed: the same routine on the old single-precision
+mesh estimates 0.256 m and matches only 87.2 percent of faces, against 99.97
+percent here. The compensation is kept as a cheap guard rather than removed.
 """
 
 from __future__ import annotations
@@ -603,14 +607,20 @@ def match_support_faces(
 ) -> TileMatch:
     """Match every support-mesh face to the tile triangle it was built from.
 
-    A single nearest-centroid pass is not enough. ``build_inhouse_mesh.py``
-    rounds each tile's placement through a single-precision matrix, which
-    displaces whole tiles by a quarter of a metre while leaving their internal
-    shape intact, and at that displacement 27 percent of Korenmarkt faces snap
-    to a neighbouring triangle. So the first pass is used only to decide which
-    tile a face came from, a per-tile median offset is removed, and the second
-    pass is the one that is trusted. A match is accepted only if it also agrees
-    on triangle area, which is what rejects a genuine near-miss.
+    A single nearest-centroid pass was not enough on the single-precision mesh.
+    ``build_inhouse_mesh.py`` used to round each tile's placement through a
+    single-precision matrix, which displaced whole tiles by a quarter of a metre
+    while leaving their internal shape intact, and at that displacement 13
+    percent of Korenmarkt faces failed to match at all. So the first pass is used
+    only to decide which tile a face came from, a per-tile median offset is
+    removed, and the second pass is the one that is trusted. A match is accepted
+    only if it also agrees on triangle area, which is what rejects a genuine
+    near-miss.
+
+    On the double-precision mesh the estimated offset is 97 nanometres, so the
+    second pass agrees with the first and this is a guard rather than a
+    correction. It is kept because it costs one median per tile and because it
+    is the check that would catch the placement defect coming back.
     """
     face_triangles = np.asarray(face_triangles, dtype=np.float64)
     if face_triangles.ndim != 3 or face_triangles.shape[1:] != (3, 3):
