@@ -41,6 +41,39 @@ def rayleigh_roughness_parameter(
     return 4.0 * np.pi * np.asarray(rms_height_m) * cosine / wavelength_m(frequency_hz)
 
 
+def specular_power_fraction(
+    rms_height_m: float | np.ndarray,
+    incidence_cosine: float | np.ndarray,
+    frequency_hz: float | np.ndarray,
+) -> np.ndarray:
+    """Coherent share of reflected power for a Gaussian rough surface.
+
+    This is the Ament factor ``exp(-g**2)`` with ``g = 4 pi s cos(theta) / lam``.
+    Recommendation ITU-R P.2146-0 equation 11 carries the same factor written as
+    ``exp{-(2 k s cos(theta))**2}``, which is identical, and defines ``s`` there
+    as the total RMS surface height rather than a two-scale component. P.2146-0
+    is a sea-surface Recommendation, so the functional form is the ITU anchor
+    and the application to a facade is this repository's extrapolation.
+    """
+    g = rayleigh_roughness_parameter(rms_height_m, incidence_cosine, frequency_hz)
+    return np.exp(-(g**2))
+
+
+def rayleigh_smooth_threshold_m(
+    frequency_hz: float | np.ndarray,
+    incidence_cosine: float | np.ndarray,
+) -> np.ndarray:
+    """RMS height at which the Rayleigh criterion stops calling a surface smooth.
+
+    The criterion is ``s < lam / (8 cos(theta))``, which is ``g < pi / 2``. It is
+    a threshold on a phase spread, not a statement about how much specular power
+    survives, so it is reported alongside :func:`specular_power_fraction` rather
+    than used to gate it.
+    """
+    cosine = np.clip(np.asarray(incidence_cosine, dtype=np.float64), 1e-6, 1.0)
+    return wavelength_m(frequency_hz) / (8.0 * cosine)
+
+
 def roughness_to_scattering_coefficient(
     rms_height_m: float | np.ndarray,
     incidence_cosine: float | np.ndarray,

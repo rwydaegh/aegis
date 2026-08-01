@@ -9,7 +9,11 @@ from typing import Any
 
 import numpy as np
 
-from .mmwave import roughness_to_scattering_coefficient
+from .mmwave import (
+    rayleigh_smooth_threshold_m,
+    roughness_to_scattering_coefficient,
+    specular_power_fraction,
+)
 
 
 @dataclass(frozen=True)
@@ -175,6 +179,142 @@ class PowerLawMaterial:
                 size=count,
             )
         return eps, sigma
+
+
+GAUSSIAN_STRUCTURE = "gaussian_random"
+PERIODIC_STRUCTURES = ("periodic_dominant", "two_scale_periodic_plus_random")
+
+
+@dataclass(frozen=True)
+class SurfaceRoughnessPrior:
+    """A per-class RMS height prior with its evidence grade attached.
+
+    ``rms_height_m`` is the median of a lognormal, not a measured constant. The
+    specular fraction ``exp(-g**2)`` is exponential in the square of the RMS
+    height, so a caller that collapses this prior to its median before tracing
+    will get an answer that is far from the ensemble mean. Use :meth:`sample`.
+    """
+
+    name: str
+    rms_height_m: float
+    log_standard_deviation: float
+    plausible_range_m: tuple[float, float]
+    correlation_length_m: float | None
+    correlation_length_status: str
+    evidence_grade: str
+    radio_fitted: bool
+    structure: str
+    gaussian_closure_reliable: bool
+    mean_texture_depth_m: float | None
+    periodic_component: dict[str, Any] | None
+    concepts: tuple[str, ...]
+    itu_rows: tuple[str, ...]
+    provenance: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        if self.rms_height_m <= 0.0:
+            raise ValueError("RMS height must be positive")
+        if self.log_standard_deviation <= 0.0:
+            raise ValueError("log standard deviation must be positive")
+        lower, upper = self.plausible_range_m
+        if not 0.0 < lower <= upper:
+            raise ValueError("plausible range must be positive and ordered")
+        if not lower <= self.rms_height_m <= upper:
+            raise ValueError("central RMS height must lie inside its own plausible range")
+        if self.radio_fitted:
+            raise ValueError(
+                f"{self.name} takes its central value from a radio-fitted source. Using one as a physical prior "
+                "double counts the radio evidence, so it must not enter the library."
+            )
+
+    @property
+    def gaussian_model_applies(self) -> bool:
+        """Whether the Rayleigh closure is the right model for this class at all."""
+        return self.structure == GAUSSIAN_STRUCTURE
+
+    def sample(self, count: int, rng: np.random.Generator) -> np.ndarray:
+        """Draw RMS heights from the lognormal, clipped to the plausible range."""
+        draws = rng.lognormal(np.log(self.rms_height_m), self.log_standard_deviation, size=count)
+        return np.clip(draws, *self.plausible_range_m)
+
+    def specular_power_fraction(
+        self,
+        frequency_hz: float,
+        incidence_deg: float | np.ndarray,
+        *,
+        allow_periodic: bool = False,
+    ) -> np.ndarray:
+        """Coherent power share at the median RMS height.
+
+        Classes whose height field is dominated by a periodic component are
+        refused unless ``allow_periodic`` is set, in the same spirit as
+        :meth:`PowerLawMaterial.evaluate` refusing to leave its frequency band.
+        A mortar joint grid or a sett pavement diffracts into discrete orders,
+        and a Gaussian coherent fraction does not describe that.
+        """
+        if not self.gaussian_model_applies and not allow_periodic:
+            raise ValueError(
+                f"{self.name} has structure '{self.structure}', so the Gaussian Rayleigh closure "
+                "does not describe it. Pass allow_periodic=True to get the indicative value anyway."
+            )
+        cosine = np.cos(np.radians(incidence_deg))
+        return specular_power_fraction(self.rms_height_m, cosine, frequency_hz)
+
+    def smooth_at(self, frequency_hz: float, incidence_deg: float) -> bool:
+        """Whether the median RMS height clears the Rayleigh smoothness criterion."""
+        threshold = rayleigh_smooth_threshold_m(frequency_hz, np.cos(np.radians(incidence_deg)))
+        return bool(self.rms_height_m < threshold)
+
+
+class SurfaceRoughnessLibrary:
+    def __init__(self, source: dict[str, Any], classes: dict[str, SurfaceRoughnessPrior]) -> None:
+        self.source = source
+        self.classes = classes
+
+    def __getitem__(self, name: str) -> SurfaceRoughnessPrior:
+        return self.classes[name]
+
+    def __len__(self) -> int:
+        return len(self.classes)
+
+    def for_concept(self, prompt: str) -> list[SurfaceRoughnessPrior]:
+        """Every roughness class that claims a given concept prompt."""
+        return [entry for entry in self.classes.values() if prompt in entry.concepts]
+
+    @classmethod
+    def load(cls, path: pathlib.Path) -> SurfaceRoughnessLibrary:
+        document = json.loads(path.read_text())
+        source = document["source"]
+        classes = {}
+        for record in document["classes"]:
+            lower, upper = record["plausible_range_mm"]
+            correlation_mm = record.get("correlation_length_mm")
+            texture_mm = record.get("mean_texture_depth_mm")
+            entry = SurfaceRoughnessPrior(
+                name=record["name"],
+                rms_height_m=float(record["rms_height_mm"]) / 1000.0,
+                log_standard_deviation=float(record["log_standard_deviation"]),
+                plausible_range_m=(float(lower) / 1000.0, float(upper) / 1000.0),
+                correlation_length_m=None if correlation_mm is None else float(correlation_mm) / 1000.0,
+                correlation_length_status=record["correlation_length_status"],
+                evidence_grade=record["evidence_grade"],
+                radio_fitted=bool(record.get("radio_fitted", False)),
+                structure=record["structure"],
+                gaussian_closure_reliable=bool(record.get("gaussian_closure_reliable_28ghz", False)),
+                mean_texture_depth_m=None if texture_mm is None else float(texture_mm) / 1000.0,
+                periodic_component=record.get("periodic_component"),
+                concepts=tuple(record.get("concepts", ())),
+                itu_rows=tuple(record.get("itu_rows", ())),
+                provenance={
+                    "source": source,
+                    "evidence_grade": record["evidence_grade"],
+                    "citations": record.get("citations", []),
+                    "note": record.get("note", ""),
+                    "mean_texture_depth_status": record.get("mean_texture_depth_status"),
+                },
+            )
+            classes[entry.name] = entry
+        return cls(source, classes)
 
 
 class MaterialLibrary:
