@@ -1,0 +1,126 @@
+{
+  "comment": "Per-site inputs for render_showcase.py. Everything else about the render, cameras included, is derived from the artifacts at run time.",
+  "defaults": {
+    "crops": [
+      "h+00_000",
+      "h+00_090",
+      "h+00_180",
+      "h+00_270"
+    ],
+    "crop_yaws": [
+      0,
+      90,
+      180,
+      270
+    ],
+    "fishnet_lift_m": 0.25,
+    "fishnet_lift_note": "The fishnet was cut against an earlier build of the same tiles and sits up to 0.4 m off the double-precision support mesh drawn here. Displacing the semantic layer along the line of sight of the camera that produced it is the one direction that cannot invent an occlusion.",
+    "covariance_sigma": 3.0,
+    "framing": {
+      "orbit_scale": 1.9,
+      "azimuth_deg": 215.0,
+      "elevation_deg": 30.0,
+      "stack_gap_m": 18.0,
+      "stack_fov_deg": 24.0,
+      "anchor_height_m": 10.0,
+      "stack_distance_m": 250.0,
+      "stack_yaw_offset_deg": 38.0,
+      "stack_patch_radius_m": 22.0
+    }
+  },
+  "render": {
+    "seed": 0,
+    "sky_zenith": [
+      0.26,
+      0.4,
+      0.66,
+      1.0
+    ],
+    "sky_horizon": [
+      0.72,
+      0.76,
+      0.82,
+      1.0
+    ],
+    "suns": [
+      {
+        "elevation_deg": 54.0,
+        "azimuth_deg": 205.0,
+        "strength": 5.5,
+        "angle_deg": 2.0
+      },
+      {
+        "elevation_deg": 20.0,
+        "azimuth_deg": 40.0,
+        "strength": 1.4,
+        "angle_deg": 14.0
+      }
+    ],
+    "flat_world_colour": [
+      0.015,
+      0.017,
+      0.022,
+      1.0
+    ],
+    "flat_world_strength": 1.0,
+    "flat_world_note": "Linear light, not display sRGB. It only reaches the background: the categorical layers are pure emitters.",
+    "outline": {
+      "thickness_px": 1.1,
+      "crease_angle_deg": 125.0,
+      "colour": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "alpha": 0.55,
+      "note": "Freestyle silhouette, border and crease lines over the flat categorical layers. They restore the geometric form that a pure emitter has none of, and they only touch the pixels on the line, so the interior of every class is still exactly its legend colour."
+    }
+  },
+  "sites": {
+    "korenmarkt": {
+      "title": "Korenmarkt, Ghent",
+      "support_mesh": "data/geometry/korenmarkt/inhouse_leaf_130m_f64.ply",
+      "fishnet_source_mesh": "data/geometry/korenmarkt/inhouse_leaf_130m.ply",
+      "fishnet": "outputs/korenmarkt_fishnet_vistas_fused",
+      "pose": "data/panoramas/korenmarkt/alignment/pose_aligned.json",
+      "semantics_json": "data/panoramas/korenmarkt/semantics/semantics.json",
+      "panorama_semantics": "data/panoramas/korenmarkt/semantics/panorama_semantics.npz",
+      "views_dir": "data/panoramas/korenmarkt/semantics/views",
+      "texture_evidence": "outputs/korenmarkt_texture_evidence/texture_material_evidence.npz",
+      "bodies": "outputs/korenmarkt_dynamic_bodies",
+      "tiles": "/tmp/claude-1001/-home-user-aegis-papers-city-exposure-study/a2f2dae2-eebd-4b9a-ba89-84664910a82d/scratchpad/korenmarkt-tiles-200m",
+      "tiles_note": "Rebuild with download_inhouse_tiles.py --lat 51.055 --lon 3.722 --radius-m 200 --geometric-error-cutoff-m 0 if this cache is gone. GOOGLE_MAPS_API_KEY or GOOGLE_API_KEY must be set.",
+      "tile_count": 205,
+      "crop_radius_m": 130.0
+    },
+    "milan_duomo": {
+      "title": "Piazza del Duomo, Milan",
+      "support_mesh": "data/geometry/milan_duomo/inhouse_leaf_200m_f64.ply",
+      "fishnet_source_mesh": "data/geometry/milan_duomo/inhouse_leaf_170m.ply",
+      "fishnet": "outputs/milan_duomo_fishnet_vistas",
+      "pose": "data/panoramas/milan_duomo/alignment/pose_aligned.json",
+      "semantics_json": "data/panoramas/milan_duomo/semantics/semantics.json",
+      "panorama_semantics": "data/panoramas/milan_duomo/semantics/panorama_semantics.npz",
+      "views_dir": "data/panoramas/milan_duomo/semantics/views",
+      "texture_evidence": null,
+      "texture_evidence_note": "build_texture_evidence.py has not been run at this site, so the visibility view has two states rather than three.",
+      "bodies": null,
+      "bodies_note": "infer_sam3_body.py and build_dynamic_bodies.py have not been run at this site.",
+      "tiles": "/tmp/claude-1001/-home-user-aegis-papers-city-exposure-study/a2f2dae2-eebd-4b9a-ba89-84664910a82d/scratchpad/milan-duomo-tiles-320m",
+      "tiles_note": "Rebuild with download_inhouse_tiles.py --lat 45.4642 --lon 9.19 --radius-m 320 --geometric-error-cutoff-m 0 if this cache is gone.",
+      "tile_count": 342,
+      "crop_radius_m": 200.0,
+      "framing": {
+        "orbit_scale": 1.55,
+        "azimuth_deg": 155.0,
+        "elevation_deg": 28.0,
+        "stack_gap_m": 34.0,
+        "stack_fov_deg": 24.0,
+        "anchor_height_m": 20.0,
+        "stack_distance_m": 440.0,
+        "stack_yaw_offset_deg": 38.0,
+        "stack_patch_radius_m": 34.0
+      }
+    }
+  }
+}
