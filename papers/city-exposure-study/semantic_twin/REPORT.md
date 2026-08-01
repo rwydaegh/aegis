@@ -35,24 +35,67 @@ That is `FIGURES/03_what_one_panorama_sees.png`, and it is the honest picture of
 what a single capture twin actually knows.
 
 Fusing twelve panoramas from three sequences and three capture days raises
-directly observed surface to **24.8 percent by area**, against 6.9 percent for
+directly observed surface to **24.1 percent by area**, against 6.9 percent for
 the single capture recomputed on the same denominator and the same ray density.
-That is a factor of 3.6.
+That is a factor of 3.5.
 
 I recounted this independently, with a different tracer, a different ray density
 and station altitudes re-derived rather than taken from the pipeline's outputs.
-By area the two agree to 2.8 percent, 24.09 against 24.78. By face count they
-disagree by 7.6 percent, which is the expected direction and magnitude for a
-count that depends on whether sliver triangles are ever sampled. **The area
-fraction is the number to quote.** The count fraction moves with ray density and
-a reader who re-runs at a different density will otherwise think they have found
-a bug.
+By area the two agree to 2.8 percent. By face count they disagree by 7.6 percent,
+which is the expected direction and magnitude for a count that depends on whether
+sliver triangles are ever sampled. **The area fraction is the number to quote.**
+The count fraction moves with ray density and a reader who re-runs at a different
+density will otherwise think they have found a bug.
 
-The coverage curve has not saturated at twelve. The eleventh and twelfth
-panoramas are still each worth a few tenths of a point on a slow linear climb,
-and eight panoramas reach 83 percent of what twelve reach. Where it saturates is
-the number that sets the acquisition budget for every other city, so it is being
-measured rather than assumed.
+### Where it saturates, and what actually binds
+
+Running every panorama the link graph offers, 41 within 60 m and 87 within 80 m,
+with the curve averaged over 60 random acquisition orders so its shape is not the
+selection rule's shape:
+
+| target, within a 60 m arm | panoramas |
+|---|---|
+| 77 percent of achievable coverage | 12 |
+| 82 percent | 15 |
+| 90 percent | 26 |
+| 95 percent | 33 |
+
+The second capture adds 3,938 faces. The last five add 182 each, 4.6 percent of
+what the second added. **The per site budget is 12 to 16.** Past about 25 you buy
+the final tenth at three times the price.
+
+An earlier reading of a twelve point curve said it had not saturated. That was
+wrong, and worth recording as a methodological trap rather than quietly fixing:
+twelve captures do not reach the knee, so the tail of a twelve point curve cannot
+distinguish a plateau from a straight line, and it will look like the latter.
+
+**Count is not what binds, though.** Widening the site radius from 60 m to 80 m
+lifts achievable coverage from 30.6 to 44.8 percent of scene area, which is worth
+more than going from 12 to 41 panoramas inside 60 m. Beyond that no panorama count
+helps at all: the remaining 55 percent is roofs, courtyards and rear elevations
+that no street level capture ever sees. Count binds up to roughly 15 to 25, then
+street geometry binds, and then nothing does. Given a choice between 25 panoramas
+in a tight radius and 15 over twice the extent, take the extent.
+
+**Which panorama you get first is a fourfold lottery.** The first capture alone
+delivers between 1.59 and 6.29 percent of scene area depending on which one it is.
+That is invisible without resampling, and it is the strongest single argument
+against single capture twins, because it means a one panorama result is not just
+low but unreproducible.
+
+### What fusion buys beyond coverage
+
+Transient occlusion falls **3.1x**, from 12.9 percent of observed faces lost in
+one capture to 4.1 percent across eight. Not to zero: 472 faces are blocked from
+every station that reaches them, mostly wall behind parked vehicles that do not
+move between captures.
+
+Panoramas from the same capture drive agree on 84.2 percent of shared faces.
+Panoramas from **different** drives agree on only 71.3 percent, and the two ranges
+barely overlap. Same-drive agreement mostly measures whether the segmentation is
+deterministic. This also puts a number on the cost of the sampled bounding box
+described below: a naive box query tends to return one dense drive, which would
+have reported 84 percent and **overstated cross-capture reliability by 13 points**.
 
 Two qualifications that limit the headline. Roughly **43 percent of the apparent
 multi-view evidence is redundant**: a Kish effective sample size under a parallax
@@ -62,6 +105,12 @@ rising accuracy, although the usual form of that objection does not land here,
 because the faces gained by fusion are seen at slightly better geometry than the
 baseline rather than worse: 56.2 against 59.6 degrees median incidence, 39.8
 against 43.7 m median range.
+
+Registration quality across the twelve is heterogeneous, residuals 1.08 to 8.10
+degrees, and only two beat the Street View capture's 1.31 degrees, most likely
+because the walk panoramas are 5760 by 2880 against 16384 by 8192. The four above
+4 degrees are excluded from the semantic stage rather than smeared across facade
+boundaries.
 
 ## A published endpoint that silently returns a sixth of the data
 
@@ -75,6 +124,12 @@ unknown fraction of what exists, and the fraction presumably varies by site,
 which is worse than a constant undercount because it silently reorders any
 ranking built on panorama density. The working pattern is to use the box only to
 name sequences and then enumerate each sequence by id.
+
+The cost is quantified above: because the box tends to return one dense capture
+drive rather than a spread across dates, a study built on it would report
+same-drive agreement, 84.2 percent, in place of cross-drive agreement, 71.3
+percent, and overstate its own reliability by 13 points while looking internally
+consistent.
 
 ## Exposure, first pilot
 
