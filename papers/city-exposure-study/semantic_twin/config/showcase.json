@@ -88,7 +88,7 @@
       "views_dir": "data/panoramas/korenmarkt/semantics/views",
       "texture_evidence": "outputs/korenmarkt_texture_evidence/texture_material_evidence.npz",
       "bodies": "outputs/korenmarkt_dynamic_bodies",
-      "tiles": "/tmp/claude-1001/-home-user-aegis-papers-city-exposure-study/a2f2dae2-eebd-4b9a-ba89-84664910a82d/scratchpad/korenmarkt-tiles-200m",
+      "tiles": "data/tiles/korenmarkt",
       "tiles_note": "Rebuild with download_inhouse_tiles.py --lat 51.055 --lon 3.722 --radius-m 200 --geometric-error-cutoff-m 0 if this cache is gone. GOOGLE_MAPS_API_KEY or GOOGLE_API_KEY must be set.",
       "tile_count": 205,
       "crop_radius_m": 130.0
@@ -106,7 +106,7 @@
       "texture_evidence_note": "build_texture_evidence.py has not been run at this site, so the visibility view has two states rather than three.",
       "bodies": null,
       "bodies_note": "infer_sam3_body.py and build_dynamic_bodies.py have not been run at this site.",
-      "tiles": "/tmp/claude-1001/-home-user-aegis-papers-city-exposure-study/a2f2dae2-eebd-4b9a-ba89-84664910a82d/scratchpad/milan-duomo-tiles-320m",
+      "tiles": "data/tiles/milan_duomo",
       "tiles_note": "Rebuild with download_inhouse_tiles.py --lat 45.4642 --lon 9.19 --radius-m 320 --geometric-error-cutoff-m 0 if this cache is gone.",
       "tile_count": 342,
       "crop_radius_m": 200.0,
