@@ -95,3 +95,26 @@ the geometric spread this study exists to turn into an exposure distribution.
 The two labelled failures are on the sheet deliberately. Istanbul's flat green
 plate is a more convincing argument for dropping it than its triangle count is, and
 Toulouse's 7 percent sky is what an anchor sitting on a roofline looks like.
+
+## 12: when the foliage treatment matters
+
+Three ways of handling vegetation, swept against how much of the sphere the canopy
+covers: delete it, treat it as an opaque surface, treat it as a participating
+medium.
+
+Panel b is the one to read. The surface and the null cross 0.5 dB at 2.1 percent
+canopy solid angle, and Korenmarkt is 2.0 percent, so it sits on the line rather
+than safely below it. Milan at 0.9 percent is genuinely safe. Between roughly 2
+and 6 percent the surface is the outlier of the three, which means deleting
+vegetation entirely would beat the wood mapping the pipeline currently uses.
+
+Panel c shows why the answer is a band rather than a number: across the spread of
+species in the standard's own tables, the medium spans a factor of five at 32
+percent canopy.
+
+## 13: brickwork convergence
+
+Retained Floquet orders against the answer, with cost attached to every level.
+Specular settles within 0.6 percent from 1,393 orders upward. Diffuse oscillates
+without a monotone trend, which is why every diffuse number in this project
+carries a 6 percent bar rather than a digit count.
