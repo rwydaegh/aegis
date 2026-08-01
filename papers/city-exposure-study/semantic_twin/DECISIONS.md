@@ -959,17 +959,28 @@ the quantity `FISHNET.md` exists to reduce. Retracted: the untested `offset = -1
 flag was the right suspicion. Growing the shell inward removes the dilation
 exactly, taking range bias from -1.10 m to +0.00 m at the same voxel size.
 
+The dilation mechanism is now exact rather than suspected. At `offset = 0` the
+range bias is precisely half the shell thickness at every size tested: -0.44 m at
+0.50 m, -1.10 m at 1.00 m, -2.67 m at 2.00 m. At `offset = -1` it vanishes at
+every size, +0.06 m and +0.01 m respectively. What remains once the bias is gone
+is symmetric wobble of about half a voxel.
+
 **The surviving reason is single and specific: a level set cannot hold the
 surface still.** Flatness and range fidelity trade against each other
 monotonically and there is no voxel size where both beat as built. 6.1 degrees
 costs 2.68 m of median range error. 0.51 m of range error buys no flatness at
-all. The two candidates that keep range error near 0.2 m land back at 8.6 and 9.2
-degrees, converging on the as-built 10.1, while taking the face floor to 47k and
-124k. Flatness getting worse as the voxel gets finer is the signature of a low
-pass filter, not of noise being removed.
+all.
 
-**Which means the flatness gain was mostly ornament being deleted.** This was
-stated as an unbounded caveat before and is now bounded. As-built wall relief
+**Flatness is monotone in voxel size, and that settles the ornament question.**
+The full series is 6.1 degrees at 2 m, 7.2 at 1 m, 8.5 at 0.5 m, 8.9 at 0.35 m
+and 9.2 at 0.25 m, converging back on the as-built 10.1 as the grid becomes fine
+enough to represent the surface. Flatness improves in exact proportion to how much
+geometry the grid cannot hold. That is the signature of a low pass filter, not of
+noise being removed.
+
+**Which means the flatness gain was ornament being deleted.** This was stated as
+an unbounded caveat before, is now bounded, and the monotone series above turns it
+from a caveat into the explanation. As-built wall relief
 against a 10 m local plane has median amplitude 0.33 m and p90 1.28 m, and its
 spatial correlation is 0.99 at 0.25 to 0.5 m separation, 0.79 at 0.5 to 1 m, 0.66
 at 2 to 3 m, and still 0.28 at 4 to 6 m. Photogrammetric error is uncorrelated at
