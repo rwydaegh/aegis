@@ -63,6 +63,35 @@ is what that branch consumes, the phase screen cannot be used there.
 
 09 is the honest one. Predicted against measured with nothing fitted: 2.0 dB rms
 against Landron 1996 at 4 GHz, and 8.2 dB rms against Dillard 2003 at 28 GHz with
-every point under-predicted. The disagreement is systematic rather than scatter,
-it sits in the band this project cares about, and it is being chased rather than
-reported as an rms.
+every point under-predicted.
+
+That disagreement was chased rather than reported as an rms, and the answer is
+symmetric. Inverting the two geometric parameters fits all six points to 1.40 dB
+with construction plausible values, so the disagreement is in the parameters
+rather than in the form of the model. But the measurement cannot adjudicate
+either way: four repeats at one angle span a factor of 3.3 to 8.4 in amplitude
+with standard deviations at or above the means, and the 60 degree points exceed
+the smooth surface Fresnel bound implied by the source's own permittivities, which
+is impossible. So 1.40 dB is not a validation and 8.2 dB is not a refutation. The
+model is validated at 4 GHz with nothing fitted and **unvalidated at FR2**, which
+is now the top open item for that workstream.
+
+## 10: what remeshing actually does
+
+Three support meshes from the same camera. The flatness table says a 2 m voxel
+grid improves median wall flatness from 10.1 to 6.1 degrees. The render says it
+turns a Flemish market square into a glacier. Both are true, which is the point:
+flatness improves in exact proportion to how much geometry the grid cannot hold.
+
+## 11: eleven squares, one pipeline
+
+Every acquired city, framed by its own geometry so a 26 m square in Toulouse and a
+255 m canyon in New York are treated alike, with sky fraction and skyline height
+measured from the mesh rather than quoted from the screening.
+
+Sky fraction runs from 18 percent at Times Square to 46 percent at Krakow, which is
+the geometric spread this study exists to turn into an exposure distribution.
+
+The two labelled failures are on the sheet deliberately. Istanbul's flat green
+plate is a more convincing argument for dropping it than its triangle count is, and
+Toulouse's 7 percent sky is what an anchor sitting on a roofline looks like.
