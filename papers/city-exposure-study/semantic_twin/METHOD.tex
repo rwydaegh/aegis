@@ -1,0 +1,483 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\bs}{\mathbf{s}}
+\newcommand{\bu}{\mathbf{u}}
+\newcommand{\bn}{\mathbf{n}}
+\newcommand{\bd}{\mathbf{d}}
+\newcommand{\bT}{\mathbf{T}}
+\newcommand{\bE}{\mathbf{E}}
+
+\title{Panorama-anchored ray tracing:\\ what the method is, why it works, and where it breaks}
+\author{Notes for Robin}
+\date{2026-08-01}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This is an honest account of the co-located transmitter idea, written because the
+external criticism of it was correct but badly explained. The short version: the
+objection is real, it kills one \emph{claim} and not the \emph{method}, and the
+repair costs nothing because it reuses the identical computation. Separately, the
+method is genuinely clever, but for a different reason than ``it avoids ray
+tracing''. The reason it is clever is that the closed monostatic paths form a
+measure-zero set, which makes them invisible to Monte Carlo ray shooting and
+findable by a direct search. All numbers below come from this repository.
+\end{abstract}
+
+\section{What we have at every point}
+
+Stand at a point $\bs$ where a street-level panorama was captured. Three
+independent sources of information are already registered to each other there.
+
+\begin{enumerate}
+\item \textbf{The panorama.} At Korenmarkt the stitched Street View equirectangular
+      image is $16384\times 8192$, which is $45.5$ pixels per degree.
+\item \textbf{The semantic segmentation.} Every pixel carries a class, and through
+      the concept catalogue a distribution over RF materials and attributes. The
+      class decision grid is currently about $4.3$ pixels per degree, set by the
+      segmentation network's mask resolution rather than by the image.
+\item \textbf{The support mesh.} Photogrammetric city tiles, $157\,744$ triangles
+      inside a $130$~m crop at Korenmarkt, with a stated geometric error of
+      $2.006$~m.
+\end{enumerate}
+
+Write $\bu(\theta,\phi)$ for the unit direction at spherical angles
+$(\theta,\phi)$. For each such direction we can read off, with no ray casting at
+all:
+\begin{equation}
+  \bu \;\longmapsto\; \bigl(\, R(\bu),\; \bn(\bu),\; c(\bu),\; p_{\text{mat}}(\bu) \,\bigr),
+\end{equation}
+the first-hit range from the mesh depth buffer, the surface normal from the mesh,
+the semantic class from the segmentation, and the material posterior from the
+concept catalogue. The hit point itself is $\bs + R(\bu)\,\bu$.
+
+The mesh and the image are good at complementary things, and it is worth being
+precise about the asymmetry, because it is the real justification for the whole
+approach.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Range & one degree subtends & one semantic cell & mesh geometric error \\
+\midrule
+$10$~m  & $0.17$~m & $4.1$~cm  & $200$~cm \\
+$40$~m  & $0.70$~m & $16.2$~cm & $200$~cm \\
+$100$~m & $1.75$~m & $40.6$~cm & $200$~cm \\
+\bottomrule
+\end{tabular}
+\caption{Angular resolution of the semantic layer against the geometric error of
+the support mesh. The image resolves lateral structure roughly an order of
+magnitude finer than the mesh resolves position.}
+\end{table}
+
+More importantly, on the material axis the comparison is not a ratio. The mesh
+carries \emph{no} material information whatsoever. Every facade exported from
+tiles alone is an untextured triangle with no permittivity, no roughness, and no
+thickness. The panorama is the only source of any of it, and it is also the only
+source of clutter: poles, signs, bollards, railings and vehicles are absent from
+the photogrammetry but visible in the image.
+
+\section{The first bounce is free, and what that is actually worth}
+
+A conventional shooting-and-bouncing tracer spends a bounding-volume-hierarchy
+traversal, $O(\log M)$ in the triangle count $M$, to find each ray's first
+intersection. Here the first intersection is a texture lookup, $O(1)$, because
+the panorama \emph{is} the first-hit buffer.
+
+It is tempting to sell this as the speedup, and I want to be blunt that it is
+not much of one. For a three-bounce budget you replace one traversal out of
+three, so the saving is a factor of roughly $1.5$, not orders of magnitude. If
+someone claims this method is fast because the first bounce is free, they are
+overselling it.
+
+What the free first bounce is actually worth is \emph{data quality where the
+physics is most sensitive}. Each additional bounce costs a reflection
+coefficient. For brick at $28$~GHz, with $\varepsilon_r = 3.910 - j0.0260$
+evaluated from ITU-R P.2040-4, the specular loss is
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrr}
+\toprule
+Incidence $\theta_i$ & $|R_{\text{TE}}|$ & $|R_{\text{TM}}|$ \\
+\midrule
+$0^\circ$  & $0.328$ \;($-9.68$~dB)  & $0.328$ \;($-9.68$~dB) \\
+$30^\circ$ & $0.377$ \;($-8.48$~dB)  & $0.278$ \;($-11.12$~dB) \\
+$60^\circ$ & $0.561$ \;($-5.02$~dB)  & $0.048$ \;($-26.46$~dB) \\
+$80^\circ$ & $0.816$ \;($-1.77$~dB)  & $0.433$ \;($-7.28$~dB) \\
+\bottomrule
+\end{tabular}
+\caption{Fresnel magnitudes for brick at $28$~GHz, computed with this repository's
+material library.}
+\end{table}
+
+So a second bounce is typically $5$ to $10$~dB down and a third is $10$ to
+$20$~dB down. The first bounce carries most of the power, and the first bounce is
+exactly the one where we have centimetre-scale material and clutter information
+instead of a $2$~m-error untextured triangle. The design is well matched to the
+physics: our best data sits on the term that dominates.
+
+Note in passing the $60^\circ$ row. The two polarisations differ by $21$~dB near
+the pseudo-Brewster angle. Any scalar treatment of this scene is throwing away a
+first-order effect, which is the concrete argument for carrying a
+polarisation-complete field rather than a scalar amplitude.
+
+\section{Why this is a search and not a ray trace}
+
+This is the part that is genuinely clever, and it deserves a careful statement
+because it is easy to get backwards.
+
+\subsection{One bounce}
+
+A ray leaves $\bs$, strikes a surface at $A$, and returns to $\bs$. Since the
+transmitter and receiver coincide, the outgoing and return segments are the same
+segment traversed twice. This is pure backscatter, and it is not a search problem
+at all: it is an integral over the panorama. Every pixel contributes, weighted by
+its backscattering coefficient at its own incidence angle. No ray casting, no
+visibility test, because $\bs$ sees $A$ by construction. The entire one-bounce
+term is a weighted sum over the image.
+
+\subsection{Two bounces, and the measure-zero argument}
+
+Now consider $\bs \to A \to B \to \bs$ with specular reflection at both surfaces.
+Fix the launch direction $\bu$. The hit point $A$ and its normal $\bn_A$ follow
+from the panorama. The reflected direction is then determined:
+\begin{equation}
+  \bd_1 = \bu - 2(\bu\cdot\bn_A)\,\bn_A .
+\end{equation}
+Tracing along $\bd_1$ gives $B$ and its normal $\bn_B$. For the path to close,
+the reflection at $B$ must send the ray precisely back to $\bs$:
+\begin{equation}
+  \bd_2 = \bd_1 - 2(\bd_1\cdot\bn_B)\,\bn_B
+  \quad\text{must equal}\quad
+  \frac{\bs - B}{\lVert \bs - B\rVert} .
+  \label{eq:closure}
+\end{equation}
+
+Count the degrees of freedom. The launch direction $\bu$ supplies two free
+parameters. Equation~\eqref{eq:closure} is an equality between two unit vectors,
+which is two scalar constraints. Two parameters, two constraints: the solutions
+are \emph{isolated points} in the launch sphere. Not an empty set, and not a
+region. Isolated points.
+
+That is the whole insight, and it has a sharp practical consequence.
+
+\begin{quote}
+A set of isolated points has zero measure on the sphere. A Monte Carlo ray
+shooter samples the launch sphere at random and therefore finds a closed
+two-bounce specular path with probability zero. It will never find one, no matter
+how many rays you shoot.
+\end{quote}
+
+So for this geometry, ordinary ray shooting is not merely inefficient. It is
+structurally incapable of returning the answer. Something else is required, and
+the something else is a direct search.
+
+\subsection{How the search actually works}
+
+The classical construction is the image method, and it turns the search into an
+$O(1)$ test per pair of surfaces. Given candidate surfaces $A$ and $B$:
+
+\begin{enumerate}
+\item Mirror $\bs$ in the plane of $A$ to get $\bs'$.
+\item Mirror $\bs'$ in the plane of $B$ to get $\bs''$.
+\item The straight segment from $\bs''$ to $\bs$ crosses the plane of $B$; that
+      crossing is the candidate reflection point on $B$. Unfolding once more gives
+      the candidate point on $A$.
+\item Accept the path if both points lie inside their finite triangles, if both
+      reflections are on the correct side, and if all three segments are
+      unoccluded.
+\end{enumerate}
+
+Each ordered pair yields at most one candidate path, tested in constant time. So
+the two-bounce problem is a loop over pairs of visible surface elements, which is
+exactly the framing you arrived at independently, and the degree-of-freedom count
+above is why it is the right framing rather than merely a convenient one.
+
+This is also where the fishnet earns its place. The search is quadratic in the
+number of surface elements, so element count is the cost driver:
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+Representation & elements, four crops & ordered pairs \\
+\midrule
+Image-space quadtree & $257\,310$ & $6.6\times 10^{10}$ \\
+Fishnet cutter (measured) & $10\,534$ & $1.1\times 10^{8}$ \\
+Visible support triangles (floor) & $5\,351$ & $2.9\times 10^{7}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+These are measured at Korenmarkt, not estimated. A factor of $24$ in element
+count is a factor of $596$ in pair count, and it costs $0.19\%$ of source pixels
+changing class. The argument for collapsing flat facades into few large polygons
+is therefore not aesthetic and not about file size. It is what decides whether
+the search is tractable.
+
+Note the third row. A triangle lying entirely inside one semantic island is
+preserved untouched, so the cutter cannot emit fewer faces than there are visible
+support triangles. It currently sits a factor of $2$ above that floor, which means
+the remaining headroom is not in the cutter at all: it is in the support mesh,
+whose $2$~m-error triangulation is finer than the planar structure it represents.
+Merging coplanar tile triangles before cutting is the next lever, and it is worth
+roughly another factor of $4$ in pair count for free.
+
+\subsection{Three bounces}
+
+For $\bs \to A \to B \to C \to \bs$, both $A$ and $C$ are visible from $\bs$ and
+so are read from the panorama, while $B$ need not be visible. The same image
+construction applies with one more unfolding, and the degree-of-freedom count now
+has four free parameters against two constraints, so solutions form a
+two-parameter \emph{family} rather than isolated points. Three-bounce specular
+returns are therefore generically abundant where two-bounce ones are rare.
+
+There is a neater way to see the same thing. Reflect the outgoing direction at
+$A$, and independently reflect at $C$ the direction from $\bs$ to $C$. Both
+reflected rays must pass through $B$, so $B$ lies at their intersection, and the
+required normal at $B$ follows from the two directions meeting there. Their
+closest approach distance is a physical residual that measures how well the
+hypothesis holds. External commentary treated $B$ as an unknown requiring a
+learned scene-completion model. We do not need that. We have the support mesh, so
+$B$ is a ray cast. What we genuinely lack at $B$ is not its geometry but its
+\emph{material}, because $B$ is out of view and carries no image evidence. That is
+a much smaller and much sharper problem than inventing a hidden city.
+
+\section{What the search misses, and it is most of the power}
+
+Everything above assumes mirror-like reflection. Real surfaces at millimetre
+wavelengths are not mirrors, and the numbers are not marginal.
+
+The Rayleigh roughness parameter compares surface height deviation to
+wavelength. At $28$~GHz the free-space wavelength is $10.71$~mm, so a brick wall
+with $1$~mm of RMS height variation gives, from this repository's implementation:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Incidence & Rayleigh $g$ & scattering coeff.\ $S$ & specular power retained $1-S^2$ \\
+\midrule
+$0^\circ$  & $1.174$ & $0.865$ & $0.25$ \\
+$30^\circ$ & $1.016$ & $0.803$ & $0.36$ \\
+$60^\circ$ & $0.587$ & $0.540$ & $0.71$ \\
+$80^\circ$ & $0.204$ & $0.202$ & $0.96$ \\
+\bottomrule
+\end{tabular}
+\caption{A millimetre of roughness on brick at $28$~GHz. At normal incidence only
+a quarter of the reflected power stays specular.}
+\end{table}
+
+Read the first row again. At normal incidence, three quarters of the power
+leaving that wall is diffuse. The specular skeleton that the image-method search
+finds so elegantly accounts for about a quarter of the physics there, rising to
+most of it only at grazing incidence.
+
+This is not a defect in the idea, but it does settle the architecture, and it
+settles it against a pure search:
+
+\begin{itemize}
+\item \textbf{Specular contributions} live on isolated points. Monte Carlo cannot
+      find them. The image-method search must be used.
+\item \textbf{Diffuse contributions} live on a continuum with a finite-width lobe.
+      They are found perfectly well by ordinary Monte Carlo with a gather step at
+      each bounce, and a search would be the wrong tool.
+\end{itemize}
+
+So the honest answer to ``does this replace normal ray tracing'' is: no, it
+replaces the part of it that never worked, and keeps the part that does. The
+deliverable is a hybrid. That is a more defensible position than either extreme,
+and it is worth stating plainly in the paper rather than being discovered by a
+reviewer.
+
+\section{Knowing when to stop}
+
+Both the search and the Monte Carlo need a termination rule, and the semantic
+layer supplies an unusually principled one.
+
+For a ray subtending a fixed solid angle $\Omega$, an \emph{extended} surface such
+as a facade has an illuminated footprint growing as $\Omega R^2$. Substituting
+$\sigma = \sigma_0 \Omega R^2$ into the radar equation gives
+\begin{equation}
+  \frac{P_r}{P_t} \;\propto\; \frac{\lambda^2 \sigma_0 \Omega}{(4\pi)^3 R^{2}},
+\end{equation}
+so the return falls as $R^{-2}$ and a dynamic range budget $D$ in dB maps through
+$20\log_{10}$. A \emph{discrete} scatterer whose cross-section does not grow with
+range, such as a bollard, a lamp post or a person, keeps the textbook $R^{-4}$ and
+maps through $40\log_{10}$. Same budget, two different cull distances:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrr}
+\toprule
+Dynamic range $D$ & facade, $R^{-2}$ & discrete clutter, $R^{-4}$ \\
+\midrule
+$20$~dB & $100$~m  & $32$~m  \\
+$30$~dB & $316$~m  & $56$~m  \\
+$40$~dB & $1000$~m & $100$~m \\
+\bottomrule
+\end{tabular}
+\caption{Maximum useful range for a contribution referenced to $10$~m.}
+\end{table}
+
+The point is not the specific numbers. It is that the segmentation already knows
+which regime each direction is in, so one threshold produces a per-class cull
+distance instead of a single compromise. A twin without semantics cannot do this.
+It is the first place in the design where the semantic layer buys propagation
+accuracy rather than only material labels.
+
+Two practical notes. First, the cull must be computed from an \emph{upper bound}
+on what a direction could contribute, using the most reflective material still
+admissible under that pixel's posterior and the shortest geometric path. Then a
+discarded swath is provably negligible rather than probably negligible, and the
+threshold can be defended instead of tuned. Second, reflection losses can be
+folded into an effective range, $r_{\text{eff}} = r/\sqrt{\eta}$ for a power
+factor $\eta$, so one budget prunes uniformly across bounce orders. That bookkeeping
+is valid for pruning bounds only. It must never enter the field sum, because a
+complex reflection coefficient carries phase that no real distance can represent.
+
+\section{The objection, stated properly}
+
+Here is the criticism you found unclear, in what I hope is plainer form.
+
+The environment is a linear system. Write $G(\mathbf{r}_1, \mathbf{r}_2)$ for the
+field produced at $\mathbf{r}_1$ by a unit source at $\mathbf{r}_2$. A realistic
+exposure question asks for $G(\bs, \mathbf{x})$, the field at the pedestrian
+$\bs$ due to a base station at some other place $\mathbf{x}$. The co-located
+construction computes $G(\bs,\bs)$, the response at $\bs$ to a source at $\bs$.
+That is one entry of the operator, the diagonal one.
+
+The concrete reason the diagonal does not give you the rest: consider the
+three-bounce loop $\bs \to A \to B \to C \to \bs$. Its coefficient factorises,
+roughly, as
+\begin{equation}
+  h_{\text{loop}} \;\approx\; \underbrace{h_{\bs \leftarrow B}^{(C)}}_{\text{return leg}}
+  \;\cdot\; \Gamma_B \;\cdot\;
+  \underbrace{h_{B \leftarrow \bs}^{(A)}}_{\text{outbound leg}} .
+\end{equation}
+Reciprocity tells you the two legs are equal, so what you measure is essentially
+one leg \emph{squared}. But exposure from a real base station needs one leg
+\emph{alone}, from the mast to $\bs$, and knowing a product does not determine
+its factors when many different pairs give the same product. A strong loop can
+arise from a strong outbound leg or from a strong return leg, and the co-located
+measurement cannot tell you which.
+
+Two concrete cases where the ranking inverts:
+
+\begin{description}
+\item[Open street, high exposure, low loop.] A pedestrian on a wide straight
+      street with clear line of sight to a rooftop mast $80$~m away. Exposure is
+      high and dominated by the direct term. But the geometry sends almost nothing
+      back to the pedestrian's own position, so the monostatic return is small.
+\item[Enclosed courtyard, low exposure, high loop.] A pedestrian in a small
+      courtyard surrounded by close walls, with no mast in view. Multiple surfaces
+      return energy strongly to the centre, so the monostatic return is large. But
+      no external radiation reaches the courtyard, so the exposure is low.
+\end{description}
+
+The monostatic descriptor ranks these two backwards. It is therefore not an upper
+bound on exposure and not a worst case, because it is not conservative in either
+direction. It is a different quantity: a measure of how reverberant a location is.
+That is a legitimate and interesting thing to compute. It simply is not exposure,
+and calling it a representative worst case invites exactly the rebuttal above.
+
+\section{The repair, which costs nothing}
+
+Here is why none of this threatens the actual work.
+
+Currently the trace shoots rays from $\bs$ and keeps the ones that come back.
+Almost none come back, so almost every ray is discarded. Instead, keep every ray
+that \emph{escapes} the local neighbourhood after up to three interactions, and
+record its exit direction. Lorentz reciprocity says the reverse of each escaping
+path is a valid incoming path from an external source. What you build is
+\begin{equation}
+  \bT_{\bs}(\Omega, \tau, f) \;=\;
+  \text{field at } \bs \text{ from a unit plane wave arriving from } \Omega
+  \text{ at delay } \tau,
+\end{equation}
+and then, for any deployment described by an angular incident power distribution
+$\mathbf{Q}_{\bs}$,
+\begin{equation}
+  \mathbb{E}\bigl[\lVert \bE(\bs,f)\rVert^2\bigr]
+  \;=\;
+  \int_{4\pi}
+  \operatorname{Tr}\!\left[
+    \bT_{\bs}\,\mathbf{Q}_{\bs}\,\bT_{\bs}^{H}
+  \right] d\Omega .
+  \label{eq:factorise}
+\end{equation}
+
+Same rays. Same free first hit. Same cull. Same materials. The only change is
+which rays you write down at the end. The monostatic response is still available,
+as the subset of paths that happen to close, and becomes a derived diagnostic
+rather than the headline.
+
+Three things follow that are worth more than the loop was.
+
+\paragraph{The antenna zoo problem disappears.} $\bT_{\bs}$ never mentions a
+transmitter. It is the environment's response to a plane wave. Base stations enter
+only through $\mathbf{Q}_{\bs}$, which is an angular \emph{distribution} carrying
+density, EIRP, load and line-of-sight probability, not a catalogue of hardware.
+You never have to describe a 6G antenna that does not exist yet. You describe
+where power arrives from.
+
+\paragraph{Reproducibility, which was the original complaint.} Equation
+\eqref{eq:factorise} separates an expensive, deployment-independent, per-location
+quantity from a cheap, assumption-laden one. Publish $\bT_{\bs}$ for ten cities
+once. A reviewer who dislikes your deployment substitutes their own
+$\mathbf{Q}_{\bs}$ and redoes the integral in a notebook, without re-tracing
+anything.
+
+\paragraph{A defensible worst case actually exists.} Take
+\begin{equation}
+  \chi_{\max}(\bs) \;=\; \max_{\Omega}\;
+  \sigma_{\max}^2\bigl(\bT_{\bs}(\Omega)\bigr),
+\end{equation}
+the largest singular value over all arrival directions. This answers ``from the
+worst possible external direction, how much does this environment enhance the
+incident field here''. It is a genuine upper bound over deployments at fixed
+power, it is one scalar per location, and the maximum over $\Omega$ dominates any
+$\mathbf{Q}_{\bs}$ a reviewer proposes. Alongside it, $\chi_{\text{iso}}$ gives
+the isotropically illuminated average and $\chi_{\text{roof}}$ the rooftop-weighted
+realistic case.
+
+Line of sight also stops being bolted on. It is the zero-bounce term
+$\bT_{\bs} = \bT_0 + \bT_{\text{MP}}$, and its angular support is exactly the set
+of directions where the mesh first-hit range exceeds the source range, which the
+depth buffer already gives you. The sky mask is the special case of infinite
+first-hit range, which means line-of-sight probability is \emph{measured} at each
+location rather than taken from a fitted model.
+
+The one honest cost of the change: you must define the exit surface and confront
+whether a mast at $50$ to $200$~m is far enough away for a clean plane-wave
+treatment. The closed loop sidesteps that question. I think it is worth paying.
+
+\section{Verdict}
+
+Do I believe the objection? Yes, and it is not subtle once stated in terms of the
+operator diagonal. But it invalidates the interpretation, not the machinery, and
+the machinery is the part that took work.
+
+Is the method clever? Yes, and more so than the usual pitch for it. The pitch
+``the first bounce is free so it is fast'' is weak, worth maybe a factor of
+$1.5$. The real content is twofold. First, the panorama supplies material and
+clutter at centimetre scale on the bounce that carries most of the power, where a
+mesh-only tracer has a $2$~m-error triangle and no material at all. Second, the
+closed specular paths form a measure-zero set that random ray shooting provably
+cannot find, which makes the pair-search framing correct rather than merely
+convenient, and which makes aggressive geometric simplification a hard
+requirement rather than a nicety.
+
+Where I would temper the enthusiasm: at $28$~GHz with realistic surface roughness
+most of the reflected power is diffuse, so the elegant specular search covers a
+minority of the physics and must be paired with ordinary gather-based Monte Carlo.
+The result is a hybrid, and the paper should say so up front.
+
+\end{document}
