@@ -11,8 +11,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from .concepts import Concept, ConceptCatalog
-from .pano_geometry import inference_views, perspective_directions, view_pixel_coordinates
-from .semantics import palette
+from .pano_geometry import inference_views
+from .semantics import fuse_layers, palette
 
 KIND_ID = {"surface": 1, "object": 2}
 LAYER_NAMES = ("support", "material", "clutter", "dynamic_clutter")
@@ -47,17 +47,28 @@ def layer_rules(catalog: ConceptCatalog) -> tuple[LayerRule, ...]:
     """Build non-exclusive layer rules from the concept taxonomy.
 
     A material-detail bonus is only a display/export ordering hint. It makes a
-    window, door, or an explicitly material-only mask visible over its broad
-    support mask while leaving both labels in separate arrays.
+    window, door, shutter or solar panel visible over its broad support mask
+    while leaving both labels in separate arrays.
     """
     surfaces = [concept for concept in catalog.concepts if concept.kind == "surface"]
     clutter = [concept for concept in catalog.concepts if concept.kind == "object"]
-    structural_entities = {"facade", "road", "pavement", "ground", "water", "vegetation"}
+    # Broad load-bearing surfaces. Everything else on the surface axis is a
+    # detail sitting on top of one of them: a window, a door, a shutter, a solar
+    # panel or an aperture. Those are what the material layer must show over
+    # their support rather than under it.
+    structural_entities = {"facade", "road", "pavement", "ground", "water", "vegetation", "rail"}
     material_bonus: dict[str, float] = {}
     for concept in surfaces:
+        if concept.entity.get("unknown", 0.0) > 0.0:
+            # A material-only prompt names no entity, so it is the weakest
+            # evidence in the catalogue and has to lose to any concept that
+            # names one. It used to receive the *largest* bonus here, because
+            # the rule keyed on the absence of a structural entity rather than
+            # on being a detail, which is how "metal surface" came to outrank
+            # "cobblestone paving" over a cobbled square.
+            material_bonus[concept.prompt] = -0.5
+            continue
         structural_mass = sum(concept.entity.get(entity, 0.0) for entity in structural_entities)
-        # Detail concepts (notably window/door and material-only prompts) are
-        # rendered over their support, not allowed to erase it from the file.
         material_bonus[concept.prompt] = 0.75 * (1.0 - structural_mass)
     return (
         LayerRule("support", frozenset(concept.prompt for concept in surfaces), {}),
@@ -95,9 +106,16 @@ def _select_layer(
     concept_ids: dict[str, int],
     rule: LayerRule,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Keep a layer-local winner without discarding other layers."""
+    """Keep a layer-local winner without discarding other layers.
+
+    Priority is only ever compared between concepts that both cover a pixel, so
+    an unclaimed pixel is tracked separately rather than as priority zero. A
+    demoted concept whose bonus takes it below zero has to remain able to claim
+    a pixel nothing else wants.
+    """
     height, width = masks.shape[1:]
     priority = np.zeros((height, width), dtype=np.float32)
+    claimed = np.zeros((height, width), dtype=bool)
     confidence = np.zeros((height, width), dtype=np.float16)
     concept = np.zeros((height, width), dtype=np.uint16)
     for index, (label, score) in enumerate(zip(labels, scores, strict=True)):
@@ -105,8 +123,9 @@ def _select_layer(
         if label not in rule.labels:
             continue
         candidate_priority = float(score) + rule.priority_bonus.get(label, 0.0)
-        take = masks[index] & (candidate_priority > priority)
+        take = masks[index] & (~claimed | (candidate_priority > priority))
         priority[take] = candidate_priority
+        claimed[take] = True
         confidence[take] = score
         concept[take] = concept_ids[label]
     return concept, confidence
@@ -131,37 +150,6 @@ def view_layers(
     if unknown:
         raise ValueError(f"SAM prediction contains concepts missing from catalog: {sorted(unknown)}")
     return {rule.name: _select_layer(masks, labels, scores, concept_ids, rule) for rule in rules}
-
-
-def fuse_layer(
-    layer_views: list[tuple[object, np.ndarray, np.ndarray]],
-    *,
-    width: int,
-    height: int,
-    row_chunk: int,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Stitch one semantic layer over perspective crops on the sphere."""
-    concept_out = np.zeros((height, width), dtype=np.uint16)
-    confidence_out = np.zeros((height, width), dtype=np.float16)
-    priority_out = np.zeros((height, width), dtype=np.float32)
-    yaw = ((np.arange(width) + 0.5) / width - 0.5) * 2.0 * np.pi
-    for y0 in range(0, height, row_chunk):
-        y1 = min(y0 + row_chunk, height)
-        pitch = (0.5 - (np.arange(y0, y1) + 0.5) / height) * np.pi
-        yy, pp = np.meshgrid(yaw, pitch)
-        cos_pitch = np.cos(pp)
-        directions = np.stack([np.sin(yy) * cos_pitch, np.cos(yy) * cos_pitch, np.sin(pp)], axis=2)
-        for view, concept, confidence in layer_views:
-            px, py, valid = view_pixel_coordinates(directions, view, concept.shape[1], concept.shape[0])
-            sampled_confidence = np.where(valid, confidence[py, px], 0.0)
-            centre = perspective_directions(view, 1, 1)[0, 0]
-            angular_weight = np.clip(directions @ centre, 0.0, 1.0) ** 4
-            score = sampled_confidence * angular_weight
-            take = valid & (concept[py, px] > 0) & (score > priority_out[y0:y1])
-            priority_out[y0:y1][take] = score[take]
-            concept_out[y0:y1][take] = concept[py[take], px[take]]
-            confidence_out[y0:y1][take] = sampled_confidence[take].astype(np.float16)
-    return concept_out, confidence_out
 
 
 def _rgba_layer(concept: np.ndarray, confidence: np.ndarray, colours: np.ndarray, alpha: float) -> Image.Image:
@@ -221,11 +209,12 @@ def fuse(args: argparse.Namespace) -> None:
     catalog = ConceptCatalog.load(args.concepts)
     concept_ids, id2label = load_concepts(args.concepts)
     rules = layer_rules(catalog)
-    views = {view.name: view for view in inference_views()}
-    layers: dict[str, list[tuple[object, np.ndarray, np.ndarray]]] = {rule.name: [] for rule in rules}
+    by_name = {view.name: view for view in inference_views()}
+    order: list = []
+    layers: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {rule.name: [] for rule in rules}
     instance_offset = 0
     for path in sorted(args.predictions.glob("*.npz")):
-        if path.stem not in views:
+        if path.stem not in by_name:
             continue
         masks, labels, kinds, scores = unpack_masks(path)
         view_data = view_layers(
@@ -237,19 +226,19 @@ def fuse(args: argparse.Namespace) -> None:
             rules,
         )
         instance_offset += len(masks)
-        for layer_name, (concept, confidence) in view_data.items():
-            layers[layer_name].append((views[path.stem], concept, confidence))
+        order.append(by_name[path.stem])
+        for layer_name, pair in view_data.items():
+            layers[layer_name].append(pair)
 
-    found = {view.name for view, *_ in layers["support"]}
-    if set(views) != found:
-        missing = sorted(set(views) - found)
+    found = {view.name for view in order}
+    if set(by_name) != found:
+        missing = sorted(set(by_name) - found)
         raise SystemExit(f"missing SAM predictions for: {', '.join(missing)}")
 
     width, height = args.output_width, args.output_width // 2
-    layer_data = {
-        layer_name: fuse_layer(layer_views, width=width, height=height, row_chunk=args.row_chunk)
-        for layer_name, layer_views in layers.items()
-    }
+    # One traversal for all four layers. The projection and the footprint spans
+    # depend on the view, not on what is painted in it.
+    layer_data = fuse_layers(order, layers, width=width, height=height, row_chunk=args.row_chunk, require_nonzero=True)
     support_concept, support_confidence = layer_data["support"]
     clutter_concept, clutter_confidence = layer_data["clutter"]
 
