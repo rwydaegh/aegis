@@ -155,6 +155,27 @@ zero by eight. Four bounces is the operating point. Sky fraction is 0.24596 at
 200,000 rays and 0.2459935 at 2,000,000, so the ray count is converged well below
 where it was set.
 
+### The first distribution
+
+Over 120 locations at Korenmarkt, the susceptibility spread from the fifth to the
+ninety fifth percentile is:
+
+| illumination | p05 | median | p95 | spread |
+|---|---|---|---|---|
+| isotropic | 0.195 | 0.314 | 0.441 | **3.5 dB** |
+| rooftop macro sites | 0.022 | 0.138 | 0.393 | **12.5 dB** |
+| street small cells | 0.004 | 0.066 | 0.279 | wider still |
+
+The illumination model matters more than the position does. Under isotropic
+illumination, standing anywhere in one square changes exposure by 3.5 dB. Under
+rooftop macro sites it changes by 12.5 dB, because those sources arrive at high
+elevation angles that the surrounding built form either admits or blocks
+completely, and a location either sees the sky in that band or it does not.
+
+Any population exposure claim therefore depends on the assumed source geometry far
+more than on where in a square people actually stand, which is a result about how
+such claims should be framed rather than about Ghent.
+
 ### The finding hiding in the manifest
 
 A second run bound the semantic posterior in as the material source, over 120
