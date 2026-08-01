@@ -27,10 +27,12 @@ from semantic_twin.fishnet import (  # noqa: E402
     REJECTION_REASONS,
     CameraPose,
     PinholeView,
+    aggregate_occlusion_budget,
     angular_tolerance_deg,
     build_fishnet,
     build_region_map,
     class_fidelity,
+    occlusion_budget,
     occlusion_fidelity,
     paintability,
     rasterize_fishnet,
@@ -80,6 +82,15 @@ NON_SURFACE_WORDS = {
 }
 
 
+# The propagation stage treats a face as fully visible with its area scaled by
+# visible_fraction, with no sub-cell mask.  That holds while the occluded share
+# of the projected support area stays small.  Korenmarkt is the easy case: a
+# wide open square captured at pitch zero.  A narrow street with scaffolding,
+# street trees and parked vehicles is not, so the budget is measured per site
+# and a site above this fraction has to have the assumption revisited there.
+SUB_CELL_REVIEW_FRACTION = 0.05
+
+
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mesh", type=pathlib.Path, required=True)
@@ -122,6 +133,7 @@ def main() -> None:
     }
 
     views = []
+    budgets = []
     for yaw in args.yaws:
         stem = f"h+00_{yaw:03d}"
         labels = np.load(args.views / f"{stem}_labels.npy").astype(np.int64)
@@ -169,6 +181,8 @@ def main() -> None:
         raster = rasterize_fishnet(surface, view.shape)
         fidelity = class_fidelity(raster, regions)
         occlusion = occlusion_fidelity(raster, face_ids, regions)
+        budget = occlusion_budget(surface)
+        budgets.append(budget)
         counts = Counter(int(item) for item in surface.face_class)
         record = {
             "view": stem,
@@ -183,6 +197,7 @@ def main() -> None:
             "fishnet_report": surface.report,
             "class_fidelity": fidelity,
             "occlusion_fidelity": occlusion,
+            "occlusion_budget": budget,
             "paint_reason_pixels": {
                 name: int(np.count_nonzero(reason == code)) for name, code in PAINT_REASONS.items()
             },
@@ -199,7 +214,25 @@ def main() -> None:
             f"[fishnet] {stem}: {surface.triangle_count} triangles from "
             f"{int(surface.report['visible_source_triangles'])} visible support triangles, "
             f"class change {fidelity['changed_fraction']:.4%}, "
-            f"phantom {occlusion['phantom_fraction']:.4%}, deleted {occlusion['deleted_fraction']:.4%}",
+            f"phantom {occlusion['phantom_fraction']:.4%}, deleted {occlusion['deleted_fraction']:.4%}, "
+            f"occlusion budget {budget['occlusion_budget_fraction']:.3%}",
+            flush=True,
+        )
+
+    site_budget = aggregate_occlusion_budget(budgets)
+    print(
+        f"[fishnet] site occlusion budget {site_budget['occlusion_budget_fraction']:.3%} "
+        f"(within cell {site_budget['within_cell_fraction']:.3%}, "
+        f"absent {site_budget['absent_surface_fraction']:.3%}, "
+        f"deferred to other layers {site_budget['deferred_surface_fraction']:.3%}) "
+        f"over {site_budget['views']} crops",
+        flush=True,
+    )
+    if site_budget["occlusion_budget_fraction"] > SUB_CELL_REVIEW_FRACTION:
+        print(
+            f"[fishnet] this site is above the {SUB_CELL_REVIEW_FRACTION:.0%} budget at which treating a face as "
+            "fully visible with area scaled by visible_fraction has to be revisited",
+            file=sys.stderr,
             flush=True,
         )
 
@@ -216,6 +249,8 @@ def main() -> None:
         "min_piece_area_px": args.min_piece_area_px,
         "transient_classes": sorted(names[key] for key in transient),
         "non_surface_classes": sorted(names[key] for key in excluded),
+        "site_occlusion_budget": site_budget,
+        "sub_cell_review_fraction": SUB_CELL_REVIEW_FRACTION,
         "views": views,
     }
     (args.out / "fishnet_manifest.json").write_text(json.dumps(manifest, indent=2))

@@ -1,9 +1,15 @@
 """Render first-hit metric range from the recovered panorama camera into a mesh.
 
 This is deliberately a depth *hypothesis*, not ground truth.  Comparing it to
-the independent UniDepth estimate exposes foreground blockers, broken tile
+the independent monocular estimates exposes foreground blockers, broken tile
 surfaces, and camera-pose errors before semantic evidence is painted onto a
 surface.
+
+The rays are the same ones ``semantic_twin/fishnet.py`` inverts when it maps a
+cut piece back onto its triangle's plane, so the depth buffer and the cutter
+cannot drift apart.  Casting is vectorised over the whole crop through
+``trimesh``, with Embree when it is installed, which is why this no longer needs
+Blender.
 """
 
 from __future__ import annotations
@@ -13,74 +19,134 @@ import json
 import pathlib
 import sys
 
-import bpy
 import numpy as np
-from mathutils import Vector
-from mathutils.bvhtree import BVHTree
+import trimesh
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from project_pixel_semantics import pixel_boundary_direction  # noqa: E402
-from project_semantics import mesh_arrays  # noqa: E402
-from render_blender_alignment import panorama_rotation  # noqa: E402
+from semantic_twin.pano_geometry import PerspectiveView, panorama_to_world_matrix, perspective_directions  # noqa: E402
+
+
+def first_hit_range(
+    mesh: trimesh.Trimesh,
+    origin: np.ndarray,
+    directions: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Range in metres and triangle index of the first hit along each ray.
+
+    Range is ``nan`` and the index is ``-1`` where a ray escapes.  The rays are
+    unit vectors, so the reported distance is a true Euclidean range rather than
+    a depth along the view axis.
+    """
+    origin = np.asarray(origin, dtype=np.float64)
+    directions = np.asarray(directions, dtype=np.float64)
+    if origin.shape != (3,):
+        raise ValueError("origin must be one three-vector")
+    if directions.ndim != 2 or directions.shape[1] != 3:
+        raise ValueError("directions must have shape (n, 3)")
+    origins = np.broadcast_to(origin, directions.shape)
+    locations, ray_index, triangle_index = mesh.ray.intersects_location(origins, directions, multiple_hits=False)
+    range_m = np.full(len(directions), np.nan, dtype=np.float32)
+    face_ids = np.full(len(directions), -1, dtype=np.int32)
+    if len(ray_index):
+        range_m[ray_index] = np.linalg.norm(locations - origin, axis=1)
+        face_ids[ray_index] = triangle_index
+    return range_m, face_ids
+
+
+def ground_offset_m(mesh: trimesh.Trimesh, position: np.ndarray, target_height_m: float) -> float:
+    """Vertical shift putting the camera ``target_height_m`` above the mesh ground.
+
+    A diagnostic, not a registration fix.  The pose pipeline applies one
+    scene-wide terrain constant to every camera, and this measures what that
+    constant costs at one panorama by casting straight down against the support
+    mesh.  Callers that use it have to record the offset they applied.
+    """
+    down = np.array([[0.0, 0.0, -1.0]])
+    range_m, _face_ids = first_hit_range(mesh, np.asarray(position, dtype=np.float64), down)
+    if not np.isfinite(range_m[0]):
+        raise ValueError("no support-mesh ground under the camera")
+    return float(target_height_m - range_m[0])
 
 
 def arguments() -> argparse.Namespace:
-    argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     parser = argparse.ArgumentParser()
     parser.add_argument("--mesh", type=pathlib.Path, required=True)
     parser.add_argument("--pose", type=pathlib.Path, required=True)
     parser.add_argument("--views", type=pathlib.Path, required=True)
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--yaws", type=int, nargs="+", default=[0, 90, 180, 270])
-    return parser.parse_args(argv)
+    parser.add_argument("--pitch", type=float, default=0.0)
+    parser.add_argument("--fov-deg", type=float, default=90.0)
+    parser.add_argument(
+        "--ground-lock-height-m",
+        type=float,
+        help=(
+            "Diagnostic: raise or lower the camera so it sits this far above the support-mesh ground "
+            "under it, and record the applied offset. Off by default, since it measures the registration "
+            "error rather than correcting it."
+        ),
+    )
+    return parser.parse_args()
 
 
 def main() -> None:
+    from PIL import Image
+
     args = arguments()
     args.out.mkdir(parents=True, exist_ok=True)
-    bpy.ops.wm.ply_import(filepath=str(args.mesh.resolve()))
-    source = bpy.context.object
-    vertices, faces = mesh_arrays(source)
-    bvh = BVHTree.FromPolygons([Vector(vertex) for vertex in vertices], faces.tolist(), all_triangles=True)
+    mesh = trimesh.load(args.mesh, process=False, force="mesh")
     pose = json.loads(args.pose.read_text())
-    camera = Vector(pose["position_enu_m"])
-    rotation = panorama_rotation(
+    camera = np.asarray(pose["position_enu_m"], dtype=np.float64)
+    rotation = panorama_to_world_matrix(
         float(pose["heading_deg"]),
-        float(pose["pitch_correction_deg"]),
-        float(pose["roll_correction_deg"]),
+        pitch_deg=float(pose["pitch_correction_deg"]),
+        roll_deg=float(pose["roll_correction_deg"]),
     )
+    ground_lock = None
+    if args.ground_lock_height_m is not None:
+        ground_lock = ground_offset_m(mesh, camera, args.ground_lock_height_m)
+        camera = camera + np.array([0.0, 0.0, ground_lock])
+        print(f"[mesh-depth] ground lock moved the camera {ground_lock:+.3f} m")
 
     manifest = []
     for yaw in args.yaws:
-        # The image is only used for the dimensions. UniDepth and SAM consume
-        # exactly this crop, so its pixels correspond one-to-one with this map.
-        import PIL.Image
-
-        image = PIL.Image.open(args.views / f"h+00_{yaw:03d}.jpg")
-        width, height = image.size
-        range_m = np.full((height, width), np.nan, dtype=np.float32)
-        face_ids = np.full((height, width), -1, dtype=np.int32)
-        for y in range(height):
-            for x in range(width):
-                local = pixel_boundary_direction(x + 0.5, y + 0.5, width, height, yaw)
-                location, _normal, face_id, distance = bvh.ray_cast(camera, rotation @ local, 2000.0)
-                if location is not None and face_id is not None and distance is not None:
-                    range_m[y, x] = distance
-                    face_ids[y, x] = int(face_id)
-        np.savez_compressed(args.out / f"h+00_{yaw:03d}.npz", range_m=range_m, face_ids=face_ids)
+        # The image is only used for the dimensions. The depth models and the
+        # segmenter consume exactly this crop, so its pixels correspond
+        # one-to-one with this map.
+        name = f"h{args.pitch:+03.0f}_{yaw:03d}"
+        with Image.open(args.views / f"{name}.jpg") as image:
+            width, height = image.size
+        view = PerspectiveView(name, float(yaw), args.pitch, args.fov_deg)
+        local = perspective_directions(view, width, height).reshape(-1, 3)
+        range_m, face_ids = first_hit_range(mesh, camera, local @ rotation.T)
+        np.savez_compressed(
+            args.out / f"{name}.npz",
+            range_m=range_m.reshape(height, width),
+            face_ids=face_ids.reshape(height, width),
+        )
         manifest.append(
             {
-                "view": f"h+00_{yaw:03d}",
+                "view": name,
                 "shape": [height, width],
                 "hit_fraction": float(np.isfinite(range_m).mean()),
                 "median_range_m": float(np.nanmedian(range_m)),
             }
         )
-        print(f"[mesh-depth] yaw {yaw:03d}: {manifest[-1]['hit_fraction']:.1%} rays hit")
+        print(f"[mesh-depth] {name}: {manifest[-1]['hit_fraction']:.1%} rays hit")
     (args.out / "manifest.json").write_text(
-        json.dumps({"mesh": str(args.mesh), "pose": str(args.pose), "views": manifest}, indent=2)
+        json.dumps(
+            {
+                "mesh": str(args.mesh),
+                "pose": str(args.pose),
+                "camera_position_enu_m": camera.tolist(),
+                "ground_lock_height_m": args.ground_lock_height_m,
+                "ground_lock_offset_m": ground_lock,
+                "views": manifest,
+            },
+            indent=2,
+        )
     )
 
 

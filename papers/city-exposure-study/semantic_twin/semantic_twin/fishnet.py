@@ -36,6 +36,7 @@ from __future__ import annotations
 import math
 import pathlib
 from dataclasses import dataclass, field
+from typing import Any
 
 import mapbox_earcut
 import numpy as np
@@ -76,12 +77,13 @@ REJECTION_REASONS: dict[str, int] = {
     "below_minimum_area": 9,
     "grazing_plane": 10,
     "not_support_surface": 11,
+    "mesh_or_pose_conflict": 12,
 }
 
 _PAINT_TO_REJECTION = {
     PAINT_REASONS["transient_object"]: REJECTION_REASONS["transient_object"],
     PAINT_REASONS["clutter_in_front"]: REJECTION_REASONS["clutter_in_front"],
-    PAINT_REASONS["mesh_or_pose_conflict"]: REJECTION_REASONS["clutter_in_front"],
+    PAINT_REASONS["mesh_or_pose_conflict"]: REJECTION_REASONS["mesh_or_pose_conflict"],
     PAINT_REASONS["not_support_surface"]: REJECTION_REASONS["not_support_surface"],
 }
 
@@ -296,18 +298,29 @@ def paintability(
     excluded_class_ids: set[int] | None = None,
     min_confidence: float = 0.35,
     decision: np.ndarray | None = None,
-    blocker_decisions: tuple[int, ...] = (3, 4),
+    front_blocker_decisions: tuple[int, ...] = (3,),
+    mesh_conflict_decisions: tuple[int, ...] = (4,),
     transient_decisions: tuple[int, ...] = (5,),
 ) -> np.ndarray:
     """Per-pixel projection decision, one of :data:`PAINT_REASONS`.
 
     ``decision`` is the map written by ``compare_mesh_depth.py``: it is where
     metric distance, not appearance, decides that something stands in front of
-    the tile surface.  Transient classes are separated from that so a person is
-    never painted onto the wall behind them even when the depths agree.
-    ``excluded_class_ids`` covers classes that are not support surfaces at all,
-    such as sky and the street furniture that the object pipeline reconstructs
-    as its own proxy geometry.
+    the tile surface.  Only its ``front_blocker`` verdict, which every depth
+    model has to support, becomes ``clutter_in_front``.  Its
+    ``mesh_or_pose_blocker`` verdict is a conflict about where the tile surface
+    itself is, so it gets its own ``mesh_or_pose_conflict`` reason: both
+    withhold the pixel, but calling a registration conflict "clutter" would put
+    a scatterer in the report that nothing observed.
+
+    Transient classes are separated from the distance test so a person is never
+    painted onto the wall behind them even when the depths agree, and that
+    separation survives a withheld distance test because it never depended on
+    one.  Any decision the caller does not name, including
+    ``no_depth_evidence``, leaves the pixel to the mesh first hit and the class
+    test alone.  ``excluded_class_ids`` covers classes that are not support
+    surfaces at all, such as sky and the street furniture that the object
+    pipeline reconstructs as its own proxy geometry.
     """
     labels = np.asarray(labels)
     confidence = np.asarray(confidence, dtype=np.float64)
@@ -322,7 +335,8 @@ def paintability(
         decision = np.asarray(decision)
         if decision.shape != labels.shape:
             raise ValueError("decision must match the label resolution")
-        reason[np.isin(decision, list(blocker_decisions))] = PAINT_REASONS["clutter_in_front"]
+        reason[np.isin(decision, list(front_blocker_decisions))] = PAINT_REASONS["clutter_in_front"]
+        reason[np.isin(decision, list(mesh_conflict_decisions))] = PAINT_REASONS["mesh_or_pose_conflict"]
         reason[np.isin(decision, list(transient_decisions))] = PAINT_REASONS["transient_object"]
     if excluded_class_ids:
         reason[np.isin(labels, list(excluded_class_ids))] = PAINT_REASONS["not_support_surface"]
@@ -537,6 +551,11 @@ def build_fishnet(
         "clipped_source_area_px": 0.0,
         "emitted_area_px": 0.0,
         "rejected_area_px": 0.0,
+        # Recorded because the kept faces are a truncated sample: a piece with
+        # less visibility than this never reaches the accepted table, so the
+        # within-cell figure alone flatters the surface.
+        "full_visibility_fraction": float(full_visibility_fraction),
+        "piece_visibility_fraction": float(piece_visibility_fraction),
     }
 
     visible = np.unique(face_ids[face_ids >= 0])
@@ -633,6 +652,121 @@ def occlusion_fidelity(raster: FishnetRaster, face_ids: np.ndarray, regions: Reg
         "paintable_pixels": paintable_count,
         "deleted_pixels": deleted,
         "deleted_fraction": deleted / paintable_count if paintable_count else 0.0,
+    }
+
+
+# Rejection reasons that remove surface because something stood in the way,
+# rather than because the candidate was degenerate.  They split by what happens
+# to the removed surface next.  Nothing ever reconstructs what a mesh occluder
+# or an unmodelled foreground object was hiding, so that area is simply absent.
+# A transient goes to the dynamic body layer and street furniture goes to the
+# object proxy pipeline, so that area is deferred rather than lost, and it is
+# only a hole if those layers do not run.
+ABSENT_SURFACE_REJECTIONS: tuple[str, ...] = (
+    "occluded_by_support_mesh",
+    "clutter_in_front",
+    "mesh_or_pose_conflict",
+)
+DEFERRED_SURFACE_REJECTIONS: tuple[str, ...] = ("transient_object", "not_support_surface")
+OCCLUSION_REJECTIONS: tuple[str, ...] = ABSENT_SURFACE_REJECTIONS + DEFERRED_SURFACE_REJECTIONS
+
+
+def occlusion_budget(surface: FishnetSurface) -> dict[str, Any]:
+    """What fraction of the projected support area occlusion removed, per site.
+
+    The propagation stage treats a face as fully visible with its area scaled by
+    ``face_visible_fraction``, with no sub-cell mask.  That is only defensible
+    while the occluded share stays small, and how small it is depends on the
+    site rather than on the cutter: an open square captured at pitch zero is the
+    easy case, and a narrow street with scaffolding, street trees and parked
+    vehicles is not.  So the budget is measured and reported per site instead of
+    assumed.
+
+    Every term is a share of the projected image area of the visible support
+    triangles, which is exactly ``emitted_area_px + rejected_area_px``.
+
+    * ``within_cell_fraction`` is what the sub-cell decision is actually about:
+      the area accepted faces carry but do not own, summed as
+      ``area * (1 - visible_fraction)``.
+      ``solid_angle_weighted_visible_fraction`` is the same term in the form the
+      propagation stage sees it.
+    * ``absent_surface_fraction`` is projected area rejected whole with nothing
+      downstream to put back: a mesh occluder, unmodelled clutter, or a
+      registration conflict.
+    * ``deferred_surface_fraction`` is projected area rejected whole and handed
+      to another layer, which is people, vehicles and street furniture.
+    * ``occlusion_budget_fraction`` is the three added together.
+
+    The kept faces are a truncated sample, because a piece owning less than
+    ``piece_visibility_fraction`` of its footprint is rejected rather than kept
+    with a low visible fraction.  That threshold is reported alongside the
+    budget so the truncation is not invisible, and it is why the whole-cell
+    terms have to be added rather than the within-cell term read on its own.
+    """
+    corners = np.asarray(surface.face_image, dtype=np.float64)
+    edge_a = corners[:, 1] - corners[:, 0]
+    edge_b = corners[:, 2] - corners[:, 0]
+    face_area_px = 0.5 * np.abs(edge_a[:, 0] * edge_b[:, 1] - edge_a[:, 1] * edge_b[:, 0])
+    emitted_px = float(face_area_px.sum())
+    within_cell_px = float((face_area_px * (1.0 - surface.face_visible_fraction)).sum())
+
+    rejected_px = np.asarray(surface.rejected_image_area_px, dtype=np.float64)
+    reasons = np.asarray(surface.rejected_reason, dtype=np.int64)
+    by_reason = {
+        name: float(rejected_px[reasons == code].sum()) for name, code in REJECTION_REASONS.items() if code in reasons
+    }
+    absent_px = float(sum(by_reason.get(name, 0.0) for name in ABSENT_SURFACE_REJECTIONS))
+    deferred_px = float(sum(by_reason.get(name, 0.0) for name in DEFERRED_SURFACE_REJECTIONS))
+
+    projected_px = emitted_px + float(rejected_px.sum())
+    scale = 1.0 / projected_px if projected_px > 0.0 else 0.0
+    solid_angle = np.asarray(surface.face_solid_angle_sr, dtype=np.float64)
+    weighted = (
+        float((solid_angle * surface.face_visible_fraction).sum() / solid_angle.sum())
+        if solid_angle.sum() > 0.0
+        else 0.0
+    )
+    return {
+        "projected_source_area_px": projected_px,
+        "within_cell_px": within_cell_px,
+        "within_cell_fraction": within_cell_px * scale,
+        "absent_surface_px": absent_px,
+        "absent_surface_fraction": absent_px * scale,
+        "deferred_surface_px": deferred_px,
+        "deferred_surface_fraction": deferred_px * scale,
+        "occlusion_budget_fraction": (within_cell_px + absent_px + deferred_px) * scale,
+        "solid_angle_weighted_visible_fraction": weighted,
+        "piece_visibility_fraction": float(surface.report.get("piece_visibility_fraction", float("nan"))),
+        "by_reason_fraction": {name: area * scale for name, area in by_reason.items()},
+    }
+
+
+def aggregate_occlusion_budget(budgets: list[dict[str, Any]]) -> dict[str, Any]:
+    """Combine per-view budgets into the one number that describes a site.
+
+    Areas are summed before the ratio is taken, so a crop that sees very little
+    support surface cannot weigh as much as a crop that sees a facade.
+    """
+    if not budgets:
+        raise ValueError("aggregating an occlusion budget needs at least one view")
+    projected = sum(budget["projected_source_area_px"] for budget in budgets)
+    within = sum(budget["within_cell_px"] for budget in budgets)
+    absent = sum(budget["absent_surface_px"] for budget in budgets)
+    deferred = sum(budget["deferred_surface_px"] for budget in budgets)
+    scale = 1.0 / projected if projected > 0.0 else 0.0
+    reasons: dict[str, float] = {}
+    for budget in budgets:
+        for name, fraction in budget["by_reason_fraction"].items():
+            reasons[name] = reasons.get(name, 0.0) + fraction * budget["projected_source_area_px"]
+    return {
+        "views": len(budgets),
+        "projected_source_area_px": projected,
+        "within_cell_fraction": within * scale,
+        "absent_surface_fraction": absent * scale,
+        "deferred_surface_fraction": deferred * scale,
+        "occlusion_budget_fraction": (within + absent + deferred) * scale,
+        "piece_visibility_fraction": budgets[0]["piece_visibility_fraction"],
+        "by_reason_fraction": {name: area * scale for name, area in sorted(reasons.items())},
     }
 
 

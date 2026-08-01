@@ -8,6 +8,7 @@ from semantic_twin.fishnet import (
     REJECTION_REASONS,
     CameraPose,
     PinholeView,
+    aggregate_occlusion_budget,
     angular_tolerance_deg,
     boundary_chains,
     build_fishnet,
@@ -15,6 +16,7 @@ from semantic_twin.fishnet import (
     class_fidelity,
     image_to_view_directions,
     load_fishnet,
+    occlusion_budget,
     occlusion_fidelity,
     paintability,
     rasterize_fishnet,
@@ -252,6 +254,88 @@ def test_distance_evidence_rejects_clutter_and_stays_distinct_from_a_transient()
     assert np.all(rasterize_fishnet(surface, view.shape).class_map[24:40, 24:40] == -1)
     assert np.count_nonzero(surface.rejected_reason == REJECTION_REASONS["clutter_in_front"]) > 0
     assert np.count_nonzero(surface.rejected_reason == REJECTION_REASONS["transient_object"]) == 0
+
+
+def test_a_registration_conflict_is_not_reported_as_clutter_in_front() -> None:
+    # Decision 4 is the depth fusion saying the tile first hit is implausibly
+    # near, which is a conflict about where the surface is rather than evidence
+    # of an object standing in front of it. Both withhold the pixel, but only
+    # one of them means a scatterer was observed.
+    labels = np.zeros((64, 64), dtype=np.int64)
+    decision = np.ones((64, 64), dtype=np.uint8)
+    decision[20:44, 20:44] = 4
+    surface, regions, _face_ids, view, _camera = _build(labels, decision=decision)
+
+    assert np.all(regions.paint_reason[20:44, 20:44] == PAINT_REASONS["mesh_or_pose_conflict"])
+    assert np.all(rasterize_fishnet(surface, view.shape).class_map[24:40, 24:40] == -1)
+    assert np.count_nonzero(surface.rejected_reason == REJECTION_REASONS["mesh_or_pose_conflict"]) > 0
+    assert np.count_nonzero(surface.rejected_reason == REJECTION_REASONS["clutter_in_front"]) == 0
+
+
+def test_a_withheld_distance_test_leaves_the_pixel_to_the_mesh_and_the_class() -> None:
+    # no_depth_evidence is what the fusion emits when the range fit is not
+    # plausible. It must withhold nothing on its own, while the class test that
+    # never depended on a fitted scale keeps working.
+    labels = np.zeros((64, 64), dtype=np.int64)
+    labels[20:44, 20:44] = 7
+    decision = np.full((64, 64), 6, dtype=np.uint8)
+    surface, regions, _face_ids, view, _camera = _build(labels, decision=decision, transient={7})
+
+    assert np.all(regions.paint_reason[:20] == PAINT_REASONS["paintable"])
+    assert np.all(regions.paint_reason[20:44, 20:44] == PAINT_REASONS["transient_object"])
+    assert not np.any(regions.paint_reason == PAINT_REASONS["clutter_in_front"])
+    assert surface.triangle_count > 0
+
+
+def test_the_occlusion_budget_adds_the_rejected_cells_to_the_within_cell_shortfall() -> None:
+    labels = np.zeros((64, 64), dtype=np.int64)
+    view, camera = _view(), _pose()
+    blocker = _quad(2.5, 0.8, camera)
+    surface = _build(labels, view=view, pose=camera, extra=(blocker, [[0, 1, 2], [0, 2, 3]]))[0]
+
+    budget = occlusion_budget(surface)
+
+    assert budget["within_cell_fraction"] > 0.0
+    assert budget["absent_surface_fraction"] > 0.0
+    assert budget["occlusion_budget_fraction"] == pytest.approx(
+        budget["within_cell_fraction"] + budget["absent_surface_fraction"] + budget["deferred_surface_fraction"]
+    )
+    # Reading the within-cell term alone would understate what occlusion
+    # removed, because a piece owning less than the threshold never reaches the
+    # accepted table at all.
+    assert budget["occlusion_budget_fraction"] > budget["within_cell_fraction"]
+    assert budget["piece_visibility_fraction"] == 0.5
+    assert budget["by_reason_fraction"]["occluded_by_support_mesh"] > 0.0
+    assert budget["solid_angle_weighted_visible_fraction"] < 1.0
+
+
+def test_a_site_budget_weighs_crops_by_projected_area_not_by_crop_count() -> None:
+    small = {
+        "projected_source_area_px": 100.0,
+        "within_cell_px": 1.0,
+        "absent_surface_px": 0.0,
+        "deferred_surface_px": 0.0,
+        "by_reason_fraction": {"transient_object": 0.0},
+        "piece_visibility_fraction": 0.5,
+    }
+    large = {
+        "projected_source_area_px": 9900.0,
+        "within_cell_px": 0.0,
+        "absent_surface_px": 99.0,
+        "deferred_surface_px": 0.0,
+        "by_reason_fraction": {"transient_object": 0.01},
+        "piece_visibility_fraction": 0.5,
+    }
+
+    site = aggregate_occlusion_budget([small, large])
+
+    assert site["views"] == 2
+    assert site["projected_source_area_px"] == 10000.0
+    assert site["occlusion_budget_fraction"] == pytest.approx(0.01)
+    # Averaging the two crop fractions would give 0.5 percent from the small
+    # crop plus 0.5 percent from the large one, which is not what the site is.
+    assert site["within_cell_fraction"] == pytest.approx(0.0001)
+    assert site["by_reason_fraction"]["transient_object"] == pytest.approx(0.0099)
 
 
 def test_broken_support_geometry_is_reported_rather_than_crashing() -> None:
