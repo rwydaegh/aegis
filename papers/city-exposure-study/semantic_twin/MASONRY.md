@@ -520,7 +520,10 @@ repository's monograph style, IEEE two column width.
 - **`masonry_convergence`**. What the rigorous answer does as the Fourier
   truncation grows, with the wall clock of each level beside it. The truncation
   is the only free parameter of a rigorous solve, so this is the figure that says
-  whether the numbers above are converged rather than merely expensive.
+  whether the numbers above are converged rather than merely expensive. The
+  60 degree timings were taken on a machine that was busy with other work and are
+  not a clean cost measurement, which is why one of them runs backwards. The
+  30 degree series had the machine to itself and is the one to read for cost.
 - **`masonry_comb_vs_resolution`**. A cut through the bistatic response at three
   receiver resolutions. This is the comb-or-lobe answer in one picture: sharp
   comb, partly resolved comb, featureless lobe, from the same wall.
@@ -771,136 +774,113 @@ magnitude. The improvement over a flat wall is real but small, +1.07 to +0.28 dB
 median, because at 4 GHz a 5 mm recess is a fourteenth of a wavelength and there
 is not much for the model to correct.
 
-**Dillard at 28 GHz is not a pass at the default parameters, and 28 GHz is the
-band this project cares about, so the disagreement was chased rather than
-reported as an rms.** It is a systematic, not scatter: every point sits below the
-diagonal and the two at measured magnitude 0.4 and 0.6 are under-predicted by
-about a factor of four in amplitude. The model says a real brick wall keeps far
-less specular power than the measurement found.
+**Dillard at 28 GHz needed chasing, because 28 GHz is the band this project cares
+about and the residual against the published table is 8.15 dB.** The chase
+changed the answer, so it is set out in order.
 
-**Result one: the disagreement is a parameter disagreement, not a form
-disagreement.** Inverting the same closed form for its two geometric parameters
-against all six points (**computed**):
+**Step one: the published table is a rounding of much noisier data.** Table 5.1
+reports one significant figure with a leading tilde. Table 4.2, which it
+summarises, holds four repeats per angle, and a literature leg read the
+open-access thesis and recovered their ranges (**read**, in
+`outputs/masonry_grating/dillard_thesis.json`). The brick wall spans a factor of
+7.4 in amplitude at 5 degrees, 4.4 at 10, 8.4 at 15 and 4.3 at 30, with sample
+standard deviations at or above the means and no error bar published anywhere.
+**A residual computed against Table 5.1 is therefore meaningless below about 6 to
+9 dB at every angle up to 30 degrees**, which is most of the 8.15 dB it was being
+asked to judge.
 
-| variant | recess | unit scatter | rms | residuals per angle, 5 to 60 deg |
+**Step two: against the raw spread instead, the parameter-free prediction is
+inside the data at the shallow angles.** Predicted reflection magnitude against
+the measured range per angle (**computed**):
+
+| incidence | measured range | flat wall | 5 mm, R1 scatter | 8.2 mm, 0.90 mm, fitted |
 |---|---|---|---|---|
-| as-built default | 5.0 mm | 1.97 mm | 8.15 dB | -2.6, -2.4, -2.1, -7.1, -13.4, -12.4 |
-| flush, default scatter | 0 mm | 1.97 mm | 4.52 dB | -2.4, -2.2, -1.8, -5.5, -7.3, -5.1 |
-| flush, no scatter | 0 mm | 0 mm | 7.76 dB | +10.4, +10.5, +10.6, +5.5, +0.9, -0.6 |
-| **inverted from the data** | **8.2 mm** | **0.90 mm** | **1.40 dB** | +0.1, +0.3, +0.8, -0.7, -1.2, -3.0 |
+| 5 deg | 0.042 to 0.311 | 0.330 | 0.074 inside | 0.101 inside |
+| 10 deg | 0.036 to 0.157 | 0.333 | 0.076 inside | 0.104 inside |
+| 15 deg | 0.054 to 0.455 | 0.340 | 0.078 inside | 0.110 inside |
+| 30 deg | 0.136 to 0.587 | 0.377 | 0.089 outside | 0.185 inside |
+| 45 deg | 0.324 to 0.451 | 0.446 | 0.086 outside | 0.348 inside |
+| 60 deg | 0.507 to 0.671 | 0.561 | 0.145 outside | 0.425 outside |
 
-**Both inverted values are construction-plausible, which makes this falsifiable
-rather than convenient.** An 8.2 mm rake sits inside the 15 mm absolute maximum
-KNB infoblad 28 allows and close to its instruction to cut a raked joint square,
-depth equal to width, which for a 10 mm joint is 10 mm. A 0.90 mm face-plane
-scatter is tighter than the 1.97 mm the R1 range class permits, which is an upper
-anchor rather than a measurement, and is what good workmanship on an
-institutional building looks like. So the model reproduces a 28 GHz measurement
-of a real brick wall to 1.4 dB rms, better than it reproduces Landron at 4 GHz,
-and the prediction it makes in exchange is that the brickwork on the north face
-of Lane Hall is deeply raked. Someone can go and look. Note that this variant is
-a fit and is labelled as one everywhere it appears, unlike every other number in
-this document.
+The as-built default sits inside the measured spread at three of six angles and
+below it at the other three. Inverting the recess and the unit scatter puts it
+inside at five of six. Both inverted values are construction-plausible, which is
+what makes this a claim rather than a knob: an 8.2 mm rake is inside the 15 mm
+maximum KNB infoblad 28 allows and close to its instruction to cut a raked joint
+square, and a 0.90 mm face-plane scatter is tighter than the 1.97 mm the R1 range
+class permits, which was always an upper anchor rather than a measurement. The
+prediction it makes in exchange is that the brickwork on the north face of Lane
+Hall is deeply raked, and someone can go and look. **This is the only fitted
+number in the study and it is labelled as one wherever it appears.** The
+inversion also does not break Landron at 4 GHz, which it was not fitted to: rms
+there goes from 2.01 to 1.93 dB.
 
-**The inverted parameters also do not break the 4 GHz dataset, which they were
-not fitted to.** Landron rms goes from 2.01 dB at the default to 1.93 dB at the
-inverted geometry, so two independent field measurements seven times apart in
-frequency prefer the same wall. That is weak evidence, because Landron is
-insensitive to the recess at 4 GHz where 8 mm is a ninth of a wavelength, but it
-is evidence in the right direction and it rules out the inversion having bought
-28 GHz at the cost of 4.
+**Step three: the surviving miss is at 60 degrees, and that row is separately
+unsound.** Four independent problems, all **read** from the thesis.
 
-**Result two: the flush hypothesis is not the answer, and that is worth knowing.**
-Making the joint flush, which is what a coating, a render or weather-struck
-pointing would do, only takes the rms from 8.15 to 4.52 dB. At 28 GHz the
-dominant term in the default is the unit scatter, not the recess, because a 5 mm
-recess is close to a whole-wave round trip at normal incidence and nearly
-invisible. Removing the scatter as well over-corrects to +10.5 dB. Neither single
-change reconciles the data, which is why the two-parameter inversion was needed.
+- At 60 degrees both materials meet or exceed the smooth-surface Fresnel bound
+  computed from the thesis's own permittivities, ratios of 1.01 and 1.09 and up
+  to 1.27 on individual points. No rough or relieved surface can exceed the
+  smooth bound.
+- The 60 degree row was taken at 15 to 21 m where every other row was taken at 3
+  to 9 m, so it is a different experiment with a different footprint.
+- The antennas were never re-aimed between the reflected and line-of-sight
+  measurements, so the whole calibration rides on an antenna pattern factor that
+  at 5 degrees incidence has to be read 85 degrees off boresight, in the skirt of
+  a 90 degree sector antenna whose pattern was estimated outdoors from 24 points
+  spaced 15 degrees apart.
+- The one end-to-end check in the thesis, against an aluminium foil reflector of
+  known area, reproduces the truth at one of three angles and misses the other
+  two by roughly a factor of 0.6 and 2.0 in amplitude. It was not repeated or
+  corrected.
 
-**Result three: the rigorous solve moves the model towards the measurement at
-exactly the angles where the residual is worst.** RCWA gives a specular
-efficiency 1.82 dB above the phase screen at 28 GHz and 60 degrees, where the
-default residual is -12.4 dB, and 0.22 dB below it at 30 degrees where the
-residual is -7.1 dB. So roughly two decibels of the grazing residual is the cheap
-solver rather than the wall. That is not enough to close it, and it is recorded
-because it has the right sign.
+**Step four, which caps the rest: the experiment cannot resolve the material at
+all.** The brick and limestone point clouds overlap completely at 5, 10, 15, 30
+and 45 degrees, and at 5 and 10 degrees the entire limestone range sits inside
+the brick range. Landron measured those two wall types at 0.5 cm and 2.5 cm RMS
+height, and any surface model puts their 28 GHz specular retention 10 to 280
+orders of magnitude apart:
 
-**Result four, and it caps everything above: the measurement's own repeat scatter
-is larger than the disagreement.** The open-access thesis was read in full for
-this study rather than relied on through its table. Table 5.1, the six numbers
-above, is not a results table. It is a cross-study trends comparison, every entry
-carries a leading tilde, and it turns out to be roughly the median of Table 4.2
-on page 54, which the thesis never states. Table 4.2 holds the 24 individual
-measurements, four repeats per angle per material, and:
+| angle | brick, 0.5 cm | limestone, 2.5 cm |
+|---|---|---|
+| 5 deg | 1.4e-15 | 0 |
+| 30 deg | 6.1e-12 | 4e-281 |
+| 60 deg | 1.8e-4 | 3e-94 |
 
-- **the four repeats at one angle span a factor of 3.3 to 8.4 in amplitude**, 10
-  to 18 dB, at every angle up to 30 degrees, with standard deviations equal to or
-  larger than the means, and no error bar appears anywhere in the thesis;
-- the brick and limestone point clouds **overlap completely** at 5, 10, 15, 30 and
-  45 degrees, and at 10 degrees the entire limestone range sits inside the brick
-  range;
-- the limestone target is not ashlar. The photograph shows a random-rubble Hokie
-  Stone base band about 2 m tall under a large smooth panelled wall with windows,
-  and with a 90 degree sector antenna that was never re-aimed, the smooth panel
-  and the paving were inside the beam.
+The thesis nowhere remarks on the similarity and offers no explanation, which the
+literature leg records as a genuine silence. Its only per-material statement is
+in the delay domain, that limestone showed about twice the excess delay spread of
+brick, which it attributes to limestone being rougher.
 
-The default residual of 8.15 dB rms is smaller than the spread between repeats of
-the same measurement. **There is no statistically meaningful disagreement to
-explain.**
+**The verdict, stated plainly.** The disagreement was real and it largely
+dissolved, but not into a validation. What the chase established is that the
+parameter-free prediction lies inside the measurement's own scatter wherever that
+scatter is honestly represented, that the remaining gap is covered by one
+construction parameter inside its allowed range, and that the residual against
+the published table was an artefact of comparing a computed number against a
+rounded one. What it did not establish is that the model is right, because an
+experiment that cannot distinguish rubble limestone from machine-made brick
+cannot test a 5 mm joint recess. **No published measurement resolves the specular
+reflection of a real brick wall at 28 GHz well enough to validate or refute this
+model. That gap is the principal limitation of the work**, and it is the same gap
+`ROUGHNESS.md` identified from the other direction. The model is validated at
+4 GHz against Landron to 2.0 dB with no fitted parameter, and unvalidated at FR2.
 
-**Result five: the calibration is the whole measurement at small angles, and it
-was checked twice and failed once.** The transmit and receive antennas were never
-pointed at each other. Both stayed aimed at the wall and the line-of-sight and
-reflected pulses were captured in one waveform, which the thesis states on page
-36, so the reference voltage is a sidelobe measurement and the
-`sqrt(g(theta_TX) g(theta_RX))` factor in their equation 4.1 is the entire
-absolute calibration rather than a small correction. Geometrically the
-line-of-sight arrives `90 - theta` off boresight, so at 5 degrees incidence the
-gain has to be read 85 degrees off boresight in the skirt of a 90 degree sector
-antenna whose pattern was estimated outdoors from 24 points spaced 15 degrees
-apart with no manufacturer data. There is no uncertainty analysis. The thesis
-does contain an accidental end to end check against an aluminium foil reflector
-of known area: correct at 15 degrees, out by a factor of 0.6 in amplitude at 22.5
-degrees and 2.0 at 30 degrees, blamed on wind and never repeated. **Four of the
-six reported angles were never calibrated at all.**
+**Result: the rigorous solve moves the model towards the measurement at exactly
+the angles where the residual survives.** RCWA gives a specular efficiency
+1.82 dB above the phase screen at 28 GHz and 60 degrees, and 0.22 dB below it at
+30 degrees. So roughly two decibels of the grazing residual is the cheap solver
+rather than the wall, which is consistent with the phase screen's grazing failure
+mode above and is not enough on its own to close the gap.
 
-**Result six: the 60 degree points are impossible, and they are where the
-residual is worst.** At 60 degrees both materials meet or exceed the
-smooth-surface Fresnel bound computed from the thesis's own Appendix A.1
-permittivities, ratios of 1.01 for brick and 1.09 for limestone and up to 1.14
-and 1.27 on individual points. No rough or relieved surface can exceed its own
-smooth-surface reflectance. The 60 degree runs are also a different experiment,
-15 to 21 m stand-off against 3 to 9 m everywhere else, and the thesis itself
-calls the 45 and 60 degree limestone profiles hard to interpret because the two
-pulses do not separate, while the reflection coefficient is the ratio of their
-peaks.
-
-**The verdict, stated plainly.** The 1.40 dB inversion is not a validation,
-because a measurement whose repeats span a factor of eight and which cannot
-resolve brick from random-rubble limestone cannot resolve a 5 mm joint recess
-either. Equally, the 8.15 dB default residual is not a refutation, for the same
-reason and because it is smaller than the measurement's own scatter. Dillard is
-worth citing for the order of magnitude and for the monotonic rise of the
-reflection coefficient with incidence angle, which this model reproduces, and not
-as a calibrated benchmark. **There is no other test available at FR2. No
-published measurement resolves the specular reflection of a real brick wall at
-28 GHz well enough to validate or refute this model, and that is the principal
-limitation of the work.** The model is validated at 4 GHz against Landron to
-2.0 dB with no fitted parameter, and unvalidated at FR2. Closing that needs a
-narrow-beam or vector network analyser measurement on a wall whose joint geometry
-was recorded, which nobody has published.
-
-One correction to what this document said earlier, and it matters because the
-quotation is convenient. The thesis conclusion on page 47 that "limestone and
-brick walls do not exhibit significant diffuse scattering" is real and rests only
-on excess pulse width in the specular direction, with no off-specular measurement
-anywhere in the thesis. But its abstract and section 5.4 say the opposite, that
-diffuse scattering does exist for these walls at 28 GHz. **The thesis contradicts
-itself and quoting only the half that suits this argument would not be honest.**
-Its appendix model is also not a roughness model: it fits a phenomenological lobe
-exponent to pulse duration and never measures, fits or assumes an RMS height for
-either wall.
+**One hypothesis that does not work, worth recording.** Making the joint flush,
+which is what a coating, a render or weather-struck pointing would do, takes the
+rms only from 8.15 to 4.52 dB and does not move the 45 and 60 degree points
+inside the data. At 28 GHz the dominant term in the default is the unit scatter,
+not the recess, because a 5 mm recess is close to a whole-wave round trip at
+normal incidence and nearly invisible. Removing the scatter as well over-corrects
+to +10.5 dB. Neither single change reconciles the data, which is why the
+two-parameter inversion was needed.
 
 The Landron parallel-polarisation series is a separate failure with a separate
 cause: every variant, including the flat wall, sits 5.4 dB rms away, because the
@@ -960,7 +940,10 @@ Ranked by how much they would change the answer.
    network analyser scan on a wall whose pointing profile, joint width and course
    pitch were measured first would close both at once. The computed requirement
    is a beam of 3 degrees or narrower at FR2, or 10 degrees at 10 GHz, published
-   unsmoothed.
+   unsmoothed. A cheaper partial version: if Dillard's raw power delay profiles
+   survive, the 60 degree row is worth re-reducing on its own, since it is the
+   only row taken at 15 to 21 m rather than 3 to 9, the only one where the two
+   materials separate, and the only one that exceeds the smooth surface bound.
 2. **The raw Pascual-Garcia traces.** A real brick wall, 57 to 66 GHz, 3.5 degree
    beam, 0.6 degree steps, smoothed away at publication with an eleven-point
    boxcar spanning 5 degrees against a comb spaced about 4. This is the one

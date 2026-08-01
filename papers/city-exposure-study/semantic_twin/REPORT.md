@@ -260,6 +260,74 @@ not a refutation**, because the disagreement is smaller than the measurement's o
 repeat scatter. The model is validated at 4 GHz and unvalidated at FR2, and that
 is the top open item for this workstream.
 
+## Foliage
+
+Foliage fails a ray tracer twice over. The geometry is wrong, because
+photogrammetric trees are lumpy opaque blobs rather than a canopy of leaves, and
+the material is wrong, because a tree is not a surface at all.
+
+Measured first, so the effort stays proportionate: vegetation is **1.4 percent of
+classified area at Korenmarkt and 0.9 percent at Milan**, or 2.0 percent of solid
+angle at Korenmarkt. Small at two stone paved squares, which are the best case,
+and the ten city set will not all be like that.
+
+### The standard does not cover the band
+
+ITU-R P.833-10 (09/2021) is the version in force, which I verified independently
+against the ITU register. Its recommends clause claims 30 MHz to 100 GHz, but that
+is a union over disjoint sub-models. The radiative transfer model is the only
+volume-renderable part, and its tables have rows at 1.3, 2, 2.2, 11, 37 and
+61.5 GHz. **There is no row anywhere in FR2, none in upper FR3, and nothing at all
+between 12.5 and 37 GHz.** The saturation ceiling exists only below 3.6 GHz, so
+the headline equation cannot even be closed here.
+
+The provenance is circular in the same shape `ROUGHNESS.md` found for facade
+roughness. The theory traces to a single 1985 US Army report, the tabulated
+species data to a single 2002 project, and the millimetre wave anchor to one Texas
+pecan orchard measured at three spot frequencies in 1985. The tables have been
+byte-identical since 2005. The recommendation also contradicts itself: one table
+gives 6.5 dB/m at 11 GHz where its own figure gives 2.2.
+
+That is why the deliverable is a swept curve rather than a number.
+
+### The medium wins, and not for the expected reason
+
+Three treatments were compared: cutting vegetation out as the honest null, an
+opaque surface, and a participating medium.
+
+The surface loses on a derived construction fact rather than on taste. Leaf area
+index times leaf thickness over canopy depth gives a volume fraction of 6.4e-5,
+and Maxwell-Garnett then gives a boundary reflectance of 1.9e-9 against the 0.029
+of the wood row the pipeline currently uses. That is **71.8 dB of invented
+reflection**. A canopy has no interface.
+
+Procedural trees lose on the tracer's own material model rather than on ray
+budget. Its Fresnel term is a half space and a leaf is 0.2 mm, so half space over
+thin slab over-reflects by 15.2 dB at 7 GHz and 9.1 at 15. No ray budget fixes
+that.
+
+The medium does not win by beating the surface at some optical depth. It wins
+because the surface is pinned at the opaque limit and the null is pinned at
+transparent, and the medium is the only treatment that carries the optical depth
+uncertainty, which is precisely what the standard cannot pin down in this band.
+
+### Two corrections to what I assumed
+
+I scoped this work as a small correction. At the measured optical depth, the
+surface and null treatments cross 0.5 dB at **2.1 percent** canopy solid angle.
+**Korenmarkt is 2.0 percent, so it sits exactly on that line**, not comfortably
+below it. Milan at 0.9 percent is genuinely safe.
+
+And between roughly 2 and 6 percent the surface treatment is the outlier, which
+means **doing nothing would beat what the pipeline currently does**, since
+`semantic_binding.py` maps vegetation to the wood row. That mapping is now known
+to be the worst of the three available choices in exactly the regime one of our
+two sites occupies.
+
+Validation used no measurement anywhere: the estimator reproduces free space to
+1e-6 and the PEC ground plane to 2.0, and its transport is checked against the
+exact absorbing slab result, chi = 1/2 + 1/2 E2(tau).
+
 ## Ten cities
 
 Twenty four candidate squares were screened before any acquisition spend, in
