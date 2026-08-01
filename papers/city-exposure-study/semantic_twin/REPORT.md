@@ -166,6 +166,30 @@ what was already known at the two built sites: Milan comes out near the top at
 
 The full table is `outputs/city_screening/screening_table.md`.
 
+Nine sites were then acquired and built, giving eleven with the two that already
+existed: Brussels, Krakow, London, Madrid, Mexico City, New York, Prague, Tokyo
+and Toulouse, all at the same 130 m crop radius and all in double precision.
+
+I ran a quality pass over every one of them, because a cross city distribution is
+only as good as its worst site and a bad site fails quietly rather than loudly.
+All ten have zero degenerate faces, zero duplicate index triples and a consistent
+260 by 260 m extent, and the ground altitudes independently check out against real
+city elevations, including New York at -18 m, which is right once the roughly
+-32 m geoid separation there is accounted for, and Times Square's 428 m of
+vertical extent, which is also right.
+
+**One site failed.** At the Toulouse anchor a standing observer sees 6.9 percent
+sky. Twenty metres east it is 47.6 percent, and the ground steps from 191.1 to
+211.1 m over that distance, which is a roofline rather than a slope. The anchor
+is on the Capitole building instead of the square in front of it. Since tiles are
+cached per tile, re-cropping at a corrected centre costs almost nothing.
+
+The general form of that check is worth keeping for the remaining cities: cast a
+full sphere from 1.5 m above the ground under the nominal anchor and reject any
+site below about 0.10 sky, then sample a few points 20 to 30 m out to confirm the
+anchor is not on a local high. The healthy range across the other sites is 0.18 at
+Times Square, a genuine canyon, up to 0.46 at Krakow.
+
 ## Things that were wrong
 
 **The voxel remeshing rejection was measuring a misparameterisation.** The
