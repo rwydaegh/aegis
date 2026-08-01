@@ -35,6 +35,18 @@ def _frame(scene: dict) -> EnuFrame:
     return EnuFrame(float(origin["lat"]), float(origin["lon"]), float(origin.get("ellipsoid_height_m", 0.0)))
 
 
+def _mesh_path(args: argparse.Namespace, scene: dict) -> str:
+    """Support mesh to trace against, defaulting to the scene's declared one.
+
+    The default is overridable because coverage is measurably sensitive to it.
+    The single-precision ``inhouse_leaf_130m.ply`` displaces whole tiles by up to
+    0.61 m against the double-precision ``_f64`` build, which moves the fused
+    area fraction by about 4.6 percent relative, downward. The rest of the study
+    reads tile placement in double precision, so this does too.
+    """
+    return str(REPO / (args.mesh or scene["source_mesh"]))
+
+
 def stage_select(args: argparse.Namespace) -> None:
     scene = load_scene(pathlib.Path(args.scene))
     frame = _frame(scene)
@@ -192,7 +204,7 @@ def stage_fuse(args: argparse.Namespace) -> None:
     selection = json.loads((out / "walk_selection.json").read_text())
     download = json.loads((out / "walk_download.json").read_text())
     scene = load_scene(pathlib.Path(args.scene))
-    mesh_path = str(REPO / scene["source_mesh"])
+    mesh_path = _mesh_path(args, scene)
     mesh = trimesh.load(mesh_path, process=False)
     area = np.asarray(mesh.area_faces, dtype=float)
     face_count = len(mesh.faces)
@@ -240,7 +252,7 @@ def stage_fuse(args: argparse.Namespace) -> None:
     multi = raw >= 2
     report = {
         "site": scene["name"],
-        "mesh": scene["source_mesh"],
+        "mesh": pathlib.Path(mesh_path).name,
         "support_faces": face_count,
         "grid_height": args.grid_height,
         "geometry_note": (
@@ -382,7 +394,7 @@ def stage_saturate(args: argparse.Namespace) -> None:
     stations.sort(key=lambda station: station.range_m)
     print(f"[saturate] {len(stations)} panorama positions inside {args.radius_m:.0f} m", flush=True)
 
-    mesh_path = str(REPO / scene["source_mesh"])
+    mesh_path = _mesh_path(args, scene)
     support = load_support_mesh(scene)
     cache = out / "walk_saturation.npz"
     if cache.exists() and not args.recast:
@@ -455,16 +467,248 @@ def _saturation_verdict(arms: dict) -> dict:
     return verdict
 
 
+# Mapillary Vistas classes that are objects passing through the scene rather than
+# the scene. These are what a second capture from a few metres away resolves,
+# because they move between captures and the facade behind them does not.
+TRANSIENT_CLASSES = (
+    "Person",
+    "Bicyclist",
+    "Motorcyclist",
+    "Other Rider",
+    "Bicycle",
+    "Boat",
+    "Bus",
+    "Car",
+    "Caravan",
+    "Motorcycle",
+    "Other Vehicle",
+    "Trailer",
+    "Truck",
+    "Wheeled Slow",
+)
+
+
+def _station_semantics(job: tuple) -> dict:
+    """Bind every panorama pixel to a support-mesh face through the aligned pose.
+
+    Unlike the coverage stage this one does need the orientation, so it consumes
+    the skyline-registered pose and inherits its covariance. Stations whose
+    registration is poor therefore contaminate the semantic result in a way they
+    cannot contaminate the coverage result, which is why the two are reported
+    separately rather than merged into one table.
+    """
+    import trimesh
+
+    from semantic_twin.pano_geometry import equirectangular_directions, panorama_to_world_matrix
+
+    mesh_path, pose, semantics_path, transient_ids, grid_height, image_id = job
+    mesh = trimesh.load(mesh_path, process=False)
+    height, width = grid_height, 2 * grid_height
+    rotation = panorama_to_world_matrix(
+        float(pose["heading_deg"]),
+        pitch_deg=float(pose.get("pitch_correction_deg", 0.0)),
+        roll_deg=float(pose.get("roll_correction_deg", 0.0)),
+    )
+    camera = np.asarray(pose["position_enu_m"], dtype=np.float64)
+    directions = (equirectangular_directions(width, height).reshape(-1, 3)) @ rotation.T
+    origins = np.broadcast_to(camera, directions.shape)
+    _, index_ray, index_tri = mesh.ray.intersects_location(origins, directions, multiple_hits=False)
+
+    with np.load(semantics_path) as document:
+        entity = document["entity"]
+    rows = np.repeat(np.arange(height) * entity.shape[0] // height, width)
+    columns = np.tile(np.arange(width) * entity.shape[1] // width, height)
+    labels = entity[rows, columns]
+
+    face_count = len(mesh.faces)
+    hit_labels = labels[index_ray]
+    transient = np.isin(hit_labels, list(transient_ids))
+    total = np.bincount(index_tri, minlength=face_count)
+    blocked = np.bincount(index_tri, weights=transient.astype(float), minlength=face_count)
+    # Modal non-transient class per face, which is the label a single capture
+    # would assign and therefore the thing two captures can agree or disagree on.
+    clean = ~transient
+    classes = int(labels.max()) + 1
+    tally = np.zeros((face_count, classes), dtype=np.int32)
+    np.add.at(tally, (index_tri[clean], hit_labels[clean]), 1)
+    return {
+        "image_id": image_id,
+        "rays": total.astype(np.int32),
+        "transient_rays": blocked.astype(np.int32),
+        "modal_class": np.where(tally.sum(axis=1) > 0, tally.argmax(axis=1), -1).astype(np.int16),
+        "clean_rays": tally.sum(axis=1).astype(np.int32),
+        "view_transient_fraction": float(transient.mean()) if len(transient) else 0.0,
+        "view_transient_pixels": int(transient.sum()),
+        "view_mesh_rays": int(len(index_ray)),
+    }
+
+
+def stage_semantic(args: argparse.Namespace) -> None:
+    """Transient occlusion recovered by fusion, and whether captures agree."""
+    import trimesh
+    from concurrent.futures import ProcessPoolExecutor
+
+    out = pathlib.Path(args.out)
+    selection = json.loads((out / "walk_selection.json").read_text())
+    download = json.loads((out / "walk_download.json").read_text())
+    scene = load_scene(pathlib.Path(args.scene))
+    mesh_path = _mesh_path(args, scene)
+    area = np.asarray(trimesh.load(mesh_path, process=False).area_faces, dtype=float)
+
+    jobs, kept, skipped = [], [], []
+    for index, record in enumerate(download["stations"]):
+        folder = pathlib.Path(record["folder"])
+        aligned = folder / "alignment/pose_aligned.json"
+        semantics = folder / "semantics/panorama_semantics.npz"
+        if not aligned.exists() or not semantics.exists():
+            skipped.append({"image_id": record["image_id"], "reason": "missing registration or semantics"})
+            continue
+        pose = json.loads(aligned.read_text())
+        residual = float(pose.get("skyline_score_mean_deg", 99.0))
+        if residual > args.max_residual_deg:
+            skipped.append(
+                {"image_id": record["image_id"], "reason": f"skyline residual {residual:.2f} deg", "residual": residual}
+            )
+            continue
+        meta = json.loads((folder / "semantics/semantics.json").read_text())
+        transient = {int(k) for k, v in meta["entity_id2label"].items() if v in TRANSIENT_CLASSES}
+        jobs.append((mesh_path, pose, str(semantics), transient, args.grid_height, record["image_id"]))
+        kept.append(
+            {
+                "image_id": record["image_id"],
+                "sequence_id": selection["stations"][index]["sequence_id"],
+                "captured_at": selection["stations"][index]["captured_at"],
+                "skyline_residual_deg": residual,
+            }
+        )
+    if len(jobs) < 2:
+        raise SystemExit("fewer than two usable stations, nothing to cross-validate")
+
+    with ProcessPoolExecutor(max_workers=args.workers) as pool:
+        results = list(pool.map(_station_semantics, jobs))
+
+    rays = np.stack([result["rays"] for result in results])
+    blocked = np.stack([result["transient_rays"] for result in results])
+    modal = np.stack([result["modal_class"] for result in results])
+    clean = np.stack([result["clean_rays"] for result in results])
+
+    seen = rays > 0
+    # A face is cleanly observed by a station when most of the rays reaching it
+    # from that station land on the facade rather than on something in front.
+    clean_seen = seen & (clean >= args.clean_majority * np.maximum(rays, 1))
+    lost_single = seen[0] & ~clean_seen[0]
+    lost_fused = seen.any(axis=0) & ~clean_seen.any(axis=0)
+
+    report = {
+        "site": scene["name"],
+        "mesh": pathlib.Path(mesh_path).name,
+        "stations_used": kept,
+        "stations_skipped": skipped,
+        "occlusion": {
+            "per_view_transient_pixel_fraction": {
+                "values": [round(result["view_transient_fraction"], 5) for result in results],
+                "median": float(np.median([result["view_transient_fraction"] for result in results])),
+                "max": float(np.max([result["view_transient_fraction"] for result in results])),
+            },
+            "single_capture": {
+                "faces_seen": int(seen[0].sum()),
+                "faces_lost_to_transients": int(lost_single.sum()),
+                "fraction_of_seen_lost": float(lost_single.sum() / max(seen[0].sum(), 1)),
+                "area_fraction_of_seen_lost": float(area[lost_single].sum() / max(area[seen[0]].sum(), 1e-9)),
+            },
+            "fused": {
+                "faces_seen": int(seen.any(axis=0).sum()),
+                "faces_lost_to_transients": int(lost_fused.sum()),
+                "fraction_of_seen_lost": float(lost_fused.sum() / max(seen.any(axis=0).sum(), 1)),
+                "area_fraction_of_seen_lost": float(area[lost_fused].sum() / max(area[seen.any(axis=0)].sum(), 1e-9)),
+            },
+            "note": (
+                "A face counts as lost when it is reached but fewer than the clean-majority share of "
+                "its rays land on the facade. Fusion recovers a face when any one station has a clean "
+                "look at it."
+            ),
+        },
+        "agreement": _agreement(modal, clean_seen, kept, area, args),
+    }
+    np.savez_compressed(
+        out / "walk_semantic.npz",
+        image_ids=np.asarray([record["image_id"] for record in kept]),
+        rays=rays,
+        transient_rays=blocked,
+        modal_class=modal,
+        clean_rays=clean,
+    )
+    (out / "walk_semantic.json").write_text(json.dumps(report, indent=2))
+    print(json.dumps({"occlusion": report["occlusion"], "agreement": report["agreement"]}, indent=2)[:3000], flush=True)
+
+
+def _agreement(modal, clean_seen, kept, area, args) -> dict:
+    """Do independent captures assign the same class where they overlap.
+
+    Split by whether the two stations belong to the same Mapillary sequence,
+    because same-sequence agreement shares a camera, a day and an exposure and is
+    therefore a much weaker test than cross-sequence agreement. Reporting one
+    pooled number would let the easy comparisons carry the hard ones.
+    """
+    stations = len(kept)
+    pairs = {"same_sequence": [], "cross_sequence": []}
+    for first in range(stations):
+        for second in range(first + 1, stations):
+            both = clean_seen[first] & clean_seen[second]
+            if both.sum() < args.min_overlap_faces:
+                continue
+            agree = modal[first][both] == modal[second][both]
+            key = "same_sequence" if kept[first]["sequence_id"] == kept[second]["sequence_id"] else "cross_sequence"
+            pairs[key].append(
+                {
+                    "a": kept[first]["image_id"],
+                    "b": kept[second]["image_id"],
+                    "overlap_faces": int(both.sum()),
+                    "agreement": float(agree.mean()),
+                    "area_weighted_agreement": float(area[both][agree].sum() / max(area[both].sum(), 1e-9)),
+                }
+            )
+    summary = {}
+    for key, values in pairs.items():
+        if not values:
+            summary[key] = {"n_pairs": 0}
+            continue
+        rates = np.array([entry["agreement"] for entry in values])
+        weights = np.array([entry["overlap_faces"] for entry in values], dtype=float)
+        summary[key] = {
+            "n_pairs": len(values),
+            "median_agreement": float(np.median(rates)),
+            "overlap_weighted_agreement": float((rates * weights).sum() / weights.sum()),
+            "min_agreement": float(rates.min()),
+            "max_agreement": float(rates.max()),
+            "total_overlap_faces": int(weights.sum()),
+        }
+    return {
+        "summary": summary,
+        "pairs": pairs,
+        "axis": "modal non-transient Mapillary Vistas entity class per face",
+        "caveat": (
+            "This is entity agreement, not material agreement. The material axis needs the SAM 3 "
+            "concept pass, which has not been run for this walk, and without it material would be a "
+            "deterministic function of entity and would only restate this number."
+        ),
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("stage", choices=("select", "download", "fuse", "saturate"))
+    parser.add_argument("stage", choices=("select", "download", "fuse", "saturate", "semantic"))
     parser.add_argument("--permutations", type=int, default=40)
     parser.add_argument("--recast", action="store_true")
+    parser.add_argument("--clean-majority", type=float, default=0.5)
+    parser.add_argument("--min-overlap-faces", type=int, default=200)
+    parser.add_argument("--max-residual-deg", type=float, default=4.0)
     parser.add_argument("--grid-height", type=int, default=1536)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--decorrelation-deg", type=float, default=10.0)
     parser.add_argument("--independence-sample", type=int, default=40000)
     parser.add_argument("--scene", default=str(REPO / "config/korenmarkt.json"))
+    parser.add_argument("--mesh", default="data/geometry/korenmarkt/inhouse_leaf_130m_f64.ply")
     parser.add_argument("--out", default=str(REPO / "outputs/walk_korenmarkt"))
     parser.add_argument("--panorama-root", default=str(REPO / "data/panoramas/korenmarkt_walk"))
     parser.add_argument("--radius-m", type=float, default=60.0)
@@ -478,9 +722,14 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = _parser().parse_args()
-    {"select": stage_select, "download": stage_download, "fuse": stage_fuse, "saturate": stage_saturate}[args.stage](
-        args
-    )
+    stages = {
+        "select": stage_select,
+        "download": stage_download,
+        "fuse": stage_fuse,
+        "saturate": stage_saturate,
+        "semantic": stage_semantic,
+    }
+    stages[args.stage](args)
 
 
 if __name__ == "__main__":

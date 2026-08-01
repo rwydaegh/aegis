@@ -89,38 +89,79 @@ Measured tilts in this walk run to **20.7 degrees** off gravity.
 
 ## What fusion bought: directly observed surface
 
-Full-sphere first-hit cast, 1536 x 3072 rays per station, against the 157,744
-triangle `inhouse_leaf_130m` support mesh.
+Full-sphere first-hit cast, 1536 x 3072 rays per station, against the 157,862
+triangle `inhouse_leaf_130m_f64` support mesh.
 
 A useful property fell out of the geometry: **the set of faces a panorama can see
 depends on where the camera is, not on how it is turned**, because a full sphere
 has no outside. So this curve needs the position only. It does not wait on the
 skyline registration and does not inherit its orientation covariance.
 
-| | faces | by count | by area |
-|---|---|---|---|
-| single capture (nearest station) | 7,323 | 4.64 % | 6.86 % |
-| twelve fused | 27,014 | **17.13 %** | **24.78 %** |
+### Quote the area fraction, not the face count
 
-**3.7x by face count, 3.6x by area.**
+The two denominators do not behave the same way under resampling and only one of
+them is a stable number.
+
+**Area is nearly ray-density independent. Face count is not.** Whether a sliver
+triangle is ever hit at all depends on how finely the sphere is sampled, so
+raising the ray count finds more small faces and inflates the count fraction
+while barely moving the area fraction. An independent recount at a different ray
+density and with a different caster agreed to **1.2 % relative on single-capture
+area and 2.8 % on fused area**, but differed by **8.8 % and 7.6 % on the
+corresponding face counts**. That is the right way round and is a property of the
+metric, not a disagreement about the geometry.
+
+So the area fraction is the headline here, and the face count is reported beside
+it as the density-dependent one. A reader re-running at a different ray count
+should expect the counts to move and the areas not to.
+
+**Mesh matters too.** All numbers below trace against
+`inhouse_leaf_130m_f64.ply`, the double-precision tile placement the rest of the
+study uses. The single-precision `inhouse_leaf_130m.ply` displaces whole tiles by
+up to 0.61 m and reports a fused area fraction about **4.6 % relative higher**,
+so the mesh choice is a real bias in the optimistic direction. `build_walk_twin.py`
+defaults to the f64 mesh rather than to the scene's declared `source_mesh`.
+
+### On camera altitude, which can fail silently in both directions
+
+Station altitude is taken from a **downward ray cast under the camera with a
+patch median** over 25 samples in a 3 m patch, not from the highest hit in the
+column. The distinction is load bearing. Where photogrammetry bridges a street
+with a spurious membrane, or where the 3 m patch straddles a facade, a maximum
+puts the camera on the roof, and a camera on a roof sees a completely different
+and much larger set of faces. Two of the twelve stations here have a ground
+sample peak-to-peak of **4.8 m** inside their patch, so they would have been
+placed metres too high by a maximum. The median rejects it.
+
+Audited against the scene's own ground constant, all twelve stations land between
+**-0.06 m and +1.19 m** of pedestrian level, with no outliers. The failure mode is
+worth naming because it is silent in both directions: too high inflates coverage,
+too low buries the camera inside geometry and destroys it, and neither raises an
+error.
+
+| | by area (headline) | by count (density-dependent) |
+|---|---|---|
+| single capture (nearest station) | 6.87 % | 4.32 % (6,816 faces) |
+| twelve fused | **24.14 %** | 15.87 % (25,054 faces) |
+
+**3.5x by area, 3.7x by face count.**
 
 The curve, which matters more than the endpoint:
 
-| n | faces | count % | area % | n | faces | count % | area % |
-|---|---|---|---|---|---|---|---|
-| 1 | 7,323 | 4.64 | 6.86 | 7 | 20,919 | 13.26 | 19.88 |
-| 2 | 14,486 | 9.18 | 14.92 | 8 | 22,489 | 14.26 | 20.94 |
-| 3 | 16,133 | 10.23 | 16.22 | 9 | 23,261 | 14.75 | 21.70 |
-| 4 | 16,894 | 10.71 | 16.95 | 10 | 25,235 | 16.00 | 23.23 |
-| 5 | 19,413 | 12.31 | 18.72 | 11 | 26,459 | 16.77 | 24.37 |
-| 6 | 20,505 | 13.00 | 19.51 | 12 | **27,014** | **17.13** | **24.78** |
+| n | area % | count % | n | area % | count % |
+|---|---|---|---|---|---|
+| 1 | 6.87 | 4.32 | 7 | 19.37 | 12.25 |
+| 2 | 14.78 | 8.63 | 8 | 20.33 | 13.21 |
+| 3 | 15.91 | 9.53 | 9 | 21.04 | 13.65 |
+| 4 | 16.43 | 9.91 | 10 | 22.58 | 14.81 |
+| 5 | 18.39 | 11.46 | 11 | 23.72 | 15.54 |
+| 6 | 19.04 | 12.04 | 12 | **24.14** | **15.87** |
 
-**It has not saturated.** The second panorama is worth 4.5 points of face
-coverage, but the twelfth is still worth 0.36 and the eleventh 0.77, and the
-increments are not decaying towards zero so much as settling onto a slow linear
-climb. Eight panoramas reach 83 % of what twelve reach. Whatever the budget per
-city turns out to be, twelve is not the point where more stops paying at this
-site, and a walk of 25 to 40 is the experiment that would find that point.
+**It has not saturated.** The second panorama is worth 7.9 points of area, but
+the twelfth is still worth 0.42 and the eleventh 1.14, and the increments are not
+decaying towards zero so much as settling onto a slow linear climb. Eight
+panoramas reach 84 % of what twelve reach. Twelve is not the point where more
+stops paying at this site, which is what motivated the larger run below.
 
 Note the per-station coverage is nearly flat with range: the station at 2.7 m
 sees 4.64 % and the one at 35.1 m sees 7.25 %. A panorama near the middle of an
@@ -134,9 +175,9 @@ from 80 m is "seen" but is weak evidence. Measured, that attack does not land.
 
 | | median incidence | beyond 70 deg | median range | beyond 40 m |
 |---|---|---|---|---|
-| single-capture faces | 59.6 deg | 33.9 % | 43.7 m | 53.6 % |
-| the 19,691 faces gained | 56.2 deg | 33.8 % | 39.8 m | 49.7 % |
-| all fused faces | 53.2 deg | 30.3 % | 37.3 m | 46.0 % |
+| single-capture faces | 60.2 deg | 34.1 % | 44.7 m | 54.4 % |
+| the 18,238 faces gained | 56.5 deg | 34.0 % | 39.1 m | 48.6 % |
+| all fused faces | 53.5 deg | 30.3 % | 37.0 m | 45.5 % |
 
 The newly covered surface is seen at **slightly better** incidence and slightly
 closer range than the surface the single capture already had. Fusion is not
@@ -156,7 +197,7 @@ spread over 1417 m² approach the same facade block from directions separated by
 tens of degrees. A wall that is nearly edge-on from one camera is frontal from
 another 30 m along the street, and the union keeps the frontal look. A single
 capture has no such choice: whatever incidence it happens to have on a surface is
-the incidence that surface gets, which is why its median sits at 59.6 degrees,
+the incidence that surface gets, which is why its median sits at 60.2 degrees,
 close to the 60 degrees expected if incidence were near-uniform on a
 randomly-oriented sample. Adding viewpoints lets the min over stations pull that
 median down toward frontal.
@@ -171,6 +212,46 @@ look at every reachable surface, which is a much lower count than coverage
 saturation needs. Both are testable with the machinery already written and
 neither has been tested yet.
 
+## Registration: twelve poses, twelve covariances, and they are not equal
+
+All twelve panoramas were registered against the mesh skyline with the existing
+eight-seed ensemble, and every pose ships the seed-study covariance the
+single-capture flow ships. The headline is that **registration quality across a
+walk is strongly heterogeneous, and treating the twelve poses as interchangeable
+would be wrong.**
+
+| | best | median | worst |
+|---|---|---|---|
+| skyline residual | 1.08 deg | 3.07 deg | 8.10 deg |
+| yaw standard deviation | 0.088 deg | 0.36 deg | 3.89 deg |
+| horizontal position sd | 0.018 m | 0.15 m | 0.92 m |
+
+For comparison the single Street View capture registers at 1.31 deg. Only two of
+the twelve walk panoramas beat it. Two plausible reasons, not yet separated: the
+walk images are 5760 x 2880 against the Street View capture's 16384 x 8192, so
+the observed skyline is coarser; and the outer stations sit near the edge of the
+130 m mesh crop, where the predicted skyline is truncated by the crop rather than
+by the buildings. The residual does correlate with range from the site centre,
+which is consistent with the second, but three stations is not a test.
+
+**Five of twelve pushed the altitude search to its bound**, meaning the fit wanted
+to move the camera more than 1.5 m vertically. That is flagged in each pose as
+`skyline_dz_at_bound` rather than silently accepted.
+
+A useful cross-check fell out of this. Mapillary's structure-from-motion gravity
+and the independent skyline fit are separate estimates of the same pitch, and on
+the best-registered stations they agree to **0.15 deg**. On the worst they differ
+by 5.9 deg. So the residual is not just an aesthetic score, it tracks a quantity
+that has an independent witness.
+
+The consequence for fusion is concrete. Coverage is untouched, because it needs
+position only. Anything that binds a *pixel* to a face needs orientation, so the
+semantic stage below excludes stations with a residual above 4 deg rather than
+letting a 3.9 deg yaw uncertainty smear labels across facade boundaries. That
+exclusion is a stopgap: the right answer is to feed the covariance into
+`ObservationQuality.registration`, which is the second unused field in that
+dataclass and is the obvious follow-on to the independence work below.
+
 ## The suspicion check: how much of that is double counting
 
 Nothing had ever supplied `ObservationQuality.independence`. It is now computed,
@@ -184,48 +265,118 @@ baseline number cannot describe both. Each station's weight is
 `w_a = 1 / sum_b K(theta_ab)` over stations that also see the surface, so two
 co-located cameras get 1/2 each and contribute one observation between them.
 
-Over the 27,014 union faces, with a conservative 10 degree decorrelation angle:
+Over the 25,054 union faces, with a conservative 10 degree decorrelation angle:
 
-- raw looks per face: **3.38**
+- raw looks per face: **3.43**
 - effective independent looks per face: **1.92**
-- ratio: **0.567**
+- ratio: **0.560**
 
-**Roughly 43 % of the apparent multi-view evidence at this site is redundant.**
+**Roughly 44 % of the apparent multi-view evidence at this site is redundant.**
 A twelve-panorama walk delivers what fewer than seven ideally-placed panoramas
 would. The coverage numbers above are a union and are unaffected by this, but any
-posterior that counted 3.38 observations where there are 1.92 would be
+posterior that counted 3.43 observations where there are 1.92 would be
 overconfident by that factor, and the accumulator now has the weight to avoid it.
+
+## What fusion bought: transient occlusion
+
+Eight of the twelve stations, those registering below 4 deg, with pixels bound to
+faces through the skyline-registered pose. A face counts as *lost* when it is
+reached but fewer than half its rays land on the facade rather than on something
+passing in front of it.
+
+| | faces seen | lost to transients | by area |
+|---|---|---|---|
+| single capture | 6,836 | 881 (**12.9 %**) | 11.5 % |
+| eight fused | 11,398 | 472 (**4.1 %**) | 3.6 % |
+
+**Transient occlusion falls by a factor of 3.1, from 12.9 % of observed faces to
+4.1 %.** This is the cleanest justification for the whole multi-capture decision:
+a person or a van standing in front of a facade in March 2025 is not standing
+there in April 2025, and the second capture simply sees through the problem.
+
+Note what does *not* happen: it does not go to zero. 472 faces are occluded in
+every station that reaches them, and those are mostly low wall segments behind
+parked vehicles and street furniture that is not transient at all on the
+timescale between captures. More panoramas from the same three days will not
+recover them.
+
+**On the 19.6 % figure this is often compared against.** These are not the same
+measurement and should not be quoted against each other. The 19.6 % is transient
+pixels against projected support area in one rectilinear crop at yaw 0. The
+numbers above are over the full sphere, which includes sky and paving and so
+dilutes the denominator, and they are per face rather than per pixel. The
+per-view transient *pixel* fraction over the full sphere for these eight stations
+has a median of **5.5 %** and a maximum of **28.9 %**, and that spread is the real
+point: occupancy at this site varies by a factor of five between captures, so any
+single capture is a lottery ticket on how busy the square happened to be.
+
+## Cross-capture agreement, which is the first real validation here
+
+Where two stations both have a clean look at the same face, do they assign it the
+same class? Split by whether the two stations come from the same Mapillary
+sequence, because same-sequence pairs share a camera, a day, a weather condition
+and an exposure setting, and cross-sequence pairs share none of those.
+
+| | pairs | overlap faces | agreement |
+|---|---|---|---|
+| same sequence | 11 | 34,644 | **84.2 %** |
+| cross sequence | 17 | 51,242 | **71.3 %** |
+
+**Independent captures agree 13 points less than frames of one drive.** Range
+across pairs is 79 to 89 % within a sequence and 65 to 78 % across sequences, so
+the two distributions barely overlap and the gap is not driven by one bad pair.
+
+This is a finding, not a bug, and it is the number that should be believed. Had
+the walk been drawn from a single dense drive, as the naive bounding-box
+selection would have produced, the measured self-consistency would have been
+84 %, and it would have been an overestimate of the twin's reliability by 13
+points. **Same-capture agreement is not validation.** It mostly measures whether
+the segmentation is deterministic, which it is.
+
+Roughly three faces in ten get a different entity class from an independent
+capture. Where that comes from is not yet separated, and the three candidates are
+not equally benign: genuine segmentation error, pose error smearing labels across
+facade boundaries (the retained stations still span 1.08 to 3.07 deg of skyline
+residual), and real change over three years on a commercial square where shopfronts
+turn over. The 2022 sequence sits entirely north of the square, so cross-date and
+cross-viewpoint are partly confounded in this walk and a clean separation needs
+two sequences that overlap spatially.
+
+**This is entity agreement, not material agreement.** The material axis needs the
+SAM 3 concept pass, which was skipped for time. Without it, material is a
+deterministic function of entity and reporting it would restate the number above
+while sounding like an independent result.
 
 ## What is not yet in hand
 
-Two of the three promised numbers are still running and are **not** reported here.
-
-- **Transient-object occlusion.** Needs per-station entity segmentation to
-  identify transient classes and a registered pose to bind pixels to faces.
-  Segmentation of the twelve panoramas is running on the A6000 at ~55 to 75 s
-  each with Mask2Former at native 1536. Not finished, so the 19.6 % figure has no
-  fused counterpart yet.
-- **Cross-capture material agreement.** This is the one worth waiting for. It
-  needs registration for all twelve, and the material axis needs the SAM 3
-  concept pass, which was skipped in this segmentation run for time. Without it
-  the material axis reduces to the deterministic Vistas class prior, and
-  "agreement" would then only be testing entity agreement wearing a material
-  label. Worth stating plainly rather than shipping the weaker thing as if it
-  were the cross-validation.
-
-The walk itself, the poses, and the selection are all on disk, so both are a
-resume rather than a restart.
+- **Material agreement**, as distinct from the entity agreement above. Needs the
+  SAM 3 concept pass over the walk, which is a GPU run of roughly the same size
+  as the segmentation already done. This is the version of the cross-validation
+  that would bear on RF material assignment rather than on object class.
+- **Registration-weighted fusion.** Four stations are currently excluded by a
+  hard 4 deg residual threshold. The covariance is already computed for all
+  twelve, so the right answer is to feed it into
+  `ObservationQuality.registration` and let a poorly registered station
+  contribute weakly rather than not at all. That is the same one-line pattern the
+  independence weight now uses.
+- **Separating the three causes of cross-capture disagreement**: segmentation
+  error, pose error, and real change. Needs two spatially overlapping sequences
+  from different dates, which this walk does not have.
 
 ## Caveats worth carrying
 
-- The panoramas are 5760 x 2880 provider originals. The existing single-capture
-  Street View panorama is 16384 x 8192. The walk trades per-image resolution for
-  viewpoint diversity, and any material comparison against the older result has
-  to account for that rather than attribute the difference to fusion.
-- Coverage uses `inhouse_leaf_130m.ply` (157,744 faces). The published
-  single-capture texture-evidence numbers use `inhouse_leaf_130m_f64.ply`
-  (157,862 faces). The 4.64 % baseline above is recomputed on **this** mesh at
-  **this** ray density so that the before and after share a denominator. It is
-  not the 3.3 % headline number and should not be quoted against it.
+- The walk panoramas are 5760 x 2880 provider originals. The existing
+  single-capture Street View panorama is 16384 x 8192. The walk trades per-image
+  resolution for viewpoint diversity, and any comparison against the older result
+  has to account for that rather than attribute the difference to fusion. It is
+  also the leading suspect for why walk stations register worse.
+- Every coverage number here is recomputed on `inhouse_leaf_130m_f64.ply` at this
+  ray density, so the before and after share a denominator. The single-capture
+  baseline is **not** the published 3.3 % headline and must not be quoted against
+  it.
 - The 2022 sequence sits entirely north of the square, so its cross-date
-  comparison will only ever cover north-side facades.
+  comparison only covers north-side facades, and cross-date is partly confounded
+  with cross-viewpoint.
+- Agreement is measured on the modal non-transient class per face, which is a
+  hard assignment. A distributional comparison would be better and the tally is
+  already stored in `walk_semantic.npz` to support one.
