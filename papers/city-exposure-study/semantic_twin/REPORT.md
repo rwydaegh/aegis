@@ -184,14 +184,39 @@ number nobody currently has.
 
 ## Ten cities
 
-Twenty four candidate squares were screened before any acquisition spend, on
-panorama count, median spacing, capture dates, angular coverage of the square and
-whether a single walk encircles it. The screening is independently consistent with
-what was already known at the two built sites: Milan comes out near the top at
-2.5 m median spacing and Korenmarkt near the bottom at 10.0 m, against 2.8 and
-10.5 m measured separately and earlier.
+Twenty four candidate squares were screened before any acquisition spend, in
+**4,091 metadata requests and 79 seconds with zero tiles fetched**. Screening
+walks outwards along the Street View link graph rather than querying a bounding
+box, which matters given what the Mapillary box turned out to do.
 
-The full table is `outputs/city_screening/screening_table.md`.
+The unit of merit is the **walk**, meaning the largest set of panoramas sharing
+one capture date and linked to each other. Sites carry between 5 and 21 capture
+dates inside 60 m and panoramas almost never link across dates, so a raw panorama
+count overstates what any single traverse can reach. The screening is
+independently consistent with what was already known at the two built sites:
+Milan at 2.5 m median spacing and Korenmarkt at 10.0 m, against 2.8 and 10.5 m
+measured separately and earlier.
+
+The coverage gate needed one correction, and its own test caught it. The first
+form scored a dense straight line down the middle of a square as full coverage,
+which would have promoted line drives over walks. It is now azimuth spread over
+sixteen sectors about the centre, which a collinear set cannot max out because a
+line fills two opposite sectors and scores 2 of 16.
+
+Acquisition ran at **1,575 leaf tiles in 3,216 requests and about three minutes**
+with ten concurrent pulls, with the acquisition radius set equal to the crop
+radius so nothing paid for is discarded.
+
+Two sites failed after acquisition, both on geometry rather than panoramas.
+**Istanbul** returned 80 leaf tiles holding 11,864 triangles against 130k to 470k
+everywhere else, so it is a coarse base mesh with no photogrammetry at all despite
+reporting the same 2.006 m geometric error as every other site. Its 10 m skyline
+in the gallery render confirms this independently. **Toulouse** is the anchor
+problem described above and went to reserve, with Times Square promoted in its
+place.
+
+The full table is `outputs/city_screening/screening_table.md` and the selection
+argument is in `CITIES.md`.
 
 Nine sites were then acquired and built, giving eleven with the two that already
 existed: Brussels, Krakow, London, Madrid, Mexico City, New York, Prague, Tokyo
