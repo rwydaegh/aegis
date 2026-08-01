@@ -1,9 +1,16 @@
 """Download official Inhouse Photorealistic 3D Tiles for a small circular ROI.
 
 The downloader follows the external tilesets returned by the Map Tiles API,
-prunes oriented bounding boxes against an ECEF sphere, and writes leaf GLBs and
+prunes oriented bounding boxes against the ROI, and writes leaf GLBs and
 ``manifest.json`` for ``build_inhouse_mesh.py``. Authentication and session query
 values are used only for requests and are never written to the manifest.
+
+The ROI is a vertical cylinder about the site's local up axis, not a ball. A ball
+centred on the ellipsoid reaches only ``sqrt(radius^2 - h^2)`` horizontally at a
+site sitting ``h`` metres above the ellipsoid, and nothing at all above
+``z = radius``. Milan sits at about 163 m, so a nominal 200 m request reached
+116 m at street level. The cylinder reaches the full radius at every height in
+its band, so ``--radius-m`` means what it says.
 
 Run from the ``semantic_twin`` directory::
 
@@ -32,34 +39,115 @@ from typing import Any
 
 import numpy as np
 
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from semantic_twin.geo import enu_rotation, llh_to_ecef  # noqa: E402
+
 API_ORIGIN = "https://tile.googleapis.com"
 ROOT_TILESET_URL = f"{API_ORIGIN}/v1/3dtiles/root.json"
-WGS84_A = 6378137.0
-WGS84_E2 = 6.69437999014e-3
 
 MAX_RADIUS_M = 2000.0
-DEFAULT_MAX_REQUESTS = 500
+
+# Requests grow with the ROI area, so the cap is what stops an oversized radius
+# rather than a second guard. The r=200 m Korenmarkt traversal takes 351 requests
+# and the r=320 m Milan one 691, which the previous cap of 500 would have killed.
+DEFAULT_MAX_REQUESTS = 2000
 DEFAULT_MAX_BYTES = 1_000_000_000
 READ_CHUNK_BYTES = 64 * 1024
+
+# Half height of the ROI cylinder about the ellipsoid, in metres. It only has to
+# bracket the terrain, and no tile geometry exists off the terrain, so a generous
+# band costs nothing. Sites above 3 km need this raised.
+DEFAULT_VERTICAL_HALF_EXTENT_M = 3000.0
 
 
 class DownloadLimitExceeded(RuntimeError):
     """Raised before a configured request or byte limit can be exceeded."""
 
 
-def llh_to_ecef(lat_deg: float, lon_deg: float, height_m: float = 0.0) -> np.ndarray:
-    """Convert WGS84 latitude, longitude and ellipsoid height to ECEF metres."""
-    lat = math.radians(lat_deg)
-    lon = math.radians(lon_deg)
-    prime_vertical_radius = WGS84_A / math.sqrt(1.0 - WGS84_E2 * math.sin(lat) ** 2)
-    return np.array(
-        [
-            (prime_vertical_radius + height_m) * math.cos(lat) * math.cos(lon),
-            (prime_vertical_radius + height_m) * math.cos(lat) * math.sin(lon),
-            (prime_vertical_radius * (1.0 - WGS84_E2) + height_m) * math.sin(lat),
-        ],
-        dtype=np.float64,
-    )
+class RegionOfInterest:
+    """A vertical cylinder in ECEF: everything within ``radius_m`` of a site's up axis.
+
+    Both predicates are conservative. They separate only when a supporting plane
+    proves the volumes are apart, so a tile is never pruned when it might touch
+    the ROI.
+    """
+
+    def __init__(self, lat_deg: float, lon_deg: float, radius_m: float, half_height_m: float) -> None:
+        if not math.isfinite(radius_m) or radius_m <= 0.0:
+            raise ValueError("ROI radius must be finite and greater than zero")
+        if not math.isfinite(half_height_m) or half_height_m <= 0.0:
+            raise ValueError("ROI vertical half extent must be finite and greater than zero")
+        self.radius_m = float(radius_m)
+        self.half_height_m = float(half_height_m)
+        self.center = llh_to_ecef(lat_deg, lon_deg, 0.0)
+        self.up = enu_rotation(lat_deg, lon_deg)[2]
+
+    def distance_to_point(self, point: np.ndarray) -> float:
+        """Exact distance from an ECEF point to the ROI cylinder, zero when inside."""
+        delta = point - self.center
+        vertical = float(np.dot(delta, self.up))
+        horizontal = float(np.linalg.norm(delta - vertical * self.up))
+        return math.hypot(max(0.0, horizontal - self.radius_m), max(0.0, abs(vertical) - self.half_height_m))
+
+    def intersects_box(self, box: list[float], transform: np.ndarray | None = None) -> bool:
+        """Return whether a 3D Tiles oriented box can touch the ROI cylinder."""
+        if len(box) != 12:
+            raise ValueError("Tile boundingVolume.box must contain 12 numbers")
+        values = np.asarray(box, dtype=np.float64)
+        if not np.all(np.isfinite(values)):
+            raise ValueError("Tile boundingVolume.box must contain finite numbers")
+
+        world = np.eye(4, dtype=np.float64) if transform is None else transform
+        box_center = (world @ np.append(values[:3], 1.0))[:3]
+        linear = world[:3, :3]
+        half_extents = [linear @ values[3:6], linear @ values[6:9], linear @ values[9:12]]
+        delta = box_center - self.center
+
+        vertical_reach = sum(abs(float(np.dot(self.up, axis))) for axis in half_extents)
+        if abs(float(np.dot(self.up, delta))) > self.half_height_m + vertical_reach:
+            return False
+
+        # Horizontally the cylinder is a disc, so every direction perpendicular to
+        # the up axis is a candidate separating normal. Testing the normals of the
+        # box's own projected silhouette underestimates the true gap, which keeps
+        # the test conservative: it can only fail to separate, never separate a box
+        # that actually touches.
+        for axis in half_extents:
+            normal = np.cross(axis - float(np.dot(axis, self.up)) * self.up, self.up)
+            length = float(np.linalg.norm(normal))
+            if length <= 1e-9:
+                continue
+            normal = normal / length
+            reach = sum(abs(float(np.dot(normal, other))) for other in half_extents)
+            if abs(float(np.dot(normal, delta))) > self.radius_m + reach:
+                return False
+        return True
+
+    def intersects_sphere(self, sphere: list[float], transform: np.ndarray) -> bool:
+        """Return whether a 3D Tiles bounding sphere can touch the ROI cylinder."""
+        if len(sphere) != 4:
+            raise ValueError("Tile boundingVolume.sphere must contain four numbers")
+        values = np.asarray(sphere, dtype=np.float64)
+        if not np.all(np.isfinite(values)) or values[3] < 0.0:
+            raise ValueError("Tile boundingVolume.sphere must contain a non-negative finite radius")
+        tile_center = (transform @ np.append(values[:3], 1.0))[:3]
+        scale = max(float(np.linalg.norm(transform[:3, index])) for index in range(3))
+        return bool(self.distance_to_point(tile_center) <= values[3] * scale)
+
+    def intersects(self, bounding_volume: Any, transform: np.ndarray) -> bool:
+        """Conservatively test a supported bounding volume against the ROI."""
+        if not isinstance(bounding_volume, dict):
+            return True
+        if "box" in bounding_volume:
+            return self.intersects_box(bounding_volume["box"], transform)
+        if "sphere" in bounding_volume:
+            return self.intersects_sphere(bounding_volume["sphere"], transform)
+        # Region and extension bounding volumes are left unpruned to avoid false
+        # negatives. Inhouse's Photorealistic 3D Tiles hierarchy uses ECEF boxes.
+        return True
 
 
 def matrix_from_3d_tiles(values: Any) -> np.ndarray:
@@ -70,64 +158,6 @@ def matrix_from_3d_tiles(values: Any) -> np.ndarray:
     if transform.shape != (16,) or not np.all(np.isfinite(transform)):
         raise ValueError("Tile transform must contain 16 finite numbers")
     return transform.reshape((4, 4), order="F")
-
-
-def obb_intersects_sphere(
-    box: list[float],
-    center: np.ndarray,
-    radius_m: float,
-    transform: np.ndarray | None = None,
-) -> bool:
-    """Return whether a 3D Tiles oriented box intersects an ECEF sphere."""
-    if len(box) != 12:
-        raise ValueError("Tile boundingVolume.box must contain 12 numbers")
-    values = np.asarray(box, dtype=np.float64)
-    if not np.all(np.isfinite(values)):
-        raise ValueError("Tile boundingVolume.box must contain finite numbers")
-
-    world = np.eye(4, dtype=np.float64) if transform is None else transform
-    local_center = np.append(values[:3], 1.0)
-    box_center = (world @ local_center)[:3]
-    linear = world[:3, :3]
-    axes = [linear @ values[3:6], linear @ values[6:9], linear @ values[9:12]]
-
-    delta = center - box_center
-    closest = box_center.copy()
-    for axis in axes:
-        half_length = float(np.linalg.norm(axis))
-        if half_length <= 1e-12:
-            continue
-        direction = axis / half_length
-        distance = float(np.clip(np.dot(delta, direction), -half_length, half_length))
-        closest += distance * direction
-    return bool(np.linalg.norm(center - closest) <= radius_m)
-
-
-def sphere_intersects_sphere(sphere: list[float], center: np.ndarray, radius_m: float, transform: np.ndarray) -> bool:
-    """Return whether a transformed 3D Tiles bounding sphere intersects the ROI."""
-    if len(sphere) != 4:
-        raise ValueError("Tile boundingVolume.sphere must contain four numbers")
-    values = np.asarray(sphere, dtype=np.float64)
-    if not np.all(np.isfinite(values)) or values[3] < 0.0:
-        raise ValueError("Tile boundingVolume.sphere must contain a non-negative finite radius")
-    tile_center = (transform @ np.append(values[:3], 1.0))[:3]
-    scale = max(float(np.linalg.norm(transform[:3, index])) for index in range(3))
-    return bool(np.linalg.norm(center - tile_center) <= radius_m + values[3] * scale)
-
-
-def bounding_volume_intersects_roi(
-    bounding_volume: Any, center: np.ndarray, radius_m: float, transform: np.ndarray
-) -> bool:
-    """Conservatively test a supported bounding volume against the ROI."""
-    if not isinstance(bounding_volume, dict):
-        return True
-    if "box" in bounding_volume:
-        return obb_intersects_sphere(bounding_volume["box"], center, radius_m, transform)
-    if "sphere" in bounding_volume:
-        return sphere_intersects_sphere(bounding_volume["sphere"], center, radius_m, transform)
-    # Region and extension bounding volumes are left unpruned to avoid false
-    # negatives. Inhouse's Photorealistic 3D Tiles hierarchy uses ECEF boxes.
-    return True
 
 
 def sanitized_uri(uri: str) -> str:
@@ -250,6 +280,7 @@ class InhouseTilesDownloader:
         radius_m: float,
         geometric_error_cutoff_m: float,
         out_dir: pathlib.Path,
+        vertical_half_extent_m: float = DEFAULT_VERTICAL_HALF_EXTENT_M,
         max_requests: int = DEFAULT_MAX_REQUESTS,
         max_bytes: int = DEFAULT_MAX_BYTES,
         http: BoundedHttpClient | None = None,
@@ -271,7 +302,9 @@ class InhouseTilesDownloader:
         self.radius_m = radius_m
         self.cutoff_m = geometric_error_cutoff_m
         self.out_dir = out_dir
-        self.center_ecef = llh_to_ecef(lat, lon)
+        self.vertical_half_extent_m = vertical_half_extent_m
+        self.roi = RegionOfInterest(lat, lon, radius_m, vertical_half_extent_m)
+        self.center_ecef = self.roi.center
         self.http = http or BoundedHttpClient(max_requests, max_bytes)
         self.max_requests = self.http.max_requests
         self.max_bytes = self.http.max_bytes
@@ -344,7 +377,7 @@ class InhouseTilesDownloader:
 
     def _walk_tile(self, tile: dict[str, Any], base_url: str, parent_transform: np.ndarray) -> None:
         transform = parent_transform @ matrix_from_3d_tiles(tile.get("transform"))
-        if not bounding_volume_intersects_roi(tile.get("boundingVolume"), self.center_ecef, self.radius_m, transform):
+        if not self.roi.intersects(tile.get("boundingVolume"), transform):
             return
 
         try:
@@ -400,6 +433,8 @@ class InhouseTilesDownloader:
             "lon": self.lon,
             "radius": self.radius_m,
             "cutoff": self.cutoff_m,
+            "roi_shape": "vertical cylinder about the site up axis, radius is horizontal",
+            "roi_vertical_half_extent_m": self.vertical_half_extent_m,
             "center_ecef": self.center_ecef.tolist(),
             "limits": {"max_requests": self.max_requests, "max_bytes": self.max_bytes},
             "tiles": self.tiles,
@@ -435,7 +470,16 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         dest="radius_m",
         type=finite_float,
         required=True,
-        help=f"Circular ROI radius in metres, at most {MAX_RADIUS_M:g}",
+        help=f"Horizontal ROI radius in metres, at most {MAX_RADIUS_M:g}",
+    )
+    parser.add_argument(
+        "--vertical-half-extent-m",
+        type=finite_float,
+        default=DEFAULT_VERTICAL_HALF_EXTENT_M,
+        help=(
+            "Half height of the ROI cylinder about the ellipsoid in metres "
+            f"(default: {DEFAULT_VERTICAL_HALF_EXTENT_M:g}). Raise it above 3 km terrain"
+        ),
     )
     parser.add_argument(
         "--geometric-error-cutoff-m",
@@ -479,6 +523,7 @@ def main(argv: list[str] | None = None) -> int:
             radius_m=args.radius_m,
             geometric_error_cutoff_m=args.geometric_error_cutoff_m,
             out_dir=args.out,
+            vertical_half_extent_m=args.vertical_half_extent_m,
             max_requests=args.max_requests,
             max_bytes=args.max_bytes,
         )

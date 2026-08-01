@@ -21,21 +21,26 @@ def llh_to_ecef(lat_deg: float, lon_deg: float, height_m: float = 0.0) -> np.nda
     )
 
 
+def enu_rotation(lat_deg: float, lon_deg: float) -> np.ndarray:
+    """Return the ECEF to east-north-up rotation at a geodetic point."""
+    lat, lon = np.radians([lat_deg, lon_deg])
+    sin_lat, cos_lat = np.sin(lat), np.cos(lat)
+    sin_lon, cos_lon = np.sin(lon), np.cos(lon)
+    return np.array(
+        [
+            [-sin_lon, cos_lon, 0.0],
+            [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],
+            [cos_lat * cos_lon, cos_lat * sin_lon, sin_lat],
+        ]
+    )
+
+
 class EnuFrame:
     """A metric local frame with x east, y north and z up."""
 
     def __init__(self, lat_deg: float, lon_deg: float, height_m: float = 0.0) -> None:
-        lat, lon = np.radians([lat_deg, lon_deg])
-        sin_lat, cos_lat = np.sin(lat), np.cos(lat)
-        sin_lon, cos_lon = np.sin(lon), np.cos(lon)
         self.origin_ecef = llh_to_ecef(lat_deg, lon_deg, height_m)
-        self.rotation = np.array(
-            [
-                [-sin_lon, cos_lon, 0.0],
-                [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],
-                [cos_lat * cos_lon, cos_lat * sin_lon, sin_lat],
-            ]
-        )
+        self.rotation = enu_rotation(lat_deg, lon_deg)
 
     def to_enu(self, lat_deg: float, lon_deg: float, height_m: float = 0.0) -> np.ndarray:
         return self.rotation @ (llh_to_ecef(lat_deg, lon_deg, height_m) - self.origin_ecef)

@@ -7,8 +7,17 @@ Run inside Blender from the repository's ``semantic_twin`` directory::
       --out data/geometry/korenmarkt/inhouse_leaf_130m.ply \
       --crop-radius-m 130
 
-The optional blend keeps the imported, aligned source objects unchanged for
-inspection. The PLY is assembled independently from their evaluated geometry.
+The optional blend holds the same tiles moved into the local frame for visual
+inspection only. It is written after the PLY and is single precision, so it is
+never the source of the exported geometry.
+
+Precision matters here. The glTF node matrix of a Photorealistic 3D Tiles leaf
+carries the full ECEF placement, around 6.4e6 m, and ``Object.matrix_world`` is
+single precision, whose spacing at that magnitude is about 0.5 m. Blender
+therefore rounds every tile placement independently at import. The exported
+geometry uses the node matrices read straight from the GLB in double precision
+instead, and Blender is only asked for the mesh data, which is tile-local and
+small.
 """
 
 from __future__ import annotations
@@ -29,9 +38,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from semantic_twin.export import compact, write_ply  # noqa: E402
+from semantic_twin.geo import enu_rotation, llh_to_ecef  # noqa: E402
+from semantic_twin.gltf import mesh_node_matrices  # noqa: E402
 
-WGS84_A = 6378137.0
-WGS84_E2 = 6.69437999014e-3
+# A tile placement that disagrees with Blender's rounded one by more than this is
+# not the same node, so the match is refused rather than guessed.
+MATCH_TOLERANCE_M = 2.0
 
 
 def arguments() -> argparse.Namespace:
@@ -51,27 +63,27 @@ def positive_float(value: str) -> float:
     return result
 
 
-def llh_to_ecef(lat_deg: float, lon_deg: float, height_m: float = 0.0) -> np.ndarray:
-    lat = math.radians(lat_deg)
-    lon = math.radians(lon_deg)
-    prime_vertical_radius = WGS84_A / math.sqrt(1.0 - WGS84_E2 * math.sin(lat) ** 2)
-    return np.array(
-        [
-            (prime_vertical_radius + height_m) * math.cos(lat) * math.cos(lon),
-            (prime_vertical_radius + height_m) * math.cos(lat) * math.sin(lon),
-            (prime_vertical_radius * (1.0 - WGS84_E2) + height_m) * math.sin(lat),
-        ],
-        dtype=np.float64,
-    )
+def exact_world_matrices(
+    imported: list[bpy.types.Object], payloads: list[tuple[dict[str, Any], pathlib.Path]]
+) -> dict[str, np.ndarray]:
+    """Map each imported object to the double-precision world matrix of its glTF node.
 
-
-def enu_rotation(lat_deg: float, lon_deg: float) -> np.ndarray:
-    lat = math.radians(lat_deg)
-    lon = math.radians(lon_deg)
-    east = np.array([-math.sin(lon), math.cos(lon), 0.0])
-    north = np.array([-math.sin(lat) * math.cos(lon), -math.sin(lat) * math.sin(lon), math.cos(lat)])
-    up = np.array([math.cos(lat) * math.cos(lon), math.cos(lat) * math.sin(lon), math.sin(lat)])
-    return np.vstack([east, north, up])
+    Objects whose placement cannot be matched are left out, and the caller falls
+    back to Blender's own rounded matrix for those.
+    """
+    per_tile = {index: mesh_node_matrices(payload) for index, (_, payload) in enumerate(payloads)}
+    resolved: dict[str, np.ndarray] = {}
+    for obj in imported:
+        index = obj.get("source_tile_index")
+        candidates = per_tile.get(int(index)) if index is not None else None
+        if not candidates:
+            continue
+        rounded = np.asarray(obj.matrix_world, dtype=np.float64)[:3, 3]
+        distances = [float(np.linalg.norm(candidate[:3, 3] - rounded)) for candidate in candidates]
+        best = int(np.argmin(distances))
+        if distances[best] <= MATCH_TOLERANCE_M:
+            resolved[obj.name] = candidates[best]
+    return resolved
 
 
 def rotation_x(degrees: float) -> np.ndarray:
@@ -142,9 +154,13 @@ def import_tiles(
     return imported
 
 
-def align_to_local_enu(
-    imported: list[bpy.types.Object], anchor_ecef: np.ndarray, rotation_enu: np.ndarray
-) -> dict[str, Any]:
+def local_enu_transform(
+    imported: list[bpy.types.Object],
+    world_matrices: dict[str, np.ndarray],
+    anchor_ecef: np.ndarray,
+    rotation_enu: np.ndarray,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Solve the Blender-world to local-ENU transform without touching the scene."""
     imported_set = set(imported)
     roots = sorted(
         (obj for obj in imported if obj.parent is None or obj.parent not in imported_set),
@@ -153,7 +169,9 @@ def align_to_local_enu(
     if not roots:
         raise RuntimeError("Imported tiles contain no root objects for ECEF calibration")
 
-    root_centres = np.array([np.asarray(obj.matrix_world, dtype=np.float64)[:3, 3] for obj in roots])
+    root_centres = np.array(
+        [world_matrices.get(obj.name, np.asarray(obj.matrix_world, dtype=np.float64))[:3, 3] for obj in roots]
+    )
     mean_centre = np.mean(root_centres, axis=0)
     candidates = {
         "identity": np.eye(3),
@@ -174,23 +192,31 @@ def align_to_local_enu(
     transform = np.eye(4)
     transform[:3, :3] = rotation_enu @ best_inverse
     transform[:3, 3] = -rotation_enu @ anchor_ecef
-    blender_transform = Matrix(transform.tolist())
-    for root in roots:
-        root.matrix_world = blender_transform @ root.matrix_world
-    bpy.context.view_layer.update()
 
+    matched = sum(1 for obj in imported if obj.name in world_matrices)
     print(f"[calib] axis fix = {best_name}, residual to anchor = {best_error:.1f} m", flush=True)
+    print(f"[calib] double-precision node matrices matched for {matched}/{len(imported)} objects", flush=True)
     if best_error > 5000.0:
         print("[calib] WARNING: no candidate lands near anchor, alignment suspect", flush=True)
-    return {
+    if matched < len(imported):
+        print("[calib] WARNING: some objects fall back to single-precision placement", flush=True)
+    return transform, {
         "axis_fix": best_name,
         "residual_to_anchor_m": best_error,
         "root_object_count": len(roots),
         "ecef_to_local_enu_matrix": transform.tolist(),
+        "double_precision_objects": matched,
+        "single_precision_fallback_objects": len(imported) - matched,
+        "placement_source": "glTF node matrices read in float64, never Object.matrix_world",
     }
 
 
-def collect_world_triangles(collection: bpy.types.Collection) -> tuple[np.ndarray, np.ndarray]:
+def collect_world_triangles(
+    collection: bpy.types.Collection,
+    world_matrices: dict[str, np.ndarray],
+    transform: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Assemble local-ENU triangles, applying every placement in double precision."""
     vertices_parts: list[np.ndarray] = []
     triangle_parts: list[np.ndarray] = []
     vertex_offset = 0
@@ -207,7 +233,10 @@ def collect_world_triangles(collection: bpy.types.Collection) -> tuple[np.ndarra
             vertices = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
             mesh.vertices.foreach_get("co", vertices)
             vertices = vertices.reshape(-1, 3)
-            world = np.asarray(evaluated.matrix_world, dtype=np.float64)
+            placement = world_matrices.get(obj.name)
+            if placement is None:
+                placement = np.asarray(evaluated.matrix_world, dtype=np.float64)
+            world = transform @ placement
             vertices = vertices @ world[:3, :3].T + world[:3, 3]
 
             triangles = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int64)
@@ -221,6 +250,23 @@ def collect_world_triangles(collection: bpy.types.Collection) -> tuple[np.ndarra
     if not triangle_parts:
         raise RuntimeError("The imported tiles contain no evaluated mesh triangles")
     return np.vstack(vertices_parts), np.vstack(triangle_parts)
+
+
+def move_scene_to_local_enu(imported: list[bpy.types.Object], transform: np.ndarray) -> None:
+    """Move the source objects into the local frame for the inspection blend only.
+
+    ``Object.matrix_world`` is single precision, so this is deliberately run after
+    the geometry has already been assembled and exported.
+    """
+    imported_set = set(imported)
+    roots = sorted(
+        (obj for obj in imported if obj.parent is None or obj.parent not in imported_set),
+        key=lambda obj: obj.name,
+    )
+    blender_transform = Matrix(transform.tolist())
+    for root in roots:
+        root.matrix_world = blender_transform @ root.matrix_world
+    bpy.context.view_layer.update()
 
 
 def crop_faces(vertices: np.ndarray, faces: np.ndarray, radius_m: float | None) -> np.ndarray:
@@ -256,7 +302,7 @@ def write_provenance(
     ]
     numeric_errors = [error for error in geometric_errors if error is not None]
     provenance = {
-        "format_version": 2,
+        "format_version": 3,
         "generator": "semantic_twin/build_inhouse_mesh.py",
         "coordinate_system": "local ENU metres, z up",
         "source_manifest": str((args.tiles / "manifest.json").resolve()),
@@ -323,9 +369,10 @@ def main() -> None:
     lat = float(manifest["lat"])
     lon = float(manifest["lon"])
     anchor_ecef = llh_to_ecef(lat, lon, 0.0)
-    alignment = align_to_local_enu(imported, anchor_ecef, enu_rotation(lat, lon))
+    world_matrices = exact_world_matrices(imported, payloads)
+    transform, alignment = local_enu_transform(imported, world_matrices, anchor_ecef, enu_rotation(lat, lon))
 
-    vertices, faces = collect_world_triangles(collection)
+    vertices, faces = collect_world_triangles(collection, world_matrices, transform)
     before_vertices = len(vertices)
     before_triangles = len(faces)
     faces = crop_faces(vertices, faces, args.crop_radius_m)
@@ -336,8 +383,9 @@ def main() -> None:
     write_ply(args.out, vertices, faces)
     provenance_path = args.out.with_suffix(".json")
     if args.blend is not None:
+        move_scene_to_local_enu(imported, transform)
         bpy.ops.wm.save_as_mainfile(filepath=str(args.blend))
-        print(f"[blend] {args.blend}", flush=True)
+        print(f"[blend] {args.blend} (single precision, inspection only)", flush=True)
     write_provenance(
         provenance_path,
         args=args,

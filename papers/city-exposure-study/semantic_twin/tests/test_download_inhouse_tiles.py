@@ -11,10 +11,11 @@ from download_inhouse_tiles import (
     BoundedHttpClient,
     DownloadLimitExceeded,
     InhouseTilesDownloader,
+    RegionOfInterest,
     llh_to_ecef,
-    obb_intersects_sphere,
     sanitized_uri,
 )
+from semantic_twin.geo import enu_rotation
 
 
 class FakeHttp:
@@ -82,13 +83,74 @@ def test_sanitized_uri_removes_all_query_values_and_fragments() -> None:
     assert sanitized_uri(uri) == "/v1/3dtiles/tile.glb"
 
 
-def test_obb_intersection_uses_tile_transform() -> None:
-    center = np.array([10.0, 20.0, 30.0])
+def unit_box(center: np.ndarray, half_size_m: float) -> tuple[list[float], np.ndarray]:
     transform = np.eye(4)
     transform[:3, 3] = center
-    local_box = [0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0]
-    assert obb_intersects_sphere(local_box, center + [2.5, 0.0, 0.0], 1.0, transform)
-    assert not obb_intersects_sphere(local_box, center + [4.0, 0.0, 0.0], 1.0, transform)
+    box = [0.0, 0.0, 0.0, half_size_m, 0.0, 0.0, 0.0, half_size_m, 0.0, 0.0, 0.0, half_size_m]
+    return box, transform
+
+
+def test_obb_intersection_uses_tile_transform() -> None:
+    roi = RegionOfInterest(51.055, 3.722, 100.0, 3000.0)
+    east = enu_rotation(51.055, 3.722)[0]
+    box, transform = unit_box(roi.center + 102.0 * east, 5.0)
+    assert roi.intersects_box(box, transform)
+    box, transform = unit_box(roi.center + 130.0 * east, 5.0)
+    assert not roi.intersects_box(box, transform)
+
+
+def test_roi_reaches_the_full_radius_at_terrain_height() -> None:
+    """A ball on the ellipsoid loses horizontal reach with height. The cylinder does not."""
+    lat, lon, radius = 45.4642, 9.19, 200.0
+    roi = RegionOfInterest(lat, lon, radius, 3000.0)
+    east, _, up = enu_rotation(lat, lon)
+    for height_m in (0.0, 163.0, 400.0):
+        near = roi.center + height_m * up + 0.99 * radius * east
+        far = roi.center + height_m * up + 1.01 * radius * east
+        assert roi.distance_to_point(near) == 0.0
+        assert roi.distance_to_point(far) > 0.0
+    # The old ball on the ellipsoid reached only sqrt(r^2 - h^2) at height h.
+    milan = roi.center + 163.0 * up + 0.99 * radius * east
+    assert float(np.linalg.norm(milan - roi.center)) > radius
+
+
+def test_roi_rejects_only_beyond_the_vertical_band() -> None:
+    lat, lon = 45.4642, 9.19
+    roi = RegionOfInterest(lat, lon, 200.0, 500.0)
+    up = enu_rotation(lat, lon)[2]
+    assert roi.distance_to_point(roi.center + 499.0 * up) == 0.0
+    assert roi.distance_to_point(roi.center + 501.0 * up) > 0.0
+
+
+def test_roi_box_test_never_prunes_a_touching_box() -> None:
+    """The oriented-box predicate must have no false negatives against a sampled truth."""
+    rng = np.random.default_rng(20260801)
+    lat, lon, radius = 45.4642, 9.19, 200.0
+    roi = RegionOfInterest(lat, lon, radius, 300.0)
+    basis = enu_rotation(lat, lon).T
+    for _ in range(400):
+        offset = basis @ rng.uniform(-600.0, 600.0, size=3)
+        axes = basis @ np.diag(rng.uniform(5.0, 250.0, size=3)) @ np.linalg.qr(rng.normal(size=(3, 3)))[0]
+        box = [*(roi.center + offset).tolist(), *axes[:, 0], *axes[:, 1], *axes[:, 2]]
+        corners = np.array(
+            [
+                roi.center + offset + i * axes[:, 0] + j * axes[:, 1] + k * axes[:, 2]
+                for i in (-1.0, 1.0)
+                for j in (-1.0, 1.0)
+                for k in (-1.0, 1.0)
+            ]
+        )
+        weights = rng.dirichlet(np.ones(8), size=200)
+        samples = weights @ corners
+        touches = any(roi.distance_to_point(point) == 0.0 for point in samples)
+        assert roi.intersects_box(box, np.eye(4)) or not touches
+
+
+def test_roi_rejects_a_degenerate_configuration() -> None:
+    with pytest.raises(ValueError):
+        RegionOfInterest(51.0, 3.7, 0.0, 100.0)
+    with pytest.raises(ValueError):
+        RegionOfInterest(51.0, 3.7, 100.0, 0.0)
 
 
 def test_zero_cutoff_descends_through_zero_error_parent_and_external_tileset(tmp_path: pathlib.Path) -> None:
