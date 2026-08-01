@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aegis-semantic-twin"
+version = "0.1.0"
+description = "Panorama-driven semantic reconstruction for radio digital twins"
+requires-python = ">=3.12"
+dependencies = [
+  "numpy>=2.0",
+  "pillow>=11",
+  "scipy>=1.14",
+]
+
+[project.optional-dependencies]
+baseline = [
+  "huggingface-hub>=0.34,<1",
+  "safetensors>=0.7",
+  "torch>=2.7",
+  "torchvision>=0.22",
+  "transformers>=4.57,<5",
+]
+test = ["pytest>=8", "ruff>=0.12"]
+
+[tool.setuptools]
+packages = ["semantic_twin"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

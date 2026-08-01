@@ -1,0 +1,29 @@
+{
+  "name": "korenmarkt",
+  "location": {
+    "lat": 51.055,
+    "lon": 3.722,
+    "radius_m": 50.0
+  },
+  "enu_origin": {
+    "lat": 51.055,
+    "lon": 3.722,
+    "ellipsoid_height_m": 0.0
+  },
+  "camera_ground_z_m": 50.83747424667166,
+  "camera_height_m": 2.5,
+  "frequencies_hz": [28000000000.0, 39000000000.0, 60000000000.0],
+  "source_mesh": "data/geometry/korenmarkt/inhouse_leaf_130m.ply",
+  "source_mesh_manifest": "data/geometry/korenmarkt/inhouse_leaf_130m.json",
+  "geometry_selection": {
+    "provider": "Inhouse Photorealistic 3D Tiles",
+    "selection": "deepest available leaf tiles",
+    "observed_geometric_error_m": 2.006368774808128,
+    "acquisition_radius_m": 200.0,
+    "crop_radius_m": 130.0,
+    "leaf_tile_count": 172,
+    "triangle_count": 157744,
+    "coverage_acceptance": "At least 99% of the previous 200 m projection in each validation view"
+  },
+  "geometry_note": "Standalone ENU support mesh. Inhouse triangulation supplies first-hit depth only. Semantic boundary resolution comes from the source image pixels."
+}

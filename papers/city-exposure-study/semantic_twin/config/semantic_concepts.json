@@ -1,0 +1,77 @@
+{
+  "taxonomy": {
+    "entities": [
+      "unknown", "facade", "window", "door", "roof", "road", "pavement", "ground", "water",
+      "vegetation", "tree_trunk", "person", "road_vehicle", "bicycle", "motorcycle", "bollard",
+      "lighting", "utility_pole", "traffic_sign", "traffic_light", "bench", "waste_bin", "bicycle_rack",
+      "table", "chair", "canopy", "planter", "mailbox", "hydrant", "utility_cabinet", "parking_meter",
+      "public_art", "kiosk", "barrier", "railing", "drainpipe", "manhole", "cable"
+    ],
+    "materials": [
+      "unknown", "brick", "concrete", "plasterboard", "wood", "glass", "metal", "marble",
+      "asphalt_concrete", "ceramic", "polymer", "fabric", "soil", "water", "vegetation_effective",
+      "human_tissue", "vehicle_composite"
+    ],
+    "attributes": [
+      "fixed", "movable", "transient", "thin", "reflective", "transparent", "rough", "smooth",
+      "conductive", "porous", "wet", "hollow", "flexible", "layered"
+    ]
+  },
+  "concepts": [
+    {"prompt": "brick facade", "kind": "surface", "entity": {"facade": 1.0}, "material": {"brick": 0.95, "concrete": 0.05}, "attributes": {"fixed": 0.99, "rough": 0.9, "porous": 0.8}},
+    {"prompt": "stone facade", "kind": "surface", "entity": {"facade": 1.0}, "material": {"marble": 0.65, "concrete": 0.25, "unknown": 0.1}, "attributes": {"fixed": 0.99, "rough": 0.75}},
+    {"prompt": "concrete surface", "kind": "surface", "entity": {"facade": 0.7, "pavement": 0.2, "unknown": 0.1}, "material": {"concrete": 0.95, "unknown": 0.05}, "attributes": {"fixed": 0.95, "rough": 0.7}},
+    {"prompt": "plaster facade", "kind": "surface", "entity": {"facade": 1.0}, "material": {"plasterboard": 0.55, "concrete": 0.25, "brick": 0.1, "unknown": 0.1}, "attributes": {"fixed": 0.99, "layered": 0.9}},
+    {"prompt": "glass window", "kind": "surface", "entity": {"window": 1.0}, "material": {"glass": 0.95, "unknown": 0.05}, "attributes": {"fixed": 0.95, "thin": 0.75, "reflective": 0.9, "transparent": 0.95, "smooth": 0.95, "layered": 0.65}},
+    {"prompt": "metal surface", "kind": "surface", "entity": {"unknown": 1.0}, "material": {"metal": 0.98, "unknown": 0.02}, "attributes": {"reflective": 0.9, "smooth": 0.7, "conductive": 0.99}},
+    {"prompt": "wooden surface", "kind": "surface", "entity": {"unknown": 1.0}, "material": {"wood": 0.95, "unknown": 0.05}, "attributes": {"rough": 0.65, "porous": 0.75}},
+    {"prompt": "wooden door", "kind": "surface", "entity": {"door": 1.0}, "material": {"wood": 0.9, "metal": 0.05, "unknown": 0.05}, "attributes": {"fixed": 0.85, "movable": 0.8, "layered": 0.7}},
+    {"prompt": "metal door", "kind": "surface", "entity": {"door": 1.0}, "material": {"metal": 0.95, "unknown": 0.05}, "attributes": {"fixed": 0.85, "movable": 0.8, "reflective": 0.7, "conductive": 0.98}},
+    {"prompt": "roof tile", "kind": "surface", "entity": {"roof": 1.0}, "material": {"ceramic": 0.8, "brick": 0.1, "unknown": 0.1}, "attributes": {"fixed": 0.99, "rough": 0.7, "layered": 0.9}},
+    {"prompt": "asphalt road", "kind": "surface", "entity": {"road": 1.0}, "material": {"asphalt_concrete": 0.95, "unknown": 0.05}, "attributes": {"fixed": 0.99, "rough": 0.85, "wet": 0.15}},
+    {"prompt": "cobblestone paving", "kind": "surface", "entity": {"pavement": 0.8, "road": 0.2}, "material": {"marble": 0.45, "concrete": 0.25, "unknown": 0.3}, "attributes": {"fixed": 0.99, "rough": 0.95, "wet": 0.15}},
+    {"prompt": "paving slab", "kind": "surface", "entity": {"pavement": 1.0}, "material": {"concrete": 0.65, "marble": 0.2, "unknown": 0.15}, "attributes": {"fixed": 0.99, "rough": 0.65}},
+    {"prompt": "painted road marking", "kind": "surface", "entity": {"road": 1.0}, "material": {"polymer": 0.8, "unknown": 0.2}, "attributes": {"fixed": 0.99, "thin": 0.99, "smooth": 0.75}},
+    {"prompt": "bare soil", "kind": "surface", "entity": {"ground": 1.0}, "material": {"soil": 0.95, "unknown": 0.05}, "attributes": {"fixed": 0.99, "rough": 0.9, "porous": 0.9, "wet": 0.2}},
+    {"prompt": "water", "kind": "surface", "entity": {"water": 1.0}, "material": {"water": 1.0}, "attributes": {"reflective": 0.8, "smooth": 0.9, "wet": 1.0}},
+    {"prompt": "foliage", "kind": "surface", "entity": {"vegetation": 1.0}, "material": {"vegetation_effective": 0.95, "unknown": 0.05}, "attributes": {"movable": 0.6, "transient": 0.25, "rough": 0.95, "porous": 0.95, "wet": 0.25}},
+    {"prompt": "tree trunk", "kind": "object", "entity": {"tree_trunk": 1.0}, "material": {"wood": 0.9, "vegetation_effective": 0.1}, "attributes": {"fixed": 0.99, "rough": 0.95, "porous": 0.8}},
+
+    {"prompt": "person", "kind": "object", "entity": {"person": 1.0}, "material": {"human_tissue": 0.65, "fabric": 0.3, "unknown": 0.05}, "attributes": {"movable": 1.0, "transient": 1.0, "rough": 0.6, "flexible": 0.9, "layered": 0.8}},
+    {"prompt": "car", "kind": "object", "entity": {"road_vehicle": 1.0}, "material": {"vehicle_composite": 0.7, "metal": 0.2, "glass": 0.1}, "attributes": {"movable": 0.99, "transient": 0.9, "reflective": 0.8, "conductive": 0.75, "hollow": 0.9, "layered": 0.95}},
+    {"prompt": "van", "kind": "object", "entity": {"road_vehicle": 1.0}, "material": {"vehicle_composite": 0.65, "metal": 0.25, "glass": 0.1}, "attributes": {"movable": 0.99, "transient": 0.9, "reflective": 0.8, "conductive": 0.8, "hollow": 0.9, "layered": 0.95}},
+    {"prompt": "truck", "kind": "object", "entity": {"road_vehicle": 1.0}, "material": {"vehicle_composite": 0.55, "metal": 0.4, "glass": 0.05}, "attributes": {"movable": 0.99, "transient": 0.9, "reflective": 0.8, "conductive": 0.9, "hollow": 0.9, "layered": 0.95}},
+    {"prompt": "bus", "kind": "object", "entity": {"road_vehicle": 1.0}, "material": {"vehicle_composite": 0.55, "metal": 0.3, "glass": 0.15}, "attributes": {"movable": 0.99, "transient": 0.95, "reflective": 0.85, "conductive": 0.85, "hollow": 0.9, "layered": 0.95}},
+    {"prompt": "tram", "kind": "object", "entity": {"road_vehicle": 1.0}, "material": {"metal": 0.6, "vehicle_composite": 0.25, "glass": 0.15}, "attributes": {"movable": 0.99, "transient": 0.9, "reflective": 0.9, "conductive": 0.98, "hollow": 0.9, "layered": 0.95}},
+    {"prompt": "bicycle", "kind": "object", "entity": {"bicycle": 1.0}, "material": {"metal": 0.7, "polymer": 0.2, "unknown": 0.1}, "attributes": {"movable": 1.0, "transient": 0.85, "thin": 0.95, "reflective": 0.6, "conductive": 0.8, "hollow": 0.6}},
+    {"prompt": "motorcycle", "kind": "object", "entity": {"motorcycle": 1.0}, "material": {"metal": 0.55, "vehicle_composite": 0.3, "polymer": 0.15}, "attributes": {"movable": 1.0, "transient": 0.9, "reflective": 0.75, "conductive": 0.8, "hollow": 0.75, "layered": 0.9}},
+    {"prompt": "bollard", "kind": "object", "entity": {"bollard": 1.0}, "material": {"metal": 0.55, "concrete": 0.25, "polymer": 0.1, "unknown": 0.1}, "attributes": {"fixed": 0.9, "movable": 0.15, "reflective": 0.6, "conductive": 0.65, "hollow": 0.5}},
+    {"prompt": "street light", "kind": "object", "entity": {"lighting": 1.0}, "material": {"metal": 0.8, "glass": 0.15, "unknown": 0.05}, "attributes": {"fixed": 0.99, "thin": 0.8, "reflective": 0.7, "conductive": 0.95, "hollow": 0.8}},
+    {"prompt": "utility pole", "kind": "object", "entity": {"utility_pole": 1.0}, "material": {"metal": 0.45, "wood": 0.35, "concrete": 0.15, "unknown": 0.05}, "attributes": {"fixed": 0.99, "thin": 0.75, "conductive": 0.6, "hollow": 0.5}},
+    {"prompt": "traffic sign", "kind": "object", "entity": {"traffic_sign": 1.0}, "material": {"metal": 0.8, "polymer": 0.15, "unknown": 0.05}, "attributes": {"fixed": 0.98, "thin": 0.95, "reflective": 0.95, "conductive": 0.85}},
+    {"prompt": "traffic light", "kind": "object", "entity": {"traffic_light": 1.0}, "material": {"metal": 0.55, "polymer": 0.3, "glass": 0.1, "unknown": 0.05}, "attributes": {"fixed": 0.99, "reflective": 0.65, "conductive": 0.8, "hollow": 0.8, "layered": 0.8}},
+    {"prompt": "bench", "kind": "object", "entity": {"bench": 1.0}, "material": {"wood": 0.45, "metal": 0.35, "concrete": 0.15, "unknown": 0.05}, "attributes": {"fixed": 0.75, "movable": 0.3, "rough": 0.65, "conductive": 0.45}},
+    {"prompt": "trash can", "kind": "object", "entity": {"waste_bin": 1.0}, "material": {"metal": 0.55, "polymer": 0.35, "unknown": 0.1}, "attributes": {"fixed": 0.45, "movable": 0.6, "reflective": 0.5, "conductive": 0.6, "hollow": 0.95}},
+    {"prompt": "bike rack", "kind": "object", "entity": {"bicycle_rack": 1.0}, "material": {"metal": 0.95, "unknown": 0.05}, "attributes": {"fixed": 0.95, "thin": 0.9, "reflective": 0.7, "conductive": 0.98, "hollow": 0.75}},
+    {"prompt": "outdoor table", "kind": "object", "entity": {"table": 1.0}, "material": {"metal": 0.35, "wood": 0.3, "polymer": 0.2, "unknown": 0.15}, "attributes": {"fixed": 0.2, "movable": 0.9, "transient": 0.4, "hollow": 0.6}},
+    {"prompt": "outdoor chair", "kind": "object", "entity": {"chair": 1.0}, "material": {"metal": 0.35, "wood": 0.2, "polymer": 0.3, "unknown": 0.15}, "attributes": {"fixed": 0.05, "movable": 0.99, "transient": 0.5, "hollow": 0.65}},
+    {"prompt": "parasol", "kind": "object", "entity": {"canopy": 1.0}, "material": {"fabric": 0.75, "metal": 0.15, "unknown": 0.1}, "attributes": {"movable": 0.9, "transient": 0.75, "thin": 0.9, "flexible": 0.9, "hollow": 0.95, "layered": 0.5}},
+    {"prompt": "awning", "kind": "object", "entity": {"canopy": 1.0}, "material": {"fabric": 0.65, "polymer": 0.15, "metal": 0.1, "unknown": 0.1}, "attributes": {"fixed": 0.7, "movable": 0.55, "thin": 0.9, "flexible": 0.85, "layered": 0.6}},
+    {"prompt": "planter", "kind": "object", "entity": {"planter": 1.0}, "material": {"concrete": 0.35, "ceramic": 0.25, "metal": 0.15, "wood": 0.1, "unknown": 0.15}, "attributes": {"fixed": 0.45, "movable": 0.55, "rough": 0.7, "hollow": 0.95}},
+    {"prompt": "flower pot", "kind": "object", "entity": {"planter": 1.0}, "material": {"ceramic": 0.45, "polymer": 0.25, "concrete": 0.1, "unknown": 0.2}, "attributes": {"movable": 0.85, "rough": 0.55, "hollow": 0.95}},
+    {"prompt": "mailbox", "kind": "object", "entity": {"mailbox": 1.0}, "material": {"metal": 0.7, "polymer": 0.2, "unknown": 0.1}, "attributes": {"fixed": 0.8, "reflective": 0.6, "conductive": 0.8, "hollow": 0.95}},
+    {"prompt": "fire hydrant", "kind": "object", "entity": {"hydrant": 1.0}, "material": {"metal": 0.95, "unknown": 0.05}, "attributes": {"fixed": 0.99, "reflective": 0.6, "conductive": 0.98, "hollow": 0.8}},
+    {"prompt": "utility cabinet", "kind": "object", "entity": {"utility_cabinet": 1.0}, "material": {"metal": 0.75, "polymer": 0.15, "unknown": 0.1}, "attributes": {"fixed": 0.95, "reflective": 0.65, "conductive": 0.85, "hollow": 0.95}},
+    {"prompt": "parking meter", "kind": "object", "entity": {"parking_meter": 1.0}, "material": {"metal": 0.7, "polymer": 0.15, "glass": 0.1, "unknown": 0.05}, "attributes": {"fixed": 0.99, "reflective": 0.7, "conductive": 0.85, "hollow": 0.9, "layered": 0.8}},
+    {"prompt": "statue", "kind": "object", "entity": {"public_art": 1.0}, "material": {"metal": 0.4, "marble": 0.3, "concrete": 0.2, "unknown": 0.1}, "attributes": {"fixed": 0.99, "reflective": 0.55, "rough": 0.6}},
+    {"prompt": "kiosk", "kind": "object", "entity": {"kiosk": 1.0}, "material": {"metal": 0.35, "glass": 0.25, "wood": 0.15, "polymer": 0.1, "unknown": 0.15}, "attributes": {"fixed": 0.75, "movable": 0.25, "hollow": 0.95, "layered": 0.95}},
+    {"prompt": "temporary barrier", "kind": "object", "entity": {"barrier": 1.0}, "material": {"metal": 0.5, "polymer": 0.4, "unknown": 0.1}, "attributes": {"movable": 0.95, "transient": 0.9, "thin": 0.75, "reflective": 0.65, "conductive": 0.55, "hollow": 0.75}},
+    {"prompt": "handrail", "kind": "object", "entity": {"railing": 1.0}, "material": {"metal": 0.8, "wood": 0.1, "unknown": 0.1}, "attributes": {"fixed": 0.98, "thin": 0.9, "reflective": 0.7, "conductive": 0.9, "hollow": 0.7}},
+    {"prompt": "fence", "kind": "object", "entity": {"railing": 1.0}, "material": {"metal": 0.55, "wood": 0.25, "polymer": 0.1, "unknown": 0.1}, "attributes": {"fixed": 0.95, "thin": 0.85, "conductive": 0.65, "porous": 0.95}},
+    {"prompt": "railing", "kind": "object", "entity": {"railing": 1.0}, "material": {"metal": 0.8, "wood": 0.1, "unknown": 0.1}, "attributes": {"fixed": 0.98, "thin": 0.9, "reflective": 0.7, "conductive": 0.9, "porous": 0.9, "hollow": 0.7}},
+    {"prompt": "drainpipe", "kind": "object", "entity": {"drainpipe": 1.0}, "material": {"metal": 0.65, "polymer": 0.25, "unknown": 0.1}, "attributes": {"fixed": 0.98, "thin": 0.8, "reflective": 0.65, "conductive": 0.7, "hollow": 0.99}},
+    {"prompt": "manhole cover", "kind": "object", "entity": {"manhole": 1.0}, "material": {"metal": 0.95, "unknown": 0.05}, "attributes": {"fixed": 0.99, "thin": 0.75, "reflective": 0.45, "rough": 0.8, "conductive": 0.98}},
+    {"prompt": "overhead cable", "kind": "object", "entity": {"cable": 1.0}, "material": {"metal": 0.55, "polymer": 0.35, "unknown": 0.1}, "attributes": {"fixed": 0.9, "movable": 0.3, "thin": 0.99, "conductive": 0.9, "flexible": 0.9, "layered": 0.8}},
+    {"prompt": "street wire", "kind": "object", "entity": {"cable": 1.0}, "material": {"metal": 0.55, "polymer": 0.35, "unknown": 0.1}, "attributes": {"fixed": 0.9, "movable": 0.3, "thin": 0.99, "conductive": 0.9, "flexible": 0.9, "layered": 0.8}}
+  ]
+}
