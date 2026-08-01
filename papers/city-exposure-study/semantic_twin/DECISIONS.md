@@ -927,58 +927,108 @@ was computed against the superseded geometry. The skyline residual moves from
 registration does not need redoing on accuracy grounds, but the provenance
 should be stated.
 
-### Voxel remeshing is rejected for the production path
+### Voxel remeshing is still rejected, but for one reason instead of four
 
 The support mesh has a real topological defect: 16.6% boundary edges, 34.7 km
 of boundary, 2.29% non-manifold edges, essentially no watertight area. Voxel
-remeshing fixes all of it completely. Measured at Korenmarkt with a 0.30 m
-solidify and a 1 degree planar dissolve:
+remeshing fixes all of it completely.
 
-| voxel | triangles | boundary edges | watertight area | median first-hit normal tilt | median range shift | fishnet face floor |
-|---|---|---|---|---|---|---|
-| none | 157,862 | 42,158 | 0.6% | - | - | 6,271 |
-| 2.00 m | 79,832 | 0 | 100% | 57.7 deg | 2.94 m | 8,933 |
-| 1.00 m | 384,048 | 0 | 100% | 17.5 deg | 0.387 m | 48,758 |
-| 0.50 m | 1,976,934 | 0 | 100% | 12.9 deg | 0.264 m | 99,886 |
-| 0.35 m | 4,481,690 | 0 | 100% | 6.9 deg | 0.208 m | 125,714 |
+**Three of the four reasons first recorded here were wrong, and the measurements
+that produced them were misparameterised.** The original sweep used a 0.30 m
+solidify against voxel grids of 0.5 to 2.0 m, so the wall being represented was
+between 1.7 and 6.7 times thinner than the grid meant to hold it, adaptivity was
+off, and the only decimation was a planar dissolve applied after the voxel pass
+had already destroyed coplanarity. That measures a shell eroding inside a grid,
+not the method. Rerun with thickness equal to voxel size, adaptivity above zero,
+and real collapse decimation, over 19 candidates:
 
-It is rejected for three reasons.
+| candidate | triangles | flat p50/p90 | median range error | bias | sky | face floor | boundary |
+|---|---|---|---|---|---|---|---|
+| as built | 157,862 | 10.1 / 33.6 deg | - | - | 0.203 | 6,032 | 0.166 |
+| 1.00 m, inward, collapse | 85,853 | 10.2 / 30.6 deg | 0.51 m | 0.00 m | 0.207 | 3,321 | 0.000 |
+| 2.00 m | 86,656 | 6.1 / 15.9 deg | 2.68 m | -2.67 m | 0.169 | 2,519 | 0.000 |
+| 0.50 m, inward | 1,761,607 | 8.6 / 27.9 deg | 0.18 m | 0.06 m | 0.206 | 46,975 | 0.000 |
+| 0.25 m | 6,503,770 | 9.2 / 30.0 deg | 0.17 m | -0.17 m | 0.201 | 123,897 | 0.000 |
 
-It defeats the cutter. The fishnet can never emit fewer faces than the visible
-support triangles, and that floor goes from 6,271 to 125,714, a twentyfold
-regression in exactly the quantity `FISHNET.md` exists to reduce. At 0.35 m the
-emitted count collapses onto the floor, 125,835 against 125,714, so the cutter
-stops doing anything at all.
+Retracted: it does not delete a third to a half of the scene. Sky fraction goes
+from 0.203 to 0.207 at 1 m, and only 0.9% of rays that hit the as-built mesh miss
+the candidate. The old 64.8% figure was the thin shell vanishing inside a coarse
+grid. Retracted: it does not raise the fishnet face floor twentyfold. At 1 m with
+collapse the floor is 3,321 against 6,032 as built, a 1.8x improvement in exactly
+the quantity `FISHNET.md` exists to reduce. Retracted: the untested `offset = -1`
+flag was the right suspicion. Growing the shell inward removes the dilation
+exactly, taking range bias from -1.10 m to +0.00 m at the same voxel size.
 
-It costs specular fidelity to buy closure. Median first-hit normal tilt is still
-6.9 deg at the finest size that fits in memory, with p90 at 43 deg and 55.6% of
-visible pixels beyond 5 deg. The curve falls slowly, so sub-degree needs voxels
-well under 0.1 m, which is order 1e8 triangles. The median range shift of 0.21 m
-is comparable to the 0.26 m float32 defect just removed.
+**The surviving reason is single and specific: a level set cannot hold the
+surface still.** Flatness and range fidelity trade against each other
+monotonically and there is no voxel size where both beat as built. 6.1 degrees
+costs 2.68 m of median range error. 0.51 m of range error buys no flatness at
+all. The two candidates that keep range error near 0.2 m land back at 8.6 and 9.2
+degrees, converging on the as-built 10.1, while taking the face floor to 47k and
+124k. Flatness getting worse as the voxel gets finer is the signature of a low
+pass filter, not of noise being removed.
 
-The problem it solves is smaller than the edge table implies. Measured from the
-camera rather than from topology, only 0.091% of first-hit rays land on a back
-face and 1.00% of visible area is inverted. That is two orders below what 16.6%
-boundary edges suggests, because tiles overlap rather than gap.
+**Which means the flatness gain was mostly ornament being deleted.** This was
+stated as an unbounded caveat before and is now bounded. As-built wall relief
+against a 10 m local plane has median amplitude 0.33 m and p90 1.28 m, and its
+spatial correlation is 0.99 at 0.25 to 0.5 m separation, 0.79 at 0.5 to 1 m, 0.66
+at 2 to 3 m, and still 0.28 at 4 to 6 m. Photogrammetric error is uncorrelated at
+the triangle scale. This is not. Most of the 10 degrees is coherent metre-scale
+structure, which is what Ghent facades are made of. The amplitude is an upper
+bound, since a gently curving terrace inflates it, but the correlation length is
+robust.
 
-Two related findings. A 5 degree planar dissolve destroys closure, watertight
-area 100% to 0.74%, from two non-manifold edges breaking the largest component,
-so 1 degree or nothing. And the skyline residual does improve under remeshing,
-1.327 to 0.614 deg at 1.00 m voxels, but the mechanism is the solidify dilating
-the silhouette upward, which happens to cancel the known low-mesh-skyline bias.
-That argues for the explicit bias term already planned, not for a dilation.
+**Ray tracing throughput does not improve, and that hope is retired.** Measured
+with Mitsuba 3.9 over a 75x span in triangle count, from 86k to 6.5M, first hit
+throughput moves only between 6.5 and 12.4 Mray/s, with as built at 9.3 in the
+middle of the range and pass to pass spread on a single mesh reaching 14.5 down
+to 8.7. There is no signal. The 4.5M triangle clean mesh is 30% slower than as
+built and the 86k clean mesh is within noise of it. BVH build time does scale,
+0.17 s to 5.1 s, but traversal does not.
 
-The cheap alternative of welding and orienting per component is worse than doing
-nothing: camera-visible inverted area went from 1.00% to 4.33%, because
-component-level sign voting is too coarse. The targeted fix is to orient per
-face from the camera's own first-hit votes and make the BSDF two-sided, which
-addresses the 1.00% at no geometric cost.
+The problem remeshing solves is also smaller than the edge table implies.
+Measured from the camera rather than from topology, only 0.091% of first-hit rays
+land on a back face and 1.00% of visible area is inverted, two orders below what
+16.6% boundary edges suggests, because tiles overlap rather than gap. The targeted
+fix stays what it was: orient per face from the camera's own first-hit votes and
+make the BSDF two-sided.
 
-One flag remains untested. The solidify ran at `offset = 0`, which straddles the
-surface and moves the visible face outward by 0.15 m, and that accounts for most
-of the range error that plateaus near 0.2 m independent of voxel size.
-`offset = -1` grows the shell inward and should leave the visible face where it
-was. If this question is ever reopened, that is the first rerun.
+If closure ever becomes a hard requirement, for instance a solver that needs a
+watertight volume, the answer is now known and should not be rediscovered:
+`--solidify-m 1.0 --voxel-size-m 1.0 --adaptivity 0.5 --solidify-offset -1.0
+--collapse-ratio 0.2`. That is the only candidate that closes the mesh with zero
+range bias and a face floor below as built. It should not be adopted to make the
+geometry cleaner, because cleaner does not trace faster and does not scatter more
+truthfully.
+
+### Plane primitive reconstruction loses, and the reasons are structural
+
+Representing each flat wall as one polygon with one correct normal was the
+proposed synthesis, on the theory that it would beat both alternatives. It does
+not. Against as built it is worse on closure, 0.33 to 0.47 boundary edge fraction
+against 0.166, far worse on orientation, 17% to 25% of camera-visible area
+inverted against 0.9%, raises the face floor, and cuts triangles by only 1.2x.
+
+Three causes, none of them tuning. The source is a doubly sided vertex-split
+shell, so the front and back sheets of one wall become separate coplanar clusters
+with opposite normals and the back sheet pokes through the front once flattened,
+which is the entire inverted area. Flattening moves vertices onto the plane, so
+every cluster boundary opens a crack against its neighbour up to the distance
+tolerance, and pinning boundary vertices changed nothing measurable. And only 64%
+of camera-visible wall area clusters at all, so the ornament keeps its triangles
+either way.
+
+One caveat in their favour, stated because it is real: the flatness metric is
+biased against meshes whose faces are larger than its 2.5 m fitting window, so it
+under-reads the plane rebuilds. Their honest metric is range error, and there they
+beat every other candidate at 0.01 m. **The mesh rebuild is what fails, not the
+segmentation.**
+
+The segmentation is therefore kept, in `semantic_twin/planes.py`. It yields 5,095
+planar clusters, 665 of them over 20 m2, covering 57% of scene area at a median
+in-plane residual of 1.5 cm. That is the primitive `MONOSTATIC_SBR.md` section 6.3
+wants for image source enumeration, which is a different use from rebuilding the
+support mesh and the one it is actually good for.
 
 ### The support mesh does not have a small-triangle problem
 
@@ -1208,11 +1258,18 @@ Materials in that paper are one flat ITU value per class over five classes, with
 no glass class at all in an urban scene, and the two concrete rows come from
 different revisions of P.2040. Sub-facade material assignment is untouched.
 
-### Voxel remeshing also deletes a third to a half of the scene
+### Retracted: voxel remeshing deletes a third to a half of the scene
 
-The rejection recorded above rested on normals, on the fishnet face floor, and on
-the operational damage being smaller than the edge table implies. A later check
-from the camera found a fourth reason, larger than any of them.
+**This section is wrong and is kept only because the mechanism it identifies is
+worth remembering.** It measured a 0.30 m solidified shell eroding inside voxel
+grids of 0.5 to 2.0 m, and reported the erosion as a property of remeshing. With
+solidify thickness equal to voxel size the effect disappears: sky fraction goes
+from 0.203 as built to 0.207 at 1 m voxels, and 0.9% of rays that hit the
+as-built mesh miss the candidate. See the rejection section above for the
+corrected sweep and for the one reason that does survive.
+
+What follows is the original measurement, left in place because the diagnosis in
+its third paragraph is exactly right and is what eventually explained the error.
 
 Cast the panorama's own rays into each mesh and count how many escape to sky:
 

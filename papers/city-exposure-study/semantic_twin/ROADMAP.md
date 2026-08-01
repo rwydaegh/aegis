@@ -52,11 +52,23 @@ shrank with site altitude and Milan got 116 m from a nominal 200 m. It is now a
 vertical cylinder about the site up axis.
 
 **Rejected: the planar merge of the support mesh by voxel remeshing.** It closes
-the mesh completely, and it is still the wrong move. It raises the fishnet face
-floor twentyfold, costs specular fidelity that no feasible voxel size buys back,
-and at 2 m voxels it deletes the pavement outright. The full argument and the
-measurements are in `DECISIONS.md`. The targeted fix instead is per-face
-orientation from the camera's own first-hit votes plus a two-sided BSDF.
+the mesh completely, and it is still the wrong move, but for one reason rather
+than the four first recorded. Three of those four were measuring a
+misparameterisation, a 0.30 m solidified shell inside voxel grids up to seven
+times coarser, and do not survive a correct rerun: it does not delete the
+pavement, it does not raise the fishnet face floor, and it does not trace faster
+either, which retires the argument in its favour as well. The surviving reason is
+that a level set cannot hold the surface still, so flatness and range fidelity
+trade monotonically and no voxel size beats as built on both. The corrected
+19-candidate sweep and the recipe to use if closure ever becomes mandatory are in
+`DECISIONS.md`. The targeted fix instead is per-face orientation from the
+camera's own first-hit votes plus a two-sided BSDF.
+
+**Kept from that work: plane segmentation, for a different purpose.**
+Reconstructing the support mesh from plane primitives loses on closure and
+orientation because the source is a doubly sided shell, but the segmentation
+itself yields 5,095 planar clusters at a 1.5 cm median in-plane residual and is
+the primitive section 6.3 wants for image source enumeration.
 
 ## Phase 3: pipeline integration. Done
 
