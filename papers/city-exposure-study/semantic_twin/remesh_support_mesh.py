@@ -5,18 +5,25 @@ Run inside Blender from the repository's ``semantic_twin`` directory::
     blender --background --python remesh_support_mesh.py -- \
       --mesh data/geometry/korenmarkt/inhouse_leaf_130m_f64.ply \
       --out outputs/remesh/korenmarkt_v0.50.ply \
-      --solidify-m 0.30 --voxel-size-m 0.50 --planar-angle-deg 1.0
+      --solidify-m 0.50 --voxel-size-m 0.50 --adaptivity 0.5 --planar-angle-deg 1.0
 
 The tile mesh arrives as an open, doubly-sided, vertex-split shell with slivers
 and inconsistent winding. Solidify turns it into a closed volume, the Remesh
 modifier in voxel mode rebuilds that volume as an OpenVDB level set and contours
-it, and the planar decimate tries to give the flat parts back.
+it, and the decimation stages try to give the flat parts back.
 
-The middle step is the one to watch. A level set resamples every surface onto a
-uniform grid, so a facade comes back quantised to the voxel and the contouring is
-not guaranteed to leave it planar. A wavy wall scatters worse than a coarse flat
-one, so the planarity of the result is reported next to the triangle count rather
-than assumed. Nothing here is wired into the production path.
+Two settings decide whether this works at all, and the first run of this script
+got both wrong. The shell has to be at least as thick as the voxel it is about to
+be sampled onto, or the level set cannot resolve it and the wall erodes into lace,
+so ``--solidify-m`` should track ``--voxel-size-m`` rather than sit below it.
+And contouring at ``--adaptivity 0`` emits one quad per voxel face everywhere,
+including across a flat wall where a single large triangle would do.
+
+The middle step is still the one to watch. A level set resamples every surface
+onto a uniform grid, so a facade comes back quantised to the voxel and the
+contouring is not guaranteed to leave it planar. A wavy wall scatters worse than
+a coarse flat one, so the planarity of the result is reported next to the triangle
+count rather than assumed. Nothing here is wired into the production path.
 """
 
 from __future__ import annotations
@@ -61,6 +68,24 @@ def arguments() -> argparse.Namespace:
         type=non_negative_float,
         default=0.3,
         help="Shell thickness in metres before remeshing, zero to skip (default: 0.3)",
+    )
+    parser.add_argument(
+        "--solidify-offset",
+        type=float,
+        default=0.0,
+        help="Solidify offset: 0 straddles the surface, -1 grows the shell inward (default: 0)",
+    )
+    parser.add_argument(
+        "--collapse-ratio",
+        type=non_negative_float,
+        default=0.0,
+        help="Quadric collapse decimate ratio, zero to skip (default: 0)",
+    )
+    parser.add_argument(
+        "--collapse-stage",
+        choices=("before", "after"),
+        default="after",
+        help="Run the collapse decimate before the solidify or after the remesh (default: after)",
     )
     parser.add_argument("--voxel-size-m", type=positive_float, required=True, help="OpenVDB voxel size in metres")
     parser.add_argument(
@@ -131,11 +156,27 @@ def main() -> None:
     started = time.perf_counter()
     stages.append({"stage": "import", "triangles": triangle_count(obj), "seconds": time.perf_counter() - started})
 
+    def collapse() -> None:
+        started = time.perf_counter()
+        modifier = obj.modifiers.new(name="collapse", type="DECIMATE")
+        modifier.decimate_type = "COLLAPSE"
+        modifier.ratio = args.collapse_ratio
+        stages.append(
+            {
+                "stage": f"collapse_{args.collapse_stage}",
+                "triangles": apply_modifier(obj, modifier),
+                "seconds": time.perf_counter() - started,
+            }
+        )
+
+    if args.collapse_ratio > 0.0 and args.collapse_stage == "before":
+        collapse()
+
     if args.solidify_m > 0.0:
         started = time.perf_counter()
         modifier = obj.modifiers.new(name="solidify", type="SOLIDIFY")
         modifier.thickness = args.solidify_m
-        modifier.offset = 0.0
+        modifier.offset = args.solidify_offset
         modifier.use_even_offset = False
         modifier.nonmanifold_thickness_mode = "CONSTRAINTS"
         stages.append(
@@ -150,6 +191,9 @@ def main() -> None:
     stages.append(
         {"stage": "remesh", "triangles": apply_modifier(obj, remesh), "seconds": time.perf_counter() - started}
     )
+
+    if args.collapse_ratio > 0.0 and args.collapse_stage == "after":
+        collapse()
 
     if args.planar_angle_deg > 0.0:
         started = time.perf_counter()
@@ -176,6 +220,9 @@ def main() -> None:
         "generator": "semantic_twin/remesh_support_mesh.py",
         "source_mesh": str(args.mesh.resolve()),
         "solidify_m": args.solidify_m,
+        "solidify_offset": args.solidify_offset,
+        "collapse_ratio": args.collapse_ratio,
+        "collapse_stage": args.collapse_stage,
         "voxel_size_m": args.voxel_size_m,
         "adaptivity": args.adaptivity,
         "planar_angle_deg": args.planar_angle_deg,
