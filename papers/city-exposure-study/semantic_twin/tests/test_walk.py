@@ -182,3 +182,45 @@ def test_coverage_curve_is_monotone_and_ends_at_the_union():
     assert curve[-1]["face_fraction"] == 1.0
     assert curve[-1]["area_fraction"] == 1.0
     assert all(curve[i]["faces"] <= curve[i + 1]["faces"] for i in range(len(curve) - 1))
+
+
+def test_saturation_curve_is_order_averaged_and_ends_at_the_union():
+    from build_walk_twin import saturation_curves
+
+    seen = np.array([[True, False, False], [False, True, False], [False, False, True]])
+    area = np.ones(3)
+    result = saturation_curves(seen, area, permutations=8)
+    assert result["mean_face_fraction"][-1] == pytest.approx(1.0)
+    assert result["mean_faces"][0] == pytest.approx(1.0)
+    # Every order reaches the same union, so the spread must close at the end.
+    assert result["face_fraction_p10"][-1] == pytest.approx(result["face_fraction_p90"][-1])
+
+
+def test_marginal_gain_decays_when_stations_are_redundant():
+    """A saturating set must show a falling marginal, an expanding one must not."""
+    from build_walk_twin import saturation_curves
+
+    faces = 400
+    redundant = np.zeros((6, faces), dtype=bool)
+    redundant[:, :200] = True
+    redundant[np.arange(6), 200 + np.arange(6)] = True
+    disjoint = np.zeros((6, faces), dtype=bool)
+    for index in range(6):
+        disjoint[index, index * 50 : (index + 1) * 50] = True
+
+    area = np.ones(faces)
+    slowing = saturation_curves(redundant, area, permutations=12)["marginal_faces_per_panorama"]
+    steady = saturation_curves(disjoint, area, permutations=12)["marginal_faces_per_panorama"]
+    assert slowing[-1] < 0.05 * slowing[0]
+    assert steady[-1] == pytest.approx(steady[1])
+
+
+def test_random_order_never_beats_the_union():
+    from build_walk_twin import saturation_curves
+
+    rng = np.random.default_rng(5)
+    seen = rng.random((7, 300)) > 0.7
+    result = saturation_curves(seen, np.ones(300), permutations=10)
+    union = seen.any(axis=0).mean()
+    assert result["mean_face_fraction"][-1] == pytest.approx(union)
+    assert all(a <= b + 1e-9 for a, b in zip(result["mean_faces"], result["mean_faces"][1:]))

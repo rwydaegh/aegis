@@ -157,11 +157,11 @@ The curve, which matters more than the endpoint:
 | 5 | 18.39 | 11.46 | 11 | 23.72 | 15.54 |
 | 6 | 19.04 | 12.04 | 12 | **24.14** | **15.87** |
 
-**It has not saturated.** The second panorama is worth 7.9 points of area, but
-the twelfth is still worth 0.42 and the eleventh 1.14, and the increments are not
-decaying towards zero so much as settling onto a slow linear climb. Eight
-panoramas reach 84 % of what twelve reach. Twelve is not the point where more
-stops paying at this site, which is what motivated the larger run below.
+**At twelve it had not visibly saturated.** The second panorama is worth 7.9
+points of area and the twelfth is still worth 0.42, which looked at the time like
+a slow linear climb rather than a turnover. That reading was wrong, and the
+41-station run below shows why: twelve captures is too few to reach the knee, so
+the tail of a twelve-point curve cannot distinguish a plateau from a line.
 
 Note the per-station coverage is nearly flat with range: the station at 2.7 m
 sees 4.64 % and the one at 35.1 m sees 7.25 %. A panorama near the middle of an
@@ -211,6 +211,72 @@ improvement saturates once the hull subtends enough angle to supply a frontal
 look at every reachable surface, which is a much lower count than coverage
 saturation needs. Both are testable with the machinery already written and
 neither has been tested yet.
+
+## Where the curve saturates, and what actually bounds it
+
+The twelve-station result left the curve still climbing, so this ran **every**
+panorama the link graph offers: 41 within the 60 m site radius and 87 within
+80 m, each a full-sphere cast on the f64 mesh. Curves are averaged over 60 random
+acquisition orders, because nearest-first is the order most likely to manufacture
+an apparent saturation by spending its first captures where surface is densest.
+
+**Within a fixed site radius, coverage saturates hard.**
+
+| n | 60 m radius, area % | 80 m radius, area % |
+|---|---|---|
+| 1 | 6.11 | 5.47 |
+| 5 | 16.75 | 17.95 |
+| 10 | 22.35 | 25.85 |
+| 12 | 23.52 | 28.16 |
+| 15 | 25.23 | 31.15 |
+| 20 | 26.80 | 33.56 |
+| 25 | 27.95 | 35.43 |
+| 30 | 28.76 | 37.12 |
+| 41 | **30.58** (all) | 39.79 (at n=40) |
+| 87 | | **44.76** (all) |
+
+The marginal panorama collapses. In the 60 m arm the second capture adds 3,938
+faces and the last five add **182 each, 4.6 % of the second**. In the 80 m arm the
+decay is sharper still, **2.3 %**. This is a genuine turnover, not a slow linear
+climb, and it contradicts what the twelve-station curve suggested. Twelve
+panoramas was simply too few to see the knee.
+
+**But the ceiling is set by how much street you walk, not by how many captures
+you take.** Widening the walk from a 60 m radius to 80 m lifts the achievable
+area fraction from **30.6 % to 44.8 %**, a bigger gain than going from 12 to 41
+panoramas inside 60 m. Extent buys coverage. Count buys the approach to a ceiling
+that extent has already fixed.
+
+So both halves of the coordinator's hypothesis are true, at different scales.
+Capture count binds up to roughly 15 to 25 panoramas; past that street geometry
+binds, and **no number of panoramas recovers the remaining 55 %**. That residue
+is roofs, courtyards, rear elevations and anything with no line of sight to a
+public way. It is a structural property of street-level acquisition and it is why
+the tile texture layer is not optional.
+
+### The budget number for a per-site acquisition
+
+Reading the 60 m arm, which is the geometry a city site actually has:
+
+| target | panoramas |
+|---|---|
+| 77 % of achievable coverage | 12 |
+| 82 % | 15 |
+| **90 %** | **26** |
+| 95 % | 33 |
+
+The marginal area gain per panorama falls below 0.5 points at about **n = 15** and
+below 0.25 points at about **n = 20**. Against a cost of roughly 55 s of GPU
+segmentation plus a skyline registration per panorama, **12 to 16 panoramas per
+site is the efficient budget**, and anything above 25 is buying the last tenth at
+three times the price. If the choice is between 25 panoramas in a tight radius
+and 15 spread over twice the extent, take the extent.
+
+**A single capture is a lottery.** Across random orders the first panorama alone
+delivers anywhere from 1.59 % to 6.29 % of faces, a four-fold spread depending on
+which capture you happen to get. That spread is the strongest argument in this
+document against single-capture twins, and it is invisible unless you resample the
+order.
 
 ## Registration: twelve poses, twelve covariances, and they are not equal
 
