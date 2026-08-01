@@ -43,10 +43,12 @@ first storage backend, not a commitment to preserving the source triangulation.
 A later adaptive surfel or semantic-atlas backend can expose the same posterior
 interface.
 
-The first projection implementation in `project_semantics.py` assigns one
-panorama sample to each source-face centroid. It is retained only as a coarse
-visibility diagnostic. It must not be used as the final semantic surface because
-its boundaries inherit the arbitrary photogrammetry triangulation.
+`project_semantics.py` assigns one panorama sample to each source-face centroid
+and owns the RF export: it is the only writer of `scene.xml`, the Sionna RT
+scene that binds each material group of triangles to an ITU radio material. Its
+semantic boundaries inherit the photogrammetry triangulation, so it is not the
+right source of surface detail, but nothing else currently produces a traceable
+scene and it stays until the fishnet path grows an exporter.
 
 `project_pixel_semantics.py` is the pixel-faithful projection path. It starts
 from each 1024 x 1024 perspective label map and builds adaptive image tiles.
@@ -98,9 +100,15 @@ edge length or texture resolution. Lowering a viewer's screen-space-error target
 can request deeper descendants, but cannot create detail below the leaves served
 by Inhouse.
 
-The Korenmarkt leaf audit reached a geometric error of
-2.006368774808128 m. A second traversal with a zero-metre cutoff found no deeper
-descendants. The blosm route can reach the same source geometry here: its Inhouse
+The deepest reachable leaf at Korenmarkt reports a geometric error of
+2.006368774808128 m, and a second traversal with a zero-metre cutoff found no
+deeper descendants. This number is not a Korenmarkt measurement. The same value
+came back bit-identical at all five sites probed, Korenmarkt, Piazza del Duomo,
+Grand-Place, Times Square and Placa de Catalunya, so it is a global constant of
+the tile level-of-detail scheme rather than a per-site quality signal. What does
+vary between sites is how many leaf tiles the traversal returns, which is the
+number to compare when judging support-mesh density. The blosm route can reach
+the same source geometry here: its Inhouse
 LOD6 band accepts tiles at or below 3 m, so these 2.006 m leaves satisfy its
 highest-detail setting. LOD6 is not generally synonymous with leaf traversal
 because blosm stops at the first in-band content tile. It cannot exceed the

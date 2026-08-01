@@ -291,11 +291,12 @@ python check_skyline_seeds.py \
   --mesh data/geometry/milan_duomo/inhouse_leaf_170m.ply \
   --pose data/panoramas/milan_duomo/alignment/pose_aligned.json \
   --out data/panoramas/milan_duomo/alignment/blender
-
-python make_alignment_figures.py --views data/panoramas/milan_duomo/semantics/views \
-  --renders data/panoramas/milan_duomo/alignment/blender \
-  --out data/panoramas/milan_duomo/alignment/figures
 ```
+
+The last step writes one mesh render per yaw next to the matching inference crop,
+which is how the registration is inspected. There is no figure script any more:
+`make_alignment_figures.py` composited those two directories into overlay JPEGs
+and was deleted with the rest of the one-off figure code.
 
 Note that `camera_ground_z_m` is circular on a fresh site: the mesh has to exist before it can be
 measured, and `semantic_twin.panorama` needs it in the config before it can write `pose_initial.json`.

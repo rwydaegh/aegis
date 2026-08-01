@@ -3,7 +3,7 @@
 Run from ``semantic_twin``::
 
     ~/blender-4.5/blender --background --python render_blender_alignment.py -- \
-      --mesh ../hybrid_twin/scenes/photo/meshes/photogrammetry.ply \
+      --mesh data/geometry/korenmarkt/inhouse_leaf_130m.ply \
       --pose data/panoramas/korenmarkt/alignment/pose_aligned.json \
       --out data/panoramas/korenmarkt/alignment/blender
 """
@@ -19,6 +19,11 @@ import sys
 import bpy
 from mathutils import Matrix, Vector
 
+ROOT = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
+
+from semantic_twin.pano_geometry import panorama_to_world_matrix, view_basis  # noqa: E402
+
 
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -30,26 +35,25 @@ def arguments() -> argparse.Namespace:
     return parser.parse_args(sys.argv[sys.argv.index("--") + 1 :])
 
 
-def axis_angle(axis: Vector, angle_deg: float) -> Matrix:
-    return Matrix.Rotation(math.radians(angle_deg), 3, axis)
-
-
 def panorama_rotation(heading_deg: float, pitch_deg: float, roll_deg: float) -> Matrix:
-    heading = math.radians(heading_deg)
-    right = Vector((math.cos(heading), -math.sin(heading), 0.0))
-    forward = Vector((math.sin(heading), math.cos(heading), 0.0))
-    up = Vector((0.0, 0.0, 1.0))
-    base = Matrix((right, forward, up)).transposed()
-    return base @ axis_angle(Vector((0.0, 1.0, 0.0)), roll_deg) @ axis_angle(Vector((1.0, 0.0, 0.0)), pitch_deg)
+    """Panorama-local to world ENU rotation as a ``mathutils.Matrix``.
+
+    The rotation itself is defined once in
+    :func:`semantic_twin.pano_geometry.panorama_to_world_matrix`. This wrapper
+    exists only so Blender code can multiply it against a ``Vector``.
+    """
+    rotation = panorama_to_world_matrix(heading_deg, pitch_deg=pitch_deg, roll_deg=roll_deg)
+    return Matrix([[float(value) for value in row] for row in rotation])
 
 
 def local_view_basis(yaw_deg: float, pitch_deg: float = 0.0) -> tuple[Vector, Vector, Vector]:
-    yaw = math.radians(yaw_deg)
-    pitch = math.radians(pitch_deg)
-    forward = Vector((math.sin(yaw) * math.cos(pitch), math.cos(yaw) * math.cos(pitch), math.sin(pitch)))
-    right = Vector((math.cos(yaw), -math.sin(yaw), 0.0))
-    up = right.cross(forward)
-    return right, forward, up
+    """Panorama-local view axes as ``mathutils`` vectors.
+
+    Same axes as :func:`semantic_twin.pano_geometry.view_basis`, which is where
+    the convention is defined.
+    """
+    right, forward, up = view_basis(yaw_deg, pitch_deg)
+    return Vector(right), Vector(forward), Vector(up)
 
 
 def camera_matrix(location: Vector, panorama: Matrix, yaw_deg: float, pitch_deg: float = 0.0) -> Matrix:

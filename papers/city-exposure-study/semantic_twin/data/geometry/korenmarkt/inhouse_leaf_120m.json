@@ -251,7 +251,8 @@
     2.006368774808128,
     2.006368774808128
   ],
-  "source_manifest": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/data/tiles/manifest.json",
+  "source_manifest": "unavailable",
+  "source_manifest_note": "This crop predates download_inhouse_tiles.py and was built from a tile cache belonging to a different project in this repository. That cache is not a dependency of the semantic twin and the path is not reproducible, so it is not recorded. Rebuild with download_inhouse_tiles.py if this crop is needed again.",
   "source_payload_bytes": 19370876,
   "source_tile_count": 177,
   "source_tiles": [

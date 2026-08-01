@@ -1,9 +1,21 @@
-"""Project panorama semantics onto the first visible photogrammetry triangles.
+"""Label the support mesh from one panorama and export it as a Sionna RT scene.
+
+This is the only writer of ``scene.xml`` in the repository. It takes the
+photogrammetry triangles as they come, samples the panorama once per face
+centroid, groups the faces by RF material, and emits one PLY per material plus
+the XML that binds each to an ITU radio material. Everything downstream that
+wants a traceable scene comes out of here.
+
+The per-face sampling is coarse on purpose: a face gets exactly one label, so
+semantic boundaries land on the photogrammetry triangulation rather than on the
+image. ``project_pixel_semantics.py`` and ``semantic_twin/fishnet.py`` are the
+boundary-faithful paths. Neither of them exports a scene yet, which is why this
+module stays.
 
 Run in Blender so its BVH settles visibility::
 
     ~/blender-4.5/blender -b -P project_semantics.py -- \
-      --mesh ../hybrid_twin/scenes/photo/meshes/photogrammetry.ply \
+      --mesh data/geometry/korenmarkt/inhouse_leaf_130m.ply \
       --semantics data/panoramas/korenmarkt/semantics/panorama_semantics.npz \
       --semantics-json data/panoramas/korenmarkt/semantics/semantics.json \
       --pose data/panoramas/korenmarkt/alignment/pose_aligned.json \
@@ -22,7 +34,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import pathlib
 import sys
 
@@ -31,39 +42,15 @@ import numpy as np
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+from semantic_twin.blender_mesh import mesh_arrays  # noqa: E402
 from semantic_twin.export import compact, scene_xml, write_ply  # noqa: E402
+from semantic_twin.pano_geometry import panorama_to_world_matrix  # noqa: E402
+from semantic_twin.taxonomy import is_object  # noqa: E402
 
 # Material id 0 is the real ``unknown`` class, which a segmenter can genuinely
 # assign to an observed surface. Never-observed geometry therefore needs its own
 # out-of-band value so a consumer can tell "seen, unclassified" from "not seen".
 UNOBSERVED_MATERIAL = int(np.iinfo(np.uint16).max)
-
-OBJECT_WORDS = {
-    "person",
-    "rider",
-    "bicyclist",
-    "motorcyclist",
-    "animal",
-    "bird",
-    "car",
-    "truck",
-    "bus",
-    "vehicle",
-    "motorcycle",
-    "bicycle",
-    "boat",
-    "caravan",
-    "trailer",
-    "bollard",
-    "bench",
-    "trash can",
-    "traffic light",
-    "traffic sign",
-    "street light",
-    "pole",
-    "fire hydrant",
-    "bike rack",
-}
 
 RF_TO_ITU = {
     "unknown": "concrete",
@@ -96,42 +83,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def panorama_rotation(heading_deg: float, pitch_deg: float, roll_deg: float) -> np.ndarray:
-    def axis_angle(axis, angle_deg):
-        axis = np.asarray(axis, dtype=float)
-        axis /= np.linalg.norm(axis)
-        x, y, z = axis
-        angle = math.radians(angle_deg)
-        c, s, c1 = math.cos(angle), math.sin(angle), 1.0 - math.cos(angle)
-        return np.array(
-            [
-                [c + x * x * c1, x * y * c1 - z * s, x * z * c1 + y * s],
-                [y * x * c1 + z * s, c + y * y * c1, y * z * c1 - x * s],
-                [z * x * c1 - y * s, z * y * c1 + x * s, c + z * z * c1],
-            ]
-        )
-
-    heading = math.radians(heading_deg)
-    right = np.array([math.cos(heading), -math.sin(heading), 0.0])
-    forward = np.array([math.sin(heading), math.cos(heading), 0.0])
-    up = np.array([0.0, 0.0, 1.0])
-    base = np.column_stack([right, forward, up])
-    return base @ axis_angle((0, 1, 0), roll_deg) @ axis_angle((1, 0, 0), pitch_deg)
-
-
-def mesh_arrays(obj) -> tuple[np.ndarray, np.ndarray]:
-    mesh = obj.data
-    mesh.calc_loop_triangles()
-    vertices = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
-    mesh.vertices.foreach_get("co", vertices)
-    vertices = vertices.reshape(-1, 3)
-    matrix = np.array(obj.matrix_world)
-    vertices = vertices @ matrix[:3, :3].T + matrix[:3, 3]
-    faces = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int64)
-    mesh.loop_triangles.foreach_get("vertices", faces)
-    return vertices, faces.reshape(-1, 3)
-
-
 def sample_panorama(
     directions: np.ndarray,
     rotation: np.ndarray,
@@ -148,11 +99,6 @@ def sample_panorama(
     x = np.floor(u * entity.shape[1]).astype(int)
     y = np.floor(v * entity.shape[0]).astype(int)
     return entity[y, x], material[y, x], confidence[y, x]
-
-
-def is_object(label: str) -> bool:
-    text = label.casefold()
-    return any(word in text for word in OBJECT_WORDS)
 
 
 def assign_materials(face_material: np.ndarray, visible: np.ndarray) -> np.ndarray:
@@ -223,10 +169,10 @@ def main() -> None:
     material_names = {int(k): v for k, v in document["material_id2label"].items()}
     pose = json.loads(args.pose.read_text())
     camera = np.asarray(pose["position_enu_m"], dtype=float)
-    rotation = panorama_rotation(
+    rotation = panorama_to_world_matrix(
         float(pose["heading_deg"]),
-        float(pose.get("pitch_correction_deg", 0.0)),
-        float(pose.get("roll_correction_deg", 0.0)),
+        pitch_deg=float(pose.get("pitch_correction_deg", 0.0)),
+        roll_deg=float(pose.get("roll_correction_deg", 0.0)),
     )
 
     directions = centroids - camera

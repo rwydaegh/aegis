@@ -24,7 +24,6 @@ from mathutils.bvhtree import BVHTree
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from project_semantics import is_object, mesh_arrays  # noqa: E402
 from render_blender_alignment import (  # noqa: E402
     camera_matrix,
     cylinder_between,
@@ -34,13 +33,16 @@ from render_blender_alignment import (  # noqa: E402
     panorama_rotation,
     setup_scene,
 )
-from render_projected_semantics import PREFERRED_COLOURS, fallback_colour  # noqa: E402
+from semantic_twin.blender_mesh import mesh_arrays  # noqa: E402
+from semantic_twin.palette import PREFERRED_COLOURS, fallback_colour  # noqa: E402
+from semantic_twin.pano_geometry import PerspectiveView, perspective_direction_at  # noqa: E402
 from semantic_twin.pixel_projection import (  # noqa: E402
     SemanticTile,
     adaptive_semantic_tiles,
     edge_aware_smooth_depth,
     plane_fit_error,
 )
+from semantic_twin.taxonomy import is_object  # noqa: E402
 
 
 def arguments() -> argparse.Namespace:
@@ -65,17 +67,24 @@ def arguments() -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def pixel_boundary_direction(x: float, y: float, width: int, height: int, yaw_deg: float) -> Vector:
-    """Panorama-local ray through a perspective-view pixel boundary."""
-    yaw = math.radians(yaw_deg)
-    forward = Vector((math.sin(yaw), math.cos(yaw), 0.0))
-    right = Vector((math.cos(yaw), -math.sin(yaw), 0.0))
-    up = right.cross(forward)
-    tangent_x = math.tan(math.radians(45.0))
-    tangent_y = tangent_x / (width / height)
-    image_x = (x / width * 2.0 - 1.0) * tangent_x
-    image_y = (1.0 - y / height * 2.0) * tangent_y
-    return (forward + image_x * right + image_y * up).normalized()
+def pixel_boundary_direction(
+    x: float,
+    y: float,
+    width: int,
+    height: int,
+    yaw_deg: float,
+    *,
+    pitch_deg: float = 0.0,
+    fov_deg: float = 90.0,
+) -> Vector:
+    """Panorama-local ray through a perspective-view pixel boundary.
+
+    The crop geometry comes from :mod:`semantic_twin.pano_geometry`, so a change
+    to the inference field of view or the addition of the pitched crops moves the
+    depth maps and the imagery together instead of silently apart.
+    """
+    view = PerspectiveView(f"h{pitch_deg:+03.0f}_{yaw_deg:03.0f}", yaw_deg, pitch_deg, fov_deg)
+    return Vector(perspective_direction_at(view, x, y, width, height))
 
 
 class SurfaceProjector:

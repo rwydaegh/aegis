@@ -13,7 +13,9 @@
   "camera_ground_z_m": 162.93862133337055,
   "camera_ground_z_note": "One scene-wide constant, which is a known weakness of the current code. It is the median topmost tile surface over a 6 by 6 m patch centred on the acquired panorama at ENU (1.025, 0.724) m, so it is the ellipsoidal height of the Piazza del Duomo pavement under that one camera and nothing else. Sampling spread over that patch is 0.032 m standard deviation, 0.122 m peak to peak. The same measurement reproduces Korenmarkt's shipped 50.837 m to within 0.033 m. Every future panorama in this scene inherits this single value, so any camera standing on the cathedral steps or on the Galleria threshold will start with a biased altitude.",
   "camera_height_m": 2.5,
-  "frequencies_hz": [28000000000.0, 39000000000.0, 60000000000.0],
+  "frequencies_hz": [28000000000.0, 39000000000.0],
+  "extrapolated_frequencies_hz": [60000000000.0],
+  "frequency_note": "Same split as korenmarkt.json. 60 GHz is outside the ITU-R P.2040-4 band for brick and asphalt_concrete, which stop at 40 GHz, so it is an explicit opt-in requiring allow_extrapolation=True and an indicative_extrapolation applicability flag. Marble, which the cathedral facade needs, is tabulated to 60 GHz and is not the constraint here.",
   "source_mesh": "data/geometry/milan_duomo/inhouse_leaf_170m.ply",
   "source_mesh_manifest": "data/geometry/milan_duomo/inhouse_leaf_170m.json",
   "geometry_selection": {
