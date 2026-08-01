@@ -148,12 +148,39 @@ across the traced locations the two agree to every digit printed, median 0.2599
 against 0.2599. That single check exercises the direction binning, the solid angle
 weights, the occlusion test and the normalisation at once.
 
-**Caveat that matters more than any number in the pilot.** Materials in this run
-are assigned geometrically, by which way a triangle points, with the semantic
-posterior not yet bound in. So the pilot currently demonstrates a working tracer
-over Google photogrammetry, which is not novel, rather than a semantically bound
-one, which is the entire thesis. Binding the fishnet posterior in, and reporting
-how far the exposure distribution moves when it is, is the outstanding item.
+Bounce depth and ray count are now measured rather than assumed. Susceptibility
+reaches 0.29894 at four bounces against 0.29902 at six and above, while the
+truncated throughput share falls from 0.567 at one bounce to 6.9e-4 at four and to
+zero by eight. Four bounces is the operating point. Sky fraction is 0.24596 at
+200,000 rays and 0.2459935 at 2,000,000, so the ray count is converged well below
+where it was set.
+
+### The finding hiding in the manifest
+
+A second run bound the semantic posterior in as the material source, over 120
+locations. Its manifest reports the area fraction carrying each class, and that
+is the number to read:
+
+**The semantic classes together cover about 3 percent of scene area.** Brick 2.53
+percent, marble 0.22, metal 0.15, asphalt 0.10, concrete and glass essentially
+zero. The geometric fallback covers the other 97 percent.
+
+That is not a defect, it is the coverage result arriving from the other direction.
+One panorama is a first hit on 4.4 percent of scene area, so a single capture twin
+can only bind materials from evidence on a few percent of the surface and must
+guess the rest from surface orientation. Which means the two runs do not compare
+geometric materials against semantic ones. They compare a 97 percent geometric
+scene against a 97 percent geometric scene, and any difference between them is the
+effect of 3 percent of the surface.
+
+The experiment this sets up is the one that ties the project together: vary the
+fraction of the scene carrying image evidence, from 3 percent at one panorama to
+24 percent at twelve, and measure how far the exposure distribution moves. If it
+barely moves, semantic material binding does not matter much at these frequencies
+and this study should say so. If it moves a lot, single capture twins are unfit
+and the walk is mandatory across all eleven cities. If it moves and then flattens,
+the flattening point is how much evidence a site actually needs, which is a design
+number nobody currently has.
 
 ## Ten cities
 
