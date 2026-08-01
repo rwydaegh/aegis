@@ -309,15 +309,38 @@ marked `periodic_dominant` or `two_scale_periodic_plus_random` record the pitch,
 the step height and the joint width in a `periodic_component` block, and
 `SurfaceRoughnessPrior.specular_power_fraction` raises unless the caller passes
 `allow_periodic=True`. Their `rms_height_mm` is an equivalent-height placeholder
-that exists so the field is populated, not a description of the surface. Nothing
-downstream models the grating yet. The refusal is there so that gap stays visible
-instead of being absorbed into a plausible-looking scattering coefficient.
+that exists so the field is populated, not a description of the surface. The
+refusal is there so that gap stays visible instead of being absorbed into a
+plausible-looking scattering coefficient, and it should stay.
 
 The point sharpens once the random component turns out to be small. If a brick
 face carries 0.1 to 0.3 mm of random roughness, which is nearly specular at
 28 GHz, then essentially all of a brick wall's non-specular behaviour comes from
 the joint grid, and modelling it as Gaussian roughness gets both the magnitude and
 the angular distribution wrong.
+
+**This is no longer a hypothesis for brickwork.** `MASONRY.md` computes it, from
+construction geometry alone, with a rigorous coupled-wave solve as the reference
+and a Kirchhoff phase screen carrying the sweep. Three results from that work bear
+directly on this table and are not repeated in full here.
+
+- The specular power a brick wall keeps has a closed form,
+  `|(1 - f) exp(-psi^2 sigma^2 / 2) + f exp(-i psi d)|^2` with `psi = 2 k cos(theta)`,
+  in the mortar area fraction `f`, the joint recess `d` and the unit face-offset
+  scatter `sigma`. It is periodic in `d`, not decaying, so no RMS height describes
+  it above `d = lambda / (2 pi cos theta)`, which is 1.7 mm at 28 GHz.
+- Below that limit the equivalent RMS height is
+  `s^2 = f (1 - f) d^2 + (1 - f) sigma^2`, which for UK brickwork with a 5 mm
+  recess and the EN 771-1 R1 tolerance is **2.60 mm**, and which reaches Landron's
+  measured 0.5 cm at a 12.4 mm recess. The `brick_wall_with_mortar_joints` entry
+  in the table below carries 0.03 mm, which is the face and not the wall, and the
+  two must never be confused.
+- The mechanism is the recess, not the dielectric contrast between brick and
+  mortar. At 10 GHz, giving mortar a permittivity of 7 against brick's 3.91, far
+  beyond any measured contrast, puts 0.7 percent of the specular power into the
+  diffraction orders. A 5 mm recess puts 27 percent, and it also removes 43
+  percent of the specular power outright, part of it into the orders and part of
+  it into the wall, because a recessed joint is a partial impedance match.
 
 ## The circularity chain, and why the table avoids it
 
@@ -554,19 +577,32 @@ not come from Gaussian micro-roughness, and the interval this leaves open is wid
   power that campaigns actually measure, and it arrives in a comb of grating orders
   at computable angles rather than in a smooth lobe.
 
-Both readings are consistent with the evidence assembled here. This document does
-not pick between them, because picking would be an assertion rather than a result.
-What it does say is that the two readings imply different architectures, and that
-building for one and discovering the other is expensive.
+Both readings were consistent with the evidence assembled here, and this section
+originally declined to pick between them. **For brickwork the calculation in
+`MASONRY.md` now picks the second, and it turns out to be both.** The diffuse
+fraction is set by facade structure, and about a quarter of it arrives in a comb
+of grating orders at computable angles while the rest arrives as a smooth lobe
+whose width is set by the brick dimensions rather than by any fitted exponent.
+The two readings were not alternatives.
 
 **The measurement that would close it.** A bistatic scan at 28 GHz across one
 metre-square patch of a real facade, at fixed incidence, with enough angular
 resolution to separate a smooth lobe from discrete orders. If the non-specular
 return is a comb whose spacing matches `lam / d` for the visible course pitch, it
-is structure. If it is a smooth lobe, it is roughness. Nothing in the literature
-does this: every mmWave campaign either uses a coupon with no joints or a whole
-building with no angular resolution on a single patch. That is the gap, and it is
-one afternoon of anechoic time on a sample of real brickwork.
+is structure. If it is a smooth lobe, it is roughness.
+
+The requirement can now be stated quantitatively rather than as an aspiration.
+The computed comb sits 13 to 16 dB above its own local trend through a 3 to 5
+degree beam at 10 GHz and 3.5 to 8.7 dB at 28 GHz, against an instrumental floor
+near 2 dB in the one comparable published scan. So at FR2 the measurement needs a
+beam of 3 degrees or narrower and must be published unsmoothed, while at FR3 an
+ordinary 10 degree horn would still see 9 dB of it. The cheapest version of this
+experiment is therefore at 10 GHz, not at 28. It also turns out that such a scan already exists: Pascual-Garcia and
+co-workers swept a real brick wall at 57 to 66 GHz with a 3.5 degree lens beam at
+0.6 degree steps and published it through an eleven-point boxcar spanning 5
+degrees, which is almost exactly the comb spacing. Asking those authors for the
+raw traces is cheaper than an afternoon of anechoic time and would settle it
+outright.
 
 ### The recommendation
 
@@ -578,20 +614,23 @@ fitted stand-in for structure you chose not to model.** What each costs:
 - **Explicit geometry**, modelling the joint recess and reveal as surface relief.
   Most defensible, because it makes a physical claim that can be falsified, and the
   semantic layer already estimates course pitch from imagery. Costs triangles and
-  needs the pitch, which for Belgian brickwork is not the British 75 mm and was not
-  verified here.
+  needs the pitch. The Belgian pitch is now verified and it is not the British
+  75 mm: Waalformaat is on 60 mm and the Belgian module M50 on 60 mm, while M65
+  reaches 75 mm on a 200 mm rather than a 225 mm stretcher. Formats and sources are
+  in `outputs/masonry_grating/brick_formats.json`.
 - **A grating term** at a stated pitch, with the orders computed analytically.
   Cheap, keeps the determinism, and degrades gracefully because a wrong pitch gives
-  wrong angles rather than wrong energy. Nothing downstream implements it. This is
-  the recommendation for classes where the pitch is estimable but the relief is
-  not.
-- **An effective sigma** fitted to reproduce the observed diffuse fraction. Cheapest
-  and the only option today, since it is what Sionna consumes. It costs the most
-  defensibility: the value is not a surface property, it does not transfer between
-  campaigns, it will not scale correctly with frequency, and it silently absorbs
-  the twin's own geometry error, which is precisely the failure this document
-  documents. Acceptable only if labelled as such in the provenance dictionary,
-  which `radio_material_from_roughness` already does.
+  wrong angles rather than wrong energy. `semantic_twin/floquet.py` implements the
+  order geometry and `semantic_twin/kirchhoff.py` the amplitudes. This is the
+  recommendation for classes where the pitch is estimable but the relief is not.
+- **An effective sigma**, which for brickwork is no longer fitted. It is
+  `sqrt(f (1 - f) d^2 + (1 - f) sigma_unit^2)` from `MASONRY.md`, valid while
+  `d < lambda / (2 pi cos theta)`. For other periodic classes it remains a fit and
+  the criticism below stands unchanged: the value is not a surface property, it
+  does not transfer between campaigns, it will not scale correctly with frequency,
+  and it silently absorbs the twin's own geometry error. Acceptable only if
+  labelled as such in the provenance dictionary, which
+  `radio_material_from_roughness` already does.
 
 ### Smaller consequences worth carrying
 
@@ -600,12 +639,19 @@ fitted stand-in for structure you chose not to model.** What each costs:
   A single `scattering_coefficient` at one `reference_incidence_deg` cannot track
   that, so the reference angle should be chosen per link geometry rather than
   globally.
-- **The angular dependence may be steeper than `cos^2`.** Inverting a 28 GHz
-  reflection-coefficient sweep on real limestone and brick walls gives an implied
-  RMS height that drifts down by about 1.5 times from 5 to 45 degrees, where a
-  correct `cos^2` inside the exponent would hold it constant, and breaks entirely
-  at 60 degrees. That is one dataset with a within-angle spread rivalling the
-  drift, so it is a flag rather than a result.
+- **The one 28 GHz sweep on real walls cannot carry the weight often put on it.**
+  Inverting Dillard's reflection-coefficient sweep on real limestone and brick
+  walls gives an implied RMS height that drifts down by about 1.5 times from 5 to
+  45 degrees, where a correct `cos^2` inside the exponent would hold it constant,
+  and breaks entirely at 60 degrees where the measured return exceeds the
+  smooth-surface Fresnel bound. Reading the full thesis for `MASONRY.md` settled
+  why. Its table 4.2 shows four repeats at each angle spanning a factor of 3.3 to
+  8.4 in amplitude with standard deviations at or above the means, the brick and
+  limestone clouds overlap completely below 60 degrees, and the absolute
+  calibration rests entirely on a sidelobe gain estimate that was independently
+  checked at two angles and was out by factors of 0.6 and 2.0 in amplitude at
+  one of them. This dataset fixes an order of magnitude and a trend with
+  incidence angle. It does not discriminate materials or surface finish.
 - **Wet surfaces were not resolved.** No source located quantifies the effect of a
   water film on radio roughness. A film fills the texture and should raise the
   specular fraction, and `config/semantic_concepts.json` already carries a `wet`
