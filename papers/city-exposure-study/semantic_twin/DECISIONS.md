@@ -1140,15 +1140,18 @@ small cells, the geometry most relevant to 5G in a city centre, are the worst
 affected**, and they are the model whose absolute numbers a 130 m crop least
 supports.
 
-**The mechanism is not yet fully accounted for.** Widening the crop newly blocks
-about 2.3 percent of the rooftop model's measure, which accounts for 0.1 dB
-against a measured 3.24, so blocking alone is short by a factor of thirty. The
-likely missing piece is that what matters is the throughput redistributed away
-from grazing exit directions, where the 1/sin^3 law makes the weight enormous,
-rather than the solid angle newly blocked. That is testable by binning escaping
-throughput against exit elevation at both radii. The effect is solid, reproduced
-by two observer sets and two scripts to within a quarter of a decibel. The
-explanation is provisional.
+**The mechanism is measured, and an earlier claim here that it was short by a
+factor of thirty was an arithmetic error.** The newly blocked sliver carries 2.3
+percent of the rooftop model's illumination measure, which is an absolute
+addition to a small number rather than a fractional loss of a large one: the
+converged rooftop susceptibility is 0.043, so removing 0.023 from the 0.091 a
+130 m crop reports is 1.2 dB, not the 0.1 dB that reading it as a percentage
+gives.
+
+Decomposed exactly, with susceptibility split into its zero bounce and multi
+bounce parts with no residual, **blocking accounts for 69 to 77 percent of the
+effect and redistribution of multi bounce throughput for the rest**. Both are
+real and neither alone explains it.
 
 **Acquire at 250 m minimum, 300 m for comfort.** At 250 m all three models are
 within 0.19 dB and at 300 m within 0.05.

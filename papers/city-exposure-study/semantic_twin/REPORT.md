@@ -319,17 +319,33 @@ elevation with a median of 3.4. The sign is the opposite of the intuitive worry
 throughout: a small crop is not missing scatterers that would add power, it is
 missing blockers that would remove it.
 
-**The mechanism is not yet fully accounted for, and I am flagging that rather than
-smoothing it over.** Widening the crop newly blocks only about 2.3 percent of the
-rooftop model's measure, which can account for 0.1 dB. The measured effect is
-3.24. So blocking alone is short by a factor of thirty and the story above is
-incomplete as stated. The likely missing piece is that what matters is not how
-much solid angle becomes blocked but how much **throughput** is redistributed away
-from grazing exit directions, where the 1/sin^3 illumination law makes the weight
-enormous. That is directly testable by binning escaping throughput against exit
-elevation at both radii, and it is being checked. The effect itself is solid,
-having been reproduced independently by two observer sets and two scripts agreeing
-to a quarter of a decibel. It is the explanation that is provisional.
+**I claimed here that the mechanism was short by a factor of thirty. That was my
+arithmetic error, not a gap in the physics.** The newly blocked sliver carries
+2.3 percent of the rooftop model's illumination measure, and I read that as a
+2.3 percent fractional loss, giving 0.1 dB against a measured 3.24. But the share
+is an **absolute addition to a small number, not a fractional loss of a large
+one**: the converged rooftop susceptibility is only 0.043, so removing 0.023 from
+the 0.091 that a 130 m crop reports is 1.2 dB, not 0.1. The sliver is small on the
+sphere and large in the answer precisely because the rooftop weight is
+concentrated at those elevations.
+
+With the arithmetic right, the mechanism was then decomposed exactly rather than
+argued from a proxy. Susceptibility splits with no residual into a zero bounce
+part, which is blocking, and a multi bounce part, which is redistribution, and
+both are already computed:
+
+| model | blocking | redistribution |
+|---|---|---|
+| isotropic | 69.2 % | 30.8 % |
+| macro rooftop | 69.2 % | 30.8 % |
+| street small cells | 76.9 % | 23.1 % |
+
+**Blocking dominates at 69 to 77 percent and redistribution is the rest.** Both
+are real, neither alone accounts for the effect, and the split is measured rather
+than inferred. Directly observed, the rays a 130 m crop wrongly lets escape are
+0.18 percent of the sphere at elevations of 0.1 to 6.4 degrees, and the geometry
+that should have blocked them sits at 138 to 184 m horizontal, just outside the
+crop. A sliver of sky that should have been brick.
 
 The consequence lands on the case that matters most. **Street level small cells
 are the geometry most relevant to dense urban deployment and they are the worst
