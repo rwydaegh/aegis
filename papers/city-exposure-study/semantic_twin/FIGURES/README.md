@@ -199,8 +199,14 @@ phantom.
 
 The two outer panels are labelled as crop-limited upper bounds in their own titles
 rather than in a footnote, because at 130 m a scene contains nothing that can
-occlude a macro site at 250 m. Comparison between cities at a common radius is
-unaffected, since the bias is a property of the radius.
+occlude a macro site at 250 m.
+
+**Read the directional panels as provisional.** The correction to 250 m is not a
+constant: across the first four cities re-run it ranges from 0.05 to 4.58 dB
+rooftop and 1.02 to 11.37 street, which is comparable to the 4.20 dB between-city
+spread the figure shows. So the directional curves are distorted relative to each
+other rather than merely shifted together. The sky fraction panel is converged and
+carries no such caveat. The corrected version is `cities250_15ghz_cdf.png`.
 
 The ordering runs from Brussels' enclosed Grand-Place at the left to Krakow's open
 Rynek at the right, spanning 4.20 dB in median. The spread within a single square
