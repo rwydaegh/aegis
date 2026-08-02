@@ -11,18 +11,19 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
 
 ## The short version
 
-- **Eleven squares are now built**, nine acquired tonight, all in double
-  precision at a common radius, for 3,216 tile requests and about three minutes
-  of wall clock. Ten of them carry an exposure distribution, Milan being held out
-  of the comparison because its crop predates the set at 170 m. Sky fraction runs
-  from 18 percent at Times Square to 46 percent at Krakow, which is the geometric
-  spread this study exists to turn into an exposure distribution.
-- **The first exposure distributions exist.** Where a pedestrian stands along one
-  square's walk is worth 3.5 dB under isotropic illumination and 12.5 dB under
-  rooftop macro sites, and carries through to 13.0 dB in whole body SAR. The
-  assumed source geometry moves the answer further than position does. A split
-  half test says these characterise the walk rather than the square, so an area
-  representative figure needs a sampling design.
+- **Eleven squares are built and all eleven are compared**, nine acquired
+  tonight, then all re-acquired at 250 m once the crop sweep said 130 was too
+  small. Sky fraction runs from 18 percent at Times Square to 46 percent at
+  Krakow, which is the geometric spread this study exists to turn into an
+  exposure distribution.
+- **Eleven cities now carry an exposure distribution at the converged crop
+  radius.** The median spans 5.13 dB isotropic and 14.49 dB rooftop between
+  cities, while the largest spread *within* one square is 6.15 dB isotropic and
+  12.73 dB rooftop. **Under isotropic illumination the variation inside one
+  square exceeds the variation between eleven cities on three continents.** A per
+  city figure therefore averages over a variation larger than the differences it
+  reports. A split half test says these characterise the walk rather than the
+  square, so an area representative number needs a sampling design.
 - **Image evidence barely moves exposure, and this is now conclusive.** Going
   from no image evidence at all to a tenth of the scene bound by it shifts the
   median 0.29 dB and moves exactly one location in 120 by more than a decibel. A
@@ -324,94 +325,43 @@ because no such scene exists here. The saturation work says one cannot be built
 from the street: roofs, courtyards and rear elevations are 55 percent of the
 surface and no panorama count reaches them.
 
-## Ten cities compared
+## Eleven cities compared
 
-80 walk locations per city at 15 GHz, one common 130 m radius, one common material
-treatment, so what varies between rows is urban form and nothing else.
+80 walk locations per city at 15 GHz, one common 250 m crop radius where the
+directional illumination models converge, one common material treatment, so what
+varies between rows is urban form and nothing else.
 
-| site | sky | isotropic median | within-city spread | rooftop median | rooftop spread |
-|---|---|---|---|---|---|
-| Rynek Glowny, Krakow | 0.462 | 0.534 | 0.80 dB | 0.714 | 3.06 dB |
-| Zocalo, Mexico City | 0.374 | 0.420 | 2.25 dB | 0.247 | 10.01 dB |
-| Place du Capitole, Toulouse | 0.069 | 0.401 | 2.41 dB | 0.102 | 8.63 dB |
-| Trafalgar Square, London | 0.372 | 0.395 | 3.56 dB | 0.140 | 5.22 dB |
-| Staromestske, Prague | 0.343 | 0.366 | 4.35 dB | 0.090 | 7.23 dB |
-| Plaza Mayor, Madrid | 0.321 | 0.350 | 6.48 dB | 0.035 | 7.86 dB |
-| Korenmarkt, Ghent | 0.248 | 0.301 | 3.10 dB | 0.139 | 11.68 dB |
-| Hachiko, Tokyo | 0.270 | 0.257 | 3.28 dB | 0.102 | 10.98 dB |
-| Grand-Place, Brussels | 0.267 | 0.226 | 5.96 dB | 0.033 | 14.84 dB |
-| Times Square, New York | 0.179 | 0.203 | 5.35 dB | 0.204 | 8.52 dB |
+| site | isotropic median | within-city spread | rooftop median | rooftop spread |
+|---|---|---|---|---|
+| Rynek Glowny, Krakow | 0.5305 | 0.77 dB | 0.7052 | 3.03 dB |
+| Place du Capitole, Toulouse | 0.3992 | 2.31 dB | 0.0981 | 8.06 dB |
+| Zocalo, Mexico City | 0.3974 | 2.14 dB | 0.0816 | 6.42 dB |
+| Trafalgar Square, London | 0.3894 | 3.54 dB | 0.0767 | 4.29 dB |
+| Staromestske, Prague | 0.3626 | 4.33 dB | 0.0631 | 6.37 dB |
+| Piazza del Duomo, Milan | 0.3538 | 2.73 dB | 0.0799 | 4.16 dB |
+| Plaza Mayor, Madrid | 0.3473 | **6.15 dB** | 0.0341 | 8.87 dB |
+| Korenmarkt, Ghent | 0.2917 | 2.85 dB | 0.0483 | 7.10 dB |
+| Grand-Place, Brussels | 0.2351 | 5.96 dB | 0.0251 | **12.73 dB** |
+| Hachiko, Tokyo | 0.2238 | 3.42 dB | 0.0363 | 8.97 dB |
+| Times Square, New York | 0.1629 | 3.67 dB | 0.0924 | 7.58 dB |
 
-**The median susceptibility spans 4.20 dB across the ten cities.** The
-within-city spread reaches 6.48 dB under isotropic illumination and 14.84 dB under
-rooftop sites. So **where a person stands within one square matters as much as
-which city the square is in, and often more.**
+**Across eleven cities the median susceptibility spans 5.13 dB isotropic and
+14.49 dB rooftop. The largest spread within a single square is 6.15 dB isotropic
+and 12.73 dB rooftop.**
 
-**A sampling caveat that limits how far that can be pushed.** Splitting one site's
-locations into two contiguous halves gives a Kolmogorov-Smirnov statistic of 0.53
-with medians differing by a factor of 2.7. In other words 120 locations is plenty
-to characterise the walk, and the walk is not plenty to characterise the square.
-The within-square spread reported here is therefore a property of the route taken
-through the square, not of the square as a whole, and a genuinely area
-representative figure would need a sampling design rather than a walk. The
-between-city comparison is less affected, since every site is sampled the same way.
+So under isotropic illumination the variation inside one square **exceeds** the
+variation between eleven cities on three continents, and under rooftop
+illumination the two are comparable. A per city or per country exposure figure
+therefore averages over a variation at least as large as the differences it is
+trying to report, which is a result about how such figures should be framed rather
+than about any of these cities.
 
-That is the most useful thing this table says, and it cuts against how population
-exposure is usually framed. A per city or per country figure averages over a
-variation larger than the differences it is trying to report.
-
-The ordering is also not simply built density. Krakow's wide open Rynek runs
-highest and most uniform, 0.534 with only 0.80 dB of spread, while Brussels'
-Grand-Place is both lower and highly variable at 0.226 and 5.96 dB, because a
-walk there passes from an enclosed square into the narrow streets feeding it.
-Toulouse illustrates the reverse: its 0.069 sky fraction is the roofline anchor
-artefact described above, and the walk locations, which are on the actual square,
-give a perfectly ordinary 0.401.
-
-### Corrected to 250 m, and the correction is not a constant
-
-I told the exposure agent that a between-city comparison at a common radius stays
-valid because a shared bias moves every curve together, hedging that it might not
-where built form differs. The hedge was right and the main claim was wrong.
-
-| site | isotropic at 250 m | rooftop at 250 m | change, isotropic | rooftop | street |
-|---|---|---|---|---|---|
-| Rynek Glowny, Krakow | 0.5305 | 0.7052 | -0.03 | **-0.05** | -1.02 |
-| Zocalo, Mexico City | 0.3974 | 0.0816 | -0.23 | -4.80 | **-11.39** |
-| Trafalgar Square, London | 0.3894 | 0.0767 | -0.07 | -2.62 | -7.28 |
-| Staromestske, Prague | 0.3626 | 0.0631 | -0.04 | -1.56 | -6.46 |
-| Place du Capitole, Toulouse | 0.3992 | 0.0981 | -0.02 | -0.15 | -0.95 |
-| Plaza Mayor, Madrid | 0.3473 | 0.0341 | -0.03 | -0.06 | **-0.16** |
-| Korenmarkt, Ghent | 0.2917 | 0.0483 | -0.14 | -4.58 | -11.37 |
-| Grand-Place, Brussels | 0.2351 | 0.0251 | +0.17 | -1.16 | -3.34 |
-| Hachiko, Tokyo | 0.2238 | 0.0363 | -0.60 | -4.49 | -8.95 |
-| Times Square, New York | 0.1629 | 0.0924 | **-0.96** | -3.44 | -5.66 |
-
-**The rooftop correction ranges from 0.05 to 4.80 dB and the street correction
-from 0.16 to 11.39.** That range is comparable to the whole between-city spread,
-so the 130 m directional columns were distorted relative to each other rather than
-merely shifted together.
-
-**And a second one-site claim of mine does not generalise.** I wrote that isotropic
-susceptibility converges by 100 m, which is true at Korenmarkt where it moves
-0.14 dB. At Times Square it moves **0.96 dB** and at Tokyo 0.60. Tall cities need a
-wider crop even for isotropic illumination, because their occluders subtend
-meaningful solid angle from much further away. The convergence radius is a
-property of the site as well as of the illumination model.
-
-Corrected, the between-city spread is **5.13 dB in isotropic median and 14.49 dB
-in rooftop** across all ten cities. Urban form matters far more under directional
-illumination than under isotropic, which is the physically sensible direction and
-was not visible before the correction.
-
-The pattern is interpretable. The correction is near zero where the square is
-walled, as at Madrid's arcaded Plaza Mayor, or so large that its own facades
-dominate, as at Krakow's Rynek. It is largest where a modest square opens onto
-streets that continue past the crop, as at Korenmarkt, the Zocalo and Tokyo.
-
-One caveat carried from elsewhere. The material treatment is a class prior held
-constant across all sites rather than per site semantics, which is what makes the
-comparison fair rather than what makes it complete.
+The ordering is not simply built density. Krakow's wide open Rynek runs highest
+and most uniform, 0.53 with only 0.77 dB of spread. Brussels' Grand-Place is both
+low and highly variable because a walk there passes from an enclosed square into
+the narrow streets feeding it. Times Square is lowest on isotropic, at 0.16 with
+18 percent sky, yet mid-table on rooftop, because its towers block the horizon
+while leaving the high elevations that macro sites occupy comparatively open.
 
 ## The crop radius, and the rule I got wrong about it
 
