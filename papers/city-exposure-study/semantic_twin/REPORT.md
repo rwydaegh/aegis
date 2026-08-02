@@ -579,7 +579,7 @@ camera in Blender reproduces a figure rather than approximating it.
 separate collections plus both the pedestrian crop camera and the orbit camera
 that figure 10 uses.
 
-The suite is 697 passing and 1 skipped, up from 570 at the start of the night.
+The suite is 698 passing and 1 skipped, up from 570 at the start of the night.
 
 ## Still open
 
