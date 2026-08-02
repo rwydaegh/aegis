@@ -35,6 +35,11 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   reason survives and it is enough.
 - **A published endpoint silently returns a sixth of its data**, and the cost of
   believing it is a 13 point overstatement of cross capture agreement.
+- **The crop radius is converged for one illumination model and badly not for
+  another.** Isotropic settles by 100 m. Rooftop falls 3.1 dB between the 130 m
+  the study uses and 200 m and is still falling, because a 130 m crop holds
+  nothing that can block a macro site 250 m away. Every rooftop number at 130 m
+  is an upper bound.
 - Two workstreams reached honest negative or unvalidatable results and say so:
   brickwork is validated at 4 GHz and unvalidated at FR2 because the only
   measurement available cannot adjudicate, and the vegetation standard has no
@@ -515,11 +520,15 @@ The suite is 697 passing and 1 skipped, up from 570 at the start of the night.
   canopy regime that Korenmarkt sits in. The one line fix is to route it to the
   null. The right fix is a twenty line medium boundary hook in the tracer, already
   specified.
-- The crop radius. 130 m has not converged and the convergence sweep should run
-  before the remaining propagation modules, because the answer changes the scene
-  every later stage consumes. The walk result sharpens this: widening from 60 to
-  80 m lifted observable coverage from 30.6 to 44.8 percent, so radius is doing
-  more work than anything else measured tonight.
+- **The crop radius for the rooftop illumination model.** The sweep now says
+  isotropic converges by 100 m and rooftop does not converge by 200 m, so the
+  radius at which rooftop settles is unknown and is being measured by extending
+  the sweep past 200 m. Until then every rooftop susceptibility is an upper
+  bound. The likely fix is the two level scheme already anticipated: keep the
+  fine textured mesh at the current radius for scattering and semantics, and wrap
+  it in a coarse occlusion shell out to wherever the rooftop weight has decayed.
+  The walk result points the same way, since widening the observation radius from
+  60 to 80 m lifted observable coverage from 30.6 to 44.8 percent.
 - Panoramas for the acquired cities. Nine sites have geometry and none have
   panoramas, so nine of eleven are geometry only. Sizing measured rather than
   estimated: roughly 43,000 requests for 16 panoramas across 8 sites.
