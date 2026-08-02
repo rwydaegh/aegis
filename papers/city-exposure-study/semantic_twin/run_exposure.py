@@ -247,6 +247,7 @@ def run(
     site: str = "korenmarkt",
     coupler: Any = None,
     crop_m: int = 130,
+    walk_npz: pathlib.Path | None = None,
 ) -> pathlib.Path:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     stem = f"{tag}_{frequency_hz / 1e9:g}ghz"
@@ -303,7 +304,7 @@ def run(
         semantic = bind_from_walk(
             areas,
             face_class,
-            walk_npz=WALK_SEMANTIC,
+            walk_npz=WALK_SEMANTIC if walk_npz is None else walk_npz,
             semantics_path=SEMANTICS,
         )
         face_class = semantic.face_class
@@ -638,6 +639,7 @@ def run_all_sites(
     """
     coupler = BodyCoupler(PHANTOM, frequency_hz, body_mass_kg=PHANTOM_MASS_KG)
     done: list[str] = []
+    expected = 0
     for site in sites:
         try:
             site_mesh(site, crop_m)
@@ -646,6 +648,7 @@ def run_all_sites(
             # substituting a different one would confound geometry with crop.
             print(f"[skip] {site}: no {crop_m} m mesh, not comparable at this radius", flush=True)
             continue
+        expected += 1
         # The suffix keeps a rerun from landing on a published run's files. The
         # city250_* tags hold the results computed under the superseded
         # elevation law, and those have to stay readable next to their
@@ -672,17 +675,37 @@ def run_all_sites(
             done.append(site)
         except Exception as error:  # noqa: BLE001
             print(f"SITE FAILED {site}: {error!r}", flush=True)
-        cross_city_report(done, frequency_hz, crop_m=crop_m)
+        # Written after every site so a sweep that dies at hour two still leaves
+        # a readable aggregate. It therefore spends most of its life partial,
+        # and used to say nothing about that: the published eleven city figure
+        # was copied from one of these mid-sweep snapshots and showed a site at
+        # 3 standpoints. The completeness fields below exist so a consumer can
+        # tell, and cross_city_cdf refuses to title a partial run "converged".
+        cross_city_report(done, frequency_hz, crop_m=crop_m, tag_suffix=tag_suffix, sites_expected=expected)
 
 
-def cross_city_report(sites: list[str], frequency_hz: float, *, crop_m: int = 130) -> None:
-    """CDF with one curve per city, plus the numbers behind it."""
+def cross_city_report(
+    sites: list[str],
+    frequency_hz: float,
+    *,
+    crop_m: int = 130,
+    tag_suffix: str = "",
+    sites_expected: int | None = None,
+) -> None:
+    """CDF with one curve per city, plus the numbers behind it.
+
+    The suffix has to be threaded here as well as into the per site tags. It
+    was not, and the result was quiet rather than loud: a suffixed run traced
+    every site, then read the unsuffixed per site files and rewrote the
+    unsuffixed aggregate from them, so the new runs were simply not in the
+    figure and nothing said so.
+    """
     if not sites:
         return
     from semantic_twin.propagation.report import cross_city_cdf, load_rows, summarise
 
     prefix = "city" if crop_m == 130 else f"city{crop_m}"
-    stems = {site: f"{prefix}_{site}_{frequency_hz / 1e9:g}ghz" for site in sites}
+    stems = {site: f"{prefix}{tag_suffix}_{site}_{frequency_hz / 1e9:g}ghz" for site in sites}
     rows = {}
     for site, stem in stems.items():
         path = OUTPUT / f"{stem}_locations.jsonl"
@@ -691,19 +714,35 @@ def cross_city_report(sites: list[str], frequency_hz: float, *, crop_m: int = 13
     if not rows:
         return
     keys = ["chi_rooftop", "chi_isotropic", "sky_fraction", "rooftop_peak_sab_w_m2"]
+    expected = len(sites) if sites_expected is None else sites_expected
+    complete = len(rows) == expected
+    counts = {site: len(values) for site, values in rows.items()}
+    ragged = len(set(counts.values())) > 1
     summary = {
         "frequency_hz": frequency_hz,
         "reference_s0_w_m2": REFERENCE_S0_W_M2,
         "materials": "geometric class prior, identical across sites",
         "crop_radius_m": crop_m,
         "crop_bound_note": CROP_BOUND_NOTE,
+        "sites_present": len(rows),
+        "sites_expected": expected,
+        "complete": complete,
+        "locations_by_site": counts,
+        "ragged_locations": ragged,
         "sites": {site: summarise(values, keys) for site, values in rows.items()},
     }
-    path = OUTPUT / f"cities{crop_m}_{frequency_hz / 1e9:g}ghz_summary.json"
+    if not complete or ragged:
+        print(
+            f"[partial] aggregate holds {len(rows)} of {expected} sites, "
+            f"locations per site {sorted(set(counts.values()))}. "
+            "Do not publish this figure.",
+            flush=True,
+        )
+    path = OUTPUT / f"cities{crop_m}{tag_suffix}_{frequency_hz / 1e9:g}ghz_summary.json"
     path.write_text(json.dumps(summary, indent=2))
     figure = cross_city_cdf(
         rows,
-        OUTPUT / f"cities{crop_m}_{frequency_hz / 1e9:g}ghz_cdf.png",
+        OUTPUT / f"cities{crop_m}{tag_suffix}_{frequency_hz / 1e9:g}ghz_cdf.png",
         frequency_ghz=frequency_hz / 1e9,
         reference_s0_w_m2=REFERENCE_S0_W_M2,
         crop_radius_m=float(crop_m),
@@ -717,6 +756,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rays", type=int, default=200_000)
     parser.add_argument("--max-bounces", type=int, default=6)
     parser.add_argument("--materials", choices=("semantic", "walk", "geometric"), default="semantic")
+    parser.add_argument(
+        "--walk-npz",
+        default=None,
+        help=(
+            "fused walk semantics to bind materials from, for --materials walk. "
+            "Defaults to the eight station set that passed the 4 degree residual gate. "
+            "outputs/walk_korenmarkt/walk_semantic_conflict9.npz is the nine station set "
+            "that passes the sky conflict gate of section 3.2.1 instead."
+        ),
+    )
     parser.add_argument("--frequency-ghz", type=float, default=15.0)
     parser.add_argument("--local-cells", type=int, default=512)
     parser.add_argument("--variant", default="llvm_ad_rgb")
@@ -739,7 +788,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cities_report:
-        cross_city_report(list(SITES), args.frequency_ghz * 1e9, crop_m=args.crop_m)
+        cross_city_report(list(SITES), args.frequency_ghz * 1e9, crop_m=args.crop_m, tag_suffix=args.tag_suffix)
         return 0
 
     if args.coverage_report:
@@ -789,6 +838,7 @@ def main(argv: list[str] | None = None) -> int:
         materials=args.materials,
         site=args.site,
         crop_m=args.crop_m,
+        walk_npz=pathlib.Path(args.walk_npz) if args.walk_npz else None,
     )
     return 0
 
