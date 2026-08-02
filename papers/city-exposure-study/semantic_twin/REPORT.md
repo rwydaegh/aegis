@@ -316,14 +316,20 @@ masonry is derived from construction standards and solved rigorously. A coupled
 wave solve over standard bond geometry, checked against a Kirchhoff phase screen,
 with nothing fitted anywhere in the chain.
 
-Convergence is established rather than assumed. Over 293 to 2,397 retained
-Floquet orders the specular efficiency settles within 0.6 percent, while the
-diffuse term oscillates between 0.0162 and 0.0178 with no monotone trend, so
-**every diffuse number carries a 6 percent bar**. The propagating order count
-saturates at 458 against the 462 the visible disc predicts. Elliptic rather than
-rectangular harmonic truncation drops the box corner orders, which are the most
-deeply evanescent in the set, for 30 percent fewer modes and half the memory with
-the answer moving 0.08 percent.
+Convergence is established rather than assumed, and it changed an answer. Across
+four cases the last truncation step moves specular by 0.1 to 0.8 percent and
+diffuse by 0.4 to 6.8, so **every specular number carries a 1 percent bar and
+every diffuse number a 7 percent bar**, measured rather than asserted. The
+propagating order count saturates at 458 against the 462 the visible disc
+predicts. Elliptic rather than rectangular harmonic truncation drops the box
+corner orders, which are the most deeply evanescent in the set, for 30 percent
+fewer modes and half the memory with the answer moving 0.08 percent.
+
+The answer it changed is worth recording because it went against the interesting
+direction. An earlier claim that the phase screen ran two to five times high on
+diffuse scattering at a groove aspect ratio of one turned out to be an artefact of
+the rigorous side being 43 percent low at the truncation it was computed at.
+Converged, the factor is 1.8. Specular was converged throughout and is unaffected.
 
 **The result that constrains another part of this project.** The rigorous solve
 and the phase screen agree in the forward and specular directions to 2 dB. In

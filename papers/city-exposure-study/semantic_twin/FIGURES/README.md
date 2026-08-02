@@ -129,10 +129,15 @@ percent canopy.
 
 ## 13: brickwork convergence
 
-Retained Floquet orders against the answer, with cost attached to every level.
-Specular settles within 0.6 percent from 1,393 orders upward. Diffuse oscillates
-without a monotone trend, which is why every diffuse number in this project
-carries a 6 percent bar rather than a digit count.
+Retained Floquet orders against the answer, with cost attached to every level,
+for four cases. Across them the last truncation step moves specular by 0.1 to
+0.8 percent and diffuse by 0.4 to 6.8, which is where the 1 percent and 7 percent
+bars on every number in that work come from.
+
+The 10 mm groove is visibly the slowest to converge, starting 40 percent low and
+climbing, and it is the same waveguide physics that makes the phase screen fail
+on it. That curve is also why an earlier claim about diffuse scattering had to be
+corrected downward: it had been read off an under-converged rigorous result.
 
 ## 14: the first exposure distribution
 
