@@ -593,10 +593,10 @@ The suite is 698 passing and 1 skipped, up from 570 at the start of the night.
   canopy regime that Korenmarkt sits in. The one line fix is to route it to the
   null. The right fix is a twenty line medium boundary hook in the tracer, already
   specified.
-- **Re-acquiring the nine cities out to 250 or 300 m**, now that the sweep says
-  that is where the directional models converge. Measured cost: Korenmarkt at 340 m was 585
-  tiles and 1,178 requests, so the annulus for nine cities is on the order of
-  12,000 requests and about fifteen minutes. Keep the narrow crop as the
+- **Re-running the eleven city sweep at 250 m.** The acquisition itself is done:
+  the nine cities were re-fetched at 250 m for **6,536 requests** across eight of
+  them, with Times Square needing a second pass because it exceeded the request
+  cap, being by far the densest. Meshes are building. Keep the narrow crop as the
   scattering and semantics mesh and use the wide one as an occlusion shell, which
   is the two level scheme the roadmap anticipated and which the sweep has now
   sized.
