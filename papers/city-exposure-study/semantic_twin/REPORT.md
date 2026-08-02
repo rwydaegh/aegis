@@ -35,13 +35,11 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   reason survives and it is enough.
 - **A published endpoint silently returns a sixth of its data**, and the cost of
   believing it is a 13 point overstatement of cross capture agreement.
-- **The crop radius is set by the farthest source, not the farthest scatterer.**
-  Isotropic susceptibility converges by 100 m. Rooftop converges at 250 m, which
-  is exactly where the illumination model puts its most distant macro site, and
-  the 130 m radius everything was acquired at overestimates it by **3.24 dB**.
-  That is a design rule with a cheap consequence: widening the acquired annulus is
-  about fifteen minutes of network time and removes the bias from every
-  directional exposure number the study will quote.
+- **The acquired crop radius is too small, and worst for the case that matters
+  most.** Isotropic susceptibility converges by 100 m, rooftop needs 250 m and
+  street level small cells need 250 to 300. At the 130 m everything was acquired
+  at, street cells are **9.93 dB** in error and rooftop 3.24. Widening the annulus
+  is about fifteen minutes of network time.
 - Two workstreams reached honest negative or unvalidatable results and say so:
   brickwork is validated at 4 GHz and unvalidated at FR2 because the only
   measurement available cannot adjudicate, and the vegetation standard has no
@@ -232,26 +230,40 @@ before the propagation modules, because the answer changes the scene every later
 stage consumes. Nine crops at Korenmarkt from 60 to 340 m, observers held fixed
 inside the smallest so only the surroundings change, error against the 340 m crop:
 
-| crop | triangles | isotropic error | rooftop error |
-|---|---|---|---|
-| 100 m | 97,114 | +0.048 dB | +3.954 dB |
-| **130 m** | 157,862 | +0.054 dB | **+3.236 dB** |
-| 160 m | 245,112 | +0.013 dB | +0.886 dB |
-| 200 m | 390,518 | +0.002 dB | +0.108 dB |
-| **250 m** | 632,406 | +0.000 dB | **+0.018 dB** |
-| 340 m | 1,153,486 | 0 | 0 |
+| crop | triangles | isotropic | rooftop, 3.1 to 60 deg | street cells, 0.95 to 33 deg |
+|---|---|---|---|---|
+| 100 m | 97,114 | +0.048 dB | +3.954 dB | +12.040 dB |
+| **130 m** | 157,862 | +0.054 dB | **+3.236 dB** | **+9.930 dB** |
+| 160 m | 245,112 | +0.013 dB | +0.886 dB | +4.608 dB |
+| 200 m | 390,518 | +0.002 dB | +0.108 dB | +1.241 dB |
+| **250 m** | 632,406 | +0.000 dB | +0.018 dB | **+0.186 dB** |
+| 300 m | 909,832 | +0.000 dB | +0.008 dB | +0.043 dB |
+| 340 m | 1,153,486 | 0 | 0 | 0 |
 
-**Isotropic converges by 100 m. Rooftop converges at 250 m.** And 250 m is exactly
-where the rooftop illumination model places its farthest macro site.
+**Isotropic converges by 100 m, rooftop needs 250 m, street small cells need 250
+to 300 m.** At the acquired 130 m radius the three errors are +0.05, +3.24 and
+**+9.93 dB**.
 
-That coincidence is the result, because it generalises. A crop smaller than the
-source distribution contains nothing capable of occluding the most distant
-sources, so rays leaving toward those elevations escape to a sky a real building
-would have blocked. **The required crop radius is set by where the sources are,
-not by how far scattering carries.** Change the assumed network geometry and the
-required radius changes with it. Note the sign is the opposite of the intuitive
-worry: a small crop is not missing scatterers that would add power, it is missing
-blockers that would remove it.
+I proposed a rule here and the third column refuted it, which is worth recording
+because the rule was appealing. Rooftop places its farthest macro site at 250 m
+and converges at 250 m, so the rule looked like *the crop must reach the farthest
+source*. Street small cells reach only 150 m and should therefore have converged
+sooner. They converge later, and are three times worse at 130 m. The coincidence
+was a coincidence.
+
+What actually orders the three is **how close to the horizon each model puts its
+weight**: full sphere, then 3.1 to 60 degrees, then 0.95 to 33, which is also the
+order of how much crop each needs. A ray leaving a standing observer near the
+horizon travels a long horizontal distance before it has risen far enough for a
+building of ordinary height to intercept it, so the more grazing weight a model
+carries, the further out the occluders that matter live. The sign is the opposite
+of the intuitive worry throughout: a small crop is not missing scatterers that
+would add power, it is missing blockers that would remove it.
+
+The consequence lands on the case that matters most. **Street level small cells
+are the geometry most relevant to dense urban deployment and they are the worst
+affected.** Acquire at 250 m minimum, where all three models are within 0.19 dB,
+and 300 m for comfort.
 
 Two controls, because the sweep spans a precision change and a second tile fetch.
 The 60 to 120 m meshes are single precision and the rest double, which is why that
@@ -570,16 +582,17 @@ The suite is 697 passing and 1 skipped, up from 570 at the start of the night.
   canopy regime that Korenmarkt sits in. The one line fix is to route it to the
   null. The right fix is a twenty line medium boundary hook in the tracer, already
   specified.
-- **Re-acquiring the nine cities out to 250 m**, now that the sweep says that is
-  where rooftop illumination converges. Measured cost: Korenmarkt at 340 m was 585
+- **Re-acquiring the nine cities out to 250 or 300 m**, now that the sweep says
+  that is where the directional models converge. Measured cost: Korenmarkt at 340 m was 585
   tiles and 1,178 requests, so the annulus for nine cities is on the order of
   12,000 requests and about fifteen minutes. Keep the narrow crop as the
   scattering and semantics mesh and use the wide one as an occlusion shell, which
   is the two level scheme the roadmap anticipated and which the sweep has now
   sized.
-- **Whether the crop rule generalises.** It predicts the street small cell model,
-  whose sources reach only 150 m, should converge near 150 m rather than 250. If
-  it does the rule is established rather than inferred from one case.
+- **Whether the grazing-weight explanation survives a second site.** It ordered
+  the three illumination models correctly at Korenmarkt after the source-range
+  rule failed, but one site is one site, and Times Square at 18 percent sky should
+  stress it hardest.
 - Panoramas for the acquired cities. Nine sites have geometry and none have
   panoramas, so nine of eleven are geometry only. Sizing measured rather than
   estimated: roughly 43,000 requests for 16 panoramas across 8 sites.
