@@ -1074,13 +1074,21 @@ Published measurement work fits Lambertian to real facades and attributes it to
 pillars, balconies and street furniture. Here the brickwork alone produces it,
 from construction geometry, with nothing fitted.
 
-The FR2 grazing columns of the sweep, which are the street canyon case, over-count
-diffuse scattering by roughly a factor of two, because an earlier validity rule for
-the phase screen was wrong. The rule said the screen held to a groove aspect ratio
-of one half at any frequency. There are in fact two failure modes, deep groove and
-grazing-incidence shadowing, and the second only bites once the joint is
-resolvable, which is why 10 GHz at 60 degrees is fine to 7 percent while 28 GHz at
-60 degrees is 34 percent low on specular.
+An earlier validity rule for the phase screen was wrong. It said the screen held
+to a groove aspect ratio of one half at any frequency. There are in fact two
+failure modes, deep groove and grazing-incidence shadowing, and the second only
+bites once the joint is resolvable, which is why 10 GHz at 60 degrees is fine to
+7 percent while 28 GHz at 60 degrees is 34 percent low on specular. The FR2
+grazing columns of the sweep, which are the street canyon case, over-count diffuse
+scattering by between 1.6 and 2.7 times.
+
+A related correction, recorded because it went the other way. The claim that the
+phase screen ran two to five times high on diffuse at a groove aspect ratio of one
+was an artefact of the rigorous side being 43 percent low at the truncation it was
+computed at, not physics. Converged, it is 1.8 times. Specular was converged to
+1 percent throughout and is unaffected. Every specular number in this work now
+carries a 1 percent bar and every diffuse number a 7 percent bar, measured from
+the last truncation step rather than asserted.
 
 ### The crop radius must reach the farthest source, not the farthest scatterer
 
