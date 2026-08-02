@@ -250,6 +250,55 @@ radius used here the rooftop susceptibility is **3.24 dB** high. The isotropic r
 carries no such caveat, and the spread within a row, which is what the paragraph
 above is about, is far less affected than the level.
 
+### The finding hiding in the manifest
+
+A second run bound the semantic posterior in as the material source, over 120
+locations. Its manifest reports the area fraction carrying each class, and that
+is the number to read:
+
+**The semantic classes together cover about 3 percent of scene area.** Brick 2.53
+percent, marble 0.22, metal 0.15, asphalt 0.10, concrete and glass essentially
+zero. The geometric fallback covers the other 97 percent.
+
+That is not a defect, it is the coverage result arriving from the other direction.
+One panorama is a first hit on 4.4 percent of scene area, so a single capture twin
+can only bind materials from evidence on a few percent of the surface and must
+guess the rest from surface orientation. Which means the two runs do not compare
+geometric materials against semantic ones. They compare a 97 percent geometric
+scene against a 97 percent geometric scene, and any difference between them is the
+effect of 3 percent of the surface.
+
+### The experiment, and its first answer
+
+Vary the fraction of the scene carrying image evidence, hold everything else
+fixed, and measure how far the exposure distribution moves. Both runs below are
+120 locations on the same walk with the same seed.
+
+| evidence coverage | isotropic median | rooftop median | isotropic spread | rooftop spread |
+|---|---|---|---|---|
+| one panorama, 3.0 % | 0.3144 | 0.1380 | 3.55 dB | 12.48 dB |
+| fused walk, 10.6 % | 0.3370 | 0.1485 | 3.86 dB | 12.46 dB |
+
+**Tripling the evidence coverage moves the median by 0.30 dB and leaves the spread
+unchanged**, 12.48 against 12.46 dB. On this evidence the exposure distribution is
+set by geometry, meaning sky fraction and blockage, and is close to insensitive to
+where the materials came from.
+
+Two honest limits on that. The comparison spans 3 to 10.6 percent and not zero,
+because the geometric pilot ran on a different and smaller location set, so the
+zero evidence baseline on these same 120 locations is still owed. And the result
+licenses nothing about a fully evidence bound scene, because no such scene was
+observed and the saturation work says street level capture cannot produce one:
+roofs, courtyards and rear elevations are 55 percent of the surface and no
+panorama count reaches them.
+
+If it survives the baseline, this reframes the project's claim in a direction that
+is both more defensible and more interesting. Not that semantic materials make
+exposure right, but that **the geometry sets the distribution, and the semantic
+layer earns its place through occlusion handling, evidence confidence and cross
+capture validation rather than by moving the exposure number**. That is falsifiable
+in a way the other claim was not.
+
 ## Ten cities compared
 
 80 walk locations per city at 15 GHz, one common 130 m radius, one common material
@@ -290,7 +339,7 @@ crop-limited upper bounds at this radius. And the material treatment is a class
 prior held constant across all ten rather than per site semantics, which is what
 makes the comparison fair rather than what makes it complete.
 
-## The crop radius, and a rule for choosing it
+## The crop radius, and the rule I got wrong about it
 
 `ROADMAP.md` calls this the largest known hole and says the sweep should run
 before the propagation modules, because the answer changes the scene every later
@@ -388,55 +437,6 @@ one step reads the wrong way; every step from 130 m upward is like for like. And
 the 250 m and wider crops come from a second, larger fetch, so a 200 m crop
 rebuilt from it was compared against the original: 390,518 triangles from both, so
 the step at 200 to 250 m is physics rather than acquisition.
-
-### The finding hiding in the manifest
-
-A second run bound the semantic posterior in as the material source, over 120
-locations. Its manifest reports the area fraction carrying each class, and that
-is the number to read:
-
-**The semantic classes together cover about 3 percent of scene area.** Brick 2.53
-percent, marble 0.22, metal 0.15, asphalt 0.10, concrete and glass essentially
-zero. The geometric fallback covers the other 97 percent.
-
-That is not a defect, it is the coverage result arriving from the other direction.
-One panorama is a first hit on 4.4 percent of scene area, so a single capture twin
-can only bind materials from evidence on a few percent of the surface and must
-guess the rest from surface orientation. Which means the two runs do not compare
-geometric materials against semantic ones. They compare a 97 percent geometric
-scene against a 97 percent geometric scene, and any difference between them is the
-effect of 3 percent of the surface.
-
-### The experiment, and its first answer
-
-Vary the fraction of the scene carrying image evidence, hold everything else
-fixed, and measure how far the exposure distribution moves. Both runs below are
-120 locations on the same walk with the same seed.
-
-| evidence coverage | isotropic median | rooftop median | isotropic spread | rooftop spread |
-|---|---|---|---|---|
-| one panorama, 3.0 % | 0.3144 | 0.1380 | 3.55 dB | 12.48 dB |
-| fused walk, 10.6 % | 0.3370 | 0.1485 | 3.86 dB | 12.46 dB |
-
-**Tripling the evidence coverage moves the median by 0.30 dB and leaves the spread
-unchanged**, 12.48 against 12.46 dB. On this evidence the exposure distribution is
-set by geometry, meaning sky fraction and blockage, and is close to insensitive to
-where the materials came from.
-
-Two honest limits on that. The comparison spans 3 to 10.6 percent and not zero,
-because the geometric pilot ran on a different and smaller location set, so the
-zero evidence baseline on these same 120 locations is still owed. And the result
-licenses nothing about a fully evidence bound scene, because no such scene was
-observed and the saturation work says street level capture cannot produce one:
-roofs, courtyards and rear elevations are 55 percent of the surface and no
-panorama count reaches them.
-
-If it survives the baseline, this reframes the project's claim in a direction that
-is both more defensible and more interesting. Not that semantic materials make
-exposure right, but that **the geometry sets the distribution, and the semantic
-layer earns its place through occlusion handling, evidence confidence and cross
-capture validation rather than by moving the exposure number**. That is falsifiable
-in a way the other claim was not.
 
 ## Brickwork, derived rather than measured
 
@@ -569,7 +569,7 @@ Validation used no measurement anywhere: the estimator reproduces free space to
 1e-6 and the PEC ground plane to 2.0, and its transport is checked against the
 exact absorbing slab result, chi = 1/2 + 1/2 E2(tau).
 
-## Ten cities
+## Acquiring the cities
 
 Twenty four candidate squares were screened before any acquisition spend, in
 **4,091 metadata requests and 79 seconds with zero tiles fetched**. Screening
