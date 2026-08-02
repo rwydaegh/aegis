@@ -204,17 +204,24 @@ ninety fifth percentile is:
 |---|---|---|---|---|
 | isotropic | 0.195 | 0.314 | 0.441 | **3.5 dB** |
 | rooftop macro sites | 0.022 | 0.138 | 0.393 | **12.5 dB** |
-| street small cells | 0.004 | 0.066 | 0.279 | wider still |
+| street small cells | 0.004 | 0.066 | 0.274 | **18.0 dB** |
 
 The illumination model matters more than the position does. Under isotropic
 illumination, standing anywhere in one square changes exposure by 3.5 dB. Under
-rooftop macro sites it changes by 12.5 dB, because those sources arrive at high
-elevation angles that the surrounding built form either admits or blocks
-completely, and a location either sees the sky in that band or it does not.
+rooftop macro sites it changes by 12.5 dB and under street small cells by 18 dB,
+because those sources arrive in narrow elevation bands that the surrounding built
+form either admits or blocks completely, and a location either sees the sky in
+that band or it does not.
 
 Any population exposure claim therefore depends on the assumed source geometry far
 more than on where in a square people actually stand, which is a result about how
 such claims should be framed rather than about Ghent.
+
+**The two directional rows are upper bounds, not values.** The crop sweep below
+shows their absolute level is set by how far the scene extends, and at the 130 m
+radius used here the rooftop susceptibility is at least 3.1 dB high. The isotropic
+row carries no such caveat, and the spread within a row, which is what the
+paragraph above is about, is far less affected than the level.
 
 ### The finding hiding in the manifest
 
