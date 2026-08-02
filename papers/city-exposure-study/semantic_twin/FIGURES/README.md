@@ -244,3 +244,35 @@ handling, evidence confidence and cross capture validation rather than on moving
 the number. The ladder spans 0 to 10.6 percent because that is as far as street
 level capture reaches, and it says nothing about a fully evidence bound scene,
 which cannot be built from the street.
+
+## 18 to 21: the explainer figures
+
+Made by `make_explainer_figures.py` rather than by a pipeline run, so they carry
+no data and cannot go stale against a rerun. They exist because
+`PAPER_METHODS.md` was opening on an integral, and a reader has to picture the
+situation before the integral means anything. They are figures 1, 2, 3 and 6 of
+that document, in reading order.
+
+**18, elevation is a ratio.** Three sources on the boundary of the rooftop
+deployment model, drawn to kill the most common misreading of the elevation
+bands: a 60 degree arrival is not something above a roofline, it is a mast 43.5 m
+up at 25 m away. Elevation is measured from the pedestrian's own horizon
+throughout this study, so a steep arrival means a **near** source.
+
+**19, the deployment box and the density it induces.** Left, the models are
+rectangles in the (range, height) plane and constant elevation is a ray through
+the origin, so the quoted support is contributed by two opposite corners. Right,
+the density those rectangles actually induce, from the production
+`elevation_band_measure`. 45 percent of the rooftop band's solid angle sits above
+30 degrees and carries 3.3 percent of the power, which is why binary colouring by
+band membership is nearly uninformative and why section 4.2 had to be corrected.
+
+**20, why the tracer runs backwards.** Forward against adjoint, with real
+occlusion in both panels so the sky wedge is the one that cross section actually
+has. Forward wastes essentially every ray on a point observer, adjoint wastes
+none, and the escape direction is exactly the argument the illumination density
+wants.
+
+**21, one ray from launch to deposit.** A single sample, with line thickness as
+throughput. The reflections are specular off vertical walls rather than drawn by
+eye, so the geometry in the figure is the geometry in the loop.

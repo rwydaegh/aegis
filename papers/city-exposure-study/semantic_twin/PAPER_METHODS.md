@@ -4,39 +4,59 @@ Draft spine for an IEEE Access submission. Content first, prose later. Every
 number here traces to a script in this repository, and the reproduction commands
 are in the last section.
 
-Notation is written for KaTeX so it renders outside LaTeX. Symbols are collected
-in section 0.
+Notation is written for KaTeX so it renders outside LaTeX. The symbol table is
+appendix A, at the end.
 
 ---
 
-## 0. Symbols
+## 1. The question
 
-| Symbol | Meaning | Units |
-|---|---|---|
-| $S$ | observation point, a pedestrian head position | m |
-| $\hat u$ | a unit direction on the sphere, measured **outward** from $S$ | |
-| $\hat k$ | propagation direction of an arriving wave, $\hat k = -\hat u$ | |
-| $K_S(\hat u)$ | transfer kernel, scene power density over free space power density | |
-| $Q_S(\hat u)$ | illumination density of the external network, $\int_{4\pi} Q_S \, d\Omega = 1$ | sr$^{-1}$ |
-| $\chi_S$ | susceptibility, $=1$ in free space | |
-| $S_0$ | free space incident power density the network would deliver at $S$ | W m$^{-2}$ |
-| $\rho(\hat u)$ | angular power density arriving at $S$, normalised so $\int \rho \, d\Omega = \chi_S$ | sr$^{-1}$ |
-| $T_j$ | throughput of ray $j$ at the moment it escapes the scene | |
-| $\varepsilon$ | complex relative permittivity, negative imaginary part | |
-| $s$ | RMS surface height of a rough interface | m |
-| $\theta$ | angle of incidence from the surface normal | rad |
-| $\mathrm{el}$ | elevation above the horizon | rad or deg |
-| $\Delta h$ | source height above the pedestrian head | m |
-| $d$ | horizontal range from pedestrian to source | m |
-| $S_{ab}(\mathbf r)$ | absorbed power density at body surface point $\mathbf r$ | W m$^{-2}$ |
-| $T_0$ | tissue power transmission coefficient at normal incidence | |
-| $f_{\rm sky}$ | fraction of the sphere from which a ray leaving $S$ escapes unobstructed | |
+### 1.1 The situation being modelled
 
----
+Someone is standing in a city square. Above and around them, somewhere, are the
+base stations of a 15 GHz network. The question is how much radio power reaches
+where they are standing, and how much of that answer is set by the square itself
+rather than by the network.
 
-## 1. What is computed, and why it is that
+That last clause is the whole study. Two pedestrians in two different squares,
+served by identically specified networks, do not receive the same power, because
+one square is a narrow medieval funnel of tall stone and the other is an open
+plaza with a low skyline. Eleven squares are measured here to find out how large
+that difference is, and what about a square's shape predicts it.
 
-### 1.1 The quantity
+The obstacle is that at 15 GHz there is no network to point at. Nothing above
+6 GHz is deployed for cellular access anywhere in the 3.86 million antenna
+records available for Europe (section 4.3.1). So the base stations cannot be
+placed, and any result that depends on where they were placed is a result about
+an invented layout.
+
+### 1.2 The base stations are a density on the sky, not a list of masts
+
+The way out is to stop placing them. Instead of one layout, take the whole
+population of plausible mast positions, and ask what fraction of the network's
+power would arrive at the pedestrian **from each direction of the sky** if the
+buildings were not there. That fraction is a probability density over
+directions, written $Q_S(\hat u)$ and normalised to one over the sphere. It is
+built in section 4 from two explicit and swappable assumptions, a height
+distribution and a range cap, so the assumption is visible rather than buried in
+a coordinate list.
+
+The direction a mast occupies on the pedestrian's sky is set by two numbers, how
+far up it is and how far away, and only their ratio matters. Figure 1 makes the
+point that decides most of section 4: a steep arrival angle does not mean a tall
+mast, it means a **near** one.
+
+![Elevation is a ratio, not a height](FIGURES/18_elevation_geometry.png)
+
+**Figure 1.** Three sources on the boundary of the rooftop deployment model.
+Elevation is measured from the pedestrian's own horizon at head height, so the
+60 deg arrival is not something high above a roofline, it is a mast 43.5 m up at
+only 25 m away, the single closest and tallest corner of the assumed deployment
+box. The two 13.5 m masts differ only in range, and that alone moves them from
+10 deg to 3 deg. Any statement of the form "sources between 3 and 60 degrees"
+therefore describes a corner of a two dimensional box, not a physical band.
+
+### 1.3 The quantity: how much the square changes the answer
 
 Fix an observation point $S$ at pedestrian head height. Define the **transfer
 kernel** $K_S(\hat u)$ as the ratio of the power density arriving at $S$ from
@@ -45,17 +65,16 @@ deliver at $S$ with every building deleted. $K_S$ is dimensionless, it is a
 property of the geometry and the materials alone, and it is identically $1$
 everywhere in free space.
 
-The external network is described not by a list of base stations but by an
-angular density $Q_S(\hat u)$, normalised to unity over the sphere:
-
-$$\int_{4\pi} Q_S(\hat u)\, d\Omega(\hat u) = 1 .$$
-
-The **susceptibility** of the standpoint is their inner product,
+The **susceptibility** of the standpoint is the inner product of what the square
+does to each direction with how much network power comes from that direction,
 
 $$\boxed{\ \chi_S = \int_{4\pi} K_S(\hat u)\, Q_S(\hat u)\, d\Omega(\hat u)\ }
 \tag{1}$$
 
-and the power density that actually arrives is $S_{\rm arr} = S_0\,\chi_S$.
+and the power density that actually arrives is $S_{\rm arr} = S_0\,\chi_S$, where
+$S_0$ is whatever the same network would have delivered in the open. So
+$\chi_S = 1$ means the square is neutral, $\chi_S = 0.35$ means it costs 4.6 dB,
+and the eleven site comparison is a comparison of these numbers.
 
 Three properties make (1) the right thing to compute rather than a convenient
 one.
@@ -66,23 +85,17 @@ one.
    single explicit factor $S_0$ that the caller owns, so a result transfers
    between sites, between bands and between deployment densities without being
    recomputed.
-3. **It factorises the environment from the body.** Section 7 composes $\rho$
-   with a phantom by a second inner product, so neither computation needs to know
-   about the other.
+3. **It factorises the environment from the body.** Section 7 composes the
+   arriving angular density $\rho$ with a phantom by a second inner product, so
+   neither computation needs to know about the other.
 
-### 1.2 Why the network is a density and not a list
+The claim being made is about **urban form**, and marginalising the source
+population is what makes that claim possible. Marginalising is not the same as
+ignoring: section 4.3 carries three deployment models rather than one, and every
+result is reported under each, so a reader who disputes the assumption can read
+off how much it mattered.
 
-A study of eleven city squares cannot condition on the true base station layout
-of eleven cities, and should not want to: the exposure of a pedestrian in Krakow
-is not a fact about where one operator happened to obtain a rooftop lease. The
-claim being made is about **urban form**, so the source population must be
-marginalised over.
-
-Marginalising is not the same as ignoring. Section 4 derives $Q_S$ from an
-explicit source population with an explicit height distribution and an explicit
-range cap, so the assumption is visible, falsifiable and swappable.
-
-### 1.3 Why powers and never amplitudes
+### 1.4 Why powers and never amplitudes
 
 The estimator accumulates power. This is forced, not preferred.
 
@@ -103,6 +116,53 @@ band averaged second moment.
 
 The consequence is stated rather than hidden: this method cannot produce a
 coherent fading realisation, and does not claim to.
+
+### 1.5 How the rest of this document is arranged
+
+Evaluating (1) needs three things: the scene, the density $Q_S$, and a way to do
+the integral. They are built in that order.
+
+| Section | What it produces |
+|---|---|
+| 2 | the scene: a mesh, a class per surface, a permittivity per class |
+| 3 | image evidence, and how much of the scene it actually binds |
+| 4 | the illumination density $Q_S$, from a source population |
+| 5 | the estimator that evaluates (1) |
+| 6, 7 | where the pedestrian stands, and how the body couples |
+| 8 | validation |
+| 9 | results, within one square and across eleven |
+| 10, 11 | what threatens each result, and how firm each one is |
+
+The estimator in section 5 runs the geometry **backwards**, which is worth
+stating once at the outset because it is the least obvious design choice here.
+Rays are not launched from the base stations towards the pedestrian. They are
+launched from the pedestrian outwards, bounced until they escape the city, and
+then scored by how much network power would have come from the direction they
+escaped in. Figure 2 is why.
+
+![Forward tracing wastes almost every ray, adjoint tracing wastes none](FIGURES/20_adjoint_idea.png)
+
+**Figure 2.** Left, the forward picture: sources are spread over the whole sky,
+the pedestrian is a point, and essentially no launched ray ever lands on them.
+Right, the adjoint picture: every ray starts at the pedestrian, so every ray
+contributes, and the sky direction it eventually escapes in is exactly the
+argument that $Q_S$ wants. Reciprocity makes the two equivalent, with the
+dictionary $\hat k = -\hat u$. In the right panel blue rays reach the sky and
+grey ones terminate on a wall, and the occlusion is computed rather than drawn,
+so the visible sky wedge is the real one for this cross section.
+
+Figure 3 follows one such ray end to end.
+
+![One ray from launch to deposit](FIGURES/21_one_ray.png)
+
+**Figure 3.** A single sample. The ray leaves $S$ carrying throughput $T = 1$.
+At each surface, $T$ is multiplied by the Fresnel power reflectance and the
+Rayleigh roughness split decides whether the outgoing direction is specular or
+diffuse. When the ray escapes, its surviving $T$ is deposited into the angular
+bin of the direction it originally **left $S$** in, weighted by $Q_S$ evaluated
+at the direction it escaped in. Line thickness is $T$. Section 5.2 gives the
+loop, including Russian roulette from bounce 3 and the four bounce operating
+point.
 
 ---
 
@@ -202,6 +262,17 @@ subset of what it managed. Extent binds harder than count: widening a site from
 60 m to 80 m lifts achievable surface coverage from 30.6 % to 44.8 % of scene
 area, worth more than tripling the camera count in the middle.
 
+![What one registered panorama actually sees](FIGURES/03_what_one_panorama_sees.png)
+
+**Figure 4.** How little of a square a street level camera reaches. One
+registered panorama is a first hit on 3.3 % of support triangles and 4.4 % by
+area. Fusing twelve raises directly observed surface to 24.1 % by area and then
+saturates: twelve panoramas reach 77 % of what the site can ever offer and
+twenty six reach 90 %, which sets the per site budget at twelve to sixteen. The
+remaining half of the scene is roofs, courtyards and rear elevations that no
+street level capture ever sees, and that ceiling is the reason section 9.3 can
+only test a partially evidence bound scene.
+
 ### 3.2 Registration
 
 Each panorama arrives with a coarse pose from capture metadata. That pose is
@@ -300,6 +371,15 @@ only the class can reject them, while a parked van is rejected by depth.
 
 ### 3.4 Binding evidence to the tracer
 
+![One patch of facade, four layers deep](FIGURES/05_four_layers_deep.png)
+
+**Figure 5.** What the fishnet hands the tracer. Support geometry at the bottom,
+then entity class, radio material and RMS surface height stacked above it. The
+three upper sheets are the same triangles carrying three independent posteriors,
+which is what distinguishes this from a textured mesh: the tracer reads a
+material distribution per face, not a colour.
+
+
 Faces seen by at least one registered panorama take their material from the fused
 posterior. Everything else keeps the geometric rule of section 2.2. Each run
 writes the covered fraction by face and by area into its manifest, and those two
@@ -382,7 +462,24 @@ deployment types considered here.
 
 The consequence is that the uncorrected model **over weights both tails**, the low
 one most, and the low tail is precisely what drives the crop radius requirement of
-section 9.4. Quantifying the shift is in progress and is flagged in section 11.
+section 9.4. Figure 6 shows both halves of the argument.
+
+![The deployment box and the illumination density it induces](FIGURES/19_deployment_box.png)
+
+**Figure 6.** Left, the deployment models are rectangles in the
+(range, height) plane, and lines of constant elevation are rays through the
+origin. The 60.1 deg upper edge of the rooftop model is contributed by a single
+corner of the rectangle, and the 3.1 deg lower edge by the opposite one, which is
+why the elevation support alone is a poor description of the population. Right,
+the density (4) that the rectangle actually induces. It is sharply peaked near
+the low edge and decays hard: 45 % of the rooftop band's solid angle lies above
+30 deg and carries 3.3 % of the power. Curves are the production
+`elevation_band_measure`, peak normalised for display.
+
+The measured effect of the correction is site dependent and large. At Korenmarkt
+it raises the rooftop susceptibility by 5.27 dB and the street one by 4.27 dB,
+across the eleven squares the per site shift spans 0.98 to 6.30 dB, and because
+the shift is not common mode it **reorders the cities**. Section 9.2 reports it.
 
 ### 4.3 The three models used
 
@@ -468,7 +565,8 @@ value that quadrature error looks like a factor of six error in the physics.
 
 Computing $K_S(\hat u)$ forward, by launching from every plausible source and
 seeing what reaches $S$, wastes essentially all of the work. The adjoint form
-launches from $S$ instead.
+launches from $S$ instead, as in figure 2. Figure 3 is one sample of what
+follows.
 
 By reciprocity, a ray leaving $S$ in direction $\hat u_{\rm loc}$ and escaping the
 scene in direction $\hat u_{\rm ext}$ with accumulated power throughput $T$ is the
@@ -700,6 +798,14 @@ Carried to the body, the same standpoints give a peak $S_{ab}$ spanning 12.7 dB
 and a whole body SAR spanning 13.0 dB. The dosimetric endpoint inherits the
 illumination geometry's spread, not the scene's average openness.
 
+![Exposure distribution over one square](FIGURES/14_exposure_cdf_korenmarkt.png)
+
+**Figure 7.** Korenmarkt over 120 standpoints. Left is the environment side, the
+susceptibility under the three illumination models. Middle is the body side,
+absorbed power density through the phantom. Right places each standpoint on the
+ground. The spatial panel carries the point: the open square runs 10 to 15 dB
+hotter than the streets leaving it, and that is geometry rather than material.
+
 ### 9.2 Across eleven squares
 
 80 standpoints per city, common 250 m crop, identical material prior, so only
@@ -721,6 +827,23 @@ urban form varies.
 
 Medians span 5.13 dB isotropic and 14.49 dB rooftop. The largest spread *within*
 one square is 6.15 dB isotropic, at Madrid.
+
+![Eleven squares, one pipeline](FIGURES/16_eleven_cities_exposure.png)
+
+**Figure 8.** The study's central object. 80 standpoints per city at the
+converged 250 m crop, one common material prior, so what varies between curves is
+urban form. Left is susceptibility under rooftop illumination, middle is sky
+fraction, right is peak absorbed power density at the phantom. The middle panel
+is the one to trust unreservedly, because sky fraction converges by 100 m and
+carries no illumination assumption at all.
+
+The figure also shows two of its own defects, both open in section 11. Brussels
+carries $n = 3$ rather than 80, which is why its curve is a staircase. And Krakow
+is the dark red outlier at the right of all three panels, which is not an open
+square outperforming the rest: its ground datum sits 18.6 m above the surrounding
+pavement, so its standpoints are on the roof of the Cloth Hall. Toulouse has the
+same defect at 13.6 m. Those two rows are invalid pending a fix to the datum
+estimator, and the remaining nine are unaffected.
 
 **The rooftop column of that table is superseded and is being recomputed.** It was
 produced under the elevation law corrected in section 4.2. The isotropic column is
@@ -773,36 +896,121 @@ figure therefore averages over a variation larger than the differences it report
 
 ### 9.3 What image evidence is worth
 
-Three runs, 120 standpoints, same walk, same seed. The only thing varying is what
+Four runs, 120 standpoints, same walk, same seed. The only thing varying is what
 fraction of scene area carries material from observed image evidence rather than
-from the geometric rule of section 2.2.
+from the geometric rule of section 2.2. Every pose behind every rung passes the
+sky conflict gate of section 3.2.1, which was audited rather than assumed.
 
-| evidence by area | source | rooftop median | shift | standpoints moving $>1$ dB |
-|---|---|---|---|---|
-| 0 % | orientation rule only | 0.1377 | | |
-| 3.13 % | one registered panorama | 0.1380 | **0.008 dB** | **0 of 120** |
-| 10.57 % | eight stations, fused | 0.1472 | **0.289 dB** | **1 of 120** |
+| evidence by area | by face | source | rooftop median | shift | standpoints moving $>1$ dB |
+|---|---|---|---|---|---|
+| 0 % | 0 % | orientation rule only | 0.1377 | | |
+| 3.13 % | 2.07 % | one registered panorama | 0.1380 | **0.008 dB** | **0 of 120** |
+| 10.57 % | 6.88 % | eight stations, fused | 0.1472 | **0.289 dB** | **1 of 120** |
+| 11.02 % | 7.30 % | nine stations, every pose the conflict gate passes | 0.1475 | **0.298 dB** | **1 of 120** |
 
-Going from no image evidence to a tenth of the scene bound by it moves the median
-by 0.29 dB. A single panorama is worth 0.008 dB.
+Rooftop medians in that table are under the superseded illumination law of
+section 4.2, so the first three rows are the numbers published before
+2026-08-02 and reproduce them to the last stored digit at every one of the 120
+standpoints.
+
+**No rung of this ladder ever consumed a conflicting pose.** Korenmarkt has
+thirteen registered poses and three of them conflict on their whole sky, and all
+three sat outside the ladder already, because the semantic stage gates on a
+4 degree skyline residual and those three register at 6.27, 6.98 and 8.10
+degrees. The single panorama rung conflicts on 4.1 % of its sky and the eight
+fused stations on 0.49 to 7.52 %, median 3.3 %.
+
+The residual gate reached the right pose set here by luck rather than by
+construction, and section 3.2.1 is why: it also rejected `walk_11` at 6.37
+degrees, which conflicts on 10.3 % of its sky and is usable. Gating on the
+conflict instead readmits that station, and that is the fourth rung. The
+correction therefore **raises** the top of the ladder from 10.57 to 11.02 % of
+area rather than eroding it.
+
+Ungated, the three failing poses would have read as the best rung of the ladder.
+Apparent coverage doubles to 22.75 % of area and 14.82 % of faces, and it is
+fake: 6430 roof triangles are relabelled brick against 1328 in the clean set,
+because a camera inside the geometry sees roof surfaces no street level camera
+can see. The exposure distribution does not notice that either, giving a rooftop
+median of 0.1477 and a 0.302 dB shift against the clean set's 0.298 dB. So the
+insensitivity survives even a material field that is wrong on a seventh of the
+scene.
+
+Every illumination model, at the top rung against the zero evidence rung:
+
+| illumination | 0 % | 11.02 % | shift | $>1$ dB | spread at 0 % | spread at 11.02 % |
+|---|---|---|---|---|---|---|
+| isotropic | 0.3099 | 0.3359 | 0.350 dB | 17 of 120 | 3.36 dB | 3.88 dB |
+| rooftop, section 4.2 corrected | 0.2165 | 0.2354 | 0.364 dB | 8 of 120 | 8.13 dB | 8.40 dB |
+| rooftop, as published | 0.1377 | 0.1475 | 0.298 dB | 1 of 120 | 12.47 dB | 12.47 dB |
+| street small cell, corrected | 0.0965 | 0.0982 | 0.079 dB | 1 of 120 | 16.70 dB | 16.63 dB |
+
+The isotropic row is the one the section 4.2 correction cannot touch, and it is
+also the row that moves most, both in the count of standpoints and in the width
+of the distribution, which goes from 3.36 to 3.88 dB. That is the narrowest of
+the four distributions, so a movement that is negligible against a 12 dB spread
+is not negligible against a 3 dB one. **The per standpoint picture is
+not a null and should not be quoted as one.** Under isotropic illumination the
+worst single standpoint moves by 1.98 dB and 17 of 120 move by more than 1 dB,
+while the typical standpoint moves by 0.001 dB and the distribution median by
+0.35 dB. The movement is strongly asymmetric: the 53 standpoints that fall do so
+by at most 0.24 dB, and the tail that rises reaches 1.98 dB. So the effect is
+concentrated in a minority rather than absent. The published "1 of 120" is
+true of the rooftop model it was measured on and is the most flattering of the
+four rows.
 
 **This is a strong negative rather than a null.** The semantic posterior and the
-orientation prior **disagree on 51 % of the area they both cover**, and the
-distribution still does not move. So it is not a case of two methods producing the
-same materials. It is a case of materials mattering less than geometry over the
-range street level capture reaches.
+orientation prior **disagree on 50 % of the area they both cover** over the
+conflict passing nine, and on 51 % over the published eight. On the nine, 1438
+faces the rule called concrete are brick, 1221 it called asphalt are brick, 440
+are metal, 467 are marble and 556 it called brick are vegetation. The
+distribution still moves by a third of a decibel against spreads of 3 to 17. So
+it is not a case of two methods producing the same materials. It is a case of
+materials mattering less than geometry over the range street level capture
+reaches.
 
 The honest reading is that **geometry sets the distribution, and the semantic
 layer earns its place through occlusion handling, evidence confidence and cross
 capture validation rather than by moving the exposure number.** That is both more
 defensible and more falsifiable than the claim it replaces.
 
-One limit stands. The ladder spans 0 to 10.6 %, which is as far as street level
+One limit stands. The ladder spans 0 to 11.0 %, which is as far as street level
 capture reaches, and it licenses nothing about a fully evidence bound scene. Roofs,
 courtyards and rear elevations are 55 % of the surface and no panorama count
 reaches them.
 
+Every number here is in `outputs/exposure_korenmarkt/coverage_ladder_conflict_gated_15ghz.json`,
+the conflict passing station set is `outputs/walk_korenmarkt/walk_semantic_conflict9.npz`,
+and the top rung is
+
+```
+python run_exposure.py --locations 120 --materials walk --tag clean_walk9 \
+    --walk-npz outputs/walk_korenmarkt/walk_semantic_conflict9.npz
+```
+
+![The evidence ladder](FIGURES/17_evidence_ladder.png)
+
+**Figure 9.** The same 120 standpoints with the same seed, varying only how much
+of the scene carries material from image evidence. Zero to a tenth of the scene
+shifts the median by 0.29 dB, and the three curves lie on top of each other. That
+is the result. Note that the axis is the rooftop model, which is the most
+flattering of the four: the per standpoint movement under isotropic is larger,
+and the table above is the one to read for that.
+
+---
+
 ### 9.4 The crop radius is not a free parameter
+
+![Crop convergence at Korenmarkt](FIGURES/15_crop_convergence.png)
+
+**Figure 10.** Nine crops from 60 to 340 m with the standpoints held fixed inside
+the smallest, so every radius scores the same pedestrians and only the
+surroundings change. The three illumination models order by how close to the
+horizon they put their weight, and that is also the order of how much crop they
+need. Throughout, the small crop is not missing scatterers that would add power,
+it is missing **blockers** that would remove it, which is why every curve
+approaches its limit from above.
+
 
 Nine crops at Korenmarkt from 60 m to 340 m with the standpoints held fixed, so
 only the surroundings change.
@@ -880,20 +1088,22 @@ settle it. If anything the pressure on the street requirement is upward.
 4. **The brickwork model is unvalidated at FR2.** It matches to 2.0 dB at 4 GHz
    with nothing fitted, and the only FR2 measurement available cannot adjudicate
    because its own repeat scatter exceeds the disagreement.
-5. **Coherent fading is out of scope by construction**, section 1.3.
+5. **Coherent fading is out of scope by construction**, section 1.4.
 6. **One unresolved internal disagreement.** A sky fraction of 0.2271 is on record
    for one camera against 0.2464 from two independent code paths. One is wrong and
    it is not yet known which.
 7. **The illumination caps are uncited**, section 4.3.
 8. **Panorama semantics exist at one site of eleven.** Section 9.3 is what makes
    that tolerable rather than fatal, but it is a real limit on the semantic claims.
-9. **Roughly half the registered poses are unusable**, section 3.2.1, and this is
-   not yet reflected in section 9.3. Three of the thirteen Korenmarkt poses have a
-   fully conflicting sky, so the eight station fused run of the evidence ladder may
-   include a buried camera. Recomputing the ladder over conflict passing poses only
-   is the outstanding check. It can only reduce the evidence coverage percentages,
-   and given that the ladder's finding is that evidence barely moves the number, it
-   is unlikely to reverse the conclusion, but it has not been run.
+9. **Roughly half the registered poses across the study are unusable**, section
+   3.2.1. Section 9.3 is now audited against that and is clean: none of the three
+   fully conflicting Korenmarkt poses ever entered the ladder, and the ladder has
+   been recomputed over the conflict passing set. What remains is that the pose
+   gate in the semantic stage is still the 4 degree residual, which is the
+   criterion section 3.2.1 shows cannot see the failure. It admitted no bad pose
+   at this site and rejected one good one, so the exposure result is safe and the
+   gate is not. Feeding the conflict fraction into `ObservationQuality` is the
+   outstanding work, and any new site is exposed until it is done.
 
 ---
 
@@ -908,10 +1118,12 @@ correction of section 4.2 was derived, implemented and measured.
 | Section 9.1, within square spread | **stable.** At a converged crop the correction moves it 0.72 dB rooftop and 0.14 dB street |
 | Section 9.2, eleven cities, isotropic column | **stable and bit identical.** The isotropic model has no elevation weight to correct |
 | Section 9.2, eleven cities, rooftop column | **superseded, recomputation running.** Site dependent shift of 0.98 to 6.30 dB, reorders the cities, cannot be offset corrected |
-| Section 9.3, evidence ladder | **provisional on two counts.** Isotropic and geometric so the illumination correction does not touch it, but three of thirteen Korenmarkt poses fail the registration conflict test of section 3.2.1 and the ladder has not been recomputed without them |
+| Section 9.3, evidence ladder | **stable, and re-run under both laws over conflict passing poses only.** None of the three failing Korenmarkt poses was ever in it, the top rung rises from 10.57 to 11.02 % of area, and the conclusion is unchanged under isotropic, corrected rooftop and street |
 | Section 9.4, crop radius | **stable, and re-derived under the corrected law.** 250 m still required, now set by the street model alone. Measured at one site, with Milan disagreeing on street |
 | Section 4.3, deployment caps | **assumptions with a measured sensitivity, not citations.** No deployed FR3 exists to calibrate against, section 4.3.1 |
 | Section 3.2.1, registration | **stable.** 83 poses, diagnostic persisted and independently reproducible |
+| Section 9.2, Krakow and Toulouse rows | **invalid.** `ground_datum()` takes the median first hit from above within 15 m of the anchor, so an anchor standing on a building returns that building's roof. Krakow's datum is 18.6 m above the surrounding pavement and Toulouse's is 13.6 m, which puts their standpoints on the Cloth Hall and the Capitole roofs. Madrid at 5.0 m is suspect, every other site is inside 3.9 m. The fix is a low quantile over a wider radius plus a hard gate, then a rerun of those rows |
+| Section 9.2, Brussels row | **incomplete.** 3 standpoints against 80 elsewhere, despite a valid 250 m mesh. Cause not yet identified, rerun in progress |
 
 Two things a reader should be able to check quickly. The runs computed under the
 superseded law are kept beside their replacements rather than overwritten, under
@@ -939,3 +1151,44 @@ python build_propagation_blends.py                         # the walkthrough ble
 
 Full design in `MONOSTATIC_SBR.md`, decisions in `DECISIONS.md`, the fishnet in
 `FISHNET.md`, the walk in `WALK.md`, acquisition and screening in `CITIES.md`.
+
+---
+
+## Appendix A. Symbols
+
+| Symbol | Meaning | Units |
+|---|---|---|
+| $S$ | observation point, a pedestrian head position | m |
+| $\hat u$ | a unit direction on the sphere, measured **outward** from $S$ | |
+| $\hat k$ | propagation direction of an arriving wave, $\hat k = -\hat u$ | |
+| $K_S(\hat u)$ | transfer kernel, scene power density over free space power density | |
+| $Q_S(\hat u)$ | illumination density of the external network, $\int_{4\pi} Q_S \, d\Omega = 1$ | sr$^{-1}$ |
+| $\chi_S$ | susceptibility, $=1$ in free space | |
+| $S_0$ | free space incident power density the network would deliver at $S$ | W m$^{-2}$ |
+| $\rho(\hat u)$ | angular power density arriving at $S$, normalised so $\int \rho \, d\Omega = \chi_S$ | sr$^{-1}$ |
+| $T_j$ | throughput of ray $j$ at the moment it escapes the scene | |
+| $\varepsilon$ | complex relative permittivity, negative imaginary part | |
+| $s$ | RMS surface height of a rough interface | m |
+| $\theta$ | angle of incidence from the surface normal | rad |
+| $\mathrm{el}$ | elevation above the horizon | rad or deg |
+| $\Delta h$ | source height above the pedestrian head | m |
+| $d$ | horizontal range from pedestrian to source | m |
+| $M(\mathrm{el})$ | height window admitted at a given elevation by both caps, equation (4) | m$^3$ |
+| $S_{ab}(\mathbf r)$ | absorbed power density at body surface point $\mathbf r$ | W m$^{-2}$ |
+| $T_0$ | tissue power transmission coefficient at normal incidence | |
+| $f_{\rm sky}$ | fraction of the sphere from which a ray leaving $S$ escapes unobstructed | |
+
+---
+
+## Appendix B. Figures
+
+Regenerate the explainer figures with
+
+```
+python FIGURES/make_explainer_figures.py
+```
+
+which writes PDF and PNG for figures 1, 2, 3 and 6 into `FIGURES/`, as assets
+18 to 21. Asset numbers are the collection's, and are independent of the figure
+numbers used in this document. The result figures are made by the scripts named
+in `FIGURES/README.md`.
