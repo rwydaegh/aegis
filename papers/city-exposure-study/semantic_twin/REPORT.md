@@ -13,7 +13,8 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
 
 - **Eleven squares are now built**, nine acquired tonight, all in double
   precision at a common radius, for 3,216 tile requests and about three minutes
-  of wall clock. Sky fraction across them runs from 18 percent at Times Square to
+  of wall clock. Ten of them carry an exposure distribution, Milan being held out
+  of the comparison because its crop predates the set at 170 m. Sky fraction across them runs from 18 percent at Times Square to
   46 percent at Krakow, which is the geometric spread this study exists to turn
   into an exposure distribution.
 - **The first exposure distributions exist.** Where a pedestrian stands in one
@@ -717,7 +718,7 @@ The suite is 698 passing and 1 skipped, up from 570 at the start of the night.
   canopy regime that Korenmarkt sits in. The one line fix is to route it to the
   null. The right fix is a twenty line medium boundary hook in the tracer, already
   specified.
-- **Re-running the eleven city sweep at 250 m.** The acquisition is done, 4,032
+- **Re-running the ten city sweep at 250 m.** The acquisition is done, 4,032
   tiles for 8,128 requests, and the shells are built. Keep the narrow crop as the
   scattering and semantics mesh and use the wide one as an occlusion shell, which
   is the two level scheme the roadmap anticipated and which the sweep has now
@@ -727,7 +728,7 @@ The suite is 698 passing and 1 skipped, up from 570 at the start of the night.
   rule failed, but one site is one site, and Times Square at 18 percent sky should
   stress it hardest.
 - Panoramas for the acquired cities. Nine sites have geometry and none have
-  panoramas, so nine of eleven are geometry only. Sizing measured rather than
+  panoramas, so eight of eleven are geometry only. Sizing measured rather than
   estimated: roughly 43,000 requests for 16 panoramas across 8 sites.
 - Toulouse needs re-cropping onto the square rather than the Capitole roof, at
   about 350 requests since tiles are cached per tile.
