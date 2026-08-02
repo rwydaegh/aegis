@@ -1082,40 +1082,53 @@ grazing-incidence shadowing, and the second only bites once the joint is
 resolvable, which is why 10 GHz at 60 degrees is fine to 7 percent while 28 GHz at
 60 degrees is 34 percent low on specular.
 
-### The crop radius is converged for isotropic and not for rooftop
+### The crop radius must reach the farthest source, not the farthest scatterer
 
-Measured at Korenmarkt over six crops, with the observers held fixed inside the
-smallest one so every radius scores the same 32 pedestrian standpoints and only
-the surroundings change. 200,000 rays, four bounces.
+Measured at Korenmarkt over nine crops from 60 to 340 m, with the observers held
+fixed inside the smallest so every radius scores the same 32 pedestrian
+standpoints and only the surroundings change. 200,000 rays, four bounces. Error is
+against the 340 m crop.
 
-| crop | triangles | sky | chi isotropic | delta dB | chi rooftop | delta dB |
+| crop | triangles | sky | chi isotropic | error dB | chi rooftop | error dB |
 |---|---|---|---|---|---|---|
-| 60 m | 31,706 | 0.2405 | 0.3067 | | 0.1632 | |
-| 100 m | 97,114 | 0.2291 | 0.2926 | -0.204 | 0.1013 | -2.069 |
-| 120 m | 135,640 | 0.2272 | 0.2900 | -0.039 | 0.0849 | -0.767 |
-| 130 m | 157,862 | 0.2295 | 0.2929 | +0.044 | 0.0859 | +0.049 |
-| 160 m | 245,112 | 0.2277 | 0.2902 | -0.041 | 0.0500 | -2.350 |
-| 200 m | 390,518 | 0.2272 | 0.2894 | -0.011 | 0.0418 | -0.778 |
+| 60 m | 31,706 | 0.2405 | 0.3067 | +0.253 | 0.1632 | +6.023 |
+| 100 m | 97,114 | 0.2291 | 0.2926 | +0.048 | 0.1013 | +3.954 |
+| 120 m | 135,640 | 0.2272 | 0.2900 | +0.010 | 0.0849 | +3.187 |
+| **130 m** | 157,862 | 0.2295 | 0.2929 | +0.054 | 0.0859 | **+3.236** |
+| 160 m | 245,112 | 0.2277 | 0.2902 | +0.013 | 0.0500 | +0.886 |
+| 200 m | 390,518 | 0.2272 | 0.2894 | +0.002 | 0.0418 | +0.108 |
+| **250 m** | 632,406 | 0.2271 | 0.2893 | +0.000 | 0.0409 | **+0.018** |
+| 300 m | 909,832 | 0.2271 | 0.2893 | +0.000 | 0.0409 | +0.008 |
+| 340 m | 1,153,486 | 0.2271 | 0.2893 | 0 | 0.0408 | 0 |
 
-**Isotropic susceptibility and sky fraction are converged by 100 m**, with every
-later step under 0.05 dB. **Rooftop susceptibility is not converged at 200 m.** It
-falls 3.1 dB between the 130 m crop the study uses and 200 m, and is still moving
-0.78 dB per step at the end of the sweep.
+**Isotropic susceptibility and sky fraction converge by 100 m.** They are within
+0.05 dB of the reference there and within 0.01 dB by 120 m.
 
-The mechanism is in the illumination model rather than in the geometry. Rooftop
-macro sites sit at horizontal ranges of 25 to 250 m, and a 130 m crop contains
-nothing that can occlude a source 250 m away, so rays leaving toward those
-elevations escape to a sky that a real building would have blocked. The sign is
-the opposite of the intuitive worry: a small crop is not missing scatterers that
-would add power, it is missing blockers that would remove it. So **every rooftop
-and street small cell susceptibility computed at 130 m is an upper bound**, and
-comparisons between cities at a common radius remain valid while absolute numbers
-do not.
+**Rooftop susceptibility converges at 250 m and not before.** The 130 m crop the
+study currently uses overestimates it by **3.24 dB**. 200 m is within 0.11 dB and
+250 m within 0.02 dB.
 
-One artefact to read past: the 60, 100 and 120 m meshes are single precision
-builds and the 130 m and larger ones are double precision, which is why the 120 to
-130 step reads as a small positive rather than a small negative. Every step from
-130 upward is like for like.
+The reason is a design rule rather than a fact about Ghent. The rooftop
+illumination model places macro sites at horizontal ranges of **25 to 250 m**, and
+the crop converges at **250 m**, which is exactly the farthest source in the
+model. A crop smaller than that contains nothing capable of occluding the most
+distant sources, so rays leaving toward those elevations escape to a sky a real
+building would have blocked. Note the sign is the opposite of the intuitive worry:
+a small crop is not missing scatterers that would add power, it is missing
+blockers that would remove it.
+
+**So the crop radius is set by the illumination model's source distribution, not
+by how far scattering carries.** Any change to the assumed network geometry
+changes the required crop. The street small cell model reaches 150 m and should
+therefore converge sooner, which is worth confirming.
+
+Two controls. The 60, 100 and 120 m meshes are single precision builds and the
+rest are double precision, which is why the 120 to 130 step reads as a small
+positive; every step from 130 upward is like for like. And the 250 m and wider
+crops come from a second, larger tile fetch, so a 200 m crop was rebuilt from that
+fetch as a control: it gives 390,518 triangles, identical to the 200 m crop from
+the original fetch, so the step at 200 to 250 m is physics rather than an
+acquisition artefact.
 
 The sweep is `run_crop_convergence.py` and
 `outputs/crop_convergence/korenmarkt_crop_convergence.json`.
