@@ -317,6 +317,110 @@ photogrammetry bridges a street and the lowest puts you in a basement or under a
 a small patch is robust to both, and the patch spread is the guard that says when even the median
 cannot be trusted.
 
+## Panoramas: three sites taken to semantic completeness
+
+Fetched, segmented and registered on 2026-08-02. Ghent and Milan already had one panorama each, so
+this brings the study to five sites with semantics and thirty-nine registered poses in total.
+
+Which twelve to sixteen cameras decides how much of the scene is ever observed, so they are chosen by
+farthest-point sampling over the walk: start at the panorama nearest the site centre, then repeatedly
+add whichever candidate is farthest from everything already chosen. Only the walk's own capture date is
+eligible, so no set mixes a 2014 scaffold with a 2024 facade. The alternative, the sixteen nearest the
+centre, would be a cluster that sees one ring of facades many times over.
+
+| Site | Chosen | Walk | Capture | Minimum separation | Median separation | East extent | North extent |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Staromestske namesti | 14 of 147 | 2014-06 | 21.5 m | 38.4 m | -59.4 to 55.6 m | -57.1 to 57.3 m |
+| Plaza de la Constitucion | 14 of 260 | 2016-10 | 19.2 m | 29.0 m | -59.2 to 31.1 m | -29.3 to 54.7 m |
+| Plaza Mayor | 9 of 56 | 2025-05 | 30.5 m | 45.7 m | -50.3 to 58.9 m | -41.5 to 36.8 m |
+
+Selection worked: against screening medians of 2.7, 1.9 and 9.0 m between adjacent panoramas, the
+chosen sets sit 19 to 30 m apart and span the full screening disc in both axes.
+
+### Segmentation
+
+Mask2Former on Mapillary Vistas at native 1536, on the A6000. Each `semantics.json` records
+`inference_size: 1536` with `inference_size_status: set explicitly, not inherited from the checkpoint
+processor`, which is the check worth making: the checkpoint's own default is 384 and it silently drops
+seventeen clutter classes, including poles, street lights and traffic signals that the photogrammetry
+does not contain at all. Throughput was 119 s per panorama under load and 57 s on a quiet box, so
+37 panoramas took about 44 minutes.
+
+### Registration
+
+Every panorama is registered on its own against the site's 130 m mesh, so the useful quantity is the
+distribution over a site rather than any single residual.
+
+| Site | Panoramas | Registered | Median residual | Best | Worst | Poses at altitude bound |
+| --- | --- | --- | --- | --- | --- | --- |
+| Plaza Mayor | 10 | 9 | 0.33 deg | 0.18 deg | 2.92 deg | 4 |
+| Staromestske namesti | 14 | 14 | 0.82 deg | 0.48 deg | 9.33 deg | 2 |
+| Plaza de la Constitucion | 14 | 14 | 2.76 deg | 1.86 deg | 4.59 deg | 4 |
+
+References: 1.05 deg for Milan's single panorama and 2.83 deg for Korenmarkt's. Madrid and Prague are
+better than either, which is what a 2025 capture and a high-contrast gothic silhouette should give.
+
+Two things in that table are worth more than the medians.
+
+**Ten of thirty-seven poses landed on their altitude search bound, and twenty-seven did not.** A pose at
+its bound is not a measurement, it is the bound, and every panorama previously shipped in this
+repository had that defect. Having a majority free of it is new. The ten that are pinned should not be
+trusted for altitude and are listed in `outputs/city_screening/panorama_registration.json`.
+
+**The Zocalo is the outlier site, and its outliers are not scattered.** Six of its fourteen exceed
+3 deg and every one of them stands in the northern half of the plaza looking south. The Zocalo is
+roughly 200 m across, so from the north side the facades that set the southern skyline are 150 to 200 m
+away and a 130 m crop does not contain them. The optimiser is fitting a silhouette against geometry
+that was cut off.
+
+That is the crop radius bias appearing in registration rather than in propagation, and it is
+independently testable, so it was tested. Re-registering the Zocalo against the 250 m shell instead of
+the 130 m mesh, with everything else held fixed:
+
+```
+pano_00   130 m: 2.07 deg    250 m: 1.31 deg
+pano_01   130 m: 2.03 deg    250 m: 1.56 deg
+```
+
+A 30 percent reduction from geometry alone. The full re-registration of all three sites against the
+250 m shells was still running when this was written and its results land in `alignment250/` beside
+each `alignment/`. The conclusion to draw now is narrow and firm: **the skyline objective should be
+fitted against the widest available geometry, not against the crop the scattering mesh uses.** The
+skyline is by definition the far silhouette, so truncating the mesh at the scattering radius removes
+exactly the geometry the objective needs. Milan's 170 m crop was chosen for the same underlying reason
+and the sweep has now put a number on it.
+
+### What is complete and what is not
+
+Prague and the Zocalo are complete end to end at 14 panoramas each: fetched, segmented at 1536, and
+registered. Madrid is 9 of 14 and stopped on a quota wall, not on anything about the site.
+
+Because farthest-point sampling is prefix-optimal, the nine Madrid panoramas that exist are the most
+spread nine of the fourteen rather than an arbitrary nine. Their extent is identical to the full set's,
+-50.3 to 58.9 m east and -41.5 to 36.8 m north, and only the minimum separation differs, 30.5 m against
+21.7 m. Madrid lost density, not reach.
+
+### The quota, measured
+
+Acquisition stopped at HTTP 429, `RATE_LIMIT_EXCEEDED` on quota metric
+`tile.googleapis.com/streetviewtiles`, limit 15,000. It did not recover after several minutes of
+cooldown at two concurrent workers, so it is a daily cap rather than a per-minute one.
+
+Measured spend: **14,367 Street View tile requests** on disk across the three sites, plus about forty
+metadata and session calls. One zoom-5 panorama is exactly **338 tiles**, a 26 by 13 grid.
+
+That gives the number the remaining sites should be sized against:
+
+- **44 panoramas per day** at zoom 5 against a 15,000 per day cap, which is three sites at 14.
+- The remaining five sites therefore need **two more days** at zoom 5, or one day if the quota is
+  raised in the console.
+- Zoom 4 costs 85 tiles rather than 338, which is 176 panoramas per day, at 18.5 pixels per degree
+  instead of 37. That is the lever if breadth matters more than angular resolution.
+
+A second, smaller lesson: `StreetViewTiles._read` retries on 5xx but raises immediately on any 4xx,
+and 429 is a 4xx. A rate limit is the one 4xx that is worth backing off and retrying rather than
+failing on, so a long acquisition dies on the first throttle instead of pausing through it.
+
 ## What a follow-up run needs to do
 
 1. **Re-anchor Toulouse and Krakow off their buildings, and measure the missing ground heights.**
@@ -324,19 +428,28 @@ cannot be trusted.
    Krakow needs its centre moved off the Cloth Hall, which may not need a re-pull at all if the new
    centre is still inside the 130 m cylinder that was fetched. Trafalgar needs only the two-pass cast.
    Then write those three configs. Nothing else is blocked on anything else.
-2. **Fetch panoramas.** No panorama has been fetched for any new site. The spread subset of 12 to 16
-   per site should be chosen from the east and north offsets already in `screening.json`, not by
-   nearest-to-centre. At Milan's cost of 338 tiles for one zoom-5 panorama, sixteen panoramas at eight
-   sites is roughly 43,000 tile requests, which is the largest single piece of spend still outstanding
-   and the one worth sizing deliberately.
+2. **Fetch panoramas for the remaining five sites.** Prague, the Zocalo and Madrid are done. Krakow,
+   Trafalgar, Brussels, Shibuya and Times Square are not, and Krakow and Trafalgar need their configs
+   first. At a measured 338 tiles per panorama against a measured 15,000 per day cap, that is two more
+   days at zoom 5 unless the quota is raised.
 3. **Re-screen the chosen sites at 80 m rather than 60 m.** Extent is now the binding criterion and the
    whole table was measured inside 60 m, so the walks are being judged on a disc smaller than the one
    the study wants to use. This costs about 4000 metadata requests and would change which panoramas get
    picked, though it is unlikely to change which sites were chosen.
 4. **Check triangle count per leaf set before committing any further site**, after Sultanahmet.
-5. **Run the crop convergence sweep.** Every new site is cropped at 130 m because that is what
-   Korenmarkt uses, and Milan needed 170 m. The right radius is a property of the square. Re-pulling at
-   a larger radius reuses nothing, since the downloader has no cross-run cache, so the sweep should be
-   run before any decision to widen.
+5. **Nothing further on the crop radius.** The sweep has run and 130 m is settled as too small: at
+   Korenmarkt the error against a 340 m reference is +0.05 dB isotropic, +3.24 dB rooftop and
+   +9.93 dB for street-level small cells, converging at 250 m. All eight new sites have therefore been
+   re-pulled at 250 m into `data/tiles250/<site>/` and built into `inhouse_leaf_250m.ply` occlusion
+   shells beside the 130 m meshes, which stay as the scattering and semantics geometry. That is
+   4032 tiles, 8128 requests and 397 MB, in about two minutes concurrently, plus seven minutes of
+   Blender. Note that the downloader has no cross-run cache, so the 250 m pull re-fetched the inner
+   130 m rather than reusing it: the cost above is a full pull, not an annulus.
 6. **Read the sky versus mesh conflict metric** on every site whose walk predates 2020, before its
-   semantics are trusted.
+   semantics are trusted. That is now Prague at 2014-06 and the Zocalo at 2016-10 among the sites with
+   semantics, and both have a recent walk available for cross-checking, Prague 2025-04 with 23
+   panoramas and the Zocalo 2021-03 with 42.
+7. **Register against the 250 m shells, not the 130 m meshes.** Measured on the Zocalo, where the
+   residual falls about 30 percent. The scattering mesh and the registration mesh do not have to be the
+   same mesh and should not be.
+8. **Back off and retry on HTTP 429** in `StreetViewTiles._read`, which currently raises on any 4xx.
