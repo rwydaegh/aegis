@@ -44,13 +44,13 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   with the propagation path: six poses at the Zocalo all stand in the northern
   half looking south across 200 m of open ground, and re-fitting them against the
   wider shell improves their residuals by about 30 percent.
-- **The acquired crop radius is too small, worst for the case that matters most,
-  and the error is not a constant.** Isotropic converges by 100 m, rooftop needs
-  250 m and street level small cells 250 to 300. At 130 m street cells are
-  **9.93 dB** in error at Korenmarkt. Across four cities the correction ranges
-  from 0.05 to 4.58 dB rooftop and 1.02 to 11.37 street, so it is **comparable to
-  the 4.20 dB between-city spread being reported** and distorts the comparison
-  rather than merely offsetting it. The corrected sweep is running.
+- **The acquired crop radius was too small, worst for the case that matters most,
+  and the error is not a constant.** Re-run at 250 m across nine cities, the
+  correction ranges **0.05 to 4.80 dB rooftop and 0.16 to 11.39 street**, which
+  is comparable to the whole between-city spread, so the original columns were
+  distorted relative to each other rather than shifted together. Corrected, the
+  between-city spread is 5.13 dB isotropic and **14.49 dB rooftop**: urban form
+  matters far more under directional illumination, which was invisible before.
 - Two workstreams reached honest negative or unvalidatable results and say so:
   brickwork is validated at 4 GHz and unvalidated at FR2 because the only
   measurement available cannot adjudicate, and the vegetation standard has no
@@ -368,39 +368,48 @@ Toulouse illustrates the reverse: its 0.069 sky fraction is the roofline anchor
 artefact described above, and the walk locations, which are on the actual square,
 give a perfectly ordinary 0.401.
 
-### The crop correction is not a constant, and that matters here
+### Corrected to 250 m, and the correction is not a constant
 
 I told the exposure agent that a between-city comparison at a common radius stays
-valid because a shared bias moves every curve together, while hedging that it
-might not where built form differs. The hedge was right and the main claim was
-wrong. Re-running at the converged 250 m radius, the correction per city:
+valid because a shared bias moves every curve together, hedging that it might not
+where built form differs. The hedge was right and the main claim was wrong.
 
-| site | isotropic | rooftop | street small cell |
-|---|---|---|---|
-| Korenmarkt, Ghent | -0.14 dB | **-4.58 dB** | **-11.37 dB** |
-| Trafalgar Square, London | -0.07 dB | -2.62 dB | -7.28 dB |
-| Grand-Place, Brussels | +0.17 dB | -1.16 dB | -3.34 dB |
-| Rynek Glowny, Krakow | -0.03 dB | **-0.05 dB** | -1.02 dB |
+| site | isotropic at 250 m | rooftop at 250 m | change, isotropic | rooftop | street |
+|---|---|---|---|---|---|
+| Rynek Glowny, Krakow | 0.5305 | 0.7052 | -0.03 | **-0.05** | -1.02 |
+| Zocalo, Mexico City | 0.3974 | 0.0816 | -0.23 | -4.80 | **-11.39** |
+| Trafalgar Square, London | 0.3894 | 0.0767 | -0.07 | -2.62 | -7.28 |
+| Staromestske, Prague | 0.3626 | 0.0631 | -0.04 | -1.56 | -6.46 |
+| Plaza Mayor, Madrid | 0.3473 | 0.0341 | -0.03 | -0.06 | **-0.16** |
+| Korenmarkt, Ghent | 0.2917 | 0.0483 | -0.14 | -4.58 | -11.37 |
+| Grand-Place, Brussels | 0.2351 | 0.0251 | +0.17 | -1.16 | -3.34 |
+| Hachiko, Tokyo | 0.2238 | 0.0363 | -0.60 | -4.49 | -8.95 |
+| Times Square, New York | 0.1629 | 0.0924 | **-0.96** | -3.44 | -5.66 |
 
-Isotropic moves by at most 0.17 dB anywhere, which confirms it was converged. But
-**the rooftop correction ranges from 0.05 to 4.58 dB across four cities, and the
-street correction from 1.02 to 11.37.** The spread in the correction is therefore
-comparable to, and for street cells much larger than, the 4.20 dB between-city
-spread the table above reports.
+**The rooftop correction ranges from 0.05 to 4.80 dB and the street correction
+from 0.16 to 11.39.** That range is comparable to the whole between-city spread,
+so the 130 m directional columns were distorted relative to each other rather than
+merely shifted together.
 
-So the 130 m directional columns are not merely shifted, they are distorted
-relative to each other, and the table above should be read as isotropic only until
-the 250 m sweep finishes. That sweep is running and the corrected comparison will
-replace it.
+**And a second one-site claim of mine does not generalise.** I wrote that isotropic
+susceptibility converges by 100 m, which is true at Korenmarkt where it moves
+0.14 dB. At Times Square it moves **0.96 dB** and at Tokyo 0.60. Tall cities need a
+wider crop even for isotropic illumination, because their occluders subtend
+meaningful solid angle from much further away. The convergence radius is a
+property of the site as well as of the illumination model.
 
-The pattern itself is interpretable. Krakow's Rynek barely moves because it is
-already so open that the observer's grazing directions clear the surrounding
-built form entirely, while Korenmarkt moves most because it is a small square
-whose blocking geometry lies exactly in the 130 to 250 m annulus that the original
-crop discarded.
+Corrected, the between-city spread is **5.13 dB in isotropic median and 14.49 dB
+in rooftop** across nine cities. Urban form matters far more under directional
+illumination than under isotropic, which is the physically sensible direction and
+was not visible before the correction.
+
+The pattern is interpretable. The correction is near zero where the square is
+walled, as at Madrid's arcaded Plaza Mayor, or so large that its own facades
+dominate, as at Krakow's Rynek. It is largest where a modest square opens onto
+streets that continue past the crop, as at Korenmarkt, the Zocalo and Tokyo.
 
 One caveat carried from elsewhere. The material treatment is a class prior held
-constant across all ten rather than per site semantics, which is what makes the
+constant across all sites rather than per site semantics, which is what makes the
 comparison fair rather than what makes it complete.
 
 ## The crop radius, and the rule I got wrong about it
