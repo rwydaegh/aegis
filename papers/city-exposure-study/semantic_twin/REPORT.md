@@ -35,6 +35,10 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   reason survives and it is enough.
 - **A published endpoint silently returns a sixth of its data**, and the cost of
   believing it is a 13 point overstatement of cross capture agreement.
+- **The crop bias showed up again in registration**, from code sharing nothing
+  with the propagation path: six poses at the Zocalo all stand in the northern
+  half looking south across 200 m of open ground, and re-fitting them against the
+  wider shell improves their residuals by about 30 percent.
 - **The acquired crop radius is too small, and worst for the case that matters
   most.** Isotropic susceptibility converges by 100 m, rooftop needs 250 m and
   street level small cells need 250 to 300. At the 130 m everything was acquired
@@ -44,6 +48,22 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   brickwork is validated at 4 GHz and unvalidated at FR2 because the only
   measurement available cannot adjudicate, and the vegetation standard has no
   tabulated data anywhere in our band.
+
+## One thing needs you
+
+**The Street View tiles API has a daily cap of 15,000 requests and we hit it.**
+Acquisition stopped on HTTP 429 partway through the third site and did not
+recover after cooldown at reduced concurrency, so it is a daily quota rather than
+a burst limit.
+
+One zoom-5 panorama is exactly 338 tiles, a 26 by 13 grid, so the cap is **44
+panoramas per day**, which bought three sites at fourteen each. The remaining five
+sites need two more days at zoom 5, or one day if the quota is raised in the
+console, which is an action only you can take. Zoom 4 would give 176 panoramas a
+day at 18.5 pixels per degree instead of 37, which is a real option if resolution
+can be traded for coverage.
+
+Total panorama spend was 14,367 tile requests plus about 40 metadata calls.
 
 ## The twin, at two sites
 
@@ -316,6 +336,29 @@ are the geometry most relevant to dense urban deployment and they are the worst
 affected.** Acquire at 250 m minimum, where all three models are within 0.19 dB,
 and 300 m for comfort.
 
+### The same bias, found from a different direction
+
+The crop finding turned up independently in registration, which is a separate part
+of the pipeline that shares none of the propagation code.
+
+Six poses at the Zocalo registered badly, and they are not scattered: every one
+stands in the **northern half of the plaza looking south**, across 200 m of open
+ground whose far facades lie outside the 130 m crop. The skyline objective was
+therefore being fitted against a silhouette that the scene does not contain.
+Re-registering the same panoramas against the 250 m shell, with everything else
+held fixed, improves them by about 30 percent:
+
+| pose | at 130 m | at 250 m |
+|---|---|---|
+| pano_00 | 2.07 deg | 1.31 deg |
+| pano_01 | 2.03 deg | 1.56 deg |
+
+The narrow conclusion is worth adopting on its own: **the skyline objective should
+be fitted against the widest available geometry, not against the crop the
+scattering mesh uses.** The skyline is by definition the far silhouette. Milan's
+170 m crop was chosen for the same underlying reason without the reason being
+stated.
+
 Two controls, because the sweep spans a precision change and a second tile fetch.
 The 60 to 120 m meshes are single precision and the rest double, which is why that
 one step reads the wrong way; every step from 130 m upward is like for like. And
@@ -541,7 +584,32 @@ argument is in `CITIES.md`.
 
 Nine sites were then acquired and built, giving eleven with the two that already
 existed: Brussels, Krakow, London, Madrid, Mexico City, New York, Prague, Tokyo
-and Toulouse, all at the same 130 m crop radius and all in double precision.
+and Toulouse, all at the same 130 m crop radius and all in double precision. They
+were later re-acquired at 250 m as well, 4,032 tiles for 8,128 requests, giving
+occlusion shells of 708k to 720k triangles against 130k to 260k at 130 m.
+
+### Panoramas, and how far they got
+
+| site | fetched | segmented at 1536 | registered | status |
+|---|---|---|---|---|
+| Staromestske namesti, Prague | 14 | 14 | 14 | complete |
+| Plaza de la Constitucion, Mexico City | 14 | 14 | 14 | complete |
+| Plaza Mayor, Madrid | 9 | 9 | 9 | partial, quota |
+
+Madrid's nine are the most spread nine of its fourteen rather than an arbitrary
+prefix, because farthest-point sampling is prefix optimal. Its extent is identical
+to the full set and only the minimum separation differs, 30.5 m against 21.7, so
+Madrid lost density rather than reach.
+
+Registration quality varies more than I first reported. I read the first few poses
+and quoted 0.28 to 1.49 degrees, which was optimistic. The actual medians are
+0.33 at Madrid, 0.82 at Prague and **2.76 at the Zocalo**, with a worst case of
+9.33. Madrid and Prague beat both existing references, Milan at 1.05 and
+Korenmarkt at 2.83. The Zocalo does not.
+
+One genuine improvement: **ten of thirty-seven poses landed on the altitude search
+bound and twenty-seven did not.** Every pose previously shipped in this repository
+had that defect, so a majority free of it is new.
 
 I ran a quality pass over every one of them, because a cross city distribution is
 only as good as its worst site and a bad site fails quietly rather than loudly.
@@ -633,10 +701,8 @@ The suite is 698 passing and 1 skipped, up from 570 at the start of the night.
   canopy regime that Korenmarkt sits in. The one line fix is to route it to the
   null. The right fix is a twenty line medium boundary hook in the tracer, already
   specified.
-- **Re-running the eleven city sweep at 250 m.** The acquisition itself is done:
-  the nine cities were re-fetched at 250 m for **6,536 requests** across eight of
-  them, with Times Square needing a second pass because it exceeded the request
-  cap, being by far the densest. Meshes are building. Keep the narrow crop as the
+- **Re-running the eleven city sweep at 250 m.** The acquisition is done, 4,032
+  tiles for 8,128 requests, and the shells are built. Keep the narrow crop as the
   scattering and semantics mesh and use the wide one as an occlusion shell, which
   is the two level scheme the roadmap anticipated and which the sweep has now
   sized.
