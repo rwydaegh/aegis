@@ -176,6 +176,11 @@ A rule proposed before the third curve existed, that the crop must reach the
 farthest source, is refuted by it: street small cells reach only 150 m yet
 converge later than rooftop, which reaches 250.
 
+The mechanism is measured rather than argued. Susceptibility splits with no
+residual into a zero bounce part and a multi bounce part, and the split says
+blocking accounts for 69 to 77 percent of the effect with redistribution of
+multi bounce throughput the rest.
+
 The grey line marks where the meshes change from single to double precision, which
 is why the 130 m point steps the wrong way. The 250 m and wider crops come from a
 second tile fetch, controlled against the first by rebuilding a 200 m crop from it
