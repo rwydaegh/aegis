@@ -417,7 +417,7 @@ def one_ray() -> None:
         arrowprops=dict(arrowstyle="->", lw=0.7, color=WARM, shrinkB=4),
     )
     ax.annotate(
-        "bounce 2. $T$ is now 0.19",
+        "bounce 2. $w$ is now 0.19",
         xy=tuple(p2),
         xytext=(-44, 52),
         fontsize=7.4,
@@ -427,7 +427,7 @@ def one_ray() -> None:
         arrowprops=dict(arrowstyle="->", lw=0.7, color=WARM, shrinkB=5),
     )
     ax.annotate(
-        "escapes at $\\hat u_{ext}$. Deposit $T$ into the bin for the\n"
+        "escapes at $\\hat u_{ext}$. Deposit $w$ into the bin for the\n"
         "direction it LEFT $S$ in, weighted by $Q_S(\\hat u_{ext})$",
         xy=tuple(p3),
         xytext=(36, 60),
@@ -438,7 +438,7 @@ def one_ray() -> None:
         arrowprops=dict(arrowstyle="->", lw=0.7, color=SKY, shrinkB=5),
     )
     ax.annotate(
-        "launch at $\\hat u_{loc}$ with $T = 1$",
+        "launch at $\\hat u_{loc}$ with $w = 1$",
         xy=(13, 1.5 + 13 * slope),
         xytext=(-45, -10),
         fontsize=7.4,

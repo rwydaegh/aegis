@@ -36,7 +36,7 @@ The way out is to stop placing them. Instead of one layout, take the whole
 population of plausible mast positions, and ask what fraction of the network's
 power would arrive at the pedestrian **from each direction of the sky** if the
 buildings were not there. That fraction is a probability density over
-directions, written $Q_S(\hat u)$ and normalised to one over the sphere. It is
+directions, written $Q(\hat u)$ and normalised to one over the sphere. It is
 built in section 4 from two explicit and swappable assumptions, a height
 distribution and a range cap, so the assumption is visible rather than buried in
 a coordinate list.
@@ -58,28 +58,28 @@ therefore describes a corner of a two dimensional box, not a physical band.
 
 ### 1.3 The quantity: how much the square changes the answer
 
-Fix an observation point $S$ at pedestrian head height. Define the **transfer
-kernel** $K_S(\hat u)$ as the ratio of the power density arriving at $S$ from
+Fix an observation point $\mathbf{x}$ at pedestrian head height. Define the **transfer
+kernel** $K(\hat u)$ as the ratio of the power density arriving at $\mathbf{x}$ from
 direction $\hat u$ in the real scene, to the power density the same source would
-deliver at $S$ with every building deleted. $K_S$ is dimensionless, it is a
+deliver at $\mathbf{x}$ with every building deleted. $K$ is dimensionless, it is a
 property of the geometry and the materials alone, and it is identically $1$
 everywhere in free space.
 
 The **susceptibility** of the standpoint is the inner product of what the square
 does to each direction with how much network power comes from that direction,
 
-$$\boxed{\ \chi_S = \int_{4\pi} K_S(\hat u)\, Q_S(\hat u)\, d\Omega(\hat u)\ }
+$$\boxed{\ \chi = \int_{4\pi} K(\hat u)\, Q(\hat u)\, d\Omega(\hat u)\ }
 \tag{1}$$
 
-and the power density that actually arrives is $S_{\rm arr} = S_0\,\chi_S$, where
+and the power density that actually arrives is $S_{\rm arr} = S_0\,\chi$, where
 $S_0$ is whatever the same network would have delivered in the open. So
-$\chi_S = 1$ means the square is neutral, $\chi_S = 0.35$ means it costs 4.6 dB,
+$\chi = 1$ means the square is neutral, $\chi = 0.35$ means it costs 4.6 dB,
 and the eleven site comparison is a comparison of these numbers.
 
 Three properties make (1) the right thing to compute rather than a convenient
 one.
 
-1. **It equals 1 in free space by construction**, for every $Q_S$. Any
+1. **It equals 1 in free space by construction**, for every $Q$. Any
    implementation error that breaks this is visible without a reference solution.
 2. **It is independent of network transmit power.** Absolute scale lives in the
    single explicit factor $S_0$ that the caller owns, so a result transfers
@@ -117,16 +117,42 @@ band averaged second moment.
 The consequence is stated rather than hidden: this method cannot produce a
 coherent fading realisation, and does not claim to.
 
-### 1.5 How the rest of this document is arranged
+### 1.5 Notation
 
-Evaluating (1) needs three things: the scene, the density $Q_S$, and a way to do
+Four conventions, stated once so they do not have to be restated.
+
+**Everything is at one standpoint.** $K$, $Q$, $\rho$ and $\chi$ are all
+properties of a single observation point $\mathbf{x}$, and the whole study is a
+distribution over standpoints. Carrying an $\mathbf{x}$ subscript on every symbol
+would say nothing, so it is dropped, and where a formula genuinely needs the
+point it appears as $\mathbf{x}$.
+
+**Directions point outward.** $\hat u$ always leaves $\mathbf{x}$. A wave
+arriving from $\hat u$ propagates along $\hat k = -\hat u$. Section 5.1 is where
+that sign matters and it is the only place it appears.
+
+**$d$ is only ever a differential.** Horizontal range is $r$, so $d\Omega$,
+$d\alpha$ and $dh$ never have to be read twice. Finite increments are $\delta$.
+
+**Capital for solid angle, lowercase for elevation.** $Q(\hat u)$ is a density on
+the sphere in sr$^{-1}$; $q(\alpha)$ is its marginal in elevation in rad$^{-1}$.
+Section 4.1 gives the factor between them. The same discipline separates the
+admissible height window $W$ from the cell count $M$, and the ray throughput $w$
+from the tissue transmission coefficient $T_0$, both of which were one letter in
+an earlier draft.
+
+Symbols are collected in appendix A.
+
+### 1.6 How the rest of this document is arranged
+
+Evaluating (1) needs three things: the scene, the density $Q$, and a way to do
 the integral. They are built in that order.
 
 | Section | What it produces |
 |---|---|
 | 2 | the scene: a mesh, a class per surface, a permittivity per class |
 | 3 | image evidence, and how much of the scene it actually binds |
-| 4 | the illumination density $Q_S$, from a source population |
+| 4 | the illumination density $Q$, from a source population |
 | 5 | the estimator that evaluates (1) |
 | 6, 7 | where the pedestrian stands, and how the body couples |
 | 8 | validation |
@@ -146,7 +172,7 @@ escaped in. Figure 2 is why.
 the pedestrian is a point, and essentially no launched ray ever lands on them.
 Right, the adjoint picture: every ray starts at the pedestrian, so every ray
 contributes, and the sky direction it eventually escapes in is exactly the
-argument that $Q_S$ wants. Reciprocity makes the two equivalent, with the
+argument that $Q$ wants. Reciprocity makes the two equivalent, with the
 dictionary $\hat k = -\hat u$. In the right panel blue rays reach the sky and
 grey ones terminate on a wall, and the occlusion is computed rather than drawn,
 so the visible sky wedge is the real one for this cross section.
@@ -155,12 +181,12 @@ Figure 3 follows one such ray end to end.
 
 ![One ray from launch to deposit](FIGURES/21_one_ray.png)
 
-**Figure 3.** A single sample. The ray leaves $S$ carrying throughput $T = 1$.
-At each surface, $T$ is multiplied by the Fresnel power reflectance and the
+**Figure 3.** A single sample. The ray leaves $\mathbf{x}$ carrying throughput $w = 1$.
+At each surface, $w$ is multiplied by the Fresnel power reflectance and the
 Rayleigh roughness split decides whether the outgoing direction is specular or
-diffuse. When the ray escapes, its surviving $T$ is deposited into the angular
-bin of the direction it originally **left $S$** in, weighted by $Q_S$ evaluated
-at the direction it escaped in. Line thickness is $T$. Section 5.2 gives the
+diffuse. When the ray escapes, its surviving $w$ is deposited into the angular
+bin of the direction it originally **left $\mathbf{x}$** in, weighted by $Q$ evaluated
+at the direction it escaped in. Line thickness is $w$. Section 5.2 gives the
 loop, including Russian roulette from bounce 3 and the four bounce operating
 point.
 
@@ -186,8 +212,8 @@ identity. Meshes built this way carry `format_version: 3` in their manifest and
 the loader refuses anything lower.
 
 **The ROI ball is centred on the terrain, not the ellipsoid.** A ball of radius
-$R$ centred at ellipsoidal height 0 reaches only $\sqrt{R^2 - h^2}$ horizontally
-at a site of height $h$. Milan at $h = 163$ m received 116 m of scene from a
+$\varrho$ centred at ellipsoidal height 0 reaches only $\sqrt{\varrho^2 - H^2}$
+horizontally at a site of ellipsoidal height $H$. Milan at $H = 163$ m received 116 m of scene from a
 nominal 200 m request before this was fixed.
 
 The site is then cropped to a horizontal radius $R_{\rm crop}$ about the anchor.
@@ -391,53 +417,63 @@ numbers are the honest statement of how much of the result is evidence based.
 
 ### 4.1 The construction
 
-Consider base stations scattered on the ground at uniform areal density $n$, each
-at height $\Delta h$ above the pedestrian head and horizontal range $d$, so the
-elevation at which the pedestrian sees it is $\mathrm{el} = \arctan(\Delta h / d)$.
+Consider base stations scattered on the ground at uniform areal density $\nu$, each
+at height $h$ above the pedestrian head and horizontal range $r$, so the
+elevation at which the pedestrian sees it is $\alpha = \arctan(h / d)$.
 The goal is to convert *sites per unit ground area*, which is what a deployment
 has, into *sites per unit elevation*, which is what the sky looks like from the
 standpoint.
 
-Count them in rings. The ring between range $d$ and $d + \delta d$ has area
-$2\pi d\, \delta d$, so it holds $2\pi n\, d\, \delta d$ sites. Now express both
+Count them in rings. The ring between range $r$ and $r + \delta r$ has area
+$2\pi r\, \delta r$, so it holds $2\pi \nu\, r\, \delta r$ sites. Now express both
 factors in elevation. Inverting the elevation relation at fixed height,
 
-$$d(\mathrm{el}) = \Delta h \cot \mathrm{el},
+$$r(\alpha) = h \cot \alpha,
 \qquad
-\left| \frac{\partial d}{\partial\, \mathrm{el}} \right|
-= \frac{\Delta h}{\sin^{2} \mathrm{el}} ,$$
+\left| \frac{\partial r}{\partial\alpha} \right|
+= \frac{h}{\sin^{2} \alpha} ,$$
 
 where the absolute value is taken because range *decreases* as elevation rises,
 and a count of sites has to come out positive. A slab of elevation of width
-$\delta\,\mathrm{el}$ is therefore the image of a ring of width
-$\delta d = |\partial d / \partial\,\mathrm{el}|\ \delta\,\mathrm{el}$, and it
+$\delta\alpha$ is therefore the image of a ring of width
+$\delta r = |\partial r / \partial\alpha|\ \delta\alpha$, and it
 contains
 
 $$\delta N
-= 2\pi n\, d(\mathrm{el}) \left| \frac{\partial d}{\partial\, \mathrm{el}} \right|
-\delta\,\mathrm{el}
-= 2\pi n\, \Delta h^{2}\,
-\frac{\cos \mathrm{el}}{\sin^{3} \mathrm{el}}\, \delta\,\mathrm{el}.
+= 2\pi \nu\, r(\alpha) \left| \frac{\partial r}{\partial\alpha} \right|
+\delta\alpha
+= 2\pi \nu\, h^{2}\,
+\frac{\cos \alpha}{\sin^{3} \alpha}\, \delta\alpha.
 \tag{3}$$
 
 The $\sin^{-3}$ is the whole story: sites at low elevation are far away, and the
 area of ground at a given range grows with that range, so the far ring is
 enormous and it projects into a very thin slab of sky just above the horizon.
 
-Both forms must be stated explicitly, because confusing them is silent. With
-$d\Omega = \cos\mathrm{el}\ d\,\mathrm{el}\ d\phi$:
+Equation (3) counts sites per unit **elevation**. The estimator of section 5
+wants power per unit **solid angle**. These are different measures and confusing
+them is silent, so both are carried explicitly and given different letters:
+$q(\alpha)$, in rad$^{-1}$, is the marginal in elevation, and $Q(\hat u)$, in
+sr$^{-1}$, is the density on the sphere of section 1.3. For a model with no
+azimuthal preference, integrating $d\Omega = \cos\alpha\ d\alpha\ d\phi$ over
+azimuth relates them by
 
-| | density in $\mathrm{el}$ | weight on $d\Omega$ |
+$$q(\alpha) = 2\pi \cos\alpha\ Q(\hat u(\alpha)),
+\qquad\text{equivalently}\qquad
+Q = \frac{q(\alpha)}{2\pi\cos\alpha} .$$
+
+The factor $\cos\alpha$ is the width of the elevation slab on the sphere, and
+dropping it is the single easiest way to get this wrong.
+
+| | $q(\alpha)$, density in elevation | $Q(\hat u)$, weight on $d\Omega$ |
 |---|---|---|
-| uniform sites, no path loss | $\propto \cos\mathrm{el}/\sin^{3}\mathrm{el}$ | $\propto 1/\sin^{3}\mathrm{el}$ |
-| uniform sites, $d^{-2}$ weighting | $\propto 1/(\sin\mathrm{el}\cos\mathrm{el})$ | $\propto 1/(\sin\mathrm{el}\cos^{2}\mathrm{el})$ |
+| uniform sites, no path loss | $\propto \cos\alpha/\sin^{3}\alpha$ | $\propto 1/\sin^{3}\alpha$ |
+| uniform sites, $r^{-2}$ weighting | $\propto 1/(\sin\alpha\cos\alpha)$ | $\propto 1/(\sin\alpha\cos^{2}\alpha)$ |
 
-The $d^{-2}$ row weights by the **horizontal** range, which is the $d$ of the
-symbol table, not the slant range $\Delta h / \sin \mathrm{el}$. The two coincide
-near the horizon and differ by a factor of 4 in power at 60 degrees, so the choice
-is worth stating. Weighting by slant range instead would give
-$\cos\mathrm{el}/\sin\mathrm{el}$ in elevation and $1/\sin\mathrm{el}$ on
-$d\Omega$.
+The second row weights by the **horizontal** range $r$, not by the slant range
+$h/\sin\alpha$. The two coincide near the horizon and differ by a factor of 4 in
+power at 60 degrees, so the choice has to be stated. Slant weighting would give
+$\cos\alpha/\sin\alpha$ in elevation and $1/\sin\alpha$ on $d\Omega$ instead.
 
 Both are heavily low elevation weighted. Under the rooftop support, 61.7 % of the
 pure geometric weight sits below 5 degrees.
@@ -454,9 +490,9 @@ alongside all three values so the two cannot drift apart again.
 Two physical limits bound the source population. There is a **maximum height** a
 base station plausibly occupies, and a **maximum range** beyond which the link
 stops mattering. The obvious encoding is to state a height band
-$[\Delta h_{\min}, \Delta h_{\max}]$ and a range band $[d_{\min}, d_{\max}]$ and
+$[h_{\min}, h_{\max}]$ and a range band $[r_{\min}, r_{\max}]$ and
 truncate the elevation support to
-$[\arctan(\Delta h_{\min}/d_{\max}),\ \arctan(\Delta h_{\max}/d_{\min})]$.
+$[\arctan(h_{\min}/r_{\max}),\ \arctan(h_{\max}/r_{\min})]$.
 
 **That encoding is wrong, and this draft corrects it.** Equation (3) is derived at
 a *single* height. Truncating its support using the extremes of a height *band*
@@ -466,28 +502,38 @@ range but a 6.5 m source needs 390 m. A hard band admits both, and so buys
 illumination from sources that violate its own range cap, at exactly the low
 elevations that dominate the measure.
 
-Carrying out the integral properly, with height distributed as $f(\Delta h)$ over
-$[\Delta h_{\min}, \Delta h_{\max}]$ and range confined to $[d_{\min}, d_{\max}]$,
+Carrying the integral out properly means asking, at each elevation, which
+heights are actually admissible once **both** caps are imposed. Let $f_h(h)$ be
+the height distribution over $[h_{\min}, h_{\max}]$, and let the range be
+confined to $[r_{\min}, r_{\max}]$. A source at height $h$ appears at elevation
+$\alpha$ only if its implied range $h \cot\alpha$ lies inside the range band,
+which bounds $h$ between $r_{\min}\tan\alpha$ and $r_{\max}\tan\alpha$.
+Intersecting that with the height band gives the admissible interval
+$[a(\alpha), b(\alpha)]$ below. Weighting it by $h^{2}$, which is the Jacobian
+factor already visible in (3), defines the **admissible height window**
+$W(\alpha)$, in m$^{3}$:
 
-$$Q(\mathrm{el}) \ \propto\ \frac{1}{\sin^{3}\mathrm{el}}\; M(\mathrm{el}),
+$$q(\alpha) \ \propto\ \frac{1}{\sin^{3}\alpha}\; W(\alpha),
 \qquad
-M(\mathrm{el}) = \int_{a(\mathrm{el})}^{b(\mathrm{el})} f(h)\, h^{2}\, dh,
+W(\alpha) = \int_{a(\alpha)}^{b(\alpha)} f_h(h)\, h^{2}\, dh,
 \tag{4}$$
 
-$$a(\mathrm{el}) = \max\!\big(\Delta h_{\min},\, d_{\min} \tan \mathrm{el}\big),
+$$a(\alpha) = \max\!\big(h_{\min},\, r_{\min} \tan \alpha\big),
 \qquad
-b(\mathrm{el}) = \min\!\big(\Delta h_{\max},\, d_{\max} \tan \mathrm{el}\big),$$
+b(\alpha) = \min\!\big(h_{\max},\, r_{\max} \tan \alpha\big),$$
 
-with $M = 0$ wherever $b < a$. The window $M$ is a **smooth** roll off, not an
-indicator. It reduces to a hard indicator only in the single height case that (3)
+with $W = 0$ wherever $b < a$, meaning no height at all can produce that
+elevation without violating a cap. $W$ is a **smooth** roll off, not an
+indicator: near the edges of the support the admissible interval shrinks
+continuously to nothing rather than switching off. It reduces to a hard indicator only in the single height case that (3)
 actually describes. For a uniform height distribution it is available in closed
-form, $M \propto (b^3 - a^3)$.
+form, $W \propto (b^3 - a^3)$.
 
 The support of (4) is indeed
-$[\arctan(\Delta h_{\min}/d_{\max}), \arctan(\Delta h_{\max}/d_{\min})]$, so the
+$[\arctan(h_{\min}/r_{\max}), \arctan(h_{\max}/r_{\min})]$, so the
 previously stated support was right. What was wrong was assuming the weight was
 flat across it. A plateau where the whole height band is admissible exists only
-when $\Delta h_{\max}/d_{\max} \le \Delta h_{\min}/d_{\min}$, which holds for both
+when $h_{\max}/r_{\max} \le h_{\min}/r_{\min}$, which holds for both
 deployment types considered here.
 
 The consequence is that the uncorrected model **over weights both tails**, the low
@@ -513,14 +559,14 @@ the shift is not common mode it **reorders the cities**. Section 9.2 reports it.
 
 ### 4.3 The three models used
 
-| name | $\Delta h$ [m] | $d$ [m] | elevation support [deg] |
+| name | $h$ [m] | $r$ [m] | elevation support [deg] |
 |---|---|---|---|
 | isotropic | | | $-90$ to $90$, uniform |
 | macro rooftop | 13.5 to 43.5 | 25 to 250 | 3.1 to 60.1 |
 | street small cell | 2.5 to 6.5 | 10 to 150 | 0.95 to 33.0 |
 
 The isotropic model is a control, not a deployment. It is uniform over $4\pi$, so
-$\chi_S$ under it reduces to a purely geometric openness measure and carries no
+$\chi$ under it reduces to a purely geometric openness measure and carries no
 network assumption at all. Reporting it beside the directional models separates
 what the built form does from what the deployment assumption does, and section
 10.1 shows that separation is the main result.
@@ -576,8 +622,8 @@ sites that carry the most interpretive weight. Reporting $\chi$ at 150, 250 and
 
 $Q$ is normalised by quadrature in elevation and not on the direction grid:
 
-$$\mathcal N = 2\pi \int_{\mathrm{el}_{\min}}^{\mathrm{el}_{\max}}
-w(\mathrm{el})\, \cos\mathrm{el} \ d\,\mathrm{el},
+$$\mathcal N = 2\pi \int_{\alpha_{\min}}^{\alpha_{\max}}
+w(\alpha)\, \cos\alpha \ d\alpha,
 \qquad Q = w / \mathcal N .$$
 
 This matters because a $1/\sin^3$ law puts most of its mass in the first few
@@ -593,37 +639,37 @@ value that quadrature error looks like a factor of six error in the physics.
 
 ### 5.1 Formulation
 
-Computing $K_S(\hat u)$ forward, by launching from every plausible source and
-seeing what reaches $S$, wastes essentially all of the work. The adjoint form
-launches from $S$ instead, as in figure 2. Figure 3 is one sample of what
+Computing $K(\hat u)$ forward, by launching from every plausible source and
+seeing what reaches $\mathbf{x}$, wastes essentially all of the work. The adjoint form
+launches from $\mathbf{x}$ instead, as in figure 2. Figure 3 is one sample of what
 follows.
 
-By reciprocity, a ray leaving $S$ in direction $\hat u_{\rm loc}$ and escaping the
-scene in direction $\hat u_{\rm ext}$ with accumulated power throughput $T$ is the
-reverse of a path that would carry a fraction $T$ of the power from a source at
-$\hat u_{\rm ext}$ into arrival direction $\hat k = -\hat u_{\rm loc}$ at $S$. The
+By reciprocity, a ray leaving $\mathbf{x}$ in direction $\hat u_{\rm loc}$ and escaping the
+scene in direction $\hat u_{\rm ext}$ with accumulated power throughput $w$ is the
+reverse of a path that would carry a fraction $w$ of the power from a source at
+$\hat u_{\rm ext}$ into arrival direction $\hat k = -\hat u_{\rm loc}$ at $\mathbf{x}$. The
 departure direction is the local arrival direction, so no sign conversion is
 needed anywhere downstream.
 
 Sampling $N$ rays with $\hat u_{\rm loc}$ uniform on the sphere gives the estimator
 
-$$\boxed{\ \hat\chi_S = \frac{4\pi}{N}\sum_{j=1}^{N} T_j\, Q_S(\hat u_{{\rm ext},j})\ }
+$$\boxed{\ \hat\chi = \frac{4\pi}{N}\sum_{j=1}^{N} w_j\, Q(\hat u_{{\rm ext},j})\ }
 \tag{5}$$
 
 where the sum runs over escaping rays only. Resolved by arrival direction, with
 the sphere partitioned into $M$ near equal solid angle cells of a Fibonacci
 spiral,
 
-$$\rho_c = \frac{1}{n_c}\sum_{j \in c} T_j\, Q_S(\hat u_{{\rm ext},j}),
+$$\rho_c = \frac{1}{n_c}\sum_{j \in c} w_j\, Q(\hat u_{{\rm ext},j}),
 \qquad
-\hat\chi_S = \sum_{c=1}^{M} \rho_c\, \Delta\Omega,
+\hat\chi = \sum_{c=1}^{M} \rho_c\, \Delta\Omega,
 \qquad \Delta\Omega = \frac{4\pi}{M}.
 \tag{6}$$
 
 **Free space check.** With no geometry every ray escapes on its first segment with
-$T=1$ and $\hat u_{\rm ext} = \hat u_{\rm loc}$, so
-$\mathbb E[\hat\chi_S] = 4\pi\, \mathbb E[Q_S(\hat u)] = 4\pi \cdot \frac{1}{4\pi}\int Q_S \, d\Omega = 1$
-for any $Q_S$. This is a parameter free identity, not a calibration.
+$w=1$ and $\hat u_{\rm ext} = \hat u_{\rm loc}$, so
+$\mathbb E[\hat\chi] = 4\pi\, \mathbb E[Q(\hat u)] = 4\pi \cdot \frac{1}{4\pi}\int Q \, d\Omega = 1$
+for any $Q$. This is a parameter free identity, not a calibration.
 
 ### 5.2 The bounce loop
 
@@ -644,20 +690,24 @@ For each ray, from the current position $\mathbf x$ and direction $\hat u$:
    {\varepsilon\cos\theta + \sqrt{\varepsilon - \sin^2\theta}} .
    \tag{7}$$
 
-   Set $T \leftarrow T\,R$.
+   Set $w \leftarrow w\,R$.
 4. **Split specular against diffuse** by the Rayleigh coherent fraction,
 
-   $$\rho_{\rm spec} = \exp\!\big(-g^{2}\big),
-   \qquad g = \frac{4\pi s \cos\theta}{\lambda}.
+   $$\kappa = \exp\!\big(-g^{2}\big),
+   \qquad g = \frac{4\pi s \cos\theta}{\lambda},
    \tag{8}$$
 
-   With probability $\rho_{\rm spec}$ the new direction is the mirror
+   where $s$ is the RMS surface height of the class and $\kappa$ is the fraction
+   of the reflected power that stays coherent. It is a scalar fraction, not an
+   angular density, which is why it is not written $\rho$.
+
+   With probability $\kappa$ the new direction is the mirror
    $\hat u - 2(\hat u\cdot\hat n)\hat n$, otherwise it is drawn cosine weighted
    about $\hat n$. Note the $\cos\theta$: a surface that is rough at normal
    incidence is smooth at grazing, and this is the only place that angle
    dependence enters.
 5. **Russian roulette** from bounce 3 onward. Survive with probability
-   $p = \mathrm{clip}(T, p_{\min}, 1)$ and set $T \leftarrow T/p$ on survival,
+   $p = \mathrm{clip}(w, p_{\min}, 1)$ and set $w \leftarrow w/p$ on survival,
    which is unbiased.
 6. Stop at $L$ surface interactions. Rays still travelling are dropped and their
    throughput is reported as `truncated_throughput_share`, so truncation is a
@@ -782,8 +832,8 @@ the occlusion test and the normalisation simultaneously.
 |---|---|---|
 | perfectly conducting ground plane | $\chi = 2$ exactly | exact |
 | dielectric ground plane, 9 elevation bands | band averaged Fresnel | 1.02 % |
-| Lambertian plane | $K = 1 + 2\sin\mathrm{el}$ | exact |
-| ground plane excess delay | $\Delta = 2h\sin\mathrm{el}$, giving $h/2$ throughput weighted | 2 % |
+| Lambertian plane | $K = 1 + 2\sin\alpha$ | exact |
+| ground plane excess delay | $\Delta = 2z\sin\alpha$ for an observer $z$ above the plane, mean $z/2$ throughput weighted | 2 % |
 | closed lossless cavity | energy conserving | pass |
 
 The perfect conductor case **cannot discriminate**: both polarisations reflect
@@ -1225,25 +1275,44 @@ Full design in `MONOSTATIC_SBR.md`, decisions in `DECISIONS.md`, the fishnet in
 
 | Symbol | Meaning | Units |
 |---|---|---|
-| $S$ | observation point, a pedestrian head position | m |
-| $\hat u$ | a unit direction on the sphere, measured **outward** from $S$ | |
+| **Geometry** | | |
+| $\mathbf{x}$ | observation point, a pedestrian head position | m |
+| $\hat u$ | unit direction on the sphere, measured **outward** from $\mathbf{x}$ | |
 | $\hat k$ | propagation direction of an arriving wave, $\hat k = -\hat u$ | |
-| $K_S(\hat u)$ | transfer kernel, scene power density over free space power density | |
-| $Q_S(\hat u)$ | illumination density of the external network, $\int_{4\pi} Q_S \, d\Omega = 1$ | sr$^{-1}$ |
-| $\chi_S$ | susceptibility, $=1$ in free space | |
-| $S_0$ | free space incident power density the network would deliver at $S$ | W m$^{-2}$ |
-| $\rho(\hat u)$ | angular power density arriving at $S$, normalised so $\int \rho \, d\Omega = \chi_S$ | sr$^{-1}$ |
-| $T_j$ | throughput of ray $j$ at the moment it escapes the scene | |
+| $\hat n(\mathbf r)$ | outward surface normal at a body point | |
+| $\alpha$ | elevation above the pedestrian's horizon | rad or deg |
+| $\phi$ | azimuth | rad |
+| $\theta$ | angle of incidence from a surface normal | rad |
+| $r$ | horizontal range from pedestrian to source | m |
+| $h$ | source height above the pedestrian head | m |
+| **Illumination** | | |
+| $\nu$ | areal density of base station sites on the ground | m$^{-2}$ |
+| $f_h(h)$ | height distribution of the source population | m$^{-1}$ |
+| $Q(\hat u)$ | illumination density on the sphere, $\int_{4\pi} Q\, d\Omega = 1$ | sr$^{-1}$ |
+| $q(\alpha)$ | its marginal in elevation, $q = 2\pi\cos\alpha\ Q$ | rad$^{-1}$ |
+| $W(\alpha)$ | admissible height window at a given elevation, equation (4) | m$^{3}$ |
+| $a(\alpha), b(\alpha)$ | lower and upper limits of that window | m |
+| **Transfer and estimator** | | |
+| $K(\hat u)$ | transfer kernel, scene power density over free space power density | |
+| $\chi$ | susceptibility, $=1$ in free space | |
+| $\rho(\hat u)$ | arriving angular power density, $\int \rho\, d\Omega = \chi$ | sr$^{-1}$ |
+| $w_j$ | throughput of ray $j$ where it escapes the scene | |
+| $N$ | rays launched per standpoint | |
+| $M$ | Fibonacci cells partitioning the sphere | |
+| $f_{\rm sky}$ | fraction of the sphere from which a ray escapes unobstructed | |
+| **Materials and body** | | |
 | $\varepsilon$ | complex relative permittivity, negative imaginary part | |
+| $R(\theta,\varepsilon)$ | unpolarised Fresnel power reflectance | |
 | $s$ | RMS surface height of a rough interface | m |
-| $\theta$ | angle of incidence from the surface normal | rad |
-| $\mathrm{el}$ | elevation above the horizon | rad or deg |
-| $\Delta h$ | source height above the pedestrian head | m |
-| $d$ | horizontal range from pedestrian to source | m |
-| $M(\mathrm{el})$ | height window admitted at a given elevation by both caps, equation (4) | m$^3$ |
+| $g$ | Rayleigh roughness parameter, $g = 4\pi s \cos\theta/\lambda$ | |
+| $\kappa$ | coherent (specular) fraction of reflected power, $\kappa = e^{-g^{2}}$ | |
+| $S_0$ | free space incident power density the network would deliver | W m$^{-2}$ |
+| $S_{\rm arr}$ | power density actually arriving, $S_{\rm arr} = S_0\chi$ | W m$^{-2}$ |
 | $S_{ab}(\mathbf r)$ | absorbed power density at body surface point $\mathbf r$ | W m$^{-2}$ |
 | $T_0$ | tissue power transmission coefficient at normal incidence | |
-| $f_{\rm sky}$ | fraction of the sphere from which a ray leaving $S$ escapes unobstructed | |
+
+Symbols local to one argument are not listed. Section 2.1 uses $\varrho$ for a
+tile request radius and $H$ for ellipsoidal height, and neither appears again.
 
 ---
 
