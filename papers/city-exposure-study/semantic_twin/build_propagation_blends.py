@@ -104,6 +104,8 @@ def build(site: str, args: argparse.Namespace) -> dict[str, pathlib.Path]:
             "--resolution-scale",
             str(args.resolution_scale),
         ]
+        if args.gpu:
+            command.append("--gpu")
     run(command, f"blend {site}")
     return {"payload": payload, "manifest": manifest, "blend": blend}
 
@@ -131,6 +133,20 @@ def write_index(built: dict[str, dict[str, pathlib.Path]], path: pathlib.Path) -
         "| `network` | Where the illumination model's sources sit, at true horizontal range and height. |",
         "| `walk` | Every traced standpoint, coloured by susceptibility in decibels. |",
         "| `body` | The duke phantom at the hero standpoint, coloured by absorbed power density. |",
+        "| `bounces` | The same paths cut at their reflections, one object per leg index. |",
+        "| `semantics` | The fishnet surface, one object per taxonomy, Mapillary Vistas and SAM 3. |",
+        "| `evidence` | Every support triangle a view considered, clean pixels against withheld. |",
+        "| `refused` | What the cutter threw away, one object per reason it was thrown. |",
+        "| `depth` | The mesh first hit, and the monocular surface the plausibility gate refused. |",
+        "| `panoramas` | The registered poses, their covariance and their sky conflict verdict. |",
+        "| `bodies` | The SMPL-X bystanders the dynamic layer reconstructed and placed. |",
+        "",
+        "The last seven start hidden in the viewport and in the render. Most of them exist",
+        "only where the site has a panorama, and a site without one opens exactly as it did",
+        "before. Each of their objects carries its measured quantities twice, once as an",
+        "exact `value_` attribute and once as a colour attribute over a stated range, and",
+        "lists what it carries as `colour_layers`. `PAYLOAD.md` in the repository says what",
+        "each array is and where it was read from.",
         "",
         "The five ray bundles are, by colour: orange, straight to sky inside the rooftop",
         "elevation band; blue, straight to sky outside it; pale yellow, reached sky after at",
@@ -214,6 +230,9 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--samples", type=int, default=48)
     parser.add_argument("--resolution-scale", type=float, default=1.0)
     parser.add_argument("--skip-render", action="store_true")
+    parser.add_argument(
+        "--gpu", action="store_true", help="Render on the accelerator, and fail loudly if there is none"
+    )
     parser.add_argument("--retrace", action="store_true", help="Retrace even if a payload exists")
     parser.add_argument("--out", type=pathlib.Path, default=OUTPUT)
     parser.add_argument("--archive", type=pathlib.Path)
