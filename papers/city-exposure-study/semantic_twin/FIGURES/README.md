@@ -201,15 +201,20 @@ The two outer panels are labelled as crop-limited upper bounds in their own titl
 rather than in a footnote, because at 130 m a scene contains nothing that can
 occlude a macro site at 250 m.
 
-**Read the directional panels as provisional.** The correction to 250 m is not a
-constant: across the first four cities re-run it ranges from 0.05 to 4.58 dB
-rooftop and 1.02 to 11.37 street, which is comparable to the 4.20 dB between-city
-spread the figure shows. So the directional curves are distorted relative to each
-other rather than merely shifted together. The sky fraction panel is converged and
-carries no such caveat. The corrected version is `cities250_15ghz_cdf.png`.
+**This is the corrected run, at the 250 m radius where the directional models
+converge.** The uncorrected 130 m version is `cities130_15ghz_cdf.png` and the
+difference between them is not a constant offset: across ten cities the
+correction ranges 0.05 to 4.80 dB rooftop, 0.16 to 11.39 street, and 0.03 to
+0.96 even for isotropic, where the tall cities move most. So the 130 m version
+distorted the sites relative to each other rather than shifting them together,
+and a between-site comparison at the narrow radius is not safe either.
+
+Corrected, the between-city spread is **5.13 dB in isotropic median and 14.49 dB
+in rooftop**. Urban form matters far more under directional illumination than
+under isotropic, which the uncorrected figure could not show.
 
 The ordering runs from Brussels' enclosed Grand-Place at the left to Krakow's open
-Rynek at the right, spanning 4.20 dB in median. The spread within a single square
+Rynek at the right. The spread within a single square
 reaches 6.48 dB, so which part of a square a person stands in matters as much as
 which city the square is in.
 
