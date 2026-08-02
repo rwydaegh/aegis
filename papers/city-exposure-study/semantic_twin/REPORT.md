@@ -40,12 +40,16 @@ the single capture recomputed on the same denominator and the same ray density.
 That is a factor of 3.5.
 
 I recounted this independently, with a different tracer, a different ray density
-and station altitudes re-derived rather than taken from the pipeline's outputs.
-By area the two agree to 2.8 percent. By face count they disagree by 7.6 percent,
-which is the expected direction and magnitude for a count that depends on whether
-sliver triangles are ever sampled. **The area fraction is the number to quote.**
-The count fraction moves with ray density and a reader who re-runs at a different
-density will otherwise think they have found a bug.
+and station altitudes re-derived rather than taken from the pipeline's outputs. On
+the same mesh the two agree by area to 2.8 percent, 24.09 against 24.78 on the
+single precision mesh both were first run on, and to 4.8 percent on the double
+precision mesh the figure now quotes, 22.97 against 24.14. By face count they
+disagree by 7.6 percent, which is the expected direction and magnitude for a count
+that depends on whether sliver triangles are ever sampled.
+
+**The area fraction is the number to quote.** The count fraction moves with ray
+density, and a reader who re-runs at a different density will otherwise think they
+have found a bug.
 
 ### Where it saturates, and what actually binds
 
