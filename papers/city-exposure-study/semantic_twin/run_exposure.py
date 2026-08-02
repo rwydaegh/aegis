@@ -676,6 +676,7 @@ def cross_city_report(sites: list[str], frequency_hz: float, *, crop_m: int = 13
         OUTPUT / f"cities{crop_m}_{frequency_hz / 1e9:g}ghz_cdf.png",
         frequency_ghz=frequency_hz / 1e9,
         reference_s0_w_m2=REFERENCE_S0_W_M2,
+        crop_radius_m=float(crop_m),
     )
     print(f"wrote {path} and {figure}", flush=True)
 

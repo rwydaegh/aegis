@@ -116,6 +116,7 @@ def cross_city_cdf(
     *,
     frequency_ghz: float,
     reference_s0_w_m2: float,
+    crop_radius_m: float = 130.0,
 ) -> pathlib.Path:
     """One CDF curve per city, for susceptibility and for absorbed power density."""
     import matplotlib
@@ -149,13 +150,16 @@ def cross_city_cdf(
     axes[0].set_xscale("log")
     axes[0].set_xlabel("rooftop susceptibility $\\chi_S$ (free space = 1)")
     axes[0].set_ylabel("fraction of walk locations")
-    axes[0].set_title("environment side, crop-limited upper bound")
+    # Whether the directional panels are bounds or values is a property of the
+    # crop, so the titles have to follow it rather than assert one case.
+    status = "converged" if crop_radius_m >= 250.0 else "crop-limited upper bound"
+    axes[0].set_title(f"environment side, {status}")
     axes[0].legend(fontsize=6.5, loc="lower right")
     axes[1].set_xlabel("sky fraction")
     axes[1].set_title("how much sky the pedestrian sees, converged")
     axes[2].set_xscale("log")
     axes[2].set_xlabel(f"peak $S_{{ab}}$ [W m$^{{-2}}$] at $S_0$ = {reference_s0_w_m2:g} W m$^{{-2}}$")
-    axes[2].set_title("body side, crop-limited upper bound")
+    axes[2].set_title(f"body side, {status}")
     for panel in axes:
         panel.grid(alpha=0.25)
         panel.set_ylim(0.0, 1.0)
@@ -164,15 +168,24 @@ def cross_city_cdf(
         f"Pedestrian exposure across {len(order)} city squares, {frequency_ghz:g} GHz, identical material prior",
         fontsize=10,
     )
-    # The absolute rooftop scale is not converged at a 130 m crop. Say so on the
-    # figure, because a CDF with a log axis reads as an absolute claim.
+    # A CDF on a log axis reads as an absolute claim, so the crop status has to
+    # be on the figure. It differs by radius, and the correction is not a constant
+    # offset, so a between site comparison at the narrow radius is not safe either.
+    converged = crop_radius_m >= 250.0
+    caption = (
+        f"Crop radius {crop_radius_m:g} m. Rooftop and small cell susceptibility converge at 250 m, "
+        "sky fraction by 100 m. "
+    ) + (
+        "This run is at the converged radius."
+        if converged
+        else "This run is below it, so the rooftop panels are upper bounds. Measured against 250 m over "
+        "nine cities the correction is 0.05 to 4.80 dB rooftop and 0.03 to 0.96 dB isotropic, so it is "
+        "not a constant offset and the sites are distorted relative to each other, not merely shifted."
+    )
     figure.text(
         0.5,
         0.005,
-        "Rooftop-weighted panels are upper bounds: a 130 m crop lacks the "
-        "geometry to occlude sources at 250 m, and the value falls 3.1 dB out to "
-        "a 200 m crop. Between-site comparison at a common radius is unaffected. "
-        "Sky fraction is converged by 100 m.",
+        caption,
         ha="center",
         fontsize=6.5,
         color="0.35",
