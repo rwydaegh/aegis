@@ -17,10 +17,12 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   of the comparison because its crop predates the set at 170 m. Sky fraction runs
   from 18 percent at Times Square to 46 percent at Krakow, which is the geometric
   spread this study exists to turn into an exposure distribution.
-- **The first exposure distributions exist.** Where a pedestrian stands in one
-  square is worth 3.5 dB under isotropic illumination and 12.5 dB under rooftop
-  macro sites. The assumed source geometry moves the answer further than position
-  does.
+- **The first exposure distributions exist.** Where a pedestrian stands along one
+  square's walk is worth 3.5 dB under isotropic illumination and 12.5 dB under
+  rooftop macro sites, and carries through to 13.0 dB in whole body SAR. The
+  assumed source geometry moves the answer further than position does. A split
+  half test says these characterise the walk rather than the square, so an area
+  representative figure needs a sampling design.
 - **Image evidence barely moves exposure, and this is now conclusive.** Going
   from no image evidence at all to a tenth of the scene bound by it shifts the
   median 0.29 dB and moves exactly one location in 120 by more than a decibel. A
