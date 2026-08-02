@@ -20,12 +20,29 @@ Run it through headless Blender::
 
 Collections, and what each one answers:
 
-``twin``     the geometry, tinted by the surface class that set its material
-``rays``     five exclusive bundles of the recorded paths, thickness by throughput
-``arrival``  the angular power spectrum at the hero standpoint, one lobe per model
-``network``  where the illumination model's sources sit, at true range and height
-``walk``     every traced standpoint, coloured by its susceptibility
-``body``     the phantom at the hero standpoint, coloured by absorbed power density
+``twin``       the geometry, tinted by the surface class that set its material
+``rays``       five exclusive bundles of the recorded paths, thickness by throughput
+``arrival``    the angular power spectrum at the hero standpoint, one lobe per model
+``network``    where the illumination model's sources sit, at true range and height
+``walk``       every traced standpoint, coloured by its susceptibility
+``body``       the phantom at the hero standpoint, coloured by absorbed power density
+``semantics``  the fishnet surface sets, one per taxonomy, with their evidence
+``evidence``   every support triangle a view considered, clean against withheld
+``refused``    what the cutter threw away, one object per reason it was thrown
+``depth``      the mesh first hit, and the monocular depth the gate refused
+``panoramas``  the registered poses, their covariance and their sky conflict verdict
+``bodies``     the SMPL-X bystanders the dynamic layer reconstructed and placed
+
+The last six are only built when the payload carries them, and all of them start
+hidden, so a site with no panorama opens exactly as it did before and a site with
+one opens just as fast.
+
+A layer is a named attribute, not an object. Every object in those collections
+carries its measured quantities twice: once as a float or integer attribute
+holding the exact value, which the spreadsheet editor will show, and once as a
+colour attribute holding the shaded version. Switching what a surface shows is
+therefore a click in the colour attribute list rather than a rebuild, and the
+exact number survives next to the picture of it.
 """
 
 from __future__ import annotations
@@ -37,6 +54,7 @@ import pathlib
 import sys
 
 import bpy
+import mathutils
 import numpy as np
 
 MODEL_NAMES = ("isotropic", "rooftop", "street_small_cell")
@@ -63,6 +81,18 @@ RAY_STYLE = {
     "multipath_elsewhere": ((0.30, 0.75, 0.85), True),
     "stopped_in_the_scene": ((0.45, 0.10, 0.22), True),
 }
+
+#: Leg index -> emission colour. The first leg is the one that left the
+#: standpoint, the second is the one after the first reflection, and so on. The
+#: budget stops at three reflections because the panoramas measure the material
+#: for the first two, so the fourth entry is everything past what the evidence
+#: covers and is deliberately the dimmest.
+BOUNCE_STYLE = (
+    ((1.00, 0.55, 0.12), "leg_0_before_any_bounce"),
+    ((0.98, 0.85, 0.30), "leg_1_after_one_bounce"),
+    ((0.45, 0.85, 0.95), "leg_2_after_two_bounces"),
+    ((1.00, 0.20, 0.85), "leg_3_and_beyond"),
+)
 
 #: Nine anchors of the matplotlib inferno map. Blender ships no matplotlib and
 #: adding one to a headless render for a colour ramp would be absurd.
@@ -105,6 +135,29 @@ def reset_scene() -> None:
     scene.view_settings.view_transform = "Standard"
 
 
+def use_gpu() -> str:
+    """Point Cycles at whatever accelerator this machine has, or say so and stop.
+
+    Half a million depth points and a quarter of a million ray legs is a minute
+    a frame on four contended cores and seconds on the A6000, so the figures are
+    worth moving. This is opt in rather than automatic, because a silent
+    fallback to the CPU is the failure mode where you wait an hour and never
+    learn why.
+    """
+    preferences = bpy.context.preferences.addons["cycles"].preferences
+    for backend in ("OPTIX", "CUDA", "HIP", "METAL", "ONEAPI"):
+        preferences.compute_device_type = backend
+        preferences.get_devices()
+        usable = [device for device in preferences.devices if device.type == backend]
+        if not usable:
+            continue
+        for device in preferences.devices:
+            device.use = device.type == backend
+        bpy.context.scene.cycles.device = "GPU"
+        return f"{backend} on {', '.join(device.name for device in usable)}"
+    raise RuntimeError("--gpu asked for, and Cycles found no OPTIX, CUDA, HIP, METAL or ONEAPI device")
+
+
 def collection(name: str) -> bpy.types.Collection:
     made = bpy.data.collections.new(name)
     bpy.context.scene.collection.children.link(made)
@@ -139,6 +192,32 @@ def attach_face_colour(obj: bpy.types.Object, name: str, rgba: np.ndarray) -> No
     attribute.data.foreach_set("color", corner.ravel())
 
 
+def attach_point_colour(obj: bpy.types.Object, name: str, rgba: np.ndarray) -> None:
+    """One colour per vertex, byte encoded.
+
+    Byte rather than float because a cloud is a quarter of a million points and
+    four bytes against sixteen decides whether the file is worth downloading.
+    Eight bits per channel is more than a shaded scalar carries anyway, and the
+    exact value is on the float attribute next to it.
+    """
+    attribute = obj.data.color_attributes.new(name=name, type="BYTE_COLOR", domain="POINT")
+    attribute.data.foreach_set("color", np.ascontiguousarray(rgba, dtype=np.float32).ravel())
+
+
+def attach_values(obj: bpy.types.Object, name: str, values: np.ndarray, domain: str) -> None:
+    """The measured number itself, unshaded, so the blend is data and not only a picture.
+
+    A colour attribute is lossy by construction: it is clamped to the range the
+    ramp was given and it cannot be read back as the quantity it came from. This
+    keeps the quantity, which is what the spreadsheet editor shows and what a
+    geometry node or a script can query.
+    """
+    values = np.asarray(values)
+    kind = "INT" if np.issubdtype(values.dtype, np.integer) else "FLOAT"
+    attribute = obj.data.attributes.new(name=name, type=kind, domain=domain)
+    attribute.data.foreach_set("value", values.astype(np.int32 if kind == "INT" else np.float32).ravel())
+
+
 def emissive_material(name: str, channel: str | None, colour: tuple[float, float, float] = (1.0, 1.0, 1.0)):
     """A pure emitter, either at a fixed colour or at a colour attribute.
 
@@ -158,11 +237,111 @@ def emissive_material(name: str, channel: str | None, colour: tuple[float, float
         emission.inputs["Color"].default_value = (*colour, 1.0)
     else:
         attribute = tree.nodes.new("ShaderNodeAttribute")
+        attribute.name = LAYER_NODE
         attribute.attribute_name = channel
         attribute.location = (-300, 0)
         tree.links.new(attribute.outputs["Color"], emission.inputs["Color"])
     tree.links.new(emission.outputs["Emission"], output.inputs["Surface"])
     return material
+
+
+#: Name of the attribute node every layered material carries. Renaming the
+#: attribute it reads is the whole of switching a layer, so it is found by name
+#: rather than by position in a node tree a reader may have rearranged.
+LAYER_NODE = "layer"
+
+
+def show_layer(obj: bpy.types.Object, channel: str) -> None:
+    """Point an object's material and its viewport at one of its colour layers.
+
+    Both are set, because they are read in different places: the shader path uses
+    the attribute node, and solid shading with the colour source set to attribute
+    uses whichever colour attribute is active. Setting one and not the other
+    gives a viewport and a render that disagree, which is worse than either.
+    """
+    for material in obj.data.materials:
+        node = material.node_tree.nodes.get(LAYER_NODE) if material.use_nodes else None
+        if node is not None:
+            node.attribute_name = channel
+    colours = obj.data.color_attributes
+    if channel in colours.keys():
+        colours.active_color_index = colours.keys().index(channel)
+
+
+def layered(obj: bpy.types.Object, channels: tuple[str, ...], default: str) -> None:
+    """Record the layer list on the object and select the one it opens on."""
+    obj["colour_layers"] = list(channels)
+    obj["reading"] = "switch layer in Object Data Properties, Colour Attributes, or rename the 'layer' node"
+    show_layer(obj, default)
+
+
+def point_cloud(
+    name: str, points: np.ndarray, into: bpy.types.Collection, *, radius: float, material
+) -> bpy.types.Object:
+    """A vertex only mesh turned into renderable points by one geometry node.
+
+    A quarter of a million points as triangles would be a quarter of a million
+    triangles and three times the vertices. As loose vertices it is one position
+    each, and ``Mesh to Points`` gives Cycles something to shade without any of
+    that reaching the file. The material has to be set inside the node group:
+    the point component is new geometry and does not inherit the mesh's slots,
+    and the symptom of forgetting is a cloud that renders pure black.
+    """
+    mesh = bpy.data.meshes.new(name)
+    mesh.vertices.add(points.shape[0])
+    mesh.vertices.foreach_set("co", np.ascontiguousarray(points, dtype=np.float32).ravel())
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    into.objects.link(obj)
+
+    group = bpy.data.node_groups.new(f"{name}_points", "GeometryNodeTree")
+    group.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
+    group.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
+    inputs = group.nodes.new("NodeGroupInput")
+    inputs.location = (-400, 0)
+    outputs = group.nodes.new("NodeGroupOutput")
+    outputs.location = (400, 0)
+    to_points = group.nodes.new("GeometryNodeMeshToPoints")
+    to_points.inputs["Radius"].default_value = radius
+    set_material = group.nodes.new("GeometryNodeSetMaterial")
+    set_material.location = (200, 0)
+    set_material.inputs["Material"].default_value = material
+    group.links.new(inputs.outputs[0], to_points.inputs["Mesh"])
+    group.links.new(to_points.outputs["Points"], set_material.inputs["Geometry"])
+    group.links.new(set_material.outputs["Geometry"], outputs.inputs[0])
+    modifier = obj.modifiers.new("points", "NODES")
+    modifier.node_group = group
+    obj.data.materials.append(material)
+    obj["point_radius_m"] = radius
+    return obj
+
+
+def categorical_colours(codes: np.ndarray, palette: np.ndarray) -> np.ndarray:
+    """RGBA for integer codes, with anything outside the palette drawn as grey."""
+    codes = np.asarray(codes, dtype=np.int64)
+    inside = (codes >= 0) & (codes < palette.shape[0])
+    rgb = np.full((codes.size, 3), 0.35)
+    rgb[inside] = palette[codes[inside]]
+    return np.column_stack([rgb, np.ones(codes.size)])
+
+
+def log_ramp(values: np.ndarray, floor: float = 1.0) -> tuple[np.ndarray, float, float]:
+    """Inferno over the base ten logarithm, for counts that span decades."""
+    scaled = np.log10(np.maximum(np.asarray(values, dtype=np.float64), floor))
+    low, high = float(scaled.min()), float(scaled.max())
+    return colour_ramp(scaled, low, max(high, low + 1.0e-6)), low, high
+
+
+def scalar_layers(
+    obj: bpy.types.Object, columns: dict[str, np.ndarray], domain: str, *, ranges: dict[str, tuple[float, float]]
+) -> None:
+    """Attach every column twice, as its exact value and as a shaded colour."""
+    attach = attach_face_colour if domain == "FACE" else attach_point_colour
+    for name, values in columns.items():
+        attach_values(obj, f"value_{name}", values, domain)
+        low, high = ranges.get(name, (float(np.nanmin(values)), float(np.nanmax(values))))
+        attach(obj, name, colour_ramp(np.nan_to_num(values, nan=low), low, max(high, low + 1.0e-9)))
+        obj[f"{name}_range"] = [low, high]
 
 
 def lit_material(name: str, channel: str):
@@ -174,6 +353,7 @@ def lit_material(name: str, channel: str):
     principled.inputs["Roughness"].default_value = 0.85
     principled.inputs["Specular IOR Level"].default_value = 0.15
     attribute = tree.nodes.new("ShaderNodeAttribute")
+    attribute.name = LAYER_NODE
     attribute.attribute_name = channel
     attribute.location = (-300, 300)
     tree.links.new(attribute.outputs["Color"], principled.inputs["Base Color"])
@@ -258,6 +438,52 @@ def build_rays(payload, terminations: list[str], into: bpy.types.Collection, *, 
         colour, visible = RAY_STYLE[name]
         assign(obj, emissive_material(f"ray_{name}", None, colour))
         obj.hide_render = not visible
+    return counts
+
+
+def build_ray_depth(payload, into: bpy.types.Collection, *, base_radius: float) -> dict[str, int]:
+    """The same paths again, cut at the bounces, one object per leg index.
+
+    The five bundles answer where a ray ended. They do not answer how deep it
+    went, and depth is the question the bounce budget is about: the panoramas
+    measure the material for the first two reflections and nothing measures it
+    after that. A leg is one straight segment of a path, so leg zero is what
+    left the standpoint and leg two is what carried on after the second surface.
+    Switching the last object off shows exactly how much of the fan lives past
+    what the evidence supports.
+    """
+    vertices = payload["path_vertices"]
+    offsets = payload["path_offsets"].astype(np.int64)
+    throughput = payload["path_throughput"]
+    lengths = np.diff(offsets)
+    counts: dict[str, int] = {}
+    for depth, (colour, name) in enumerate(BOUNCE_STYLE):
+        last = depth == len(BOUNCE_STYLE) - 1
+        curve = bpy.data.curves.new(name, type="CURVE")
+        curve.dimensions = "3D"
+        curve.bevel_depth = base_radius
+        curve.bevel_resolution = 1
+        curve.use_fill_caps = True
+        drawn = 0
+        for index in np.flatnonzero(lengths > depth + 1):
+            start, stop = int(offsets[index]), int(offsets[index + 1])
+            first = start + depth
+            points = vertices[first : stop if last else first + 2]
+            if points.shape[0] < 2:
+                continue
+            spline = curve.splines.new("POLY")
+            spline.points.add(points.shape[0] - 1)
+            homogeneous = np.column_stack([points, np.ones(points.shape[0])]).astype(np.float32)
+            spline.points.foreach_set("co", homogeneous.ravel())
+            radius = np.cbrt(np.clip(throughput[first : first + points.shape[0]], 1.0e-6, None)).astype(np.float32)
+            spline.points.foreach_set("radius", radius)
+            drawn += 1
+        counts[name] = drawn
+        obj = bpy.data.objects.new(name, curve)
+        into.objects.link(obj)
+        assign(obj, emissive_material(f"bounce_{name}", None, colour))
+        obj["legs_drawn"] = drawn
+        obj["reading"] = f"path segments at leg index {depth}" + (" and past it" if last else "")
     return counts
 
 
@@ -374,6 +600,344 @@ def build_body(payload, hero: np.ndarray, ground_z: float, into: bpy.types.Colle
     obj["sab_w_m2_range"] = [low, high]
     obj["phantom"] = "duke, IT'IS adult male"
     return low, high
+
+
+# ---------------------------------------------------------------------------
+# Evidence layers. Every one of these is skipped when the payload lacks it.
+# ---------------------------------------------------------------------------
+
+#: Which fishnet columns become colour layers, and the range each is shaded on.
+#: A fixed range where the quantity has one, so two taxonomies and two sites are
+#: comparable, and a measured range where it does not.
+FISHNET_LAYERS: dict[str, tuple[float, float] | None] = {
+    "confidence": (0.0, 1.0),
+    "top_probability": (0.0, 1.0),
+    # Clipped at half a bit rather than at the maximum. Five sixths of the faces
+    # sit at exactly zero, so a range set by the tail leaves the whole surface
+    # in the dark end of the ramp and the mixed faces, which are the point of
+    # the layer, invisible. The exact value is on the same object.
+    "entropy_bits": (0.0, 0.5),
+    "visible_fraction": (0.0, 1.0),
+    "range_m": None,
+}
+
+#: Colours for the mesh against monocular depth verdict, matching the order in
+#: ``compare_mesh_depth.DECISIONS``. Kept in that order rather than looked up so
+#: the blend does not need the module.
+DECISION_TINT = np.array(
+    [
+        [0.35, 0.35, 0.35],  # no mesh
+        [0.08, 0.75, 0.35],  # agree
+        [0.96, 0.75, 0.12],  # uncertain
+        [0.92, 0.20, 0.16],  # something stands in front of the mesh
+        [0.51, 0.22, 0.75],  # the mesh is implausibly in front
+        [0.14, 0.59, 0.96],  # person or vehicle, handled by the body layer
+        [0.55, 0.55, 0.55],  # depth evidence withheld, the mesh decides alone
+    ]
+)
+
+#: Colour per rejection reason code, indexed from one as the reasons are.
+REFUSAL_TINT = {
+    "occluded_by_support_mesh": (0.30, 0.34, 0.55),
+    "transient_object": (0.14, 0.59, 0.96),
+    "clutter_in_front": (0.92, 0.20, 0.16),
+    "mesh_or_pose_conflict": (0.51, 0.22, 0.75),
+    "not_support_surface": (0.62, 0.58, 0.30),
+    "below_minimum_area": (0.40, 0.40, 0.40),
+}
+
+#: Verdict colours for a registered pose, in the order of the exporter's codes.
+VERDICT_TINT = np.array([[0.10, 0.80, 0.40], [0.98, 0.72, 0.15], [0.95, 0.18, 0.18]])
+
+
+def has(payload, prefix: str) -> bool:
+    return any(key.startswith(prefix) for key in payload.files)
+
+
+def build_fishnet(payload, manifest, taxonomy: str, into: bpy.types.Collection) -> dict[str, int] | None:
+    """One surface set per taxonomy, carrying what the segmenter said about each face.
+
+    The class layer is a lookup and is drawn from a palette, not a ramp. Every
+    other layer is a measured scalar and is drawn on inferno over a stated range,
+    which is on the object. The face count is the cutter's own, so this is the
+    surface the propagation stage would bind materials to, not a redrawing of it.
+    """
+    key = f"fishnet_{taxonomy}"
+    if not has(payload, f"{key}_vertices"):
+        return None
+    record = manifest.get("evidence", {}).get(key, {})
+    obj = build_mesh(f"fishnet_{taxonomy}", payload[f"{key}_vertices"], payload[f"{key}_faces"], into)
+    classes = payload[f"{key}_class"]
+    attach_face_colour(obj, "class", categorical_colours(classes, payload[f"{key}_class_rgb"]))
+    attach_values(obj, "value_class", classes, "FACE")
+    columns = {name: payload[f"{key}_{name}"] for name in FISHNET_LAYERS if f"{key}_{name}" in payload.files}
+    ranges = {
+        name: span for name, span in FISHNET_LAYERS.items() if span is not None and f"{key}_{name}" in payload.files
+    }
+    scalar_layers(obj, columns, "FACE", ranges=ranges)
+    for extra in ("area_m2", "solid_angle_sr", "pixel_support", "view"):
+        if f"{key}_{extra}" in payload.files:
+            attach_values(obj, f"value_{extra}", payload[f"{key}_{extra}"], "FACE")
+    assign(obj, emissive_material(f"fishnet_{taxonomy}", "class"))
+    obj["taxonomy"] = taxonomy
+    obj["class_names"] = record.get("class_names", [])
+    obj["views"] = record.get("views", [])
+    obj["cut_by"] = "semantic_twin/fishnet.py, projected support triangles cut at semantic island boundaries"
+    layered(obj, ("class", *columns), "class")
+    return {"faces": int(payload[f"{key}_faces"].shape[0])}
+
+
+def build_support_evidence(payload, manifest, into: bpy.types.Collection) -> dict[str, float] | None:
+    """Every support triangle a view considered, clean pixels against withheld ones.
+
+    Four withholding channels rather than one total, because they do not mean the
+    same thing. A transient pixel is deferred to the body layer and will come
+    back as a person. A clutter pixel is geometry the tiles never captured and is
+    simply gone. Reading them as one number is what this layer exists to stop.
+    """
+    if not has(payload, "support_evidence_vertices"):
+        return None
+    record = manifest.get("evidence", {}).get("support_evidence", {})
+    obj = build_mesh("support_evidence", payload["support_evidence_vertices"], payload["support_evidence_faces"], into)
+    attach_face_colour(
+        obj, "class", categorical_colours(payload["support_evidence_class"], payload["support_evidence_class_rgb"])
+    )
+    attach_values(obj, "value_class", payload["support_evidence_class"], "FACE")
+    scalar_layers(
+        obj, {"confidence": payload["support_evidence_confidence"]}, "FACE", ranges={"confidence": (0.0, 1.0)}
+    )
+    withheld = np.zeros(payload["support_evidence_class"].size)
+    counted = ("clean", "transient", "clutter", "occluded", "other")
+    for name in counted:
+        values = payload[f"support_evidence_{name}_px"]
+        attach_values(obj, f"value_{name}_px", values, "FACE")
+        rgba, low, high = log_ramp(values)
+        attach_face_colour(obj, f"{name}_px", rgba)
+        obj[f"{name}_px_log10_range"] = [low, high]
+        if name != "clean":
+            withheld += values
+    total = withheld + payload["support_evidence_clean_px"]
+    fraction = np.divide(withheld, total, out=np.zeros(total.size), where=total > 0.0)
+    scalar_layers(obj, {"withheld_fraction": fraction}, "FACE", ranges={"withheld_fraction": (0.0, 1.0)})
+    assign(obj, emissive_material("support_evidence", "class"))
+    obj["grouping"] = json.dumps(record.get("grouping", {}))
+    obj["reading"] = "clean_px is what was painted, the other four are what was refused and why"
+    layered(obj, ("class", "confidence", *(f"{name}_px" for name in counted), "withheld_fraction"), "class")
+    return {"triangles": int(payload["support_evidence_faces"].shape[0])}
+
+
+def build_refused(payload, manifest, into: bpy.types.Collection) -> dict[str, int] | None:
+    """The candidate surface the cutter refused, one object per reason.
+
+    Separate objects rather than one object with a reason layer, because the
+    question a reader has is what a single reason removed, and that is answered
+    by switching an object off. The transient set and the clutter set are the two
+    that matter: one comes back as a body and the other never comes back.
+    """
+    if not has(payload, "rejected_vertices"):
+        return None
+    record = manifest.get("evidence", {}).get("rejected", {})
+    names = record.get("reason_names", [])
+    reasons = payload["rejected_reason"]
+    faces = payload["rejected_faces"]
+    vertices = payload["rejected_vertices"]
+    areas = payload["rejected_image_area_px"]
+    counts: dict[str, int] = {}
+    for code in np.unique(reasons):
+        label = names[int(code) - 1] if 0 < int(code) <= len(names) else f"reason_{int(code)}"
+        keep = np.flatnonzero(reasons == code)
+        kept = faces[keep]
+        used, remapped = np.unique(kept, return_inverse=True)
+        obj = build_mesh(f"refused_{label}", vertices[used], remapped.reshape(kept.shape), into)
+        rgba, low, high = log_ramp(areas[keep])
+        attach_face_colour(obj, "image_area_px", rgba)
+        attach_values(obj, "value_image_area_px", areas[keep], "FACE")
+        tint = REFUSAL_TINT.get(label, (0.5, 0.5, 0.5))
+        attach_face_colour(obj, "reason", np.tile((*tint, 1.0), (kept.shape[0], 1)))
+        assign(obj, emissive_material(f"refused_{label}", "reason"))
+        obj["reason"] = label
+        obj["image_area_px_total"] = float(areas[keep].sum())
+        obj["image_area_px_log10_range"] = [low, high]
+        layered(obj, ("reason", "image_area_px"), "reason")
+        counts[label] = int(kept.shape[0])
+    return counts
+
+
+def build_depth(payload, manifest, into: bpy.types.Collection, *, radius: float) -> dict[str, int] | None:
+    """Two clouds: the first hit the twin uses, and the depth the gate refused.
+
+    They are deliberately in the same collection and the same units. The point of
+    drawing the refused one is that the refusal stops being a line in a manifest:
+    at a fitted scale of 0.41 the whole square sits at four tenths of its range,
+    inside the mesh, and no reader needs the plausibility band explained after
+    seeing it.
+    """
+    made: dict[str, int] = {}
+    camera = payload["evidence_camera"].astype(np.float64) if "evidence_camera" in payload.files else None
+    for kind, tint_channel in (("mesh", "decision"), ("monocular", "decision")):
+        key = f"depth_{kind}"
+        if not has(payload, f"{key}_points"):
+            continue
+        points = payload[f"{key}_points"].astype(np.float64)
+        material = emissive_material(f"{key}_cloud", "decision")
+        obj = point_cloud(f"depth_{kind}", points, into, radius=radius, material=material)
+        attach_point_colour(obj, "decision", categorical_colours(payload[f"{key}_decision"], DECISION_TINT))
+        attach_values(obj, "value_decision", payload[f"{key}_decision"].astype(np.int32), "POINT")
+        columns: dict[str, np.ndarray] = {}
+        if camera is not None:
+            columns["range_m"] = np.linalg.norm(points - camera, axis=1)
+        if f"{key}_z_score" in payload.files:
+            columns["z_score"] = np.clip(payload[f"{key}_z_score"], -6.0, 6.0)
+        if f"{key}_mesh_range_m" in payload.files and camera is not None:
+            columns["mesh_minus_this_m"] = payload[f"{key}_mesh_range_m"] - columns["range_m"]
+        scalar_layers(obj, columns, "POINT", ranges={"z_score": (-6.0, 6.0)})
+        attach_values(obj, "value_view", payload[f"{key}_view"].astype(np.int32), "POINT")
+        record = manifest.get("evidence", {}).get(key, {})
+        obj["meaning"] = record.get("meaning", "")
+        obj["decisions"] = json.dumps(
+            record.get("decisions") or manifest.get("evidence", {}).get("depth_mesh", {}).get("decisions")
+        )
+        obj["stride_px"] = record.get("stride_px")
+        if record.get("scale_plausibility") is not None:
+            obj["scale_plausibility"] = json.dumps(record["scale_plausibility"].get("problems", []))
+        layered(obj, (tint_channel, *columns), tint_channel)
+        made[kind] = int(points.shape[0])
+    return made or None
+
+
+def unit_sphere(subdivisions: int = 2) -> tuple[np.ndarray, np.ndarray]:
+    """A sphere by subdividing an octahedron, so no external primitive is needed."""
+    vertices = np.array(
+        [[1.0, 0, 0], [-1.0, 0, 0], [0, 1.0, 0], [0, -1.0, 0], [0, 0, 1.0], [0, 0, -1.0]], dtype=np.float64
+    )
+    faces = np.array(
+        [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]], dtype=np.int64
+    )
+    for _ in range(subdivisions):
+        a, b, c = vertices[faces[:, 0]], vertices[faces[:, 1]], vertices[faces[:, 2]]
+        base = vertices.shape[0]
+        count = faces.shape[0]
+        midpoints = np.concatenate([(a + b) / 2.0, (b + c) / 2.0, (c + a) / 2.0])
+        vertices = np.concatenate([vertices, midpoints])
+        ab = base + np.arange(count)
+        bc = ab + count
+        ca = bc + count
+        faces = np.concatenate(
+            [
+                np.column_stack([faces[:, 0], ab, ca]),
+                np.column_stack([ab, faces[:, 1], bc]),
+                np.column_stack([ca, bc, faces[:, 2]]),
+                np.column_stack([ab, bc, ca]),
+            ]
+        )
+    return vertices / np.linalg.norm(vertices, axis=1, keepdims=True), faces
+
+
+def build_panoramas(payload, manifest, into: bpy.types.Collection, *, sigma_scale: float) -> int | None:
+    """Every registered pose, as a camera you can look through, a marker and an ellipsoid.
+
+    The camera is a real Blender camera at the solved rotation, so the view it
+    saw is reproducible from inside the blend. The marker carries the verdict the
+    sky conflict audit reached, which at Korenmarkt is three cameras standing
+    inside the geometry out of thirteen, and no residual would have said so. The
+    ellipsoid is the position block of the seed study covariance at one sigma,
+    scaled by ``sigma_scale`` because one sigma here is a few centimetres and a
+    few centimetres in a two hundred metre scene is nothing. The scale is on
+    every ellipsoid as a property, so nobody reads it as a metre.
+    """
+    if "pano_position" not in payload.files:
+        return None
+    positions = payload["pano_position"].astype(np.float64)
+    rotations = payload["pano_rotation"].astype(np.float64)
+    sigmas = payload["pano_sigma_vectors"].astype(np.float64)
+    verdict = payload["pano_verdict"]
+    records = manifest.get("evidence", {}).get("registration", {}).get("poses", [])
+    markers, faces = octahedra(positions, 0.9)
+    marker = build_mesh("pano_markers", markers, faces, into)
+    attach_face_colour(marker, "verdict", np.repeat(categorical_colours(verdict, VERDICT_TINT), 8, axis=0))
+    attach_face_colour(
+        marker,
+        "sky_conflict",
+        np.repeat(colour_ramp(payload["pano_sky_conflict"], 0.0, 1.0), 8, axis=0),
+    )
+    attach_face_colour(
+        marker,
+        "skyline_residual_deg",
+        np.repeat(colour_ramp(payload["pano_residual_deg"], 0.0, 8.0), 8, axis=0),
+    )
+    assign(marker, emissive_material("pano_markers", "verdict"))
+    marker["reading"] = manifest.get("evidence", {}).get("registration", {}).get("reading", "")
+    marker["captures"] = [record.get("capture", "") for record in records]
+    layered(marker, ("verdict", "sky_conflict", "skyline_residual_deg"), "verdict")
+
+    sphere, sphere_faces = unit_sphere()
+    blobs = []
+    for index, position in enumerate(positions):
+        blobs.append(position + sigma_scale * (sphere @ sigmas[index].T))
+    ellipsoid = build_mesh(
+        "pano_uncertainty",
+        np.concatenate(blobs),
+        np.concatenate([sphere_faces + index * sphere.shape[0] for index in range(len(blobs))]),
+        into,
+    )
+    attach_face_colour(
+        ellipsoid,
+        "verdict",
+        np.repeat(categorical_colours(verdict, VERDICT_TINT), sphere_faces.shape[0], axis=0),
+    )
+    assign(ellipsoid, emissive_material("pano_uncertainty", "verdict"))
+    ellipsoid["sigma_multiple_drawn"] = sigma_scale
+    ellipsoid["reading"] = f"one sigma of the pose position, drawn {sigma_scale:g} times life size"
+    layered(ellipsoid, ("verdict",), "verdict")
+
+    for index, record in enumerate(records):
+        rotation = rotations[index]
+        # The pose rotation takes panorama-local right, forward and up to world.
+        # A Blender camera looks down its own -Z with +Y up, so its columns are
+        # right, up and backwards, which is the pose's columns with the last two
+        # swapped and the new last one negated.
+        basis = np.column_stack([rotation[:, 0], rotation[:, 2], -rotation[:, 1]])
+        data = bpy.data.cameras.new(f"pano_{index:02d}")
+        data.lens = 18.0
+        data.clip_end = 400.0
+        obj = bpy.data.objects.new(f"pano_{index:02d}", data)
+        into.objects.link(obj)
+        placed = np.eye(4)
+        placed[:3, :3] = basis
+        placed[:3, 3] = positions[index]
+        obj.matrix_world = mathutils.Matrix([[float(value) for value in row] for row in placed])
+        for field in ("capture", "skyline_residual_deg", "sky_with_mesh_hit_fraction", "position_sigma_m", "verdict"):
+            if record.get(field) is not None:
+                obj[field] = record[field]
+    return int(positions.shape[0])
+
+
+def build_bodies(payload, manifest, into: bpy.types.Collection) -> int | None:
+    """The SMPL-X bystanders, already in scene ENU, one object each.
+
+    These are the people the transient mask cut out of the static surface. The
+    fishnet leaves a hole where they stood and this layer is what fills it, which
+    is the whole reason the occlusion budget separates deferred from absent. They
+    have never been in a blend before and they carry no exposure, so the tint is
+    flat and the numbers are properties.
+    """
+    if "body_layer_vertices" not in payload.files:
+        return None
+    vertices = payload["body_layer_vertices"].astype(np.float64)
+    faces = payload["body_layer_faces"]
+    records = manifest.get("evidence", {}).get("bodies", {}).get("records", [])
+    material = emissive_material("bystander", None, (0.20, 0.62, 0.95))
+    for index in range(vertices.shape[0]):
+        record = records[index] if index < len(records) else {}
+        obj = build_mesh(record.get("body_id", f"bystander_{index:02d}"), vertices[index], faces, into)
+        assign(obj, material)
+        for field in ("view", "stature_m", "placed_range_m", "range_source", "placement_provenance"):
+            if record.get(field) is not None:
+                obj[field] = record[field]
+        if record.get("uncertainty"):
+            obj["uncertainty"] = json.dumps(record["uncertainty"])
+        obj["layer"] = "transient, never baked into the static semantic atlas"
+    return int(vertices.shape[0])
 
 
 def camera_rotation(location: np.ndarray, target: np.ndarray) -> tuple[float, float, float]:
@@ -507,6 +1071,52 @@ def build_cameras(twin: bpy.types.Object, hero: np.ndarray, ground_z: float, int
     bpy.context.scene.camera = bpy.data.objects["cam_rays"]
 
 
+def build_evidence_cameras(
+    twin: bpy.types.Object, payload, hero: np.ndarray, ground_z: float, into: bpy.types.Collection
+) -> None:
+    """Three more vantages, aimed at the capture point rather than the standpoint.
+
+    The evidence layers are not centred where the rays are. They radiate from the
+    panorama the segmenter ran on, which is metres away from the median walk
+    location and looking at a different part of the square, so pointing the
+    existing cameras at them frames the wrong wall. These are placed against the
+    capture point with the same clearance search.
+    """
+    capture = payload["evidence_camera"].astype(np.float64) if "evidence_camera" in payload.files else hero
+    # This one is not placed outside looking in, and every attempt to do that
+    # failed for the same reason. The cut surface is by construction the set of
+    # surfaces visible from the capture point, most of it facade, 2296 of the
+    # 3306 faces of the first crop being Building. Any vantage outside the square
+    # is therefore behind a wall that owns part of the layer it is trying to
+    # photograph, and raising the camera until the wall clears turns the facades
+    # edge on and frames roofs. So it stands where the panorama stood, five
+    # metres up to clear the bystanders, and looks along the most open bearing.
+    # Nothing it can see is occluded, because seeing it is what put it there.
+    eye = capture + np.array([0.0, 0.0, 5.0])
+    look = clear_view(twin, eye, 60.0, (5.0, 12.0, 22.0))
+    add_camera("cam_evidence", eye, eye + 4.0 * (look - eye), into, lens=24.0)
+    print(f"[camera] cam_evidence at the capture point, {eye[2] - capture[2]:.1f} m up", flush=True)
+
+    if "pano_position" in payload.files:
+        poses = payload["pano_position"].astype(np.float64)
+        centre = poses.mean(axis=0)
+        reach = max(float(np.linalg.norm(poses[:, :2] - centre[:2], axis=1).max()) * 2.2, 45.0)
+        add_camera("cam_registration", centre + np.array([0.0, -0.35 * reach, reach]), centre, into, lens=30.0)
+        print(f"[camera] cam_registration {reach:.1f} m above {poses.shape[0]} poses", flush=True)
+
+    if "body_layer_vertices" in payload.files:
+        # The bodies stand all round the capture point, four crops of one
+        # panorama, so their centroid is the camera. Standing there and looking
+        # at the centroid frames nothing. The crowd is framed from outside its
+        # own bounding sphere instead.
+        crowd = payload["body_layer_vertices"].astype(np.float64).reshape(-1, 3)
+        centre = crowd.mean(axis=0)
+        spread = float(np.linalg.norm(crowd - centre, axis=1).max())
+        reach = max(2.4 * spread, 14.0)
+        add_camera("cam_bystanders", clear_view(twin, centre, reach, (12.0, 22.0, 38.0, 58.0)), centre, into, lens=34.0)
+        print(f"[camera] cam_bystanders {reach:.1f} m out, crowd spread {spread:.1f} m", flush=True)
+
+
 def build_lighting(hero: np.ndarray) -> None:
     world = bpy.data.worlds.new("world")
     world.use_nodes = True
@@ -522,41 +1132,184 @@ def build_lighting(hero: np.ndarray) -> None:
     sun.rotation_euler = (math.radians(48.0), 0.0, math.radians(-35.0))
 
 
-#: (figure name, camera, collections to show). One camera is not one figure:
-#: the ray fan leaves the standpoint in every direction, so there is no vantage
-#: from which it does not cover a close subject, and the arrival lobe and the
-#: phantom both sit at the standpoint underneath it. Each figure therefore names
-#: what it is about, and the saved blend keeps everything switched on.
-FIGURE_VIEWS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
-    ("01_the_square", "cam_overview", ("twin",)),
-    ("02_where_the_sources_are", "cam_overview", ("twin", "network")),
-    ("03_exposure_along_the_walk", "cam_overview", ("twin", "walk")),
-    ("04_the_rays_from_one_standpoint", "cam_rays", ("twin", "rays")),
-    ("05_standing_in_the_ray_fan", "cam_pedestrian", ("twin", "rays")),
-    ("06_what_arrives", "cam_lobe", ("twin", "arrival")),
-    ("07_the_body", "cam_body", ("twin", "body")),
+#: One figure names what it is about, not which camera took it. The ray fan
+#: leaves the standpoint in every direction, so there is no vantage from which it
+#: does not cover a close subject, and the arrival lobe and the phantom both sit
+#: at the standpoint underneath it. ``show`` names the collections, ``objects``
+#: narrows to particular objects inside them when two layers share a collection,
+#: and ``layers`` selects which colour attribute each object is shaded by. The
+#: saved blend keeps every collection it built, so this list drives the renders
+#: and nothing else.
+FIGURE_VIEWS: tuple[dict[str, object], ...] = (
+    {"name": "01_the_square", "camera": "cam_overview", "show": ("twin",)},
+    {"name": "02_where_the_sources_are", "camera": "cam_overview", "show": ("twin", "network")},
+    {"name": "03_exposure_along_the_walk", "camera": "cam_overview", "show": ("twin", "walk")},
+    {"name": "04_the_rays_from_one_standpoint", "camera": "cam_rays", "show": ("twin", "rays")},
+    {"name": "05_standing_in_the_ray_fan", "camera": "cam_pedestrian", "show": ("twin", "rays")},
+    {"name": "06_what_arrives", "camera": "cam_lobe", "show": ("twin", "arrival")},
+    {"name": "07_the_body", "camera": "cam_body", "show": ("twin", "body")},
+    {
+        "name": "08_what_the_segmenter_said",
+        "camera": "cam_evidence",
+        "show": ("twin", "semantics"),
+        "objects": ("support_mesh", "fishnet_vistas"),
+        "layers": {"fishnet_vistas": "class"},
+    },
+    {
+        "name": "09_how_sure_the_segmenter_was",
+        "camera": "cam_evidence",
+        "show": ("twin", "semantics"),
+        "objects": ("support_mesh", "fishnet_vistas"),
+        "layers": {"fishnet_vistas": "confidence"},
+    },
+    {
+        # The cut surface alone, with the mesh switched off. Five sixths of the
+        # faces are at zero entropy and render as black, so against the world
+        # background this is a map of the mixed ones and nothing else, which is
+        # the question. Photographed from above because the split faces are
+        # scattered over all four crops and no ground level bearing sees them
+        # all.
+        "name": "10_where_the_posterior_is_split",
+        "camera": "cam_overview",
+        "show": ("semantics",),
+        "objects": ("fishnet_vistas",),
+        "layers": {"fishnet_vistas": "entropy_bits"},
+    },
+    {
+        "name": "11_the_material_taxonomy",
+        "camera": "cam_evidence",
+        "show": ("twin", "semantics"),
+        "objects": ("support_mesh", "fishnet_sam3"),
+        "layers": {"fishnet_sam3": "class"},
+    },
+    {"name": "12_what_the_cutter_refused", "camera": "cam_evidence", "show": ("twin", "refused")},
+    {
+        "name": "13_clean_against_withheld",
+        "camera": "cam_evidence",
+        "show": ("twin", "evidence"),
+        "layers": {"support_evidence": "withheld_fraction"},
+    },
+    {
+        "name": "14_the_first_hit_the_twin_uses",
+        "camera": "cam_evidence",
+        "show": ("depth",),
+        "objects": ("depth_mesh",),
+        "layers": {"depth_mesh": "decision"},
+    },
+    {
+        "name": "15_the_depth_the_gate_refused",
+        "camera": "cam_evidence",
+        "show": ("twin", "depth"),
+        "objects": ("support_mesh", "depth_monocular"),
+        "layers": {"depth_monocular": "decision"},
+    },
+    {"name": "16_where_the_panoramas_stand", "camera": "cam_registration", "show": ("twin", "panoramas")},
+    {"name": "17_the_bystanders", "camera": "cam_bystanders", "show": ("twin", "bodies")},
+    {"name": "18_how_deep_the_bounces_go", "camera": "cam_rays", "show": ("twin", "bounces")},
+    {
+        "name": "19_everything_at_once",
+        # Not from outside and not from overhead. The ray fan is a thousand
+        # polylines through one point, so any camera aimed at that point turns
+        # the whole frame into a starburst and nothing else in the scene
+        # survives it. From the capture point the fan converges twenty metres
+        # away and sits in a corner of the picture, which leaves the walls, the
+        # cloud, the walk and the bystanders room to be seen next to it.
+        "camera": "cam_evidence",
+        "show": (
+            "twin",
+            "rays",
+            "arrival",
+            "network",
+            "walk",
+            "body",
+            "semantics",
+            "depth",
+            "panoramas",
+            "bodies",
+        ),
+        # Three things are left out of the everything shot and each is left out
+        # for a reason that is not aesthetic. ``evidence`` and ``refused`` are
+        # drawn on the same support triangles the semantics are cut from, so
+        # showing them together is z fighting rather than information. The
+        # monocular cloud is the surface the gate refused and putting it in a
+        # picture captioned everything would say the twin uses it. ``bounces``
+        # is the ray fan a second time, and the two taxonomies cover the same
+        # walls as each other, so Vistas is shown and SAM 3 has figure 11.
+        "hide": ("depth_monocular", "fishnet_sam3"),
+        "layers": {"fishnet_vistas": "class", "depth_mesh": "decision"},
+    },
 )
+
+#: Collections that start switched off. Most of them exist only when the payload
+#: carries them and are dropped when it does not. A quarter of a million points
+#: and eighteen SMPL-X bodies are worth having and are not worth waiting for on
+#: every open. ``bounces`` is always built and is off for a different reason: it
+#: is the same paths as ``rays`` cut differently, so drawing both at once draws
+#: every ray twice.
+EVIDENCE_COLLECTIONS = ("bounces", "semantics", "evidence", "refused", "depth", "panoramas", "bodies")
+
+
+def hide_empty_and_heavy_collections() -> None:
+    """Start with the evidence switched off, and drop the collections that stayed empty.
+
+    Two separate things. An empty collection is a site that has no panorama and
+    it should not appear at all, because an outliner full of empty groups reads
+    as a broken build. A full one is worth having and is not worth waiting for:
+    the depth clouds alone are half a million points, so they are hidden in the
+    viewport and in the render until asked for.
+    """
+    view_layer = bpy.context.view_layer
+    for name in EVIDENCE_COLLECTIONS:
+        group = bpy.data.collections.get(name)
+        if group is None:
+            continue
+        if not group.objects:
+            bpy.context.scene.collection.children.unlink(group)
+            bpy.data.collections.remove(group)
+            continue
+        group.hide_render = True
+        layer = view_layer.layer_collection.children.get(name)
+        if layer is not None:
+            layer.hide_viewport = True
+        print(f"[collection] {name}: {len(group.objects)} objects, hidden by default", flush=True)
 
 
 def render_every_figure(args: argparse.Namespace) -> None:
-    """One PNG per entry in :data:`FIGURE_VIEWS`.
+    """One PNG per entry in :data:`FIGURE_VIEWS` the scene can actually take.
 
     Renders happen after the blend is saved, so the shipped file is the one the
     figures came from and no render setting or visibility toggle leaks into it.
+    A figure whose camera or objects the payload never produced is skipped rather
+    than raising, because a site with no panorama still has twelve of them.
     """
     scene = bpy.context.scene
+    if args.gpu:
+        print(f"[render] {use_gpu()}", flush=True)
     scene.cycles.samples = args.samples
     scene.render.resolution_x = int(1920 * args.resolution_scale)
     scene.render.resolution_y = int(1080 * args.resolution_scale)
     scene.render.image_settings.file_format = "PNG"
     args.render_dir.mkdir(parents=True, exist_ok=True)
-    for name, camera, shown in FIGURE_VIEWS:
-        if camera not in bpy.data.objects:
-            raise RuntimeError(f"figure {name} wants camera {camera}, which the scene does not have")
-        scene.camera = bpy.data.objects[camera]
+    for figure in FIGURE_VIEWS:
+        name, camera = str(figure["name"]), str(figure["camera"])
+        shown = tuple(figure["show"])
+        if args.figures is not None and not any(name.startswith(wanted) for wanted in args.figures):
+            continue
+        if camera not in bpy.data.objects or not any(group in bpy.data.collections for group in shown):
+            print(f"[render] skipped {name}, the scene has no {camera}", flush=True)
+            continue
+        wanted = figure.get("objects")
+        dropped = set(figure.get("hide", ()))
         for group in bpy.data.collections:
+            group.hide_render = group.name not in shown
             for obj in group.objects:
-                obj.hide_render = group.name not in shown
+                obj.hide_render = (
+                    group.name not in shown or obj.name in dropped or (wanted is not None and obj.name not in wanted)
+                )
+        for obj_name, channel in dict(figure.get("layers", {})).items():
+            if obj_name in bpy.data.objects:
+                show_layer(bpy.data.objects[obj_name], channel)
+        scene.camera = bpy.data.objects[camera]
         scene.render.filepath = str((args.render_dir / f"{args.blend.stem}_{name}.png").resolve())
         bpy.ops.render.render(write_still=True)
         print(f"[render] {name} from {camera}", flush=True)
@@ -572,7 +1325,22 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--lobe-offset-m", type=float, default=13.0)
     parser.add_argument("--lobe-floor", type=float, default=0.14)
     parser.add_argument("--ray-radius-m", type=float, default=0.11)
+    parser.add_argument("--point-radius-m", type=float, default=0.09, help="Drawn size of one depth cloud point")
+    parser.add_argument(
+        "--pose-sigma-scale",
+        type=float,
+        default=10.0,
+        help="Life sizes the pose covariance ellipsoid is drawn at. One sigma here is centimetres",
+    )
     parser.add_argument("--render-dir", type=pathlib.Path, help="Also render one PNG per camera")
+    parser.add_argument(
+        "--gpu", action="store_true", help="Render on the accelerator, and fail loudly if there is none"
+    )
+    parser.add_argument(
+        "--figures",
+        nargs="+",
+        help="Render only the figures whose name starts with one of these, for iterating on one layer",
+    )
     parser.add_argument("--samples", type=int, default=64)
     parser.add_argument("--resolution-scale", type=float, default=1.0)
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
@@ -591,6 +1359,7 @@ def main() -> int:
 
     twin = build_twin(payload, manifest["class_names"], collection("twin"))
     rays = build_rays(payload, manifest["terminations"], collection("rays"), base_radius=args.ray_radius_m)
+    legs = build_ray_depth(payload, collection("bounces"), base_radius=args.ray_radius_m)
     peaks = build_arrival(
         payload,
         hero,
@@ -602,8 +1371,27 @@ def main() -> int:
     sources = build_network(payload, hero, collection("network"))
     walk_range = build_walk(payload, collection("walk"), args.walk_model)
     sab_range = build_body(payload, hero, ground_z, collection("body"))
-    build_cameras(twin, hero, ground_z, collection("cameras"))
+
+    evidence: dict[str, object] = {}
+    semantics = collection("semantics")
+    for taxonomy in ("vistas", "sam3"):
+        built = build_fishnet(payload, manifest, taxonomy, semantics)
+        if built is not None:
+            evidence[f"fishnet_{taxonomy}"] = built
+    evidence["support_evidence"] = build_support_evidence(payload, manifest, collection("evidence"))
+    evidence["refused"] = build_refused(payload, manifest, collection("refused"))
+    evidence["depth"] = build_depth(payload, manifest, collection("depth"), radius=args.point_radius_m)
+    evidence["panoramas"] = build_panoramas(
+        payload, manifest, collection("panoramas"), sigma_scale=args.pose_sigma_scale
+    )
+    evidence["bodies"] = build_bodies(payload, manifest, collection("bodies"))
+    evidence = {key: value for key, value in evidence.items() if value is not None}
+
+    cameras = collection("cameras")
+    build_cameras(twin, hero, ground_z, cameras)
+    build_evidence_cameras(twin, payload, hero, ground_z, cameras)
     build_lighting(hero)
+    hide_empty_and_heavy_collections()
 
     scene = bpy.context.scene
     scene["site"] = manifest["site"]
@@ -613,12 +1401,23 @@ def main() -> int:
     scene["hero_sky_fraction"] = manifest["hero"]["sky_fraction"]
     scene["hero_susceptibility"] = json.dumps(manifest["hero"]["susceptibility"])
     scene["ray_bundle_counts"] = json.dumps(rays)
+    scene["ray_leg_counts"] = json.dumps(legs)
+    scene["evidence_layers"] = json.dumps(evidence, default=str)
     scene["reading_note"] = (
         "Every object here is measured. Ray thickness is the cube root of throughput. "
         "The lobes are normalised by their own peak so their shapes compare and their "
         "levels do not. The drawn mesh is smaller than the traced mesh, see "
-        "drawn_radius_m against traced_crop_radius_m."
+        "drawn_radius_m against traced_crop_radius_m. The evidence collections start "
+        "hidden and each of their objects carries several colour layers, listed on the "
+        "object as colour_layers. PAYLOAD.md says what each one means."
     )
+    if "evidence" in manifest:
+        offset = manifest["evidence"].get("semantic_surface_offset_from_drawn_mesh")
+        if offset is not None:
+            scene["semantic_surface_offset_from_drawn_mesh"] = json.dumps(offset)
+        camera = manifest["evidence"].get("camera")
+        if camera is not None:
+            scene["evidence_camera"] = json.dumps(camera)
 
     args.blend.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(args.blend.resolve()), compress=True)
@@ -628,10 +1427,12 @@ def main() -> int:
 
     print(f"[twin] {len(twin.data.polygons)} triangles inside {manifest['drawn_radius_m']:g} m", flush=True)
     print(f"[rays] {rays}", flush=True)
+    print(f"[bounces] {legs}", flush=True)
     print(f"[arrival] peak rho per sr { {k: round(v, 5) for k, v in peaks.items()} }", flush=True)
     print(f"[network] {sources} source markers", flush=True)
     print(f"[walk] chi range {walk_range[0]:.2f} to {walk_range[1]:.2f} dB", flush=True)
     print(f"[body] Sab {sab_range[0]:.4g} to {sab_range[1]:.4g} W/m2", flush=True)
+    print(f"[evidence] {json.dumps(evidence, default=str)}", flush=True)
     print(f"[done] {args.blend} ({args.blend.stat().st_size / 1e6:.1f} MB)", flush=True)
     return 0
 
