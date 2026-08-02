@@ -14,9 +14,9 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
 - **Eleven squares are now built**, nine acquired tonight, all in double
   precision at a common radius, for 3,216 tile requests and about three minutes
   of wall clock. Ten of them carry an exposure distribution, Milan being held out
-  of the comparison because its crop predates the set at 170 m. Sky fraction across them runs from 18 percent at Times Square to
-  46 percent at Krakow, which is the geometric spread this study exists to turn
-  into an exposure distribution.
+  of the comparison because its crop predates the set at 170 m. Sky fraction runs
+  from 18 percent at Times Square to 46 percent at Krakow, which is the geometric
+  spread this study exists to turn into an exposure distribution.
 - **The first exposure distributions exist.** Where a pedestrian stands in one
   square is worth 3.5 dB under isotropic illumination and 12.5 dB under rooftop
   macro sites. The assumed source geometry moves the answer further than position
