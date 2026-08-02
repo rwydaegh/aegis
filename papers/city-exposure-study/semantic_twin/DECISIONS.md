@@ -1082,6 +1082,44 @@ grazing-incidence shadowing, and the second only bites once the joint is
 resolvable, which is why 10 GHz at 60 degrees is fine to 7 percent while 28 GHz at
 60 degrees is 34 percent low on specular.
 
+### The crop radius is converged for isotropic and not for rooftop
+
+Measured at Korenmarkt over six crops, with the observers held fixed inside the
+smallest one so every radius scores the same 32 pedestrian standpoints and only
+the surroundings change. 200,000 rays, four bounces.
+
+| crop | triangles | sky | chi isotropic | delta dB | chi rooftop | delta dB |
+|---|---|---|---|---|---|---|
+| 60 m | 31,706 | 0.2405 | 0.3067 | | 0.1632 | |
+| 100 m | 97,114 | 0.2291 | 0.2926 | -0.204 | 0.1013 | -2.069 |
+| 120 m | 135,640 | 0.2272 | 0.2900 | -0.039 | 0.0849 | -0.767 |
+| 130 m | 157,862 | 0.2295 | 0.2929 | +0.044 | 0.0859 | +0.049 |
+| 160 m | 245,112 | 0.2277 | 0.2902 | -0.041 | 0.0500 | -2.350 |
+| 200 m | 390,518 | 0.2272 | 0.2894 | -0.011 | 0.0418 | -0.778 |
+
+**Isotropic susceptibility and sky fraction are converged by 100 m**, with every
+later step under 0.05 dB. **Rooftop susceptibility is not converged at 200 m.** It
+falls 3.1 dB between the 130 m crop the study uses and 200 m, and is still moving
+0.78 dB per step at the end of the sweep.
+
+The mechanism is in the illumination model rather than in the geometry. Rooftop
+macro sites sit at horizontal ranges of 25 to 250 m, and a 130 m crop contains
+nothing that can occlude a source 250 m away, so rays leaving toward those
+elevations escape to a sky that a real building would have blocked. The sign is
+the opposite of the intuitive worry: a small crop is not missing scatterers that
+would add power, it is missing blockers that would remove it. So **every rooftop
+and street small cell susceptibility computed at 130 m is an upper bound**, and
+comparisons between cities at a common radius remain valid while absolute numbers
+do not.
+
+One artefact to read past: the 60, 100 and 120 m meshes are single precision
+builds and the 130 m and larger ones are double precision, which is why the 120 to
+130 step reads as a small positive rather than a small negative. Every step from
+130 upward is like for like.
+
+The sweep is `run_crop_convergence.py` and
+`outputs/crop_convergence/korenmarkt_crop_convergence.json`.
+
 ### Diffraction is demoted, the crop radius is promoted
 
 `MONOSTATIC_SBR.md` called diffraction the largest known physical omission in
