@@ -609,6 +609,30 @@ are bimodal, thinly populated between roughly 6 and 18 m, which is a property
 market fact, a roof lease or a lamppost lease with little in between, and property
 markets do not care about carrier frequency.
 
+**The closest published analogue lands between the two bands.** The Ericsson
+Kista campaign is the nearest thing in the literature to what this study models:
+15 GHz, an enclosed European square, an elevated base station and a pedestrian
+height receiver, measured to 250 m. Its two base stations sit at 8.5 and 12 m
+above ground, which is **below the macro band's 15 m floor and above the small
+cell band's 8 m ceiling**. On the face of it the study has no class for the one
+deployment it can point at.
+
+That turns out not to matter, because the model consumes an elevation
+distribution and not a height. Running the same band law on the Kista geometry
+and comparing where each class puts its weight:
+
+| model | height above ground | below 5 deg | 5 to 20 deg | above 20 deg |
+|---|---|---|---|---|
+| street small cell | 4 to 8 m | 87.9 % | 11.8 % | 0.3 % |
+| Kista, as measured | 8.5 to 12 m | 84.0 % | 15.3 % | 0.8 % |
+| macro rooftop | 15 to 45 m | 9.4 % | 80.8 % | 9.8 % |
+
+A source in the height gap is illuminationally a small cell, not something
+between the classes: it differs from the street model by 3.9 points of grazing
+measure and from the rooftop model by 75. So the gap in the height axis is not a
+gap in the modelled space, and the two class structure survives its own most
+awkward evidence.
+
 **So the caps are assumptions, and the paper reports a sensitivity rather than a
 citation.** Measured leverage: the range cap is worth 7.8 dB across a defensible
 100 to 400 m span, the height band 0.7 to 2.0 dB across its own. Height spans a
