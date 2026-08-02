@@ -713,11 +713,11 @@ The suite is 698 passing and 1 skipped, up from 570 at the start of the night.
 - **The brickwork model is unvalidated at FR2.** It is validated at 4 GHz to
   2.0 dB with nothing fitted, and the only FR2 measurement available cannot
   adjudicate because its own repeat scatter exceeds the disagreement.
-- **Vegetation currently routes to the wood row**, which the foliage sweep now
-  shows is the worst of the three available treatments in the 2 to 6 percent
-  canopy regime that Korenmarkt sits in. The one line fix is to route it to the
-  null. The right fix is a twenty line medium boundary hook in the tracer, already
-  specified.
+- **Vegetation now routes to the vacuum row rather than wood**, which removes the
+  72 dB of invented reflection but is still not right: a vacuum row face absorbs
+  where a canopy should partly transmit. The correct treatment is the participating
+  medium, which needs a twenty line medium boundary hook in the tracer, already
+  specified by the foliage work.
 - **Re-running the ten city sweep at 250 m.** The acquisition is done, 4,032
   tiles for 8,128 requests, and the shells are built. Keep the narrow crop as the
   scattering and semantics mesh and use the wide one as an occlusion shell, which
