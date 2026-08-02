@@ -9,6 +9,37 @@ Figures referenced here are collected in `FIGURES/`. The two assembled scenes
 are `outputs/showcase_korenmarkt/korenmarkt.blend` and
 `outputs/showcase_milan_duomo/milan_duomo.blend`.
 
+## The short version
+
+- **Eleven squares are now built**, nine acquired tonight, all in double
+  precision at a common radius, for 3,216 tile requests and about three minutes
+  of wall clock. Sky fraction across them runs from 18 percent at Times Square to
+  46 percent at Krakow, which is the geometric spread this study exists to turn
+  into an exposure distribution.
+- **The first exposure distributions exist.** Where a pedestrian stands in one
+  square is worth 3.5 dB under isotropic illumination and 12.5 dB under rooftop
+  macro sites. The assumed source geometry moves the answer further than position
+  does.
+- **Tripling the image evidence bound into the scene moved the median by 0.30 dB
+  and left the spread unchanged.** If that survives the outstanding zero evidence
+  baseline it reframes the project's claim: geometry sets the distribution, and
+  the semantic layer earns its place through occlusion handling and validation
+  rather than by moving the number.
+- **One panorama sees 4.4 percent of a scene by area. Twelve see 24.1 percent,
+  and it saturates there**, so the per site budget is 12 to 16. Extent matters
+  more than count: widening the radius from 60 to 80 m beat tripling the panorama
+  count. Beyond that nothing helps, because 55 percent of the surface is roofs,
+  courtyards and rear elevations that no street level capture reaches.
+- **The remesh rejection was wrong in three of its four reasons**, and the
+  argument in its favour was wrong too: a clean mesh does not trace faster. One
+  reason survives and it is enough.
+- **A published endpoint silently returns a sixth of its data**, and the cost of
+  believing it is a 13 point overstatement of cross capture agreement.
+- Two workstreams reached honest negative or unvalidatable results and say so:
+  brickwork is validated at 4 GHz and unvalidated at FR2 because the only
+  measurement available cannot adjudicate, and the vegetation standard has no
+  tabulated data anywhere in our band.
+
 ## The twin, at two sites
 
 Korenmarkt in Ghent and Piazza del Duomo in Milan are both complete end to end:
