@@ -238,6 +238,12 @@ Any population exposure claim therefore depends on the assumed source geometry f
 more than on where in a square people actually stand, which is a result about how
 such claims should be framed rather than about Ghent.
 
+Carried through to the body, which is the point of the whole pipeline, the same
+120 locations give a peak absorbed power density spanning **12.7 dB** and a whole
+body SAR spanning **13.0 dB**, both at a reference incident density of 1 W/m2. So
+the dosimetric endpoint inherits the illumination geometry's spread rather than
+the scene's average openness, which is 3.5 dB.
+
 **The two directional rows are upper bounds, not values.** The crop sweep below
 shows their absolute level is set by how far the scene extends, and at the 130 m
 radius used here the rooftop susceptibility is **3.24 dB** high. The isotropic row
