@@ -88,7 +88,7 @@ def observers_unused(mesh, count: int, reach: float, height: float, seed: int) -
 
 def main() -> None:
     args = arguments()
-    from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP
+    from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
     from semantic_twin.propagation.geometry import MitsubaGeometry
     from semantic_twin.propagation.scene import classify_faces, load_bindings
     from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
@@ -110,7 +110,9 @@ def main() -> None:
     datums = walk.ground_z_m[picks]
     print(f"[sweep] {len(walk)} candidates, {len(points)} observers inside {args.observer_radius_m:.0f} m", flush=True)
 
-    models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP}
+    # Street small cells reach 150 m against the rooftop model's 250 m, so if the
+    # required crop is set by the source distribution they must converge sooner.
+    models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
     binding = load_bindings(SCRIPT_DIR / "config", args.frequency_hz)
     rows = []
     for path in meshes:
@@ -147,12 +149,18 @@ def main() -> None:
         print(
             f"[sweep] r={row['crop_radius_m']:5.0f} m  sky {row['sky_fraction_mean']:.4f}  "
             f"chi_iso {row['chi_isotropic_mean']:.4f}  chi_roof {row['chi_rooftop_mean']:.4f}  "
+            f"chi_street {row['chi_street_small_cell_mean']:.5f}  "
             f"{row['seconds']:.0f} s",
             flush=True,
         )
 
     for previous, current in zip(rows, rows[1:]):
-        for key in ("chi_isotropic_mean", "chi_rooftop_mean", "sky_fraction_mean"):
+        for key in (
+            "chi_isotropic_mean",
+            "chi_rooftop_mean",
+            "chi_street_small_cell_mean",
+            "sky_fraction_mean",
+        ):
             before, after = previous[key], current[key]
             current[f"delta_db_{key}"] = float(10.0 * np.log10(after / before)) if before > 0 else float("nan")
 

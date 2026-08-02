@@ -1090,45 +1090,57 @@ computed at, not physics. Converged, it is 1.8 times. Specular was converged to
 carries a 1 percent bar and every diffuse number a 7 percent bar, measured from
 the last truncation step rather than asserted.
 
-### The crop radius must reach the farthest source, not the farthest scatterer
+### The crop radius is set by how close to the horizon the sources sit
 
 Measured at Korenmarkt over nine crops from 60 to 340 m, with the observers held
 fixed inside the smallest so every radius scores the same 32 pedestrian
 standpoints and only the surroundings change. 200,000 rays, four bounces. Error is
 against the 340 m crop.
 
-| crop | triangles | sky | chi isotropic | error dB | chi rooftop | error dB |
-|---|---|---|---|---|---|---|
-| 60 m | 31,706 | 0.2405 | 0.3067 | +0.253 | 0.1632 | +6.023 |
-| 100 m | 97,114 | 0.2291 | 0.2926 | +0.048 | 0.1013 | +3.954 |
-| 120 m | 135,640 | 0.2272 | 0.2900 | +0.010 | 0.0849 | +3.187 |
-| **130 m** | 157,862 | 0.2295 | 0.2929 | +0.054 | 0.0859 | **+3.236** |
-| 160 m | 245,112 | 0.2277 | 0.2902 | +0.013 | 0.0500 | +0.886 |
-| 200 m | 390,518 | 0.2272 | 0.2894 | +0.002 | 0.0418 | +0.108 |
-| **250 m** | 632,406 | 0.2271 | 0.2893 | +0.000 | 0.0409 | **+0.018** |
-| 300 m | 909,832 | 0.2271 | 0.2893 | +0.000 | 0.0409 | +0.008 |
-| 340 m | 1,153,486 | 0.2271 | 0.2893 | 0 | 0.0408 | 0 |
+Error in dB against the 340 m crop, for the three illumination models:
 
-**Isotropic susceptibility and sky fraction converge by 100 m.** They are within
-0.05 dB of the reference there and within 0.01 dB by 120 m.
+| crop | triangles | isotropic | rooftop | street small cell |
+|---|---|---|---|---|
+| 60 m | 31,706 | +0.253 | +6.023 | +14.269 |
+| 100 m | 97,114 | +0.048 | +3.954 | +12.040 |
+| 120 m | 135,640 | +0.010 | +3.187 | +10.291 |
+| **130 m** | 157,862 | +0.054 | **+3.236** | **+9.930** |
+| 160 m | 245,112 | +0.013 | +0.886 | +4.608 |
+| 200 m | 390,518 | +0.002 | +0.108 | +1.241 |
+| **250 m** | 632,406 | +0.000 | +0.018 | +0.186 |
+| 300 m | 909,832 | +0.000 | +0.008 | +0.043 |
+| 340 m | 1,153,486 | 0 | 0 | 0 |
 
-**Rooftop susceptibility converges at 250 m and not before.** The 130 m crop the
-study currently uses overestimates it by **3.24 dB**. 200 m is within 0.11 dB and
-250 m within 0.02 dB.
+**Isotropic susceptibility and sky fraction converge by 100 m.** Rooftop needs
+250 m. Street small cells need 250 to 300 m. At the 130 m radius the study was
+acquired at, the errors are +0.05, **+3.24** and **+9.93 dB** respectively.
 
-The reason is a design rule rather than a fact about Ghent. The rooftop
-illumination model places macro sites at horizontal ranges of **25 to 250 m**, and
-the crop converges at **250 m**, which is exactly the farthest source in the
-model. A crop smaller than that contains nothing capable of occluding the most
-distant sources, so rays leaving toward those elevations escape to a sky a real
-building would have blocked. Note the sign is the opposite of the intuitive worry:
-a small crop is not missing scatterers that would add power, it is missing
-blockers that would remove it.
+**A rule proposed here first, and refuted by the third column.** The rooftop model
+places its farthest macro site at 250 m and converges at 250 m, which looked like
+a rule: the crop must reach the farthest source. The street small cell model
+reaches only 150 m, so on that rule it should have converged sooner. It does not.
+It converges later than rooftop and is nearly 10 dB in error at 130 m. The
+coincidence at 250 m was a coincidence.
 
-**So the crop radius is set by the illumination model's source distribution, not
-by how far scattering carries.** Any change to the assumed network geometry
-changes the required crop. The street small cell model reaches 150 m and should
-therefore converge sooner, which is worth confirming.
+What actually orders the three is **how close to the horizon the illumination model
+puts its weight**. Isotropic spreads over the full sphere, rooftop spans 3.1 to
+60 degrees of elevation, and street small cells span 0.95 to 33 degrees, which is
+also the order of how much crop each one needs. The mechanism is geometric: a ray
+leaving a standing observer near the horizon travels a long horizontal distance
+before it has risen far enough for any building of ordinary height to intercept
+it, so the more weight a model places at grazing elevations the further out the
+scene has to extend before the occluders that matter are present at all. The sign
+is the opposite of the intuitive worry throughout: a small crop is not missing
+scatterers that would add power, it is missing blockers that would remove it.
+
+The practical consequence is worse than the rooftop number alone suggested, and it
+lands on the case that matters most for dense urban deployment. **Street level
+small cells, the geometry most relevant to 5G in a city centre, are the worst
+affected**, and they are the model whose absolute numbers a 130 m crop least
+supports.
+
+**Acquire at 250 m minimum, 300 m for comfort.** At 250 m all three models are
+within 0.19 dB and at 300 m within 0.05.
 
 Two controls. The 60, 100 and 120 m meshes are single precision builds and the
 rest are double precision, which is why the 120 to 130 step reads as a small
