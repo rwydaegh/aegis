@@ -89,18 +89,17 @@ MODELS = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREE
 #: by ``run_crop_convergence.py`` on an identical set of standpoints with only
 #: the surroundings changing.
 CROP_BOUND_NOTE = (
-    "The 130 m crop is converged for the isotropic model and for the sky "
-    "fraction: every step from 100 m upward moves them by under 0.05 dB. It is "
-    "NOT converged for the rooftop or street small cell models. Rooftop "
-    "susceptibility falls by 3.1 dB between a 130 m and a 200 m crop and is "
-    "still falling at 200 m. The mechanism runs the opposite way to intuition: "
-    "the rooftop model places sources at up to 250 m horizontal range, a 130 m "
-    "crop holds no geometry able to occlude them, so rays leaving toward those "
-    "elevations escape to sky that a real building would have blocked. A "
-    "larger crop adds missing blockers, not missing scatterers, and the number "
-    "goes down. Every absolute rooftop and street small cell figure here is "
-    "therefore a crop limited UPPER BOUND, high by at least 3.1 dB. "
-    "Comparisons between sites at the same crop radius are unaffected."
+    "A 130 m crop is converged for the sky fraction and, at Korenmarkt, for the "
+    "isotropic model. It is NOT converged for the rooftop or street small cell "
+    "models, whose sources sit near the horizon where a small crop holds no "
+    "geometry able to occlude them, so rays escape to sky that a real building "
+    "would have blocked. A larger crop adds missing blockers, not missing "
+    "scatterers, and the number goes down. Measured against a 250 m crop over "
+    "nine cities, the correction is 0.05 to 4.80 dB rooftop and 0.16 to 11.39 dB "
+    "street, and 0.03 to 0.96 dB even for isotropic, where tall cities move most. "
+    "It is therefore NOT a constant offset: at 130 m the sites are distorted "
+    "relative to each other, not merely shifted together, so a between site "
+    "comparison at 130 m is not safe either."
 )
 
 #: Every site whose support mesh is a ``format_version: 3`` double precision
