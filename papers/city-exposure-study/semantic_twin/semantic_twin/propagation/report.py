@@ -180,7 +180,9 @@ def cross_city_cdf(
         if converged
         else "This run is below it, so the rooftop panels are upper bounds. Measured against 250 m over "
         "nine cities the correction is 0.05 to 4.80 dB rooftop and 0.03 to 0.96 dB isotropic, so it is "
-        "not a constant offset and the sites are distorted relative to each other, not merely shifted."
+        "not a constant offset and the sites are distorted relative to each other, not merely shifted. "
+        "Those cross city ranges were measured under the superseded elevation law and the corrected law "
+        "cuts the rooftop crop correction by about 3 dB, MONOSTATIC_SBR.md section 2.7.1, 2026-08-02."
     )
     figure.text(
         0.5,

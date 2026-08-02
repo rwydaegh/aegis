@@ -960,6 +960,10 @@ good accuracy." The outputs here are condensed parameters.
 Section 2.7 supports the rooftop weight on `Delta_h` in [13.5, 43.5] m and `d` in
 [25, 250] m. The scene is cropped at 130 m. The fraction of the `cos/sin^3`
 measure lying at elevations that require sources outside the crop is 27.5 percent
+<!-- Superseded 2026-08-02: computed under the uncorrected elevation law, see
+MONOSTATIC_SBR.md section 2.7.1. The argument that the 130 m crop cannot hold
+the model's own source support is unaffected. -->
+
 for `Delta_h` = 8 m, 79.4 percent at 15 m, 88.5 percent at 20 m and 94.9 percent
 at 30 m. Sixty-four percent of the pure geometric weight sits below 5 degrees and
 89 percent below 9 degrees. **The weight's stated support and the crop radius

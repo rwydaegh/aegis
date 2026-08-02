@@ -421,6 +421,151 @@ A second, smaller lesson: `StreetViewTiles._read` retries on 5xx but raises imme
 and 429 is a 4xx. A rate limit is the one 4xx that is worth backing off and retrying rather than
 failing on, so a long acquisition dies on the first throttle instead of pausing through it.
 
+## Panoramas: three more sites, and a tile budget that is not one number
+
+Brussels, Shibuya and Times Square were fetched on the following day's quota, which brings the study
+to six sites with semantics. Selection is the same farthest-point sampling over the walk.
+
+| Site | Chosen | Walk | Minimum separation | Median separation | East extent | North extent |
+| --- | --- | --- | --- | --- | --- | --- |
+| Grand-Place | 14 of 45 | 2024-07 | 20.1 m | 36.6 m | -51.0 to 55.3 m | -47.0 to 51.8 m |
+| Hachiko square | 13 of 183 | 2018-05 | 11.6 m | 18.6 m | -57.8 to 59.3 m | -14.3 to 14.3 m |
+| Times Square | 14 of 45 | 2023-11 | 6.7 m | 10.2 m | -4.5 to 20.2 m | -59.3 to 20.7 m |
+
+Shibuya and Times Square are both narrow in one axis because both are street canyons rather than
+squares, which the screening already said: azimuth spread 0.625 and 0.4375 against 1.0 for the three
+open squares. Their walks run along the street, so no selection rule can spread them across an extent
+the panoramas do not occupy.
+
+### A zoom-5 panorama is not 338 tiles
+
+The line above, **"one zoom-5 panorama is exactly 338 tiles"**, is true only of the captures it was
+measured on. Tile count follows the capture's own pixel dimensions, and those vary by rig and year:
+
+| Capture width | Tile grid | Tiles per panorama | Seen at |
+| --- | --- | --- | --- |
+| 8192 | 16 x 8 | 128 | Times Square |
+| 13312 | 26 x 13 | 338 | Prague, the Zocalo, Shibuya |
+| 16384 | 32 x 16 | 512 | Madrid, Grand-Place |
+
+So a day's quota buys between 29 and 117 panoramas depending on which sites are in it, not a flat 44.
+Sizing a day's work against 338 would have overrun the cap by 40 percent on Grand-Place alone. Read
+`imageWidth` from the metadata before committing a day, which costs one request per site.
+
+Measured spend for these three: 7,183 requests for Grand-Place, 4,408 for Shibuya and 1,807 for Times
+Square, plus twelve probe calls and about 130 lost to the failure below. **13,540 of 15,000**, and all
+41 panoramas fit in one day only because the two cheap sites paid for the expensive one.
+
+### Times Square has no Street View car coverage, and that broke the fetcher
+
+Every one of the 105 panoramas within 60 m of the Times Square anchor, across all fourteen capture
+dates, is a user-contributed photosphere rather than a Street View car capture. The square is
+pedestrianised, so no car has ever driven it. The ids are the `CAoS...` form rather than the usual
+22-character one, and the copyright reads `From the Owner, Photo by: airmess - Vermessung im Visier`.
+
+Those spheres are 8192 pixels wide and their tile pyramid stops one level below a car capture, so
+every `/5/x/y` request against one returns **HTTP 404** and the first attempt acquired zero tiles.
+`MAX_ZOOM = 5` is a property of the car rig, not of the API. Probing the grid directly, `/4/15/7` is
+the last tile of a full 16 by 8 grid and `/4/16/8` is a 404, so zoom 4 is that panorama's native
+resolution and not a downscale of anything.
+
+`semantic_twin.panorama.native_zoom` now derives the top of the pyramid from the tile grid the
+metadata implies, `ceil(log2(imageWidth / tileWidth))`, and `zoom_dimensions` uses it instead of the
+constant. The 13312 and 16384 wide captures still resolve to 5, so nothing already fetched changes.
+`fetch_site_panoramas.py` clamps per panorama and records the settled zoom per directory in
+`walk_manifest.json`, and its resume check reads the cached `metadata.json` rather than spending a
+request to discover that a photosphere at zoom 4 is already on disk.
+
+The wider point for the remaining sites: **a pedestrianised square is exactly the kind of site this
+study wants and exactly the kind Street View covers worst.** Expect photospheres, expect them to be
+half the resolution, and expect their poses to come from a phone or a tripod rather than a calibrated
+rig.
+
+### Segmentation cost, on a GPU and without one
+
+The 37 panoramas of the first three sites are recorded at 56 to 119 s each in `semantics.json`, and
+those are honest cold numbers: `seg_three.log` on the GPU box shows 37 starts and zero cache skips in
+one pass, and the per-view arrays are still on the box. The spread inside that range is warm-up, not
+caching, and the first panorama of a run is consistently the slowest.
+
+Running the same command on a 4-core VM with no GPU gives **45 to 105 s per view**, so 20 to 45
+minutes per panorama against 57 s on the A6000, a factor of 20 to 50. The three new sites were done on
+the box in about 40 minutes. This stage is not optional GPU work, it is the one stage that decides
+whether a site takes an hour or a day.
+
+One thing to know before trusting a re-run: `dense_cache_settings` keys the per-view cache on model,
+checkpoint, inference size, view size and the panorama digest, but **not** on `--output-width`. Fusion
+resolution is therefore free to change on a re-run while the expensive per-view pass is reused, which
+is the intended behaviour and is what makes a re-fusion cheap. It does mean a `wall_clock_seconds`
+read out of a `semantics.json` is only a cold cost if you know the run was cold, so check for a
+sibling `views/cache_settings.json` before quoting one as a benchmark.
+
+### Registration: one site good, one bad, one impossible
+
+| Site | Panoramas | Registered | Median residual | Best | Worst | At altitude bound |
+| --- | --- | --- | --- | --- | --- | --- |
+| Grand-Place | 14 | 14 | 2.87 deg | 1.19 deg | 11.16 deg | 6 |
+| Hachiko square | 13 | **0** | n/a | n/a | n/a | n/a |
+| Times Square | 14 | 14 | **10.13 deg** | 7.58 deg | 12.00 deg | 6 |
+
+Against the existing references, Madrid 0.33, Prague 0.82, Milan 1.05, the Zocalo 2.76 and Korenmarkt
+2.83, **Grand-Place lands with the Zocalo and Korenmarkt** and is usable. The other two are not, and
+they fail for two different and separately interesting reasons.
+
+**Hachiko square was never above ground.** All thirteen panoramas return zero structurally supported
+skyline samples, because all thirteen see between 0.00 and 0.03 percent sky. They are inside Shibuya
+Station: the entity histogram reads 68 percent Building, 17 percent Sidewalk, 5.6 percent Rail Track
+and 1.4 percent Tunnel, and the images are plainly a subway platform with 渋谷 signage and DT01/Z01
+line markers.
+
+The screening picked this walk because a walk is defined as *the largest set of panoramas sharing one
+capture date and linked to each other*, and Google's indoor mapping of Shibuya Station is far denser
+than any street traverse near it: 183 linked panoramas on 2018-05 against 18 on the next best date.
+**At a transit hub that definition selects the station over the street**, and nothing downstream
+noticed, because pose altitude comes from a downward ray cast against the street-level mesh. Every one
+of those thirteen poses was placed at street level plus 2.5 m while the camera was a floor or two
+below ground.
+
+The cheap detector is the one that caught it: **sky fraction of the segmented panorama**. Above ground
+sits at 13 to 33 percent across every other site here. Anything near zero is indoors. That check costs
+nothing once semantics exist and should gate a walk before its panoramas are fetched, not after. The
+screening already stores per-panorama elevation, so an even cheaper pre-fetch form is available.
+
+Shibuya is recoverable: the 2023-09 walk has 18 panoramas and is a separate capture. Refetching costs
+about 6,100 requests and it should be sky-checked on the first panorama rather than on all eighteen.
+
+**Times Square registers, but the number is meaningless, and the mesh is why.** A 10.13 deg median is
+an order of magnitude off every other site. Three measurements, each of which could have exonerated the
+mesh, did not:
+
+| Test | Result | Reading |
+| --- | --- | --- |
+| Register against the 250 m shell | 10.22 to 10.16 deg, and 8.56 to 7.79 on pano_01 | not crop truncation, unlike the Zocalo |
+| Median observed skyline elevation | 14.8 deg, against 15.3 at Grand-Place and 15.7 at Madrid | not a high-elevation canyon regime |
+| Widen the altitude bound to +-8 then +-25 m | 10.22, 9.52, 7.45 deg, camera sinking to 20 m below ground | no interior optimum exists |
+
+The third is the diagnosis. `align_skyline` documents the degeneracy directly: a modelled roofline too
+low by `d` metres and a camera too high by `d` metres produce the same angular error, so when the mesh
+silhouette is wrong the optimiser buys residual by sinking the camera. Here it sinks it 20 m and still
+does not converge, and six of fourteen poses hit the shipped +-3 m bound.
+
+The mesh itself says why. Its vertices span **-220.3 to 207.2 m** with the camera at -19.0, so
+**2.9 percent of its vertices sit more than 30 m below the camera**. Grand-Place spans 45.5 to 158.8 m
+and Prague 205.8 to 309.6 m, and both have exactly zero vertices below that line. Times Square is
+wall-to-wall mirror glass and high-brightness LED billboards, which is the worst case for multi-view
+stereo, and the reconstruction has answered with 200 m of geometry hanging under the street.
+
+That also corrects a reading recorded elsewhere in this study, that Times Square's 428 m of vertical
+extent is right for the site. It is 226 m of real tower plus 200 m of spurious sub-street geometry, and
+the two should not have been added together.
+
+The signed residual medians are near zero, -0.05 and 0.20 deg on the first two panoramas, while the
+mean absolute residual is 10 to 12 deg. That combination is not a mispointed camera, which would bias
+the sign. It is a silhouette whose shape is wrong bin by bin.
+
+Times Square is therefore blocked on geometry, not on panoramas. Its 14 panoramas and their semantics
+are good and stay on disk. The poses in `alignment/` should be treated as unregistered.
+
 ## What a follow-up run needs to do
 
 1. **Re-anchor Toulouse and Krakow off their buildings, and measure the missing ground heights.**
@@ -428,10 +573,19 @@ failing on, so a long acquisition dies on the first throttle instead of pausing 
    Krakow needs its centre moved off the Cloth Hall, which may not need a re-pull at all if the new
    centre is still inside the 130 m cylinder that was fetched. Trafalgar needs only the two-pass cast.
    Then write those three configs. Nothing else is blocked on anything else.
-2. **Fetch panoramas for the remaining five sites.** Prague, the Zocalo and Madrid are done. Krakow,
-   Trafalgar, Brussels, Shibuya and Times Square are not, and Krakow and Trafalgar need their configs
-   first. At a measured 338 tiles per panorama against a measured 15,000 per day cap, that is two more
-   days at zoom 5 unless the quota is raised.
+2. **Fetch panoramas for the remaining two sites, and refetch Shibuya.** Prague, the Zocalo, Madrid
+   and Brussels are registered. Krakow and Trafalgar are untouched and need their configs first.
+   Shibuya needs its 2023-09 walk instead of the underground 2018-05 one. Size the day against each
+   capture's own `imageWidth` rather than a flat 338 tiles, for the reason measured above. Madrid is
+   still 9 of 14 and its five missing panoramas cost 2,560 requests.
+9. **Gate a walk on sky fraction before spending a day's quota on it.** Shibuya cost 4,408 requests
+   for thirteen panoramas of a subway platform, and one panorama would have shown it. Fetch one, segment
+   it, and reject the walk if sky is below a few percent. Better still, screen on the per-panorama
+   elevation the screening already stores, which costs nothing at all.
+10. **Do not trust a photogrammetry mesh over mirror glass.** Times Square's reconstruction carries
+   200 m of spurious geometry below the street and cannot support a skyline objective at any crop
+   radius or altitude bound. Check the vertex z range against the camera before registering a new
+   site: a healthy site has essentially nothing more than 30 m below the camera.
 3. **Re-screen the chosen sites at 80 m rather than 60 m.** Extent is now the binding criterion and the
    whole table was measured inside 60 m, so the walks are being judged on a disc smaller than the one
    the study wants to use. This costs about 4000 metadata requests and would change which panoramas get

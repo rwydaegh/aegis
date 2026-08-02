@@ -9,6 +9,45 @@ Figures referenced here are collected in `FIGURES/`. The two assembled scenes
 are `outputs/showcase_korenmarkt/korenmarkt.blend` and
 `outputs/showcase_milan_duomo/milan_duomo.blend`.
 
+## Read this first: the directional numbers below are under a superseded law
+
+Late on 2026-08-02 the rooftop and small cell illumination models were
+re derived. The old pair put a fixed site height into a `1/sin^3(el)` weight and
+then widened the support with a height band the weight knows nothing about. The
+corrected pair takes the height band and the range band as the model and derives
+both the shape and the support from them. `DECISIONS.md` carries the call and
+`MONOSTATIC_SBR.md` section 2.7 the derivation.
+
+**Everything in this report with "rooftop" or "street" on it was computed under
+the old law.** The isotropic column, the sky fractions, the coverage and
+saturation work, the evidence ladder and the mesh, brickwork and foliage results
+are untouched, because none of them evaluates a directional model.
+
+The correction is large and it points one way. The old rooftop model put 61.7
+percent of its measure below 5 degrees of elevation, the corrected one puts 9.4.
+Measured at Korenmarkt from the same rays at the same seed, so the difference
+between the two laws carries no Monte Carlo noise:
+
+| | 130 m | 250 m | crop correction |
+|---|---|---|---|
+| rooftop, old | 0.09335 | 0.04034 | -3.64 dB |
+| rooftop, corrected | 0.16766 | 0.14897 | **-0.51 dB** |
+| small cells, old | 0.04804 | 0.00471 | -10.08 dB |
+| small cells, corrected | 0.05827 | 0.01179 | **-6.94 dB** |
+| isotropic | 0.29123 | 0.28681 | -0.07 dB |
+
+So the headline crop result below, which is the thing this report leads on, is
+**halved for the small cells and all but erased for the rooftop model at this
+site**. That is the mechanism agreeing with itself rather than collapsing: near
+horizon measure was the entire reason a crop radius mattered, and the correction
+removes most of it. Re-acquiring at 250 m stays the right call, because 7 dB is
+still 7 dB.
+
+What has not been done is re-running the eleven city sweep under the corrected
+law, which is the work that would let the tables below be rewritten rather than
+flagged. Until then, read the directional columns as ordinal rather than
+absolute, and the isotropic column as it stands.
+
 ## The short version
 
 - **Eleven squares are built and all eleven are compared**, nine acquired
@@ -52,6 +91,17 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   distorted relative to each other rather than shifted together. Corrected, the
   between-city spread is 5.13 dB isotropic and **14.49 dB rooftop**: urban form
   matters far more under directional illumination, which was invisible before.
+
+  **Superseded in part, 2026-08-02.** The rooftop half of that last sentence was
+  computed under the elevation law corrected in `MONOSTATIC_SBR.md` section
+  2.7.1. The isotropic column is unaffected and stands. The rooftop column does
+  not: the correction shifts each site by 0.98 to 6.30 dB, which is site
+  dependent and so cannot be applied as an offset, and it reorders the cities,
+  with New York Times Square falling six places of eleven. The rooftop over
+  isotropic range narrows from 11.37 to 6.12 dB, so urban form still matters more
+  under directional illumination but by 6 dB rather than 11. The crop requirement
+  itself survives: 250 m is still needed, now set by the street model alone,
+  rooftop having converged in to 200 m.
 - Two workstreams reached honest negative or unvalidatable results and say so:
   brickwork is validated at 4 GHz and unvalidated at FR2 because the only
   measurement available cannot adjudicate, and the vegetation standard has no
@@ -64,14 +114,29 @@ Acquisition stopped on HTTP 429 partway through the third site and did not
 recover after cooldown at reduced concurrency, so it is a daily quota rather than
 a burst limit.
 
-One zoom-5 panorama is exactly 338 tiles, a 26 by 13 grid, so the cap is **44
-panoramas per day**, which bought three sites at fourteen each. The remaining five
-sites need two more days at zoom 5, or one day if the quota is raised in the
-console, which is an action only you can take. Zoom 4 would give 176 panoramas a
-day at 18.5 pixels per degree instead of 37, which is a real option if resolution
-can be traded for coverage.
+**A day buys between 29 and 117 panoramas, and the difference is the capture, not
+the setting.** I first wrote that a zoom-5 panorama is 338 tiles and the cap is
+therefore 44 a day. That holds only for a 13,312 pixel wide car capture.
+Brussels' 2024 capture is 16,384 wide and costs 512 tiles. Times Square is 8,192
+wide and costs 128. Had the second cohort all been 512, forty-one panoramas would
+have been 21,000 requests and blown the cap. As it fell out they cost 13,540.
 
-Total panorama spend was 14,367 tile requests plus about 40 metadata calls.
+That width also carries a trap that cost a run. **Times Square has no Street View
+car coverage at all**, because the square is pedestrianised, so all 105 of its
+panoramas across every capture date are user contributed photospheres. Those stop
+at zoom 4, and a hardcoded `MAX_ZOOM = 5` made every single tile request 404 and
+the first attempt acquired nothing. The top of the pyramid is now derived from
+the tile grid the metadata implies, which resolves to 5 for both car widths and
+to 4 here, and two tests pin it.
+
+Total panorama spend across both cohorts was about 27,900 tile requests.
+
+Segmentation cost is now measured on both machines, because the difference
+decides where this runs. **On the A6000, 47.8 to 58.4 seconds per panorama,
+median 53.4, with 41 panoramas segmented in 37.4 minutes.** On this four core
+VM with no GPU it is 45 to 105 seconds *per view* and 26 views per panorama, so
+20 to 50 minutes each. A factor of 20 to 50, which is the whole argument for
+keeping a GPU box alive while panoramas are still arriving.
 
 ## The twin, at two sites
 
@@ -637,11 +702,48 @@ occlusion shells of 708k to 720k triangles against 130k to 260k at 130 m.
 
 ### Panoramas, and how far they got
 
-| site | fetched | segmented at 1536 | registered | status |
-|---|---|---|---|---|
-| Staromestske namesti, Prague | 14 | 14 | 14 | complete |
-| Plaza de la Constitucion, Mexico City | 14 | 14 | 14 | complete |
-| Plaza Mayor, Madrid | 9 | 9 | 9 | partial, quota |
+| site | fetched | segmented at 1536 | registered | median residual | status |
+|---|---|---|---|---|---|
+| Staromestske namesti, Prague | 14 | 14 | 14 | 0.82 deg | complete |
+| Plaza de la Constitucion, Mexico City | 14 | 14 | 14 | 2.76 deg | complete |
+| Plaza Mayor, Madrid | 9 | 9 | 9 | 0.33 deg | partial, quota |
+| Grand Place, Brussels | 14 | 14 | 14 | 2.87 deg | complete |
+| Times Square, New York | 14 | 14 | 14 | **10.13 deg** | rejected, mesh |
+| Hachiko, Tokyo | 13 | 13 | 0 | none | rejected, wrong walk |
+
+The second cohort of three went out on the next day's quota, 13,540 requests, no
+throttle. One of the three is usable and the two failures are the interesting
+part, because neither is a panorama problem.
+
+**Times Square registers an order of magnitude worse than anything else**, and
+the cause is the mesh described above rather than the capture. Three
+explanations were tested and two cleared: widening the crop from 130 to 250 m
+moves it 0.06 degrees, so it is not the crop truncation that explains the
+Zocalo, and its median observed skyline elevation is 14.8 degrees against 15.3
+at Brussels and 15.7 at Madrid, so it is not a high elevation canyon regime.
+What remains is the degeneracy `align_skyline` documents against itself: a
+roofline too low by `d` and a camera too high by `d` are indistinguishable, so a
+wrong silhouette is paid for by sinking the camera. Widening the altitude bound
+to plus or minus 25 m buys residual monotonically, all the way to a camera
+20 m below the street, and no interior optimum exists. Signed residual medians
+of -0.05 and 0.20 degrees against a 10 to 12 degree mean absolute say the
+silhouette is wrong bin by bin, which is what a broken mesh looks like and not
+what a mispointed camera looks like.
+
+**Hachiko square was never above ground.** All thirteen panoramas see between
+0.00 and 0.03 percent sky, so the skyline objective had nothing to fit and every
+one returned zero structurally supported samples. The entity histogram is 68
+percent building, 5.6 percent rail track, 1.4 percent tunnel, and a thumbnail
+settles it: this is the Shibuya subway platform, with the station signage and the
+DT01 and Z01 line markers in frame. The screening chose it because a walk is the
+largest set of panoramas sharing a capture date and linked to each other, and
+Google's indoor mapping of Shibuya Station has 183 linked panoramas on one date
+against 18 on the next best. **At a transit hub that definition selects the
+station over the street.** Nothing downstream caught it because pose altitude
+comes from a downward cast against the street level mesh, so all thirteen
+cameras were placed at street level plus 2.5 m while the real camera was a floor
+below ground. Cost 4,408 requests, and looking at one panorama would have shown
+it. Recoverable from the 2023-09 walk, 18 panoramas, about 6,100 requests.
 
 Madrid's nine are the most spread nine of its fourteen rather than an arbitrary
 prefix, because farthest-point sampling is prefix optimal. Its extent is identical
@@ -663,10 +765,50 @@ only as good as its worst site and a bad site fails quietly rather than loudly.
 All ten have zero degenerate faces, zero duplicate index triples and a consistent
 260 by 260 m extent, and the ground altitudes independently check out against real
 city elevations, including New York at -18 m, which is right once the roughly
--32 m geoid separation there is accounted for, and Times Square's 428 m of
-vertical extent, which is also right.
+-32 m geoid separation there is accounted for.
 
-**One site failed.** At the Toulouse anchor a standing observer sees 6.9 percent
+**I passed Times Square on that quality check and should not have.** I read its
+428 m of vertical extent as right for a site with 226 m towers on it, and the
+arithmetic works only because two errors of opposite sign were added together.
+The mesh runs from -220.3 m to +207.2 m against a camera at -19.0 m, so **2.87
+percent of its vertices sit more than 30 m below street level**. Grand Place and
+Prague have exactly zero. Times Square is mirror glass and animated LED
+billboards, which is the worst case there is for multi view stereo, and the
+reconstruction answered with two hundred metres of geometry underneath the
+street. The check I ran compared a total against an expectation, and a total
+cannot see a cancellation. Comparing the floor against the camera would have
+caught it and now does.
+
+Its exposure numbers in the table above are computed against that mesh, so the
+next question is whether they survive it. **Measured rather than argued, they
+do.** `run_substreet_ablation.py` traces the same forty standpoints twice, once
+against the mesh as built and once with every face lying wholly below eight
+metres under the ground datum removed, which is 38,354 faces or 3.60 percent of
+the site.
+
+| quantity | as built | culled | median shift | worst location |
+|---|---|---|---|---|
+| isotropic | 0.16433 | 0.16438 | +0.0013 dB | 0.012 dB |
+| rooftop | 0.09341 | 0.09398 | +0.0263 dB | 0.235 dB |
+| street small cells | 0.03663 | 0.03703 | +0.0473 dB | 0.168 dB |
+| sky fraction | 0.11455 | 0.11455 | 0.0000 dB | 0.0007 dB |
+
+Not one of the forty standpoints moves by half a decibel under any model. The
+sign is worth reading too: every shift is positive, meaning the spurious
+geometry was absorbing a little power that should have escaped, which is exactly
+what a surface below the observer does and it is two orders of magnitude below
+anything this study reports. **Times Square stays in the cross city table and is
+rejected only for registration**, where the same geometry is fatal because the
+skyline objective pays for a wrong silhouette by sinking the camera. A mesh can
+be too broken to align a photograph against and good enough to trace, and this
+one is both.
+
+The cull removes faces wholly below the floor rather than any face crossing it,
+because a facade that reaches down through the street is real geometry with a
+bad tail, and dropping it would open a hole in the road and change the answer
+for a reason unrelated to the defect being measured.
+
+**One site failed on the anchor.** At the Toulouse anchor a standing observer sees 6.9 percent
 sky. Twenty metres east it is 47.6 percent, and the ground steps from 191.1 to
 211.1 m over that distance, which is a roofline rather than a slope. The anchor
 is on the Capitole building instead of the square in front of it. Since tiles are
@@ -679,6 +821,31 @@ anchor is not on a local high. The healthy range across the other sites is 0.18 
 Times Square, a genuine canyon, up to 0.46 at Krakow.
 
 ## Things that were wrong
+
+**I passed Times Square's mesh on a quality check that could not have caught the
+defect.** I compared its total vertical extent against an expectation, and a
+total cannot see a cancellation of two errors with opposite signs. That is
+written up in full above. The general lesson is worth keeping separate from the
+site: a check on an aggregate is not a check on the thing the aggregate is made
+of, and the fix is to compare the floor against the camera rather than the span
+against a guess.
+
+**I reported a cache defect that does not exist and had to withdraw it.** A
+subagent found that the segmentation view cache keys on model, checkpoint and
+sizes but not on `--output-width`, and concluded the shipped 57 to 66 second
+per panorama figures were warm re-runs over a stale cache. I passed that on
+before checking it. The log settles it: 37 distinct panoramas, 37 result lines,
+one pass from 23:48 to 00:31, no cache or skip line anywhere, times spanning
+56.5 to 118.9 seconds. Those are cold numbers. The cache key omission is real as
+code and harmless in effect. The subagent retracted it unprompted, which is the
+behaviour to want, and I should have verified before repeating it rather than
+after.
+
+**A tile cost I stated as a constant is not one.** I wrote that a zoom 5
+panorama is 338 tiles and the daily cap is therefore 44 panoramas. That is true
+of one capture width. Across the six sites acquired it runs 128 to 512 tiles, so
+a day buys between 29 and 117. Had the second cohort all been at the top of that
+range it would have been 21,000 requests against a 15,000 cap.
 
 **The voxel remeshing rejection was measuring a misparameterisation.** The
 original argument used a 0.30 m solidify thickness against voxel grids of 0.5 to
@@ -732,6 +899,52 @@ full resolution copies.
 **I misread registration quality from the first few poses**, quoting 0.28 to 1.49
 degrees where the site medians are 0.33, 0.82 and 2.76 with a worst case of 9.33.
 
+## Seeing the propagation, rather than reading it
+
+Four Blender files, one per site, at `outputs/propagation_viz/`. Korenmarkt as
+the reference, Krakow as the most open square in the set, Times Square as the
+canyon and Grand Place as the widest spread inside a single square. They span
+the measured range rather than represent it, because four sites cannot
+represent eleven.
+
+Each carries six collections: the support mesh tinted by the surface class that
+chose its material, the recorded ray paths, the angular power spectrum at one
+standpoint, the illumination model's sources at true range and height, every
+traced standpoint coloured by susceptibility, and the duke phantom coloured by
+absorbed power density. No textures, no packed images, vertex colours only,
+compressed. Between 5.6 and 7.6 MB each and 27 MB for all four zipped, against
+roughly 150 MB for one textured showcase blend of the same square.
+
+**The rays in the file are the rays the estimator integrated.** A new
+`PathRecorder` keeps the polyline of a capped number of them, and it is a
+passive observer: it consumes no random draw and touches no accumulator, so a
+traced result is bit identical with it attached and without it, which
+`tests/test_propagation.py` asserts rather than assumes. Nothing about the
+storage rule changes, because the capacity is set at the call site, the
+production runs do not enable it, and no path table reaches disk.
+
+The paths are sorted into five exclusive bundles, and the split is what makes
+the picture worth looking at. A ray either left the scene or died in it, and if
+it left, it either left into the elevation band a directional model illuminates
+from or it did not. **An escape outside the band contributes nothing under that
+model no matter how far the ray travelled**, so the orange and pale yellow
+bundles are the ones carrying rooftop power and the blue cone going straight up
+is carrying none of it.
+
+Three things in those files are drawn rather than measured, and all three are
+recorded as custom properties on the object that carries them. The arrival lobe
+is normalised by its own peak, because the three models differ by two orders of
+magnitude in level and drawing that faithfully leaves two of them invisible. It
+has a radius floor, because a directional model's true lobe is a pancake a few
+centimetres thick at this scale. And it is drawn thirteen metres above the
+standpoint, or it would enclose the phantom standing there.
+
+One thing had to be measured to make the figures work at all. Camera offsets
+that frame a square with fifteen metre eaves put the camera inside a tower at
+Times Square, so each camera now casts towards its subject and stops short of
+whatever it hits. A camera that ends up very close is a result about the site
+rather than a failure.
+
 ## Reproducing any of this
 
 Everything below regenerates from the repository plus the tile cache under
@@ -749,6 +962,8 @@ python run_exposure.py                                    # figures 14
 python run_masonry_grating.py && python run_masonry_spectrum.py
 python run_foliage_study.py                               # figure 12
 python remesh_support_mesh.py                             # the mesh study meshes
+python build_propagation_blends.py                        # the four walkthrough blends
+python run_substreet_ablation.py --site newyork_timessquare
 ```
 
 The two showcase blends carry one named camera per shipped figure, so switching
@@ -761,6 +976,25 @@ The suite is 700 passing and 1 skipped, up from 570 at the start of the night.
 
 ## Still open
 
+- **Section 2.7 states two illumination models and calls them one.** The
+  `1/sin^3` elevation law is derived there for sources at a **fixed** height
+  above head, and the support is then stated using the extremes of a height
+  band and a range band. Sampling those bands literally gives an elevation
+  distribution off the stated law by a factor of 22, which is how this surfaced:
+  it had to be sampled to place source markers in the blends. No computed number
+  is affected, because the estimator only ever evaluates the law. But the quoted
+  25 to 250 m range band is not the support of the law sitting beside it, which
+  is 7.7 to 803 m, and section 2.7 should say which one it means.
+- **Tokyo needs re-screening from the street.** The walk definition selects the
+  largest set of same-date linked panoramas, and at a transit hub that is the
+  station. Screening should require a minimum sky fraction on the panorama
+  itself, which is one cheap check on data already fetched, and the same rule
+  would have caught it before the 4,408 requests were spent.
+- **Times Square needs a mesh, not more panoramas.** Its 14 panoramas are
+  fetched and segmented and its poses are unusable, and neither is fixable by
+  fetching more. Options are an independent source of geometry for that block,
+  or accepting the site as trace-only, which the sub street ablation says costs
+  nothing at all on the exposure side.
 - **The brickwork model is unvalidated at FR2.** It is validated at 4 GHz to
   2.0 dB with nothing fitted, and the only FR2 measurement available cannot
   adjudicate because its own repeat scatter exceeds the disagreement.

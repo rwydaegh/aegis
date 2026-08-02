@@ -1229,6 +1229,12 @@ different crop questions had been running together.
 3. **Source support.** Broken. The rooftop weight is supported on `Delta_h` in
    [13.5, 43.5] m and `d` in [25, 250] m, the scene is cropped at 130 m, and the
    fraction of the `cos/sin^3` measure needing a source outside the crop is 27.5%
+   <!-- Superseded 2026-08-02: these percentages are computed under the
+   uncorrected elevation law. See MONOSTATIC_SBR.md section 2.7.1. The
+   conclusion that the 130 m crop is broken survives and is if anything
+   understated for the street model, but the numbers below are not the ones to
+   quote. -->
+
    at `Delta_h = 8` m, 79.4% at 15 m, 88.5% at 20 m and 94.9% at 30 m.
 
 The delay-spread bound retires the first and not the other two. The repair for
@@ -1432,3 +1438,62 @@ the ground bounce is one of the few interactions guaranteed at every location.
 The fishnet class-fidelity coverage of about 99 percent recorded for these cases
 is not in conflict. It is a fraction of the pixels the cutter was asked to paint,
 so geometry that has disappeared never enters the denominator.
+
+## The illumination model is the law, not the bands
+
+`MONOSTATIC_SBR.md` section 2.7 gives both a `1/sin^3(el)` weight and a pair of
+height and range bands, and they are not the same network. The law is derived
+for a fixed height above head, the bands are used only to widen the support, and
+sampling the bands literally departs from the law by a factor of 22 across it.
+
+**Reversed the same day. The bands are the model and the law is derived from
+them.** My first call was the opposite, that the law was authoritative and the
+bands indicative, on the grounds that redefining the models would change every
+directional number in the study to fix a statement in a document. That reasoning
+was backwards. The cost of a change is not evidence about which version is
+right, and the bands are the physical claim: a population of sites at stated
+heights and stated ranges is a deployment, while a `1/sin^3` weight stretched
+over a support no single height produces is not.
+
+The corrected law counts sites per steradian as `(r_far^3 - r_near^3)/3`, where
+`r_near` and `r_far` are the slant ranges at which the height band and the range
+band stop intersecting along that direction. That is the exact integral for
+sites of uniform areal density carrying heights drawn independently of position,
+and the elevation support falls out of the bands rather than being written down
+beside them. The uncorrected pair survives as `ROOFTOP_FIXED_HEIGHT` and
+`STREET_SMALL_CELL_FIXED_HEIGHT` so that everything published before
+2026-08-02 stays reproducible.
+
+**It is not a small correction.** The old rooftop model put 61.7 percent of its
+measure below 5 degrees of elevation and the corrected one puts 9.4 percent.
+Measured at Korenmarkt from the same rays at the same seed, so the difference
+between the laws carries no Monte Carlo noise at all:
+
+| | 130 m crop | 250 m crop | crop correction |
+|---|---|---|---|
+| rooftop, fixed height | 0.09335 | 0.04034 | -3.64 dB |
+| rooftop, band | 0.16766 | 0.14897 | **-0.51 dB** |
+| small cells, fixed height | 0.04804 | 0.00471 | -10.08 dB |
+| small cells, band | 0.05827 | 0.01179 | **-6.94 dB** |
+| isotropic, unaffected | 0.29123 | 0.28681 | -0.07 dB |
+
+**The crop radius finding is halved for the small cells and all but erased for
+the rooftop model.** That follows from the mechanism rather than contradicting
+it: the correction removes most of the illumination measure that sat within a
+few degrees of the horizon, and near horizon measure was the entire reason a
+crop radius mattered. Re-acquiring at 250 m remains the right call, because a
+7 dB correction is still a correction, and because the isotropic and sky
+fraction results were never the reason for it.
+
+## Times Square is trace-only, not dropped
+
+Its support mesh carries 200 m of spurious geometry below the street, so its
+skyline registration fails at 10.13 degrees against 0.33 to 2.87 elsewhere. That
+is fatal for aligning a photograph, because the objective pays for a wrong
+silhouette by sinking the camera, and there is no interior optimum.
+
+It is not fatal for tracing. Culling every face wholly below the datum removes
+3.60 percent of the mesh and moves the median susceptibility by 0.0013 to 0.047
+dB, with no standpoint of forty moving as much as half a decibel. The site stays
+in the cross city comparison and its poses are treated as unregistered. A mesh
+can be too broken to align against and good enough to trace.

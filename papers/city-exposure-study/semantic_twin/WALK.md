@@ -54,6 +54,39 @@ by `traverse` (expands), with the docstring stating why the two counts are not
 comparable. Any site screening for the other nine cities should use the same two
 steps.
 
+## The same failure on the Street View side: the biggest walk was indoors
+
+The Street View screener picks a site's capture date by largest connected
+component, on the reasonable theory that the longest linked drive is the one
+worth walking. At Hachiko that rule chose 2018-05, 105 linked panoramas at 2.8 m
+spacing over a 118 m span, which outscored every other date at the site by a
+factor of four.
+
+Those 105 panoramas are the Shibuchika underground shopping arcade and the
+Shibuya station concourse. The premise fields in their metadata say so, their
+frames are 13312 by 6656 rather than the 16384 by 8192 of a car capture, and the
+decisive measurement is that **all thirteen selected panoramas segment to a sky
+fraction of 0.000.** Skyline registration on them returns `only 0 structurally
+supported skyline samples` and exits, thirteen times.
+
+The rule is not wrong so much as blind to one axis. Indoor tours are linked, are
+dense, are recent enough, and are exactly the kind of component that wins a
+largest-component contest, because a walking trolley photographs every few metres
+while a car photographs every ten. A screen on count alone will keep picking
+them.
+
+Two things fix it, and the cheap one is enough for now. `fetch_site_panoramas.py`
+takes `--walk-date` so the screener's choice can be overridden by hand once a
+site is caught. The durable fix is to reject a candidate walk whose panorama
+width is below the provider's outdoor native size, or to segment one frame and
+require a nonzero sky fraction before committing the other thirteen. Neither is
+implemented. Prefer either of them over relaxing the alignment when a site will
+not register, because the failure here was in the imagery and no change to the
+objective would have found it.
+
+Hachiko's 2023-09 walk, 18 linked panoramas at 8.7 m spacing over 90.7 m, is
+outdoors on the scramble crossing and registers.
+
 ## The walk, and what a sequence is
 
 Mapillary publishes imagery as *sequences*, the ordered frames of one continuous
@@ -278,6 +311,57 @@ which capture you happen to get. That spread is the strongest argument in this
 document against single-capture twins, and it is invisible unless you resample the
 order.
 
+### What that 55 seconds actually is, cold and warm
+
+The number above is a cold number, and it is worth pinning down because the same
+field in `semantics.json` reports two costs that differ by a factor of six and,
+until now, said nothing about which one you were reading.
+
+Measured on the A6000 with `semantic_twin.semantics --backend mask2former
+--device cuda --inference-size 1536 --view-size 1536`, one Brussels panorama,
+three consecutive runs into a directory that started empty:
+
+| run | output width | `wall_clock_seconds` | process wall | per-view arrays rewritten |
+|---|---|---|---|---|
+| cold, empty view cache | 4096 | **57.7 s** | 59.4 s | yes, all 26 |
+| warm, same output width | 4096 | 10.6 s | 12.1 s | none |
+| warm, different output width | 2048 | 7.9 s | 9.3 s | none |
+
+So **a cold panorama is about 58 s and a warm re-run is 8 to 11 s**. The cohort
+runs agree: fourteen Brussels panoramas cold in thirteen minutes, fourteen at
+Times Square at 48.3 to 49.7 s each, three at Hachiko at 57.2, 57.3 and 57.9 s,
+one at Plaza Mayor at 58.4 s. The widest cold spread yet seen over one pass of
+37 panoramas is 56.5 to 118.9 s. Nothing in this pipeline costs 20 minutes a
+panorama, and any claim that it does is a warm run being read as a cold one, or
+the reverse.
+
+**The cache key omits `--output-width`, and the third run above is what that
+means.** `dense_cache_settings` keys on the model, the checkpoint digest, the
+inference size, the view size and a digest of the panorama file. Asking for 2048
+after a run at 4096 therefore reuses all 26 cached views and rewrites none of
+them, which the timestamps confirm.
+
+**That reuse is correct, and the key is being left alone deliberately.**
+`--output-width` enters only `_view_footprint` and `fuse_predictions`, both of
+them downstream of `backend.predict`, so the per-view label and confidence
+rasters do not depend on it. Adding it to the key would force a 58 s
+re-segmentation every time somebody changed the fusion raster size and would
+return byte-identical view arrays for the trouble.
+
+What the omission did cost was legibility, and that is fixed instead.
+`wall_clock_seconds` used to carry fusion-only re-runs and full dense passes in
+one undifferentiated field, so 8 s and 58 s sat side by side with nothing to
+tell them apart, and the shipped 57 to 66 s figures were once read as warm
+re-runs over a stale cache when they were cold all along. `semantics.json` now
+also carries `dense_cache_reused`, `wall_clock_covers` and `output_width`, so a
+reader can tell which cost is in front of them without reconstructing it from
+file timestamps.
+
+**Segmentation is not the expensive stage.** Twelve to sixteen panoramas is
+twelve to sixteen minutes of A6000 time. Acquisition binds first: a 16384 by
+8192 capture is 512 tiles, and the Street View daily tile quota ran out three
+panoramas into a fourteen-panorama re-acquisition at Hachiko.
+
 ## Registration: twelve poses, twelve covariances, and they are not equal
 
 All twelve panoramas were registered against the mesh skyline with the existing
@@ -303,6 +387,107 @@ which is consistent with the second, but three stations is not a test.
 **Five of twelve pushed the altitude search to its bound**, meaning the fit wanted
 to move the camera more than 1.5 m vertically. That is flagged in each pose as
 `skyline_dz_at_bound` rather than silently accepted.
+
+### The bound is not an edge case, and the residual cannot see it
+
+Reading the flag across every pose this project has shipped, nine sets and 83
+registered panoramas, **32 of the 83 sit within 0.1 m of an altitude bound and 42
+sit within 0.5 m of one.** That is 39 percent pinned, not a handful of awkward
+stations, and the sites where it happens are not the sites with bad residuals.
+
+Two of those 83 need a caveat before the count is read. The two single-capture
+sites searched altitude over 0.33 and 0.36 m rather than the 3 m the cohort
+sites use, so their flag means a tight search touched its edge, not that a
+camera was driven three metres into the ground. Both come out clean on the
+conflict below. The other 30 are pinned against a 3 m bound and are the ones the
+rest of this section is about. Anyone recounting from
+`data/panoramas/*/*/alignment/pose_aligned.json` will find 81 and 30, because
+that glob is two levels deep and the two single-capture sites keep their pose
+one level shallower.
+
+The `sky_conflict` diagnostic settles what the residual cannot. It counts the
+directions the segmentation calls sky for which a first-hit cast against the
+support mesh returns geometry, so it shares no term, no parameter and no
+smoothing with the skyline objective, and it uses the whole two-dimensional mask
+rather than one boundary sample per azimuth. It was computed for every pose here
+on a 512 by 256 equirectangular grid.
+
+**It had never been written down.** `align_skyline` computes it already, but the
+cast needs `trimesh` with `embreex` and the GPU box's alignment environment does
+not have that extra, so all 83 shipped poses carried `{"unavailable"}` where the
+number belongs. `backfill_sky_conflict.py` fills it in place and writes
+`outputs/registration_sky_conflict.json` and `.csv`, so the split below is
+recomputable from the repository without re-running the cast.
+
+That backfill has to know which mesh each pose was fitted to, and
+`pose_aligned.json` does not record one. It does record `n_candidate_vertices`,
+which is a fingerprint: the pruning is deterministic given the mesh and the
+start position, and everything but the mesh is in the pose file. Matching that
+count identifies the mesh uniquely, tightly enough to tell the single and double
+precision builds of one crop radius apart, and doing so turned up something
+worth knowing. **Both single-capture poses were fitted against the
+single-precision meshes**, `inhouse_leaf_130m.ply` and `inhouse_leaf_170m.ply`,
+not the f64 builds the rest of the study defaults to. Scoring them against f64,
+as a reasonable person would assume, gives the wrong number for the right pose.
+
+| site | poses | median residual | worst residual | within 0.1 m of a bound | median sky conflict % | conflict range % | conflict above 50 % |
+|---|---|---|---|---|---|---|---|
+| prague_staromestske | 14 | **0.82** | 9.33 | 2 | **0.84** | 0.44 to 100.00 | 2 |
+| madrid_plazamayor | 10 | **0.40** | 2.92 | 5 | 53.43 | 0.30 to 100.00 | 5 |
+| brussels_grandplace | 14 | 2.87 | 11.16 | 6 | 3.57 | 0.70 to 100.00 | 6 |
+| mexico_zocalo | 14 | 2.76 | 4.59 | 4 | 99.96 | 2.29 to 100.00 | 8 |
+| korenmarkt_walk | 12 | 3.07 | 8.10 | 6 | 5.88 | 0.49 to 100.00 | 3 |
+| tokyo_hachiko | 3 | 6.19 | 6.53 | 1 | 100.00 | 100.00 to 100.00 | 3 |
+| newyork_timessquare | 14 | 10.13 | 12.00 | 6 | 100.00 | 35.45 to 100.00 | 13 |
+| korenmarkt (single) | 1 | 1.31 | 1.31 | 1 | 4.10 | | 0 |
+| milan_duomo (single) | 1 | 0.74 | 0.74 | 1 | 0.44 | | 0 |
+
+**Split the 83 poses on the conflict rather than on the residual and the two
+halves are physically different objects.**
+
+| | poses | median residual | residual range | median slack to the bound | median range to the conflicting geometry |
+|---|---|---|---|---|---|
+| conflict below 50 % | 43 | 1.30 deg | 0.22 to 11.46 | 1.807 m | **27.11 m** |
+| conflict at or above 50 % | 40 | 6.40 deg | 0.18 to 12.00 | **0.046 m** | **0.66 m** |
+
+The last column is the whole argument. In the healthy half the few rays that
+disagree hit something 27 m away, which is a mesh that over-reaches slightly at
+the horizon and is what a correct pose looks like. In the failing half they hit
+something 0.66 m away. A camera whose sky rays terminate two feet from the lens
+is inside the geometry, and the optimiser put it there: the median slack to the
+altitude bound in that half is 46 mm.
+
+**The residual ranges overlap almost completely, 0.22 to 11.46 against 0.18 to
+12.00, so no residual threshold separates these two populations.** Madrid
+pano_08 has the best skyline residual in the entire cohort at **0.18 deg** and
+100 percent of its sky conflicts. Looking at its alignment overlay says why in
+one glance: the camera stands under the Plaza Mayor arcade, the only sky it can
+see is the patch through one arch, and the fit scored 0.18 deg on the few
+supported columns inside that patch while the mesh, which bridges the arcade
+over as solid, blocks every other direction. That pose is not accurate to
+0.18 deg. It is unconstrained, and the number is the standard deviation of
+almost nothing.
+
+**Widening the bound does not find a better optimum, it just runs further.** At
+Times Square pano_00, the shipped 3 m bound pins at -3.0 m. Reopened at 8 m the
+fit lands at **-7.81 m** with residual 9.52, and reopened at 25 m it lands at
+**-22.60 m** with residual 7.45. The residual falls monotonically as the camera
+is buried deeper. That is the signature of a nuisance parameter absorbing a
+systematic bias, not of a search converging on a pose, and it is consistent with
+what `mesh_skyline` already warns about: an azimuthal percentile filter on a
+roofline that is convex upward removes peaks, biases the predicted skyline low,
+and lowering the camera is the cheapest way for the fit to raise it again.
+
+So the honest reading of the shipped poses is this. **Where a pose is pinned to
+the altitude bound, its residual is not an error bar.** It is the score of a
+constrained fit that has spent an unphysical altitude to buy angular agreement,
+and the sites where that has happened most are exactly the ones whose numbers
+read best. Prague at 0.82 deg median has only 2 of 14 pinned and a median
+conflict of 0.84 percent, and it is the site to trust. Madrid reads better still
+at 0.40 deg median and half its poses are unusable. Times Square is beyond
+rescue at the pose stage: 13 of 14 poses conflict, the median conflict range is
+0.57 m, and the mesh defect written up in `REPORT.md` is the more likely culprit
+than the optimiser.
 
 A useful cross-check fell out of this. Mapillary's structure-from-motion gravity
 and the independent skyline fit are separate estimates of the same pitch, and on
@@ -428,6 +613,29 @@ while sounding like an independent result.
 - **Separating the three causes of cross-capture disagreement**: segmentation
   error, pose error, and real change. Needs two spatially overlapping sequences
   from different dates, which this walk does not have.
+- **A pose gate that uses the sky conflict.** The number is now measured and on
+  disk for all 83 shipped poses and nothing consumes it. A conflict above 50
+  percent means the camera is inside the geometry and the pose should not be
+  allowed to bind pixels to faces at all, which is a stronger and better founded
+  rejection than the 4 deg residual threshold currently in use, and it would have
+  caught poses the residual passes.
+- **`embreex` in the alignment environment on the GPU box.** Until it is there,
+  every pose that box produces will ship `{"unavailable"}` and need the backfill
+  run afterwards. The box was left as found, so this is still outstanding.
+- **A mesh path in `pose_aligned.json`.** Recovering it by fingerprinting
+  `n_candidate_vertices` works and is checkable, but it only works while the
+  candidate meshes are still on disk and while the pruning is unchanged. One
+  string in the pose file would retire the whole trick.
+- **The elevation bias behind the pinning.** Thirty-two of 83 poses are pinned to
+  an altitude bound and reopening the bound only buries the camera further, so
+  the bias in the predicted skyline has to be estimated and removed rather than
+  absorbed by the altitude. `--fit-bias` exists and has not been swept, and
+  `--skyline-percentile` is at 90 with no study of what value removes the bias
+  rather than trading it against spike rejection.
+- **Eleven of Hachiko's fourteen panoramas.** The re-acquisition on the 2023-09
+  outdoor walk stopped three in when the Street View daily tile quota ran out.
+  The three that landed are segmented and registered. The remaining eleven need
+  quota, nothing else.
 
 ## Caveats worth carrying
 

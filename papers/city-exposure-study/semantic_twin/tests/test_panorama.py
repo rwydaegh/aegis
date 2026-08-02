@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from PIL import Image
 from semantic_twin.panorama import (
+    native_zoom,
     pose_from_metadata,
     stitch_tiles,
     streetview_orientation_source,
@@ -20,6 +21,28 @@ def test_zoom_dimensions_reach_native_resolution() -> None:
     assert zoom_dimensions(metadata, 5) == (16384, 8192)
     assert zoom_dimensions(metadata, 4) == (8192, 4096)
     assert zoom_dimensions(metadata, 0) == (512, 256)
+
+
+def test_native_zoom_follows_the_tile_grid_rather_than_a_constant() -> None:
+    """A photosphere tops out a level below a car capture, and 404s above it.
+
+    Every Times Square panorama is user contributed and 8192 wide, so ``/5/x/y``
+    returns 404 there while ``/4/x/y`` returns the full 16 by 8 grid.
+    """
+    car_16k = {"imageWidth": 16384, "imageHeight": 8192, "tileWidth": 512}
+    car_13k = {"imageWidth": 13312, "imageHeight": 6656, "tileWidth": 512}
+    photosphere = {"imageWidth": 8192, "imageHeight": 4096, "tileWidth": 512}
+    assert native_zoom(car_16k) == 5
+    assert native_zoom(car_13k) == 5
+    assert native_zoom(photosphere) == 4
+
+
+def test_native_zoom_is_where_the_full_image_is_served() -> None:
+    photosphere = {"imageWidth": 8192, "imageHeight": 4096, "tileWidth": 512}
+    assert zoom_dimensions(photosphere, native_zoom(photosphere)) == (8192, 4096)
+    assert zoom_dimensions(photosphere, 3) == (4096, 2048)
+    with pytest.raises(ValueError, match=r"zoom must be in \[0, 4\]"):
+        zoom_dimensions(photosphere, 5)
 
 
 def test_stitch_tiles_crops_padded_edges(tmp_path: pathlib.Path) -> None:

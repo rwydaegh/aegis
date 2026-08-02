@@ -18,10 +18,21 @@ sees one ring of facades many times over.
 Only panoramas from the walk's own capture date are eligible, so the set is
 temporally coherent and does not mix a 2014 scaffold with a 2024 facade.
 
+The screener picks that date by largest connected component, and at one site in
+ten that rule picks the wrong thing. At Hachiko the 2018-05 component is 105
+panoramas of the Shibuchika underground arcade and the Shibuya station concourse,
+which beat every outdoor drive on count and produced thirteen panoramas with a
+measured sky fraction of 0.000. An indoor panorama cannot be skyline-registered
+at all, so ``--walk-date`` overrides the screener and names the capture date to
+walk. Prefer it over relaxing the alignment: the failure is in the imagery, not
+in the objective.
+
 Run from the ``semantic_twin`` directory::
 
     ../../../.venv/bin/python fetch_site_panoramas.py \
       --scene config/prague_staromestske.json --count 14 --zoom 5
+    ../../../.venv/bin/python fetch_site_panoramas.py \
+      --scene config/tokyo_hachiko.json --count 14 --zoom 5 --walk-date 2023-09
 """
 
 from __future__ import annotations
@@ -43,6 +54,7 @@ from semantic_twin.panorama import (  # noqa: E402
     StreetViewTiles,
     download_panorama,
     load_support_mesh,
+    native_zoom,
     pose_from_metadata,
     zoom_dimensions,
 )
@@ -80,9 +92,17 @@ def site_row(screening: pathlib.Path, name: str) -> dict[str, Any]:
     raise SystemExit(f"{name} is not in {screening}")
 
 
-def select(row: dict[str, Any], count: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def select(
+    row: dict[str, Any],
+    count: int,
+    walk_date: str | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Choose the spread subset of the site's walk, with its own provenance."""
-    walk = [p for p in row["panoramas"] if p["date"] == row["walk_date"] and p["links"]]
+    date = walk_date or row["walk_date"]
+    walk = [p for p in row["panoramas"] if p["date"] == date and p["links"]]
+    if not walk:
+        dates = sorted({p["date"] for p in row["panoramas"] if p["links"]})
+        raise SystemExit(f"{row['key']}: no linked panoramas dated {date}, available: {', '.join(dates)}")
     positions = np.array([[p["east_m"], p["north_m"]] for p in walk], dtype=np.float64)
     order = spread_subset(positions, count)
     picked = [walk[i] for i in order]
@@ -92,13 +112,19 @@ def select(row: dict[str, Any], count: int) -> tuple[list[dict[str, Any]], dict[
         separations.append(float(np.linalg.norm(taken[i] - taken[:i], axis=1).min()))
     provenance = {
         "selection": "farthest-point sampling over the walk, seeded at the panorama nearest the centre",
-        "walk_date": row["walk_date"],
+        "walk_date": date,
+        "screened_walk_date": row["walk_date"],
+        "walk_date_overridden": walk_date is not None and walk_date != row["walk_date"],
         "walk_panoramas": len(walk),
         "selected": len(picked),
         "minimum_separation_m": round(min(separations), 2) if separations else None,
         "median_separation_m": round(float(np.median(separations)), 2) if separations else None,
-        "extent_east_m": [round(float(taken[:, 0].min()), 1), round(float(taken[:, 0].max()), 1)] if len(taken) else None,
-        "extent_north_m": [round(float(taken[:, 1].min()), 1), round(float(taken[:, 1].max()), 1)] if len(taken) else None,
+        "extent_east_m": [round(float(taken[:, 0].min()), 1), round(float(taken[:, 0].max()), 1)]
+        if len(taken)
+        else None,
+        "extent_north_m": [round(float(taken[:, 1].min()), 1), round(float(taken[:, 1].max()), 1)]
+        if len(taken)
+        else None,
         "screening_median_spacing_m": row["walk_spacing_m"],
     }
     return picked, provenance
@@ -112,11 +138,12 @@ def fetch(
     screening: pathlib.Path,
     workers: int,
     out_root: pathlib.Path | None = None,
+    walk_date: str | None = None,
 ) -> dict[str, Any]:
     scene = load_scene(scene_path)
     name = str(scene["name"])
     row = site_row(screening, name)
-    picked, provenance = select(row, count)
+    picked, provenance = select(row, count, walk_date)
     out_dir = out_root or (SCRIPT_DIR / "data" / "panoramas" / name)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -129,37 +156,47 @@ def fetch(
     safe_session = {k: session[k] for k in ("expiry", "tileWidth", "tileHeight", "imageFormat")}
     requests = 1
     written = []
+    zooms: dict[str, int] = {}
     for index, panorama in enumerate(picked):
         pano_dir = out_dir / f"pano_{index:02d}_{panorama['pano_id'][:16]}"
         pano_dir.mkdir(parents=True, exist_ok=True)
-        if (pano_dir / f"panorama_z{zoom}.jpg").exists():
+        cached = pano_dir / "metadata.json"
+        # A photosphere tops out below the requested zoom, so the file already on
+        # disk may carry a lower number than --zoom. Its own metadata says which,
+        # and reading it back costs no request.
+        settled = min(zoom, native_zoom(json.loads(cached.read_text()))) if cached.exists() else zoom
+        if (pano_dir / f"panorama_z{settled}.jpg").exists():
             print(f"[skip] {pano_dir.name}", flush=True)
             written.append(pano_dir.name)
+            zooms[pano_dir.name] = settled
             continue
         metadata = client.metadata(pano_id=panorama["pano_id"])
         requests += 1
         if "panoId" not in metadata:
             print(f"[warn] {panorama['pano_id']} returned no panorama, skipping", flush=True)
             continue
+        settled = min(zoom, native_zoom(metadata))
         pose = pose_from_metadata(metadata, scene, support_mesh=support_mesh)
-        (pano_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+        cached.write_text(json.dumps(metadata, indent=2))
         (pano_dir / "pose_initial.json").write_text(json.dumps(asdict(pose), indent=2))
         (pano_dir / "session.json").write_text(json.dumps(safe_session, indent=2))
-        width, height = zoom_dimensions(metadata, zoom)
+        width, height = zoom_dimensions(metadata, settled)
         tiles = -(-width // int(session["tileWidth"])) * -(-height // int(session["tileHeight"]))
-        destination = download_panorama(client, metadata, pano_dir, zoom=zoom, workers=workers, max_tiles=tiles + 8)
+        destination = download_panorama(client, metadata, pano_dir, zoom=settled, workers=workers, max_tiles=tiles + 8)
         requests += tiles
         written.append(pano_dir.name)
+        zooms[pano_dir.name] = settled
         print(
             f"[panorama] {pano_dir.name} {metadata.get('date', 'undated')} {width}x{height} "
             f"enu=({pose.position_enu_m[0]:.1f}, {pose.position_enu_m[1]:.1f}, {pose.position_enu_m[2]:.2f}) "
-            f"tiles={tiles} -> {destination.name}",
+            f"tiles={tiles} zoom={settled} -> {destination.name}",
             flush=True,
         )
 
     manifest = {
         "site": name,
         "zoom": zoom,
+        "panorama_zoom": zooms,
         "panorama_dirs": written,
         "selection": provenance,
         "approximate_requests": requests,
@@ -176,6 +213,10 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--screening", type=pathlib.Path, default=DEFAULT_SCREENING)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--out", type=pathlib.Path)
+    parser.add_argument(
+        "--walk-date",
+        help="capture date to walk, as YYYY-MM, overriding the screener's largest-component choice",
+    )
     return parser.parse_args(argv)
 
 
@@ -188,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         screening=args.screening,
         workers=args.workers,
         out_root=args.out,
+        walk_date=args.walk_date,
     )
     selection = manifest["selection"]
     print(

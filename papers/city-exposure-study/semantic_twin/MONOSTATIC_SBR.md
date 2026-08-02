@@ -246,12 +246,32 @@ location as the covariate the `OVERVIEW.md` gap list has been missing.
 
 ### 2.7 Canonical illumination scalars
 
+> **Correction, 2026-08-02.** The two directional weights in this section, the
+> rooftop one and the street small cell one, were wrong on the interior of their
+> support and are superseded by section 2.7.1. The text below is kept unedited
+> apart from inline markers, because **every `chi_rooftop` and
+> `chi_street_small_cell`, every crop convergence table and every cross city
+> figure produced before this date was computed under the superseded law**, and a
+> reader holding one of those numbers has to be able to find the model it came
+> from. The isotropic model is untouched, and `chi_isotropic` and the sky
+> fraction are unaffected. The superseded pair lives on in the code as the
+> illumination models `rooftop_fixed_height` and
+> `street_small_cell_fixed_height`, so any published number can be reproduced.
+>
+> In one line: the `1/sin^3(el)` law is derived for sites at one **fixed**
+> height, the support quoted beside it comes from a height **band**, and the law
+> of the band's population is `1/sin^3(el)` multiplied by the second moment of
+> the height distribution truncated to the heights the range band still permits
+> at that elevation. The support was right. The shape on it was not, and the
+> error is concentrated at grazing, where the old law put most of its mass.
+
 These are the source-independent numbers to plot for ten cities.
 
 **Isotropic susceptibility.** `K_iso = (1/4pi) * int K_S(u) dOmega`. Equals 1 in
 free space.
 
-**Rooftop-weighted susceptibility.** Do not use a flat elevation band. Derive the
+**Rooftop-weighted susceptibility.** [**Superseded 2026-08-02, see 2.7.1.**] Do
+not use a flat elevation band. Derive the
 weight. For sites of uniform areal density `n` at horizontal range `d` with
 `Delta_h = h_site - h_head`, the elevation above the horizon is
 `el = atan(Delta_h/d)`, so `d = Delta_h*cot(el)` and
@@ -274,6 +294,13 @@ For `Delta_h` in [13.5, 43.5] m and `d` in [25, 250] m that is `el` in
 [3.1, 60.1] degrees. Both forms are heavily low-elevation weighted: 64 % of the
 pure geometric weight sits below 5 degrees and 89 % below 9 degrees.
 
+[**Correction 2026-08-02.** The support is right and survives unchanged. The two
+weight forms are not. The 64 % is also not reproducible from the support stated
+one line above it: on `[3.1, 60.1]` degrees, which is what the code carried, the
+pure weight puts 61.7 % below 5 degrees, and 64.2 % needs a lower edge of 3.0.
+Under the corrected weight of section 2.7.1 the rooftop figure is 9.4 % below 5
+degrees and 45.2 % below 9.]
+
 Two consequences, and an earlier draft of this document had them the wrong way
 round.
 
@@ -284,14 +311,60 @@ that require a source outside the crop is 27.5 % at `Delta_h = 8` m, 79.4 % at
 15 m, 88.5 % at 20 m and 94.9 % at 30 m. That is section 9.4, and it is the
 largest hole in this document.
 
+[**Correction 2026-08-02.** This consequence dissolves. It exists only because
+the fixed height law has to be fed by sources at whatever range that height
+implies, with no cap. The corrected weight takes the range band as part of the
+model, so every source is inside 250 m by construction and the source side of
+section 9.4 closes at the 250 m crop the study now uses. The occluder side of
+section 9.4, which is a different measurement, does not close and is not
+affected.]
+
 The second is that low elevation is **not** where rooftop-edge diffraction
 arrives. Diffraction from the near roofline reaches a head at 1.7 m from the edge
 directly overhead, so its arrival elevation is 35 to 86 degrees for the eaves
 heights and standoffs of a European core. The `1/sin^3(el)` weight at 60 degrees
 is 0.001 times its value at 5 degrees. Section 9.3 carries the numbers.
 
-**Street-level small-cell susceptibility.** Same construction with `Delta_h` in
+**Street-level small-cell susceptibility.** [**Superseded 2026-08-02, see
+2.7.1.**] Same construction with `Delta_h` in
 [2.5, 6.5] m and `d` in [10, 150] m, giving `el` in [0.95, 33] degrees.
+
+**The height band and the elevation law are two different models, and the code
+uses the law.** [**Superseded 2026-08-02. The diagnosis here is right, the
+resolution is backwards. The bands are the model and the law is what had to be
+re-derived, not the other way round. Section 2.7.1 does that. Everything from
+here to the end of this block is wrong, and it is kept because it is what the
+code did until 2026-08-02.**] The derivation above is for a **fixed** `Delta_h`:
+that is where
+`cos(el)/sin^3(el)` comes from, and the `Delta_h^2` prefactor is a constant that
+divides out under normalisation. The support is then stated using the extremes
+of a `Delta_h` band and a `d` band. Those two statements do not describe the same
+network. Drawing sites with `Delta_h` uniform on [13.5, 43.5] m and `d` uniform
+by area on [25, 250] m gives an elevation histogram that departs from
+`1/sin^3(el)` by a factor of 22 across the band.
+
+Nothing computed is affected, because `IlluminationModel` evaluates the law and
+never the bands. But the bands cannot be read as the support of the law. The
+source geometry that does reproduce the law exactly is `Delta_h` drawn with
+density proportional to `Delta_h^2`, which is the areal weight of the annulus
+that height subtends, then `d` uniform by area inside that height's own annulus
+`[Delta_h*cot(el_max), Delta_h*cot(el_min)]`. The elevation density is then
+independent of `Delta_h`, so the mixture over the band is the single-height law.
+That construction puts the rooftop sources between **7.7 and 803 m**, not 25 to
+250 m, which is the same statement as section 9.4 seen from a different side.
+
+This surfaced only because the model had to be *sampled* rather than evaluated,
+to place source markers in the walkthrough blends.
+`export_propagation_payload.network_markers` implements the correct sampler and
+`tests/test_propagation_viz.py` holds both the check that it reproduces the law
+and the rejected literal reading, so the error cannot come back quietly.
+
+[**End of the superseded block.** The last paragraph is the one that aged worst.
+"Nothing computed is affected" was true only of the claim it was making, that the
+sampler and the estimator disagreed. It was not true of the estimator, which was
+integrating a law nobody had derived for the population it names. The sampler
+that paragraph calls correct is now the rejected one, and
+`tests/test_propagation.py` pins it as such.]
 
 **Worst-case directional susceptibility.**
 `K_max = max over u of sigma_max(T_S(u))^2`, the largest squared singular value
@@ -310,6 +383,434 @@ in blocked ones. At Korenmarkt the measured sky fraction is 0.2271, so
 isotropically averaged susceptibility above pure sky visibility. Define it on the
 integrated quantity, never per direction, since `K_S^(0)` is zero in blocked
 directions and the per-direction ratio diverges.
+
+### 2.7.1 The corrected directional weight, 2026-08-02
+
+This replaces the rooftop and street small cell weights of section 2.7. It is
+implemented as the elevation laws `uniform_sites_band` and
+`uniform_sites_band_pathloss` in `semantic_twin/propagation/directions.py`, and
+the superseded pair survives beside it as `uniform_sites` and
+`uniform_sites_pathloss` so that published numbers stay reproducible.
+
+**The population, stated as an assumption, because more than one reading is
+defensible and the choice moves the answer.** Sites form a homogeneous planar
+point process of areal density `n`, restricted to horizontal range `d` in
+`[d_min, d_max]`, and each site draws its height above the head from `f(h)` on
+`[h_min, h_max]` **independently of its position**. `Q_S` is defined in the
+absence of the local scene, per section 2.6, so this is a free-space source
+population and the buildings are `K_S`'s job, not this weight's.
+
+Two other readings, and what each would do:
+
+- **Slant range rather than ground range.** If `[d_min, d_max]` came from a link
+  budget rather than from a site-acquisition rule, the cap belongs on the
+  separation `r` and not on `d`. Then a site can sit directly overhead at an
+  admissible `r`, the upper support opens all the way to 90 degrees, and only
+  the lower edge survives. The two readings differ by a factor `1/cos(el)` in
+  each range bound, so they coincide at grazing and separate only where the
+  cosine departs from 1. How much that changes the answer is measured below, and
+  it is almost nothing.
+- **Height correlated with range**, taller sites serving further. Real, not
+  measured anywhere in this repository, and it narrows the elevation spread
+  rather than widening it: perfect correlation collapses the whole population
+  onto a single elevation. So the independence assumption is the conservative
+  one for spread, and it is the one taken.
+
+**The derivation.** For a site at height `h` and ground range `d` the elevation
+is `el = atan(h/d)`, so at fixed `h`, `d = h*cot(el)` and
+`|dd| = h*del/sin^2(el)`. The expected number of sites with ground range in
+`[d, d+dd]` and height in `[h, h+dh]` is `2*pi*n*d*f(h) dd dh`, which in
+`(el, h)` is
+
+```
+2*pi*n * h^2 * cos(el)/sin^3(el) * f(h) del dh
+```
+
+Divide by `dOmega = cos(el)*del*dphi`, integrate the azimuth, and integrate over
+the heights that are geometrically admissible at that elevation,
+`H(el) = [h_min, h_max] intersect [d_min*tan(el), d_max*tan(el)]`:
+
+```
+Q(u)     proportional to  M_2(el) / sin^3(el),   M_2(el) = int over H(el) of h^2 f(h) dh
+Q_pl(u)  proportional to  M_0(el) / sin(el),     M_0(el) = int over H(el) of      f(h) dh
+```
+
+where `Q_pl` weights each site by its own free-space spreading `1/r^2` with `r`
+the slant range, which cancels the `h^2` and drops two powers of `sin`. The
+`1/sin^3` law survives and is multiplied by a **truncated moment of the height
+distribution**. `M_2` is the window a fixed-height derivation cannot see, and it
+is what makes the weight finite at grazing.
+
+**Closed form for a uniform height distribution.** Write
+`h_hi(el) = min(h_max, d_max*tan(el))` and `h_lo(el) = max(h_min, d_min*tan(el))`.
+Dividing those by `sin(el)` turns them into slant ranges and the two laws become
+
+```
+r_lo(el) = max(h_min/sin(el), d_min/cos(el))
+r_hi(el) = min(h_max/sin(el), d_max/cos(el))
+
+Q(u)     proportional to  [ r_hi^3 - r_lo^3 ]_+ / 3     (count weighted, no path loss)
+Q_pl(u)  proportional to  [ r_hi   - r_lo   ]_+         (weighted by 1/r^2 per site)
+```
+
+The reading is exact rather than a coincidence. A uniform areal density with a
+uniform height band **is** a uniform volumetric density inside a horizontal
+slab, and `[r_lo, r_hi]` is the interval of slant ranges in which that direction
+is still inside both the slab and the cylindrical range shell. So the count of
+sites per steradian is `int r^2 dr` over that interval, which is
+`(r_hi^3 - r_lo^3)/3`, and the power per steradian from equal-EIRP sources is
+`int dr`, which is `r_hi - r_lo`. The `1/sin^3` singularity of the fixed-height
+law was an artefact of a slab of zero thickness: an infinitely thin slab has to
+be infinitely dense to hold a finite areal count, and at grazing the direction
+runs along it.
+
+**Support, and whether the old one was right.** `r_lo <= r_hi` requires
+`tan(el)` in `[h_min/d_max, h_max/d_min]`, so
+
+```
+el in [ atan(h_min/d_max), atan(h_max/d_min) ]
+```
+
+which is exactly the support section 2.7 already quoted. **The support was
+right.** What was wrong is the shape on it, and in the opposite direction from
+what section 2.7 assumed: the corrected density **vanishes** at both edges,
+because each edge is the one direction along which only a single corner of the
+height-by-range rectangle is still visible, so the depth of population along it
+is zero. The superseded law was maximal at the lower edge.
+
+| | rooftop | street small cell |
+|---|---|---|
+| height band above head | 13.5 to 43.5 m | 2.5 to 6.5 m |
+| horizontal range band | 25 to 250 m | 10 to 150 m |
+| support | 3.0910 to 60.1135 deg | 0.9548 to 33.0239 deg |
+| knots, where a range cap takes over from a height cap | 9.8706 and 28.3690 deg | 2.4813 and 14.0362 deg |
+| peak of the corrected density | 11.4x isotropic at 9.87 deg | 47.5x isotropic at 2.48 deg |
+| peak of the superseded density | 74.3x isotropic at 3.10 deg | 241.5x isotropic at 0.95 deg |
+| median elevation of the measure, corrected | 9.50 deg | 2.50 deg |
+| median elevation of the measure, superseded | 4.38 deg | 1.34 deg |
+
+Between the two knots every height in the band is admissible at every elevation,
+`M_2` is constant, and the corrected weight **is** `1/sin^3(el)` exactly. That is
+what makes this a correction rather than a replacement: the superseded law is the
+interior limit of the corrected one, and the two part company only in the wings.
+The wings are where the measure was.
+
+**Where the measure sits.** Integrated across each band, never sampled at a
+midpoint. `1/sin^3` is convex, so a midpoint underestimates, and on equal-count
+bins the widest bin is the one it underestimates worst, which is enough to make
+a quadrature error read as a factor of six in the physics.
+
+| | below 5 deg | below 9 deg |
+|---|---|---|
+| rooftop, superseded `1/sin^3` | 61.7 % | 88.4 % |
+| rooftop, corrected | 9.4 % | 45.2 % |
+| rooftop, corrected with path loss | 3.2 % | 20.1 % |
+| street, superseded `1/sin^3` | 96.5 % | 99.0 % |
+| street, corrected | 87.9 % | 96.6 % |
+| street, corrected with path loss | 42.2 % | 64.6 % |
+
+The superseded rows are evaluated on the support the shipped code actually
+carried, 3.1 to 60.1 and 0.95 to 33.0 degrees, rather than on the exact edges,
+because that is what every published number was computed with. The corrected rows
+use the exact edges, which the corrected law derives rather than being told.
+
+That resolves the 64 % of section 2.7, which is not reproducible from section
+2.7's own support. On `[3.1, 60.1]` the measure below 5 degrees is 61.74 %, on the
+exact `[3.0910, 60.1135]` it is 61.96 %, and 64.18 % needs a lower edge of exactly
+3.0 degrees. All three follow in closed form from
+`F = (1/sin^2(a) - 1/sin^2(5 deg)) / (1/sin^2(a) - 1/sin^2(b))`, so the 64 % was a
+third rounding of the lower edge that no version of the model used. **61.7 % is
+the figure that describes the published runs.**
+
+**The path loss forms of section 2.7 are the horizontal-range ones, and that is
+wrong.** Section 2.7 states `1/(sin*cos^2)` on `dOmega`. That is internally
+consistent with its own fixed-height construction, so it is not an arithmetic
+slip, but it reaches it by weighting each site by `d^-2` with `d` the
+**horizontal** range. Free-space spreading goes as the inverse square of the
+separation, which is the slant range `r = d/cos(el)`, and the fixed-height law
+with `r^-2` is `1/sin(el)` on `dOmega`. The two differ by `1/cos^2(el)`:
+
+```
+1/(sin(el)*cos^2(el))   over   1/sin(el)   =   1/cos^2(el)
+```
+
+which is 1.008 at 5 degrees, 1.33 at 30 degrees and exactly **4 at 60 degrees**,
+the top of the rooftop support. Horizontal range equals the separation only on
+the horizon, which is precisely where the superseded law put all of its mass, so
+the error was invisible under it and is not invisible now.
+
+**Neither shipped model applies path loss, and that is only half defensible.**
+The count-weighted law is the correct **count** of sites per steradian, and it is
+the correct **power** per steradian only if per-site received power is
+independent of range, which needs EIRP proportional to `r^2`. No network does
+that. The honest reading is that the two forms bracket the plausible range: the
+count-weighted one is what a network with aggressive uplink-symmetric power
+control looks like from the receiver, the `1/r^2` one is what equal-EIRP sources
+in free space look like, and a real network with per-cell load and sectorisation
+sits between. Since `chi_S` is a **ratio** of the field with the scene to the
+field without it, the absolute scale cancels and only the shape of `Q_S`
+survives, but the shape is exactly what the path loss term changes. On the
+rooftop bands the two normalised densities differ by a factor of 27 across the
+support, from 3.84 times at the lower edge to 0.14 times at 51 degrees, and they
+put 45.2 % against 20.1 % of their measure below 9 degrees. On the street bands
+the density ratio spans a factor of 158. Both are therefore implemented and both
+should be reported. Reporting only the count-weighted one, as the study does today, is
+defensible only if it is labelled as count-weighted, which section 2.7 did not
+do.
+
+**How much the two readings differ, since one of them had to be picked.** Not
+much, where it matters. Under the slant range reading the rooftop support runs
+from 3.0955 degrees to the zenith rather than stopping at 60.1135, but the
+measure it adds up there is small: it carries 9.32 % of its measure below 5
+degrees against the ground range reading's 9.41 %, and 44.39 % below 9 degrees
+against 45.19 %. For the street model the two agree to 0.1 percentage points as
+well. The correction is therefore robust to the reading, which is worth saying
+because the reading is the one genuinely arbitrary choice in it.
+
+**What the correction is still exposed to, ranked.** `M_2` is a functional of
+`f(h)`, so the corrected law inherits whatever the height distribution says, and
+the shipped closed form assumes `f` uniform on the band. Evaluating
+`M_2(el)/sin^3(el)` directly for other `f`, with the same 25 to 250 m range band:
+
+| `f(h)` | below 5 deg | below 9 deg | median |
+|---|---|---|---|
+| uniform on [13.5, 43.5], as shipped | 9.4 % | 45.2 % | 9.50 deg |
+| uniform on [8.5, 18.5] | 60.8 % | 88.7 % | 4.44 deg |
+| uniform on [13.5, 100] | 3.3 % | 15.7 % | 18.64 deg |
+| Rayleigh, mean 28.5 m, untruncated | 20.1 % | 49.0 % | 9.15 deg |
+| Rayleigh, mean 18 m, untruncated | 41.3 % | 75.0 % | 5.81 deg |
+| lognormal, median 28.5 m, sigma 0.35, untruncated | 6.8 % | 43.7 % | 9.74 deg |
+| lognormal, median 18 m, sigma 0.35, untruncated | 33.1 % | 74.7 % | 6.19 deg |
+
+The ordering is the useful part. Where the band sits is worth a factor of 18 in
+the low-elevation mass, the shape of `f` inside a fixed band is worth a factor of
+2 to 3, and the ground range against slant range reading is worth 0.1 percentage
+points. The two untruncated rows admit sites below the band, which is what lifts
+them, so they are a bound on shape sensitivity rather than a proposal. None of
+this is an argument against the correction, which is a statement about the
+Jacobian and holds for any `f`. It is a statement about which input now deserves
+the evidence: the band, then the shape, and not the reading. The uniform closed
+form is what ships, and a different `f` is a change to one function, the truncated
+second moment, and to nothing else in the derivation.
+
+**What it moved, measured.** Same walk, same rays, same geometry, same
+materials, only the illumination law changed. The illumination model is
+consulted only when an escaped ray is deposited and never by the random number
+generator, so `chi_isotropic`, the sky fraction and the mean bounce count come
+out **bit identical** between the two runs and the comparison below is paired
+exactly, with no Monte Carlo difference in it at all. Korenmarkt, 15 GHz, 200 000
+rays per standpoint.
+
+At the converged 250 m crop, geometric materials, 80 standpoints:
+
+| | rooftop | street small cell |
+|---|---|---|
+| median `chi`, superseded | 0.04834 | 0.005369 |
+| median `chi`, corrected | 0.16271 | 0.014337 |
+| shift | **+5.27 dB** | **+4.27 dB** |
+| within-square spread `p95/p05`, superseded | 7.10 dB | 8.50 dB |
+| within-square spread `p95/p05`, corrected | 6.39 dB | 8.36 dB |
+| change in spread | -0.72 dB | -0.14 dB |
+| median peak `S_ab` at `S0 = 1 W/m^2`, superseded | 0.01171 W/m^2 | 0.001493 W/m^2 |
+| median peak `S_ab` at `S0 = 1 W/m^2`, corrected | 0.04428 W/m^2 | 0.003806 W/m^2 |
+| median `SAR_wb` at `S0 = 1 W/m^2`, superseded | 1.774e-4 W/kg | 2.007e-5 W/kg |
+| median `SAR_wb` at `S0 = 1 W/m^2`, corrected | 5.991e-4 W/kg | 5.441e-5 W/kg |
+
+The shift is quoted as the ratio of the two medians. The median of the
+per-standpoint ratios is +5.67 dB for rooftop and +4.19 dB for street on the same
+80 standpoints, and the per-standpoint ratio itself runs from 2.69 to 4.29 for
+rooftop and from 0.96 to 3.15 for street. Both summaries are legitimate and they
+differ by 0.4 dB, so any figure quoted from this comparison has to say which one
+it is. The width of that per-standpoint range is the load-bearing part: the
+correction is not a constant offset, so no published number can be rescaled by a
+single factor, it has to be recomputed.
+
+`run_law_comparison.py` scores the same shift on a different observer sample of
+the same site, 40 standpoints within 60 m instead of 80 within 90 m, 150 000 rays
+instead of 200 000 and four bounces instead of six, and reports the same
+statistic: +5.673 dB rooftop and +3.981 dB street at 250 m. Those are not the
+numbers in the table above and they are not meant to be. They are how far a
+single-site median moves when the standpoints are resampled, which is 0.4 dB for
+rooftop and 0.3 dB for street, and that is the right scale of uncertainty to
+attach to any of these figures. The bounce depth is not what does it: rerunning
+the canonical 80 standpoints at four bounces instead of six moves the rooftop
+shift from +5.27 to +5.30 dB, so 0.03 dB of the 0.4 is the tracer and the rest is
+which 40 or 80 places in the square a pedestrian is taken to stand.
+
+At the unconverged 130 m crop, with the crop radius as the only change from the
+table above, same 80 standpoints, same materials, same seed:
+
+| | rooftop | street small cell |
+|---|---|---|
+| median `chi`, superseded | 0.13890 | 0.073566 |
+| median `chi`, corrected | 0.20894 | 0.094835 |
+| shift | +1.77 dB | +1.10 dB |
+| within-square spread `p95/p05`, superseded | 11.68 dB | 15.35 dB |
+| within-square spread `p95/p05`, corrected | 8.77 dB | 13.69 dB |
+| change in spread | **-2.91 dB** | **-1.66 dB** |
+
+Over the 120 fused-walk standpoints instead, at the same 130 m crop, the shift is
++2.04 dB and +1.64 dB and the spread falls from 12.45 to 8.44 dB and from 18.48
+to 16.62 dB, so the 130 m result does not depend on which standpoints are used.
+
+The shift itself is therefore strongly crop dependent, +1.8 dB at 130 m against
++5.3 dB at 250 m for rooftop, and the reason is the crop table below rather than
+anything in the illumination law. At 130 m the superseded law is already inflated
+by 4.6 dB of crop artefact on these standpoints while the corrected law is
+inflated by 1.1 dB, so the gap between the two laws is partly filled in by the
+missing occluders. Quoting the law shift without the crop radius is meaningless.
+
+Both directional susceptibilities rise, by 5.3 dB and 4.3 dB at the converged
+radius. The cause is the whole correction in one sentence: the superseded law
+put its measure in the first few degrees above the horizon, where a pedestrian's
+sky is almost always blocked by the far side of the square, so it reported a
+susceptibility dominated by the rare standpoint with an open sightline down a
+street. The corrected law puts the rooftop measure at 10 to 30 degrees, where
+the sky is open more often, so `chi` rises toward the isotropic value of 0.29.
+
+The two crop radii disagree about the spread, and the disagreement is the more
+interesting result. At 250 m the spread barely moves, 0.72 dB for rooftop and
+0.14 dB for street. At 130 m it collapses, by 2.91 and 1.66 dB on the 80 city
+standpoints and by 4.01 and 1.86 dB on the 120 walk standpoints. So most of the
+superseded model's within-square spread at 130 m was not urban form, it was crop
+artefact: grazing illumination escaping through occluders the crop had deleted,
+which varies violently from standpoint to standpoint. The corrected law is far
+less exposed to that, which is the same statement as the crop table below. Note
+which way this cuts. The correction does not narrow the spread at a converged
+crop, it narrows the spread of an unconverged one, so it is not an argument that
+the within-square spread reported by the study is inflated.
+
+**And the crop radius relaxes, for one of the two models.** Section 9.4 calls the
+crop the largest hole in this document and section 7.5 put the requirement at
+250 m. That requirement was set by grazing weight. Same 24 observers, same rays,
+same seed, one mesh per radius, all seven laws scored on one pass so the columns
+are paired exactly. Deviation of the observer mean from the 340 m reference, in
+dB. The medians give the same table to within 0.1 dB and the same converged
+radius in every directional column, so nothing here turns on the statistic:
+
+| crop | rooftop, superseded | rooftop, corrected | rooftop, corrected + path loss | street, superseded | street, corrected | street, corrected + path loss |
+|---|---|---|---|---|---|---|
+| 130 m | 3.545 | 0.601 | 0.128 | 10.359 | 7.229 | 1.377 |
+| 160 m | 1.023 | 0.167 | 0.035 | 4.751 | 2.593 | 0.331 |
+| 200 m | 0.156 | 0.017 | 0.004 | 1.206 | 0.561 | 0.048 |
+| 250 m | 0.014 | 0.000 | 0.000 | 0.200 | 0.059 | 0.003 |
+| 300 m | -0.001 | -0.001 | 0.000 | 0.019 | 0.001 | -0.001 |
+
+The measure table and the crop table agree on more than the sign, which is the
+check that the mechanism is the one claimed. The rooftop measure below 5 degrees
+falls by a factor of 6.6 under the correction and its 130 m crop error falls by
+5.9. The street measure below 5 degrees falls by only 1.10 and its crop error
+falls by 1.43. The street pair is the looser of the two, as it should be, because
+the crop error is driven by the whole grazing wing and not by the 5 degree cut
+alone, but a correction that moved the crop error without moving the measure, or
+the other way round, would have meant the mechanism was something else.
+
+Converged radius, by budget. Converged means every larger radius on the ladder is
+also inside the budget, not merely the first one that is, because the ladder is
+not monotone: each radius is a different mesh, so a single crossing can be noise:
+
+| budget | rooftop, superseded | rooftop, corrected | street, superseded | street, corrected |
+|---|---|---|---|---|
+| 0.25 dB | 200 m | **160 m** | 250 m | 250 m |
+| 0.10 dB | 250 m | **200 m** | 300 m | **250 m** |
+
+The rooftop requirement drops by one step of this ladder, 250 m to 200 m at a
+0.1 dB budget. The street small cell requirement does not, and the reason is two
+tables above: 88 % of its corrected measure is still below 5 degrees, because a
+source 2.5 m above a head at 150 m is a grazing source however carefully the
+population is derived. **Under both laws the street model is the binding
+constraint on the crop, so the study's 250 m crop stays justified**, but it is
+now justified by the street model alone rather than by both.
+
+The size of what remains has to be stated plainly, because the direction of this
+result invites over-reading. A 130 m crop still misprices the street model by
+7.23 dB after the correction, against 10.36 dB before it. That is a reduction of
+3.1 dB in a defect that was never small, not a removal of the defect, and the
+130 m crop remains unusable for either directional model. What relaxes is the
+converged radius for rooftop by one ladder step and nothing else.
+
+**And the ladder above is one site.** Milan Duomo is the only other site with more
+than one mesh radius, at 170, 200 and 250 m, so the same comparison can be run
+there over 40 standpoints within 60 m. The last available step, 200 to 250 m, in
+dB:
+
+| site | isotropic | rooftop, superseded | rooftop, corrected | street, superseded | street, corrected |
+|---|---|---|---|---|---|
+| Korenmarkt | 0.00 | 0.14 | 0.02 | 1.01 | 0.50 |
+| Milan Duomo | 0.01 | 0.49 | 0.08 | 1.08 | 0.95 |
+
+Milan agrees on rooftop, where the corrected law is converged by 200 m and has
+0.08 dB left in the last step. It does not agree on street. Korenmarkt's street
+number has 0.50 dB left in that step and Milan's has 0.95 dB, and Milan has no
+mesh beyond 250 m to measure what is left after it, so at that site the corrected
+street model is still moving where Korenmarkt's has nearly stopped. **The 250 m
+requirement is a Korenmarkt measurement, and the one site available to test it
+against says the street model may want more.** Extending the Milan ladder to 300
+and 340 m is the way to settle that, and it is a mesh build rather than a
+question about the law.
+
+Applying path loss would relax the crop much further, at the same 0.1 dB budget
+to 200 m for street and 160 m for rooftop, which is one more reason the
+count-weighted and power-weighted forms should both be reported rather than one
+of them chosen quietly.
+
+**What it does to the cross city table.** The eleven site comparison at 250 m is
+the headline of the study, so the question is whether the correction can be
+applied to it as an offset. It cannot. Every site was rescored with all seven
+laws on one traced pass, on the standpoints the published runs use, 80 per site
+inside a 90 m walk radius at 200 000 rays and seed 7. Four bounces rather than
+six, which costs 0.03 dB on the law ratio and about 1 % on the level, so the
+columns below are the shift and not a drop-in replacement for the published
+table. Site medians of `chi`:
+
+| site | `chi_iso` | rooftop superseded | rooftop corrected | shift | street superseded | street corrected | shift |
+|---|---|---|---|---|---|---|---|
+| brussels_grandplace | 0.2351 | 0.02470 | 0.09722 | +5.95 dB | 0.00278 | 0.00645 | +3.66 dB |
+| korenmarkt | 0.2919 | 0.04780 | 0.16207 | +5.30 dB | 0.00535 | 0.01458 | +4.36 dB |
+| krakow_rynek | 0.5305 | 0.71587 | 0.89776 | +0.98 dB | 0.25702 | 0.45540 | +2.48 dB |
+| london_trafalgar | 0.3889 | 0.07739 | 0.28707 | +5.69 dB | 0.01176 | 0.02689 | +3.59 dB |
+| madrid_plazamayor | 0.3469 | 0.03417 | 0.14561 | +6.30 dB | 0.00299 | 0.00802 | +4.28 dB |
+| mexico_zocalo | 0.3973 | 0.08246 | 0.29851 | +5.59 dB | 0.01154 | 0.02963 | +4.09 dB |
+| milan_duomo | 0.3541 | 0.07851 | 0.24650 | +4.97 dB | 0.02114 | 0.03502 | +2.19 dB |
+| newyork_timessquare | 0.1627 | 0.09205 | 0.12950 | +1.48 dB | 0.03312 | 0.05819 | +2.45 dB |
+| prague_staromestske | 0.3623 | 0.06328 | 0.23502 | +5.70 dB | 0.00766 | 0.01946 | +4.05 dB |
+| tokyo_hachiko | 0.2240 | 0.03695 | 0.09971 | +4.31 dB | 0.01025 | 0.01604 | +1.94 dB |
+| toulouse_capitole | 0.3996 | 0.09907 | 0.33794 | +5.33 dB | 0.01205 | 0.03247 | +4.31 dB |
+
+Three readings, and the first is the answer to the offset question.
+
+**The shift is a property of the site.** It runs from +0.98 dB at Krakow to
++6.30 dB at Madrid, a span of 5.31 dB, which is the same size as the 6.03 dB
+spread of the superseded rooftop medians across the ten sites other than Krakow.
+A single-factor rescaling of the published table would move every site by
+something between 5 dB too little and 5 dB too much. The table has to be
+recomputed, not adjusted.
+
+**It reorders the cities, and only for rooftop.** The Spearman correlation
+between the superseded and the corrected ordering is 0.78 for rooftop and 0.98
+for street. One site carries most of it. New York Times Square falls six places
+of eleven, from third highest rooftop susceptibility to third lowest, and that is
+the measure table speaking through the geometry: the superseded law asked how
+open the first few degrees above the horizon are, which along a Manhattan avenue
+is very open, and the corrected law asks about 10 to 30 degrees, which is where
+the towers are. The street ordering barely moves because the street measure is
+still almost all below 5 degrees under both laws.
+
+**And the rooftop column comes to look more like the isotropic one.** Across the
+eleven sites the correlation between log `chi_rooftop` and log `chi_isotropic`
+rises from 0.56 to 0.85, and the ratio `chi_rooftop/chi_isotropic` narrows from a
+spread of 11.37 dB to 6.12 dB. Part of what the rooftop column appeared to say
+about urban form beyond the sky fraction was the grazing concentration, which is
+the part that was wrong and the part the crop could not resolve. Six dB of
+independent range across eleven squares is not nothing, so the column still
+carries urban form, but the claim that it is where urban form shows up should now
+be made with that number next to it rather than with the 11 dB the superseded law
+implied.
+
+None of this changes the crop radius the table needs. It is still 250 m, set by
+the street model, and the correction lowers only the rooftop requirement. What it
+changes is that the eleven site numbers themselves are superseded, one site at a
+time, by different amounts, in an order that is not the published one.
 
 ### 2.8 The angular coherence scale, which forces the second moment
 

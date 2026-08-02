@@ -33,6 +33,141 @@ import numpy as np
 from .directions import IlluminationModel, fibonacci_sphere, nearest_cell, sample_sphere
 
 
+#: How a recorded ray stopped. ``sky`` escaped the crop, ``roulette`` was killed
+#: by Russian roulette while still carrying throughput, ``truncated`` was still
+#: travelling when ``max_bounces`` ran out.
+TERMINATIONS = ("sky", "roulette", "truncated")
+
+
+@dataclass(frozen=True)
+class PathRecord:
+    """Polylines for a bounded subset of rays, in one flat buffer.
+
+    ``offsets`` is the usual compressed layout: path ``i`` occupies
+    ``vertices[offsets[i]:offsets[i + 1]]``. The first vertex of every path is
+    the observation point and the last is either a point on the sky sphere or
+    the surface where the ray died.
+    """
+
+    vertices: np.ndarray  # (V, 3)
+    offsets: np.ndarray  # (R + 1,)
+    throughput: np.ndarray  # (V,) throughput on the segment leaving each vertex
+    face_class: np.ndarray  # (V,) class index at each vertex, -1 where not a surface
+    exit_direction: np.ndarray  # (R, 3) direction of the final segment
+    bounces: np.ndarray  # (R,)
+    termination: np.ndarray  # (R,) index into TERMINATIONS
+
+    def __len__(self) -> int:
+        return int(self.offsets.size - 1)
+
+
+class PathRecorder:
+    """Keeps the polyline of the first ``capacity`` rays of the first batch.
+
+    The storage rule for this study is that no path table reaches disk, and
+    this does not break it. It is bounded by a capacity set at the call site,
+    it is never enabled by a production run, and what it returns is a few
+    thousand polylines rather than anything scaling with the ray count. It
+    exists so a figure can show the rays the estimator actually integrated
+    instead of a redrawing of them.
+
+    Recording changes no random draw and no accumulator, so a traced result is
+    bit identical with the recorder attached and without it. The test suite
+    asserts that rather than trusting it.
+    """
+
+    def __init__(self, capacity: int = 2000, *, sky_distance_m: float = 400.0) -> None:
+        self.capacity = int(capacity)
+        self.sky_distance_m = float(sky_distance_m)
+        self._limit = 0
+        self._started = False
+        self._vertices: list[list[np.ndarray]] = []
+        self._throughput: list[list[float]] = []
+        self._face_class: list[list[int]] = []
+        self._exit_direction: np.ndarray = np.zeros((0, 3))
+        self._bounces: np.ndarray = np.zeros(0, dtype=np.int64)
+        self._termination: np.ndarray = np.zeros(0, dtype=np.int64)
+        self._closed: np.ndarray = np.zeros(0, dtype=bool)
+
+    def begin(self, origin: np.ndarray, count: int) -> int:
+        """Claim the first ``capacity`` rays of the first batch. Later batches see 0."""
+        if self._started:
+            return 0
+        self._started = True
+        self._limit = min(self.capacity, int(count))
+        point = np.asarray(origin, dtype=np.float64)
+        self._vertices = [[point.copy()] for _ in range(self._limit)]
+        self._throughput = [[1.0] for _ in range(self._limit)]
+        self._face_class = [[-1] for _ in range(self._limit)]
+        self._exit_direction = np.zeros((self._limit, 3))
+        self._bounces = np.zeros(self._limit, dtype=np.int64)
+        self._termination = np.zeros(self._limit, dtype=np.int64)
+        self._closed = np.zeros(self._limit, dtype=bool)
+        return self._limit
+
+    def _tracked(self, index: np.ndarray) -> np.ndarray:
+        """Positions within ``index`` that name a ray this recorder is still following."""
+        if self._limit == 0:
+            return np.zeros(0, dtype=np.int64)
+        slots = np.flatnonzero(np.asarray(index) < self._limit)
+        return slots[~self._closed[np.asarray(index)[slots]]]
+
+    def advance(
+        self,
+        index: np.ndarray,
+        position: np.ndarray,
+        throughput: np.ndarray,
+        face_class: np.ndarray,
+    ) -> None:
+        """Append the surface vertex the ray just bounced off."""
+        for slot in self._tracked(index):
+            ray = int(index[slot])
+            self._vertices[ray].append(position[slot].copy())
+            self._throughput[ray].append(float(throughput[slot]))
+            self._face_class[ray].append(int(face_class[slot]))
+
+    def close(
+        self,
+        index: np.ndarray,
+        position: np.ndarray,
+        direction: np.ndarray,
+        bounces: np.ndarray,
+        how: str,
+    ) -> None:
+        """Terminate the ray, extending it along its last direction to the sky sphere."""
+        kind = TERMINATIONS.index(how)
+        for slot in self._tracked(index):
+            ray = int(index[slot])
+            reach = self.sky_distance_m if how == "sky" else 0.0
+            self._vertices[ray].append(position[slot] + reach * direction[slot])
+            self._throughput[ray].append(self._throughput[ray][-1])
+            self._face_class[ray].append(-1)
+            self._exit_direction[ray] = direction[slot]
+            self._bounces[ray] = int(bounces[slot])
+            self._termination[ray] = kind
+            self._closed[ray] = True
+
+    def result(self) -> PathRecord:
+        counts = np.array([len(v) for v in self._vertices], dtype=np.int64)
+        offsets = np.concatenate([[0], np.cumsum(counts)])
+        vertices = (
+            np.concatenate([np.asarray(v, dtype=np.float64) for v in self._vertices])
+            if self._limit
+            else np.zeros((0, 3))
+        )
+        return PathRecord(
+            vertices=vertices,
+            offsets=offsets,
+            throughput=np.concatenate([np.asarray(t) for t in self._throughput]) if self._limit else np.zeros(0),
+            face_class=np.concatenate([np.asarray(c, dtype=np.int64) for c in self._face_class])
+            if self._limit
+            else np.zeros(0, dtype=np.int64),
+            exit_direction=self._exit_direction,
+            bounces=self._bounces,
+            termination=self._termination,
+        )
+
+
 @dataclass(frozen=True)
 class TraceConfig:
     """Everything that changes the numbers, and nothing that does not."""
@@ -163,6 +298,7 @@ class SbrTracer:
         *,
         ground_z_m: float = 0.0,
         seed: int | None = None,
+        recorder: PathRecorder | None = None,
     ) -> PointResult:
         cfg = self.config
         started = time.perf_counter()
@@ -199,6 +335,7 @@ class SbrTracer:
                 cell_counts,
                 exit_power,
                 totals,
+                recorder,
             )
 
         counts = np.maximum(cell_counts, 1.0)
@@ -250,11 +387,14 @@ class SbrTracer:
         cell_counts: np.ndarray,
         exit_power: np.ndarray,
         totals: dict[str, float],
+        recorder: PathRecorder | None = None,
     ) -> None:
         cfg = self.config
         direction = sample_sphere(count, rng)
         cell = nearest_cell(direction, self.local_grid)
         np.add.at(cell_counts, cell, 1.0)
+        if recorder is not None:
+            recorder.begin(origin, count)
 
         position = np.tile(np.asarray(origin, dtype=np.float64), (count, 1))
         throughput = np.ones(count)
@@ -288,6 +428,8 @@ class SbrTracer:
                     exit_power,
                     totals,
                 )
+                if recorder is not None:
+                    recorder.close(index, position[index], direction[index], bounces[index], "sky")
             alive = alive[hit]
             if alive.size == 0:
                 break
@@ -297,6 +439,8 @@ class SbrTracer:
                 # rays still travelling are dropped here.
                 totals["truncated"] += int(alive.size)
                 totals["truncated_throughput"] += float(throughput[alive].sum())
+                if recorder is not None:
+                    recorder.close(alive, position[alive], direction[alive], bounces[alive], "truncated")
                 break
             distance = distance[hit]
             normal = normal[hit]
@@ -321,6 +465,8 @@ class SbrTracer:
             share = specular_share(self.rms_height_m[klass], cos_i, self.wavelength_m)
 
             throughput[alive] *= reflectance
+            if recorder is not None:
+                recorder.advance(alive, position[alive], throughput[alive], klass)
             take_specular = rng.random(alive.size) < share
             mirror = incoming - 2.0 * np.einsum("ij,ij->i", incoming, normal)[:, None] * normal
             diffuse = _cosine_hemisphere(normal, rng)
@@ -332,6 +478,9 @@ class SbrTracer:
                 survive_probability = np.clip(throughput[alive], cfg.roulette_floor, 1.0)
                 survive = rng.random(alive.size) < survive_probability
                 throughput[alive] /= survive_probability
+                if recorder is not None:
+                    killed = alive[~survive]
+                    recorder.close(killed, position[killed], direction[killed], bounces[killed], "roulette")
                 alive = alive[survive]
 
     def _deposit(

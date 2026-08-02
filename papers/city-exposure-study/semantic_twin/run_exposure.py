@@ -99,7 +99,20 @@ CROP_BOUND_NOTE = (
     "street, and 0.03 to 0.96 dB even for isotropic, where tall cities move most. "
     "It is therefore NOT a constant offset: at 130 m the sites are distorted "
     "relative to each other, not merely shifted together, so a between site "
-    "comparison at 130 m is not safe either."
+    "comparison at 130 m is not safe either. "
+    "CORRECTION 2026-08-02: the per city dB figures above were measured under the "
+    "superseded illumination law of MONOSTATIC_SBR.md section 2.7 and have not "
+    "been remeasured across the nine cities. At Korenmarkt, remeasured on one set "
+    "of 24 standpoints with all laws scored on one pass, the 130 m error against a "
+    "340 m reference falls from 3.55 dB to 0.60 dB rooftop and from 10.36 dB to "
+    "7.23 dB street. The converged radius at a 0.1 dB budget moves from 250 m to "
+    "200 m for rooftop and from 300 m to 250 m for street, so the street small "
+    "cell model is now the sole binding constraint on the 250 m crop and the "
+    "qualitative conclusion is unchanged. Milan Duomo, the only other site with "
+    "more than one mesh radius, agrees on rooftop and not on street: its 200 to "
+    "250 m step is still 0.95 dB under the corrected law against Korenmarkt's "
+    "0.50 dB, and it has no mesh beyond 250 m, so the 250 m requirement remains a "
+    "one site measurement."
 )
 
 #: Every site with a ``format_version: 3`` double precision support mesh. A site
@@ -372,6 +385,8 @@ def run(
             name: {
                 "elevation_deg": [model.elevation_min_deg, model.elevation_max_deg],
                 "law": model.law,
+                "height_band_m": list(model.height_band_m) if model.height_band_m else None,
+                "range_band_m": list(model.range_band_m) if model.range_band_m else None,
                 "description": model.description,
             }
             for name, model in MODELS.items()
@@ -611,6 +626,7 @@ def run_all_sites(
     max_bounces: int,
     sites: tuple[str, ...] = SITES,
     crop_m: int = 130,
+    tag_suffix: str = "",
 ) -> None:
     """One geometric materials run per site, then the cross city figure.
 
@@ -630,7 +646,12 @@ def run_all_sites(
             # substituting a different one would confound geometry with crop.
             print(f"[skip] {site}: no {crop_m} m mesh, not comparable at this radius", flush=True)
             continue
-        tag = f"city_{site}" if crop_m == 130 else f"city{crop_m}_{site}"
+        # The suffix keeps a rerun from landing on a published run's files. The
+        # city250_* tags hold the results computed under the superseded
+        # elevation law, and those have to stay readable next to their
+        # replacements rather than be overwritten in place.
+        stem = "city" if crop_m == 130 else f"city{crop_m}"
+        tag = f"{stem}{tag_suffix}_{site}"
         try:
             run(
                 locations,
@@ -705,6 +726,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--walk-spacing-m", type=float, default=3.0)
     parser.add_argument("--site", default="korenmarkt")
     parser.add_argument("--crop-m", type=int, default=130)
+    parser.add_argument(
+        "--tag-suffix",
+        default="",
+        help="Appended to the cross site run tag, so a rerun does not land on a published run's files",
+    )
     parser.add_argument("--all-sites", action="store_true")
     parser.add_argument("--validate", action="store_true")
     parser.add_argument("--report", metavar="STEM", default=None)
@@ -732,6 +758,7 @@ def main(argv: list[str] | None = None) -> int:
             walk_spacing_m=args.walk_spacing_m,
             max_bounces=args.max_bounces,
             crop_m=args.crop_m,
+            tag_suffix=args.tag_suffix,
         )
         return 0
 

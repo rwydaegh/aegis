@@ -806,6 +806,14 @@ def run(args: argparse.Namespace) -> None:
             minimum_pixels=args.gate_min_pixels,
         )
 
+    # Read before the run, because predict_views rewrites the stamp on its way
+    # out. Without it the wall clock below is unreadable: a warm re-run over
+    # cached views does fusion only and reports 8 to 11 s against a cold 58 s,
+    # and nothing in the output said which of the two you were looking at.
+    dense_cache_reused = not args.force and reusable_dense_cache(
+        views_dir, dense_cache_settings(backend, args.view_size, args.panorama)
+    )
+
     with Image.open(args.panorama) as panorama:
         predictions, manifest, concept_predictions = predict_views(
             panorama,
@@ -839,6 +847,13 @@ def run(args: argparse.Namespace) -> None:
         "checkpoint": backend.checkpoint_digest,
         "inference_size_status": "set explicitly, not inherited from the checkpoint processor",
         "shape": [output_height, output_width],
+        "output_width": output_width,
+        "dense_cache_reused": bool(dense_cache_reused),
+        "wall_clock_covers": (
+            "fusion only, the per-view labels came from the cache"
+            if dense_cache_reused
+            else "the full dense pass, 26 views segmented from the panorama"
+        ),
     }
 
     if concepts is not None and catalog is not None:

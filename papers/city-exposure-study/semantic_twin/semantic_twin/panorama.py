@@ -165,11 +165,32 @@ class StreetViewTiles:
         return self._read(f"{TILE}/{zoom}/{x}/{y}?{params}")
 
 
+def native_zoom(metadata: dict[str, Any]) -> int:
+    """Return the zoom index at which this panorama is served at native size.
+
+    ``MAX_ZOOM`` is right for a Street View car capture, which is 13k or 16k
+    pixels wide and therefore 26 or 32 tiles across, but it is not a property of
+    the API. A user contributed photosphere is 8192 wide, 16 tiles across, and
+    its pyramid stops one level earlier: every ``/5/x/y`` request against one
+    returns 404 while ``/4/x/y`` returns the full 16 by 8 grid. Times Square has
+    no car coverage at all, so every panorama there is such a photosphere and
+    the constant alone loses the site.
+
+    The pyramid halves each level and the top level is whatever holds the native
+    image, so the index is the number of halvings from one tile to the tile grid
+    the metadata implies.
+    """
+    tile_width = int(metadata.get("tileWidth") or 512)
+    tiles_across = max(1, math.ceil(int(metadata["imageWidth"]) / tile_width))
+    return max(0, math.ceil(math.log2(tiles_across)))
+
+
 def zoom_dimensions(metadata: dict[str, Any], zoom: int) -> tuple[int, int]:
     """Return the useful equirectangular dimensions at a Street View zoom level."""
-    if not 0 <= zoom <= MAX_ZOOM:
-        raise ValueError(f"zoom must be in [0, {MAX_ZOOM}]")
-    divisor = 2 ** (MAX_ZOOM - zoom)
+    top = native_zoom(metadata)
+    if not 0 <= zoom <= top:
+        raise ValueError(f"zoom must be in [0, {top}] for this panorama")
+    divisor = 2 ** (top - zoom)
     return (
         math.ceil(int(metadata["imageWidth"]) / divisor),
         math.ceil(int(metadata["imageHeight"]) / divisor),
@@ -313,6 +334,7 @@ def main() -> None:
     if "panoId" not in metadata:
         raise SystemExit(f"no Street View panorama found: {metadata}")
 
+    zoom = min(args.zoom, native_zoom(metadata))
     pose = pose_from_metadata(metadata, scene, support_mesh=load_support_mesh(scene))
     safe_session = {k: session[k] for k in ("expiry", "tileWidth", "tileHeight", "imageFormat")}
     (out_dir / "metadata.json").parent.mkdir(parents=True, exist_ok=True)
@@ -324,11 +346,11 @@ def main() -> None:
         client,
         metadata,
         out_dir,
-        zoom=args.zoom,
+        zoom=zoom,
         workers=args.workers,
         max_tiles=args.max_tiles,
     )
-    width, height = zoom_dimensions(metadata, args.zoom)
+    width, height = zoom_dimensions(metadata, zoom)
     print(f"[panorama] {metadata.get('date', 'undated')} {width}x{height}")
     print(f"[panorama] ENU camera {pose.position_enu_m}")
     print(f"[panorama] {metadata.get('copyright', '')}")
