@@ -223,6 +223,46 @@ radius used here the rooftop susceptibility is **3.24 dB** high. The isotropic r
 carries no such caveat, and the spread within a row, which is what the paragraph
 above is about, is far less affected than the level.
 
+## Ten cities compared
+
+80 walk locations per city at 15 GHz, one common 130 m radius, one common material
+treatment, so what varies between rows is urban form and nothing else.
+
+| site | sky | isotropic median | within-city spread | rooftop median | rooftop spread |
+|---|---|---|---|---|---|
+| Rynek Glowny, Krakow | 0.462 | 0.534 | 0.80 dB | 0.714 | 3.06 dB |
+| Zocalo, Mexico City | 0.374 | 0.420 | 2.25 dB | 0.247 | 10.01 dB |
+| Place du Capitole, Toulouse | 0.069 | 0.401 | 2.41 dB | 0.102 | 8.63 dB |
+| Trafalgar Square, London | 0.372 | 0.395 | 3.56 dB | 0.140 | 5.22 dB |
+| Staromestske, Prague | 0.343 | 0.366 | 4.35 dB | 0.090 | 7.23 dB |
+| Plaza Mayor, Madrid | 0.321 | 0.350 | 6.48 dB | 0.035 | 7.86 dB |
+| Korenmarkt, Ghent | 0.248 | 0.301 | 3.10 dB | 0.139 | 11.68 dB |
+| Hachiko, Tokyo | 0.270 | 0.257 | 3.28 dB | 0.102 | 10.98 dB |
+| Grand-Place, Brussels | 0.267 | 0.226 | 5.96 dB | 0.033 | 14.84 dB |
+| Times Square, New York | 0.179 | 0.203 | 5.35 dB | 0.204 | 8.52 dB |
+
+**The median susceptibility spans 4.20 dB across the ten cities.** The
+within-city spread reaches 6.48 dB under isotropic illumination and 14.84 dB under
+rooftop sites. So **where a person stands within one square matters as much as
+which city the square is in, and often more.**
+
+That is the most useful thing this table says, and it cuts against how population
+exposure is usually framed. A per city or per country figure averages over a
+variation larger than the differences it is trying to report.
+
+The ordering is also not simply built density. Krakow's wide open Rynek runs
+highest and most uniform, 0.534 with only 0.80 dB of spread, while Brussels'
+Grand-Place is both lower and highly variable at 0.226 and 5.96 dB, because a
+walk there passes from an enclosed square into the narrow streets feeding it.
+Toulouse illustrates the reverse: its 0.069 sky fraction is the roofline anchor
+artefact described above, and the walk locations, which are on the actual square,
+give a perfectly ordinary 0.401.
+
+Two caveats carried from elsewhere in this document. The rooftop columns are
+crop-limited upper bounds at this radius. And the material treatment is a class
+prior held constant across all ten rather than per site semantics, which is what
+makes the comparison fair rather than what makes it complete.
+
 ## The crop radius, and a rule for choosing it
 
 `ROADMAP.md` calls this the largest known hole and says the sweep should run
