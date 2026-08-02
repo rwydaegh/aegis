@@ -44,11 +44,13 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   with the propagation path: six poses at the Zocalo all stand in the northern
   half looking south across 200 m of open ground, and re-fitting them against the
   wider shell improves their residuals by about 30 percent.
-- **The acquired crop radius is too small, and worst for the case that matters
-  most.** Isotropic susceptibility converges by 100 m, rooftop needs 250 m and
-  street level small cells need 250 to 300. At the 130 m everything was acquired
-  at, street cells are **9.93 dB** in error and rooftop 3.24. Widening the annulus
-  is about fifteen minutes of network time.
+- **The acquired crop radius is too small, worst for the case that matters most,
+  and the error is not a constant.** Isotropic converges by 100 m, rooftop needs
+  250 m and street level small cells 250 to 300. At 130 m street cells are
+  **9.93 dB** in error at Korenmarkt. Across four cities the correction ranges
+  from 0.05 to 4.58 dB rooftop and 1.02 to 11.37 street, so it is **comparable to
+  the 4.20 dB between-city spread being reported** and distorts the comparison
+  rather than merely offsetting it. The corrected sweep is running.
 - Two workstreams reached honest negative or unvalidatable results and say so:
   brickwork is validated at 4 GHz and unvalidated at FR2 because the only
   measurement available cannot adjudicate, and the vegetation standard has no
@@ -366,10 +368,40 @@ Toulouse illustrates the reverse: its 0.069 sky fraction is the roofline anchor
 artefact described above, and the walk locations, which are on the actual square,
 give a perfectly ordinary 0.401.
 
-Two caveats carried from elsewhere in this document. The rooftop columns are
-crop-limited upper bounds at this radius. And the material treatment is a class
-prior held constant across all ten rather than per site semantics, which is what
-makes the comparison fair rather than what makes it complete.
+### The crop correction is not a constant, and that matters here
+
+I told the exposure agent that a between-city comparison at a common radius stays
+valid because a shared bias moves every curve together, while hedging that it
+might not where built form differs. The hedge was right and the main claim was
+wrong. Re-running at the converged 250 m radius, the correction per city:
+
+| site | isotropic | rooftop | street small cell |
+|---|---|---|---|
+| Korenmarkt, Ghent | -0.14 dB | **-4.58 dB** | **-11.37 dB** |
+| Trafalgar Square, London | -0.07 dB | -2.62 dB | -7.28 dB |
+| Grand-Place, Brussels | +0.17 dB | -1.16 dB | -3.34 dB |
+| Rynek Glowny, Krakow | -0.03 dB | **-0.05 dB** | -1.02 dB |
+
+Isotropic moves by at most 0.17 dB anywhere, which confirms it was converged. But
+**the rooftop correction ranges from 0.05 to 4.58 dB across four cities, and the
+street correction from 1.02 to 11.37.** The spread in the correction is therefore
+comparable to, and for street cells much larger than, the 4.20 dB between-city
+spread the table above reports.
+
+So the 130 m directional columns are not merely shifted, they are distorted
+relative to each other, and the table above should be read as isotropic only until
+the 250 m sweep finishes. That sweep is running and the corrected comparison will
+replace it.
+
+The pattern itself is interpretable. Krakow's Rynek barely moves because it is
+already so open that the observer's grazing directions clear the surrounding
+built form entirely, while Korenmarkt moves most because it is a small square
+whose blocking geometry lies exactly in the 130 to 250 m annulus that the original
+crop discarded.
+
+One caveat carried from elsewhere. The material treatment is a class prior held
+constant across all ten rather than per site semantics, which is what makes the
+comparison fair rather than what makes it complete.
 
 ## The crop radius, and the rule I got wrong about it
 
