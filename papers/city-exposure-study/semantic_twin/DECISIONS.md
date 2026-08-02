@@ -1111,8 +1111,16 @@ Error in dB against the 340 m crop, for the three illumination models:
 | 300 m | 909,832 | +0.000 | +0.008 | +0.043 |
 | 340 m | 1,153,486 | 0 | 0 | 0 |
 
-**Isotropic susceptibility and sky fraction converge by 100 m.** Rooftop needs
-250 m. Street small cells need 250 to 300 m. At the 130 m radius the study was
+**Isotropic susceptibility and sky fraction converge by 100 m at Korenmarkt.**
+Rooftop needs 250 m. Street small cells need 250 to 300 m.
+
+**The isotropic figure does not generalise across sites**, which the ten city
+re-run at 250 m showed afterwards. Isotropic moves 0.14 dB at Korenmarkt but
+0.96 dB at Times Square and 0.60 at Tokyo, because tall cities have occluders
+that subtend meaningful solid angle from much further away. The convergence
+radius is a property of the site as well as of the illumination model, and the
+directional corrections vary even more strongly, from 0.05 to 4.80 dB rooftop
+and 0.16 to 11.39 dB street across nine cities. At the 130 m radius the study was
 acquired at, the errors are +0.05, **+3.24** and **+9.93 dB** respectively.
 
 **A rule proposed here first, and refuted by the third column.** The rooftop model
