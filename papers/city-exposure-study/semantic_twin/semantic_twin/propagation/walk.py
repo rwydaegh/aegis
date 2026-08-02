@@ -42,6 +42,24 @@ def ground_height(geometry: Any, xy: np.ndarray, probe_z: float) -> tuple[np.nda
     return z, np.abs(normal[:, 2])
 
 
+def sky_visibility(geometry: Any, points: np.ndarray, samples: int, rng: np.random.Generator) -> np.ndarray:
+    """Fraction of the full sphere from which each point can see out.
+
+    A clearance test alone does not catch a standpoint inside a building or
+    under a roofed arcade: a point in the middle of a large room has metres of
+    space around it in every direction and passes. Such a point traces to a
+    susceptibility seven orders of magnitude below its neighbours, which is not
+    an exposure result, it is a bad standpoint. Requiring that some ray escapes
+    is the test that catches it.
+    """
+    out = np.zeros(points.shape[0])
+    for i, point in enumerate(points):
+        directions = sample_sphere(samples, rng)
+        hit, _, _, _ = geometry.intersect(np.tile(point, (samples, 1)) + 1.0e-3 * directions, directions)
+        out[i] = float(np.mean(~hit))
+    return out
+
+
 def clearance(geometry: Any, points: np.ndarray, samples: int, rng: np.random.Generator) -> np.ndarray:
     """Median distance to the nearest surface over random directions.
 
@@ -68,6 +86,7 @@ def build_walk(
     datum_tolerance_m: float = 2.5,
     min_up_cosine: float = 0.85,
     min_clearance_m: float = 2.0,
+    min_sky_fraction: float = 0.01,
     head_height_m: float = 1.5,
     max_step_m: float = 8.0,
     clearance_samples: int = 96,
@@ -97,6 +116,14 @@ def build_walk(
     if heads.shape[0] == 0:
         raise RuntimeError("every walkable candidate failed the clearance test")
 
+    sky = sky_visibility(geometry, heads, clearance_samples, rng)
+    open_air = sky >= min_sky_fraction
+    enclosed = int(np.count_nonzero(~open_air))
+    heads = heads[open_air]
+    z = z[open_air]
+    if heads.shape[0] == 0:
+        raise RuntimeError("every walkable candidate was enclosed")
+
     order = _chain(heads[:, :2], max_step_m)
     heads = heads[order]
     z = z[order]
@@ -117,6 +144,8 @@ def build_walk(
             "head_height_m": head_height_m,
             "clearance_samples": clearance_samples,
             "candidates_before_clearance": int(walkable.sum()),
+            "min_sky_fraction": min_sky_fraction,
+            "candidates_rejected_as_enclosed": enclosed,
             "candidates_after_clearance": int(heads.shape[0]),
         },
     )

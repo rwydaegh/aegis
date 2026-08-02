@@ -1,16 +1,19 @@
-"""Exposure along a walk at Korenmarkt, as a CDF over observation points.
+"""Pedestrian exposure along city walks, as a CDF over observation points.
 
 Streaming by design, per the storage rule for this study. Each location is
 traced, reduced to a row of scalars plus one few hundred cell angular power
 spectrum, appended to a JSONL file, and the paths are discarded. Nothing that
-scales with the ray count ever reaches disk, so the run is restartable and
+scales with the ray count ever reaches disk, so a run is restartable and
 survives being killed.
 
 Usage
 -----
-    python run_exposure.py --locations 20 --rays 400000
-    python run_exposure.py --validate            # closed form checks only
-    python run_exposure.py --figure              # replot from an existing JSONL
+    python run_exposure.py --validate                  # closed form checks
+    python run_exposure.py --locations 120 --materials walk
+    python run_exposure.py --all-sites --locations 80  # the cross city sweep
+    python run_exposure.py --report STEM               # replot from the JSONL
+    python run_exposure.py --coverage-report           # evidence coverage ladder
+    python run_exposure.py --cities-report             # cross city CDF
 """
 
 from __future__ import annotations
@@ -82,6 +85,24 @@ FREQUENCY_NOTE = (
 
 MODELS = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
 
+#: Written into every manifest and quoted beside every rooftop number. Measured
+#: by ``run_crop_convergence.py`` on an identical set of standpoints with only
+#: the surroundings changing.
+CROP_BOUND_NOTE = (
+    "The 130 m crop is converged for the isotropic model and for the sky "
+    "fraction: every step from 100 m upward moves them by under 0.05 dB. It is "
+    "NOT converged for the rooftop or street small cell models. Rooftop "
+    "susceptibility falls by 3.1 dB between a 130 m and a 200 m crop and is "
+    "still falling at 200 m. The mechanism runs the opposite way to intuition: "
+    "the rooftop model places sources at up to 250 m horizontal range, a 130 m "
+    "crop holds no geometry able to occlude them, so rays leaving toward those "
+    "elevations escape to sky that a real building would have blocked. A "
+    "larger crop adds missing blockers, not missing scatterers, and the number "
+    "goes down. Every absolute rooftop and street small cell figure here is "
+    "therefore a crop limited UPPER BOUND, high by at least 3.1 dB. "
+    "Comparisons between sites at the same crop radius are unaffected."
+)
+
 #: Every site whose support mesh is a ``format_version: 3`` double precision
 #: build at the same 130 m crop radius, so the geometry is comparable across
 #: them. Milan is at 170 m and is therefore not in the cross city set.
@@ -99,7 +120,7 @@ SITES: tuple[str, ...] = (
 )
 
 
-def site_mesh(site: str) -> pathlib.Path:
+def site_mesh(site: str, crop_m: int = 130) -> pathlib.Path:
     """The double precision export for a site, refusing the defective one.
 
     Korenmarkt has both a ``format_version: 2`` build, whose tile placement was
@@ -110,14 +131,14 @@ def site_mesh(site: str) -> pathlib.Path:
     read and anything below 3 is refused.
     """
     directory = ROOT / "data" / "geometry" / site
-    for candidate in ("inhouse_leaf_130m_f64.ply", "inhouse_leaf_130m.ply"):
+    for candidate in (f"inhouse_leaf_{crop_m}m_f64.ply", f"inhouse_leaf_{crop_m}m.ply"):
         path = directory / candidate
         manifest = path.with_suffix(".json")
         if not path.exists() or not manifest.exists():
             continue
         if int(json.loads(manifest.read_text()).get("format_version", 0)) >= 3:
             return path
-    raise FileNotFoundError(f"no double precision 130 m mesh for {site}")
+    raise FileNotFoundError(f"no double precision {crop_m} m mesh for {site}")
 
 
 def ground_datum(geometry: Any, *, radius_m: float = 15.0, samples: int = 4096) -> float:
@@ -211,6 +232,7 @@ def run(
     materials: str,
     site: str = "korenmarkt",
     coupler: Any = None,
+    crop_m: int = 130,
 ) -> pathlib.Path:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     stem = f"{tag}_{frequency_hz / 1e9:g}ghz"
@@ -219,7 +241,7 @@ def run(
     manifest_path = OUTPUT / f"{stem}_manifest.json"
 
     started = time.perf_counter()
-    mesh = site_mesh(site)
+    mesh = site_mesh(site, crop_m)
     geometry = MitsubaGeometry(mesh, variant=variant)
     datum = GROUND_DATUM_M if site == "korenmarkt" else ground_datum(geometry)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
@@ -295,9 +317,7 @@ def run(
         )
     elif materials == "geometric":
         binding = load_bindings(CONFIG, frequency_hz)
-        semantic_provenance.update(
-            {"covered_fraction_by_face": 0.0, "covered_fraction_by_area": 0.0}
-        )
+        semantic_provenance.update({"covered_fraction_by_face": 0.0, "covered_fraction_by_area": 0.0})
     else:
         raise ValueError(f"unknown materials mode {materials!r}")
 
@@ -328,6 +348,7 @@ def run(
         "site": site,
         "mesh": str(mesh),
         "mesh_triangles": int(geometry.face_count),
+        "crop_radius_m": crop_m,
         "ground_datum_m": datum,
         "ground_datum_source": (
             "config/korenmarkt.json camera_ground_z_m"
@@ -339,10 +360,10 @@ def run(
         "surface_binding": binding.as_dict(),
         "semantic_binding": semantic_provenance,
         "class_area_fractions": {
-            name: float(areas[face_class == i].sum() / areas.sum())
-            for i, name in enumerate(binding.class_names)
+            name: float(areas[face_class == i].sum() / areas.sum()) for i, name in enumerate(binding.class_names)
         },
         "frequency_note": FREQUENCY_NOTE,
+        "crop_bound_note": CROP_BOUND_NOTE,
         "walk": walk.provenance,
         "locations_requested": locations,
         "locations_traced": int(picks.size),
@@ -444,8 +465,7 @@ def report(stem: str) -> pathlib.Path:
     summary = summarise(rows, keys)
     stability_keys = ["chi_rooftop", "chi_isotropic", "sky_fraction", "rooftop_peak_sab_w_m2"]
     summary["split_half_stability"] = {
-        split: split_half_stability(rows, stability_keys, split=split)
-        for split in ("interleaved", "contiguous")
+        split: split_half_stability(rows, stability_keys, split=split) for split in ("interleaved", "contiguous")
     }
     summary["reference_s0_w_m2"] = manifest["reference_s0_w_m2"]
     summary["frequency_hz"] = manifest["trace_config"]["frequency_hz"]
@@ -462,6 +482,121 @@ def report(stem: str) -> pathlib.Path:
     return summary_path
 
 
+#: The evidence coverage ladder. Same geometry, same walk, same illumination,
+#: same tracer settings, three different amounts of image evidence behind the
+#: material assignment.
+COVERAGE_LADDER = (
+    ("korenmarkt_geometric", "orientation rule only, no image evidence"),
+    ("korenmarkt_semantic", "one registered panorama"),
+    ("korenmarkt_walk", "eight registered stations, fused"),
+)
+
+
+def coverage_report(frequency_hz: float) -> pathlib.Path:
+    """How far does the exposure distribution move as image evidence grows?
+
+    This is the experiment that says whether the material assignment matters at
+    all. Everything except the material binding is held fixed, so the only
+    thing varying between the three runs is the fraction of scene area whose
+    material came from an image rather than from which way the triangle points.
+    """
+    from semantic_twin.propagation.report import empirical_cdf, load_rows
+
+    entries: list[dict[str, Any]] = []
+    baseline: np.ndarray | None = None
+    for stem, description in COVERAGE_LADDER:
+        full = f"{stem}_{frequency_hz / 1e9:g}ghz"
+        rows_path = OUTPUT / f"{full}_locations.jsonl"
+        manifest_path = OUTPUT / f"{full}_manifest.json"
+        if not rows_path.exists() or not manifest_path.exists():
+            continue
+        rows = load_rows(rows_path)
+        manifest = json.loads(manifest_path.read_text())
+        values = np.array([row["chi_rooftop"] for row in rows])
+        entry: dict[str, Any] = {
+            "run": stem,
+            "evidence": description,
+            "covered_fraction_by_area": manifest["semantic_binding"].get("covered_fraction_by_area", 0.0),
+            "locations": len(rows),
+            "chi_rooftop": {
+                "p05": float(np.quantile(values, 0.05)),
+                "p50": float(np.quantile(values, 0.50)),
+                "p95": float(np.quantile(values, 0.95)),
+                "mean": float(values.mean()),
+            },
+        }
+        if baseline is None:
+            baseline = values
+        else:
+            count = min(baseline.size, values.size)
+            ratio = values[:count] / baseline[:count]
+            entry["against_no_evidence"] = {
+                # Median of the paired per location ratios: how far a typical
+                # location moves.
+                "median_ratio": float(np.median(ratio)),
+                "median_shift_db": float(10.0 * np.log10(np.median(ratio))),
+                # Ratio of the two distribution medians: how far the published
+                # distribution moves. Larger than the paired figure, which says
+                # the shift is concentrated in a minority of locations rather
+                # than spread evenly.
+                "distribution_median_shift_db": float(
+                    10.0 * np.log10(np.quantile(values, 0.5) / np.quantile(baseline, 0.5))
+                ),
+                "spread_db_p95_over_p05": float(10.0 * np.log10(np.quantile(values, 0.95) / np.quantile(values, 0.05))),
+                "p95_ratio": float(np.quantile(ratio, 0.95)),
+                "max_absolute_change": float(np.max(np.abs(ratio - 1.0))),
+                "locations_moved_more_than_1_db": int(np.count_nonzero(np.abs(10.0 * np.log10(ratio)) > 1.0)),
+            }
+        entries.append(entry)
+
+    summary = {
+        "question": (
+            "how far does the exposure distribution move as the fraction of scene area carrying image evidence grows"
+        ),
+        "frequency_hz": frequency_hz,
+        "ladder": entries,
+    }
+    path = OUTPUT / f"coverage_ladder_{frequency_hz / 1e9:g}ghz.json"
+    path.write_text(json.dumps(summary, indent=2))
+
+    if len(entries) >= 2:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        figure, panel = plt.subplots(figsize=(5.2, 4.0))
+        for entry, colour in zip(entries, ("0.55", "tab:blue", "tab:red"), strict=False):
+            full = f"{entry['run']}_{frequency_hz / 1e9:g}ghz"
+            rows = load_rows(OUTPUT / f"{full}_locations.jsonl")
+            ordered, probability = empirical_cdf(np.array([r["chi_rooftop"] for r in rows]))
+            panel.step(
+                ordered,
+                probability,
+                where="post",
+                color=colour,
+                linewidth=1.6,
+                label=f"{100 * entry['covered_fraction_by_area']:.1f} % of area from images",
+            )
+        panel.set_xscale("log")
+        panel.set_xlabel("rooftop susceptibility $\\chi_S$")
+        panel.set_ylabel("fraction of walk locations")
+        panel.set_title(
+            f"Korenmarkt, {frequency_hz / 1e9:g} GHz\nexposure against image evidence coverage",
+            fontsize=10,
+        )
+        panel.legend(fontsize=8, loc="lower right")
+        panel.grid(alpha=0.25)
+        figure.tight_layout()
+        figure_path = OUTPUT / f"coverage_ladder_{frequency_hz / 1e9:g}ghz.png"
+        figure.savefig(figure_path, dpi=170)
+        figure.savefig(figure_path.with_suffix(".pdf"))
+        plt.close(figure)
+        print(f"wrote {figure_path}")
+    print(f"wrote {path}")
+    return path
+
+
 def run_all_sites(
     locations: int,
     rays: int,
@@ -474,6 +609,7 @@ def run_all_sites(
     walk_spacing_m: float,
     max_bounces: int,
     sites: tuple[str, ...] = SITES,
+    crop_m: int = 130,
 ) -> None:
     """One geometric materials run per site, then the cross city figure.
 
@@ -486,7 +622,7 @@ def run_all_sites(
     coupler = BodyCoupler(PHANTOM, frequency_hz, body_mass_kg=PHANTOM_MASS_KG)
     done: list[str] = []
     for site in sites:
-        tag = f"city_{site}"
+        tag = f"city_{site}" if crop_m == 130 else f"city{crop_m}_{site}"
         try:
             run(
                 locations,
@@ -502,20 +638,22 @@ def run_all_sites(
                 materials="geometric",
                 site=site,
                 coupler=coupler,
+                crop_m=crop_m,
             )
             done.append(site)
         except Exception as error:  # noqa: BLE001
             print(f"SITE FAILED {site}: {error!r}", flush=True)
-        cross_city_report(done, frequency_hz)
+        cross_city_report(done, frequency_hz, crop_m=crop_m)
 
 
-def cross_city_report(sites: list[str], frequency_hz: float) -> None:
+def cross_city_report(sites: list[str], frequency_hz: float, *, crop_m: int = 130) -> None:
     """CDF with one curve per city, plus the numbers behind it."""
     if not sites:
         return
     from semantic_twin.propagation.report import cross_city_cdf, load_rows, summarise
 
-    stems = {site: f"city_{site}_{frequency_hz / 1e9:g}ghz" for site in sites}
+    prefix = "city" if crop_m == 130 else f"city{crop_m}"
+    stems = {site: f"{prefix}_{site}_{frequency_hz / 1e9:g}ghz" for site in sites}
     rows = {}
     for site, stem in stems.items():
         path = OUTPUT / f"{stem}_locations.jsonl"
@@ -528,13 +666,15 @@ def cross_city_report(sites: list[str], frequency_hz: float) -> None:
         "frequency_hz": frequency_hz,
         "reference_s0_w_m2": REFERENCE_S0_W_M2,
         "materials": "geometric class prior, identical across sites",
+        "crop_radius_m": crop_m,
+        "crop_bound_note": CROP_BOUND_NOTE,
         "sites": {site: summarise(values, keys) for site, values in rows.items()},
     }
-    path = OUTPUT / f"cities_{frequency_hz / 1e9:g}ghz_summary.json"
+    path = OUTPUT / f"cities{crop_m}_{frequency_hz / 1e9:g}ghz_summary.json"
     path.write_text(json.dumps(summary, indent=2))
     figure = cross_city_cdf(
         rows,
-        OUTPUT / f"cities_{frequency_hz / 1e9:g}ghz_cdf.png",
+        OUTPUT / f"cities{crop_m}_{frequency_hz / 1e9:g}ghz_cdf.png",
         frequency_ghz=frequency_hz / 1e9,
         reference_s0_w_m2=REFERENCE_S0_W_M2,
     )
@@ -546,9 +686,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--locations", type=int, default=20)
     parser.add_argument("--rays", type=int, default=200_000)
     parser.add_argument("--max-bounces", type=int, default=6)
-    parser.add_argument(
-        "--materials", choices=("semantic", "walk", "geometric"), default="semantic"
-    )
+    parser.add_argument("--materials", choices=("semantic", "walk", "geometric"), default="semantic")
     parser.add_argument("--frequency-ghz", type=float, default=15.0)
     parser.add_argument("--local-cells", type=int, default=512)
     parser.add_argument("--variant", default="llvm_ad_rgb")
@@ -557,14 +695,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--walk-radius-m", type=float, default=90.0)
     parser.add_argument("--walk-spacing-m", type=float, default=3.0)
     parser.add_argument("--site", default="korenmarkt")
+    parser.add_argument("--crop-m", type=int, default=130)
     parser.add_argument("--all-sites", action="store_true")
     parser.add_argument("--validate", action="store_true")
     parser.add_argument("--report", metavar="STEM", default=None)
     parser.add_argument("--cities-report", action="store_true")
+    parser.add_argument("--coverage-report", action="store_true")
     args = parser.parse_args(argv)
 
     if args.cities_report:
-        cross_city_report(list(SITES), args.frequency_ghz * 1e9)
+        cross_city_report(list(SITES), args.frequency_ghz * 1e9, crop_m=args.crop_m)
+        return 0
+
+    if args.coverage_report:
+        coverage_report(args.frequency_ghz * 1e9)
         return 0
 
     if args.all_sites:
@@ -578,6 +722,7 @@ def main(argv: list[str] | None = None) -> int:
             walk_radius_m=args.walk_radius_m,
             walk_spacing_m=args.walk_spacing_m,
             max_bounces=args.max_bounces,
+            crop_m=args.crop_m,
         )
         return 0
 
@@ -607,6 +752,7 @@ def main(argv: list[str] | None = None) -> int:
         max_bounces=args.max_bounces,
         materials=args.materials,
         site=args.site,
+        crop_m=args.crop_m,
     )
     return 0
 

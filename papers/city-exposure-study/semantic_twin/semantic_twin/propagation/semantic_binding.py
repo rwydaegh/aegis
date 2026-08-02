@@ -160,10 +160,7 @@ def bind(
         unmatched = int((~valid).sum())
         for material_index, material in enumerate(materials):
             weight = np.array(
-                [
-                    _material_weight(material_prior, entity_labels.get(int(c)), material)
-                    for c in face_class
-                ]
+                [_material_weight(material_prior, entity_labels.get(int(c)), material) for c in face_class]
             )
             contribution = weight * face_area * confidence
             np.add.at(votes[:, material_index], target[valid], contribution[valid])
@@ -188,8 +185,7 @@ def bind(
     face_class[covered] = len(CLASS_NAMES) + material_index[covered]
 
     chosen = {
-        f"semantic_{materials[i]}": int(np.count_nonzero(material_index[covered] == i))
-        for i in range(len(materials))
+        f"semantic_{materials[i]}": int(np.count_nonzero(material_index[covered] == i)) for i in range(len(materials))
     }
     return SemanticBinding(
         face_class=face_class,
@@ -248,9 +244,7 @@ def bind_from_walk(
     modal = data["modal_class"].astype(np.int64)
     rays = data["clean_rays"].astype(np.float64)
     if modal.shape[1] != areas.size:
-        raise ValueError(
-            f"walk semantics cover {modal.shape[1]} faces, the tracer mesh has {areas.size}"
-        )
+        raise ValueError(f"walk semantics cover {modal.shape[1]} faces, the tracer mesh has {areas.size}")
 
     materials = sorted(MATERIAL_BINDING)
     lookup = np.zeros((max(entity_labels) + 2, len(materials)))

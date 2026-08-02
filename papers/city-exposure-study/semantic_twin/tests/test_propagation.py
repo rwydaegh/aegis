@@ -215,9 +215,7 @@ def test_zero_bounce_susceptibility_equals_the_sky_fraction() -> None:
         tracer = make_tracer(geometry, CONCRETE, 0.0, rays=200_000, seed=6)
         result = tracer.trace(np.array([0.0, 0.0, 1.5]), MODELS, ground_z_m=0.0)
         assert result.sky_fraction == pytest.approx(expected, abs=0.01)
-        assert result.susceptibility_direct["isotropic"] == pytest.approx(
-            result.sky_fraction, rel=0.01
-        )
+        assert result.susceptibility_direct["isotropic"] == pytest.approx(result.sky_fraction, rel=0.01)
 
 
 def test_sky_fraction_identity_converges_as_the_ray_count_grows() -> None:
@@ -233,9 +231,7 @@ def test_sky_fraction_identity_converges_as_the_ray_count_grows() -> None:
         tracer = make_tracer(geometry, CONCRETE, 0.0, rays=rays, seed=9)
         result = tracer.trace(np.array([0.0, 0.0, 1.5]), MODELS)
         assert 0.0 < result.sky_fraction < 1.0
-        residuals.append(
-            abs(result.susceptibility_direct["isotropic"] / result.sky_fraction - 1.0)
-        )
+        residuals.append(abs(result.susceptibility_direct["isotropic"] / result.sky_fraction - 1.0))
     # Sixteen times the rays should buy about four times the agreement. Allow a
     # wide margin, since a single realisation of a noise level is itself noisy.
     assert residuals[1] < residuals[0] / 2.0

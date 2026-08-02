@@ -48,9 +48,7 @@ def summarise(rows: list[dict[str, Any]], keys: list[str]) -> dict[str, Any]:
     return out
 
 
-def split_half_stability(
-    rows: list[dict[str, Any]], keys: list[str], *, split: str = "interleaved"
-) -> dict[str, Any]:
+def split_half_stability(rows: list[dict[str, Any]], keys: list[str], *, split: str = "interleaved") -> dict[str, Any]:
     """Are there enough locations for the CDF to have settled?
 
     Split the walk in half and compare the two empirical distributions. This
@@ -89,10 +87,7 @@ def split_half_stability(
         cdf_a = np.searchsorted(np.sort(a), grid, side="right") / a.size
         cdf_b = np.searchsorted(np.sort(b), grid, side="right") / b.size
         quantiles = (0.1, 0.5, 0.9)
-        ratios = [
-            float(np.quantile(a, q) / np.quantile(b, q)) if np.quantile(b, q) > 0 else None
-            for q in quantiles
-        ]
+        ratios = [float(np.quantile(a, q) / np.quantile(b, q)) if np.quantile(b, q) > 0 else None for q in quantiles]
         out[key] = {
             "kolmogorov_distance": float(np.max(np.abs(cdf_a - cdf_b))),
             "median_ratio": ratios[1],
@@ -100,6 +95,19 @@ def split_half_stability(
             "n_half": [int(a.size), int(b.size)],
         }
     return out
+
+
+def drop_enclosed(rows: list[dict[str, Any]], *, min_sky_fraction: float = 1.0e-4) -> list[dict[str, Any]]:
+    """Remove standpoints from which no ray escapes at all.
+
+    A point with a sky fraction of exactly zero is inside geometry. It traces to
+    a susceptibility orders of magnitude below its neighbours, which is not an
+    exposure result but a walkability filter that let a bad standpoint through.
+    :func:`semantic_twin.propagation.walk.build_walk` now rejects these at
+    construction, so this is a guard for runs made before that fix and it should
+    normally remove nothing. The count removed is worth reporting either way.
+    """
+    return [row for row in rows if row.get("sky_fraction", 1.0) >= min_sky_fraction]
 
 
 def cross_city_cdf(
@@ -115,6 +123,7 @@ def cross_city_cdf(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    rows_by_site = {site: drop_enclosed(rows) for site, rows in rows_by_site.items() if drop_enclosed(rows)}
     figure, axes = plt.subplots(1, 3, figsize=(12.5, 4.2))
     order = sorted(rows_by_site, key=lambda s: np.median([r["chi_rooftop"] for r in rows_by_site[s]]))
     colours = plt.cm.turbo(np.linspace(0.06, 0.94, len(order)))
@@ -129,26 +138,46 @@ def cross_city_cdf(
         ordered, probability = empirical_cdf(np.array([r["rooftop_peak_sab_w_m2"] for r in rows]))
         axes[2].step(ordered, probability, where="post", color=colour, linewidth=1.4)
 
+    # Clip to the pooled 1st and 99th percentiles. A log axis stretched by a
+    # couple of deep shadow outliers squashes every curve against the right
+    # edge and hides the between city separation the figure exists to show.
+    pooled_chi = np.concatenate([[r["chi_rooftop"] for r in v] for v in rows_by_site.values()])
+    pooled_sab = np.concatenate([[r["rooftop_peak_sab_w_m2"] for r in v] for v in rows_by_site.values()])
+    axes[0].set_xlim(np.quantile(pooled_chi, 0.01) * 0.7, np.quantile(pooled_chi, 0.995) * 1.4)
+    axes[2].set_xlim(np.quantile(pooled_sab, 0.01) * 0.7, np.quantile(pooled_sab, 0.995) * 1.4)
+
     axes[0].set_xscale("log")
     axes[0].set_xlabel("rooftop susceptibility $\\chi_S$ (free space = 1)")
     axes[0].set_ylabel("fraction of walk locations")
-    axes[0].set_title("environment side")
+    axes[0].set_title("environment side, crop-limited upper bound")
     axes[0].legend(fontsize=6.5, loc="lower right")
     axes[1].set_xlabel("sky fraction")
-    axes[1].set_title("how much sky the pedestrian sees")
+    axes[1].set_title("how much sky the pedestrian sees, converged")
     axes[2].set_xscale("log")
     axes[2].set_xlabel(f"peak $S_{{ab}}$ [W m$^{{-2}}$] at $S_0$ = {reference_s0_w_m2:g} W m$^{{-2}}$")
-    axes[2].set_title("body side, macro rooftop illumination")
+    axes[2].set_title("body side, crop-limited upper bound")
     for panel in axes:
         panel.grid(alpha=0.25)
         panel.set_ylim(0.0, 1.0)
 
     figure.suptitle(
-        f"Pedestrian exposure across {len(order)} city squares, {frequency_ghz:g} GHz, "
-        "identical material prior",
+        f"Pedestrian exposure across {len(order)} city squares, {frequency_ghz:g} GHz, identical material prior",
         fontsize=10,
     )
-    figure.tight_layout()
+    # The absolute rooftop scale is not converged at a 130 m crop. Say so on the
+    # figure, because a CDF with a log axis reads as an absolute claim.
+    figure.text(
+        0.5,
+        0.005,
+        "Rooftop-weighted panels are upper bounds: a 130 m crop lacks the "
+        "geometry to occlude sources at 250 m, and the value falls 3.1 dB out to "
+        "a 200 m crop. Between-site comparison at a common radius is unaffected. "
+        "Sky fraction is converged by 100 m.",
+        ha="center",
+        fontsize=6.5,
+        color="0.35",
+    )
+    figure.tight_layout(rect=(0.0, 0.035, 1.0, 1.0))
     path = pathlib.Path(path)
     figure.savefig(path, dpi=170)
     figure.savefig(path.with_suffix(".pdf"))
