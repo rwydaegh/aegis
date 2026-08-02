@@ -253,12 +253,23 @@ was a coincidence.
 
 What actually orders the three is **how close to the horizon each model puts its
 weight**: full sphere, then 3.1 to 60 degrees, then 0.95 to 33, which is also the
-order of how much crop each needs. A ray leaving a standing observer near the
-horizon travels a long horizontal distance before it has risen far enough for a
-building of ordinary height to intercept it, so the more grazing weight a model
-carries, the further out the occluders that matter live. The sign is the opposite
-of the intuitive worry throughout: a small crop is not missing scatterers that
-would add power, it is missing blockers that would remove it.
+order of how much crop each needs. That ordering is measured, and the geometry
+newly blocked by widening the crop is indeed grazing, at 0.13 to 6.4 degrees of
+elevation with a median of 3.4. The sign is the opposite of the intuitive worry
+throughout: a small crop is not missing scatterers that would add power, it is
+missing blockers that would remove it.
+
+**The mechanism is not yet fully accounted for, and I am flagging that rather than
+smoothing it over.** Widening the crop newly blocks only about 2.3 percent of the
+rooftop model's measure, which can account for 0.1 dB. The measured effect is
+3.24. So blocking alone is short by a factor of thirty and the story above is
+incomplete as stated. The likely missing piece is that what matters is not how
+much solid angle becomes blocked but how much **throughput** is redistributed away
+from grazing exit directions, where the 1/sin^3 illumination law makes the weight
+enormous. That is directly testable by binning escaping throughput against exit
+elevation at both radii, and it is being checked. The effect itself is solid,
+having been reproduced independently by two observer sets and two scripts agreeing
+to a quarter of a decibel. It is the explanation that is provisional.
 
 The consequence lands on the case that matters most. **Street level small cells
 are the geometry most relevant to dense urban deployment and they are the worst

@@ -1123,7 +1123,8 @@ It converges later than rooftop and is nearly 10 dB in error at 130 m. The
 coincidence at 250 m was a coincidence.
 
 What actually orders the three is **how close to the horizon the illumination model
-puts its weight**. Isotropic spreads over the full sphere, rooftop spans 3.1 to
+puts its weight**, and the geometry newly blocked by widening the crop is indeed
+grazing, at 0.13 to 6.4 degrees of elevation with a median of 3.4. Isotropic spreads over the full sphere, rooftop spans 3.1 to
 60 degrees of elevation, and street small cells span 0.95 to 33 degrees, which is
 also the order of how much crop each one needs. The mechanism is geometric: a ray
 leaving a standing observer near the horizon travels a long horizontal distance
@@ -1138,6 +1139,16 @@ lands on the case that matters most for dense urban deployment. **Street level
 small cells, the geometry most relevant to 5G in a city centre, are the worst
 affected**, and they are the model whose absolute numbers a 130 m crop least
 supports.
+
+**The mechanism is not yet fully accounted for.** Widening the crop newly blocks
+about 2.3 percent of the rooftop model's measure, which accounts for 0.1 dB
+against a measured 3.24, so blocking alone is short by a factor of thirty. The
+likely missing piece is that what matters is the throughput redistributed away
+from grazing exit directions, where the 1/sin^3 law makes the weight enormous,
+rather than the solid angle newly blocked. That is testable by binning escaping
+throughput against exit elevation at both radii. The effect is solid, reproduced
+by two observer sets and two scripts to within a quarter of a decibel. The
+explanation is provisional.
 
 **Acquire at 250 m minimum, 300 m for comfort.** At 250 m all three models are
 within 0.19 dB and at 300 m within 0.05.
