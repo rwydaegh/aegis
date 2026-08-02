@@ -211,6 +211,20 @@ across the traced locations the two agree to every digit printed, median 0.2599
 against 0.2599. That single check exercises the direction binning, the solid angle
 weights, the occlusion test and the normalisation at once.
 
+**And it is validated against a case that could have failed.** The perfect
+conductor ground plane, which the design specifies, cannot discriminate: both
+polarisations reflect fully, so it returns 2.0 whether the Fresnel average is
+right, TE only or TM only. A concrete ground plane at nine elevation bands matches
+the band averaged closed form to 1.02 percent and **rejects the TE only answer at
+every band where the two separate.** Two further closed forms fell out of building
+that check: a Lambertian plane gives `K = 1 + 2 sin(el)` exactly, and the Rayleigh
+criterion's angle dependence appears only in the lowest band.
+
+One internal consistency check is worth quoting because it uses nothing but the
+outputs. Dividing absorbed power by mean absorbed power density recovers 1.956
+square metres, which is an adult male body surface area, from two independently
+computed quantities.
+
 Bounce depth and ray count are now measured rather than assumed. Susceptibility
 reaches 0.29894 at four bounces against 0.29902 at six and above, while the
 truncated throughput share falls from 0.567 at one bounce to 6.9e-4 at four and to
@@ -294,6 +308,12 @@ evidence confidence and cross capture validation rather than by moving the
 exposure number**. That is both more defensible and more falsifiable than the
 claim it replaces.
 
+**The reason it is a strong result rather than a null one** is that the semantics
+and the orientation prior do not agree. They **disagree on 51 percent of the area
+they both cover**, and the exposure distribution still does not move. So this is
+not a case of two methods producing the same materials. It is a case of materials
+mattering less than geometry over the range that street level capture can reach.
+
 One limit stands. The ladder spans 0 to 10.6 percent, which is as far as street
 level capture reaches, and it licenses nothing about a fully evidence bound scene
 because no such scene exists here. The saturation work says one cannot be built
@@ -322,6 +342,15 @@ treatment, so what varies between rows is urban form and nothing else.
 within-city spread reaches 6.48 dB under isotropic illumination and 14.84 dB under
 rooftop sites. So **where a person stands within one square matters as much as
 which city the square is in, and often more.**
+
+**A sampling caveat that limits how far that can be pushed.** Splitting one site's
+locations into two contiguous halves gives a Kolmogorov-Smirnov statistic of 0.53
+with medians differing by a factor of 2.7. In other words 120 locations is plenty
+to characterise the walk, and the walk is not plenty to characterise the square.
+The within-square spread reported here is therefore a property of the route taken
+through the square, not of the square as a whole, and a genuinely area
+representative figure would need a sampling design rather than a walk. The
+between-city comparison is less affected, since every site is sampled the same way.
 
 That is the most useful thing this table says, and it cuts against how population
 exposure is usually framed. A per city or per country figure averages over a
@@ -751,6 +780,13 @@ The suite is 700 passing and 1 skipped, up from 570 at the start of the night.
   scattering and semantics mesh and use the wide one as an occlusion shell, which
   is the two level scheme the roadmap anticipated and which the sweep has now
   sized.
+- **An unresolved sky fraction disagreement.** `MONOSTATIC_SBR.md` section 7.5
+  records 0.2271 at the panorama camera. Two independent code paths now give
+  0.2464, and no crop radius or camera height reproduces the recorded value. One
+  of the two is wrong and it is not yet known which.
+- **A sampling design rather than a walk**, if any within-square figure is to be
+  area representative. A contiguous split half of one site's locations gives a KS
+  statistic of 0.53 with medians a factor of 2.7 apart.
 - **Whether the grazing-weight explanation survives a second site.** It ordered
   the three illumination models correctly at Korenmarkt after the source-range
   rule failed, but one site is one site, and Times Square at 18 percent sky should
