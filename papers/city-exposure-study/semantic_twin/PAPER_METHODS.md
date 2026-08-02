@@ -391,15 +391,38 @@ numbers are the honest statement of how much of the result is evidence based.
 
 ### 4.1 The construction
 
-Consider base stations of uniform areal density $n$, each at height $\Delta h$
-above the pedestrian head and horizontal range $d$, so the elevation above the
-horizon is $\mathrm{el} = \arctan(\Delta h / d)$. Inverting, $d = \Delta h \cot
-\mathrm{el}$ and $|dd| = \Delta h \, d\,\mathrm{el} / \sin^2 \mathrm{el}$. The
-number of sites in an elevation slab is
+Consider base stations scattered on the ground at uniform areal density $n$, each
+at height $\Delta h$ above the pedestrian head and horizontal range $d$, so the
+elevation at which the pedestrian sees it is $\mathrm{el} = \arctan(\Delta h / d)$.
+The goal is to convert *sites per unit ground area*, which is what a deployment
+has, into *sites per unit elevation*, which is what the sky looks like from the
+standpoint.
 
-$$dN = 2\pi n\, d \,|dd| = 2\pi n\, \Delta h^{2}\,
-\frac{\cos \mathrm{el}}{\sin^{3} \mathrm{el}}\, d\,\mathrm{el}.
+Count them in rings. The ring between range $d$ and $d + \delta d$ has area
+$2\pi d\, \delta d$, so it holds $2\pi n\, d\, \delta d$ sites. Now express both
+factors in elevation. Inverting the elevation relation at fixed height,
+
+$$d(\mathrm{el}) = \Delta h \cot \mathrm{el},
+\qquad
+\left| \frac{\partial d}{\partial\, \mathrm{el}} \right|
+= \frac{\Delta h}{\sin^{2} \mathrm{el}} ,$$
+
+where the absolute value is taken because range *decreases* as elevation rises,
+and a count of sites has to come out positive. A slab of elevation of width
+$\delta\,\mathrm{el}$ is therefore the image of a ring of width
+$\delta d = |\partial d / \partial\,\mathrm{el}|\ \delta\,\mathrm{el}$, and it
+contains
+
+$$\delta N
+= 2\pi n\, d(\mathrm{el}) \left| \frac{\partial d}{\partial\, \mathrm{el}} \right|
+\delta\,\mathrm{el}
+= 2\pi n\, \Delta h^{2}\,
+\frac{\cos \mathrm{el}}{\sin^{3} \mathrm{el}}\, \delta\,\mathrm{el}.
 \tag{3}$$
+
+The $\sin^{-3}$ is the whole story: sites at low elevation are far away, and the
+area of ground at a given range grows with that range, so the far ring is
+enormous and it projects into a very thin slab of sky just above the horizon.
 
 Both forms must be stated explicitly, because confusing them is silent. With
 $d\Omega = \cos\mathrm{el}\ d\,\mathrm{el}\ d\phi$:
@@ -408,6 +431,13 @@ $d\Omega = \cos\mathrm{el}\ d\,\mathrm{el}\ d\phi$:
 |---|---|---|
 | uniform sites, no path loss | $\propto \cos\mathrm{el}/\sin^{3}\mathrm{el}$ | $\propto 1/\sin^{3}\mathrm{el}$ |
 | uniform sites, $d^{-2}$ weighting | $\propto 1/(\sin\mathrm{el}\cos\mathrm{el})$ | $\propto 1/(\sin\mathrm{el}\cos^{2}\mathrm{el})$ |
+
+The $d^{-2}$ row weights by the **horizontal** range, which is the $d$ of the
+symbol table, not the slant range $\Delta h / \sin \mathrm{el}$. The two coincide
+near the horizon and differ by a factor of 4 in power at 60 degrees, so the choice
+is worth stating. Weighting by slant range instead would give
+$\cos\mathrm{el}/\sin\mathrm{el}$ in elevation and $1/\sin\mathrm{el}$ on
+$d\Omega$.
 
 Both are heavily low elevation weighted. Under the rooftop support, 61.7 % of the
 pure geometric weight sits below 5 degrees.
