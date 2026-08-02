@@ -35,11 +35,13 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   reason survives and it is enough.
 - **A published endpoint silently returns a sixth of its data**, and the cost of
   believing it is a 13 point overstatement of cross capture agreement.
-- **The crop radius is converged for one illumination model and badly not for
-  another.** Isotropic settles by 100 m. Rooftop falls 3.1 dB between the 130 m
-  the study uses and 200 m and is still falling, because a 130 m crop holds
-  nothing that can block a macro site 250 m away. Every rooftop number at 130 m
-  is an upper bound.
+- **The crop radius is set by the farthest source, not the farthest scatterer.**
+  Isotropic susceptibility converges by 100 m. Rooftop converges at 250 m, which
+  is exactly where the illumination model puts its most distant macro site, and
+  the 130 m radius everything was acquired at overestimates it by **3.24 dB**.
+  That is a design rule with a cheap consequence: widening the acquired annulus is
+  about fifteen minutes of network time and removes the bias from every
+  directional exposure number the study will quote.
 - Two workstreams reached honest negative or unvalidatable results and say so:
   brickwork is validated at 4 GHz and unvalidated at FR2 because the only
   measurement available cannot adjudicate, and the vegetation standard has no
@@ -219,9 +221,44 @@ such claims should be framed rather than about Ghent.
 
 **The two directional rows are upper bounds, not values.** The crop sweep below
 shows their absolute level is set by how far the scene extends, and at the 130 m
-radius used here the rooftop susceptibility is at least 3.1 dB high. The isotropic
-row carries no such caveat, and the spread within a row, which is what the
-paragraph above is about, is far less affected than the level.
+radius used here the rooftop susceptibility is **3.24 dB** high. The isotropic row
+carries no such caveat, and the spread within a row, which is what the paragraph
+above is about, is far less affected than the level.
+
+## The crop radius, and a rule for choosing it
+
+`ROADMAP.md` calls this the largest known hole and says the sweep should run
+before the propagation modules, because the answer changes the scene every later
+stage consumes. Nine crops at Korenmarkt from 60 to 340 m, observers held fixed
+inside the smallest so only the surroundings change, error against the 340 m crop:
+
+| crop | triangles | isotropic error | rooftop error |
+|---|---|---|---|
+| 100 m | 97,114 | +0.048 dB | +3.954 dB |
+| **130 m** | 157,862 | +0.054 dB | **+3.236 dB** |
+| 160 m | 245,112 | +0.013 dB | +0.886 dB |
+| 200 m | 390,518 | +0.002 dB | +0.108 dB |
+| **250 m** | 632,406 | +0.000 dB | **+0.018 dB** |
+| 340 m | 1,153,486 | 0 | 0 |
+
+**Isotropic converges by 100 m. Rooftop converges at 250 m.** And 250 m is exactly
+where the rooftop illumination model places its farthest macro site.
+
+That coincidence is the result, because it generalises. A crop smaller than the
+source distribution contains nothing capable of occluding the most distant
+sources, so rays leaving toward those elevations escape to a sky a real building
+would have blocked. **The required crop radius is set by where the sources are,
+not by how far scattering carries.** Change the assumed network geometry and the
+required radius changes with it. Note the sign is the opposite of the intuitive
+worry: a small crop is not missing scatterers that would add power, it is missing
+blockers that would remove it.
+
+Two controls, because the sweep spans a precision change and a second tile fetch.
+The 60 to 120 m meshes are single precision and the rest double, which is why that
+one step reads the wrong way; every step from 130 m upward is like for like. And
+the 250 m and wider crops come from a second, larger fetch, so a 200 m crop
+rebuilt from it was compared against the original: 390,518 triangles from both, so
+the step at 200 to 250 m is physics rather than acquisition.
 
 ### The finding hiding in the manifest
 
@@ -527,15 +564,16 @@ The suite is 697 passing and 1 skipped, up from 570 at the start of the night.
   canopy regime that Korenmarkt sits in. The one line fix is to route it to the
   null. The right fix is a twenty line medium boundary hook in the tracer, already
   specified.
-- **The crop radius for the rooftop illumination model.** The sweep now says
-  isotropic converges by 100 m and rooftop does not converge by 200 m, so the
-  radius at which rooftop settles is unknown and is being measured by extending
-  the sweep past 200 m. Until then every rooftop susceptibility is an upper
-  bound. The likely fix is the two level scheme already anticipated: keep the
-  fine textured mesh at the current radius for scattering and semantics, and wrap
-  it in a coarse occlusion shell out to wherever the rooftop weight has decayed.
-  The walk result points the same way, since widening the observation radius from
-  60 to 80 m lifted observable coverage from 30.6 to 44.8 percent.
+- **Re-acquiring the nine cities out to 250 m**, now that the sweep says that is
+  where rooftop illumination converges. Measured cost: Korenmarkt at 340 m was 585
+  tiles and 1,178 requests, so the annulus for nine cities is on the order of
+  12,000 requests and about fifteen minutes. Keep the narrow crop as the
+  scattering and semantics mesh and use the wide one as an occlusion shell, which
+  is the two level scheme the roadmap anticipated and which the sweep has now
+  sized.
+- **Whether the crop rule generalises.** It predicts the street small cell model,
+  whose sources reach only 150 m, should converge near 150 m rather than 250. If
+  it does the rule is established rather than inferred from one case.
 - Panoramas for the acquired cities. Nine sites have geometry and none have
   panoramas, so nine of eleven are geometry only. Sizing measured rather than
   estimated: roughly 43,000 requests for 16 panoramas across 8 sites.
