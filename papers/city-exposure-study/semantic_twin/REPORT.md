@@ -685,6 +685,29 @@ file was saved before that loop ran, and it saved with the tiles hidden so it
 rendered an empty sky. Both are fixed and verified by rendering from the saved
 file rather than by inspecting its metadata.
 
+**I proposed a crop radius rule and it was wrong.** That the crop must reach the
+farthest source read beautifully on the rooftop model, which reaches 250 m and
+converges at 250. The street small cell model reaches 150 m and converges later,
+which kills it. The coincidence was a coincidence.
+
+**I then declared the surviving mechanism unexplained, on my own bad
+arithmetic.** I read a 2.3 percent share of the illumination measure as a
+fractional loss and concluded blocking was short by a factor of thirty. It is an
+absolute addition to a small number: against a converged rooftop susceptibility of
+0.043, that share is 1.2 dB, not 0.1. Decomposed properly the effect is 69 to 77
+percent blocking and the rest redistribution, with no residual.
+
+**I duplicated an acquisition that was already running**, costing about 9,000
+redundant tile requests, because I told an agent not to start something it had
+already started and did not check before launching my own.
+
+**I ran a regression test into the live output directory** and overwrote two
+shipped figures at draft resolution. Recoverable only because `FIGURES/` held
+full resolution copies.
+
+**I misread registration quality from the first few poses**, quoting 0.28 to 1.49
+degrees where the site medians are 0.33, 0.82 and 2.76 with a worst case of 9.33.
+
 ## Reproducing any of this
 
 Everything below regenerates from the repository plus the tile cache under
