@@ -380,6 +380,7 @@ where built form differs. The hedge was right and the main claim was wrong.
 | Zocalo, Mexico City | 0.3974 | 0.0816 | -0.23 | -4.80 | **-11.39** |
 | Trafalgar Square, London | 0.3894 | 0.0767 | -0.07 | -2.62 | -7.28 |
 | Staromestske, Prague | 0.3626 | 0.0631 | -0.04 | -1.56 | -6.46 |
+| Place du Capitole, Toulouse | 0.3992 | 0.0981 | -0.02 | -0.15 | -0.95 |
 | Plaza Mayor, Madrid | 0.3473 | 0.0341 | -0.03 | -0.06 | **-0.16** |
 | Korenmarkt, Ghent | 0.2917 | 0.0483 | -0.14 | -4.58 | -11.37 |
 | Grand-Place, Brussels | 0.2351 | 0.0251 | +0.17 | -1.16 | -3.34 |
@@ -399,7 +400,7 @@ meaningful solid angle from much further away. The convergence radius is a
 property of the site as well as of the illumination model.
 
 Corrected, the between-city spread is **5.13 dB in isotropic median and 14.49 dB
-in rooftop** across nine cities. Urban form matters far more under directional
+in rooftop** across all ten cities. Urban form matters far more under directional
 illumination than under isotropic, which is the physically sensible direction and
 was not visible before the correction.
 
