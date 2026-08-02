@@ -478,7 +478,7 @@ the low edge and decays hard: 45 % of the rooftop band's solid angle lies above
 
 The measured effect of the correction is site dependent and large. At Korenmarkt
 it raises the rooftop susceptibility by 5.27 dB and the street one by 4.27 dB,
-across the eleven squares the per site shift spans 0.98 to 6.30 dB, and because
+across the eleven squares the per site shift spans 1.06 to 6.33 dB, and because
 the shift is not common mode it **reorders the cities**. Section 9.2 reports it.
 
 ### 4.3 The three models used
@@ -811,22 +811,30 @@ hotter than the streets leaving it, and that is geometry rather than material.
 80 standpoints per city, common 250 m crop, identical material prior, so only
 urban form varies.
 
-| site | isotropic median | rooftop median | isotropic spread [dB] | rooftop spread [dB] |
-|---|---|---|---|---|
-| Krakow Rynek | 0.5305 | 0.7052 | 0.77 | 3.03 |
-| Toulouse Capitole | 0.3992 | 0.0981 | 2.31 | 8.06 |
-| Mexico City Zocalo | 0.3974 | 0.0816 | 2.14 | 6.42 |
-| London Trafalgar | 0.3894 | 0.0767 | 3.54 | 4.29 |
-| Prague Staromestske | 0.3626 | 0.0631 | 4.33 | 6.37 |
-| Milan Duomo | 0.3538 | 0.0799 | 2.73 | 4.16 |
-| Madrid Plaza Mayor | 0.3473 | 0.0341 | 6.15 | 8.87 |
-| Ghent Korenmarkt | 0.2917 | 0.0483 | 2.85 | 7.10 |
-| Brussels Grand-Place | 0.2351 | 0.0251 | 5.96 | 12.73 |
-| Tokyo Hachiko | 0.2238 | 0.0363 | 3.42 | 8.97 |
-| New York Times Square | 0.1629 | 0.0924 | 3.67 | 7.58 |
+| site | isotropic median | rooftop, superseded | rooftop, corrected | street, corrected | isotropic spread [dB] | rooftop spread [dB] |
+|---|---|---|---|---|---|---|
+| Krakow Rynek | 0.5304 | 0.7052 | **0.9001** | 0.4600 | 0.77 | 2.26 |
+| Toulouse Capitole | 0.3992 | 0.0981 | **0.3383** | 0.0318 | 2.31 | 5.30 |
+| Mexico City Zocalo | 0.3974 | 0.0816 | **0.2990** | 0.0297 | 2.14 | 4.39 |
+| London Trafalgar | 0.3894 | 0.0767 | **0.2868** | 0.0268 | 3.54 | 3.07 |
+| Prague Staromestske | 0.3626 | 0.0631 | **0.2357** | 0.0194 | 4.33 | 5.86 |
+| Milan Duomo | 0.3538 | 0.0799 | **0.2477** | 0.0351 | 2.73 | 2.51 |
+| Madrid Plaza Mayor | 0.3473 | 0.0341 | **0.1462** | 0.0080 | 6.15 | 8.38 |
+| Ghent Korenmarkt | 0.2917 | 0.0483 | **0.1627** | 0.0143 | 2.85 | 6.39 |
+| Brussels Grand-Place | 0.2351 | 0.0251 | **0.0976** | 0.0065 | 5.96 | 13.29 |
+| Tokyo Hachiko | 0.2238 | 0.0363 | **0.1009** | 0.0155 | 3.42 | 6.98 |
+| New York Times Square | 0.1629 | 0.0924 | **0.1294** | 0.0561 | 3.67 | 6.34 |
 
-Medians span 5.13 dB isotropic and 14.49 dB rooftop. The largest spread *within*
-one square is 6.15 dB isotropic, at Madrid.
+Spreads are the fifth to ninety fifth percentile of the corrected run. The
+superseded rooftop column is kept beside its replacement rather than deleted, so
+any number published before 2026-08-02 can be located rather than merely
+apologised for.
+
+Corrected medians span **5.13 dB isotropic and 9.65 dB rooftop**, against 14.49 dB
+rooftop under the superseded law. The largest spread *within* one square is
+6.15 dB isotropic at Madrid, and 13.29 dB rooftop at Brussels. So under isotropic
+illumination, where in a square a person stands can matter more than which of
+eleven cities on three continents the square is in.
 
 ![Eleven squares, one pipeline](FIGURES/16_eleven_cities_exposure.png)
 
@@ -837,31 +845,29 @@ fraction, right is peak absorbed power density at the phantom. The middle panel
 is the one to trust unreservedly, because sky fraction converges by 100 m and
 carries no illumination assumption at all.
 
-The figure also shows two of its own defects, both open in section 11. Brussels
-carries $n = 3$ rather than 80, which is why its curve is a staircase. And Krakow
-is the dark red outlier at the right of all three panels, which is not an open
-square outperforming the rest: its ground datum sits 18.6 m above the surrounding
-pavement, so its standpoints are on the roof of the Cloth Hall. Toulouse has the
-same defect at 13.6 m. Those two rows are invalid pending a fix to the datum
-estimator, and the remaining nine are unaffected.
+Krakow is the dark red outlier at the right of all three panels, and it is not an
+open square outperforming the rest. Its ground datum sits 18.6 m above the
+surrounding pavement, so its standpoints are on the roof of the Cloth Hall.
+Toulouse has the same defect at 13.6 m. Those two rows are invalid pending a fix
+to the datum estimator, and the remaining nine are unaffected.
 
-**The rooftop column of that table is superseded and is being recomputed.** It was
-produced under the elevation law corrected in section 4.2. The isotropic column is
-unaffected, because the isotropic model has no elevation weight to correct and
-comes out bit identical. What the correction does to the rooftop column, measured
-on the same standpoints at the same crop:
+**Both rooftop columns are shown because the correction is not cosmetic.** The
+isotropic column is unaffected and comes out bit identical, to within 0.001 dB at
+every site, because the isotropic model has no elevation weight to correct. What
+the correction does to the rooftop column, on the same standpoints at the same
+crop:
 
 | | superseded | corrected |
 |---|---|---|
-| per site shift | | $+0.98$ to $+6.30$ dB |
+| per site shift | | $+1.06$ to $+6.33$ dB |
 | Spearman against the superseded order | | 0.78 |
-| rooftop over isotropic range across the eleven | 11.37 dB | 6.12 dB |
+| rooftop over isotropic range across the eleven | 11.32 dB | 6.12 dB |
 | corr(log $\chi_{\rm roof}$, log $\chi_{\rm iso}$) | 0.56 | 0.85 |
 
 Three things follow, and the third is the one that matters for the paper.
 
-**It cannot be offset corrected.** The shift spans 5.31 dB across sites, which is
-the same size as the 6.03 dB spread of the superseded medians across the ten sites
+**It cannot be offset corrected.** The shift spans 5.27 dB across sites, which is
+the same size as the 5.93 dB spread of the superseded medians across the ten sites
 other than Krakow.
 
 **It reorders the cities.** New York Times Square falls six places of eleven, from
@@ -1117,13 +1123,13 @@ correction of section 4.2 was derived, implemented and measured.
 | Section 8, validation ladder | **stable.** The closed forms are single height or isotropic, so the correction cannot touch them, and the suite passes under the corrected law |
 | Section 9.1, within square spread | **stable.** At a converged crop the correction moves it 0.72 dB rooftop and 0.14 dB street |
 | Section 9.2, eleven cities, isotropic column | **stable and bit identical.** The isotropic model has no elevation weight to correct |
-| Section 9.2, eleven cities, rooftop column | **superseded, recomputation running.** Site dependent shift of 0.98 to 6.30 dB, reorders the cities, cannot be offset corrected |
+| Section 9.2, eleven cities, rooftop column | **recomputed, all eleven sites.** Site dependent shift of 1.06 to 6.33 dB, reorders the cities, cannot be offset corrected. Both columns are in the table |
 | Section 9.3, evidence ladder | **stable, and re-run under both laws over conflict passing poses only.** None of the three failing Korenmarkt poses was ever in it, the top rung rises from 10.57 to 11.02 % of area, and the conclusion is unchanged under isotropic, corrected rooftop and street |
 | Section 9.4, crop radius | **stable, and re-derived under the corrected law.** 250 m still required, now set by the street model alone. Measured at one site, with Milan disagreeing on street |
 | Section 4.3, deployment caps | **assumptions with a measured sensitivity, not citations.** No deployed FR3 exists to calibrate against, section 4.3.1 |
 | Section 3.2.1, registration | **stable.** 83 poses, diagnostic persisted and independently reproducible |
 | Section 9.2, Krakow and Toulouse rows | **invalid.** `ground_datum()` takes the median first hit from above within 15 m of the anchor, so an anchor standing on a building returns that building's roof. Krakow's datum is 18.6 m above the surrounding pavement and Toulouse's is 13.6 m, which puts their standpoints on the Cloth Hall and the Capitole roofs. Madrid at 5.0 m is suspect, every other site is inside 3.9 m. The fix is a low quantile over a wider radius plus a hard gate, then a rerun of those rows |
-| Section 9.2, Brussels row | **incomplete.** 3 standpoints against 80 elsewhere, despite a valid 250 m mesh. Cause not yet identified, rerun in progress |
+| The eleven city figure asset | **regenerate before submission.** The committed PNG was copied from an aggregate that a concurrent run was still writing, so it shows Brussels at 3 standpoints. Every per site record at both 250 m tags carries 80. Rebuild it from the completed corrected aggregate |
 
 Two things a reader should be able to check quickly. The runs computed under the
 superseded law are kept beside their replacements rather than overwritten, under
