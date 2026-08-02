@@ -23,9 +23,17 @@ is a first hit on 3.3 percent of support triangles, 4.4 percent by area. 72.8
 percent of faces take their material from tile texture and 23.9 percent carry no
 image evidence at all.
 
-Fusing twelve panoramas raises directly observed surface to 24.8 percent by area,
-and the coverage curve has not saturated. Quote area fractions rather than face
-counts: face counts move with ray density, area does not.
+Fusing twelve panoramas raises directly observed surface to 24.1 percent by area,
+and it saturates there: 12 panoramas reach 77 percent of what the site can ever
+offer and 26 reach 90, so the per site budget is 12 to 16. Quote area fractions
+rather than face counts, because face counts move with ray density and area does
+not.
+
+What binds after that is extent rather than count. Widening the observation radius
+from 60 to 80 m lifts achievable coverage from 30.6 to 44.8 percent, more than
+tripling the panorama count inside 60 m does. Beyond that nothing helps: the
+remaining 55 percent is roofs, courtyards and rear elevations that no street level
+capture ever sees.
 
 ## 04: the resolved facade against the photograph it came from
 
@@ -40,6 +48,13 @@ Support geometry, entity class, radio material and RMS surface height, stacked
 upward. The three upper sheets are the same triangles carrying three independent
 posteriors, which is the thing that makes this a semantic twin rather than a
 textured mesh.
+
+## 06: what the cutter refused
+
+Candidate surface elements the cutter rejected, kept in a parallel table rather
+than discarded. A moving object leaves a hole in the static surface instead of
+being painted onto the wall behind it, which is why the pedestrians appear as
+separate bodies in figures 01 and 02 rather than as texture on a facade.
 
 ## 07: the mesh study
 
@@ -118,6 +133,20 @@ Retained Floquet orders against the answer, with cost attached to every level.
 Specular settles within 0.6 percent from 1,393 orders upward. Diffuse oscillates
 without a monotone trend, which is why every diffuse number in this project
 carries a 6 percent bar rather than a digit count.
+
+## 14: the first exposure distribution
+
+Korenmarkt at 15 GHz over 120 walk locations. Left is the environment side, the
+susceptibility relative to free space under three illumination models. Middle is
+the body side, absorbed power density through the AEGIS phantom. Right is where
+each location sits on the walk.
+
+The spatial panel is the one that makes the point: the open square runs 10 to
+15 dB hotter than the streets leaving it, and that is geometry rather than
+material. Position within one square is worth 3.5 dB under isotropic illumination
+and 12.5 dB under rooftop macro sites.
+
+Read the rooftop and street curves as upper bounds, for the reason in figure 15.
 
 ## 15: has the crop radius converged
 
