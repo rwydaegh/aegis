@@ -474,17 +474,26 @@ The suite is 697 passing and 1 skipped, up from 570 at the start of the night.
 
 ## Still open
 
-- Binding the semantic posterior into the exposure run, and measuring how far the
-  distribution moves when materials come from image evidence rather than surface
-  orientation.
-- Where the coverage curve saturates, which sets the per city acquisition budget.
-- Foliage. Vegetation is 1.4 percent of classified area at Korenmarkt and 0.9
-  percent at Milan, so it is a small correction at two stone paved squares, but it
-  is the only class where the geometry itself is wrong rather than merely the
-  material, and the ten city set will include sites where it is not small.
+- **The zero evidence baseline** on the same 120 locations, which is what turns
+  the evidence coverage experiment from suggestive into conclusive.
+- **The brickwork model is unvalidated at FR2.** It is validated at 4 GHz to
+  2.0 dB with nothing fitted, and the only FR2 measurement available cannot
+  adjudicate because its own repeat scatter exceeds the disagreement.
+- **Vegetation currently routes to the wood row**, which the foliage sweep now
+  shows is the worst of the three available treatments in the 2 to 6 percent
+  canopy regime that Korenmarkt sits in. The one line fix is to route it to the
+  null. The right fix is a twenty line medium boundary hook in the tracer, already
+  specified.
 - The crop radius. 130 m has not converged and the convergence sweep should run
   before the remaining propagation modules, because the answer changes the scene
-  every later stage consumes.
+  every later stage consumes. The walk result sharpens this: widening from 60 to
+  80 m lifted observable coverage from 30.6 to 44.8 percent, so radius is doing
+  more work than anything else measured tonight.
+- Panoramas for the acquired cities. Nine sites have geometry and none have
+  panoramas, so nine of eleven are geometry only. Sizing measured rather than
+  estimated: roughly 43,000 requests for 16 panoramas across 8 sites.
+- Toulouse needs re-cropping onto the square rather than the Capitole roof, at
+  about 350 requests since tiles are cached per tile.
 - Milan's two registration objectives still disagree on horizontal position by
   2.5 m against a 0.21 m seed spread, and a 0.33 m systematic between depth
   derived and skyline derived altitude, same sign at both sites, is unexplained.
