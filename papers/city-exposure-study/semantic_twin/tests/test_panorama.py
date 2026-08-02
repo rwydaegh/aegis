@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import pathlib
+import urllib.error
 
 import numpy as np
 import pytest
@@ -57,3 +59,54 @@ def test_pose_altitude_prefers_the_ground_under_this_camera() -> None:
     assert measured.position_enu_m[2] == pytest.approx(53.2)
     assert measured.provenance["ground_minus_scene_constant_m"] == pytest.approx(0.7)
     assert measured.orientation_source.startswith("map tiles")
+
+
+def test_a_throttle_is_retried_where_other_client_errors_are_not(monkeypatch) -> None:
+    """429 says the request was fine and arrived too soon, so it must not be fatal.
+
+    One zoom-5 panorama is 338 tile requests, so a multi site acquisition will
+    meet a rate limit eventually. Raising on the first one loses the whole run.
+    """
+    from semantic_twin import panorama
+
+    attempts = {"n": 0}
+
+    def throttled_then_ok(request, timeout=60):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            raise urllib.error.HTTPError("url", 429, "Too Many Requests", {}, None)
+
+        class Response:
+            def read(self):
+                return b"payload"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        return Response()
+
+    monkeypatch.setattr(panorama.urllib.request, "urlopen", throttled_then_ok)
+    monkeypatch.setattr(panorama.time, "sleep", lambda _seconds: None)
+    client = panorama.StreetViewTiles("key")
+    assert client._read("url") == b"payload"
+    assert attempts["n"] == 2
+
+
+def test_a_forbidden_request_is_not_retried(monkeypatch) -> None:
+    from semantic_twin import panorama
+
+    attempts = {"n": 0}
+
+    def forbidden(request, timeout=60):
+        attempts["n"] += 1
+        raise urllib.error.HTTPError("url", 403, "Forbidden", {}, io.BytesIO(b"denied"))
+
+    monkeypatch.setattr(panorama.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(panorama.time, "sleep", lambda _seconds: None)
+    client = panorama.StreetViewTiles("key")
+    with pytest.raises(RuntimeError, match="403"):
+        client._read("url")
+    assert attempts["n"] == 1

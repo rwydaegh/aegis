@@ -90,12 +90,23 @@ def streetview_orientation_source(metadata: dict[str, Any]) -> str:
 class StreetViewTiles:
     """Small, retrying client for one Map Tiles Street View session."""
 
-    def __init__(self, api_key: str, *, tries: int = 4) -> None:
+    def __init__(self, api_key: str, *, tries: int = 4, throttle_backoff_s: float = 20.0) -> None:
         self.api_key = api_key
         self.tries = tries
+        self.throttle_backoff_s = throttle_backoff_s
         self.session: dict[str, Any] | None = None
 
     def _read(self, request: str | urllib.request.Request) -> bytes:
+        """Fetch one resource, retrying on server errors and on throttling.
+
+        A 4xx is a statement that the request itself is wrong and retrying it
+        will not help, so those raise immediately. **429 is the exception**: it
+        says the request was fine and arrived too soon. One zoom-5 panorama is
+        338 tiles, so a multi site acquisition will meet a rate limit at some
+        point, and raising on the first one loses the whole run rather than
+        pausing through it. Back off longer than for a 5xx, since a throttle
+        window is seconds to minutes rather than milliseconds.
+        """
         last: Exception | None = None
         for attempt in range(self.tries):
             try:
@@ -103,10 +114,19 @@ class StreetViewTiles:
                     return response.read()
             except (OSError, urllib.error.HTTPError) as exc:
                 last = exc
-                if isinstance(exc, urllib.error.HTTPError) and exc.code < 500:
+                throttled = isinstance(exc, urllib.error.HTTPError) and exc.code == 429
+                if isinstance(exc, urllib.error.HTTPError) and exc.code < 500 and not throttled:
                     detail = exc.read().decode("utf-8", errors="replace")[:1000]
                     raise RuntimeError(f"Street View HTTP {exc.code}: {detail}") from exc
-                time.sleep(1.5 * (attempt + 1))
+                if throttled:
+                    time.sleep(self.throttle_backoff_s * (attempt + 1))
+                else:
+                    time.sleep(1.5 * (attempt + 1))
+        if isinstance(last, urllib.error.HTTPError) and last.code == 429:
+            raise RuntimeError(
+                f"Street View still throttled after {self.tries} attempts. A daily quota, as opposed to a "
+                "burst limit, does not clear by waiting and has to be raised in the console."
+            ) from last
         raise RuntimeError(f"Street View request failed after {self.tries} attempts") from last
 
     def create_session(self) -> dict[str, Any]:
