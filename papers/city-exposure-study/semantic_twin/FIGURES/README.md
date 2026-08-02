@@ -118,3 +118,24 @@ Retained Floquet orders against the answer, with cost attached to every level.
 Specular settles within 0.6 percent from 1,393 orders upward. Diffuse oscillates
 without a monotone trend, which is why every diffuse number in this project
 carries a 6 percent bar rather than a digit count.
+
+## 15: has the crop radius converged
+
+Six crops at Korenmarkt with the observers held fixed inside the smallest, so
+every radius scores the same 32 pedestrian standpoints and only the surroundings
+change.
+
+The lower panel is the reading. Isotropic susceptibility and sky fraction fall an
+order of magnitude below the half decibel criterion from 120 m onward, so they are
+converged. **Rooftop illumination never gets under it**, falling 3.1 dB between the
+130 m the study uses and 200 m and still moving at the end of the sweep.
+
+The mechanism is in the illumination model rather than the geometry. Macro sites
+sit at horizontal ranges out to 250 m, and a 130 m crop holds nothing that can
+occlude one of them, so rays escape to a sky a real building would have blocked.
+The small crop is not missing scatterers that would add power, it is missing
+blockers that would remove it.
+
+The vertical line marks where the meshes change from single to double precision
+builds, which is why the 130 m point steps the wrong way. Every step above it is
+like for like.
