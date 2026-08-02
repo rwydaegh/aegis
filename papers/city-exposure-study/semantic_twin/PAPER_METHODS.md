@@ -1010,6 +1010,36 @@ layer earns its place through occlusion handling, evidence confidence and cross
 capture validation rather than by moving the exposure number.** That is both more
 defensible and more falsifiable than the claim it replaces.
 
+#### What this ladder does not test
+
+The material axis never varied on facades, so the result is about **entity**
+segmentation and not about material discrimination.
+
+`semantics.py` runs a cascade. Mask2Former on Mapillary Vistas owns the entity
+axis, and SAM 3 owns the material axis, because Vistas has a single `Building`
+class covering brick, render, ashlar, glass curtain wall and metal cladding,
+whose permittivity and roughness are not close to each other. Of the 96 panoramas
+processed for this study, **94 ran `mask2former` alone and 2 ran the hybrid
+cascade**, those two being the Korenmarkt and Milan hero panoramas used for the
+scene figures. Every one of the eight walk stations behind the top rung is
+`mask2former` only.
+
+`bind_from_walk` therefore maps the Vistas entity through a fixed
+$p(\text{material}\mid\text{entity})$ table and takes the argmax. `Building`
+resolves to `brick` deterministically, and `Building` is **74.3 %** of the
+face observations the eight stations bind. So three quarters of the image
+evidence in the top rung carries one material by construction, and the ladder
+could not have moved it whatever the photographs showed. What it did move is the
+minority where the entity itself implies the material: vegetation, road,
+pedestrian area, poles and rail.
+
+This does not overturn the negative, it bounds it. Coverage genuinely rises from
+0 to 11 % of area and the distribution genuinely does not follow. But the claim
+licensed is that *entity* coverage does not move exposure. Whether resolving
+brick against glass on the same facade moves it is untested here, and testing it
+means running the hybrid backend on the walk stations rather than on two hero
+panoramas.
+
 One limit stands. The ladder spans 0 to 11.0 %, which is as far as street level
 capture reaches, and it licenses nothing about a fully evidence bound scene. Roofs,
 courtyards and rear elevations are 55 % of the surface and no panorama count
@@ -1154,6 +1184,7 @@ correction of section 4.2 was derived, implemented and measured.
 | Section 9.1, within square spread | **stable.** At a converged crop the correction moves it 0.72 dB rooftop and 0.14 dB street |
 | Section 9.2, eleven cities, isotropic column | **stable and bit identical.** The isotropic model has no elevation weight to correct |
 | Section 9.2, eleven cities, rooftop column | **recomputed, all eleven sites.** Site dependent shift of 1.06 to 6.33 dB, reorders the cities, cannot be offset corrected. Both columns are in the table |
+| Section 9.3, material axis | **untested.** SAM 3 ran on 2 of 96 panoramas and on none of the eight walk stations. The ladder varied entity coverage, and `Building`, 74.3 % of bound observations, resolves to brick by construction |
 | Section 9.3, evidence ladder | **stable, and re-run under both laws over conflict passing poses only.** None of the three failing Korenmarkt poses was ever in it, the top rung rises from 10.57 to 11.02 % of area, and the conclusion is unchanged under isotropic, corrected rooftop and street |
 | Section 9.4, crop radius | **stable, and re-derived under the corrected law.** 250 m still required, now set by the street model alone. Measured at one site, with Milan disagreeing on street |
 | Section 4.3, deployment caps | **assumptions with a measured sensitivity, not citations.** No deployed FR3 exists to calibrate against, section 4.3.1 |
