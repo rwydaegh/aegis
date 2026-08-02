@@ -730,8 +730,13 @@ The suite is 700 passing and 1 skipped, up from 570 at the start of the night.
 - Panoramas for the acquired cities. Nine sites have geometry and none have
   panoramas, so eight of eleven are geometry only. Sizing measured rather than
   estimated: roughly 43,000 requests for 16 panoramas across 8 sites.
-- Toulouse needs re-cropping onto the square rather than the Capitole roof, at
-  about 350 requests since tiles are cached per tile.
+- Toulouse needs re-cropping onto the square rather than the Capitole roof.
+- Housekeeping: the 250 m shells exist twice, as `inhouse_leaf_250m.ply` and
+  `inhouse_leaf_250m_f64.ply`, because the acquisition agent and I built them
+  independently before my message to stop reached it. They are byte identical and
+  one set should be deleted. That duplication also cost about 9,000 redundant tile
+  requests, which is my error: I should have checked what was already running
+  before starting.
 - Milan's two registration objectives still disagree on horizontal position by
   2.5 m against a 0.21 m seed spread, and a 0.33 m systematic between depth
   derived and skyline derived altitude, same sign at both sites, is unexplained.
