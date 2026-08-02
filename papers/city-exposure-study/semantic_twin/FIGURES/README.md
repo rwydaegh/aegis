@@ -186,11 +186,13 @@ is why the 130 m point steps the wrong way. The 250 m and wider crops come from 
 second tile fetch, controlled against the first by rebuilding a 200 m crop from it
 and getting 390,518 triangles, identical to the original.
 
-## 16: pedestrian exposure across ten squares
+## 16: pedestrian exposure across eleven squares
 
-The study's central object. 80 walk locations per city at 15 GHz, one common crop
-radius and one common material prior, so what varies between curves is urban form
-and nothing else.
+The study's central object. 80 walk locations per city at 15 GHz, at the converged
+250 m crop radius, with one common material prior, so what varies between curves
+is urban form and nothing else. Milan joins here because it has a 250 m build,
+having been acquired before the others at a radius that made it incomparable at
+130 m.
 
 Left is the environment side, the susceptibility relative to free space. Middle is
 sky fraction, which is converged at this radius and therefore the panel to trust
@@ -213,8 +215,15 @@ Corrected, the between-city spread is **5.13 dB in isotropic median and 14.49 dB
 in rooftop**. Urban form matters far more under directional illumination than
 under isotropic, which the uncorrected figure could not show.
 
+**The medians span 5.13 dB isotropic and 14.49 dB rooftop across the eleven, while
+the largest spread within one square is 6.15 dB isotropic.** So under isotropic
+illumination, where in a square a person stands matters more than which of eleven
+cities on three continents the square is in.
+
 The ordering runs from Brussels' enclosed Grand-Place at the left to Krakow's open
-Rynek at the right. The spread within a single square
+Rynek at the right, and it is not simply built density: Times Square is lowest on
+isotropic yet mid-table on rooftop, because its towers block the horizon while
+leaving the high elevations macro sites occupy comparatively open. The spread within a single square
 reaches 6.48 dB, so which part of a square a person stands in matters as much as
 which city the square is in.
 
