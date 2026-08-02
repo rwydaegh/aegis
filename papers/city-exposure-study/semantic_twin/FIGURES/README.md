@@ -206,3 +206,21 @@ The ordering runs from Brussels' enclosed Grand-Place at the left to Krakow's op
 Rynek at the right, spanning 4.20 dB in median. The spread within a single square
 reaches 6.48 dB, so which part of a square a person stands in matters as much as
 which city the square is in.
+
+## 17: does image evidence move exposure
+
+The evidence ladder. Three runs on the same 120 locations with the same seed,
+varying only how much of the scene carries material evidence from images: none at
+all, one registered panorama at 3.13 percent of area, and eight fused stations at
+10.57 percent.
+
+The answer is a clean negative. Zero to a tenth of the scene shifts the median by
+**0.29 dB** and moves exactly **one location out of 120** by more than a decibel.
+A single panorama is worth 0.008 dB.
+
+That is worth more than a positive would have been. It says the geometry sets the
+exposure distribution, and the semantic layer has to justify itself on occlusion
+handling, evidence confidence and cross capture validation rather than on moving
+the number. The ladder spans 0 to 10.6 percent because that is as far as street
+level capture reaches, and it says nothing about a fully evidence bound scene,
+which cannot be built from the street.
