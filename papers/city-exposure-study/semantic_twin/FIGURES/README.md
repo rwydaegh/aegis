@@ -180,3 +180,24 @@ The grey line marks where the meshes change from single to double precision, whi
 is why the 130 m point steps the wrong way. The 250 m and wider crops come from a
 second tile fetch, controlled against the first by rebuilding a 200 m crop from it
 and getting 390,518 triangles, identical to the original.
+
+## 16: pedestrian exposure across ten squares
+
+The study's central object. 80 walk locations per city at 15 GHz, one common crop
+radius and one common material prior, so what varies between curves is urban form
+and nothing else.
+
+Left is the environment side, the susceptibility relative to free space. Middle is
+sky fraction, which is converged at this radius and therefore the panel to trust
+absolutely. Right is the body side, peak absorbed power density through the AEGIS
+phantom.
+
+The two outer panels are labelled as crop-limited upper bounds in their own titles
+rather than in a footnote, because at 130 m a scene contains nothing that can
+occlude a macro site at 250 m. Comparison between cities at a common radius is
+unaffected, since the bias is a property of the radius.
+
+The ordering runs from Brussels' enclosed Grand-Place at the left to Krakow's open
+Rynek at the right, spanning 4.20 dB in median. The spread within a single square
+reaches 6.48 dB, so which part of a square a person stands in matters as much as
+which city the square is in.
