@@ -826,6 +826,19 @@ the occlusion test and the normalisation simultaneously.
 
 **Free space returns exactly 1**, for every illumination model.
 
+#### What section 8 cannot catch
+
+Every test here is either an invariant the estimator was built to satisfy or a
+closed form derived from the same physics the estimator implements. There is no
+independent solver in the loop: nothing here is a comparison against a
+second implementation of the same problem, and no measurement is taken anywhere
+in this work. So the suite is strong against implementation error and blind to
+formulation error. If the illumination construction or the reciprocity
+dictionary were conceptually wrong, free space would still return 1, the
+conducting plane would still return 2, and the cavity would still conserve
+energy. The correction in section 4.2 is a case in point: it was found by
+rederiving the integral, not by any test failing.
+
 ### 8.2 Closed forms
 
 | case | closed form | measured |
@@ -890,6 +903,34 @@ hotter than the streets leaving it, and that is geometry rather than material.
 
 80 standpoints per city, common 250 m crop, identical material prior, so only
 urban form varies.
+
+**No image evidence enters this table.** Every run here is `materials:
+geometric`, the orientation rule of section 2.2, at
+`covered_fraction_by_area = 0.0` for all eleven sites including Korenmarkt. That
+is a defensible control, since a comparison in which materials also varied would
+confound urban form with material assignment, and section 9.3 measures the
+material term separately. But it is also the only run the pipeline can produce:
+`run_exposure.py` refuses `--materials semantic` or `--materials walk` at any
+site except Korenmarkt, because no other site has a binding.
+
+The gap between what the semantic stage produces and what this table consumes is
+worth stating plainly, because it is large.
+
+| stage | built for | reaches this table |
+|---|---|---|
+| panoramas acquired | 10 of 11 sites | none |
+| skyline registrations | 83 poses at 9 sites | none |
+| fishnet surfaces | 2 sites | none |
+| SAM 3 material axis | 2 panoramas | none |
+
+Krakow, London and Toulouse have no panoramas at all, so a materially bound
+eleven city comparison is not merely unbuilt, it is unacquirable without
+returning to those three sites. Sixty nine of the 83 registrations, at Brussels,
+Madrid, Mexico City, New York, Prague and Tokyo, are computed and audited in
+section 3.2.1 and then consumed by nothing. The claim this table supports is
+therefore about **built form under a common material assumption**, and the word
+semantic in this pipeline's name describes section 9.3's Korenmarkt experiment
+rather than the eleven city result.
 
 | site | isotropic median | rooftop, superseded | rooftop, corrected | street, corrected | isotropic spread [dB] | rooftop spread [dB] |
 |---|---|---|---|---|---|---|
@@ -1238,7 +1279,9 @@ correction of section 4.2 was derived, implemented and measured.
 | Section 9.3, evidence ladder | **stable, and re-run under both laws over conflict passing poses only.** None of the three failing Korenmarkt poses was ever in it, the top rung rises from 10.57 to 11.02 % of area, and the conclusion is unchanged under isotropic, corrected rooftop and street |
 | Section 9.4, crop radius | **stable, and re-derived under the corrected law.** 250 m still required, now set by the street model alone. Measured at one site, with Milan disagreeing on street |
 | Section 4.3, deployment caps | **assumptions with a measured sensitivity, not citations.** No deployed FR3 exists to calibrate against, section 4.3.1 |
-| Section 3.2.1, registration | **stable.** 83 poses, diagnostic persisted and independently reproducible |
+| Section 9.2, material coverage | **the eleven city table carries no image evidence.** `materials: geometric`, covered area 0.0 at every site. Only Korenmarkt has a binding, and three of the eleven cities have no panoramas at all. 69 of 83 registrations feed no result |
+| Section 8, external cross validation | **absent.** The tracer is checked against closed forms it was built to satisfy, plus internal invariants. There is no independent solver in the loop, so a shared conceptual error would survive every test in section 8 |
+| Section 3.2.1, registration | **stable, but the poses it validates are mostly unused.** 83 poses, diagnostic persisted and independently reproducible |
 | Section 9.2, Krakow and Toulouse rows | **invalid.** `ground_datum()` takes the median first hit from above within 15 m of the anchor, so an anchor standing on a building returns that building's roof. Krakow's datum is 18.6 m above the surrounding pavement and Toulouse's is 13.6 m, which puts their standpoints on the Cloth Hall and the Capitole roofs. Madrid at 5.0 m is suspect, every other site is inside 3.9 m. The fix is a low quantile over a wider radius plus a hard gate, then a rerun of those rows |
 | The eleven city figure asset | **regenerate before submission.** The committed PNG was copied from an aggregate that a concurrent run was still writing, so it shows Brussels at 3 standpoints. Every per site record at both 250 m tags carries 80. Rebuild it from the completed corrected aggregate |
 
