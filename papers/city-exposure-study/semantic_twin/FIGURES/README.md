@@ -157,21 +157,26 @@ Read the rooftop and street curves as upper bounds, for the reason in figure 15.
 
 Nine crops at Korenmarkt from 60 to 340 m, with the observers held fixed inside
 the smallest, so every radius scores the same 32 pedestrian standpoints and only
-the surroundings change.
+the surroundings change. The dotted line is the radius everything was acquired at.
 
-Isotropic susceptibility and sky fraction converge by 100 m. **Rooftop
-illumination converges at 250 m and not before**, and the 130 m radius the study
-was acquired at overestimates it by **3.24 dB**.
+Isotropic susceptibility and sky fraction converge by 100 m. **Rooftop sites need
+250 m and street level small cells need 250 to 300.** At the acquired 130 m the
+three errors are +0.05, +3.24 and **+9.93 dB**.
 
-The dotted line is the result. The rooftop model places its farthest macro site at
-250 m, and the crop converges at 250 m. **The required crop radius is set by the
-illumination model's source distribution, not by how far scattering carries**, so
-a crop smaller than the sources holds nothing that can occlude the most distant
-ones and rays escape to a sky a real building would have blocked. Change the
-assumed network geometry and the required radius changes with it.
+The legend carries the explanation. The three models order by how close to the
+horizon they place their weight, full sphere then 3.1 to 60 degrees then 0.95 to
+33, and that is also the order of how much crop each one needs. A ray leaving a
+standing observer near the horizon travels a long way before rising far enough for
+a building of ordinary height to intercept it, so the more grazing weight a model
+carries the further out the occluders that matter live. Throughout, the small crop
+is not missing scatterers that would add power, it is missing blockers that would
+remove it.
+
+A rule proposed before the third curve existed, that the crop must reach the
+farthest source, is refuted by it: street small cells reach only 150 m yet
+converge later than rooftop, which reaches 250.
 
 The grey line marks where the meshes change from single to double precision, which
-is why the 130 m point steps the wrong way. Every step above it is like for like,
-and the 250 m and wider crops come from a second tile fetch that was controlled
-against the first: a 200 m crop rebuilt from it gives 390,518 triangles, identical
-to the original.
+is why the 130 m point steps the wrong way. The 250 m and wider crops come from a
+second tile fetch, controlled against the first by rebuilding a 200 m crop from it
+and getting 390,518 triangles, identical to the original.
