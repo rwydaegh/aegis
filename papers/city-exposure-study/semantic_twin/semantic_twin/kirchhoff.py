@@ -484,8 +484,8 @@ def phase_screen_recess_limit_m(joint_width_m: float) -> float:
     the groove *aspect ratio*, depth over width, and not the depth in
     wavelengths. At an aspect of one half the specular order agrees within 11
     percent from 7 to 28 GHz, including where the recess is half a wavelength
-    deep. At an aspect of one the specular order is 23 to 35 percent low and the
-    diffuse is high by a factor of two to five.
+    deep. At an aspect of one the specular order is 23 to 34 percent low and the
+    diffuse is 1.8 times high on the one comparison run to convergence.
 
     The physical reading is that a groove is a waveguide stub. What decides
     whether the field reaches its floor is how deep it is relative to how wide it

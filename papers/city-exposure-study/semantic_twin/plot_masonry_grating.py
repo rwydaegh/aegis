@@ -138,7 +138,7 @@ def figure_convergence() -> None:
     figure, (left, right) = plt.subplots(1, 2, figsize=fig_size_ieee(columns=2, aspect=0.42))
     markers = ("o", "s", "^", "D")
     palette = (RIGOROUS, APPROXIMATE, ACCENT, "#7b5aa6")
-    widest = 1000.0
+    widest = 0.0
     for case, marker, colour in zip(cases, markers, palette, strict=False):
         levels = case["levels"]
         if len(levels) < 2:
@@ -154,7 +154,7 @@ def figure_convergence() -> None:
     left.axhline(1.0, color=MUTED, linewidth=0.8, linestyle=":")
     left.axhspan(0.95, 1.05, color=ACCENT, alpha=0.10, zorder=0)
     left.set_xscale("log")
-    left.set_xlim(150.0, 1.6 * widest)
+    left.set_xlim(150.0, 1.5 * widest)
     left.set_ylim(0.5, 1.6)
     left.set_xlabel("retained Floquet orders")
     left.set_ylabel("efficiency, normalised to the finest run")
@@ -162,7 +162,7 @@ def figure_convergence() -> None:
     left.legend(loc="upper right", fontsize=7.0)
     right.set_xscale("log")
     right.set_yscale("log")
-    right.set_xlim(150.0, 1.6 * widest)
+    right.set_xlim(150.0, 1.5 * widest)
     right.set_xlabel("retained Floquet orders")
     right.set_ylabel("wall clock per solve (s)")
     right.set_title("cost is cubic in the order count", fontsize=9.0)

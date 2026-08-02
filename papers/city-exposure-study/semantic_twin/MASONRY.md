@@ -520,10 +520,12 @@ repository's monograph style, IEEE two column width.
 - **`masonry_convergence`**. What the rigorous answer does as the Fourier
   truncation grows, with the wall clock of each level beside it. The truncation
   is the only free parameter of a rigorous solve, so this is the figure that says
-  whether the numbers above are converged rather than merely expensive. The
-  60 degree timings were taken on a machine that was busy with other work and are
-  not a clean cost measurement, which is why one of them runs backwards. The
-  30 degree series had the machine to itself and is the one to read for cost.
+  whether the numbers above are converged rather than merely expensive. All four
+  specular curves settle inside a 5 percent band above about 500 retained orders,
+  and the 10 mm groove is visibly the slowest to converge, which is the same
+  physics that makes the phase screen fail there. Only the 28 GHz 30 degree
+  series had the machine to itself, so it is the one to read on the cost panel.
+  The other three ran against other people's work and one of them runs backwards.
 - **`masonry_comb_vs_resolution`**. A cut through the bistatic response at three
   receiver resolutions. This is the comb-or-lobe answer in one picture: sharp
   comb, partly resolved comb, featureless lobe, from the same wall.
@@ -583,7 +585,10 @@ percent.** From reach 1.0 upwards the specular sits at 0.1098 within 0.6 percent
 The diffuse oscillates between 0.0162 and 0.0178 with no monotone trend, which is
 the expected behaviour of a Fourier method on a permittivity with a step
 discontinuity, so it should be quoted with a six percent bar rather than to three
-figures. Every diffuse number in this document carries that bar.
+figures. Across all four hero cases the last truncation step moves the specular
+by 0.1 to 0.8 percent and the diffuse by 0.4 to 6.8 percent, so **every diffuse
+number in this document carries a seven percent bar and every specular number a
+one percent bar.**
 
 **The cost is what a dense modal method costs.** Time is cubic in the retained
 order count, 333 seconds against 1 second for an eight-fold increase in orders,
@@ -613,26 +618,34 @@ reach 1.0, where the specular is already within one percent of converged and the
 diffuse is inside its six percent bar.
 
 All joints are 10 mm wide, so the recess column is also the groove aspect ratio.
-Lossless brick at 3.91, TE unless stated. Rows marked converged use the elliptic
-truncation at 1.25 times the propagating reach, which the curve above justifies.
-The rest are at reach 1.0, where the specular is inside one percent of converged.
+Lossless brick at 3.91, TE unless stated. The four hero rows carry a full
+convergence curve and their rigorous values are the finest level of it. The rest
+are at reach 1.0, where the specular is inside one to two percent of converged
+but the diffuse is 10 to 43 percent low, so **their diffuse ratios overstate the
+phase screen's error and are marked rather than corrected.**
 
-| GHz | incidence | recess | aspect | rigorous specular | phase screen | error | rigorous diffuse | phase screen | ratio |
-|---|---|---|---|---|---|---|---|---|---|
-| 10 | 0 | 0 mm | 0 | 0.10779 | 0.10779 | 0% | 0 | 0 | - |
-| 10 | 30 | 0 mm | 0 | 0.14199 | 0.14199 | 0% | 0 | 0 | - |
-| 10 | 60 | 0 mm | 0 | 0.31472 | 0.31472 | 0% | 0 | 0 | - |
-| 7 | 30 | 5 mm | 0.5 | 0.10444 | 0.11356 | +8.7% | 0.00790 | 0.00587 | 0.74 |
-| 10 | 0 | 5 mm | 0.5 | 0.05947 | 0.06173 | +3.8% | 0.02137 | 0.01667 | 0.78 |
-| 10 | 30 | 5 mm | 0.5 | 0.08932 | 0.09180 | +2.8% | 0.02036 | 0.01644 | 0.81 |
-| 10 | 30 | 5 mm, TM | 0.5 | 0.05154 | 0.04997 | -3.0% | 0.01073 | 0.00891 | 0.83 |
-| 10 | 60 | 5 mm | 0.5 | 0.25281 | 0.26987 | +6.7% | 0.00905 | 0.01720 | 1.90 |
-| 15 | 45 | 5 mm | 0.5 | 0.12202 | 0.10805 | -11.4% | 0.02935 | 0.04185 | 1.43 |
-| 28 | 30 | 5 mm | 0.5 | 0.11046 | 0.11616 | +5.2% | 0.01623 | 0.02548 | 1.57 |
-| **28** | **60** | **5 mm** | **0.5** | **0.20910** | **0.13746** | **-34.3%** | **0.04201** | **0.10194** | **2.43** |
-| 10 | 0 | 10 mm | 1.0 | 0.08586 | 0.06185 | -28.0% | 0.00798 | 0.02212 | 2.77 |
-| 10 | 30 | 10 mm | 1.0 | 0.10154 | 0.06589 | -35.1% | 0.01351 | 0.02868 | 2.12 |
-| 10 | 60 | 10 mm | 1.0 | 0.23386 | 0.18024 | -22.9% | 0.00907 | 0.04256 | 4.69 |
+| GHz | incidence | recess | aspect | rigorous specular | phase screen | error | rigorous diffuse | phase screen | ratio | truncation |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 10 | 0 | 0 mm | 0 | 0.10779 | 0.10779 | 0% | 0 | 0 | - | reach 1.0 |
+| 10 | 30 | 0 mm | 0 | 0.14199 | 0.14199 | 0% | 0 | 0 | - | reach 1.0 |
+| 10 | 60 | 0 mm | 0 | 0.31472 | 0.31472 | 0% | 0 | 0 | - | reach 1.0 |
+| 7 | 30 | 5 mm | 0.5 | 0.10444 | 0.11356 | +8.7% | 0.00790 | 0.00587 | 0.74 | reach 1.0 |
+| 10 | 0 | 5 mm | 0.5 | 0.05947 | 0.06173 | +3.8% | 0.02137 | 0.01667 | 0.78 | reach 1.0 |
+| **10** | **30** | **5 mm** | **0.5** | **0.08846** | **0.09180** | **+3.8%** | **0.02142** | **0.01644** | **0.77** | **converged** |
+| 10 | 30 | 5 mm, TM | 0.5 | 0.05154 | 0.04997 | -3.0% | 0.01073 | 0.00891 | 0.83 | reach 1.0 |
+| 10 | 60 | 5 mm | 0.5 | 0.25281 | 0.26987 | +6.7% | 0.00905 | 0.01720 | 1.90 | reach 1.0 |
+| 15 | 45 | 5 mm | 0.5 | 0.12202 | 0.10805 | -11.4% | 0.02935 | 0.04185 | 1.43 | reach 1.0 |
+| **28** | **30** | **5 mm** | **0.5** | **0.10980** | **0.11616** | **+5.8%** | **0.01707** | **0.02548** | **1.49** | **converged** |
+| **28** | **60** | **5 mm** | **0.5** | **0.20910** | **0.13746** | **-34.3%** | **0.04201** | **0.10194** | **2.43** | **converged** |
+| 10 | 0 | 10 mm | 1.0 | 0.08586 | 0.06185 | -28.0% | 0.00798 | 0.02212 | 2.77 | reach 1.0 |
+| **10** | **30** | **10 mm** | **1.0** | **0.09922** | **0.06589** | **-33.6%** | **0.01611** | **0.02868** | **1.78** | **converged** |
+| 10 | 60 | 10 mm | 1.0 | 0.23386 | 0.18024 | -22.9% | 0.00907 | 0.04256 | 4.69 | reach 1.0 |
+
+The one aspect-one row that is converged shows the size of that effect. At reach
+1.0 its rigorous diffuse reads 0.00920 against a converged 0.01611, so the phase
+screen looked 2.1 times high when it is in fact 1.8 times high. Applying the same
+correction to the two remaining aspect-one rows would bring their 2.77 and 4.69
+down to roughly 1.6 and 2.7. **Read the bold rows.**
 
 **The phase screen has two separate failure modes and only one of them is about
 the groove depth.** An earlier draft read the boundary as a groove aspect ratio
@@ -643,13 +656,14 @@ presents.
 
 - **Flush joint: exact.** Both solvers return the Fresnel coefficient and nothing
   else, which is the analytic limit rather than a coincidence.
-- **Failure one, a deep groove.** At aspect one the specular is 23 to 35 percent
-  low and the diffuse 2 to 5 times high, at every frequency and angle tested. A
-  groove is a waveguide stub, and what decides whether the field reaches its
-  floor is depth against width. A phase screen assumes it always does.
+- **Failure one, a deep groove.** At aspect one the specular is 23 to 34 percent
+  low at every frequency and angle tested, and the diffuse is 1.8 times high on
+  the one converged comparison. A groove is a waveguide stub, and what decides
+  whether the field reaches its floor is depth against width. A phase screen
+  assumes it always does.
 - **Failure two, grazing incidence at FR2.** At 28 GHz and 60 degrees, aspect one
-  half, the specular is 34 percent low and the diffuse 2.4 times high, as bad as
-  a deep groove. That case was run through its own truncation ladder to rule out
+  half, the specular is 34 percent low and the diffuse 2.4 times high, worse than
+  a deep groove on the diffuse and as bad on the specular. That case was run through its own truncation ladder to rule out
   a numerical cause: 0.2317, 0.1959, 0.2108 and 0.2091 at 435, 937, 1745 and 2653
   retained orders, so the rigorous specular settles near 0.210 and the phase
   screen's 0.1375 is not a convergence artefact. At 10 GHz and 60 degrees the identical geometry is fine to 7
@@ -662,7 +676,7 @@ presents.
 half AND incidence at or below about 45 degrees at FR2**, where the specular
 agrees within 11 percent and the diffuse within a factor of 1.6. Outside it the
 specular error reaches 35 percent with a consistent sign, too little specular,
-and the diffuse is too high by a factor of 2 to 5. `phase_screen_recess_limit_m`
+and the diffuse is too high by a factor of 1.8 to 2.4. `phase_screen_recess_limit_m`
 returns the aspect half of that envelope. The incidence half is not encoded in
 the library and has to be carried by the caller, which is a gap worth closing.
 
