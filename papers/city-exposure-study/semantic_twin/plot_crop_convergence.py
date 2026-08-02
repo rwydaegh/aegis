@@ -20,6 +20,7 @@ import numpy as np  # noqa: E402
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 CRITERION_DB = 0.5
+SOURCE_REACH_M = 250.0
 SERIES = [
     ("chi_isotropic_mean", "isotropic", "#1f77b4"),
     ("chi_rooftop_mean", "macro rooftop sites", "#d62728"),
@@ -47,7 +48,9 @@ def main() -> None:
     for key, label, colour in SERIES:
         values = np.array([r[key] for r in rows], dtype=float)
         upper.plot(radius, values / values[-1], "o-", color=colour, label=label, lw=1.6, ms=5)
-        step = np.abs(10.0 * np.log10(values[1:] / values[:-1]))
+        # Floor the step so an exactly converged pair does not send a log axis
+        # to minus infinity and draw a spike where the answer stopped moving.
+        step = np.maximum(np.abs(10.0 * np.log10(values[1:] / values[:-1])), 1e-4)
         lower.plot(radius[1:], step, "o-", color=colour, lw=1.6, ms=5)
 
     upper.set_ylabel("relative to the widest crop")
@@ -60,6 +63,15 @@ def main() -> None:
     lower.set_yscale("log")
     lower.set_ylabel("step change from the previous crop, dB")
     lower.set_xlabel("crop radius, m")
+
+    # The rooftop model places its farthest source here, which is where the
+    # rooftop curve converges. That coincidence is the result.
+    for axis in (upper, lower):
+        axis.axvline(SOURCE_REACH_M, color="#d62728", ls=":", lw=1.2, alpha=0.7)
+    upper.text(
+        SOURCE_REACH_M - 6, 3.4, "farthest macro site\nin the illumination model",
+        color="#d62728", fontsize=8.5, ha="right",
+    )
 
     # The precision change is a real discontinuity in the series and saying so on
     # the figure is cheaper than a reader rediscovering it as a physical effect.
