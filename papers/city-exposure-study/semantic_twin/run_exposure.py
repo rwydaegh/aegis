@@ -102,9 +102,10 @@ CROP_BOUND_NOTE = (
     "comparison at 130 m is not safe either."
 )
 
-#: Every site whose support mesh is a ``format_version: 3`` double precision
-#: build at the same 130 m crop radius, so the geometry is comparable across
-#: them. Milan is at 170 m and is therefore not in the cross city set.
+#: Every site with a ``format_version: 3`` double precision support mesh. A site
+#: only enters a cross city run if it has a mesh at that run's crop radius, so
+#: the geometry stays comparable across the set. Milan was acquired before the
+#: others and has no 130 m build, so it joins only at 250 m.
 SITES: tuple[str, ...] = (
     "brussels_grandplace",
     "korenmarkt",
@@ -114,6 +115,7 @@ SITES: tuple[str, ...] = (
     "mexico_zocalo",
     "newyork_timessquare",
     "prague_staromestske",
+    "milan_duomo",
     "tokyo_hachiko",
     "toulouse_capitole",
 )
@@ -621,6 +623,13 @@ def run_all_sites(
     coupler = BodyCoupler(PHANTOM, frequency_hz, body_mass_kg=PHANTOM_MASS_KG)
     done: list[str] = []
     for site in sites:
+        try:
+            site_mesh(site, crop_m)
+        except FileNotFoundError:
+            # Not a failure. A site simply has no build at this radius, and
+            # substituting a different one would confound geometry with crop.
+            print(f"[skip] {site}: no {crop_m} m mesh, not comparable at this radius", flush=True)
+            continue
         tag = f"city_{site}" if crop_m == 130 else f"city{crop_m}_{site}"
         try:
             run(
