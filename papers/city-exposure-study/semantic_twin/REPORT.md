@@ -21,11 +21,13 @@ are `outputs/showcase_korenmarkt/korenmarkt.blend` and
   square is worth 3.5 dB under isotropic illumination and 12.5 dB under rooftop
   macro sites. The assumed source geometry moves the answer further than position
   does.
-- **Tripling the image evidence bound into the scene moved the median by 0.30 dB
-  and left the spread unchanged.** If that survives the outstanding zero evidence
-  baseline it reframes the project's claim: geometry sets the distribution, and
-  the semantic layer earns its place through occlusion handling and validation
-  rather than by moving the number.
+- **Image evidence barely moves exposure, and this is now conclusive.** Going
+  from no image evidence at all to a tenth of the scene bound by it shifts the
+  median 0.29 dB and moves exactly one location in 120 by more than a decibel. A
+  single panorama is worth 0.008 dB. That reframes the claim: geometry sets the
+  distribution, and the semantic layer earns its place through occlusion
+  handling, evidence confidence and cross capture validation rather than by
+  moving the number.
 - **One panorama sees 4.4 percent of a scene by area. Twelve see 24.1 percent,
   and it saturates there**, so the per site budget is 12 to 16. Extent matters
   more than count: widening the radius from 60 to 80 m beat tripling the panorama
@@ -271,33 +273,32 @@ effect of 3 percent of the surface.
 ### The experiment, and its first answer
 
 Vary the fraction of the scene carrying image evidence, hold everything else
-fixed, and measure how far the exposure distribution moves. Both runs below are
-120 locations on the same walk with the same seed.
+fixed, and measure how far the exposure distribution moves. All three runs are
+120 locations on the same walk with the same seed, and the zero evidence rung is
+the honest baseline where every material comes from surface orientation.
 
-| evidence coverage | isotropic median | rooftop median | isotropic spread | rooftop spread |
+| evidence by area | source | rooftop median | shift from zero | locations moving over 1 dB |
 |---|---|---|---|---|
-| one panorama, 3.0 % | 0.3144 | 0.1380 | 3.55 dB | 12.48 dB |
-| fused walk, 10.6 % | 0.3370 | 0.1485 | 3.86 dB | 12.46 dB |
+| 0 % | orientation rule only | 0.1377 | | |
+| 3.13 % | one registered panorama | 0.1380 | **0.008 dB** | **0 of 120** |
+| 10.57 % | eight stations, fused | 0.1472 | **0.289 dB** | **1 of 120** |
 
-**Tripling the evidence coverage moves the median by 0.30 dB and leaves the spread
-unchanged**, 12.48 against 12.46 dB. On this evidence the exposure distribution is
-set by geometry, meaning sky fraction and blockage, and is close to insensitive to
-where the materials came from.
+**Going from no image evidence at all to a tenth of the scene bound by it moves
+the median by 0.29 dB and moves exactly one location out of 120 by more than a
+decibel.** A single panorama is worth 0.008 dB, which is nothing.
 
-Two honest limits on that. The comparison spans 3 to 10.6 percent and not zero,
-because the geometric pilot ran on a different and smaller location set, so the
-zero evidence baseline on these same 120 locations is still owed. And the result
-licenses nothing about a fully evidence bound scene, because no such scene was
-observed and the saturation work says street level capture cannot produce one:
-roofs, courtyards and rear elevations are 55 percent of the surface and no
-panorama count reaches them.
+So the answer is a clean negative, and it reframes what this project should claim.
+Not that semantic materials make exposure right, but that **the geometry sets the
+distribution, and the semantic layer earns its place through occlusion handling,
+evidence confidence and cross capture validation rather than by moving the
+exposure number**. That is both more defensible and more falsifiable than the
+claim it replaces.
 
-If it survives the baseline, this reframes the project's claim in a direction that
-is both more defensible and more interesting. Not that semantic materials make
-exposure right, but that **the geometry sets the distribution, and the semantic
-layer earns its place through occlusion handling, evidence confidence and cross
-capture validation rather than by moving the exposure number**. That is falsifiable
-in a way the other claim was not.
+One limit stands. The ladder spans 0 to 10.6 percent, which is as far as street
+level capture reaches, and it licenses nothing about a fully evidence bound scene
+because no such scene exists here. The saturation work says one cannot be built
+from the street: roofs, courtyards and rear elevations are 55 percent of the
+surface and no panorama count reaches them.
 
 ## Ten cities compared
 
@@ -737,8 +738,6 @@ The suite is 700 passing and 1 skipped, up from 570 at the start of the night.
 
 ## Still open
 
-- **The zero evidence baseline** on the same 120 locations, which is what turns
-  the evidence coverage experiment from suggestive into conclusive.
 - **The brickwork model is unvalidated at FR2.** It is validated at 4 GHz to
   2.0 dB with nothing fitted, and the only FR2 measurement available cannot
   adjudicate because its own repeat scatter exceeds the disagreement.
