@@ -445,6 +445,33 @@ file was saved before that loop ran, and it saved with the tiles hidden so it
 rendered an empty sky. Both are fixed and verified by rendering from the saved
 file rather than by inspecting its metadata.
 
+## Reproducing any of this
+
+Everything below regenerates from the repository plus the tile cache under
+`data/tiles/`, which is gitignored because it is 200 MB of GLB but is stable and
+per tile cacheable, so a rerun at a different radius refetches only what is new.
+
+```
+python screen_cities.py                                   # the screening table
+python download_inhouse_tiles.py --lat .. --lon .. --radius-m 130
+python render_showcase.py --site korenmarkt --blend       # figures 01 to 06
+blender --background --python render_city_gallery.py      # every city, figure 11
+python make_city_sheet.py                                 # figure 11 composed
+python make_remesh_panel.py                               # figure 10 composed
+python run_exposure.py                                    # figures 14
+python run_masonry_grating.py && python run_masonry_spectrum.py
+python run_foliage_study.py                               # figure 12
+python remesh_support_mesh.py                             # the mesh study meshes
+```
+
+The two showcase blends carry one named camera per shipped figure, so switching
+camera in Blender reproduces a figure rather than approximating it.
+`korenmarkt_mesh_study.blend` carries the three candidate support meshes as
+separate collections plus both the pedestrian crop camera and the orbit camera
+that figure 10 uses.
+
+The suite is 697 passing and 1 skipped, up from 570 at the start of the night.
+
 ## Still open
 
 - Binding the semantic posterior into the exposure run, and measuring how far the
