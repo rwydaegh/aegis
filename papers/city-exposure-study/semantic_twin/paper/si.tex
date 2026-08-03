@@ -578,6 +578,18 @@ cameras at every square with a station set sit within 29 to 62\,m of their own
 centroid, against a crop that reaches 250\,m, so most of a crop is roofs and rear
 elevations no street-level capture in this study has seen.
 
+% ======================================================================
+% LAW CHANGE NOTE, 2026-08-03. See ../docs/LAW_CHANGE.md.
+% The illumination law is being replaced. Sites move onto facade tips read off
+% the geometry, so the height bands and the range bands go, and with them the
+% rooftop and street small cell models as defined.
+% In this section: every Monte Carlo floor quoted per illumination model is a
+% floor on an integral against the old weights, so the rooftop and street
+% columns need recomputing. The isotropic column stands. The pairing argument,
+% the seed assignment scheme and the standpoint sampling result are about the
+% experimental design rather than about Q, and they stand.
+% Numbers unchanged on purpose. The replacement's own numbers are provisional.
+% ======================================================================
 \section{Seeds and ray counts}
 \label{sec:si-seeds}
 
@@ -827,6 +839,12 @@ carries roughly 0.13\,dB rms of standpoint sampling uncertainty, which does not
 threaten a 3.71\,dB spread across eleven squares but does threaten any claim
 that two adjacent squares differ.
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The rooftop macro and street
+% small cell column pairs of tab:si-sites are stale, as are the spreads read
+% off them and the two paragraphs that explain the ordering reversal between
+% isotropic and street. The isotropic pair, the sky fraction column, the ground
+% datum column and the walk column stand. The datum shifts attributed to Krakow
+% and Toulouse stand as a story and need their directional decibels redone.
 \section{The eleven squares, one by one}
 \label{sec:si-sites}
 
@@ -998,6 +1016,12 @@ every other square, which is why the eleven-square comparison runs on the
 geometric assignment and the image comparison is reported separately at one
 square.
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The crop radius sweep is per
+% illumination model, and the rooftop and street radii set the operating point,
+% so the choice of 250 m has to be measured again under the new law. The 60 m
+% isotropic radius and the sky fraction column stand. The surface interaction
+% sweep stands, because truncation is measured as a fraction of escaping power
+% before any weighting, though its per-model decibel columns move.
 \section{Convergence sweeps}
 \label{sec:si-convergence}
 

@@ -1,5 +1,10 @@
 # Reconciling paper.tex and methods.tex
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** This file predates the law change,
+> so every difference it settles between the two documents was settled under the old
+> height and range bands. The isotropic and transport rows still hold, and the rooftop and
+> street rows are a record of a superseded run rather than a live claim.
+
 Date 2026-08-03. Both files were owned for this pass. The duplicated methods body
 now lives in one file, `paper/body.tex`, which both documents `\input`.
 
@@ -43,6 +48,12 @@ JSON disagreed, the JSON won.
 | S_inc definition | dropped | given | needed, S_inc is used in eq. (sab) | paper.tex |
 | SAM 3 citation | collapsed to `\cite{sam}` | split, with a `\todo` | correct, `CITATIONS.md` forbids inventing a SAM 3 entry | paper.tex |
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The visible-direction check, the
+> street diffraction uplift, the 2 GHz street median, the worst standpoint uplift, the
+> rooftop crowd loss and the absorber triple are all weighted by the old bands. Those rows
+> are stale as numbers, though which file was behind is a separate question that still
+> holds, and the remaining rows are transport, notation or editorial.
+
 ### The 0.44 versus 0.42 case is worth recording
 
 `WHY_NOT.md` line 428, the stated source, supports methods.tex. It is not a
@@ -58,6 +69,11 @@ plots, what `FIGURES/README.md` and `SPINE.md` document, and what the validation
 percentages in the same paragraph already use. Mixing 3.70 % (56-based) with
 0.44 dB (60-based) would have been incoherent. Both files now say which
 population each median is over.
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The four standpoints whose street
+> direct term is exactly zero, and therefore both medians compared here, exist only under
+> the old street band. The numbers are stale, but the convention question, which
+> population a median is taken over, returns in the same form under any law.
 
 ## Findings from the provenance audit that were applied
 
@@ -115,6 +131,13 @@ Beyond the drift above, these were fixed in the shared body or in `paper.tex`.
   `ITU-R P.2040-4` is 2025 in both bibliographies.
 - **Captions.** Figure 25's depth bars are stated as not additive. Figure 16's
   axis clip at the 1st and 99.5th percentiles is stated.
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The range cap bullet is entirely a
+> creature of the old range band, and the bullets on medians presented as bounds carry
+> rooftop and street values such as the dielectric bracket span and the cross-validation
+> agreement. Those are stale, while the configuration table, the power shares, the
+> coverage and continent corrections, the enclosure ranking and the naming fixes survive,
+> since none of them is weighted by an illumination model.
 
 ## Applied from the supplementary-information pass
 
@@ -182,3 +205,9 @@ pages, `methods.pdf` is 11 pages.
   must not be guessed at. It needs the real citation before submission.
 - **The two torn `city250_corrected` files** should be re-run before submission.
   Not attempted here, per instruction.
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The beamforming axes bullet and the
+> Madrid element effect are rooftop and street quantities under the old bands, so both are
+> stale. The coarse beam grid, the orphans, the mislabelled `published_run` field, the
+> SAM 3 citation and the torn files are about what was run and what was written down, and
+> they survive the change.

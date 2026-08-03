@@ -54,6 +54,12 @@ against 11.9 dB. Those are the UMi numbers, for base stations *below* clutter,
 and they are a different comparison. The paper's rooftop argument needs Table V,
 which is what the text uses.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The sentence this entry supports
+> divides the two deployment classes by height above the roofline, which is the old
+> rooftop band. The citation itself survives and is correctly verified, but the claim
+> built on it has to be rewritten, because the new law puts sources on facade tips and has
+> no mast above a roofline.
+
 `duchizhik` supports its claim. Table 2 of the paper gives a fitted corner loss
 of 2.2 dB for the diffraction model against 0 dB for the scattering model, and
 the body reads "This may also be compared to the theoretical edge diffraction
@@ -103,7 +109,7 @@ fix is already applied in `paper.tex`.
 | `veach` | verified | none | Read from `lit/veach_1997_thesis.pdf`. Stanford PhD dissertation, December 1997, title exact. Copyright page reads 1998, which is normal for a December filing and does not change the citation year. |
 | `tregenza` | verified | `10.1177/096032718301500201` | *Lighting Res. Technol.* 15(2):65-71, 1983. |
 | `sloan` | verified | `10.1145/566570.566612` | SIGGRAPH 2002 proceedings, pp. 527-536. The same paper also has a *ACM Trans. Graph.* 21(3) record at `10.1145/566654.566612` with identical pagination, so either form is citable and the proceedings form as written is correct. |
-| `itu2040` | corrected | none | Number was right, title and year were not. The study uses P.2040-4, which `config/itu_p2040_4.json` and `METHOD.tex` both name explicitly. P.2040-4 is 09/2025 and is titled "Effects of building materials and structures on radio-wave propagation in the range of 1 MHz to 450 GHz". The entry carried the P.2040-3 title and the P.2040-3 year. Both fixed. Verified against the in-force PDF downloaded from `itu.int`. |
+| `itu2040` | corrected | none | Number was right, title and year were not. The study uses P.2040-4, which `config/itu_p2040_4.json` and `METHOD.tex` (now `../archive/METHOD.tex`) both name explicitly. P.2040-4 is 09/2025 and is titled "Effects of building materials and structures on radio-wave propagation in the range of 1 MHz to 450 GHz". The entry carried the P.2040-3 title and the P.2040-3 year. Both fixed. Verified against the in-force PDF downloaded from `itu.int`. |
 | `sam` | verified | `10.1109/ICCV51070.2023.00371` | ICCV 2023, Kirillov et al. See the flag above about SAM 3. On pagination: the entry's 4015-4026 is the CVF open-access proceedings range and is the range the paper's own BibTeX gives, while IEEE Xplore paginates it 3992-4003. The entry names the IEEE/CVF proceedings, so 4015-4026 is defensible and was left alone. |
 | `ericsson` | verified | none | Read from `lit/3GPP_R1-160846_...pdf`. Cover reads "3GPP TSG-RAN WG1 #84, St Julian's, Malta, February 15-19, 2016", document R1-160846, source Ericsson, "Street Microcell Channel Measurements at 2.44, 14.8 & 58.68 GHz". The claim it supports is in the document: excess loss frequency dependence of "3.5 Log(f) for RX1" and "3.0 Log(f) for RX2", with the tdoc's own conclusion that "Reflected/scattered paths dominates over diffraction in NLOS". |
 | `mmmagic` | verified | none | Read from `lit/mmMAGIC_D2.2_...pdf`. Document number H2020-ICT-671650-mmMAGIC/D2.2, delivered 12/05/2017. The deliverable title is "Measurement Results and Final mmMAGIC Channel Models" as written. Its internal document title differs, "Measurement Results and Final Channel Models for Preferred Suitable Frequency Ranges", which is a quirk of the cover page and not an error in the entry. The claim it supports is present: at the delay of the around-corner diffraction path "no signal above the noise" was found, and the strongest peak matched "four specular reflections off exterior walls". |

@@ -199,6 +199,38 @@ proofs that nothing else exists.
 \input{body}
 
 
+% ======================================================================
+% LAW CHANGE NOTE, 2026-08-03. See ../docs/LAW_CHANGE.md, which is the index
+% and carries the full survive-against-recompute table.
+%
+% The "corrected illumination law" named in the next sentence is being
+% replaced in turn. Both the law it corrected and the correction itself
+% describe the network by a height band above the head and a horizontal range
+% band, and both are going.
+%
+% The replacement reads the network off the geometry. Sites sit on facade
+% tips, the top edge where a wall meets the sky, so there is no mast, no
+% height band and no range cap, and each azimuth carries one source distance
+% taken from the skyline rather than a distribution over one.
+%
+% Why: the old law's range integrand is logarithmic in the outer cap, so the
+% 250 m cap set the answer rather than bounding it. Worth 7.8 dB across the
+% defensible span of the cap, against a 4.93 dB between-square spread.
+%
+% WHAT THIS MEANS FOR SECTION V:
+%   Every number in a rooftop or street-cell column needs recomputing.
+%   Every isotropic number stands. The change does not touch isotropic.
+%   The geometry and material results stand: panorama coverage, the bounce
+%   budget, the mesh and datum work, the material family bound, the transport
+%   check against Sionna.
+%   The "Illumination changes the order" subsection compares two laws that
+%   are now both superseded.
+%
+% Nothing has been edited. These are the record of runs that happened. The
+% replacement's own numbers are provisional, a first closed form for it has
+% already turned out to be an approximation, and none of them appear here.
+% ======================================================================
+
 \section{Results}
 \label{sec:results}
 
@@ -252,6 +284,15 @@ converged crop even where the overview image shows a smaller visual crop.
   \label{fig:city-scenes}
 \end{figure*}
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. Stale: the 4.93 dB rooftop and
+% 9.58 dB street between-square spreads, their within-square counterparts, the
+% counts of squares that exceed them, and both rank correlations against
+% isotropic. Stands: the 3.71 dB isotropic spread, the 3.92 dB isotropic
+% within-square median, the six-of-eleven count, and the ground datum story.
+% The claim itself, that one number per square loses much of the variation,
+% has been re-measured under a provisional form of the new law and held, but
+% that form is an approximation rather than the law, so treat the claim as
+% unconfirmed and do not carry any number from that measurement.
 \subsection{Eleven squares}
 
 The square changed the exposure ratio by several decibels, but one number per
@@ -312,6 +353,16 @@ ordering should be read together with that result rather than on its own.
   \end{tabular}
 \end{table}
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. This whole subsection compares
+% two laws that are both now superseded, so every number in it is a comparison
+% of old against older. That includes the 5.67 and 3.98 dB Korenmarkt shifts,
+% the eleven-square shift range, the Spearman and Kendall figures, the New York
+% and Tokyo rank moves, and the below-5-degree share that explains them. The
+% last of those is specific to a 1/sin^3 law with its mass at its own support
+% floor, and the new law has no support floor of that kind, so the mechanism
+% has to be found again rather than restated. What survives is the finding, that
+% the choice of illumination law moves the answer more than the choice of city
+% does, and the change strengthens it rather than weakening it.
 \subsection{Illumination changes the order}
 
 The corrected illumination law changed levels and city order on identical rays.
@@ -339,6 +390,14 @@ towers, which is where the earlier law put most of its weight. The corrected law
 is therefore close to a
 level shift for nine or ten squares, but it is not one at the top of the ranking.
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The conclusion survives. The
+% photographs establish which family a square belongs to, masonry against
+% glass and metal, rather than tune a permittivity, and that is a statement
+% about material contrast which does not turn on the shape of Q. What needs
+% recomputing is every rooftop and street-cell decibel here, and also the
+% within-square spreads the shifts are quoted against, since those are per
+% illumination model too. The ratio is what has to be redone, not the shift
+% alone. The isotropic column and the metal result stand.
 \subsection{Material discrimination bounds the claim}
 
 Two image-based material compositions that assign visibly different facade
@@ -405,6 +464,16 @@ because the mesh alone does not identify that change. Material discrimination
 therefore sets the boundary of the cross-city claim: the reported comparison
 applies to masonry squares.
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The structural results survive:
+% full digital maximum ratio transmission cancels exactly, the inequality is
+% one sided, a codebook is the same axis rather than a second one, and a fixed
+% element pattern survives under every policy a real network runs. Every
+% number needs recomputing: the aperture table, the direct-path floor, the
+% codebook column, the element taper at the rooftop median elevation, the
+% population average of the element, and the Kendall ordering figures. The
+% element case is the sharpest, because the population it is averaged over is
+% the old law's own measure, so both the taper and the elevations it is
+% evaluated at move together.
 \subsection{Beamforming depends on what the beam follows}
 
 Full digital maximum ratio transmission cancels from the ratio exactly. The
@@ -500,6 +569,16 @@ order, reversing no street pair and two rooftop pairs at 0.58\,dB or less. The
 ordering reported here is therefore an ordering under the stated illumination law
 with no antenna, and it is not invariant to what the network points.
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The mechanism survives whole: a
+% crowd is opaque along the horizon and transparent above about ten degrees,
+% the facades have already redistributed the power before any crowd sees it,
+% and the absorber control shows a crowd is nearly invisible to the isotropic
+% model because it reflects rather than because it fails to block. The
+% isotropic column stands. What needs recomputing is the rooftop and street
+% losses, the absorber pair for those two models, and both the sent and the
+% arriving shares below five degrees, since the sent share is a property of
+% the old law and the failed factor-of-nine prediction is built on it. The
+% prediction has to be re-derived before it can be reported as failing again.
 \subsection{Bystanders alter the arriving distribution}
 
 Geometry predicts strong elevation selectivity for a crowd. A standing adult
@@ -530,6 +609,14 @@ with roulette off. The crowd arm was retraced at that budget on the same mesh,
 the same measured datum and the same 12 standpoints, and these paired shifts
 moved by at most 0.03\,dB from the earlier six-interaction run.
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The 60 m isotropic radius
+% stands. The 100 m rooftop and 200 m street radii are stale, and with them the
+% argument that the common 250 m operating point is set by the street model, so
+% the operating point has to be measured again from scratch. Do not assume
+% 250 m carries over and do not assume it shrinks. The deployment range cap
+% paragraph sweeps a parameter the new law does not have: keep it as the
+% diagnosis that a logarithmic cap sets the answer, which is the reason for the
+% change, and do not carry it as a sensitivity band.
 \subsection{Crop radius is measured}
 
 The crop radius follows from a convergence trace rather than a visual choice.
@@ -559,6 +646,18 @@ after the mesh crop has converged.
   \label{fig:crop-convergence}
 \end{figure}
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The framing survives and is in
+% fact the reason the law could be swapped at all: the ratio is a response of a
+% mesh to a stated source distribution, and another hypothesis can be applied
+% without rebuilding anything. What changes is that the stated distribution is
+% about to be a different one. Stale in the threats list: the diffraction
+% uplift for rooftop and street, the Monte Carlo floors for those two models,
+% the polarisation measure shares of 7.8 and 0.4 percent, the seed replica
+% figure, and any threat sized against a rooftop or street spread. Standing:
+% the isotropic entries, standpoint sampling as the dominant error term, the
+% truncation bound, the diffuse scattering concern, and the image evidence
+% scope limit. The transport check against an independent solver stands, and
+% the sentence saying it cannot test the illumination law matters more now.
 \section{Discussion and threats to validity}
 \label{sec:discussion}
 

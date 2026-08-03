@@ -88,6 +88,12 @@ Rows marked **M** are inside the copy of `methods.tex` that lives in `paper.tex`
 | 51 **M** | preposition-final pointing | "and that is the quantity the results lead with" | "and the results lead with that contrast" |
 | 52 **M** | kiss simple verbs | "one trace collapses to an elevation histogram" | "one trace reduces to an elevation histogram" |
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** Rows 11 to 13 and row 40 rewrite
+> sentences that describe the old law, its eleven-city shifts, the earlier rooftop answer
+> and the street model's mass near the horizon. The style rulings survive and apply to
+> whatever replaces those sentences, but the before-and-after text in those four rows is a
+> record of prose that is going away.
+
 ## Two mechanical passes, applied document-wide
 
 Both fix a split that ran exactly along the methods/results seam, so a reader

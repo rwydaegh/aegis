@@ -1,5 +1,10 @@
 # Provenance of every number in paper.tex and methods.tex
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** This file predates the law change,
+> so every rooftop and street number traced below was checked against the old height and
+> range bands. Rows keyed to those two models are a record of a superseded run, and rows
+> that rest on geometry, on transport, or on the isotropic model are still live claims.
+
 Audit date 2026-08-03. Read-only. Nothing in `paper.tex` or `methods.tex` was changed.
 
 Every numeric claim in `paper/paper.tex` and `paper/methods.tex` was traced to a file
@@ -189,6 +194,13 @@ The same substitution appears in the A6 paragraph: "Against a spread of 8.1\,dB 
 single square, 0.15\,dB changes nothing." The 8.1 dB is from `WHY_NOT.md` and is a walk
 population figure. The published Korenmarkt rooftop within-square spread is 6.39 dB.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The rooftop and street entries of
+> every triple here, including the 3.9 / 8.4 / 16.7 dB spreads and the worst marble and
+> plasterboard standpoints, are weighted by the old bands and have to be recomputed. The
+> isotropic entries survive, and so does the conclusion that the photographs establish a
+> family of materials rather than tune a permittivity, because that rests on the
+> comparison being paired inside one configuration.
+
 ### 5. The deployment range cap swings are quoted over 50 to 500 m and were computed over 100 to 400 m
 
 `paper.tex` line 1430: "Sweeping it from 50 to 500\,m changed the median absolute ratio
@@ -219,6 +231,12 @@ the paper does not name.
 Note also that this whole sweep is harvested at 40 standpoints per site
 (`locations_per_site` in `sensitivity.json`), not 80, and the file's `published_run`
 field still says `city250_corrected`.
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The cap sweep exists only because
+> the old law described the network with a range band, so the swings, the contrast shift,
+> the endpoint Spearman and the rank changes are all read off that band. The whole finding
+> is stale, because the new law carries one source distance per azimuth and has no cap to
+> sweep.
 
 ### 6. The independent-tracer cross check is not the statistic the paper says it is, and its quoted floor is taken from a configuration that was not shipped
 
@@ -256,6 +274,12 @@ configuration is `city250_corrected`, not the published `city250_L3` at three
 interactions. Materials and mesh do match the published run exactly, which I checked
 class by class against the `city250_L3_korenmarkt` manifest.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The rooftop and street columns of
+> both tables, and the 0.25 and 0.16 dB agreement that is the worst of the three models,
+> are weighted by the old bands. The check itself survives, because it compares two
+> tracers on the same transport, but the directional columns have to be rerun before they
+> can be quoted again.
+
 ### 7. The headline standpoint-sampling numbers are not reproducible from the files on disk
 
 `paper.tex` gives per-city median shift rms of 0.128 / 0.061 / 0.188 dB over the eight
@@ -283,6 +307,12 @@ both legs were traced at `max_bounces: 4, roulette_start: 3`, so the sampling un
 is measured at an interaction budget the published run does not use. The corrected-to-L3
 pair gives 0.124 / 0.067 / 0.173, close enough that the conclusion survives.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The second and third entries of
+> each triple, both for the rms and for the largest changes, are rooftop and street values
+> under the old bands. Standpoint sampling being the dominant error term is a statement
+> about where a pedestrian stands and survives as a mechanism, but the two directional
+> numbers move and the torn New York file has to be re-traced either way.
+
 ### 8. The bystander numbers in methods.tex are a whole generation behind, and two six-interaction leftovers survive in paper.tex
 
 Everything in `outputs/bystander_study/` is the three-interaction retrace
@@ -305,6 +335,12 @@ budgets inside one comparison.
 coupling section: "cost a median 1.4\,dB under the street model and 1.0\,dB under the
 rooftop model" (should be 1.07), and the arriving share "0.19" (stored value 0.18473,
 which rounds to 0.18. 0.1850 was the six-interaction value).
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The rooftop and street crowd
+> losses, and the rooftop and street entries of the absorber triples, are weighted by the
+> old bands. Those two columns are stale, while the isotropic loss, the arriving shares
+> and the finding about splicing two interaction budgets are transport and bookkeeping and
+> survive.
 
 ### 9. A ratio in the Discussion is contradicted by a floor the same paper quotes
 
@@ -336,6 +372,12 @@ disagreements are 1.29, 6.44 and 23.05 percent. `paper.tex`'s "median disagreeme
 0.19\%, 1.14\%, and 3.70\%" and "worst ... 1.29\%, 6.44\%, and 23.05\%" are both exact.
 This is the one check the paper offers as an independent code path, so overstating it is
 material.
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The rooftop and street columns of
+> this table are the diffraction mask compared against the tracer under the old bands, and
+> the street column is large because that band put nearly all its measure near the
+> horizon. Those two columns are stale, the isotropic column survives, and the point that
+> a worst case is being presented as a bound holds under any law.
 
 ### 11. The monostatic paragraph reads as pooled power weighting and is a median across standpoints, and the closed form it opens with has no artefact
 
@@ -426,6 +468,12 @@ and "full digital maximum ratio transmission" maps to the `*_element` columns, n
 `*_matched` columns, which are exactly invariant. A reader who mapped it to `_matched`
 would find the "two rooftop pairs" claim contradicted.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The reversed pair gaps, the axis
+> widths, the headline spreads they are set against and the Kendall values are all rooftop
+> and street quantities under the old bands. All of them are stale, because an antenna
+> pattern is applied to the angular density the law sets, and the mismatch of populations
+> the finding reports has to be checked again on the new numbers.
+
 ### 15. Configuration drift, collected
 
 Findings 3, 4, 6, 7 and 11 are each an instance of one pattern, so here is the whole
@@ -506,6 +554,12 @@ The "+50 dB" case is worse than an orphan. `ARTEFACT_CODEBOOKS = (8, 16, 32)` in
 never swept. The paper says they "were computed and excluded". They were excluded a
 priori.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The share of rooftop and street
+> measure near 24 degrees, the rooftop and street Monte Carlo floors and their rescaled
+> versions, and the exponent fitted to the range cap all read off the old bands. Those
+> rows are stale, while the isotropic floor, the seed bookkeeping, the missing half-space
+> closed form and the beam grid that was never swept are unaffected by the law.
+
 ### 17. Smaller items, in descending order
 
 **"a factor of 3.1 to 5.0" is a linear power ratio attached to decibel medians.** The
@@ -583,6 +637,13 @@ coverage and the exclusion story are from `korenmarkt_130m_bounce_evidence.json`
 file. `methods.tex` states this ("Re-registering the same camera for the wider binding
 takes it to 1.000"). `paper.tex` drops the resolution and keeps only the exclusion.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** Several items here belong to the
+> old law: the 3.1 to 5.0 frequency factor, the contrast sentence that is rooftop only,
+> the fitted range cap exponent, the element taper at the top of the rooftop band, and the
+> element effect at Madrid. Those are stale, while the crowd count and its walkable
+> density, the two loose geometric descriptions, the bibliography year and the excluded
+> station survive.
+
 ---
 
 ## paper.tex against methods.tex
@@ -609,6 +670,12 @@ generation or one configuration behind.
 | delay spread | "recorded per standpoint but is not analysed in this paper" | "Both are reported alongside $\chi$" | `mean_excess_delay_ns` is stored per standpoint | non-numeric contradiction |
 | eighth station | excluded, no resolution given | excluded, re-registration to 1.000 given | 250 m run has no failing station | methods.tex more complete |
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The visible-direction check, the
+> street diffraction uplift, the 2 GHz street median and the rooftop crowd loss rows are
+> all weighted by the old bands. Those four rows are stale as numbers, though the verdict
+> that `methods.tex` is a generation behind still holds, and the power shares, the
+> roulette rows and the depth semantics survive.
+
 ---
 
 ## Full provenance table
@@ -633,6 +700,12 @@ Arithmetic is shown for every D.
 | open-ground level, street | 0.010 to 4.1 W/m$^2$ | D | same with $\oint = 65.663$ m, slab 4 m: 0.010327 to 4.131 |
 | "nearly three orders of magnitude" | | D | $4.131/0.00749 = 551$, i.e. 2.74 decades |
 | ICNIRP reference level | 10 W/m$^2$ | T | ICNIRP 2020, general public, 2 to 300 GHz |
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The rooftop and street entries of
+> the two spread triples, the 1.15 dB shortfall, the law residual rms, the diffraction
+> uplifts and both open-ground power density rows are computed on the old height and range
+> bands. Those are stale, while the standpoint and square counts, the isotropic entries of
+> each triple and the ICNIRP reference level survive.
 
 ### Assumptions
 
@@ -664,6 +737,13 @@ Arithmetic is shown for every D.
 | A7 pseudo-Brewster | $66^\circ$ incidence, tens of dB | T | 66.435$^\circ$ for concrete, TM minimum $-35.0$ dB |
 | A7 band share | 7.8% rooftop, 0.4% street | D, O | $23.6\pm5^\circ$ gives 7.837% and 0.403%. The paper's stated $24^\circ$ centre gives 7.43% and 0.373%. No artefact under `outputs/` |
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** A1's closest source is the lower
+> edge of the street range band, and the A4, A6 and A7 rows integrate the old angular
+> density: the shares below 5 degrees, the uplift medians, the 2 GHz medians, the worst
+> street standpoint, the fully occluded standpoints and the band shares near 24 degrees.
+> Those are stale, while the far-field arithmetic, the phase turn, the cell count, the
+> mask grid, the diffracted amplitude and every literature check survive.
+
 ### Configuration and illumination model
 
 | claim | value | verdict | source |
@@ -681,6 +761,13 @@ Arithmetic is shown for every D.
 | element taper at median elevation | 0.26 dB at $9.5^\circ$ | D | 3GPP TR 38.901 Table 7.3-1, $12(9.5/65)^2 = 0.2563$. Median of the rooftop measure on $d\Omega$ recomputed as $9.4969^\circ$ |
 | element taper at band top | 10.2 dB at $60^\circ$ | D | $12(60/65)^2 = 10.2249$. At the true top $60.11^\circ$ it is 10.264 |
 | off-axis suppression | 20 to 25 dB | O | `BEAMFORMING.md` only. The code's own 8x8 model gives $-17.1$ dB mean at $20^\circ$ |
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** This block is the old law itself:
+> the two height bands, the two range bands, the two elevation supports derived from them,
+> and the element taper evaluated at the median and the top of the rooftop support. Every
+> row from the rooftop band down is stale, while the crop radius, the standpoints per
+> square, the grid spacing, the sky filter, the candidate counts and the head height are
+> untouched by the change.
 
 ### Estimator and bounce budget
 
@@ -776,6 +863,13 @@ Arithmetic is shown for every D.
 | endpoint Spearman and rank changes | 0.81, 7 of 11 | T, rooftop only | `rooftop.contrast.spearman_endpoint_to_endpoint` = 0.8091, `rank_changes` = 7, `max_rank_move` = 5. Street gives 0.8364 and 9 |
 | $\rho_+^{-1.2}$ | $-1.2$ | O | no fit exists in `sensitivity.json` or its generator. My own fit gives $-1.283$ on the median curve and $-1.287$ as the median of per-site exponents over 100 to 400 m, so $-1.3$ is the honest round |
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The rooftop and street cells of the
+> summary table, the datum-correction and Spearman rows, the law shift rows, the material
+> and bracket rows apart from their isotropic entries, the whole steering and element
+> block, the crowd losses, and every range cap and contrast row rest on the old bands.
+> Those are stale, while the crop convergence, the crowd geometry, the isotropic entries
+> and the arriving shares survive, since they come from geometry or transport alone.
+
 ### Discussion
 
 | claim | value | verdict | source |
@@ -801,6 +895,12 @@ Arithmetic is shown for every D.
 | earlier headline | 0.298 dB | T | same file, `chi_rooftop_fixed_height.distribution_median_shift_db` = 0.29798, and the file's own `law_note` confirms it is the superseded law |
 | crowd retrace bound | at most 0.03 dB | O | the six-interaction run was overwritten. Only a 2 dp stdout log survives |
 | honesty table, all rows | | T | each row traces to the corresponding result above |
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The rooftop and street entries of
+> the sampling rms and the largest changes, the "7 to 47 times" ratio and its rescaled
+> floors, the cross-validation rows and the superseded street value all rest on the old
+> bands. Those are stale, while the monostatic block survives untouched, because a
+> monostatic return has no external network in it at all.
 
 ---
 

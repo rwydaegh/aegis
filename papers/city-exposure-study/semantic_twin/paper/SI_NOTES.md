@@ -52,6 +52,12 @@ per-square numbers behind the headline figure.
 - Table S7: per square, triangles, ground datum, walk candidates, median $\chi$
   and 5th-to-95th spread under the three illumination models, median sky fraction.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** Table S7 reports median $\chi$ and
+> a spread under each of the three models, so two of its three model blocks are built on
+> the old height and range bands and are stale. Its triangle counts, ground datum, walk
+> candidates, sky fraction and isotropic block survive, because they come from the
+> geometry alone.
+
 **S5 Material assignment.** The geometric class rule with its two thresholds,
 the four-class table with ITU-R rows and RMS heights, an honest paragraph about
 where the roughness numbers come from, and the per-square class area split.
@@ -86,6 +92,12 @@ than the body has, plus the power-at-depth budget.
 - **A ray-count convergence curve.** None exists at the corrected illumination
   law over more than one standpoint. See below.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The second bullet keeps the
+> deployment range-cap sweep out of the SI, and that sweep, its scaling exponent and its
+> reordering exist only because the old law had a range band. The exclusion is stale in
+> the sense that the result it defers to the body is going away, and the other exclusions
+> stand as written.
+
 ## Numbers that could not be sourced, and are stated as not reported
 
 Each of these is either absent from the SI or is carried with an explicit note
@@ -114,6 +126,11 @@ that it has no artefact behind it.
 8. **Any per-standpoint error bar in any location file.** None exists. The SI says so.
 9. **Any external ground-truth check on any pose.** None exists. S1 gives three
    internal tests and claims nothing beyond them.
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** Item 7, the missing fit statistic
+> for the deployment scaling, belongs to the old law's range band. It is stale, because
+> the new law has no cap to fit, and the other eight items are registration, seed and
+> image work that the change does not touch.
 
 ## Where the JSON and the prose disagree, and which the SI follows
 

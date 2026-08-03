@@ -44,6 +44,12 @@
   bound, and the measured bounce budget. All three carry claims that were
   previously left in prose.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** Several bullets here are rooftop
+> and street results: the eleven-city law comparison, the standpoint sampling triples, the
+> rooftop half of the material bracket, the aperture sweep, the crowd result and the
+> deployment-cap result. Those are stale, while the isotropic entries, the bounce budget,
+> the four-city visibility experiment and the abstract's structure survive.
+
 ## Still open
 
 - The nearest-grid codebook table in `BEAMFORMING.md` still contains
@@ -79,6 +85,12 @@
   The current `methods.tex` now contains a second-tracer check of the reflected
   term. It resolves no disagreement against its 0.24 to 0.46 dB Monte Carlo
   floor. The paper includes this new check and its limits.
+
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** The street diffraction values, the
+> per-model worst sampling errors and the second-tracer floor are quoted one number per
+> illumination model, so their rooftop and street entries are stale. The power share, the
+> interaction budget and the truncated share items in the same list are transport and
+> survive.
 
 ## Build and layout
 
