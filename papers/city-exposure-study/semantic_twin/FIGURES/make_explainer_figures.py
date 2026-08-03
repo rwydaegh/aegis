@@ -33,6 +33,13 @@ from semantic_twin.propagation.directions import (  # noqa: E402
 
 OUT = pathlib.Path(__file__).resolve().parent
 
+#: Every one of these is placed at \textwidth in a two column IEEE float. A tight
+#: bounding box crops each drawing to a different width, LaTeX then stretches
+#: each one back to \textwidth by a different factor, and the type in them ends
+#: up at four different printed sizes. `save` fits the drawing to this width
+#: first, so a point size written here is the point size that prints.
+TARGET_W_IN = 7.16
+
 #: Rooftop class: antenna height above the pedestrian's head, and horizontal
 #: range. These are the numbers the shipped model carries.
 ROOF_H = (13.5, 43.5)
@@ -44,10 +51,31 @@ INK = "#1a1a1a"
 SKY = "#2f6fb5"
 WARM = "#d1622b"
 MUTED = "#8a8f98"
+PALE = "#c2c6cc"
 FILL = "#e8e4dc"
 
 
+def _fit_to_width(fig, target_in: float, rounds: int = 8, tol: float = 0.01) -> None:
+    """Grow or shrink the canvas until the cropped drawing is ``target_in`` wide.
+
+    Text is set in points and does not scale with the canvas, so scaling the
+    canvas is what sets the ratio of type to artwork. Two or three rounds are
+    enough, the loop is only there to be sure.
+    """
+    for _ in range(rounds):
+        fig.canvas.draw()
+        cropped = fig.get_tightbbox(fig.canvas.get_renderer()).width
+        if abs(cropped - target_in) < tol:
+            return
+        factor = target_in / cropped
+        width, height = fig.get_size_inches()
+        fig.set_size_inches(width * factor, height * factor)
+
+
 def save(fig, stem: str) -> None:
+    # savefig.bbox is "tight" with a 0.02 in pad on each side, so aim the drawing
+    # itself a little under the placed width.
+    _fit_to_width(fig, TARGET_W_IN - 2.0 * plt.rcParams["savefig.pad_inches"])
     for suffix in ("pdf", "png"):
         fig.savefig(OUT / f"{stem}.{suffix}", dpi=300)
     plt.close(fig)
@@ -74,7 +102,7 @@ def elevation_geometry() -> None:
     # The pedestrian, drawn small because the point is the sightlines.
     ax.plot([ped_x, ped_x], [0, head], color=INK, lw=2.2, solid_capstyle="round", zorder=4)
     ax.plot([ped_x], [head + 0.25], marker="o", ms=5, color=INK, zorder=4)
-    ax.text(-6, 7.0, "pedestrian,\nhead at 1.5 m", ha="right", va="bottom", fontsize=7.5, color=INK)
+    ax.text(-6, 7.0, "pedestrian,\nhead at 1.5 m", ha="right", va="bottom", fontsize=8.5, color=INK)
 
     # The pedestrian's own horizon, which is what every angle here is measured from.
     ax.plot([-18, 288], [head, head], color=MUTED, lw=0.9, ls=(0, (5, 4)), zorder=2)
@@ -84,7 +112,7 @@ def elevation_geometry() -> None:
         "the pedestrian's horizon: every angle in this study is measured from here",
         ha="center",
         va="top",
-        fontsize=7.5,
+        fontsize=8.5,
         color=MUTED,
         style="italic",
     )
@@ -137,7 +165,7 @@ def elevation_geometry() -> None:
             along * x,
             head + along * h + 1.6,
             f"{elev:.1f} deg",
-            fontsize=8.5,
+            fontsize=9.0,
             color=colour,
             ha="center",
             va="bottom",
@@ -148,7 +176,7 @@ def elevation_geometry() -> None:
             label,
             xy=(x, top + 1.0),
             xytext=label_xy,
-            fontsize=7.5,
+            fontsize=8.5,
             color=colour,
             ha="center",
             va="bottom",
@@ -157,8 +185,8 @@ def elevation_geometry() -> None:
 
     ax.set_xlim(-52, 292)
     ax.set_ylim(-9, 70)
-    ax.set_xlabel("horizontal distance from the pedestrian (m)")
-    ax.set_ylabel("height (m)")
+    ax.set_xlabel("horizontal distance from the pedestrian [m]")
+    ax.set_ylabel("height [m]")
     # Caption carries the message, see the note in the one ray figure.
     ax.set_aspect("equal", adjustable="box")
     ax.grid(False)
@@ -186,10 +214,16 @@ def deployment_box() -> None:
         ax.plot(d, d * np.tan(np.radians(elev)), color=MUTED, lw=0.8, ls=(0, (4, 3)), zorder=1)
         if ly is None:
             y = 306 * np.tan(np.radians(elev))
-            ax.text(308, y, f"{elev:g} deg", fontsize=7, color=MUTED, va="center", ha="left")
+            ax.text(308, y, f"{elev:g} deg", fontsize=8.0, color=MUTED, va="center", ha="left")
         else:
             ax.text(
-                ly / np.tan(np.radians(elev)), 51.5, f"{elev:g} deg", fontsize=7, color=MUTED, ha="center", va="bottom"
+                ly / np.tan(np.radians(elev)),
+                51.5,
+                f"{elev:g} deg",
+                fontsize=8.0,
+                color=MUTED,
+                ha="center",
+                va="bottom",
             )
 
     for (h0, h1), (d0, d1), colour, label, ly in (
@@ -204,7 +238,7 @@ def deployment_box() -> None:
             h0 + ly * (h1 - h0),
             label,
             color=colour,
-            fontsize=8.5,
+            fontsize=9.0,
             ha="center",
             va="center",
             zorder=4,
@@ -212,10 +246,10 @@ def deployment_box() -> None:
         )
 
     ax.set_xlim(0, 342)
-    ax.set_ylim(0, 57)
-    ax.set_xlabel("horizontal range from the pedestrian (m)")
-    ax.set_ylabel("antenna height above the head (m)")
-    ax.set_title("Where a mast is allowed to be", fontsize=9.5)
+    ax.set_ylim(0, 64)
+    ax.set_xlabel("horizontal range from the pedestrian [m]")
+    ax.set_ylabel("antenna height above the head [m]")
+    ax.set_title("a  where a mast is allowed to be", fontsize=9.5, loc="left")
 
     # The corner of the box that sets the steep edge, which is the whole answer
     # to why the band reaches 60 degrees.
@@ -223,8 +257,8 @@ def deployment_box() -> None:
     ax.annotate(
         "this one corner sets\nthe 60 deg upper edge",
         xy=(ROOF_D[0], ROOF_H[1]),
-        xytext=(150, 50),
-        fontsize=7.5,
+        xytext=(196, 58),
+        fontsize=8.5,
         color=INK,
         ha="center",
         va="center",
@@ -246,16 +280,16 @@ def deployment_box() -> None:
 
     ax.set_xlim(0, 62)
     ax.set_ylim(0, 1.14)
-    ax.set_xlabel("elevation above the horizon (deg)")
+    ax.set_xlabel("elevation above the horizon [deg]")
     ax.set_ylabel("illumination density,\npeak normalised")
-    ax.set_title("Where the power actually comes from", fontsize=9.5)
-    ax.legend(loc="upper right", frameon=False, fontsize=8)
+    ax.set_title("b  where the power actually comes from", fontsize=9.5, loc="left")
+    ax.legend(loc="upper right", frameon=False, fontsize=8.5)
     ax.axvspan(30, 62, color=MUTED, alpha=0.12, zorder=0)
     ax.text(
         46,
         0.50,
         "45 % of the rooftop band's\nsolid angle is out here,\nand it carries 3.3 %\nof the power",
-        fontsize=7,
+        fontsize=8.0,
         color=INK,
         ha="center",
         va="center",
@@ -318,14 +352,14 @@ def adjoint_idea() -> None:
                     d = (np.cos(np.radians(angle)), np.sin(np.radians(angle)))
                     t = _first_hit((sx, sy), d, buildings, far=58.0)
                     ax.plot([sx, sx + t * d[0]], [sy, sy + t * d[1]], color=WARM, lw=0.4, alpha=0.35, zorder=1)
-            ax.set_title("Forward: launch from every mast", fontsize=9.5)
+            ax.set_title("a  forward, launch from every mast", fontsize=9.5, loc="left")
             ax.text(
                 0,
                 -7.0,
                 "almost no ray finds the pedestrian,\nso almost all of the work is wasted",
                 ha="center",
                 va="top",
-                fontsize=7.5,
+                fontsize=8.5,
                 color=WARM,
             )
         else:
@@ -339,19 +373,21 @@ def adjoint_idea() -> None:
                 ax.plot(
                     [0, t * d[0]],
                     [1.5, 1.5 + t * d[1]],
-                    color=SKY if escaped else MUTED,
-                    lw=0.6 if escaped else 0.5,
-                    alpha=0.8 if escaped else 0.6,
+                    # Dark against pale rather than blue against grey, so the
+                    # split survives a greyscale print and a colourblind reader.
+                    color=SKY if escaped else PALE,
+                    lw=0.7 if escaped else 0.5,
+                    alpha=0.9 if escaped else 0.9,
                     zorder=1,
                 )
-            ax.set_title("Adjoint: launch from the pedestrian", fontsize=9.5)
+            ax.set_title("b  adjoint, launch from the pedestrian", fontsize=9.5, loc="left")
             ax.text(
                 0,
                 -7.0,
-                "every ray contributes. Blue reaches the sky, grey hits a wall.\nReciprocity turns an escape direction into an arrival direction",
+                "every ray contributes. Dark reaches the sky, pale hits a wall.\nReciprocity turns an escape direction into an arrival direction",
                 ha="center",
                 va="top",
-                fontsize=7.5,
+                fontsize=8.5,
                 color=SKY,
             )
 
@@ -409,8 +445,8 @@ def one_ray() -> None:
         "power reflectance $|\\Gamma|^2$, then go specular with\n"
         "probability $\\kappa$ and diffuse otherwise",
         xy=tuple(p1),
-        xytext=(60, 40),
-        fontsize=7.4,
+        xytext=(58, 41),
+        fontsize=8.5,
         color=WARM,
         ha="left",
         va="center",
@@ -419,8 +455,8 @@ def one_ray() -> None:
     ax.annotate(
         "bounce 2. $w$ is now 0.19",
         xy=tuple(p2),
-        xytext=(-44, 52),
-        fontsize=7.4,
+        xytext=(-44, 48),
+        fontsize=8.5,
         color=WARM,
         ha="left",
         va="center",
@@ -430,8 +466,8 @@ def one_ray() -> None:
         "escapes at $\\hat v$. Deposit $w$ into the bin for the\n"
         "direction it left $\\mathbf{x}$ in, weighted by $Q(\\hat v)$",
         xy=tuple(p3),
-        xytext=(36, 60),
-        fontsize=7.4,
+        xytext=(30, 55),
+        fontsize=8.5,
         color=SKY,
         ha="left",
         va="center",
@@ -440,16 +476,19 @@ def one_ray() -> None:
     ax.annotate(
         "launch at $\\hat u$ with $w = 1$",
         xy=(13, 1.5 + 13 * slope),
-        xytext=(-45, -10),
-        fontsize=7.4,
+        xytext=(-44, -8),
+        fontsize=8.5,
         color=SKY,
         ha="left",
         va="center",
         arrowprops=dict(arrowstyle="->", lw=0.7, color=SKY, shrinkB=3),
     )
 
-    ax.set_xlim(-46, 116)
-    ax.set_ylim(-15, 70)
+    # Trimmed to what is actually drawn. The old window left a third of the
+    # panel empty, which costs page height for nothing once the drawing is
+    # fitted to the full column pair.
+    ax.set_xlim(-46, 110)
+    ax.set_ylim(-12, 60)
     ax.set_aspect("equal", adjustable="box")
     # No figure level title: the caption carries it, and a title inside the
     # artwork duplicates the caption when the same PDF is placed in the paper.

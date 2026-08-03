@@ -23,7 +23,6 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
-import textwrap
 
 import numpy as np
 
@@ -51,10 +50,13 @@ DATUM_RULE = "lowest major walkable level"
 
 #: One colour per illumination model, shared with figure 15 so a reader who has
 #: seen one has learnt the other.
+#: The marker goes with the colour because red against purple is the pair a
+#: red-green colourblind reader loses first, and because none of the three hues
+#: separates in a greyscale print. Figure 15 uses the same three shapes.
 MODELS = (
-    ("chi_isotropic", "isotropic", "#1f77b4"),
-    ("chi_rooftop", "macro rooftop", "#d62728"),
-    ("chi_street_small_cell", "street small cell", "#9467bd"),
+    ("chi_isotropic", "isotropic", "#1f77b4", "o"),
+    ("chi_rooftop", "macro rooftop", "#d62728", "s"),
+    ("chi_street_small_cell", "street small cell", "#9467bd", "^"),
 )
 
 
@@ -130,9 +132,18 @@ def draw(rows: list[dict], manifest: dict, stem: str) -> None:
     reference = manifest["reference_s0_w_m2"]
 
     panel = axes[0]
-    for key, label, colour in MODELS:
+    for key, label, colour, marker in MODELS:
         values = np.array([row[key] for row in rows])
-        panel.step(*empirical_cdf(values), where="post", color=colour, lw=1.3, label=label)
+        panel.step(
+            *empirical_cdf(values),
+            where="post",
+            color=colour,
+            lw=1.3,
+            marker=marker,
+            markevery=18,
+            ms=3.2,
+            label=label,
+        )
         panel.step(
             *empirical_cdf(np.array([row[f"{key}_direct"] for row in rows])),
             where="post",
@@ -143,12 +154,14 @@ def draw(rows: list[dict], manifest: dict, stem: str) -> None:
     # Two standpoints in deep shadow drag the street model four decades left and
     # flatten every curve against the right edge, so the axis is clipped to the
     # pooled 2nd percentile and the outliers run off it.
-    pooled = np.concatenate([[row[key] for row in rows] for key, _, _ in MODELS])
+    pooled = np.concatenate([[row[key] for row in rows] for key, _, _, _ in MODELS])
     panel.set_xlim(np.quantile(pooled, 0.02) * 0.6, np.max(pooled) * 1.6)
     panel.set_xscale("log")
-    panel.set_xlabel("susceptibility $\\chi$ (free space = 1)")
+    # The body writes this quantity as the exposure ratio chi. Susceptibility is
+    # a word the paper never uses.
+    panel.set_xlabel(r"exposure ratio $\chi$")
     panel.set_ylabel("fraction of walk standpoints")
-    panel.set_title("environment side", fontsize=8.5)
+    panel.set_title("a  environment side", fontsize=8.5, loc="left")
     dotted = plt.Line2D([], [], color="0.35", lw=0.9, ls=(0, (1.6, 1.6)))
     handles, labels = panel.get_legend_handles_labels()
     panel.legend(
@@ -166,16 +179,23 @@ def draw(rows: list[dict], manifest: dict, stem: str) -> None:
     )
 
     panel = axes[1]
-    for key, label, colour in (
-        ("rooftop_peak_sab_w_m2", "peak $S_{ab}$", "#d62728"),
-        ("rooftop_mean_sab_w_m2", "mean $S_{ab}$", "#e58f7a"),
+    # Two tints of one hue is a colour-only split, so peak and mean also differ
+    # in dash pattern.
+    for key, label, colour, dashes in (
+        ("rooftop_peak_sab_w_m2", "peak $S_{ab}$", "#d62728", "-"),
+        ("rooftop_mean_sab_w_m2", "mean $S_{ab}$", "#e58f7a", (0, (4.5, 1.6))),
     ):
         panel.step(
-            *empirical_cdf(np.array([row[key] for row in rows])), where="post", color=colour, lw=1.3, label=label
+            *empirical_cdf(np.array([row[key] for row in rows])),
+            where="post",
+            color=colour,
+            lw=1.3,
+            ls=dashes,
+            label=label,
         )
     panel.set_xscale("log")
-    panel.set_xlabel(f"$S_{{ab}}$ [W m$^{{-2}}$] at $S_0$ = {reference:g} W m$^{{-2}}$")
-    panel.set_title("body side, rooftop illumination", fontsize=8.5)
+    panel.set_xlabel(r"$S_{ab}$ [W m$^{-2}$]")
+    panel.set_title(f"b  body side, rooftop, $S_0$ = {reference:g} W m$^{{-2}}$", fontsize=8.5, loc="left")
     panel.legend(loc="upper left", frameon=True, framealpha=0.92, facecolor="white", edgecolor="0.8")
 
     panel = axes[2]
@@ -184,12 +204,12 @@ def draw(rows: list[dict], manifest: dict, stem: str) -> None:
     level = 10.0 * np.log10(np.array([row["chi_rooftop"] for row in rows]))
     scatter = panel.scatter(x, y, c=level, s=11, cmap="viridis", linewidths=0.0)
     bar = figure.colorbar(scatter, ax=panel, fraction=0.046, pad=0.03)
-    bar.set_label("rooftop $10\\log_{10}\\chi$ [dB]", fontsize=7)
-    bar.ax.tick_params(labelsize=6.5)
+    bar.set_label(r"rooftop $10\log_{10}\chi$ [dB]", fontsize=7.5)
+    bar.ax.tick_params(labelsize=7.0)
     panel.set_aspect("equal")
     panel.set_xlabel("east [m]")
     panel.set_ylabel("north [m]")
-    panel.set_title("where on the walk", fontsize=8.5)
+    panel.set_title("c  where on the walk", fontsize=8.5, loc="left")
 
     for one in axes[:2]:
         one.set_ylim(0.0, 1.0)
@@ -199,20 +219,18 @@ def draw(rows: list[dict], manifest: dict, stem: str) -> None:
     isotropic = spread_db(np.array([row["chi_isotropic"] for row in rows]))
     rooftop = spread_db(np.array([row["chi_rooftop"] for row in rows]))
     street = spread_db(np.array([row["chi_street_small_cell"] for row in rows]))
-    figure.suptitle(
-        f"One square, {len(rows)} places to stand in it: Korenmarkt at {frequency_ghz:g} GHz",
-        fontsize=9.5,
+    # No figure title: the LaTeX caption says the same thing and a title inside
+    # the artwork would repeat it on the page.
+    figure.tight_layout()
+    print(f"  Korenmarkt at {frequency_ghz:g} GHz, {len(rows)} standpoints")
+
+    # The paragraph that used to sit under the axes was set at 6.2 pt, which no
+    # printed page carries. It belongs in the caption, so it is reported here.
+    print(
+        f"  spread 5th to 95th percentile: {isotropic:.1f} dB isotropic, {rooftop:.1f} dB rooftop, "
+        f"{street:.1f} dB street. {MAX_BOUNCES} surface interactions, corrected elevation law, "
+        f"ground datum {manifest['ground_datum_m']:.2f} m"
     )
-    caption = textwrap.fill(
-        f"Where a person stands in this one square is worth {isotropic:.1f} dB isotropic, {rooftop:.1f} dB under "
-        f"macro rooftop sites and {street:.1f} dB under street small cells, 5th to 95th percentile. One material "
-        f"prior over the whole scene, so the spread is urban form and not material. {MAX_BOUNCES} surface "
-        f"interactions, corrected elevation law, ground datum {manifest['ground_datum_m']:.2f} m measured over "
-        "the walk disc.",
-        width=165,
-    )
-    figure.text(0.5, 0.004, caption, ha="center", va="bottom", fontsize=6.2, color="0.35", linespacing=1.5)
-    figure.tight_layout(rect=(0.0, 0.085, 1.0, 0.98))
 
     for suffix in ("png", "pdf"):
         path = OUT / f"{stem}.{suffix}"

@@ -130,7 +130,7 @@ def panel_a(ax, closed: np.ndarray, opened: np.ndarray) -> None:
             xytext=(7, 4),
             textcoords="offset points",
             ha="left",
-            fontsize=6.8,
+            fontsize=7.4,
             color=SKY,
         )
     for x, y in zip(order, med_open):
@@ -140,7 +140,7 @@ def panel_a(ax, closed: np.ndarray, opened: np.ndarray) -> None:
             xytext=(-7, -8),
             textcoords="offset points",
             ha="right",
-            fontsize=6.8,
+            fontsize=7.4,
             color=WARM,
         )
 
@@ -148,7 +148,7 @@ def panel_a(ax, closed: np.ndarray, opened: np.ndarray) -> None:
         2.02,
         1.058,
         "the path comes back to the standpoint",
-        fontsize=7.2,
+        fontsize=7.6,
         color=SKY,
         ha="center",
         va="center",
@@ -157,7 +157,7 @@ def panel_a(ax, closed: np.ndarray, opened: np.ndarray) -> None:
         1.06,
         0.800,
         "the path keeps going,\nwhich is what the\nestimator actually does",
-        fontsize=7.2,
+        fontsize=7.6,
         color=WARM,
         ha="left",
         va="top",
@@ -167,7 +167,7 @@ def panel_a(ax, closed: np.ndarray, opened: np.ndarray) -> None:
         2.42,
         0.925,
         "surfaces the\nstandpoint\ncannot see",
-        fontsize=6.9,
+        fontsize=7.4,
         color=INK,
         ha="center",
         va="center",
@@ -190,7 +190,7 @@ def panel_b(ax, ev: dict) -> None:
         0.30,
         ev["pooled_walk_first"] + 0.026,
         f"{ev['pooled_walk_first']:.3f}, the first\ninteraction pooled over the\npublished 90 m walk",
-        fontsize=6.9,
+        fontsize=7.4,
         color=INK,
         ha="left",
         va="bottom",
@@ -198,14 +198,17 @@ def panel_b(ax, ev: dict) -> None:
     )
 
     labels = {1: "first interaction", 2: "second interaction", 3: "third interaction"}
+    # Three tints of one hue separate by lightness alone, which a small printed
+    # marker does not carry, so each depth also gets its own marker shape.
+    depth_marker = {1: "o", 2: "s", 3: "^"}
     for depth, colour in zip((1, 2, 3), DEPTH_INK):
         ax.plot(
             slots,
             ev["curves"][depth],
             color=colour,
             lw=1.6,
-            marker="o",
-            ms=3.6,
+            marker=depth_marker[depth],
+            ms=3.8,
             zorder=4,
             label=labels[depth],
         )
@@ -238,7 +241,7 @@ def panel_b(ax, ev: dict) -> None:
         -0.24,
         1.075,
         f"at a camera: {len(good)} of the 8 stations sit between {good.min():.3f} and {good.max():.3f}",
-        fontsize=6.9,
+        fontsize=7.4,
         color=INK,
         ha="left",
         va="center",
@@ -247,7 +250,7 @@ def panel_b(ax, ev: dict) -> None:
         f"the eighth, at {bad[0]:.3f}, excluded.\nA registration failure that\nthe skyline residual gate passed",
         xy=(0.07, bad[0]),
         xytext=(0.44, 0.300),
-        fontsize=6.9,
+        fontsize=7.4,
         color=WARM,
         ha="left",
         va="center",
@@ -256,13 +259,14 @@ def panel_b(ax, ev: dict) -> None:
     )
 
     handles = [
-        Line2D([], [], color=c, lw=1.6, marker="o", ms=3.6, label=labels[d]) for d, c in zip((1, 2, 3), DEPTH_INK)
+        Line2D([], [], color=c, lw=1.6, marker=depth_marker[d], ms=3.8, label=labels[d])
+        for d, c in zip((1, 2, 3), DEPTH_INK)
     ]
     ax.legend(
         handles=handles,
         loc="lower left",
         bbox_to_anchor=(0.005, 0.005),
-        fontsize=6.9,
+        fontsize=7.4,
         frameon=False,
         handlelength=1.6,
         labelspacing=0.32,
@@ -270,7 +274,7 @@ def panel_b(ax, ev: dict) -> None:
     )
 
     ax.set_xticks(slots)
-    ax.set_xticklabels(ev["labels"], fontsize=7.0)
+    ax.set_xticklabels(ev["labels"], fontsize=7.4)
     for slot, count in zip(slots, ev["counts"]):
         ax.annotate(
             f"n = {count}",
@@ -279,7 +283,7 @@ def panel_b(ax, ev: dict) -> None:
             textcoords="offset points",
             ha="center",
             va="top",
-            fontsize=6.2,
+            fontsize=7.0,
             color=MUTED,
         )
     ax.set_xlim(-0.28, slots[-1] + 0.28)
@@ -317,7 +321,7 @@ def evidence_reach() -> None:
             1.012,
             sub,
             transform=ax.transAxes,
-            fontsize=6.5,
+            fontsize=7.2,
             color=MUTED,
             ha="left",
             va="bottom",
@@ -328,16 +332,11 @@ def evidence_reach() -> None:
         ax.set_axisbelow(True)
 
     fig.tight_layout(w_pad=1.0)
-    fig.text(
-        0.5,
-        -0.012,
-        "a: outputs/monostatic/monovis_*_visibility_locations.jsonl.    "
-        "b: outputs/bounce_budget/korenmarkt_130m_bounce_evidence.json.    "
-        "FIGURES/make_evidence_reach_figure.py",
-        ha="center",
-        va="top",
-        fontsize=6.0,
-        color=MUTED,
+    # The provenance line used to sit under the axes at six points, which no
+    # printed page carries. It is reported here instead.
+    print(
+        "  a: outputs/monostatic/monovis_*_visibility_locations.jsonl\n"
+        "  b: outputs/bounce_budget/korenmarkt_130m_bounce_evidence.json"
     )
     save(fig, "22_evidence_reach")
 

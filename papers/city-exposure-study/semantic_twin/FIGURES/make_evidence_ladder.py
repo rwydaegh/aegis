@@ -25,7 +25,6 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
-import textwrap
 
 import numpy as np
 
@@ -56,11 +55,13 @@ RUNGS = (
     ("korenmarkt_walk", "eight registered stations, fused", "0.05"),
 )
 
-#: Same colours as figures 14 and 15.
+#: Same colours and the same three marker shapes as figures 14 and 15. The
+#: marker is what carries the distinction in a greyscale print and for a
+#: red-green colourblind reader, who loses red against purple first.
 MODELS = (
-    ("chi_isotropic", "isotropic", "#1f77b4"),
-    ("chi_rooftop", "macro rooftop", "#d62728"),
-    ("chi_street_small_cell", "street small cell", "#9467bd"),
+    ("chi_isotropic", "isotropic", "#1f77b4", "o"),
+    ("chi_rooftop", "macro rooftop", "#d62728", "s"),
+    ("chi_street_small_cell", "street small cell", "#9467bd", "^"),
 )
 
 
@@ -162,9 +163,11 @@ def draw(entries: list[dict], stem: str) -> None:
             label=f"{entry['evidence']}, {100 * entry['covered']:.1f} % of area",
         )
     panel.set_xscale("log")
-    panel.set_xlabel("rooftop susceptibility $\\chi$ (free space = 1)")
+    # The body writes this quantity as the exposure ratio chi. Susceptibility is
+    # a word the paper never uses.
+    panel.set_xlabel(r"rooftop exposure ratio $\chi$")
     panel.set_ylabel("fraction of walk standpoints")
-    panel.set_title("the three rungs, one distribution each", fontsize=8.5)
+    panel.set_title("a  the three rungs, one distribution each", fontsize=8.5, loc="left")
     panel.set_ylim(0.0, 1.0)
     # A log axis two thirds of a decade wide is left with one labelled tick, so
     # the ticks are named rather than left to the default locator.
@@ -180,7 +183,7 @@ def draw(entries: list[dict], stem: str) -> None:
     base = entries[0]
     fused = entries[-1]
     counts: dict[str, int] = {}
-    for key, label, colour in MODELS:
+    for key, label, colour, marker in MODELS:
         before = np.array([base["rows"][i][key] for i in shared])
         after = np.array([fused["rows"][i][key] for i in shared])
         shift = 10.0 * np.log10(after / before)
@@ -190,13 +193,16 @@ def draw(entries: list[dict], stem: str) -> None:
             where="post",
             color=colour,
             lw=1.4,
+            marker=marker,
+            markevery=18,
+            ms=3.2,
             label=f"{label}, {counts[label]} of {len(shared)} past 1 dB",
         )
     for edge in (-1.0, 1.0):
         panel.axvline(edge, color="0.45", ls=(0, (4, 2)), lw=0.9)
-    panel.text(1.05, 0.5, "1 dB", rotation=90, fontsize=6.4, color="0.45", va="center", ha="left")
+    panel.text(1.05, 0.5, "1 dB", rotation=90, fontsize=7.2, color="0.45", va="center", ha="left")
     panel.set_xlabel("per standpoint shift from no evidence to fused [dB]")
-    panel.set_title("what a tenth of the scene is worth", fontsize=8.5)
+    panel.set_title("b  what a tenth of the scene is worth", fontsize=8.5, loc="left")
     panel.set_ylim(0.0, 1.0)
     panel.legend(loc="lower right", frameon=True, framealpha=0.92, facecolor="white", edgecolor="0.8")
 
@@ -206,22 +212,16 @@ def draw(entries: list[dict], stem: str) -> None:
     rooftop_before = np.array([base["rows"][i]["chi_rooftop"] for i in shared])
     rooftop_after = np.array([fused["rows"][i]["chi_rooftop"] for i in shared])
     median_shift = 10.0 * np.log10(np.median(rooftop_after) / np.median(rooftop_before))
-    figure.suptitle(
-        f"Korenmarkt at {FREQ_GHZ:g} GHz, exposure against image evidence coverage",
-        fontsize=9.5,
+    # No figure title and no paragraph under the axes. Both repeated the LaTeX
+    # caption, and the paragraph was set at 6.2 pt, which no printed page
+    # carries. Everything it said is reported here instead.
+    figure.tight_layout()
+    print(
+        f"  Korenmarkt at {FREQ_GHZ:g} GHz. No evidence to {100 * fused['covered']:.1f} % of scene area moves "
+        f"the rooftop median by {median_shift:.2f} dB, {counts['macro rooftop']} of {len(shared)} standpoints "
+        f"past a decibel under rooftop and {counts['isotropic']} of {len(shared)} under isotropic. "
+        f"{MAX_BOUNCES} surface interactions, ground datum {fused['datum_m']:.2f} m"
     )
-    caption = textwrap.fill(
-        f"Going from no image evidence to {100 * fused['covered']:.1f} percent of scene area moves the rooftop "
-        f"distribution median by {median_shift:.2f} dB and moves {counts['macro rooftop']} of {len(shared)} "
-        f"standpoints past a decibel under rooftop illumination, {counts['isotropic']} of {len(shared)} under "
-        f"isotropic illumination, which is where the negative is weakest. The "
-        f"ladder reaches a tenth of the scene because that is as far as street level capture gets, so it bounds "
-        f"what a photograph is worth here and says nothing about a fully evidence bound scene. Same walk, same "
-        f"seed, {MAX_BOUNCES} surface interactions, ground datum {fused['datum_m']:.2f} m.",
-        width=175,
-    )
-    figure.text(0.5, 0.004, caption, ha="center", va="bottom", fontsize=6.2, color="0.35", linespacing=1.5)
-    figure.tight_layout(rect=(0.0, 0.15, 1.0, 0.98))
 
     for suffix in ("png", "pdf"):
         path = OUT / f"{stem}.{suffix}"

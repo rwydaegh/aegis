@@ -211,19 +211,19 @@ def seed_noise(evidence: dict) -> dict[str, float]:
 #: IEEE two column float carrying six panels, so it is set at the size the
 #: caption text around it will be printed at.
 TYPE = {
-    "font.size": 7.0,
-    "axes.labelsize": 7.0,
-    "axes.titlesize": 7.4,
-    "xtick.labelsize": 6.6,
-    "ytick.labelsize": 6.6,
-    "legend.fontsize": 6.0,
+    "font.size": 7.6,
+    "axes.labelsize": 7.6,
+    "axes.titlesize": 8.0,
+    "xtick.labelsize": 7.2,
+    "ytick.labelsize": 7.2,
+    "legend.fontsize": 6.8,
     "lines.linewidth": 1.1,
 }
 
 
 def draw(evidence: dict, ladder: dict) -> None:
     apply_monograph_style(mode="png", extra_rc=TYPE)
-    figure = plt.figure(figsize=fig_size_ieee(columns=2, aspect=0.60))
+    figure = plt.figure(figsize=fig_size_ieee(columns=2, aspect=0.64))
     grid = figure.add_gridspec(
         2,
         3,
@@ -252,7 +252,7 @@ def draw(evidence: dict, ladder: dict) -> None:
         "traced to eight interactions",
         ha="center",
         va="bottom",
-        fontsize=7.2,
+        fontsize=7.8,
         color=INK,
     )
     figure.text(
@@ -263,16 +263,17 @@ def draw(evidence: dict, ladder: dict) -> None:
         f"At three, every one of the {ladder['locations']} falls.",
         ha="center",
         va="bottom",
-        fontsize=6.0,
+        fontsize=6.9,
         color="0.4",
     )
 
-    stamp = (
-        f"Korenmarkt, {ladder['crop_radius_m']} m crop, {ladder['frequency_hz'] / 1e9:g} GHz, "
+    # This used to be drawn under the axes at 5.4 pt, which no printed page
+    # carries. It belongs in the caption, so it is reported here.
+    print(
+        f"  Korenmarkt, {ladder['crop_radius_m']} m crop, {ladder['frequency_hz'] / 1e9:g} GHz, "
         f"{ladder['locations']} standpoints, {ladder['rays'] // 1000}k rays each, seed {ladder['seed']}, "
-        "geometric materials, so only the budget moves.   FIGURES/make_bounce_budget_figure.py"
+        "geometric materials, so only the budget moves"
     )
-    figure.text(0.5, 0.008, stamp, ha="center", va="bottom", fontsize=5.4, color="0.45")
 
     number = STEM.split("_")[0]
     taken = sorted({p.stem for p in OUT.glob(f"{number}_*")} - {STEM})
@@ -315,16 +316,20 @@ def depth_panel(axis, evidence: dict) -> None:
     axis.set_ylabel("share of launched power\narriving at that depth")
     axis.set_title("a   almost nothing gets past three", loc="left", pad=5)
 
+    # A white plate under each figure, because at this size the depth three
+    # label reaches the budget rule and the bars are only 0.82 wide.
+    plate = {"fontsize": 6.8, "color": INK, "ha": "center", "va": "bottom", "zorder": 6}
+    plate["bbox"] = {"facecolor": "white", "alpha": 0.85, "edgecolor": "none", "pad": 0.6}
     for depth, value in zip(depths[:3], share[:3], strict=True):
-        axis.text(depth, value * 1.8, f"{value * 100:.2g}%", ha="center", va="bottom", fontsize=6.0, color=INK)
-    axis.text(-1.1, escapes * 1.8, f"{escapes * 100:.0f}%", ha="center", va="bottom", fontsize=6.0, color=INK)
+        axis.text(depth, value * 1.8, f"{value * 100:.2g}%", **plate)
+    axis.text(-1.1, escapes * 1.8, f"{escapes * 100:.0f}%", **plate)
     axis.text(
         6.15,
         1.6,
         f"past the budget:\n{beyond * 100:.2f}% of\nlaunched power",
         ha="center",
         va="top",
-        fontsize=6.0,
+        fontsize=6.8,
         color=MODELS[1][2],
     )
 
@@ -363,7 +368,7 @@ def truncation_panel(axis, ladder: dict) -> None:
         "Deleted, never added, so $\\chi$ can only fall.",
         ha="left",
         va="top",
-        fontsize=6.0,
+        fontsize=6.8,
         color=INK,
         linespacing=1.35,
     )
@@ -384,9 +389,9 @@ def roulette_panel(axis, evidence: dict) -> None:
 
     axis.set_xscale("log")
     axis.set_xlim(3e-4, 0.09)
-    axis.set_ylim(-1.05, len(MODELS) - 0.35)
+    axis.set_ylim(-1.75, len(MODELS) - 0.35)
     axis.set_yticks(range(len(MODELS)))
-    axis.set_yticklabels(["isotropic", "rooftop", "street"], fontsize=6.4)
+    axis.set_yticklabels(["isotropic", "rooftop", "street"], fontsize=7.2)
     axis.set_xlabel(f"spread of $\\chi$ over {block['seeds']} seeds, relative")
     axis.set_title("c   roulette is off, and nothing moved", loc="left", pad=5)
     axis.legend(
@@ -397,7 +402,7 @@ def roulette_panel(axis, evidence: dict) -> None:
             Line2D([], [], ls="none", marker="o", ms=3.8, color=INK, label="roulette off"),
         ],
         loc="upper left",
-        fontsize=5.9,
+        fontsize=6.8,
         handletextpad=0.3,
         borderpad=0.3,
         labelspacing=0.25,
@@ -414,7 +419,7 @@ def roulette_panel(axis, evidence: dict) -> None:
         transform=axis.transAxes,
         ha="right",
         va="bottom",
-        fontsize=5.7,
+        fontsize=6.6,
         color="0.35",
         linespacing=1.35,
     )
@@ -455,17 +460,17 @@ def ladder_panel(axis, ladder, key, name, colour, spread_db, noise_db, column) -
     axis.set_xlabel("interaction budget")
     axis.set_title(f"{'def'[column]}   {name}", loc="left", pad=4, color=colour)
     if column == 0:
-        axis.set_ylabel("shift against 8 interactions, dB")
+        axis.set_ylabel("shift against 8 interactions [dB]")
     else:
         axis.tick_params(labelleft=False)
 
     label = {
-        "fontsize": 5.7,
+        "fontsize": 6.6,
         "ha": "right",
         "bbox": {"facecolor": "white", "alpha": 0.85, "edgecolor": "none", "pad": 0.8},
     }
     axis.text(2.05, spread_db * 1.45, f"{spread_db:.2f} dB across the eleven squares", color=colour, **label)
-    axis.text(-0.25, 0.6, "half a decibel", color=INK, fontsize=5.7, ha="left")
+    axis.text(-0.25, 0.6, "half a decibel", color=INK, fontsize=6.6, ha="left")
     # Above the line where the worst standpoint ends under it, below where it
     # does not, which is the street model once the budget passes three.
     clear = magnitude[-1].max() < noise_db
@@ -477,16 +482,17 @@ def ladder_panel(axis, ladder, key, name, colour, spread_db, noise_db, column) -
         va="bottom" if clear else "top",
         **label,
     )
-    # No background box on this one: it sits just under the half decibel line
-    # and a box would punch a hole in it.
+    # Stacked on the left above the half decibel rule. Everywhere below that rule
+    # is either data or the worst standpoint curve of the street model, and a
+    # white plate placed there would hide one of them.
     axis.text(
-        2.05,
-        0.24,
+        -0.25,
+        1.2,
         f"worst of the {standpoints} at three, {magnitude[0].max():.3f} dB",
         color=INK,
         va="bottom",
-        ha="right",
-        fontsize=5.7,
+        ha="left",
+        fontsize=6.6,
     )
     assert falling == standpoints, f"{name}: {falling} of {standpoints} fall at the operating point"
 

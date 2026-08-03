@@ -31,7 +31,7 @@ import matplotlib  # noqa: E402
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-from _plot_style import apply_monograph_style  # noqa: E402
+from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
 
 OUT = pathlib.Path(__file__).resolve().parent
 DATA = ROOT / "outputs" / "exposure_korenmarkt"
@@ -150,19 +150,38 @@ def gather(tag_suffix: str) -> dict[str, list[dict]]:
 
 
 def draw(rows_by_site: dict[str, list[dict]], stem: str) -> None:
-    apply_monograph_style(mode="png")
-    figure, axes = plt.subplots(1, 3, figsize=(12.5, 4.3))
+    # Drawn at the two column width the paper places it at, 7.16 in, so nothing
+    # is scaled down on the page and the type prints at the size it is set at.
+    apply_monograph_style(
+        mode="png",
+        extra_rc={
+            "font.size": 8.0,
+            "axes.labelsize": 8.0,
+            "axes.titlesize": 8.0,
+            "xtick.labelsize": 7.5,
+            "ytick.labelsize": 7.5,
+            "legend.fontsize": 6.8,
+        },
+    )
+    figure, axes = plt.subplots(1, 3, figsize=fig_size_ieee(columns=2, aspect=0.42), sharey=True)
 
     order = sorted(rows_by_site, key=lambda s: np.median([r["chi_rooftop"] for r in rows_by_site[s]]))
-    colours = plt.cm.turbo(np.linspace(0.06, 0.94, len(order)))
+    # Eleven curves ordered by their own median is a sequential encoding, so the
+    # ramp is one that keeps its lightness order. Turbo does not: it prints as an
+    # unordered jumble in greyscale and loses its middle to a red-green reader.
+    # Plasma runs dark to light throughout, and the legend is in the same order
+    # as the curves, so the map from name to curve survives both.
+    colours = plt.cm.plasma(np.linspace(0.04, 0.84, len(order)))
 
     for colour, site in zip(colours, order, strict=True):
         rows = rows_by_site[site]
         pending = site in DATUM_PENDING
-        label = f"{PRETTY[site]} ({len(rows)})" + (", datum pending" if pending else "")
+        # The standpoint count is the same for every square and is stated in the
+        # caption, so it is not repeated eleven times in the legend.
+        label = PRETTY[site] + (", datum pending" if pending else "")
         style = {
             "color": colour,
-            "linewidth": 1.4,
+            "linewidth": 1.2,
             "linestyle": (0, (4, 1.6)) if pending else "solid",
         }
         axes[0].step(*empirical_cdf(np.array([r["chi_rooftop"] for r in rows])), where="post", label=label, **style)
@@ -182,38 +201,46 @@ def draw(rows_by_site: dict[str, list[dict]], stem: str) -> None:
     axes[2].set_xlim(np.quantile(pooled_sab, 0.01) * 0.7, np.quantile(pooled_sab, 0.995) * 1.4)
 
     axes[0].set_xscale("log")
-    axes[0].set_xlabel("rooftop susceptibility $\\chi_S$ (free space = 1)")
-    axes[0].set_ylabel("fraction of walk locations")
-    axes[0].set_title("environment side, converged")
-    # Upper left is the one corner a rising CDF always leaves empty. Lower right
-    # is not: at this crop the eleven curves run straight through it.
-    axes[0].legend(fontsize=6.2, loc="upper left", framealpha=0.92, facecolor="white", edgecolor="0.8")
+    # The body writes the exposure ratio as chi, so the axis writes it that way
+    # too. It used to read susceptibility, which is a word the paper never uses.
+    axes[0].set_xlabel(r"rooftop exposure ratio $\chi$")
+    axes[0].set_ylabel("fraction of standpoints")
+    axes[0].set_title("a  environment side", loc="left")
     axes[1].set_xlabel("sky fraction")
-    axes[1].set_title("how much sky the pedestrian sees, converged")
+    axes[1].set_title("b  sky the pedestrian sees", loc="left")
     axes[2].set_xscale("log")
-    axes[2].set_xlabel(f"peak $S_{{ab}}$ [W m$^{{-2}}$] at $S_0$ = {REFERENCE_S0_W_M2:g} W m$^{{-2}}$")
-    axes[2].set_title("body side, converged")
+    axes[2].set_xlabel(r"peak $S_{ab}$ [W m$^{-2}$]")
+    axes[2].set_title(f"c  body side, $S_0$ = {REFERENCE_S0_W_M2:g} W m$^{{-2}}$", loc="left")
     for panel in axes:
         panel.grid(alpha=0.25)
         panel.set_ylim(0.0, 1.0)
 
-    figure.suptitle(
-        f"Pedestrian exposure across {len(order)} city squares, {FREQ_GHZ:g} GHz, identical material prior",
-        fontsize=11,
+    # Eleven names do not fit inside a panel that is a third of a two column
+    # float wide without sitting on the curves, so the key runs under the axes.
+    handles, labels = axes[0].get_legend_handles_labels()
+    figure.legend(
+        handles,
+        labels,
+        loc="lower center",
+        ncol=4,
+        frameon=False,
+        columnspacing=1.2,
+        handlelength=2.2,
+        borderaxespad=0.0,
+        bbox_to_anchor=(0.5, 0.0),
     )
-    caption = (
-        f"Crop radius {CROP_M} m, {len(rows_by_site[order[0]])} standpoints per square, "
-        f"{MAX_BOUNCES} surface interactions, corrected elevation law, ground datum measured per site by the "
-        "estimator of GROUND_DATUM.md.\n"
-        "Rooftop and small cell susceptibility converge at 250 m and sky fraction by 100 m, so this run is at "
-        "the converged radius. One sweep wrote every curve."
+    figure.tight_layout(rect=(0.0, 0.135, 1.0, 1.0))
+
+    # The provenance line used to be drawn under the axes at a size no printed
+    # page could carry. It belongs in the caption, so it is reported here.
+    print(
+        f"  crop {CROP_M} m, {len(rows_by_site[order[0]])} standpoints per square, "
+        f"{MAX_BOUNCES} surface interactions, corrected elevation law, per site ground datum"
     )
-    figure.text(0.5, 0.008, caption, ha="center", va="bottom", fontsize=6.4, color="0.35", linespacing=1.5)
-    figure.tight_layout(rect=(0.0, 0.075, 1.0, 1.0))
 
     for suffix in ("png", "pdf"):
         path = OUT / f"{stem}.{suffix}"
-        figure.savefig(path, dpi=200)
+        figure.savefig(path, dpi=300)
         print(f"wrote {path}")
     plt.close(figure)
 

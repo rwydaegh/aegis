@@ -185,13 +185,13 @@ def panel_mask(ax, mask: dict, street_share: float) -> None:
     ax.set_xlim(0.0, 360.0)
     ax.set_xticks([0, 90, 180, 270, 360])
     ax.set_yticks([0, 30, 60, 90])
-    ax.set_xlabel("azimuth, degrees", labelpad=1.0)
-    ax.set_ylabel("elevation, deg")
+    ax.set_xlabel("azimuth [deg]", labelpad=1.0)
+    ax.set_ylabel("elevation [deg]")
     ax.tick_params(labelsize=7.5)
 
     bar = ax.figure.colorbar(mesh, ax=ax, pad=0.010, fraction=0.030, extend="min")
-    bar.set_label("gain of one knife edge, dB", fontsize=7.0)
-    bar.ax.tick_params(labelsize=7)
+    bar.set_label("gain of one knife edge [dB]", fontsize=7.5)
+    bar.ax.tick_params(labelsize=7.5)
 
     ax.axhline(5.0, color="#7fe3d4", lw=0.8, ls=(0, (3, 2)))
     ax.text(
@@ -199,7 +199,7 @@ def panel_mask(ax, mask: dict, street_share: float) -> None:
         7.5,
         f"{100 * street_share:.1f} % of the street small cell measure is below this line",
         color="#7fe3d4",
-        fontsize=6.8,
+        fontsize=7.2,
         ha="right",
         va="bottom",
     )
@@ -210,7 +210,7 @@ def panel_mask(ax, mask: dict, street_share: float) -> None:
         f"pale blue is sky, {100 * sky:.1f} % by solid angle. The bright rim just inside\n"
         "the skyline is where a single edge returns most of the field",
         color="#123a5e",
-        fontsize=6.8,
+        fontsize=7.2,
         ha="left",
         va="top",
     )
@@ -248,7 +248,7 @@ def panel_validation(ax, bounds: dict) -> None:
     ax.set_yscale("log")
     ax.set_ylim(3e-3, 60.0)
     ax.set_xlabel(r"traced $\chi_\mathrm{dir}$, the direct term")
-    ax.set_ylabel("disagreement, %")
+    ax.set_ylabel("disagreement [%]")
     for model, value in medians.items():
         ax.text(
             0.015,
@@ -257,7 +257,7 @@ def panel_validation(ax, bounds: dict) -> None:
             transform=ax.get_yaxis_transform(),
             ha="left",
             va="bottom",
-            fontsize=6.4,
+            fontsize=7.0,
             color=COLOUR[model],
         )
     ax.set_title(
@@ -293,7 +293,7 @@ def panel_bound(ax, bounds: dict, spread: tuple[float, float]) -> None:
     ax.set_xlim(0.02, 40.0)
     ax.set_ylim(0.0, 1.32)
     ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-    ax.set_xlabel(r"upper bound on the uplift of $\chi$, dB")
+    ax.set_xlabel(r"upper bound on the uplift of $\chi$ [dB]")
     ax.set_ylabel("fraction of standpoints below")
     ax.set_title(
         "c  what a diffraction term could add,\n     over 60 standpoints in 3 squares",
@@ -306,16 +306,16 @@ def panel_bound(ax, bounds: dict, spread: tuple[float, float]) -> None:
         "spread of $\\chi$ within\none square, 10th to\n90th percentile",
         ha="center",
         va="top",
-        fontsize=5.9,
+        fontsize=6.9,
         color="#3d424a",
     )
     ax.text(
         0.022,
         1.30,
-        "street curves stop\nat 56 of 60, the rest\nundefined, see d",
+        "street curves stop at\n56 of 60, the rest\nundefined, see d",
         ha="left",
         va="top",
-        fontsize=5.9,
+        fontsize=6.9,
         color=COLOUR["street_small_cell"],
     )
 
@@ -355,7 +355,7 @@ def panel_concession(ax, bounds: dict) -> None:
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel(r"traced $\chi$ at that standpoint")
-    ax.set_ylabel("upper bound on the uplift, dB")
+    ax.set_ylabel("upper bound on the uplift [dB]")
     ax.set_title(
         "d  the bound is largest where the\n     exposure itself is smallest",
         loc="left",
@@ -367,7 +367,7 @@ def panel_concession(ax, bounds: dict) -> None:
         "stars: 4 standpoints whose\nstreet small cell support is\nfully occluded, so the direct\nterm is exactly zero",
         xy=(1.7e-5, 0.038),
         xytext=(1.7e-5, 0.038),
-        fontsize=6.0,
+        fontsize=6.9,
         color=COLOUR["street_small_cell"],
         ha="left",
         va="bottom",
@@ -440,7 +440,7 @@ def figure_legend(fig) -> None:
         labels,
         loc="lower center",
         ncol=8,
-        fontsize=7.0,
+        fontsize=7.4,
         frameon=False,
         bbox_to_anchor=(0.5, -0.012),
         handlelength=1.3,
