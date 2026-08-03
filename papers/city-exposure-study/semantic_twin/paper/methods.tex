@@ -634,14 +634,22 @@ that leaves the first facade travels away from the camera that saw it, and
 whether its second interaction lands on an observed surface depends on how much
 of the square the walk covered, not on any property of the geometry.
 
-The guarantee would extend to the second interaction only for a path that
-returns to where it started, since both ends of a closed loop are visible from
-the same viewpoint. That is the co-located picture of Section~\ref{sec:ratio} in its strictest
-form, and it is worth recording that the outward formulation buys its efficiency
-partly at the cost of half this guarantee. What replaces the lost half is
-measurement: the fraction of interactions at each depth that lands on a
-panorama observed triangle is reported with the results, per depth, so the reader
-can see where evidence gives way to prior rather than being asked to accept it.
+The guarantee does extend to the second interaction for a path that returns to
+where it started, since both ends of a closed loop are visible from the same
+viewpoint. That is the co-located picture of Section~\ref{sec:ratio} in its
+strictest form, and it is not a hypothetical. Traced on the photogrammetric mesh
+at twelve standpoints, the share of returning power whose whole chain lies on
+visible surfaces is 1.000000 at the first order and 0.999991 at the second. It
+falls to 0.984 at the third, because the guarantee covers the two ends of a loop
+and not its middle.
+
+The outward formulation buys its efficiency at exactly that price. On the same
+geometry an outward path holds 0.999 at the first interaction, 0.916 at the
+second and 0.736 at the third, so by the second interaction the estimator is
+already carrying 8\,\% of its power over surfaces the standpoint cannot see, and
+by the third 26\,\%. What replaces the lost guarantee is measurement. Those
+fractions are reported per depth with the results, so a reader can see where
+evidence gives way to prior instead of being asked to accept it.
 
 Three is then the smallest budget that lets that question be asked at all. One
 interaction would test nothing beyond the guaranteed hit, two would show whether
