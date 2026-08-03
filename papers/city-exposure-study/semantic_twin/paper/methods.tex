@@ -25,6 +25,7 @@
 \newcommand{\khat}{\hat{k}}
 \newcommand{\x}{\mathbf{x}}
 \newcommand{\dOmega}{\,\mathrm{d}\Omega}
+\newcommand{\todo}[1]{\textbf{[TODO: #1]}}
 
 \begin{document}
 
@@ -166,7 +167,7 @@ the results can mean.
   smooth interface with a Gaussian height error of standard deviation
   $\sigma_h$ about its own plane.
   \item[A6] \emph{No diffraction.} Energy bending around building edges is
-  absent. The three paragraphs after this list give the reason and the
+  absent. The paragraphs after this list give the reason and the
   direction of the resulting error.
   \item[A7] \emph{Unpolarised.} Reflection uses the average of the two
   principal polarisations rather than tracking a polarisation state.
@@ -193,7 +194,8 @@ carries the weaker claim rather than the stronger one: what reaches a shadowed
 receiver in a street is not diffracted power, whether it arrives specularly or
 by scattering. The mechanism is the ordinary one: a diffracted
 field falls off relative to the field that produced it as $1/\sqrt{ks}$ with
-distance $s$ from the edge, which at 15\,GHz and 10\,m is about $1/56$ in
+distance $s$ from the edge and wavenumber $k$, which at 15\,GHz and 10\,m is
+about $1/56$ in
 amplitude, near 35\,dB down in power. Diffraction is a correction to a picture
 that reflection already describes, which is the opposite of its role at the
 metre wavelengths where street models were first built and where an edge is only
@@ -202,8 +204,8 @@ a few wavelengths away from everything.
 The second is where that correction would actually lead, and it applies to one of
 the two bands and not to both. Diffraction dominates only in deep shadow, at
 points no direct or reflected path reaches, and the standpoints used here are
-required to have open sky above them, with points that have no sky discarded
-before any trace runs. For the street cell band that closes the question, because
+required to see open sky, by the filter of Section~\ref{sec:standpoints}. For
+the street cell band that closes the question, because
 those sites sit from 2.5 to 6.5\,m above the head, below the roofline, and every
 direction the model blocks is blocked by a facade. For the rooftop band it does
 not. Those sites sit 13.5 to 43.5\,m above the head, above a typical European
@@ -323,8 +325,11 @@ answer different questions. A semantic segmentation network trained on street
 scenes names the object, which separates a building from a tree from a road
 surface but has one class for every facade regardless of what it is made of. A
 promptable segmentation model is then asked for the material within those facade
-regions, which is the axis the first model cannot resolve \cite{sam}. The
-registration and projection are described in the supplementary information.
+regions, which is the axis the first model cannot resolve. Prompting a
+segmentation model for a concept it was never trained to name as a class is the
+idea of \cite{sam}. What ran here is SAM 3, which takes the material name itself
+as the prompt.\todo{add the SAM 3 reference} The registration and projection are
+described in the supplementary information.
 
 Imagery comes from two providers and the split matters when reading coverage.
 Squares represented by a single panorama use one provider's official captures,
@@ -354,6 +359,7 @@ masonry is what was observed. It is family membership, not permittivity, that
 Section~\ref{sec:budget} uses to set the bounce budget.
 
 \subsection{Standpoints}
+\label{sec:standpoints}
 
 Exposure is not evaluated at one point. Each square contributes 80 standpoints and
 results are reported as a distribution over them rather than as a single value,
@@ -461,9 +467,7 @@ limits. Second, the near horizon carries most of the measure, and the near
 horizon is also where the buildings act: a distant site sits low in the sky, so
 its path grazes along the street and a single facade can intercept it. A site
 overhead has no facade in the way. This is why the shape of the square changes
-the answer at all, and it is also why the crop radius of
-Section~\ref{sec:config} has to be
-justified rather than chosen. \Cref{fig:box} shows the region in the height and
+the answer at all. \Cref{fig:box} shows the region in the height and
 range plane.
 
 \begin{figure*}[!t]
@@ -512,9 +516,9 @@ cities, and the part that depends on the network is neither.
 
 Three illumination models are carried through every run. Their parameters are in
 \cref{tab:models}. The isotropic model is a control rather than a deployment: it
-weights all directions equally, so under it $\chi$ is exactly the fraction of
-the sphere that is open sky, which makes it a check on the estimator as well as
-a reference. The rooftop model covers macro sites on buildings and the street
+weights all directions equally, so under it $\chi$ depends on the geometry and
+on nothing else, which is what makes it a check on the estimator as well as a
+reference. The rooftop model covers macro sites on buildings and the street
 model covers small cells on lamp posts and facades. Their height bands come from
 the two ways operators acquire sites, a roof lease or a street furniture lease,
 and published deployment heights are bimodal between them rather than spread
@@ -527,6 +531,7 @@ than assumed.
   \caption{Illumination models}
   \label{tab:models}
   \centering
+  \setlength{\tabcolsep}{4pt}
   \begin{tabular}{lccc}
     \toprule
     Model & Height above head (m) & Range (m) & Elevation (deg) \\
@@ -613,7 +618,7 @@ Nothing about the sources survives except $Q$, so one outward trace answers
 \eqref{eq:chidef} for every source position at once. The free space denominator
 $S_0$ never has to be computed, because $Q$ was normalised to make it 1.
 
-\subsection{Estimator}
+\subsection{Stratified estimate}
 \label{sec:estimator}
 
 The sphere of launch directions is divided into $M$ cells of near equal solid
@@ -656,7 +661,7 @@ streams rather than estimated from within a single run. Seeds and ray counts are
 in the supplementary information.
 
 How large that error is depends strongly on which illumination model is being
-evaluated, and the reason is worth stating because it decides how many rays a
+evaluated, and the reason matters because it decides how many rays a
 result needs. The variance is set by the share of the ray budget that lands
 inside the support of $Q$. The isotropic model has support everywhere, so every
 ray contributes and the per standpoint error is a few thousandths of a decibel.
@@ -665,9 +670,7 @@ elevation, so most rays escape into directions where $Q$ is zero and contribute
 nothing, and the per standpoint error is some thirty times larger. Stratifying
 the launch directions does not help with this, because the launch direction is
 not the escape direction and only the latter is weighted. Reporting a median over
-many standpoints does help, by roughly the square root of their number, which is
-why a distribution over standpoints is the right unit for a claim and a single
-standpoint often is not.
+many standpoints does help, by roughly the square root of their number.
 
 \subsection{Bounce loop}
 
@@ -757,8 +760,8 @@ had passed the skyline residual gate. Re-registering the same camera for the
 wider binding takes it to 1.000, which settles the diagnosis: the surfaces were
 always photographed and the pose was wrong. First interaction coverage is
 therefore a sharper test of a pose than the residual the registration itself
-minimises, it costs one trace, and it is available at any site with a registered
-panorama. The station is excluded from the coverage figures above under its
+minimises, it costs one trace, and it is available at any square with a
+registered panorama. The station is excluded from the coverage figures above under its
 original pose. Away from a camera the two
 questions come apart, and the reach turns out to be a radius. Within 20\,m of a
 registered panorama the second interaction still lands on photographed material
@@ -776,29 +779,41 @@ interaction would test nothing beyond the assured hit, two would show whether
 the walk covers the square, and three shows what the first clearly unobserved
 interaction is worth.
 
+The two legs also apply in different places, which decides what carries the
+budget where. The cross city comparison is run with geometric classes and no
+image evidence at all, so the evidence leg says nothing about it. $L$ is one
+operating point for every run in the study, and at the squares with no
+photographs behind their materials it rests on the measurement below and on
+nothing else.
+
 What makes three sufficient rather than merely defensible is where the power is.
-Of all launched power, 10.7\,\% never touches a surface and escapes straight
-to the sky, which is the direct term of \eqref{eq:split}. A further 79\,\%
-interacts exactly once, 8.9\,\% twice, 1.2\,\% three times and 0.22\,\% ever
-again. Depths past the third can be justified
-neither by evidence nor by the power they carry. Traced against an eight
-interaction reference over 40 of these standpoints at fixed seeds, so that only
-the budget moves, $L = 3$ costs a median of 0.002\,dB and never moves a standpoint by more
-than 0.12\,dB. Not one standpoint of the 40 moves half a decibel under any of
-the three illumination models.
+Of all launched power, 21.0\,\% never touches a surface and escapes straight to
+the sky, which is what the first term of \eqref{eq:split} collects. The shares
+that reach a first, a second and a third surface are 79\,\%, 8.8\,\% and
+1.2\,\%, and 0.23\,\% is still finding surfaces past the third. Those are not
+parts of one whole and are not to be added, because power that reaches the third
+surface was already counted at the first and the second. Each is what is left of
+the same launched power at a greater depth. Depths past the third can be
+justified neither by evidence nor by the power they carry. Traced against an
+eight interaction reference over the 40 standpoints of the published walk at
+fixed seeds, so that only the budget moves, $L = 3$ costs a median of 0.002\,dB
+and never moves a standpoint by more than 0.063\,dB. Not one standpoint of the
+40 moves half a decibel under any of the three illumination models.
 
 One consequence has to be stated plainly. A fixed budget is a hard cut, so the
 estimator is truncated and therefore biased low, since truncation deletes power
 and never adds it. The share of escaping power still in flight when the budget
-runs out is 0.0038 at the median standpoint and 0.021 at the worst, and every
+runs out is 0.0037 at the median standpoint and 0.0201 at the worst, and every
 value reported here is a lower bound in that sense. That is not the same number
-as the 0.22\,\% above, because the denominators differ: one is a share of all
+as the 0.23\,\% above, because the denominators differ: one is a share of all
 launched power and the other a share of the power that actually escapes. Russian roulette is the
 standard way to end paths without introducing this bias \cite{arvokirk}, but it
 cannot repair a hard cap, and at a budget of three it would fire exactly once,
 one step before the cap, killing rays at a 0.05 survival floor and inflating the
-few survivors twentyfold. Measured over the same standpoints that is a worse
-estimator at the same cost, so it is switched off. What the trace itself then
+few survivors twentyfold. A repeated seed test over the same standpoints returns
+the same relative spread to three significant figures with it on and off, and
+wall times of 101 and 100\,s, so it is switched off for changing neither
+variance nor work at this budget. What the trace itself then
 approximates reduces to a single one sided truncation whose size is quoted
 above. The assumptions of Section~\ref{sec:ratio} sit underneath that and are
 not part of the claim.
@@ -864,7 +879,10 @@ travelling along $\khat$,
 \end{equation}
 where $T_0$ is the power transmitted into skin at normal incidence at 15\,GHz
 and the clamp removes facets that face away. The arriving distribution
-$\Phi(\uloc)$ is passed in as a set of plane waves, one per angular cell, with $\khat = -\uloc$, as reciprocity requires. Summing
+$\Phi(\uloc)$ is passed in as a set of plane waves, one per angular cell, with
+$\khat = -\uloc$, as reciprocity requires, and each carrying
+$S_{\mathrm{inc}} = S_0 \, \Phi(\uloc) \, \Delta\Omega$ over a cell of solid
+angle $\Delta\Omega$. Summing
 \eqref{eq:sab} over cells gives the absorbed power density map on the body, and
 integrating that map gives the absorbed power and the whole body specific
 absorption rate.
