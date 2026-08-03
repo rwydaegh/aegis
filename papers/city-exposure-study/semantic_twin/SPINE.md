@@ -14,8 +14,26 @@ needs writing.
 ## The one sentence
 
 The shape of a city square changes how much radio power reaches a pedestrian at
-15 GHz, that change is a property of the square rather than of the network, and
-it can be measured from a photogrammetric mesh with one ray trace per standpoint.
+15 GHz, that change is a property of the built geometry rather than of the
+network, and it can be measured from a photogrammetric mesh with one ray trace
+per standpoint.
+
+**And the first thing it measures is that the square is the wrong unit.** Where a
+pedestrian stands inside one square spreads $\chi$ by up to 6.46 dB, while the
+medians of eleven squares on four continents spread by 3.71 dB. A single number
+per city is a poor summary of that city, by a margin of 2.75 dB.
+
+That claim is only available to a method that is cheap per standpoint. Ray
+tracing between known transmitter and receiver pairs costs one trace per pair, so
+sampling 80 standpoints against a realistic set of deployments is what gets cut
+first, and a single representative point per square is what gets reported
+instead. The adjoint move makes the within square distribution the thing that is
+free and the deployment that is amortised, which is why this is the first result
+rather than a caveat at the end.
+
+*Numbers: `AGGREGATE_REBUILD.md`. The claim about what per-pair tracing can
+afford is an argument about cost, not a measurement of anyone else's study, and
+should be written as such.*
 
 ## The quantity
 
