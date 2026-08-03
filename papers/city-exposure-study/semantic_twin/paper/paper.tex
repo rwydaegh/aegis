@@ -41,8 +41,9 @@ station powers, positions, and counts that are not public and are not properties
 of the square. This paper measures an exposure ratio: power density at a
 pedestrian's head in the square divided by that from the same network over open
 ground. Reciprocity places the computation at the pedestrian, so one outward
-trace represents every possible source position and co-located photographs
-cover the early interaction surfaces. The method was applied at 15\,GHz to 880
+trace represents every possible source position, and a photograph taken at that
+same point sees the surfaces the early interactions reach. The method was
+applied at 15\,GHz to 880
 standpoints in eleven photogrammetric squares. Between-square spreads were
 3.71, 4.93, and 9.58\,dB under isotropic, rooftop, and street-cell illumination.
 Median within-square spreads were 3.92, 5.46, and 8.43\,dB. Those spreads
@@ -51,8 +52,11 @@ short for street cells. The paired illumination-law correction had residual root
 values of 1.39\,dB rooftop and 0.98\,dB street, with one city per model causing
 almost all rank change. Resampling the standpoints changed per-city medians by
 0.128, 0.061, and 0.188\,dB root mean square, roughly 25 times the isotropic
-Monte Carlo error. Image-based facade materials shifted distribution
-medians by 0.024, 0.029, and 0.022\,dB. A geometry-specific diffraction bound
+Monte Carlo error. At the one square with registered panoramas, image-based
+facade materials shifted distribution medians by 0.024, 0.029, and 0.022\,dB,
+which bounds what image evidence can be worth on that axis. The other ten
+squares carry no image evidence and use a geometric material assignment. A
+geometry-specific diffraction bound
 added median uplifts of 0.06, 0.15, and 0.42\,dB. The ratio therefore measures
 the response of a square to a stated illumination law, with standpoint sampling
 as its dominant quantified uncertainty.
@@ -927,6 +931,20 @@ interaction would test nothing beyond the assured hit, two would show whether
 the walk covers the square, and three shows what the first clearly unobserved
 interaction is worth.
 
+It matters which of the two legs is doing the licensing, and where. The
+evidential leg is measured at the one square that has registered panoramas along
+a walk, so on its own it licenses $L = 3$ only there. At the other ten squares
+the budget rests on the power leg and the convergence measurement below, which
+are computed at every square and do not need a camera. The two legs are not
+independent of each other in the way that would be convenient: they agree here,
+but agreement at one square is not proof that the evidential reach is the same
+elsewhere. What can be said across squares is that the geometric visibility
+above was measured on four meshes on three continents and varied by a few
+percent, and that power-weighted photographic coverage at a station position
+runs 0.941 to 0.999 at the first interaction across 35 stations in those four
+cities. The reported budget is therefore set by evidence at one square and
+carried to the others by power, with the geometric part checked in four.
+
 What makes three sufficient rather than merely defensible is where the power is.
 Of all launched power, 21.0\% never touches a surface and escapes straight
 to the sky, which is the direct term of \eqref{eq:split}. The shares reaching
@@ -999,8 +1017,10 @@ stored: the trace keeps angular histograms and scalar sums only.
 Two further quantities fall out of the same trace at no extra cost, on top of
 the split in \eqref{eq:split}. The sky fraction, already met above, is reported
 on its own because it depends on the geometry alone and on no illumination
-model. The mean excess path length, taken over escaping rays weighted by their power, gives
-the delay spread the square would impose. Both are reported alongside $\chi$.
+model, and it is reported alongside $\chi$ throughout. The mean excess path
+length, taken over escaping rays weighted by their power, gives the delay spread
+the square would impose. That one is recorded per standpoint but is not analysed
+in this paper, and it is mentioned here only because it costs nothing to keep.
 
 \section{Body coupling}
 
@@ -1044,15 +1064,15 @@ blocker and a crowd is a second edit to a distribution the buildings have
 already set. Measured at 12 standpoints against paired empty square
 baselines, 2.15 people per square meter cost a median 1.4\,dB under the street
 model and 1.0\,dB under the rooftop model, and an ordinary busy 0.3 per square
-meter costs 0.5 and 0.3\,dB. The isotropic control loses only 0.05\,dB, and
+meter costs 0.5 and 0.3\,dB. The isotropic control loses only 0.07\,dB, and
 the reason is that weighting every direction equally makes redistribution free
 and leaves only absorption to pay for. This mechanism was measured directly:
 repeating the run with the bodies replaced by index matched absorbers, so that
 the geometry and the blockage are identical and only the reflected half is
-removed, takes the isotropic loss from 0.05 to 0.71\,dB while the rooftop and
-street columns move only from 1.04 to 1.33 and from 1.39 to 1.61\,dB. A crowd
-is invisible to the isotropic control because it reflects, not because it fails
-to block.
+removed, takes the isotropic loss from 0.07 to 0.71\,dB while the rooftop and
+street columns move only from 1.07 to 1.33 and from 1.40 to 1.61\,dB. A crowd
+is nearly invisible to the isotropic control because it reflects, not because it
+fails to block.
 
 The second omission is that the body is treated as convex, so one limb never
 shadows another, which matters most for arrivals that graze along it.
@@ -1186,7 +1206,7 @@ than 0.25\,dB under isotropic illumination. Rooftop and street rankings have
 Spearman correlations of $+0.936$ and $+0.345$ with the isotropic ranking.
 Section~\ref{sec:discussion} gives the standpoint-sampling uncertainty that
 qualifies adjacent per-city medians. This ordering is an ordering under the
-illumination law with no antenna. Section~\ref{sec:results} shows later that a
+illumination law with no antenna. The beamforming result below shows that a
 realistic antenna policy reverses pairs more than a decibel apart, so the
 ordering should be read together with that result rather than on its own.
 
@@ -1578,11 +1598,12 @@ used a superseded illumination law and was never measured under the corrected
 law. Neither superseded value is used as a result here.
 
 The bystander experiment adds a separate scope limit. It uses one masonry square
-at one carrier with static upright people, and it used the superseded
-six-interaction configuration. Its mechanism is still informative: the facades
-had already changed the arriving elevation distribution before a crowd blocked
-it. The 1.4 and 1.0\,dB shifts are paired Korenmarkt results rather than
-city-independent corrections.
+at one carrier with static upright people. It has been repeated at the reported
+three-interaction budget on the same 12 standpoints, where every headline number
+moved by less than the estimator's own noise floor for its column. Its mechanism
+is still informative: the facades had already changed the arriving elevation
+distribution before a crowd blocked it. The 1.4 and 1.1\,dB shifts are paired
+Korenmarkt results rather than city-independent corrections.
 
 \section{Conclusion}
 \label{sec:conclusion}
