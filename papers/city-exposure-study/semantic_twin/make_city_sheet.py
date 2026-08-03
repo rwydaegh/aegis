@@ -30,8 +30,10 @@ TITLES = {
     "toulouse_capitole": "Place du Capitole, Toulouse",
     "istanbul_sultanahmet": "Sultanahmet Meydani, Istanbul",
 }
+#: Toulouse used to be labelled here as a reserve site whose anchor sat on a
+#: roofline. That was the ground datum defect of GROUND_DATUM.md and not the
+#: square, and Toulouse is one of the eleven in the published run.
 NOTES = {
-    "toulouse_capitole": "reserve, anchor on a roofline",
     "istanbul_sultanahmet": "rejected, coarse base mesh, no photogrammetry",
 }
 FONTS = [
@@ -43,8 +45,9 @@ TILE_WIDTH = 620
 TITLE = "Eleven squares, one pipeline, nothing hand placed"
 SUB = [
     "Photorealistic 3D Tiles assembled in double precision, at a 130 m radius everywhere except Milan, which",
-    "predates the set at 200 m. Framing is derived from each city's own geometry, so a 26 m square in Toulouse",
-    "and a 255 m canyon in New York are framed alike. Sky fraction is measured from 1.5 m above the anchor.",
+    "predates the set at 200 m. Framing is derived from each city's own geometry, so a 25 m skyline in Toulouse",
+    "and a 215 m one in New York are framed alike. Sky fraction is the median over that square's 80 pedestrian",
+    "standpoints in the eleven city run, and skyline height is measured above the pavement the walk stands on.",
 ]
 
 
@@ -56,7 +59,13 @@ def font(size: int, bold: bool = False) -> ImageFont.ImageFont:
 
 
 def metrics() -> dict[str, dict[str, float]]:
-    """Sky fraction and skyline height per site, if the quality pass recorded them."""
+    """Sky fraction and skyline height per site, from `measure_city_metrics.py`.
+
+    Sky fraction is the median over that square's own walk in the published
+    eleven city run rather than a reading at one anchor, because the anchor
+    reading was taken at a ground level that put the observer on the Sukiennice
+    at Krakow and inside the Capitole at Toulouse.
+    """
     path = ROOT / "outputs/city_gallery/metrics.json"
     return json.loads(path.read_text()) if path.is_file() else {}
 
@@ -71,7 +80,10 @@ def main() -> None:
         tiles.append(image.resize((TILE_WIDTH, int(image.height * scale)), Image.LANCZOS))
 
     tile_height = tiles[0].height
-    caption, gap, pad, head = 62, 12, 22, 142
+    caption, gap, pad = 62, 12, 22
+    # The header has to hold the whole subtitle. It was a constant, and the
+    # fourth line of SUB ran under the first row of tiles.
+    head = 64 + 24 * len(SUB) + 14
     rows = (len(tiles) + COLUMNS - 1) // COLUMNS
     width = pad * 2 + COLUMNS * TILE_WIDTH + (COLUMNS - 1) * gap
     height = head + rows * (tile_height + caption) + (rows - 1) * gap + pad
@@ -89,7 +101,7 @@ def main() -> None:
         draw.text((x, y + tile_height + 6), TITLES[site], font=font(19, True), fill=(238, 238, 242))
         detail = NOTES.get(site, "")
         if site in stats:
-            numbers = f"{stats[site]['sky']:.0%} sky   {stats[site]['skyline_m']:.0f} m skyline"
+            numbers = f"{stats[site]['sky_median']:.0%} sky   {stats[site]['skyline_m']:.0f} m skyline"
             detail = f"{numbers}   {detail}" if detail else numbers
         colour = (206, 138, 120) if site in NOTES else (150, 152, 158)
         draw.text((x, y + tile_height + 32), detail, font=font(16), fill=colour)

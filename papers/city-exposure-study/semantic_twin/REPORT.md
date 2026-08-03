@@ -70,7 +70,10 @@ fourth decimal at every site.
   **Superseded on 2026-08-03.** Both readings put Krakow at the top because its
   walk was on the Cloth Hall roof. On `city250_L3_*` the walk median sky fraction
   runs 12.1 percent at Times Square to 33.0 percent at London Trafalgar, with
-  Krakow third at 31.4 percent.
+  Krakow third at 31.4 percent. `outputs/city_gallery/metrics.json` has since
+  been rebuilt to hold those walk medians rather than the anchor cast, so the
+  contact sheet and the exposure run now report the same quantity and the 18 to
+  46 percent pair is not in that file any more.
 - **Eleven cities now carry an exposure distribution at the converged crop
   radius.** The median spans 5.13 dB isotropic and **9.65 dB rooftop** between
   cities, against 14.49 dB rooftop under the superseded law, while the largest

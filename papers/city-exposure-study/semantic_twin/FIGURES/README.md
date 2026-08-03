@@ -198,16 +198,26 @@ This walk is traced on the 130 m crop and both directional models want 250 m.
 
 Nine crops at Korenmarkt from 60 to 340 m, with the observers held fixed inside
 the smallest, so every radius scores the same 32 pedestrian standpoints and only
-the surroundings change. The dotted line is the radius everything was acquired at.
+the surroundings change. The dotted line is the radius the study publishes at.
 
-Isotropic susceptibility and sky fraction converge by 100 m. **Rooftop sites need
-250 m and street level small cells need 250 to 300.** At the acquired 130 m the
-three errors are +0.05, +3.24 and **+9.93 dB**.
+**Rebuilt by re-running the sweep and `make_crop_convergence.py`.** The shipped
+image was the superseded illumination law at a bounce budget of four, and the
+entry said the sweep had not been re-run. It has now, at three interactions on
+the measured ground datum, which costs ten minutes.
 
-**The two directional curves are the superseded illumination law** and this sweep
-has not been re-run. The requirement survives the correction and the sizes do
-not: at Korenmarkt the 130 m to 250 m step falls from 4.58 to 1.09 dB rooftop and
-from 11.37 to 8.21 dB street, so 250 m is now set by the street model alone.
+The requirement survives the correction and the sizes do not. Taking converged to
+mean the smallest radius from which every later step stays under half a decibel:
+**isotropic and sky fraction at 60 m, the narrowest crop in the sweep, macro
+rooftop at 100 m and street small cells at 200 m.** So 250 m is set by the street
+model alone and sits one crop step beyond the criterion. Going from 130 m to
+250 m is worth $-0.06$ dB isotropic, $-0.56$ dB rooftop and **$-7.05$ dB street**.
+
+Under the superseded law the rooftop model looked like it needed the full 250 m.
+It does not. The 130 m to 250 m rooftop correction is 0.56 dB here, and
+`run_law_comparison.py` puts it at 0.51 dB on a different observer set at the
+same two crops, so two runs that share no standpoints agree. The 1.09 dB and
+8.21 dB pair this entry used to carry does not reproduce from either and should
+not be quoted.
 
 The legend carries the explanation. The three models order by how close to the
 horizon they place their weight, full sphere then 3.1 to 60 degrees then 0.95 to
@@ -228,9 +238,14 @@ blocking accounts for 69 to 77 percent of the effect with redistribution of
 multi bounce throughput the rest.
 
 The grey line marks where the meshes change from single to double precision, which
-is why the 130 m point steps the wrong way. The 250 m and wider crops come from a
-second tile fetch, controlled against the first by rebuilding a 200 m crop from it
-and getting 390,518 triangles, identical to the original.
+is why the 130 m point steps the wrong way. It is the only step that does, and it
+does so for three of the four series. The 250 m and wider crops come from a second
+tile fetch, controlled against the first by rebuilding a 200 m crop from it and
+getting 390,518 triangles, identical to the original.
+
+`plot_crop_convergence.py` at the repository root draws the same JSON into
+`outputs/crop_convergence/` as a quick look beside its own data. The paper figure
+is the one under `FIGURES/`, and it is the one to change.
 
 ## 16: pedestrian exposure across eleven squares
 
@@ -461,3 +476,50 @@ JSON.** The pooled street small cell 90th percentile is tabulated there as
 four undefined ones are ranked at the top of the sample it is 4.80 dB. Neither is
 1.84. Every other entry in that table reproduces to the last digit, so this looks
 like a single transcription slip rather than a bug in `bound_diffraction.py`.
+
+## 25: three interactions, measured rather than preferred
+
+Six panels, and the only claim in them is that the operating point was measured.
+Made by `make_bounce_budget_figure.py` from
+`outputs/bounce_budget/korenmarkt_130m_bounce_evidence.json`, from
+`outputs/bounce_budget/korenmarkt_130m_budget_ladder.json`, and from the eleven
+city `_L3` location files for the one comparison the cost has to be read
+against. The ladder file is the cost sweep of `measure_bounce_evidence.py` with
+the per standpoint columns kept instead of reduced to quantiles, which is what
+makes the bottom row drawable. `--retrace` rebuilds it, and it reproduces the
+sweep already on disk to every digit of the medians.
+
+**a, where the power is.** 79 percent of launched power arrives at its first
+surface, 8.85 at a second, 1.19 at a third, and everything past the budget adds
+up to 0.23 percent. 21.0 percent leaves the square without touching anything at
+all.
+
+**Do not carry `SPINE.md`'s "escapes untouched 10.7 percent" into the paper.**
+That number is one minus the sum of the per depth incident shares, and those
+shares are not a partition: a ray that reaches depth three was counted at depth
+one and depth two as well. The share of launched power that escapes with no
+interaction is `1 - 0.7898 = 0.2102`, and it agrees with the measured sky
+fraction. The rest of that table is right.
+
+**b, what the cut leaves in flight.** The truncated throughput share is measured
+against the power that escaped, not against the power launched: 0.37 percent at
+the median standpoint at three, 2.0 percent at the worst. Truncation deletes
+power and never adds it, so every susceptibility at this budget is a lower
+bound.
+
+**c, roulette.** Four standpoints under eight independent seeds each, roulette
+from bounce 3 against roulette off. The relative spread of $\chi$ agrees to
+three significant figures on all three illumination models and the wall clock is
+101 s against 100 s. Roulette is unbiased whichever way it is set, so variance
+and work were the only things it could move, and it moved neither.
+
+**d, e, f, the ladder.** Every one of the 40 standpoints, at budgets 3, 4 and 6,
+against the same standpoints traced to eight interactions with the same seeds.
+The worst standpoint at three moves 0.005 dB isotropic, 0.016 rooftop and 0.063
+street, and all 40 fall under all three models, which is the signature of
+truncation rather than of noise. Three reference lines carry the argument: half
+a decibel, the spread of the per site medians across the eleven squares, and the
+spread of one standpoint over eight seeds. The cost of the budget sits under the
+estimator's own seed noise for the rooftop and street models and two decades
+under the effect the study reports. Past three the ladder flattens onto that
+noise floor, which is why the worst standpoint stops falling.

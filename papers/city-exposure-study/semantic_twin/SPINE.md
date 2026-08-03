@@ -127,10 +127,14 @@ that got applied to the adjoint one.
 
 ### 2. The adjoint move costs exactly half that guarantee
 
-An outward path holds 0.916 at the second interaction and 0.736 at the third, so
-the estimator carries 8 % of its power over surfaces the standpoint cannot see by
-the second bounce and 26 % by the third. That is the price of the efficiency and
+An outward path holds 0.912 at the second interaction and 0.714 at the third, so
+the estimator carries 9 % of its power over surfaces the standpoint cannot see by
+the second bounce and 29 % by the third. That is the price of the efficiency and
 it is stated rather than absorbed.
+
+*(Use the pooled medians of the table above, 0.912004 and 0.714182. Earlier notes
+quote 0.916 and 0.736, which is the Korenmarkt row alone, and 8 % and 26 % with
+it.)*
 
 ### 3. Panorama coverage is a radius, not a property of a square
 
@@ -226,7 +230,7 @@ half believable.
 |---|---|---|---|---|
 | isotropic | 0.06 | 0.13 | 0.19 | 0.18 |
 | macro rooftop | 0.15 | 0.37 | 1.20 | 0.53 |
-| street small cell | 0.44 | 1.84 | 12.64 | 1.82 |
+| street small cell | 0.42 | 1.26 | 12.64 | 1.78 |
 
 Every assumption errs upward: a single absorbing half plane, a distant source, no
 re-blocking, a knife edge rather than a lossy wedge, P.526's angle form used past
@@ -518,7 +522,18 @@ be presented as though it had.
 Two different radii, and they must not be confused. The **mesh crop radius** is
 raised until $\chi$ stops moving, which is what fixes 250 m. The converged radius
 is a property of the illumination model, not of the square, so it is reported per
-model. `FIGURES/15_crop_convergence.png`.
+model. Nine crops of Korenmarkt from 60 to 340 m with 32 standpoints held fixed
+inside the smallest, converged meaning the smallest radius from which every later
+step stays under half a decibel: **isotropic and sky fraction at 60 m, the
+narrowest crop in the sweep, macro rooftop at 100 m, street small cell at 200 m.**
+So the published 250 m is set by the street model alone and sits one crop step
+beyond the criterion. Going from 130 m to 250 m is worth -0.06 dB isotropic,
+-0.56 dB rooftop and -7.05 dB street, and `run_law_comparison.py` puts the
+rooftop one at -0.51 dB on a different observer set at the same two crops.
+
+*Source: `outputs/crop_convergence/korenmarkt_crop_convergence.json`, three
+surface interactions on the measured datum. Figure
+`FIGURES/15_crop_convergence.png`.*
 
 The **deployment box range cap** $\rho_+$ is a different parameter and it does
 **not** converge. Swept continuously from 50 to 500 m it never saturates:
