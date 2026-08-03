@@ -79,7 +79,7 @@ Four things had to be matched before the comparison meant anything
    roughness large enough to drive `exp(-g^2)` to zero, and only approximately
    in between, because the Rayleigh share depends on incidence angle and `S`
    does not. So the comparison runs three configurations: `specular` and
-   `diffuse` are exact model matches and bracket the physics, `production` is
+   `diffuse` are exact roughness matches and bracket the physics, `production` is
    the shipped roughness against the flux averaged `S` of `matched_scattering`
    and its residual is a model difference rather than an error.
 
@@ -954,8 +954,12 @@ def tracer_reference(
     """The estimator's own answer at the same standpoints, split the same way.
 
     ``walk_index`` reproduces the published per location seed, ``seed + 1000 *
-    index``, so a `production` mode run here is bit comparable with the row in
-    the published JSONL rather than merely statistically comparable with it.
+    index``, so a `production` mode run here is the published run at the same
+    standpoints rather than an independent redraw. It is not bit identical to it:
+    the published manifest starts Russian roulette at interaction 3 and
+    ``TraceConfig`` now starts it at 4, so the ray streams diverge wherever
+    roulette fires. The measured gap is reported in CROSS_VALIDATION.md section
+    6.4 and is 0.001 dB isotropic.
     """
     from .tracer import SbrTracer, TraceConfig
 
