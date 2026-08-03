@@ -134,3 +134,61 @@ def test_a_station_at_the_rim_with_nothing_above_it_counts_as_open():
     mesh = two_slabs(ground_z=0.0, roof_z=8.0)
     picked, _ = select(row([pano("outside", -300.0, 0.0)]), 2, support_mesh=mesh, ground_z_m=0.0, open_sky_m=2.5)
     assert [p["pano_id"] for p in picked] == ["outside"]
+
+
+def line(count: int, spacing: float = 5.0) -> list[dict]:
+    """A straight capture, each frame linked to the ones either side of it."""
+    names = [f"p{i}" for i in range(count)]
+    out = []
+    for i, name in enumerate(names):
+        links = [names[j] for j in (i - 1, i + 1) if 0 <= j < count]
+        # Centred on zero, so the panorama nearest the centre is the middle one.
+        out.append(pano(name, (i - (count - 1) / 2.0) * spacing, 0.0, links=links))
+    return out
+
+
+def test_chain_takes_neighbours_rather_than_extremes():
+    panoramas = line(9)
+    picked, provenance = select(row(panoramas), 5, along_links=True)
+    assert [p["pano_id"] for p in picked] == ["p4", "p3", "p5", "p2", "p6"]
+    assert provenance["median_separation_m"] == pytest.approx(5.0)
+
+
+def test_chain_is_denser_than_spread_on_the_same_capture():
+    panoramas = line(21)
+    _, chained = select(row(panoramas), 7, along_links=True)
+    _, spread = select(row(panoramas), 7)
+    assert chained["median_separation_m"] < spread["median_separation_m"]
+
+
+def test_chain_stops_when_the_capture_runs_out():
+    picked, _ = select(row(line(4)), 40, along_links=True)
+    assert len(picked) == 4
+
+
+def test_chain_grows_both_ways_so_a_short_budget_stays_centred():
+    picked, _ = select(row(line(11)), 3, along_links=True)
+    east = sorted(p["east_m"] for p in picked)
+    assert east == [-5.0, 0.0, 5.0]
+
+
+def test_chain_survives_a_link_to_a_panorama_outside_the_walk():
+    panoramas = line(5)
+    panoramas[2]["links"] = [*panoramas[2]["links"], "not-in-this-capture"]
+    picked, _ = select(row(panoramas), 5, along_links=True)
+    assert len(picked) == 5
+
+
+def test_chain_accepts_links_written_as_objects():
+    panoramas = line(5)
+    for p in panoramas:
+        p["links"] = [{"pano_id": name} for name in p["links"]]
+    picked, _ = select(row(panoramas), 3, along_links=True)
+    assert len(picked) == 3
+
+
+def test_chain_records_which_rule_chose_the_set():
+    _, provenance = select(row(line(5)), 3, along_links=True)
+    assert "along the capture links" in provenance["selection"]
+    _, spread = select(row(line(5)), 3)
+    assert "farthest-point" in spread["selection"]

@@ -100,6 +100,62 @@ def spread_subset(positions: np.ndarray, count: int) -> list[int]:
     return chosen
 
 
+def chain_subset(walk: list[dict[str, Any]], positions: np.ndarray, count: int) -> list[int]:
+    """Consecutive panoramas along the capture, outward from the centre.
+
+    Farthest-point sampling answers a different question. It spreads the cameras
+    so that as much facade as possible is seen at least once, which is the right
+    rule when the cameras are the evidence. It is the wrong rule when the cameras
+    are the walk, because it deliberately leaves the gaps between them as wide as
+    it can: at 14 cameras it produces 20 to 81 m between neighbours, out of a
+    capture whose own frames are 2 to 11 m apart.
+
+    This walks the links instead. Start at the panorama nearest the centre and
+    take neighbours outward, alternating between the two ends, so a budget that
+    runs out leaves a chain centred on the square rather than a chain running off
+    one side of it.
+    """
+    if not walk:
+        return []
+    count = min(count, len(walk))
+    index = {p["pano_id"]: i for i, p in enumerate(walk)}
+    first = int(np.argmin(np.linalg.norm(positions, axis=1)))
+
+    chosen = [first]
+    seen = {first}
+    # Two ends grown together. Each end holds the panoramas reachable from it
+    # that nothing has taken yet, nearest first, so the chain stays a chain even
+    # where the capture branches at a junction.
+    frontier = [[first], [first]]
+    while len(chosen) < count:
+        grew = False
+        for end in frontier:
+            if len(chosen) >= count or not end:
+                continue
+            here = end[-1]
+            # The screener writes links as bare identifiers. Objects carrying a
+            # ``pano_id`` are accepted too, because that is what the provider
+            # returns and what a future screener may keep.
+            neighbours = [
+                link if isinstance(link, str) else link.get("pano_id")
+                for link in walk[here].get("links", [])
+            ]
+            options = [index[n] for n in neighbours if n in index and index[n] not in seen]
+            if not options:
+                end.clear()
+                continue
+            nxt = min(
+                options, key=lambda i: float(np.linalg.norm(positions[i] - positions[here]))
+            )
+            chosen.append(nxt)
+            seen.add(nxt)
+            end.append(nxt)
+            grew = True
+        if not grew:
+            break
+    return chosen
+
+
 def topmost_surface(
     support_mesh: tuple[np.ndarray, np.ndarray],
     positions: np.ndarray,
@@ -145,8 +201,14 @@ def select(
     support_mesh: tuple[np.ndarray, np.ndarray] | None = None,
     ground_z_m: float | None = None,
     open_sky_m: float = 2.5,
+    along_links: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Choose the spread subset of the site's walk, with its own provenance."""
+    """Choose a subset of the site's walk, with its own provenance.
+
+    Two rules, and they answer different questions. Spread maximises how much
+    facade is seen at all. Chain follows the capture itself, which is what a walk
+    from one end of a street to the other needs.
+    """
     date = walk_date or row["walk_date"]
     walk = [p for p in row["panoramas"] if p["date"] == date and p["links"]]
     if not walk:
@@ -168,14 +230,18 @@ def select(
         walk = [p for p, keep in zip(walk, outdoor, strict=True) if keep]
         positions = positions[outdoor]
 
-    order = spread_subset(positions, count)
+    order = chain_subset(walk, positions, count) if along_links else spread_subset(positions, count)
     picked = [walk[i] for i in order]
     taken = positions[order] if order else np.zeros((0, 2))
     separations = []
     for i in range(1, len(taken)):
         separations.append(float(np.linalg.norm(taken[i] - taken[:i], axis=1).min()))
     provenance = {
-        "selection": "farthest-point sampling over the walk, seeded at the panorama nearest the centre",
+        "selection": (
+            "consecutive panoramas along the capture links, grown outward from the centre"
+            if along_links
+            else "farthest-point sampling over the walk, seeded at the panorama nearest the centre"
+        ),
         "walk_date": date,
         "screened_walk_date": row["walk_date"],
         "walk_date_overridden": walk_date is not None and walk_date != row["walk_date"],
@@ -213,6 +279,7 @@ def fetch(
     out_root: pathlib.Path | None = None,
     walk_date: str | None = None,
     open_sky_m: float = 2.5,
+    along_links: bool = False,
 ) -> dict[str, Any]:
     scene = load_scene(scene_path)
     name = str(scene["name"])
@@ -229,6 +296,7 @@ def fetch(
         support_mesh=support_mesh,
         ground_z_m=float(scene["camera_ground_z_m"]),
         open_sky_m=open_sky_m,
+        along_links=along_links,
     )
     out_dir = out_root or (SCRIPT_DIR / "data" / "panoramas" / name)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -308,6 +376,15 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
             "ground datum, which is what an arcade or a concourse looks like from above. 0 disables it."
         ),
     )
+    parser.add_argument(
+        "--along-links",
+        action="store_true",
+        help=(
+            "take consecutive panoramas along the capture instead of spreading them out. Use this "
+            "when the cameras are the walk rather than the evidence: it gives the capture's own "
+            "spacing, a few metres, where spreading gives tens of metres."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -322,6 +399,7 @@ def main(argv: list[str] | None = None) -> int:
         out_root=args.out,
         walk_date=args.walk_date,
         open_sky_m=args.open_sky_m,
+        along_links=args.along_links,
     )
     selection = manifest["selection"]
     print(
