@@ -6,7 +6,7 @@ and writes ``figures/cities_table.tex`` (per-city median and p95). Run after the
 batch, then build with pdflatex. See README.md.
 
 Usage:
-    python papers/city-exposure-study/make_report.py [--results results/cities]
+    python papers/city-exposure-study/report/make_report.py [--results results/cities]
 """
 
 from __future__ import annotations
@@ -144,7 +144,7 @@ def main(argv=None) -> int:
         "\\centering",
         f"\\caption{{Per-city population exposure ({headline.replace('_', '-')}): median and 95th percentile"
         + (", with morphology covariates (geometric LOS fraction, mean roof height)." if have_cov else ".")
-        + "}}",
+        + "}",
         "\\label{tab:cities}",
         "\\begin{tabular}{l" + ("cccc" if have_cov else "cc") + "}",
         "\\toprule",

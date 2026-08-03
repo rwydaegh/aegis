@@ -40,7 +40,7 @@ the 10-cities viz decision.
 >
 > The case against, and why it doesn't win: Three.js means reusing AEGIS scene code I can drive and screenshot from right here, which is convenient for our dev loop. But it entangles HPC mode with the product, browser rendering strains on a full city plus thousands of agents, and exporting publication-grade animation from R3F is a fight. So I'd keep Three.js as the startup's domain and, at most, lean on a quick headless PyVista render for in-the-loop sanity checks, not build the HPC visualizer on the web stack.
 >
-> So: matplotlib for the analytics, Blender for the 3D, and yes - I'll download Blender and get it working against the hybrid repo's scene code so this isn't theoretical. Take the Google key offer too.
+> So: matplotlib for the analytics, Blender for the 3D, and yes - I'll download Blender and get it working against the hybrid repo's scene code so this isn't theoretical. Take the Inhouse key offer too.
 >
 > ● User answered Claude's questions:
 >   ⎿  · What drives HPC-mode 3D visualization (analytics are matplotlib/scienceplots either way)? → 2. make a new tab on the side which is encompasses this basically. it will not face any clients, it's just for me. so the frontend design doesnt need to be like excellent, but it's more for me to follow along validate and debug stuff while sliding into the rest of aegis well.
@@ -55,7 +55,7 @@ the 10-cities viz decision.
 >
 > Architecture.
 > - New module in src/aegis (call it the batch/HPC runner). Lifts the trajectory + multi-body + CDF-accumulation skeleton from plaza_run, drops the ECBF slot loop entirely, reconnects to the production DosimetryEngine at incoherent levels.
-> - Reuses, as code-borrow not dependency: the pedestrian_flow_ABM (GHSL population sampling + Google Directions routing) and the geometry logic from ou
+> - Reuses, as code-borrow not dependency: the pedestrian_flow_ABM (GHSL population sampling + Inhouse Directions routing) and the geometry logic from ou
 
 *(the paste is truncated there - Robin cut it off mid-word when he sent it)*
 

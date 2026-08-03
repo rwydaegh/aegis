@@ -1,44 +1,35 @@
-# City-scale population exposure report
+# City exposure study
 
-A LaTeX report on population RF exposure under a 28 GHz massive-MIMO deployment,
-across ten cities of differing morphology, computed with the deterministic
-ray-traced arm of the AEGIS study pipeline. This is the deterministic reference;
-the stochastic-vs-deterministic comparison follows.
+Radio-frequency exposure of people in city squares. Three pieces of work sit
+here. They share a subject and almost nothing else, so read this before you go
+looking for something.
 
-## One-command regeneration
+| Directory | State | What it is |
+| --- | --- | --- |
+| `semantic_twin/` | live | The current paper. Eleven photogrammetric city squares at 15 GHz, surface materials read out of street-level panoramas, and an adjoint SBR estimator that runs the trace outward from the pedestrian. Start at `semantic_twin/README.md`. |
+| `report/` | finished | The older arm, from June. Ten cities at 28 GHz, agents walking, the deterministic ray-traced channel from `aegis.study.run_cities`, and a short LaTeX report. Start at `report/README.md`. |
+| `hybrid_twin/` | mostly finished | The sister project. Google and Inhouse 3D tiles plus OSM, assembled in headless Blender, focused on Graslei in Ghent. Shares no code with the other two. Start at `hybrid_twin/README.md`. |
+| `archive/` | keep, do not read | Finished material and things nothing reads any more, including a 5.9 GB mirror of a rented GPU box. Described in `archive/README.md`. |
 
-From the repo root, with the study venv active:
+`INVENTORY.md` is the full map: every directory, what it holds, what reads it,
+and what was moved where during the 2026-08-03 tidy-up.
+
+## Building the two papers
 
 ```bash
-# 1. Run the ten-city batch (writes results/cities/, ~1-2 h on CPU)
-python -m aegis.study.run_cities --config configs/study/ten_cities.yaml --out results/cities
+# The current paper, 21 pages
+cd semantic_twin/paper && latexmk -pdf -interaction=nonstopmode paper.tex
 
-# 2. Pull the figure + per-city table into this report
-python papers/city-exposure-study/make_report.py --results results/cities
-
-# 3. Build the PDF
-cd papers/city-exposure-study && pdflatex report.tex && pdflatex report.tex
+# The older report, 2 pages
+cd report && latexmk -pdf -interaction=nonstopmode report.tex
 ```
 
-`make_report.py` copies `results/cities/cities_cdf.pdf` into `figures/` and
-writes `figures/cities_table.tex` (per-city median and p95) from
-`cities_summary.json`.
+## Running the tests
 
-## What the config controls
+Only `semantic_twin/` has a test suite. It has to be run from that directory,
+because the tests import the run scripts sitting next to the package.
 
-`configs/study/ten_cities.yaml`. The cities come from
-`aegis.study.run_cities.DEFAULT_CITIES` (ten distinct morphologies) when
-`cities.specs` is empty and `cities.count: 10`. Fidelity knobs dialled for
-breadth (raise to converge):
-
-- `mobility.n_agents`, `mobility.window_s`: crowd size and window
-- `deployment.realizations_K`: deployment marginalisation (1 here)
-- `channel.samples_per_src`, `channel.diffraction`: ray-trace fidelity
-- `channel.max_center_paths`: caps the exposure-operator cost (strongest paths)
-- `dosimetry.peak_sab`: per-triangle peak-Sab map (off here; scalar exposure only)
-
-## Files
-
-- `report.tex` - the report source
-- `make_report.py` - assemble figure + table from a batch
-- `figures/` - generated (CDF PDF + table tex); not the source of truth
+```bash
+cd semantic_twin
+/home/user/aegis/.venv/bin/python -m pytest tests/ -q -p no:randomly
+```

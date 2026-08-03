@@ -82,7 +82,7 @@ That became `docs/superpowers/goals/2026-06-01-hpc-study-end-goal.md`. Goal set 
 
 ### 1 June, 07:22 to 08:42. The stretch with no transcript
 
-Nine more commits landed: real Google Directions walks, study scene export to the
+Nine more commits landed: real Inhouse Directions walks, study scene export to the
 replay viewer with Sionna bounce rays, city and sites rendered in the replay
 scene, log x-axis on the overlay, `p_los(d)`, `generate_coherent_channel`, the
 det-vs-stoch comparison primitives, `compare_city`, and the real city mesh in the
@@ -104,7 +104,7 @@ switch, eight hours into its only build session.
 ## What exists now
 
 **Code**: `src/aegis/study/`, 2,436 lines across 18 modules. City meshing from OSM,
-rooftop-candidate thinning into 3-sector sites, GHSL + Google Directions mobility,
+rooftop-candidate thinning into 3-sector sites, GHSL + Inhouse Directions mobility,
 SMPL-X posing, Sionna-RT deterministic channel, MRT precoding, Q-phasor exposure,
 CDF reduction, top-down viz, replay export. Plus `compare.py`, the full
 deterministic-vs-stochastic arm.
@@ -167,8 +167,8 @@ stochastic when it is not.
 | `configs/study/ten_cities.yaml` | The headline config. Cities come from `run_cities.DEFAULT_CITIES` |
 | `src/aegis/study/run_cities.py` | Batch driver, `DEFAULT_CITIES` list |
 | `src/aegis/study/compare.py` | Det-vs-stoch arm, unrun |
-| `papers/city-exposure-study/report.tex` | The report |
-| `papers/city-exposure-study/make_report.py` | Figure + table assembly from `cities_summary.json` |
+| `papers/city-exposure-study/report/report.tex` | The report |
+| `papers/city-exposure-study/report/make_report.py` | Figure + table assembly from `cities_summary.json` |
 
 ## Session 4 (2026-07-28, overnight): audit, physics fixes, restart
 
@@ -221,5 +221,5 @@ after this point is computed with the corrected physics: cadences 5 s/5 s,
 | (none) | 06-01 07:22 to 08:42 | Lost with the old box, see above |
 
 Resume the first with `claude --resume 74aa577a-7617-498f-b90e-89180257845a` from
-`/home/user/aegis`. It was recovered from the Google Drive backup on 2026-07-27;
+`/home/user/aegis`. It was recovered from the Inhouse Drive backup on 2026-07-27;
 it had been absent from this box since the migration.

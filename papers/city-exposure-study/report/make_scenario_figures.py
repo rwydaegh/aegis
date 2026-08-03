@@ -9,7 +9,7 @@ Outputs figures/cities_scenarios.{pdf,png} (2x5 grid, shared exposure scale)
 and figures/scenario_<city>.{pdf,png} (single-city detail with a legend).
 
 Usage:
-    python papers/city-exposure-study/make_scenario_figures.py \
+    python papers/city-exposure-study/report/make_scenario_figures.py \
         [--results results/cities] [--detail ghent]
 """
 
