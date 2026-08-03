@@ -1,8 +1,8 @@
 # Remote compute on blgpu
 
 The local box is 4 vCPU and spends most of its life above load 30, so an exposure sweep there
-runs at roughly half a core. `blgpu` is a rented 8 core Xeon with 31 GB and an RTX A6000, and it
-sits idle. This document is how to move work onto it.
+runs at roughly half a core. `blgpu` is a rented 8 core Xeon with 31 GB and an RTX A6000, and on
+the night this was set up it was sitting at load 0.00. This document is how to move work onto it.
 
 Nothing here needs the GPU. The adjoint SBR tracer is a Mitsuba `llvm_ad_rgb` and NumPy pipeline,
 so what the box actually buys is eight uncontended cores. The A6000 is used by the segmentation
@@ -216,9 +216,10 @@ free. Eight cores are still eight cores, but they are not eight cores each.
 An eleven site sweep at 6 locations per site and a 250 m crop took 9 minutes end to end, including
 loading and ground datum measurement for every site mesh.
 
-The link between the two machines carries about 120 MB/s, so a full `sync` of 350 MB is roughly
-three seconds and fetching a sweep's results back is instant. There is no reason to batch work to
-avoid transfers.
+The link between the two machines carries about 120 MB/s. The whole payload is 880 MB and a
+`sync` with nothing to send takes about five seconds, almost all of it scanning rather than
+transferring. Fetching a sweep's results back is instant. There is no reason to batch work to
+avoid transfers, and no reason to skip `sync` before a run.
 
 ## Working alongside the other agent
 
