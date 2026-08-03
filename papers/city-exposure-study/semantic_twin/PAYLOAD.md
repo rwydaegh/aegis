@@ -45,9 +45,24 @@ first half is not worth doing again.
 
 Evidence is discovered by directory name under `outputs`, so a site that has no
 panorama exports the traced layers alone and the blend opens with those
-collections empty. Korenmarkt is the only site with the full set. New York has a
-Vistas fishnet over two admitted panoramas and nothing else. Milan has a fishnet
-and a mesh depth buffer and no body layer.
+collections empty.
+
+| Site | Blend | Figures | Layers it has | Layers it does not, and why |
+| --- | --- | --- | --- | --- |
+| korenmarkt | 31 MB | 20 | all fourteen | none |
+| newyork_timessquare | 11 MB | 16 | Vistas fishnet over two panoramas, coverage, refusals, 14 poses | no SAM 3 and no depth buffers were ever run here, and the dynamic body layer has not been run |
+| brussels_grandplace | 7.4 MB | 10 | the traced seven | no fishnet has been cut for this site |
+| krakow_rynek | 5.4 MB | 10 | the traced seven | no fishnet has been cut for this site |
+
+Every one of those absences is a pipeline stage that has not run at that site,
+not a stage that failed and not something this exporter drops. Milan has a
+fishnet and a mesh depth buffer and no body layer, and is not in the blend set
+yet because it has no traced payload.
+
+New York is the reason two lookups had to be loosened. Its Vistas taxonomy sits
+under each capture rather than at the site root, and its support mesh is named
+in a site level manifest rather than a per run one, so the fishnet was on disk
+and silently never reached a blend.
 
 ## One file, fourteen collections
 

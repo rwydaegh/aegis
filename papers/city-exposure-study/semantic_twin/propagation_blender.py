@@ -54,7 +54,6 @@ import pathlib
 import sys
 
 import bpy
-import mathutils
 import numpy as np
 
 MODEL_NAMES = ("isotropic", "rooftop", "street_small_cell")
@@ -929,6 +928,11 @@ def build_panoramas(payload, manifest, into: bpy.types.Collection, *, sigma_scal
     few centimetres in a two hundred metre scene is nothing. The scale is on
     every ellipsoid as a property, so nobody reads it as a metre.
     """
+    # Imported here rather than at module level: mathutils ships inside Blender
+    # and is absent from the venv, and the pure geometry in this file is tested
+    # outside Blender with only ``bpy`` stubbed.
+    import mathutils
+
     if "pano_position" not in payload.files:
         return None
     positions = payload["pano_position"].astype(np.float64)
@@ -1215,6 +1219,10 @@ def frame_the_viewport(twin: bpy.types.Object, hero: np.ndarray) -> None:
     Every workspace is set rather than only the layout one, because whichever
     tab the reader lands on is the one that has to be right.
     """
+    # Imported here rather than at module level, for the reason given in
+    # ``build_panoramas``.
+    import mathutils
+
     heights = np.empty(len(twin.data.vertices) * 3)
     twin.data.vertices.foreach_get("co", heights)
     points = heights.reshape(-1, 3)
@@ -1432,8 +1440,21 @@ def render_every_figure(args: argparse.Namespace) -> None:
         if args.figures is not None and not any(name.startswith(wanted) for wanted in args.figures):
             continue
         lit = {COLLECTION_NAMES.get(key, key) for key in shown}
-        if camera not in bpy.data.objects or not any(BUILT[key].objects for key in shown if key in BUILT):
-            print(f"[render] skipped {name}, the scene has nothing to put in it", flush=True)
+        # A figure is about the object its layer entry names, and a site that
+        # never built that object has nothing to say in that frame. Without this
+        # New York rendered the SAM 3 materials and the refused monocular depth
+        # as two pictures of a bare mesh, which is worse than not rendering
+        # them: it looks like the layer exists and is empty.
+        subject = {name for name in dict(figure.get("layers", {})) if name not in bpy.data.objects}
+        if camera not in bpy.data.objects or subject:
+            print(f"[render] skipped {name}, this site has no {', '.join(sorted(subject)) or camera}", flush=True)
+            continue
+        # The mesh is scenery in most of these, so a figure that shows the mesh
+        # and one empty layer is a figure of the mesh. Krakow was rendering the
+        # refusals that way.
+        over = [key for key in shown if key != "twin"]
+        if over and not any(BUILT[key].objects for key in over if key in BUILT):
+            print(f"[render] skipped {name}, this site built none of {', '.join(over)}", flush=True)
             continue
         wanted = figure.get("objects")
         dropped = set(figure.get("hide", ()))
