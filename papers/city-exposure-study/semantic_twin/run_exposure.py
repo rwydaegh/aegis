@@ -802,6 +802,7 @@ def run_all_sites(
     sites: tuple[str, ...] = SITES,
     crop_m: int = 130,
     tag_suffix: str = "",
+    workers: int | None = None,
 ) -> None:
     """One geometric materials run per site, then the cross city figure.
 
@@ -845,6 +846,7 @@ def run_all_sites(
                 site=site,
                 coupler=coupler,
                 crop_m=crop_m,
+                workers=workers,
             )
             done.append(site)
         except Exception as error:  # noqa: BLE001
