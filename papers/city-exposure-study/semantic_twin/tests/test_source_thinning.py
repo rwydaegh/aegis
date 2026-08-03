@@ -137,3 +137,56 @@ def test_the_floor_drops_tips_by_range_from_the_standpoint_that_found_them():
     # dropped tip is 3 m out on the ground even though it is 8.8 m away in slant.
     assert np.hypot(cut[0, 0], cut[0, 1]) == pytest.approx(40.0, rel=1e-6)
     assert np.hypot(kept[0, 0], kept[0, 1]) == pytest.approx(3.0, rel=1e-6)
+
+
+class OneFacePerAzimuth:
+    """Geometry that answers only "which triangle did this direction hit"."""
+
+    def __init__(self, faces: list[int]) -> None:
+        self.faces = faces
+
+    def intersect(self, origins, directions):  # noqa: ANN001, ANN201
+        count = np.asarray(directions).shape[0]
+        index = np.asarray(self.faces[:count], dtype=np.int64)
+        return np.ones(count, bool), np.ones(count), np.zeros((count, 3)), index
+
+
+def two_tips(geometry, origin, *, azimuths, elevations):  # noqa: ANN001, ANN201
+    """One tip north and one east, both on a roofline, both far enough to keep."""
+    return np.full(2, np.deg2rad(30.0)), np.array([40.0, 45.0]), np.array([True, True])
+
+
+def test_a_tip_on_a_billboard_is_dropped_and_the_roof_beside_it_is_not():
+    """The point of the mask: it separates two tips the range floor cannot."""
+    origins = np.zeros((1, 3))
+    clutter = np.array([True, False])
+    cloud = silhouette_cloud(
+        OneFacePerAzimuth([0, 1]),
+        origins,
+        two_tips,
+        azimuths=2,
+        elevations=2,
+        clutter_triangles=clutter,
+    )
+    assert cloud.shape[0] == 1
+    assert np.hypot(cloud[0, 0], cloud[0, 1]) == pytest.approx(45.0, rel=1e-6)
+
+
+def test_no_mask_keeps_every_tip():
+    """Every published run before the mask existed, unchanged."""
+    origins = np.zeros((1, 3))
+    assert silhouette_cloud(OneFacePerAzimuth([0, 1]), origins, two_tips, azimuths=2, elevations=2).shape[0] == 2
+
+
+def test_a_tip_that_hits_nothing_the_mask_knows_about_is_kept():
+    """A face index past the mask is a triangle the panoramas never saw, not clutter."""
+    origins = np.zeros((1, 3))
+    cloud = silhouette_cloud(
+        OneFacePerAzimuth([-1, 900]),
+        origins,
+        two_tips,
+        azimuths=2,
+        elevations=2,
+        clutter_triangles=np.array([True, True]),
+    )
+    assert cloud.shape[0] == 2

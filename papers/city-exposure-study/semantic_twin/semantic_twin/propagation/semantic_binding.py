@@ -507,3 +507,90 @@ def _index_remap(
         "distance_median_m": float(np.median(distance)),
         "distance_p99_m": float(np.quantile(distance, 0.99)),
     }
+
+
+#: Entities that can stand against the sky and be read as a roofline, but that
+#: no operator would mount a base station on. A tree, a hoarding and a lamp post
+#: all put a tip on the silhouette; none of them is a site.
+#:
+#: Vehicles and people are absent on purpose. The fishnet already refuses them
+#: as ``transient_object``, so they never reach a face class here, and listing
+#: them would suggest a second line of defence that does not exist.
+CLUTTER_ENTITIES = frozenset(
+    {
+        "Banner",
+        "Bench",
+        "Bike Rack",
+        "Billboard",
+        "CCTV Camera",
+        "Fire Hydrant",
+        "Guard Rail",
+        "Junction Box",
+        "Mailbox",
+        "Phone Booth",
+        "Pole",
+        "Street Light",
+        "Traffic Light",
+        "Traffic Sign (Back)",
+        "Traffic Sign (Front)",
+        "Traffic Sign Frame",
+        "Trash Can",
+        "Utility Pole",
+        "Vegetation",
+    }
+)
+
+
+def clutter_triangles(
+    face_count: int,
+    *,
+    fishnet_dir: pathlib.Path,
+    semantics_path: pathlib.Path,
+    remap: np.ndarray | None = None,
+    entities: frozenset[str] = CLUTTER_ENTITIES,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Which tracer triangles the panoramas say are clutter rather than building.
+
+    The source set is sampled off the silhouette, and the silhouette is whatever
+    is highest along each azimuth. At Tokyo a third of that boundary is screens
+    and signs, so a third of the sites land on things that hold no radio. This
+    is the mask that lets them be dropped.
+
+    A triangle is clutter when the clutter entities win it on area times
+    confidence, so a lamp post seen edge on against a wall does not condemn the
+    wall. Returns the mask and a short report, because how much of a square this
+    removes is a number the study should print rather than assume.
+    """
+    document = json.loads(pathlib.Path(semantics_path).read_text())
+    labels = {int(k): v for k, v in document["entity_id2label"].items()}
+    files = sorted(pathlib.Path(fishnet_dir).glob("*_fishnet.npz"))
+    if not files:
+        raise FileNotFoundError(f"no fishnet npz under {fishnet_dir}")
+
+    against = np.zeros(face_count)
+    for_it = np.zeros(face_count)
+    seen: dict[str, float] = {}
+    for path in files:
+        data = np.load(path, allow_pickle=True)
+        source = data["face_source_triangle"].astype(np.int64)
+        target = source if remap is None else remap[source]
+        weight = data["face_area_m2"].astype(np.float64) * data["face_confidence"].astype(np.float64)
+        is_clutter = np.array([labels.get(int(c)) in entities for c in data["face_class"]])
+        good = (target >= 0) & (target < face_count)
+        np.add.at(against, target[good & is_clutter], weight[good & is_clutter])
+        np.add.at(for_it, target[good & ~is_clutter], weight[good & ~is_clutter])
+        for c, w in zip(data["face_class"], weight, strict=True):
+            name = labels.get(int(c))
+            if name in entities:
+                seen[name] = seen.get(name, 0.0) + float(w)
+
+    mask = against > for_it
+    report = {
+        "fishnet_dir": str(fishnet_dir),
+        "views": len(files),
+        "clutter_triangles": int(mask.sum()),
+        "clutter_fraction_of_seen": float(mask.sum() / max(1, int(((against + for_it) > 0.0).sum()))),
+        "weight_by_entity": {k: round(v, 2) for k, v in sorted(seen.items(), key=lambda kv: -kv[1])},
+        "rule": "area times confidence, clutter entities against everything else, per tracer triangle",
+    }
+    return mask, report

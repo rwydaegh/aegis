@@ -105,6 +105,7 @@ def silhouette_cloud(
     azimuths: int,
     elevations: int,
     floor_m: float = 0.0,
+    clutter_triangles: np.ndarray | None = None,
 ) -> np.ndarray:
     """Where the visible skyline actually is, found by casting and nothing else.
 
@@ -120,6 +121,15 @@ def silhouette_cloud(
     sits well under a twenty metre roofline and something taller is hit first.
     So a near cut removes the post from the cloud without removing the roofline
     behind it, which some other standpoint sees at a respectable distance anyway.
+
+    ``clutter_triangles`` is the other half of that, and it is the half the range
+    cut cannot do. A hoarding on a roof edge and a tree above a low wall both
+    stand at roofline height and at roofline range, so no geometric rule tells
+    them from the building. The panoramas do:
+    :func:`~.semantic_binding.clutter_triangles` says which tracer triangles the
+    segmentation calls a sign, a pole or a canopy, and a tip that lands on one is
+    dropped. Passing ``None`` keeps every tip, which is what every published run
+    before this did.
     """
     out = []
     azimuth = (np.arange(azimuths) + 0.5) * (2.0 * np.pi / azimuths)
@@ -137,6 +147,17 @@ def silhouette_cloud(
             ],
             axis=-1,
         )
+        if clutter_triangles is not None:
+            # One more cast along the directions already chosen, only to read
+            # which triangle the tip sits on. A thousand rays beside the fan's
+            # near million, so the cost does not show.
+            _, _, _, face = geometry.intersect(np.broadcast_to(origin, direction.shape), direction)
+            face = np.asarray(face, dtype=np.int64)
+            inside = np.clip(face, 0, clutter_triangles.size - 1)
+            keep = (face < 0) | (face >= clutter_triangles.size) | ~clutter_triangles[inside]
+            if not keep.any():
+                continue
+            slant, direction = slant[keep], direction[keep]
         out.append(origin + slant[:, None] * direction)
     return np.concatenate(out) if out else np.empty((0, 3))
 
@@ -254,6 +275,7 @@ def build_source_set(
     dims: int = 3,
     floor_m: float = 0.0,
     site_lift_m: float = SITE_LIFT_M,
+    clutter_triangles: np.ndarray | None = None,
     rng: np.random.Generator | None = None,
 ) -> SourceSet:
     """Build the set from a walk, at the resolutions METHOD.md section 5.2 fixed.
@@ -269,6 +291,7 @@ def build_source_set(
         azimuths=azimuths,
         elevations=elevations,
         floor_m=floor_m,
+        clutter_triangles=clutter_triangles,
     )
     positions = thin(cloud, cell_m, rng, dims=dims)
     # Straight up, rather than along the surface normal. A site is on a roof

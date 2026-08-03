@@ -38,12 +38,15 @@ import time
 
 import numpy as np
 
+from typing import Any
+
 from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP
 from semantic_twin.propagation.geometry import MitsubaGeometry
 from semantic_twin.propagation.scene import classify_faces, load_bindings
 from semantic_twin.propagation.skyline import silhouette
 from semantic_twin.propagation.sources import SITE_LIFT_M, NextEventGather, build_source_set
 from semantic_twin.propagation.route import site_walk
+from semantic_twin.propagation.semantic_binding import clutter_triangles
 from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
 from semantic_twin.propagation.walk import build_walk, measure_ground_datum
 
@@ -55,6 +58,29 @@ def site_mesh(site: str, crop_m: int) -> pathlib.Path:
     root = ROOT / "data" / "geometry" / site
     precise = root / f"inhouse_leaf_{crop_m}m_f64.ply"
     return precise if precise.exists() else root / f"inhouse_leaf_{crop_m}m.ply"
+
+
+def site_clutter(site: str, geometry: Any, args: argparse.Namespace) -> tuple[np.ndarray | None, dict[str, Any]]:
+    """The mask of triangles the panoramas call clutter, or nothing if not asked.
+
+    A missing fishnet is reported rather than raised. Every site that has one
+    should use it, but a site that has none still has a silhouette, and refusing
+    to trace it would remove a square from the study over a missing input rather
+    than over anything measured.
+    """
+    if not args.drop_clutter:
+        return None, {"used": False, "reason": "not asked for"}
+    fishnet = ROOT / "outputs" / f"{site}_fishnet_vistas_{args.crop_m}m"
+    semantics = next((ROOT / "data" / "panoramas" / site).glob("**/semantics/semantics.json"), None)
+    if not fishnet.is_dir() or semantics is None:
+        print(f"{site:24s} no {args.crop_m} m fishnet, every silhouette tip kept")
+        return None, {"used": False, "reason": f"no fishnet at {fishnet.name}"}
+    mask, report = clutter_triangles(geometry.faces.shape[0], fishnet_dir=fishnet, semantics_path=semantics)
+    print(
+        f"{site:24s} clutter mask {int(mask.sum())} triangles, "
+        f"{report['clutter_fraction_of_seen']:.1%} of what the panoramas saw"
+    )
+    return mask, {"used": True, **report}
 
 
 def main() -> None:
@@ -76,6 +102,11 @@ def main() -> None:
     ap.add_argument("--head-height-m", type=float, default=1.5)
     ap.add_argument("--walk", choices=["route", "grid"], default="route")
     ap.add_argument("--walk-stride-m", type=float, default=6.0)
+    ap.add_argument(
+        "--drop-clutter",
+        action="store_true",
+        help="keep sites off the tips the panoramas call a sign, a pole or a canopy",
+    )
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--variant", default="llvm_ad_rgb")
     ap.add_argument("--tag", default="next_event")
@@ -127,6 +158,7 @@ def main() -> None:
         pool = points[order[held_out:]]
         index = np.linspace(0, pool.shape[0] - 1, min(args.builders, pool.shape[0])).round().astype(int)
 
+        clutter, clutter_report = site_clutter(site, geometry, args)
         sources = build_source_set(
             geometry,
             pool[index],
@@ -136,6 +168,7 @@ def main() -> None:
             cell_m=args.cell_m,
             dims=args.dims,
             site_lift_m=args.site_lift_m,
+            clutter_triangles=clutter,
         )
         direct, seen = sources.direct(geometry, evaluate)
 
@@ -206,6 +239,7 @@ def main() -> None:
                 "rays": args.rays,
                 "max_bounces": args.max_bounces,
                 "held_out": int(evaluate.shape[0]),
+                "clutter": clutter_report,
                 "surplus_db_median": float(np.median(surplus_db)),
                 "surplus_db_p5": float(np.percentile(surplus_db, 5)),
                 "surplus_db_p95": float(np.percentile(surplus_db, 95)),

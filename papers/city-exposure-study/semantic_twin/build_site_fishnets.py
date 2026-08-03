@@ -65,12 +65,17 @@ import numpy as np
 
 ROOT = pathlib.Path(__file__).resolve().parent
 
-#: The sites that carry registered Street View panoramas with segmented
-#: semantics beside them and no fishnet of their own.
+#: The sites that carry registered panoramas with segmented semantics beside
+#: them. Korenmarkt and Milan are here even though each has only one camera:
+#: they were left out while the list meant "sites with no fishnet of their own",
+#: and the result was that the 250 m build covered nine squares of eleven and
+#: said nothing about the two it never looked at.
 SITES = (
     "brussels_grandplace",
+    "korenmarkt",
     "madrid_plazamayor",
     "mexico_zocalo",
+    "milan_duomo",
     "newyork_timessquare",
     "prague_staromestske",
     "tokyo_hachiko",
@@ -242,12 +247,29 @@ def site_mesh(site: str, requested: str) -> pathlib.Path:
     raise SystemExit(f"{site} has no double precision {stem} mesh")
 
 
+def panorama_dirs(site: str) -> list[pathlib.Path]:
+    """Every panorama directory a site has, in either of the two layouts.
+
+    A site fetched by ``fetch_site_panoramas.py`` gets one ``pano_NN_<id>``
+    directory per camera. The two sites acquired before that script existed,
+    Korenmarkt and Milan, put their single camera's files straight into the site
+    directory instead. Globbing ``pano_*`` therefore returned nothing for them,
+    silently: no error, no job, no fishnet, and the 250 m build simply skipped
+    two of the eleven squares while reporting success on nine.
+    """
+    root = ROOT / "data" / "panoramas" / site
+    nested = sorted(root.glob("pano_*"))
+    if nested:
+        return [d for d in nested if d.is_dir()]
+    return [root] if (root / "semantics").is_dir() else []
+
+
 def site_jobs(site: str, args: argparse.Namespace) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     mesh = site_mesh(site, args.mesh)
     out_root = ROOT / "outputs" / f"{site}_fishnet_vistas{args.out_suffix}"
     jobs: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
-    for directory in sorted((ROOT / "data" / "panoramas" / site).glob("pano_*")):
+    for directory in panorama_dirs(site):
         verdict = pose_verdict(
             directory / "alignment" / "pose_aligned.json",
             max_sky_hit=args.max_sky_hit_fraction,
