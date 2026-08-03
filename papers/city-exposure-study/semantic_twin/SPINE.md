@@ -285,11 +285,38 @@ Spearman rooftop against isotropic +0.936, street against isotropic +0.345.
 **Do not quote the older `_corrected` table.** `PAPER_METHODS.md` §9.2 and
 `REPORT.md` still carry it and their Krakow and Toulouse rows are the roof.
 
-### R2. The illumination law reorders the cities
+### R2. The illumination law is the single most consequential modelling choice
 
-The corrected law changed the ordering. This is the single most consequential
-modelling choice in the study and it deserves its own beat, not a footnote.
-`run_law_comparison.py`.
+Not a footnote. The earlier law placed sites at a fixed height, the corrected one
+integrates the cone volume over the height band. Both laws are evaluated on the
+**same rays at each crop**, so the level difference between them carries no Monte
+Carlo noise at all. At Korenmarkt, 40 standpoints, 150k rays:
+
+| | 130 m crop | 250 m crop |
+|---|---|---|
+| rooftop, law shift | +2.54 dB | **+5.67 dB** |
+| street small cell, law shift | +0.84 dB | **+3.98 dB** |
+| isotropic | unaffected by construction | unaffected |
+
+*(Recomputed in session from `outputs/law_comparison/korenmarkt_law_comparison.json`.)*
+
+A 5.67 dB shift is larger than the entire between square spread of 4.93 dB
+rooftop. **The choice of illumination law matters more than the choice of city.**
+
+The second half of that result is better than the first. The two laws do not just
+differ by a level, they differ in how much the answer depends on the crop. Going
+from a 130 m to a 250 m crop costs the fixed height law 3.64 dB rooftop and
+10.08 dB street, but costs the corrected law only 0.51 dB and 6.94 dB. The
+corrected law is the one under which the crop converges, so the correctness of
+the law and the convergence of the geometry are the same question rather than two
+independent ones.
+
+**What is not yet supported**: whether the corrected law reorders the eleven
+cities. This comparison is Korenmarkt only. Earlier notes assert a reordering.
+Either run the eleven under both laws or drop the claim. Do not write it as
+measured.
+
+*Source: `run_law_comparison.py`.*
 
 ### R3. Material discrimination does not move exposure
 
