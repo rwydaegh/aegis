@@ -418,15 +418,39 @@ follows the person, and the case that sounds hardest is the one that changes
 nothing at all.
 
 Suppose every site puts its peak on the pedestrian. The gain toward the head is
-then the same constant in every direction of the sky, so it multiplies
-\eqref{eq:Q} and the normalisation divides it straight back out. $Q$ is not
-approximately unchanged, it is the same function, and since the estimator reads
-$Q$ only when depositing an escaped ray and never inside a random draw, the
-traced $\chi$ comes out bit identical. The same cancellation holds for full
-digital maximum ratio transmission, where the expected array gain is again
-common to every site. The exposure ratio is therefore invariant to beamforming
-that tracks the user, exactly rather than approximately, and no array geometry
-needs to be specified to say so.
+then the same constant for every site, so it multiplies \eqref{eq:Q} and the
+normalisation divides it straight back out. $Q$ is not approximately unchanged,
+it is the same function, and since the estimator reads $Q$ only when depositing
+an escaped ray and never inside a random draw, the traced $\chi$ comes out bit
+identical.
+
+For one policy this is exact and needs nothing else. Under full digital maximum
+ratio transmission the site transmits along its own channel to the head, and a
+matched filter delivers the total power in that channel whatever the channel is.
+An array of $MN$ elements multiplies that total by $MN$ in the square and by the
+same $MN$ over open ground, so the array factor cancels between numerator and
+denominator with no assumption about how the paths are arranged.
+
+The other matched policies only look invariant, and the difference matters
+because they are the ones real networks use. A site that steers at the
+pedestrian's coordinates aims at the direct path. A reflected path leaves that
+site toward its own last surface, which can be a hundred metres from the head,
+so it departs tens of degrees off the beam axis and the array puts it 20 to
+25\,dB down. Geometric steering therefore suppresses the very multipath this
+paper is measuring and pushes $\chi$ toward its no bounce value. Codebook beam
+selection, which is what 5G beam management does, sits in between. Treating each
+site as a single far point makes that offset vanish and both policies then read
+as invariant, so the invariance there is an artefact of the far source picture
+rather than a property of the physics. The direction of the error is at least
+known: the numerator's gain is the peak times a sidelobe factor no greater than
+one while the denominator's is the peak itself, so steered $\chi$ can only fall
+below the value reported here.
+
+One thing never cancels under any policy. The element pattern multiplies each
+path before the aperture combines anything, so it survives as a reweighting of
+$Q$. For a standard element that is a mild elevation taper, 0.26\,dB at the
+rooftop model's median elevation of $9.5^\circ$ and 10.2\,dB at the
+$60^\circ$ top of the band.
 
 What does move $\chi$ is radiation that is not aimed at the person. A broadcast
 beam carries a fixed electrical downtilt, and a beam serving another user points
