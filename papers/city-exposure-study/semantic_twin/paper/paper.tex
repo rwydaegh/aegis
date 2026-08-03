@@ -232,6 +232,7 @@ converged crop even where the overview image shows a smaller visual crop.
     Material null & 130 & 6 & 200k & 120 \\
     Dielectric bracket & 130 & 12 & 60k & 24 \\
     Vision model materials & 130 & 12 & 60k & 24 \\
+    Antenna policies & 250 & 3 & 150k & 32 per square \\
     Range cap sweep & 250 & 4 & 200k & 40 per square \\
     Standpoint sampling & 250 & 4 & 200k & 80 per square \\
     Cross validation & 250 & 4 & 200k & 8 \\
@@ -485,7 +486,10 @@ survives.
 Realistic antenna policies also move the eleven-square order, by more than
 adjacent swaps. Against the reported ordering, Kendall correlations are 0.818 for
 a rooftop broadcast beam and 0.709 for a loaded street beam, reversing pairs up
-to 1.53\,dB apart rooftop and 2.97\,dB street on axes 5.6 and 9.8\,dB wide. Full
+to 1.53\,dB apart rooftop and 2.97\,dB street. Those pairs sit on
+between-square axes 5.6 and 9.8\,dB wide, which are the widths of the
+32-standpoint population this comparison ran on and not the 4.93 and 9.58\,dB of
+\cref{tab:result-summary}. The 0.818 is the worst of three grid rotations. Full
 digital maximum ratio transmission is the one policy that nearly preserves the
 order, reversing no street pair and two rooftop pairs at 0.58\,dB or less. The
 ordering reported here is therefore an ordering under the stated illumination law
