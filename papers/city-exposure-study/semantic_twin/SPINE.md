@@ -99,10 +99,16 @@ it is stated rather than absorbed.
 ### 3. Panorama coverage is a radius, not a property of a square
 
 Seeing a surface and having photographed it are different questions. Where a
-camera stood they coincide: first interaction coverage is 0.978 to 0.999 across
-seven of eight registered stations. The eighth returns **0.362** and is a
-registration failure that passed the skyline residual gate, so first interaction
-coverage is the sharper pose test. It is excluded.
+camera stood they nearly coincide. Power weighted coverage across 35 stations in
+four cities: bounce 1 = 0.941 to 0.999, bounce 2 = 0.920 to 0.965, bounce 3 =
+0.874 to 0.901.
+
+**The method result nobody asked for.** One of eight Korenmarkt stations returned
+0.362 at the first interaction. The same camera, re-registered for the 250 m
+binding, scores 1.000. Both poses passed the same 3.67° skyline residual gate.
+**First bounce coverage is a sharper pose test than the skyline residual, and it
+costs one trace.** That is a reusable result about registration, not a caveat
+about this square.
 
 Away from a camera they come apart. Within 20 m the second interaction still
 lands on photographed material 93 to 96 % of the time; beyond 40 m every depth
@@ -124,6 +130,12 @@ coverage is 0.479.**
 Against an eight interaction reference at fixed seeds over 40 standpoints,
 $L = 3$ costs a median 0.002 dB and never moves a standpoint by more than
 0.12 dB. Zero of 40 move half a decibel under any illumination model.
+
+**The joint of coverage with power is the closing argument, and it is the
+sentence to put in the abstract.** At a station, stopping at three bounces leaves
+10.5 % of launched power having touched material that was guessed rather than
+photographed. Tracing all the way to eight raises that to 10.6 %. Tracing further
+does not buy evidence, it only buys more guesses about less power.
 
 Truncation biases $\chi$ low. The share of escaping power still in flight at the
 cut is 0.0038 median, 0.021 worst. Russian roulette cannot repair a hard cap and
@@ -393,7 +405,8 @@ Everything a referee would find, found first and stated with its size and sign.
 | truncation at $L=3$ | 0.0038 of escaping power median | biases low |
 | convex body, no limb self shadow | unquantified | unknown |
 | image evidence | one square only, 0.479 pooled first interaction coverage | scope |
-| one registered station | excluded at 0.362 coverage | scope |
+| the eleven city rerun cannot be diffed against its published counterpart | confounded by a concurrent ground datum change, 18.2 m Krakow, 13.9 m Toulouse, 0.034 m Korenmarkt | the only clean cost measurement is the paired budget sweep inside one script |
+| the ladder rerun likewise | confounded by the elevation law correction, isotropic moves -0.002 dB while rooftop moves +2.16 dB at every standpoint | that is the law, not the budget |
 | diffuse scattering strength is a modelled Rayleigh split, not fitted | ablating diffuse scattering moves published RMSE from 6 to 13 dB up to 25 to 37 dB at 28 and 38 GHz (Vitucci et al., Radio Science 2019) | unknown, and the larger referee risk than diffraction |
 
 Two things that must not be quoted as measured:
