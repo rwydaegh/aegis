@@ -50,12 +50,23 @@ so a ray that reaches depth three was already counted at depths one and two, and
 their sum means nothing. The right answer is `1 - 0.790 = 21.0` percent, which
 agrees with the independently measured sky fraction to six decimals.
 
-**4. Numbers computed at one configuration, reported under another.** The
-material discrimination subsection ran at a 130 m crop with twelve interactions
-and roulette on, under a preamble that declares 250 m and three. The bounce
-budget shares came from 130 m and eight station positions. The deployment cap
-swing is quoted over 50 to 500 m and was computed over 100 to 400 m. Being fixed
-by naming the configuration, not by restating the range.
+**4. Numbers computed at one configuration, reported under another, and this one
+turned out to be systemic.** The material subsection ran at a 130 m crop with
+twelve interactions and roulette on, under a preamble declaring 250 m and three.
+The bounce budget shares came from 130 m and eight station positions. The cap
+swing is quoted over 50 to 500 m and was computed over 100 to 400 m. The full
+audit then found that **only the headline table, the law comparison and the
+diffraction bound ran at the settings the paper declares.** Every other result
+block sits at some mix of a narrower crop, four, six or twelve interactions,
+roulette on, or a different ray count. Being fixed with one table giving the
+configuration per result block, rather than ten scattered qualifications.
+
+There is also a class of **medians presented as bounds**. The dielectric bracket
+"stayed below 0.58 dB" is a median span whose worst standpoints are +1.56 dB
+rooftop and +2.48 dB street. The cross-validation agreement of 0.25 and 0.16 dB
+is the worst of three illumination models, not a median over them, and its quoted
+0.24 to 0.46 dB noise floor is 0.231 to 0.346 in production, with the top of that
+range coming from a mode that was never shipped.
 
 **5. One site's column presented as the overall result.** The diffraction cross
 check claimed agreement "to within 0.34, 1.73 and 7.3 percent". Those three are
@@ -82,6 +93,15 @@ saying so.
   worse than a missing one.
 - **`aegis` is a self-citation with a placeholder DOI.** Worth minting a Zenodo
   DOI before submission.
+- **The Monte Carlo standard errors have no surviving source.** 0.0042, 0.0136
+  and 0.0343 dB exist only in `CODE_AUDIT.md`. The raw output of the eight-seed
+  retrace was discarded and no script reproduces it, yet the abstract's "roughly
+  25 times", the material result's "5.7 times" and the discussion's "7 to 47
+  times" all rest on them. They are being attributed rather than deleted or
+  softened, since the measurement did happen. Re-running the retrace is about two
+  hours and is the one thing that would close this properly. I did not start it
+  this close to the deadline, because a job that lands after everyone has stopped
+  reading is how numbers go stale in the first place.
 - **The vision model result is drafted but not inserted.** Two paragraphs are in
   my scratchpad. They answer the question you asked on 2026-08-01 about where an
   LLM fits: it was built, blinded, and measured, its shift stays inside the
