@@ -137,16 +137,13 @@ def chain_subset(walk: list[dict[str, Any]], positions: np.ndarray, count: int) 
             # ``pano_id`` are accepted too, because that is what the provider
             # returns and what a future screener may keep.
             neighbours = [
-                link if isinstance(link, str) else link.get("pano_id")
-                for link in walk[here].get("links", [])
+                link if isinstance(link, str) else link.get("pano_id") for link in walk[here].get("links", [])
             ]
             options = [index[n] for n in neighbours if n in index and index[n] not in seen]
             if not options:
                 end.clear()
                 continue
-            nxt = min(
-                options, key=lambda i: float(np.linalg.norm(positions[i] - positions[here]))
-            )
+            nxt = min(options, key=lambda i: float(np.linalg.norm(positions[i] - positions[here])))
             chosen.append(nxt)
             seen.add(nxt)
             end.append(nxt)
@@ -183,6 +180,28 @@ def topmost_surface(
     if len(index_ray):
         height[index_ray] = locations[:, 2]
     return height
+
+
+def settled_directory(out_dir: pathlib.Path, index: int, pano_id: str) -> pathlib.Path:
+    """Where a panorama sits on disk, whatever position it held when it arrived.
+
+    A directory is named ``pano_{index}_{pano_id}``, and the index is only the
+    position in the chosen set. That position is not a property of the
+    panorama: change the count, the walk date or the open sky filter and every
+    panorama after the first shifts by one. The skip test then looked inside
+    the directory it was about to write, found nothing, and paid for a
+    panorama that was already fully on disk under an older index.
+
+    It cost 2,048 tile requests of a 15,000 per day cap on one Madrid run: four
+    panoramas at 512 tiles each, all four downloaded the day before. Matching
+    on the identifier makes the fetch what it should always have been, which is
+    one download per panorama for as long as the file is kept.
+    """
+    tail = pano_id[:16]
+    for existing in sorted(out_dir.glob(f"pano_*_{tail}")):
+        if existing.is_dir():
+            return existing
+    return out_dir / f"pano_{index:02d}_{tail}"
 
 
 def site_row(screening: pathlib.Path, name: str) -> dict[str, Any]:
@@ -308,7 +327,7 @@ def fetch(
     written = []
     zooms: dict[str, int] = {}
     for index, panorama in enumerate(picked):
-        pano_dir = out_dir / f"pano_{index:02d}_{panorama['pano_id'][:16]}"
+        pano_dir = settled_directory(out_dir, index, panorama["pano_id"])
         pano_dir.mkdir(parents=True, exist_ok=True)
         cached = pano_dir / "metadata.json"
         # A photosphere tops out below the requested zoom, so the file already on
