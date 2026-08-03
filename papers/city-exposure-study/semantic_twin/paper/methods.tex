@@ -731,17 +731,20 @@ hit is covered by construction. For a path that returns to where it started the
 cover reaches the second interaction as well, since both ends of a closed loop
 are seen from the same viewpoint. That is the co-located picture of
 Section~\ref{sec:ratio} in its strictest form, and it is not a hypothetical.
-Traced on the photogrammetric mesh at twelve standpoints, the share of returning
-power whose whole chain lies on visible surfaces is 1.000000 at the first order
-and 0.999991 at the second. It falls to 0.984 at the third, because the cover is
-over the two ends of a loop and not over its middle.
+Traced at 42 standpoints across four photogrammetric meshes on three continents,
+with the visible set built by first hit probing rather than assumed, the median
+share of returning power whose whole chain lies on visible surfaces is 1.000000
+at the first order and 0.999972 at the second. It falls to 0.980 at the third,
+because the cover is over the two ends of a loop and not over its middle. The
+spread across the four cities is a few percent, so the first two orders are a
+theorem and the third is a property of the scene.
 
 An outward path gives up half of that, and this is what the adjoint move costs.
 A ray leaving the first facade travels away from the viewpoint that saw it, so
-only its first hit is assured. On the same geometry an outward path holds 0.999
-at the first interaction, 0.916 at the second and 0.736 at the third, so by the
-second interaction the estimator is already carrying 8\,\% of its power over
-surfaces the standpoint cannot see, and by the third 26\,\%.
+only its first hit is assured. On the same geometry an outward path holds
+0.999103 at the first interaction, 0.912004 at the second and 0.714182 at the
+third, so by the second interaction the estimator is already carrying 9\,\% of
+its power over surfaces the standpoint cannot see, and by the third 29\,\%.
 
 The evidential question is the stricter one, because a camera has to have stood
 somewhere and looked. Where one did, the two questions coincide: the share of
