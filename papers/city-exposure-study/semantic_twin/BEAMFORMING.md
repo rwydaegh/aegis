@@ -473,6 +473,19 @@ recoverable from anything on disk, and section 6.3 is a re-trace of Korenmarkt
 with `PathRecorder` attached, 20 standpoints, 30 000 rays each. It is not an
 approximation to a stored quantity, it is a quantity that was never stored.
 
+Both are one module and two flags, so every number below is reproducible without
+a script that lives anywhere else.
+
+```
+python -m semantic_twin.propagation.antenna --all-sites --kernel \
+    --locations 32 --rays 150000 --max-bounces 3 --crop-m 250 --seed 7 \
+    --tag antenna11
+
+python -m semantic_twin.propagation.antenna --artefact --sites korenmarkt \
+    --locations 20 --rays 30000 --max-bounces 3 --crop-m 250 --seed 7 \
+    --tag paper
+```
+
 ### 6.2 The invariance, on real rays
 
 `matched` reproduces the isotropic site column at every one of the 352
@@ -507,8 +520,8 @@ chi (any beam aimed at the pedestrian) / chi (reported)  >=  direct measure
 
 and the direct measure is a property of the scene, not of the antenna. At
 Korenmarkt it is 0.696 for the rooftop population and 0.505 for the street one.
-**No aperture of any size can reduce `chi` by more than 1.6 dB in the rooftop
-model or 3.0 dB in the street model.**
+**No aperture of any size can reduce `chi` by more than 1.58 dB in the rooftop
+model or 2.96 dB in the street model.**
 
 Exact, in the other direction: under exact steering the ratio is at most one
 pointwise, so `chi` can only fall. Section 3.4's inequality, unchanged.
@@ -523,14 +536,14 @@ Measured, between the two. Median over 20 Korenmarkt standpoints, with the
 | **8 x 8** | **-0.38 dB (-0.49, -0.25)** | **-1.64 dB (-2.53, -1.09)** |
 | 16 x 16 | -0.61 dB (-0.94, -0.45) | -2.32 dB (-3.50, -1.48) |
 | 32 x 32 | -0.93 dB (-1.34, -0.71) | -2.85 dB (-3.85, -1.63) |
-| the floor above | -1.57 dB | -2.97 dB |
+| the floor above | -1.58 dB | -2.96 dB |
 
 Two readings of this table.
 
 **It saturates, and it saturates at the direct measure.** A 32 by 32 panel is a
 0.32 m aperture at 15 GHz with a 3.2 degree beam, far narrower than any offset
-in the scene, and it still only reaches -0.93 and -2.85 against floors of -1.57
-and -2.97. The street column is 96 percent of the way to its floor. So the array
+in the scene, and it still only reaches -0.93 and -2.85 against floors of -1.58
+and -2.96. The street column is 96 percent of the way to its floor. So the array
 size is not the parameter that sets the answer past about 16 elements a side.
 The parameter is how much of the illumination measure arrives without touching
 anything.
@@ -571,6 +584,7 @@ same 20 standpoints, canonical 8 by 8 panel.
 |---|---|---|
 | 8, matched to the aperture | -0.25 dB | -1.54 dB |
 | 16, twice oversampled | -0.37 dB | -1.61 dB |
+| 32, four times oversampled | -0.37 dB | -1.66 dB |
 | exact steering, the limit | -0.38 dB | -1.64 dB |
 
 **Codebook granularity is not one of the parameters that sets the range.** Once
@@ -595,14 +609,28 @@ management actually does, is **not measurable from this object and is not
 approximated here**. It needs the set of paths arriving from *one* site in order
 to know which of them is dominant. The far source marginalisation has replaced
 each site by a continuum of them lying along one escaping ray, so a single site's
-path set does not exist in the estimator's state. What can be said without it:
-best beam selection maximises over the codebook, and exact steering at the
-pedestrian picks one particular member of it, so on the numerator best beam
-selection is at least as favourable to the pedestrian as geometric steering.
-Its reduction is therefore no larger than the geometric one, and the geometric
-column above is the conservative end of the bracket. Closing the gap needs the
-different experiment of section 4.2: place a finite set of sites and trace to
-each.
+path set does not exist in the estimator's state.
+
+What can be said without it is an inequality inside a fixed codebook, and it is
+worth writing carefully because the loose version of it is not true. Compare two
+policies on the **same** grid. One picks the beam nearest the pedestrian, which
+is the measured column. The other picks the beam maximising the received power,
+which is what beam management does. In the scene the second maximises the same
+sum the first evaluates at one particular member, so its numerator is at least
+as large. In free space there is one path, so selection on received power picks
+the beam with the most gain towards the direct direction, which is the same beam
+the first policy picks, so the two references are equal. Therefore
+
+```
+chi (best beam) >= chi (nearest beam to the pedestrian),  same codebook
+```
+
+and the measured column is a **lower bound** on the loaded network's answer, not
+an estimate of it. Note what this does not say: exact steering is not a member of
+a finite codebook, so it is not ordered against best beam selection at all, and
+the bracket is the one above rather than one anchored on the geometric column.
+Closing the gap needs the different experiment of section 4.2: place a finite set
+of sites and trace to each.
 
 ### 6.5 The broadcast beam, and the loaded beam
 
@@ -613,35 +641,35 @@ because it is the one matched policy that does move the answer.
 
 | site | element | broadcast, grid 0 | grid 40 | grid 80 | loaded |
 |---|---|---|---|---|---|
-| brussels_grandplace | -0.92 | -2.41 | -1.89 | -1.65 | -2.94 |
+| brussels_grandplace | -0.92 | -2.41 | -1.89 | -1.65 | -3.02 |
 | korenmarkt | -0.65 | -1.55 | -1.48 | -0.66 | -1.97 |
-| krakow_rynek | -0.58 | -1.11 | -0.76 | -0.96 | -1.73 |
-| london_trafalgar | -0.56 | -0.53 | -1.04 | -0.62 | -1.29 |
-| madrid_plazamayor | -1.07 | -2.80 | -2.91 | -2.49 | -3.67 |
-| mexico_zocalo | -0.47 | -0.74 | -0.98 | -0.67 | -1.43 |
-| milan_duomo | -0.54 | -0.60 | -0.86 | -0.95 | -1.29 |
-| newyork_timessquare | -0.22 | -0.33 | -0.51 | -0.61 | -0.37 |
-| prague_staromestske | -0.62 | -0.78 | -0.71 | -1.36 | -1.57 |
-| tokyo_hachiko | -0.71 | -0.77 | -1.31 | -2.06 | -1.33 |
-| toulouse_capitole | -0.73 | -1.20 | -1.62 | -1.25 | -1.93 |
-| **median across sites** | **-0.62** | **-0.78** | **-1.04** | **-0.96** | **-1.57** |
+| krakow_rynek | -0.58 | -1.11 | -0.76 | -0.96 | -1.74 |
+| london_trafalgar | -0.56 | -0.53 | -1.04 | -0.62 | -1.25 |
+| madrid_plazamayor | -1.07 | -2.80 | -2.91 | -2.49 | -3.64 |
+| mexico_zocalo | -0.47 | -0.74 | -0.98 | -0.67 | -1.44 |
+| milan_duomo | -0.54 | -0.60 | -0.86 | -0.95 | -1.28 |
+| newyork_timessquare | -0.22 | -0.33 | -0.51 | -0.61 | -0.33 |
+| prague_staromestske | -0.62 | -0.78 | -0.71 | -1.36 | -1.52 |
+| tokyo_hachiko | -0.71 | -0.77 | -1.31 | -2.06 | -1.28 |
+| toulouse_capitole | -0.73 | -1.20 | -1.62 | -1.25 | -1.95 |
+| **median across sites** | **-0.62** | **-0.78** | **-1.04** | **-0.96** | **-1.52** |
 
 Street small cell sites, same layout, with `MICRO_TILT_DEG = 96`:
 
 | site | element | broadcast, grid 0 | grid 40 | grid 80 | loaded |
 |---|---|---|---|---|---|
-| brussels_grandplace | -0.46 | -2.57 | -1.91 | -2.05 | -3.51 |
+| brussels_grandplace | -0.46 | -2.57 | -1.91 | -2.05 | -3.55 |
 | korenmarkt | -0.38 | -1.62 | -1.58 | -1.49 | -2.73 |
-| krakow_rynek | -0.39 | -1.51 | -1.78 | -1.57 | -2.81 |
-| london_trafalgar | -0.32 | -0.37 | -3.20 | -0.85 | -1.57 |
+| krakow_rynek | -0.39 | -1.51 | -1.78 | -1.57 | -2.80 |
+| london_trafalgar | -0.32 | -0.37 | -3.20 | -0.85 | -1.49 |
 | madrid_plazamayor | -0.67 | -4.20 | -4.27 | -3.78 | -5.72 |
-| mexico_zocalo | -0.36 | -1.66 | -1.88 | -1.78 | -2.50 |
-| milan_duomo | -0.18 | -1.55 | -1.18 | +0.33 | -2.65 |
-| newyork_timessquare | -0.03 | +0.30 | -0.01 | -0.10 | -0.03 |
-| prague_staromestske | -0.37 | -1.69 | -1.43 | -2.28 | -3.15 |
-| tokyo_hachiko | -0.19 | -0.20 | -0.21 | -1.94 | -0.62 |
-| toulouse_capitole | -0.40 | -2.13 | -1.87 | -2.04 | -3.42 |
-| **median across sites** | **-0.37** | **-1.62** | **-1.78** | **-1.78** | **-2.73** |
+| mexico_zocalo | -0.36 | -1.66 | -1.88 | -1.78 | -2.51 |
+| milan_duomo | -0.18 | -1.55 | -1.18 | +0.33 | -2.78 |
+| newyork_timessquare | -0.03 | +0.30 | -0.01 | -0.10 | -0.02 |
+| prague_staromestske | -0.37 | -1.69 | -1.43 | -2.28 | -3.17 |
+| tokyo_hachiko | -0.19 | -0.20 | -0.21 | -1.94 | -0.56 |
+| toulouse_capitole | -0.40 | -2.13 | -1.87 | -2.04 | -3.47 |
+| **median across sites** | **-0.37** | **-1.62** | **-1.78** | **-1.78** | **-2.78** |
 
 At Korenmarkt, the answer to the question this document was opened with: **the
 broadcast pattern moves `chi` by -1.55 dB for the rooftop population and -1.62 dB
@@ -662,8 +690,8 @@ is worth -0.33 dB at New York and -4.20 dB at Madrid. That is not a property of
 the antenna, which is identical in both, it is a property of the square, and
 section 6.9 is what makes it readable.
 
-**The loaded beam is the largest mover in the set**, at -1.57 dB median for the
-rooftop population and -2.73 dB for the street one, and it is the configuration
+**The loaded beam is the largest mover in the set**, at -1.52 dB median for the
+rooftop population and -2.78 dB for the street one, and it is the configuration
 carrying the most assumption. Section 5.3 states the assumption and its two
 signed biases, and it should be read alongside this number rather than after it.
 
@@ -743,15 +771,16 @@ ordering, over all 55 city pairs.
 | broadcast, grid 0 | +0.818, 5 pairs | +0.782, 6 pairs |
 | broadcast, grid 40 | +0.891, 3 pairs | +0.745, 7 pairs |
 | broadcast, grid 80 | +0.927, 2 pairs | +0.927, 2 pairs |
-| loaded | +0.818, 5 pairs | +0.782, 6 pairs |
+| loaded | +0.818, 5 pairs | +0.709, 8 pairs |
 
 The size of the reversals is what decides whether this matters. Adjacent cities
 in the reported rooftop ordering are separated by 0.48 dB at the median, and the
 broadcast beam reverses pairs separated by up to **1.53 dB**, Madrid against
 Tokyo. In the street ordering, where adjacent cities are 0.80 dB apart, it
-reverses pairs up to **2.59 dB** apart, London against Tokyo. The whole eleven
-city spread is 5.6 dB for the rooftop population and 9.8 dB for the street one,
-so a 1.5 to 2.6 dB reversal is a quarter of the axis the ranking lives on.
+reverses pairs up to **2.59 dB** apart, London against Tokyo, and the loaded beam
+up to **2.97 dB**. The whole eleven city spread is 5.6 dB for the rooftop
+population and 9.8 dB for the street one, so a 1.5 to 3.0 dB reversal is a
+quarter of the axis the ranking lives on.
 
 **So the ranking of cities by susceptibility is not an antenna free statement.**
 The one policy that nearly preserves it is full digital MRT, which reverses no
@@ -860,17 +889,18 @@ observed. **Gap** means it was asked and is not answered.
 | Full digital MRT cancels the array factor exactly and keeps the element | proved, no far source approximation needed | 3.3 |
 | The element pattern is 0.26 dB at 9.5 deg and 10.2 dB at 60 deg | measured against Table 7.3-1, exact | 3.3, 6.9 |
 | Geometric steering and codebook selection read as invariant only because of the far source approximation | proved | 3.4 |
-| Their reduction is at most `1 - direct measure`, whatever the array | proved, and the direct measure is measured at 0.696 and 0.505 | 6.3 |
+| Their reduction is at most `1 - direct measure`, whatever the array | proved, and the direct measure is measured at 0.696 and 0.505, so 1.58 and 2.96 dB | 6.3 |
 | The reduction is 0.38 dB rooftop and 1.64 dB street on an 8 by 8 | measured, 20 Korenmarkt standpoints, re-traced with the recorder | 6.3 |
 | It saturates in aperture, at 0.93 and 2.85 dB by 32 by 32 | measured | 6.3 |
 | Codebook granularity finer than the aperture is worth under 0.15 dB | measured | 6.4 |
-| Best beam selection on the reported power lies above the geometric column | proved on the numerator, its position inside the bracket is a **gap** | 6.4 |
+| Best beam selection lies above the nearest beam column on the same codebook | proved, so the measured column is a lower bound and not an estimate | 6.4 |
+| Where best beam selection actually sits | **gap**, it needs one site's path set and the marginalisation has removed it | 6.4 |
 | The coherent stack cannot be used on this traced object | proved, the transmit degree of freedom is marginalised away, so the operator is rank one per site | 4.2 |
 | PAPER_METHODS section 1.4 conflates two phase scales three orders of magnitude apart | proved, 22 rad per rad across the aperture against 3.1e4 through the environment | 4.1 |
 | The broadcast beam moves `chi` by 0.33 to 4.20 dB depending on the city | measured, eleven cities, 32 standpoints each | 6.5 |
 | Its sign is not guaranteed and two entries are positive | measured | 6.5 |
 | The sector grid orientation is worth 1.5 dB median and up to 3.5 dB | measured, and it is an **assumption** that grids are correlated across sites | 5.4, 6.6 |
-| The loaded beam moves `chi` by 1.57 dB median rooftop and 2.73 dB street | measured, on the exchangeable user **assumption** of 5.3 | 6.5 |
+| The loaded beam moves `chi` by 1.52 dB median rooftop and 2.78 dB street | measured, on the exchangeable user **assumption** of 5.3 | 6.5 |
 | The offset sweep is not monotone and can raise `chi` | measured, and explained by the direction cosine steering variable | 6.7 |
 | The eleven city ordering moves, reversing pairs up to 2.6 dB apart | measured | 6.8 |
 | Full digital MRT nearly preserves the ordering | measured, no street pair reverses | 6.8 |

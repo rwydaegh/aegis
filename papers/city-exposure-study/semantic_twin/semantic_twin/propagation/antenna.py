@@ -1111,11 +1111,115 @@ def _trace_site(site: str, args: argparse.Namespace, models: dict[str, Any]) -> 
     return {key: np.array([row.get(key, np.nan) for row in rows]) for key in sorted(keys)}
 
 
+#: Apertures swept in the steering measurement, as ``(rows, columns)`` element
+#: counts. The canonical 8 by 8 is in the middle of it and the two ends are
+#: there because the reduction is a range rather than a number and the range is
+#: set by the aperture.
+ARTEFACT_APERTURES: tuple[int, ...] = (2, 4, 8, 16, 32)
+#: Beams per axis in the codebook sweep, on the canonical panel. All of these
+#: are at least as fine as the aperture, for the reason BEAMFORMING.md section
+#: 6.4 gives: a grid coarser than the aperture cannot aim at the pedestrian at
+#: all, so the free space reference lands in a pattern null and the ratio stops
+#: meaning anything.
+ARTEFACT_CODEBOOKS: tuple[int, ...] = (8, 16, 32)
+
+
+def _artefact_site(site: str, args: argparse.Namespace) -> dict[str, Any]:
+    """The steering measurement at one site. Needs the polylines, so it re-traces.
+
+    This is the generator for BEAMFORMING.md section 6.3 and for the paper's
+    geometric steering table. It lives here rather than in a scratch script
+    because it produces a number the paper cites, and because the thing it needs
+    is precisely the thing no published payload keeps: `rho_rooftop` is a
+    histogram of the local arrival direction at the body, and the last
+    scattering vertex is marginalised away by the deposit. The recorder is the
+    only way to see it, and it is bounded by its own capacity and never reaches
+    disk.
+    """
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
+    from run_exposure import GROUND_DATUM_M, ground_datum, site_mesh
+
+    from .geometry import MitsubaGeometry
+    from .scene import classify_faces, load_bindings
+    from .tracer import PathRecorder, SbrTracer, TraceConfig
+    from .walk import build_walk, stratified_subset
+
+    config_dir = pathlib.Path(__file__).resolve().parents[2] / "config"
+    geometry = MitsubaGeometry(site_mesh(site, args.crop_m))
+    datum = GROUND_DATUM_M if site == "korenmarkt" else ground_datum(geometry)
+    face_class = classify_faces(geometry.vertices, geometry.faces, datum)
+    binding = load_bindings(config_dir, args.frequency_hz)
+    config = TraceConfig(
+        frequency_hz=args.frequency_hz,
+        rays=args.rays,
+        local_cells=512,
+        max_bounces=args.max_bounces,
+        seed=args.seed,
+    )
+    tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
+    walk = build_walk(geometry, ground_datum_m=datum, radius_m=args.walk_radius_m, spacing_m=3.0, seed=args.seed)
+    picks = stratified_subset(walk, args.locations)
+    populations = {"rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
+
+    rows: list[dict[str, Any]] = []
+    for offset, index in enumerate(picks):
+        recorder = PathRecorder(capacity=args.rays)
+        result = tracer.trace(
+            walk.points[index],
+            {"isotropic": ISOTROPIC, **populations},
+            ground_z_m=float(walk.ground_z_m[index]),
+            seed=args.seed + 1000 * int(index),
+            recorder=recorder,
+        )
+        record = recorder.result()
+        row: dict[str, Any] = {"index": int(index), "chi": result.scalars()}
+        for name, model in populations.items():
+            for count in ARTEFACT_APERTURES:
+                row[f"{name}_{count}x{count}"] = steering_artefact(
+                    record, walk.points[index], model, array=PlanarArray(count, count)
+                )
+            for beams in ARTEFACT_CODEBOOKS:
+                row[f"{name}_codebook{beams}"] = steering_artefact(
+                    record, walk.points[index], model, codebook=(beams, beams)
+                )
+        rows.append(row)
+        if offset % 5 == 0:
+            print(f"  [{site}] {offset + 1}/{picks.size} ({result.seconds:.1f} s)", flush=True)
+
+    summary: dict[str, dict[str, float]] = {}
+    for column in rows[0]:
+        if column in ("index", "chi"):
+            continue
+        linear = np.array([row[column]["mean_suppression"] for row in rows])
+        summary[column] = {
+            "median_db": float(10.0 * np.log10(np.median(linear))),
+            "p10_db": float(10.0 * np.log10(np.percentile(linear, 10.0))),
+            "p90_db": float(10.0 * np.log10(np.percentile(linear, 90.0))),
+            "floor_db": float(10.0 * np.log10(np.median([row[column]["direct_measure"] for row in rows]))),
+            **{
+                key: float(np.median([row[column][key] for row in rows]))
+                for key in (
+                    "direct_measure",
+                    "bounced_suppression_db",
+                    "median_offset_deg",
+                    "median_last_vertex_offset_m",
+                    "median_slant_range_m",
+                )
+            },
+        }
+    return {"standpoints": rows, "summary": summary}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sites", nargs="+", default=["korenmarkt"])
     parser.add_argument("--all-sites", action="store_true")
-    parser.add_argument("--kernel", action="store_true", help="trace the elevation kernel instead of the models")
+    parser.add_argument("--kernel", action="store_true", help="add the elevation kernel probes to the model set")
+    parser.add_argument(
+        "--artefact",
+        action="store_true",
+        help="measure the geometric steering reduction instead of scoring the model set",
+    )
     parser.add_argument("--locations", type=int, default=80)
     parser.add_argument("--rays", type=int, default=200_000)
     parser.add_argument("--max-bounces", type=int, default=DEFAULT_MAX_BOUNCES)
@@ -1132,6 +1236,27 @@ def main(argv: list[str] | None = None) -> int:
     output = pathlib.Path(__file__).resolve().parents[2] / "outputs" / "antenna"
     output.mkdir(parents=True, exist_ok=True)
     sites = SITES if args.all_sites else tuple(args.sites)
+
+    if args.artefact:
+        started = time.perf_counter()
+        payload = {"kind": "artefact", "arguments": vars(args), "sites": {}}
+        path = output / f"{args.tag}_artefact_{args.crop_m}m.json"
+        for site in sites:
+            print(f"[artefact] {site} at {args.crop_m} m", flush=True)
+            payload["sites"][site] = _artefact_site(site, args)
+            path.write_text(json.dumps(payload, indent=2, default=float) + "\n")
+        payload["seconds"] = time.perf_counter() - started
+        path.write_text(json.dumps(payload, indent=2, default=float) + "\n")
+        for site, block in payload["sites"].items():
+            print(f"\n{site}: median over {len(block['standpoints'])} standpoints of the paired shift in chi")
+            for column, value in block["summary"].items():
+                print(
+                    f"  {column:28s} {value['median_db']:+7.2f} dB"
+                    f"  ({value['p10_db']:+.2f}, {value['p90_db']:+.2f})"
+                    f"  floor {value['floor_db']:+.2f}  offset {value['median_offset_deg']:5.2f} deg"
+                )
+        print(f"\n[done] {path} in {payload['seconds']:.0f} s")
+        return 0
 
     models: dict[str, Any] = build_models(
         grid_rotation_deg=args.grid_rotation_deg,
