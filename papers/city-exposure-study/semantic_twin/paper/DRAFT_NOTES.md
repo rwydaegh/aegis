@@ -1,36 +1,94 @@
 # Draft notes
 
-## What this draft contains
+## Changes in this revision
 
-- A complete IEEEtran journal draft with a title, a 244-word abstract, six index terms, and the requested single-author affiliation.
-- An introduction that motivates the exposure ratio and makes the co-located photograph argument explicit.
-- A related-work section that treats per-pair ray tracing as a careful solution to a different problem. It also concedes prior work on stochastic deployment integration, image-derived materials, multi-city exposure, and adjoint transport.
-- The complete body of `methods.tex`, copied without editing its prose, equations, labels, symbol table, algorithms, or macros. Its manual bibliography entries retain their keys and text, and the combined bibliography adds the references used by the new sections.
-- Results in the R1 to R6 order from `SPINE.md`. The draft includes the eleven-square overview, the final eleven-square exposure distributions, the result summary table, the crop-convergence plot, and the honesty-ledger table.
-- A discussion that interprets the ratio, the local reach of image evidence, the failed monostatic proxy, the masonry-only material bound, the Monte Carlo errors, and every bias in the honesty ledger.
-- A short conclusion with future work tied to the missing beam sweep, diffuse scattering, and the one-square bystander scope.
+- Re-read `paper.tex`, the previous notes, the complete house rule list,
+  `SPINE.md`, the current `methods.tex`, `BEAMFORMING.md`, and
+  `FIGURES/README.md` before editing.
+- Rewrote the abstract at the measured strength. It now gives the median
+  within-square spreads beside the between-square spreads, names the street-cell
+  counter case, reports the nonuniform illumination-law correction, and includes
+  standpoint-sampling uncertainty.
+- Replaced R2 with the paired eleven-city law comparison. The paper now reports
+  the shift ranges, residual rms values, old-versus-corrected rank correlations,
+  and the two sites that account for almost all reordering: New York rooftop and
+  Tokyo street.
+- Expanded R1 to give the full within-versus-between comparison. The comparison
+  goes the paper's way for isotropic and rooftop illumination and not for street
+  cells. Per-city claims are qualified by standpoint sampling.
+- Added standpoint sampling to the discussion and honesty table. The per-city
+  median changes are 0.128, 0.061, and 0.188 dB rms, with worst changes of
+  0.242, 0.116, and 0.326 dB under isotropic, rooftop, and street illumination.
+- Updated the material result with the whole-field ground comparison and the
+  measured facade bracket. The ground-inclusive result is larger and has the
+  opposite sign. The dielectric bracket spans 0.34 dB isotropic and 0.58 dB
+  rooftop, while metal changes the medians by 2.502 and 4.374 dB.
+- Replaced the geometric-steering placeholder with the measured aperture sweep
+  from `BEAMFORMING.md`. An 8 by 8 panel changes the Korenmarkt rooftop and
+  street ratios by -0.38 and -1.64 dB. No codebook value was invented.
+- Updated the bystander result to 2.15 people per square metre, added its paired
+  noise floors and absorber control, and stated that it used the superseded
+  six-interaction configuration.
+- Added the per-model crop convergence radii and the separate nonconvergent
+  deployment-cap result.
+- Synchronized the current 42-standpoint, four-city visibility experiment from
+  `methods.tex`, including the outward-path fractions. A later concurrent change
+  to `methods.tex` added an independent reflected-term check, which is also
+  included. Its bibliography entries remain present in the combined bibliography.
+- Corrected the street diffraction median from 0.44 to 0.42 dB, its 2 GHz value
+  from 1.82 to 1.78 dB, and the largest defined bound to 12.64 dB. The paper also
+  reports the 1.26 dB street 90th percentile over the 56 defined standpoints.
+- Resolved the old 0.079 dB evidence-ladder discrepancy. It was the lowest of
+  eight draws. The seed-averaged value is 0.167 plus or minus 0.022 dB.
+- Added Figures 22, 24, and 25. They show the evidence radius, the diffraction
+  bound, and the measured bounce budget. All three carry claims that were
+  previously left in prose.
 
-## Remaining todo
+## Still open
 
-The draft contains one `\todo{}`. No geometric-steering or codebook-beam sweep has been run. The sources support exact cancellation for full digital maximum ratio transmission and a one-sided upper bound for geometric steering. They do not contain the numerical gap below that bound. The draft marks the missing sweep instead of inventing it.
+- The nearest-grid codebook table in `BEAMFORMING.md` still contains
+  placeholders. Best-beam selection needs a finite-site experiment because the
+  stored estimator does not retain the paths belonging to one site.
+- Diffuse-scattering strength remains modeled rather than fitted and is the
+  largest unresolved physical uncertainty.
+- The bystander result covers one square and has not been rerun at the current
+  three-interaction operating point.
+- Standpoint selection needs a stable spatial sampling rule or a resampling
+  error estimate built into each city result. More rays do not reduce this term.
+- The eleven-square overview still uses smaller visual crops in some panels than
+  the 250 m exposure run. Its caption states the distinction.
 
-## Source disagreements
+## Remaining source problems
 
-- `methods.tex` reports the geometric visibility experiment on twelve standpoints as 1.000000, 0.999991, and 0.984 for closed loops, and 0.999, 0.916, and 0.736 for outward paths. `SPINE.md` reports the later 42-standpoint, four-city run as 1.000000, 0.999972, and 0.980 for closed loops, and 0.999103, 0.912004, and 0.714182 for outward paths. These appear to be different sample sets rather than a contradiction. The paper retains the numbers owned by `methods.tex` and does not add the newer set a second time.
-- `PRIOR_ART.md` calls the Wiame paper a 2023 paper. Crossref assigns it to volume 73, issue 1, in 2024. The bibliography uses the issue year, 2024.
-- `SPINE.md` says the published street-cell evidence-ladder shift of 0.079 dB is 2.3 standard errors. `CODE_AUDIT.md` reports 2.7 standard errors for one run and gives an eight-run mean of 0.167 plus or minus 0.022 dB. Since `SPINE.md` is the required numerical authority and explicitly says the 0.079 dB value is unresolved, the paper repeats only that unresolved status. The discrepancy should be reconciled before submission.
-- `methods.tex` was edited concurrently during drafting. Its line count increased from 940 to 1015 while sources were being read. The final copied method body matches the current file apart from one trailing blank line. No changes were made to `methods.tex`.
-
-## Holes in the spine
-
-- R2 says the corrected illumination law reorders the cities, but `SPINE.md` gives no old-versus-corrected ranking, rank changes, or paired shifts. It gives only correlations between the three corrected illumination models. The draft can show that illumination changes the ordering, but it cannot quantify which squares the correction itself reordered. A final R2 table or sentence needs a measured pre-correction comparison if that distinction is meant to carry the section.
-- R4 is partly an analytic result and partly an unrun experiment. Exact cancellation for full digital maximum ratio transmission is proved. The claim about geometric steering and codebook selection is a one-sided bound. The numerical result advertised by the R4 heading has not been measured, so the draft leaves a todo.
-- R6 states that the converged radius is a property of each illumination model, but `SPINE.md` gives only the common 250 m operating point. The figure supports the choice visually. Per-model convergence radii or a stated common stopping rule would make this result reproducible from the prose alone.
-- The eleven-square overview figure labels its visual mesh crops as 130 m for most sites, whereas the final exposure run uses 250 m. The caption now states that difference. A regenerated overview at the final crop would remove the possible confusion.
-- The methods body already contains measured bystander, bounce-budget, and diffraction results. R5 and parts of the discussion necessarily repeat some of them because the request requires six result beats while also requiring the methods text to remain intact. The clean structural fix belongs in `methods.tex` and was not attempted here.
+- `SPINE.md` says 10.7% of launched power escapes untouched. The shipped
+  bounce-evidence data and Figure 25 show 21.0%. The 10.7% value subtracts
+  per-depth incident shares that are not a partition because a ray reaching a
+  later depth was counted at earlier depths. The paper uses 21.0%.
+- `SPINE.md` says the three-interaction budget moves no standpoint by more than
+  0.12 dB. That value belongs to the roulette-on row. The current roulette-off
+  default has worst changes of 0.005, 0.016, and 0.063 dB. The paper uses
+  0.063 dB. The corresponding truncated shares are 0.0037 median and 0.0201
+  worst, rather than the rounded 0.0038 and 0.021.
+- The spine's shorthand of 0.24 dB worst standpoint-sampling error is the
+  isotropic value. The street-cell worst is 0.326 dB. The paper gives all three
+  models rather than generalizing the isotropic number.
+- The spine and the older part of `methods.tex` still carry the pre-figure
+  street diffraction and bounce values listed above. `methods.tex` was not
+  modified. The paper copy uses the shipped JSON and the newer figure audit.
+- The spine says only the direct term has an independent implementation check.
+  The current `methods.tex` now contains a second-tracer check of the reflected
+  term. It resolves no disagreement against its 0.24 to 0.46 dB Monte Carlo
+  floor. The paper includes this new check and its limits.
 
 ## Build and layout
 
-- The inherited illumination-model table produces the same 5.33 pt overfull box noted for `methods.tex`. It was not changed because another author owns that file and the copied method content had to stay intact.
-- The required two-pass `pdflatex` build completes successfully. The final PDF has 15 pages, zero undefined references, and zero undefined citations.
-- A page-by-page image review found and removed an empty float page by setting the honesty ledger as a compact single-column table. The conclusion now remains contiguous on the final page.
+- The required two-pass `pdflatex` build completes successfully. The final PDF
+  has 18 pages, zero undefined references, and zero undefined citations.
+- All PDF fonts are embedded. A page-by-page PNG review found no clipped content,
+  float-only page, or unreadable new figure.
+- The inherited illumination-model table still produces its 5.33 pt overfull
+  box. The source table belongs to `methods.tex` and was not changed.
+- The source contains no em dashes and no prose semicolons. The only semicolons
+  are the two `\;` mathematical spacing commands in the inherited equations.
+- No `\todo{}` remains because the geometric-steering sweep is now measured.
+  The unmeasured codebook case is stated as an open limit without a number.
