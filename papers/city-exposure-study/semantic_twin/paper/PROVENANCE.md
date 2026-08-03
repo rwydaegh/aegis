@@ -12,7 +12,8 @@ The published cross city sweep is the `_L3` tag:
 80 standpoints each, 880 rows, no torn rows. Confirmed. Its manifest records
 200000 rays, 512 launch cells, three interactions, roulette off, seed 7, 250 m crop,
 3 m standpoint grid, 1 percent sky filter, 1.5 m head height. Every one of those
-settings is stated correctly in the paper.
+settings is stated correctly in the paper. What is not stated is that most of the
+supporting results were run at other settings, which is finding 15.
 
 Ranking below is by how much a finding would change a reader's conclusion, not by how
 many digits are wrong.
@@ -127,16 +128,49 @@ a factor of six.
 All numbers in "Material discrimination bounds the claim" come from runs whose manifests
 record a **130 m crop**:
 
-| claim | source runs | crop | bounces | standpoints | rays |
-|---|---|---|---|---|---|
-| 0.024 / 0.029 / 0.022 dB, and spreads 3.9 / 8.4 / 16.7 dB | `sam3lad_walk_15ghz` vs `sam3lad_walk_facade_15ghz` | 130 m | 6 | 120 | 200k |
-| $-0.218$ / $-0.156$ / $-0.024$ dB, 15 of 120, 2.020 dB | `sam3lad_walk_15ghz` vs `sam3lad_walk_sam3_15ghz` | 130 m | 6 | 120 | 200k |
-| render / stone / metal bracket, 24 standpoints | `outputs/material_vlm/ablation.json` | 130 m | 12 | 24 | 60k |
+| claim | source runs | crop | bounces | roulette | standpoints | rays |
+|---|---|---|---|---|---|---|
+| 0.024 / 0.029 / 0.022 dB, and spreads 3.9 / 8.4 / 16.7 dB | `sam3lad_walk_15ghz` vs `sam3lad_walk_facade_15ghz` | 130 m | 6 | on from 3 | 120 | 200k |
+| $-0.218$ / $-0.156$ / $-0.024$ dB, 15 of 120, 2.020 dB | `sam3lad_walk_15ghz` vs `sam3lad_walk_sam3_15ghz` | 130 m | 6 | on from 3 | 120 | 200k |
+| render / stone / metal bracket, 24 standpoints | `outputs/material_vlm/ablation.json` | 130 m | 12 | on from 3 | 24 | 60k |
+
+The dielectric bracket is the furthest from the settled operating point. Its own
+`trace_config` reads `max_bounces: 12`, `roulette_start: 3`, `rays: 60000`, `seed: 0`,
+mesh `korenmarkt/inhouse_leaf_130m_f64.ply`. That is four times the interaction budget,
+roulette **on** where the published run has it off, 30 percent of the ray count, and the
+narrower crop. The paper's own bounce-budget result (L=3 against L=8 at 0.002 dB median)
+makes the depth difference harmless and the comparison is paired within one
+configuration, so the conclusion holds. But none of it is stated, and the Results
+preamble asserts the opposite settings.
 
 Every value reproduces exactly from the JSON. The provenance defect is the label, not the
 arithmetic. Three trace configurations sit inside one Results section whose preamble
-names one of them, and the paper discloses only the standpoint counts, never the crop or
-the bounce depth.
+names one of them, and the paper discloses only the standpoint counts, never the crop,
+the bounce depth or the roulette setting.
+
+Two things worth recording about the bracket, both checked directly:
+
+**The statistic is the median of the paired per-standpoint decibel difference, not the
+decibel of the median ratio.** The two are close but not equal, and using the wrong one
+reproduces the paper to only two decimals. Baseline `brick` against `pure_marble_m0`
+gives $+0.413837$ dB as the median of $10\log_{10}(\chi_{\rm marble}/\chi_{\rm brick})$
+per standpoint, against $+0.395291$ dB as $10\log_{10}$ of the ratio of medians. The
+paper prints 0.414, so it uses the paired statistic. Same for plasterboard
+($-0.163543$ against $-0.158591$) and metal ($+4.373903$ against $+4.365575$).
+
+**The `_m0` and `_m1` posterior draws are bit-identical for every single-material
+variant.** Grouping the 15 variants by their $\chi_{\rm iso}$ vector over the 24
+standpoints collapses `brick`, `pure_brick_m0` and `pure_brick_m1` into one group, and
+likewise each of plasterboard, marble and metal. Assigning one material to every facade
+leaves the posterior nothing to vary, so quoting `_m0` is not a hidden choice of draw.
+The draws differ only for `prior_draw`, `vlm_panorama` and `vlm_texture`, none of which
+the paper quotes from this file.
+
+Separately, the Discussion at line 1627 says "The measured dielectric bracket stayed
+below 0.58\,dB". 0.577 is the span of the two **medians**. The worst single standpoint in
+the marble arm is $+1.56$ dB rooftop and $+2.48$ dB street, and one plasterboard
+standpoint reaches $-2.67$ dB street. A median span is presented as a bound, the same
+shape of error as finding 10.
 
 The sharpest consequence is that the paper now carries two different triples both called
 the within-Korenmarkt spread:
@@ -153,7 +187,7 @@ differs by a factor of two.
 
 The same substitution appears in the A6 paragraph: "Against a spread of 8.1\,dB within a
 single square, 0.15\,dB changes nothing." The 8.1 dB is from `WHY_NOT.md` and is a walk
-population figure; the published Korenmarkt rooftop within-square spread is 6.39 dB.
+population figure. The published Korenmarkt rooftop within-square spread is 6.39 dB.
 
 ### 5. The deployment range cap swings are quoted over 50 to 500 m and were computed over 100 to 400 m
 
@@ -186,7 +220,70 @@ Note also that this whole sweep is harvested at 40 standpoints per site
 (`locations_per_site` in `sensitivity.json`), not 80, and the file's `published_run`
 field still says `city250_corrected`.
 
-### 6. The bystander numbers in methods.tex are a whole generation behind, and two six-interaction leftovers survive in paper.tex
+### 6. The independent-tracer cross check is not the statistic the paper says it is, and its quoted floor is taken from a configuration that was not shipped
+
+Both files say "Taking the median over the three illumination models, the two agree to
+within 0.25\,dB at the reference square and 0.16\,dB at a second square, against a Monte
+Carlo floor on the comparison itself of 0.24 to 0.46\,dB."
+
+Recomputed from `outputs/cross_validation/korenmarkt_250m_15ghz.json` and
+`brussels_grandplace_250m_15ghz.json`, `modes.production`, as the median over the 8
+standpoints of $10\log_{10}(\chi_{\rm oracle}/\chi_{\rm ours})$:
+
+| site | isotropic | rooftop | street | median over the three | worst of the three |
+|---|---|---|---|---|---|
+| Korenmarkt | $+0.2544$ | $+0.2421$ | $-0.1890$ | $+0.242$ | **0.254** |
+| Grand-Place | $+0.1536$ | $-0.0251$ | $-0.0590$ | $-0.025$ | **0.154** |
+
+So 0.25 and 0.16 are the **worst of the three models**, each a median over standpoints.
+The median over the three models, which is what the sentence describes, is 0.24 and 0.03.
+The check is stronger than stated at the second square and the description does not match
+the computation.
+
+The floor is quoted the other way. Recomputing the per-model median of
+$10\log_{10}(1+\sigma/\chi_{\rm oracle})$ from `oracle_chi_stderr`, the **production**
+rows span **0.231 to 0.346 dB**. The 0.44 to 0.46 upper end comes from the `specular`
+rows, a mode the paper does not use (its own street value there is 0.435 at Korenmarkt
+and 0.438 at Grand-Place). Widening the floor with a non-shipped configuration makes the
+comparison look coarser than it is, which is the direction that protects the conclusion.
+
+Three further omissions in the same two sentences. The tracer is **Sionna RT**
+(`oracle_variant: cuda_ad_mono_polarized`, `max_depth: 4`, 150000 samples per source,
+diffraction off) and is never named at the point of use. The second square is **Brussels
+Grand-Place** and is never named. And the estimator leg is the L=4 run: both files'
+`published_trace_config` reads `max_bounces: 4, roulette_start: 3`, so the validated
+configuration is `city250_corrected`, not the published `city250_L3` at three
+interactions. Materials and mesh do match the published run exactly, which I checked
+class by class against the `city250_L3_korenmarkt` manifest.
+
+### 7. The headline standpoint-sampling numbers are not reproducible from the files on disk
+
+`paper.tex` gives per-city median shift rms of 0.128 / 0.061 / 0.188 dB over the eight
+sites whose standpoints moved, with largest changes 0.242 / 0.116 / 0.326 dB. The
+comparison is `city250_corrected` against `city250_datum`, and it reproduces to four
+decimals **only if New York's values are taken from `GROUND_DATUM.md` rather than from
+`outputs/`**.
+
+`outputs/exposure_korenmarkt/city250_corrected_newyork_timessquare_15ghz_locations.jsonl`
+is corrupted by an interleaved write: one record is truncated and only 79 of 80 parse.
+`city250_corrected_prague_staromestske_15ghz_locations.jsonl` has 81 lines with one
+broken line break, but all 80 records recover there. Reading New York as the file stands
+gives $+0.150$ / $-0.103$ / $+0.288$ instead of the reported $+0.173$ / $-0.071$ /
+$+0.328$, and drops the rms to 0.1245 / 0.0660 / 0.1805.
+
+The conclusion is unaffected at two decimals, but a number in the abstract currently
+depends on a markdown table rather than on a machine-readable artefact. The `_corrected`
+tag is the only run in `outputs/` with damaged files, and three separate results lean on
+it: this one, the sensitivity harvest and the cross validation.
+
+Two population qualifiers are also unstated. The rms is over **eight** sites, excluding
+Krakow and Toulouse (the broken-datum movers, $-1.40$ to $-12.98$ dB) and Korenmarkt
+(0 of 80 standpoints replaced). Over all eleven it would be 0.585 / 1.680 / 3.992 dB. And
+both legs were traced at `max_bounces: 4, roulette_start: 3`, so the sampling uncertainty
+is measured at an interaction budget the published run does not use. The corrected-to-L3
+pair gives 0.124 / 0.067 / 0.173, close enough that the conclusion survives.
+
+### 8. The bystander numbers in methods.tex are a whole generation behind, and two six-interaction leftovers survive in paper.tex
 
 Everything in `outputs/bystander_study/` is the three-interaction retrace
 (`max_bounces: 3`, `roulette_start: 4`, manifests written 2026-08-03T04:31 and 04:40).
@@ -207,9 +304,9 @@ budgets inside one comparison.
 `paper.tex` is current in the Results subsection but carries two leftovers in the Body
 coupling section: "cost a median 1.4\,dB under the street model and 1.0\,dB under the
 rooftop model" (should be 1.07), and the arriving share "0.19" (stored value 0.18473,
-which rounds to 0.18; 0.1850 was the six-interaction value).
+which rounds to 0.18. 0.1850 was the six-interaction value).
 
-### 7. A ratio in the Discussion is contradicted by a floor the same paper quotes
+### 9. A ratio in the Discussion is contradicted by a floor the same paper quotes
 
 `paper.tex` line 1603: the crowd rerun found "every headline number moved by less than
 the estimator's own noise floor for its column". The isotropic headline moved 0.070
@@ -219,7 +316,7 @@ floor, not less than it. Rooftop (0.025 against 0.035) and street (0.005 against
 do satisfy the claim. The sentence is true for two of three columns and false for the
 one the paper had already singled out as the interesting case.
 
-### 8. The visible-direction cross check in methods.tex is the worst single site presented as a bound
+### 10. The visible-direction cross check in methods.tex is the worst single site presented as a bound
 
 `methods.tex` twice says the diffraction mask "reproduces the tracer's own direct term to
 within 0.34\,\% for the isotropic model, 1.73\,\% for rooftop and 7.3\,\% for street".
@@ -240,7 +337,38 @@ disagreements are 1.29, 6.44 and 23.05 percent. `paper.tex`'s "median disagreeme
 This is the one check the paper offers as an independent code path, so overstating it is
 material.
 
-### 9. Two population statements in the evidence-reach paragraph are wrong
+### 11. The monostatic paragraph reads as pooled power weighting and is a median across standpoints, and the closed form it opens with has no artefact
+
+`outputs/monostatic/mono250_correlations.json`, 440 standpoints, 40 per site across the
+eleven squares. Confirmed by counting records in the eleven `mono250_*_locations.jsonl`.
+
+| paper | stored | pooled equivalent |
+|---|---|---|
+| "98.6\% of the return is first order" | median of `mono_first_order_share` = 0.986072 | $\sum o_1/\sum g$ = **0.850** |
+| "power-weighted two-way range of 4.05\,m" | median of `mono_mean_two_way_range_m` = 4.0506 | 3.59 m |
+| "second order is 0.37\% ... 24\,dB below" | median of $o_2/g$ = 0.003732 | 0.0098, i.e. 19.4 dB below |
+
+"Power weighted" is correct **within** a standpoint, where the range is weighted by
+returned power. Across the 440 standpoints all three quantities are medians, not power
+weightings. `MONOSTATIC.md` says "98.6 \% first order at the median". The paper drops the
+qualifier, which turns a typical standpoint into an aggregate.
+
+**The $-70.99$ dB rough half-space closed form is an orphan.** It appears only at
+`MONOSTATIC.md` line 142. The current `outputs/monostatic/monostatic_validation.json`
+holds six checks, two Lambertian cavities, three image-source and one physical-optics
+plate, and no half-space row. `run_monostatic.py --validate` builds only those six. The
+paper opens its monostatic paragraph by comparing $-70.81$ dB against $-70.99$ dB and the
+second number cannot be reproduced from any current artefact.
+
+**The partial correlation is a Pearson set against a Spearman.** "Pooled Spearman
+$-0.526$ ... partial at fixed sky fraction $-0.010$" mixes two coefficients across one
+comparison. The comparable non-partial Pearson is $-0.445$, so the honest contrast is
+$-0.445$ to $-0.010$.
+
+The run also used 100000 rays, half the published 200000, at three interactions and a
+250 m crop. `MONOSTATIC.md` states this. The paper does not.
+
+### 12. Five statements in the evidence-reach paragraph name the wrong population
 
 **"three continents".** The 42-standpoint closed-loop and outward-path medians
 (1.000000 / 0.999972 / 0.980 and 0.999103 / 0.912004 / 0.714182) come from
@@ -255,7 +383,7 @@ Madrid and Mexico City. The paragraph reads as if one four-city set carries both
 over stations.** Stored `pooled_at_station_positions.walk.covered_fraction_by_power[0]`:
 Brussels 0.997946, Korenmarkt 0.998948, Madrid 0.991904, Mexico 0.940949. The station
 count 8+9+6+12 = 35 is right, but the per-station range over those 35 is **0.696 to
-0.9998**. `BOUNCE_BUDGET.md` states both correctly; the paper compressed them.
+0.9998**. `BOUNCE_BUDGET.md` states both correctly. The paper compressed them.
 
 **"beyond 40\,m every depth falls below 0.21" is false.** The 40 to 80 m bin of
 `against_distance_from_nearest_station.walk` runs
@@ -267,10 +395,10 @@ The correct threshold is 0.22, or 0.24 on the grid layer.
 station separation of 56.0 m and a maximum radius from centre of 37.2 m
 (`outputs/walk_korenmarkt/walk_selection.json`, `spread.baseline_m.max` and
 `range_from_centre_m.max`). The 90 m is the standpoint sampling **radius**
-(`walk.radius_m` in the run manifests). The 0.479 coverage figure is right; the span
+(`walk.radius_m` in the run manifests). The 0.479 coverage figure is right. The span
 attributed to it is not.
 
-### 10. "the 3 most enclosed squares" is not what was run
+### 13. "the 3 most enclosed squares" is not what was run
 
 The diffraction bound ran on Times Square, Grand-Place and Korenmarkt. Median sky
 fraction over the eleven corrected 250 m runs ranks Korenmarkt **fourth**: New York
@@ -279,7 +407,7 @@ on median, on mean, and on the mean of its own 20 lowest standpoints, and it was
 The set is the two most enclosed plus the reference square. Both `paper.tex` and
 `WHY_NOT.md` assert "the three most enclosed".
 
-### 11. The beamforming ordering argument uses a wider axis than the paper's own headline
+### 14. The beamforming ordering argument uses a wider axis than the paper's own headline
 
 "reversing pairs up to 1.53\,dB apart rooftop and 2.97\,dB street on axes 5.6 and
 9.8\,dB wide". All four numbers trace to `outputs/antenna/antenna11_250m.json`, which has
@@ -298,7 +426,40 @@ and "full digital maximum ratio transmission" maps to the `*_element` columns, n
 `*_matched` columns, which are exactly invariant. A reader who mapped it to `_matched`
 would find the "two rooftop pairs" claim contradicted.
 
-### 12. Orphans
+### 15. Configuration drift, collected
+
+Findings 3, 4, 6, 7 and 11 are each an instance of one pattern, so here is the whole
+picture in one place. The published run is `city250_L3`: 250 m crop, three interactions,
+roulette off, 200000 rays, 80 standpoints per site. What every supporting result actually
+ran on:
+
+| result | crop | bounces | roulette | rays | standpoints per site |
+|---|---|---|---|---|---|
+| headline table, law comparison, diffraction bound | 250 m | 3 | off | 200k | 80 |
+| crop convergence | 60 to 340 m | 3 | off | 200k | 32 fixed observers |
+| bounce budget, power column | **130 m** | 8 | both | 200k | 8 stations |
+| material null and whole-field | **130 m** | **6** | **on** | 200k | **120** |
+| dielectric bracket | **130 m** | **12** | **on** | **60k** | **24** |
+| sensitivity and range cap | 250 m | **4** | **on** | 200k | **40** |
+| standpoint sampling rms | 250 m | **4** | **on** | 200k | 80 |
+| cross validation | 250 m | **4** | **on** | 200k | **8** |
+| monostatic | 250 m | 3 | off | **100k** | **40** |
+| bystanders | 250 m | 3 | off | 200k | **12** |
+
+Only the first row is the configuration the Results preamble declares. None of the
+deviations is large enough on its own to move a conclusion, and several are paired
+comparisons where the shared configuration cancels. But a reader is told once, in one
+sentence, that the study runs at 250 m and three interactions, and then given ten results
+of which one does.
+
+One label is outright wrong rather than merely unstated: `sensitivity.json` declares
+`"published_run": "city250_corrected"`, while its own
+`validation.*.against_runs_on_disk` block shows the harvest matching 40 of 40 standpoints
+against `city250_L3` and `city250_datum` and only 2 to 40 against `city250_corrected`
+(2 at Krakow, 2 at Milan, 10 at Brussels). The harvest is on new-datum standpoints and
+the label was not updated.
+
+### 16. Orphans
 
 Numbers with no artefact under `outputs/`.
 
@@ -311,8 +472,11 @@ Numbers with no artefact under `outputs/`.
 | 7.8\% of rooftop measure and 0.4\% of street, near $24^\circ$ | A7, and the honesty table | `WHY_NOT.md` line 825 |
 | "+50\,dB" for a beam grid coarser than the aperture | Beamforming subsection | `BEAMFORMING.md` line 599 |
 | "the array puts it 20 to 25\,dB down" | Beam pointing, both files | `BEAMFORMING.md` line 248 |
+| $-70.99$ dB rough half-space closed form | monostatic paragraph | `MONOSTATIC.md` line 142. The validate harness has no half-space check |
+| $\rho_+^{-1.2}$ | range cap paragraph | `SENSITIVITY.md` line 128. No fit exists in `sensitivity.json` or `make_sensitivity_study.py` |
+| rescaled 80-standpoint floors 0.0051 / 0.0167 / 0.0420 dB | needed for the abstract's "roughly 25 times" and the Discussion's "7 to 47 times" | `GROUND_DATUM.md` lines 275 to 277 |
 
-Two of these matter more than the rest.
+Three of these matter more than the rest.
 
 The **entire Monte Carlo error model is unpersisted**. Four sentences and two
 "N times the noise floor" claims rest on 0.0042 / 0.0136 / 0.0343 dB, on 0.0624, and on
@@ -330,12 +494,19 @@ same $\pm 5^\circ$ window on $24^\circ$ gives 7.43 and 0.373 percent. The paper'
 centre does not produce the paper's stated percentages, and $\pm 5^\circ$ is a
 ten-degree-wide band rather than "a few degrees".
 
+The **rescaled floor is the sharpest of these**, because it makes the abstract disagree
+with the Discussion. The abstract's "roughly 25 times the isotropic Monte Carlo error"
+needs $0.128/0.00514 = 24.9$, using the 80-standpoint rescaled floor. The floor the paper
+itself prints, at line 1595, is 0.0042 dB, and $0.128/0.0042 = 30.5$. A reader who
+divides the two numbers the paper gives them gets 30, not 25. The rescaling
+$0.0042\sqrt{120/80} = 0.00514$ is correct and appears nowhere in either .tex file.
+
 The "+50 dB" case is worse than an orphan. `ARTEFACT_CODEBOOKS = (8, 16, 32)` in
 `antenna.py` line 1123 are all at least as fine as the aperture, so coarse grids were
 never swept. The paper says they "were computed and excluded". They were excluded a
 priori.
 
-### 13. Smaller items, in descending order
+### 17. Smaller items, in descending order
 
 **"a factor of 3.1 to 5.0" is a linear power ratio attached to decibel medians.** The
 2 GHz medians 0.18 / 0.53 / 1.78 dB against the 15 GHz medians 0.06 / 0.15 / 0.42 dB give
@@ -344,13 +515,33 @@ priori.
 `FIGURES/make_diffraction_bound_figure.py` prints. Correct, but a reader dividing the
 numbers in the same sentence gets a different range.
 
+**The contrast sentence is rooftop only.** "Between-city contrast changed by 0.51\,dB at
+the median" reads as model-agnostic. 0.5072, the Spearman 0.8091 and the 7 of 11 rank
+changes are all in the `rooftop` block of `sensitivity.json`. The street block gives
+1.8215 dB, 0.8364 and 9 of 11. Quoting the rooftop figure understates the street model's
+sensitivity by a factor of 3.6.
+
+**The exponent rounds the wrong way.** "about $\rho_+^{-1.2}$". Fitting a power law to
+the median-across-sites curve in `sweep_rooftop_d_max.csv` over 100 to 400 m gives
+$-1.283$, and the median of per-site exponents gives $-1.287$. Street gives $-1.40$ to
+$-1.54$. The local slope at the published cap is $-1.53$ rooftop. $-1.3$ is the honest
+round of $-1.28$. The 7.4 dB the sentence hangs on it is self-consistent
+($10 \times 1.283 \times \log_{10} 4 = 7.72$ against a measured 7.40), and only at 100 to
+400 m.
+
+**Two geometric descriptions in `paper.tex` are loose.** Line 525, "A grid of columns at
+3\,m spacing is laid over the crop", describes a grid that covers a 90 m radius disc, not
+the 250 m crop. Line 456, "cut to a cylinder of radius 250\,m about the standpoint",
+describes a crop whose `centre_xy` is `[0, 0]`, that is, the square centre, not each
+standpoint.
+
 **"88\% and 9\%, a ratio of nine".** Recomputed shares are 0.87858 and 0.09413, giving
 9.334, so "a factor of nine" is right. The printed pair 88/9 gives 9.78, which rounds to
 ten.
 
 **"0.21 and 0.19, a ratio of 1.15"** in the Body coupling section of both files. The
 stored arriving shares are 0.21164 and 0.18473, whose ratio is 1.1457. The rounded pair
-in the text gives 1.105. Also 0.18473 rounds to 0.18, not 0.19; 0.19 is the
+in the text gives 1.105. Also 0.18473 rounds to 0.18, not 0.19. 0.19 is the
 six-interaction value. The Results version of the same sentence, "0.212 and 0.185, a
 ratio of 1.15", is correct.
 
@@ -364,10 +555,10 @@ bodies, not a fixed count. The density 2.15 per square metre is per square metre
 disc). Neither file says walkable.
 
 **The absorber contrast crosses standpoint sets.** The crowd arm ran 12 standpoints and
-2 realisations; the absorber control ran **8 standpoints and 1 realisation**, with only 2
+2 realisations. The absorber control ran **8 standpoints and 1 realisation**, with only 2
 of 8 shared, a different walkable fraction (0.5292 against 0.4712), and a different crowd
 (3220 bodies against 2867). Every "changed from X to Y" pair in that sentence compares
-two different populations. `BYSTANDERS.md` flags this; neither `.tex` file does.
+two different populations. `BYSTANDERS.md` flags this. Neither `.tex` file does.
 
 **Bibliography year.** Both files cite "Recommendation ITU-R P.2040-4, 2023". The run
 manifests bind materials from "Recommendation ITU-R P.2040-4 (09/2025)". P.2040-3 is the
@@ -390,7 +581,7 @@ about 4 parts per thousand.
 coverage and the exclusion story are from `korenmarkt_130m_bounce_evidence.json`. The
 250 m file has **nine** stations, none below 0.996503, built from a different evidence
 file. `methods.tex` states this ("Re-registering the same camera for the wider binding
-takes it to 1.000"); `paper.tex` drops the resolution and keeps only the exclusion.
+takes it to 1.000"). `paper.tex` drops the resolution and keeps only the exclusion.
 
 ---
 
@@ -435,7 +626,7 @@ Arithmetic is shown for every D.
 | "fell 1.15 dB short for street cells" | 1.15 dB | D | $9.5804 - 8.4324 = 1.148$ |
 | law residual rms | 1.39 / 0.98 dB | T | `law_comparison/eleven_city_law_ordering.json`, `residual_rms_db` 1.3925 / 0.9772 |
 | standpoint resampling rms | 0.128 / 0.061 / 0.188 dB | see Discussion row | |
-| "roughly 25 times the isotropic Monte Carlo error" | 25 | D, denominator O | $0.128 / 0.0051 = 25.1$, using the walk-median floor rescaled to 80 standpoints; 0.0051 exists only in `CODE_AUDIT.md` |
+| "roughly 25 times the isotropic Monte Carlo error" | 25 | D, denominator O | $0.128 / 0.0051 = 25.1$, using the walk-median floor rescaled to 80 standpoints. 0.0051 exists only in `CODE_AUDIT.md` |
 | material medians | 0.024 / 0.029 / 0.022 dB | D | recomputed from `sam3lad_walk` and `sam3lad_walk_facade` location files: $+0.024469$, $+0.029092$, $+0.022402$ |
 | diffraction uplifts | 0.06 / 0.15 / 0.42 dB | D | pooled medians 0.0595 / 0.1543 / 0.4218 from the three `*_diffraction_bound.json` |
 | open-ground level, rooftop | 0.0075 to 3.0 W/m$^2$ | D | $S_0 = P\nu/4\pi \oint(\rho_+-\rho_-)d\Omega$ with $\nu = $ areal density / 30 m, $\oint = 357.28$ m: 25/km$^2$ at 55 dBm gives 0.007492, 100/km$^2$ at 75 dBm gives 2.997 |
@@ -450,7 +641,7 @@ Arithmetic is shown for every D.
 | A1 far-field onset | $2D^2/\lambda = 9$ m | D | $2(0.3)^2/0.019986 = 9.006$ m |
 | A1 closest source | 10 m | T | street band `range_band_m` lower edge |
 | A2 phase turn | $3.1\times10^4$ rad | D | $k = 314.377$ rad/m, $\times 100$ m $= 3.1438\times10^4$ |
-| A2 cells needed | $10^{10}$ against 512 | D | $4\pi(kR)^2 = 1.242\times10^{10}$; 512 is `local_cells` in the manifest |
+| A2 cells needed | $10^{10}$ against 512 | D | $4\pi(kR)^2 = 1.242\times10^{10}$. 512 is `local_cells` in the manifest |
 | A4 street below $5^\circ$, counting | 88% | D | numerical integration of $Q \propto \rho_+^3-\rho_-^3$: **0.87858** |
 | A4 street below $5^\circ$, spreading | 42% | D | same with $\rho_+-\rho_-$: **0.42182** |
 | A6 diffracted amplitude | $1/56$, 35 dB | D | $ks = 314.377 \times 10 = 3143.8$, $\sqrt{} = 56.07$, $10\log_{10}(3143.8) = 34.97$ dB |
@@ -458,20 +649,20 @@ Arithmetic is shown for every D.
 | A6 over-the-top beats scattering | 7 dB fit error | T | `adhikari` |
 | A6 mask grid | 720 x 600 | T | `diffraction_bound/*.json`, `grid.azimuth` 720, `grid.elevation` 600 |
 | A6 visible-direction check | 0.19 / 1.14 / 3.70%, worst 1.29 / 6.44 / 23.05% | D | pooled median and max over 60 (56 street) standpoints |
-| A6 bound population | 20 standpoints, 3 squares, 60 total | T, label wrong | `bound_diffraction.py` selects the 20 lowest sky fraction per site; see finding 10 for "3 most enclosed" |
+| A6 bound population | 20 standpoints, 3 squares, 60 total | T, label wrong | `bound_diffraction.py` selects the 20 lowest sky fraction per site. See finding 13 for "3 most enclosed" |
 | A6 uplift medians | 0.06 / 0.15 / 0.42 dB | D | 0.0595 / 0.1543 / 0.4218 |
-| A6 against 8.1 dB within a square | 8.1 dB | S-population | walk population figure from `WHY_NOT.md`; the published Korenmarkt rooftop spread is 6.39 dB |
+| A6 against 8.1 dB within a square | 8.1 dB | S-population | walk population figure from `WHY_NOT.md`. The published Korenmarkt rooftop spread is 6.39 dB |
 | A6 2 GHz medians | 0.18 / 0.53 / 1.78 dB | D | 0.1840 / 0.5308 / 1.7788 |
-| A6 factor | 3.1 to 5.0 | D, mislabelled | linear-excess ratios 3.137 / 3.594 / 4.963; the dB medians give 3.1 to 4.2 |
+| A6 factor | 3.1 to 5.0 | D, mislabelled | linear-excess ratios 3.137 / 3.594 / 4.963. The dB medians give 3.1 to 4.2 |
 | A6 street measure below $5^\circ$ | 87.9% | D | 0.87858 |
 | A6 worst street standpoint | 12.64 dB | T | Grand-Place index 232, uplift 12.6397 dB, $\chi_{\rm street} = 1.53\times10^{-4}$, 6th smallest of 878 |
 | A6 fully occluded standpoints | 4 of 60 | T | Grand-Place indices 1062, 1049, 191, 204, all `street_small_cell_direct_traced = 0` |
-| A6 counter-citation corner loss | about 2 dB against 40 dB | T | `duchizhik`; `SPINE.md` gives 2.2 dB and $-42$ dB |
-| A7 XPR at zero excess loss | 28 dB, half a dB per dB | T | `karttunen`, pooled model; `LIT_VERIFICATION.md` section 2.2 |
+| A6 counter-citation corner loss | about 2 dB against 40 dB | T | `duchizhik`. `SPINE.md` gives 2.2 dB and $-42$ dB |
+| A7 XPR at zero excess loss | 28 dB, half a dB per dB | T | `karttunen`, pooled model. `LIT_VERIFICATION.md` section 2.2 |
 | A7 even split needs | 56 dB | D | $28/0.5 = 56$ |
 | A7 TE bound | 3.0 dB | T | `WHY_NOT.md` section 4.3 gives 3.01 dB |
 | A7 pseudo-Brewster | $66^\circ$ incidence, tens of dB | T | 66.435$^\circ$ for concrete, TM minimum $-35.0$ dB |
-| A7 band share | 7.8% rooftop, 0.4% street | D, O | $23.6\pm5^\circ$ gives 7.837% and 0.403%; the paper's stated $24^\circ$ centre gives 7.43% and 0.373%; no artefact under `outputs/` |
+| A7 band share | 7.8% rooftop, 0.4% street | D, O | $23.6\pm5^\circ$ gives 7.837% and 0.403%. The paper's stated $24^\circ$ centre gives 7.43% and 0.373%. No artefact under `outputs/` |
 
 ### Configuration and illumination model
 
@@ -487,9 +678,9 @@ Arithmetic is shown for every D.
 | street band | 2.5 to 6.5 m, 10 to 150 m | T | manifest `illumination_models.street_small_cell` |
 | rooftop elevation support | 3.09 to 60.11 deg | D | $\arctan(13.5/250) = 3.0910$, $\arctan(43.5/25) = 60.1135$ |
 | street elevation support | 0.95 to 33.02 deg | D | $\arctan(2.5/150) = 0.9548$, $\arctan(6.5/10) = 33.0239$ |
-| element taper at median elevation | 0.26 dB at $9.5^\circ$ | D | 3GPP TR 38.901 Table 7.3-1, $12(9.5/65)^2 = 0.2563$; median of the rooftop measure on $d\Omega$ recomputed as $9.4969^\circ$ |
-| element taper at band top | 10.2 dB at $60^\circ$ | D | $12(60/65)^2 = 10.2249$; at the true top $60.11^\circ$ it is 10.264 |
-| off-axis suppression | 20 to 25 dB | O | `BEAMFORMING.md` only; the code's own 8x8 model gives $-17.1$ dB mean at $20^\circ$ |
+| element taper at median elevation | 0.26 dB at $9.5^\circ$ | D | 3GPP TR 38.901 Table 7.3-1, $12(9.5/65)^2 = 0.2563$. Median of the rooftop measure on $d\Omega$ recomputed as $9.4969^\circ$ |
+| element taper at band top | 10.2 dB at $60^\circ$ | D | $12(60/65)^2 = 10.2249$. At the true top $60.11^\circ$ it is 10.264 |
+| off-axis suppression | 20 to 25 dB | O | `BEAMFORMING.md` only. The code's own 8x8 model gives $-17.1$ dB mean at $20^\circ$ |
 
 ### Estimator and bounce budget
 
@@ -498,7 +689,7 @@ Arithmetic is shown for every D.
 | launch cells $M$ | 512 | T | `trace_config.local_cells` |
 | rays $N$ | 200000 | T | `trace_config.rays` |
 | bounce budget $L$ | 3 | T | `trace_config.max_bounces` |
-| closed-loop visibility | 1.000000 / 0.999972 / 0.980 | T | pooled medians over 42 records in the four `monovis_*_visibility_locations.jsonl`; order 3 is 0.979514 |
+| closed-loop visibility | 1.000000 / 0.999972 / 0.980 | T | pooled medians over 42 records in the four `monovis_*_visibility_locations.jsonl`. Order 3 is 0.979514 |
 | spread across the four cities | "a few percent" | D | order 3 per city 0.9760 to 0.9842, spread 0.8 percentage points |
 | "four meshes on three continents" | | S | the four are Brussels, Ghent, Milan, Tokyo, i.e. two continents |
 | outward path visibility | 0.999103 / 0.912004 / 0.714182 | T | same files, `open_path_chain_observed` |
@@ -510,15 +701,15 @@ Arithmetic is shown for every D.
 | third interaction within 20 m | about 89% | T | 0.8986, 0.8941, 0.8832 |
 | beyond 40 m all depths | below 0.21 | S | bounce 4 is 0.2113 on the walk layer, up to 0.2326 on the grid layer |
 | pooled first-interaction coverage | 0.479 | T | `pooled_walk_standpoints_only.walk.covered_fraction_by_power[0]` = 0.479251 |
-| "walk spans 90 m" | 90 m | S | the panorama walk spans 56.0 m; 90 m is the standpoint radius |
-| station coverage over 35 stations | 0.941 to 0.999 | S-label | that is the range of four **pooled** city values; the per-station range is 0.696 to 0.9998 |
-| direct share of launched power | 21.0% | T at 130 m | $1 - 0.789824$; at the published 250 m crop it is 23.3% |
-| first / second / third surface shares | 79 / 8.8 / 1.2% | T at 130 m | 0.789824 / 0.088484 / 0.011918; at 250 m 76.7 / 8.68 / 1.04 |
-| past the third | 0.23% | D at 130 m | $\sum$ share[3:] $= 0.002273$; at 250 m 0.00166 |
+| "walk spans 90 m" | 90 m | S | the panorama walk spans 56.0 m. 90 m is the standpoint radius |
+| station coverage over 35 stations | 0.941 to 0.999 | S-label | that is the range of four **pooled** city values. The per-station range is 0.696 to 0.9998 |
+| direct share of launched power | 21.0% | T at 130 m | $1 - 0.789824$. At the published 250 m crop it is 23.3% |
+| first / second / third surface shares | 79 / 8.8 / 1.2% | T at 130 m | 0.789824 / 0.088484 / 0.011918. At 250 m 76.7 / 8.68 / 1.04 |
+| past the third | 0.23% | D at 130 m | $\sum$ share[3:] $= 0.002273$. At 250 m 0.00166 |
 | L3 against L8, median | 0.002 dB | T | model medians 0.0015 / 0.0023 / 0.0026 |
-| L3 against L8, worst | 0.063 dB | T at 130 m | 0.062591 roulette off; at 250 m Brussels reaches 0.384 dB |
+| L3 against L8, worst | 0.063 dB | T at 130 m | 0.062591 roulette off. At 250 m Brussels reaches 0.384 dB |
 | none of 40 moves half a dB | 0 | T | `standpoints_over_0p5_db` = 0 in both L3 rows at Korenmarkt |
-| truncated share | 0.0037 / 0.0201 | T at 130 m | 0.003686 / 0.020125; over the 880 published standpoints, 0.005035 / 0.079519 |
+| truncated share | 0.0037 / 0.0201 | T at 130 m | 0.003686 / 0.020125. Over the 880 published standpoints, 0.005035 / 0.079519 |
 | roulette floor and inflation | 0.05, twentyfold | T | `tracer.py` line 286, `roulette_floor = 0.05`, $1/0.05 = 20$ |
 | roulette wall times | 101 and 100 s | T | 100.894 and 100.450 s |
 | roulette spread agreement | "three significant figures" | S | agrees to two on isotropic and rooftop |
@@ -528,7 +719,7 @@ Arithmetic is shown for every D.
 
 | claim | value | verdict | source |
 |---|---|---|---|
-| Table `tab:result-summary`, all 12 cells | see abstract rows | D | recomputed exactly; isotropic 3.7064, 1.6994/3.9171/6.4568, 6 of 11; rooftop 4.9297, 2.5492/5.4628/12.8933, 8 of 11; street 9.5804, 4.8025/8.4324/19.0062, 4 of 11 |
+| Table `tab:result-summary`, all 12 cells | see abstract rows | D | recomputed exactly. Isotropic 3.7064, 1.6994/3.9171/6.4568, 6 of 11. Rooftop 4.9297, 2.5492/5.4628/12.8933, 8 of 11. Street 9.5804, 4.8025/8.4324/19.0062, 4 of 11 |
 | largest sampled median | Mexico Zocalo | T | top of both the isotropic and rooftop `_L3` orderings |
 | Krakow datum correction | $-1.40$ iso, $-12.97$ street | D | `_corrected` against `_L3` medians: $-1.4021$, $-12.9724$ |
 | Toulouse datum correction | $-1.29$, $-2.61$ | D | $-1.2943$, $-2.6078$ |
@@ -543,28 +734,28 @@ Arithmetic is shown for every D.
 | New York 1st to 9th, Tokyo 4th to 8th | | T | `rank_old`/`rank_new` and the stored orderings |
 | drop-one Spearman | $+0.98$, no move over one place | D | recomputed 0.9758 both models, max rank move 1 |
 | Pearson residual against low-elevation share | $-0.97$ | D | recomputed $-0.9745$ against the old-law share below $5^\circ$ |
-| material shifts | 0.024 / 0.029 / 0.022 dB | D | see abstract row; **130 m crop, 6 bounces, 120 standpoints** |
+| material shifts | 0.024 / 0.029 / 0.022 dB | D | see abstract row. **130 m crop, 6 bounces, 120 standpoints** |
 | within-Korenmarkt spreads | 3.9 / 8.4 / 16.7 dB | D | 3.8528 / 8.4288 / 16.7083 on the baseline arm, same 120-standpoint 130 m population |
-| 0.024 dB is 5.7 times 0.0042 dB | 5.7 | D, denominator O | $0.024/0.0042 = 5.714$; 0.0042 is in `CODE_AUDIT.md` only |
-| whole-field change | $-0.218$, 15 of 120, 2.020 dB, $-0.156$, $-0.024$ | D | recomputed $-0.2179$, 15/120, $-2.0196$, $-0.1564$, $-0.0242$. The worst standpoint **decreased** by 2.020 dB; the sign is dropped |
-| dielectric bracket | $-0.104$, $+0.239$, $-0.164$, $+0.414$ | T | `material_vlm/ablation.json`, `pure_plasterboard_m0` and `pure_marble_m0` paired medians, 24 standpoints |
-| dielectric span | 0.34 / 0.58 dB | D | $0.239497-(-0.104090) = 0.343588$; $0.413837-(-0.163543) = 0.577380$ |
-| metal | $+2.502$, $+4.374$, 24 of 24 | T | `pure_metal_m0` |
+| 0.024 dB is 5.7 times 0.0042 dB | 5.7 | D, denominator O | $0.024/0.0042 = 5.714$. 0.0042 is in `CODE_AUDIT.md` only |
+| whole-field change | $-0.218$, 15 of 120, 2.020 dB, $-0.156$, $-0.024$ | D | recomputed $-0.2179$, 15/120, $-2.0196$, $-0.1564$, $-0.0242$. The worst standpoint **decreased** by 2.020 dB. The sign is dropped |
+| dielectric bracket | $-0.104$, $+0.239$, $-0.164$, $+0.414$ | D | `material_vlm/ablation_locations.jsonl`, `brick` against `pure_plasterboard_m0` and `pure_marble_m0`: median of the per-standpoint dB difference over 24 standpoints gives $-0.104090$, $+0.239497$, $-0.163543$, $+0.413837$. The dB of the median ratio would give $-0.096$, $+0.237$, $-0.159$, $+0.395$, so the paired statistic is the one used. `_m0` and `_m1` are bit-identical for every single-material variant |
+| dielectric span | 0.34 / 0.58 dB | D | $0.239497-(-0.104090) = 0.343588$. $0.413837-(-0.163543) = 0.577380$ |
+| metal | $+2.502$, $+4.374$, all 24 above 1 dB | D | $+2.501878$, $+4.373903$. Isotropic per-standpoint range $+1.0394$ to $+6.1658$, so "all 24 above 1 dB" is true and the margin is 0.04 dB |
 | steering table, 12 cells | | T | `antenna/paper_artefact_250m.json`, all twelve match to 3 decimals |
 | retrace standpoints | 20 | T | `arguments.locations` |
-| 8x8 percentiles | $-0.49$/$-0.25$, $-2.53$/$-1.09$ | T | reproduced exactly; percentiles taken on linear suppression, both inside the 20-point sample |
+| 8x8 percentiles | $-0.49$/$-0.25$, $-2.53$/$-1.09$ | T | reproduced exactly. Percentiles taken on linear suppression, both inside the 20-point sample |
 | direct fractions | 0.6955, 0.5054 | T | `summary.*.direct_measure`, median over the same 20 standpoints |
 | floors | $-1.58$, $-2.96$ dB | D | $10\log_{10}(0.695538) = -1.5768$, $10\log_{10}(0.505450) = -2.9632$ |
 | 32x32 reaches 96% of floor | 96% | D | $2.85224/2.96322 = 0.9626$ |
 | codebook values | $-0.25$/$-1.54$, $-0.37$/$-1.61$, $-0.37$/$-1.66$ | T | all six stored |
 | codebook granularity under 0.15 dB | | D | largest relevant gap is codebook8 against exact 8x8 rooftop, $0.375506-0.252703 = 0.1228$ |
-| coarse grid returns $+50$ dB | | O | never swept; `ARTEFACT_CODEBOOKS = (8,16,32)` |
+| coarse grid returns $+50$ dB | | O | never swept. `ARTEFACT_CODEBOOKS = (8,16,32)` |
 | element averaged over rooftop measure | 0.45 dB | D | measure-weighted mean gain 0.901278, i.e. 0.4514 dB down |
-| element effect on the ratio | 0.62 median square, 1.07 Madrid | T, aggregation-dependent | nested median over 32 standpoints then 11 squares; the alternative reduction gives Madrid 1.14 and Brussels 1.22 |
+| element effect on the ratio | 0.62 median square, 1.07 Madrid | T, aggregation-dependent | nested median over 32 standpoints then 11 squares. The alternative reduction gives Madrid 1.14 and Brussels 1.22 |
 | "two to four times" | | D | $0.6203/0.25633 = 2.42$, $1.0734/0.25633 = 4.19$ |
 | Kendall under antenna policies | 0.818, 0.709 | D | recomputed $\tau_b$ over 55 pairs: 0.8182, 0.7091 |
 | reversed pair gaps | 1.53, 2.97 dB | D | 1.5295 Madrid against Tokyo, 2.9675 Mexico against Tokyo |
-| axis widths | 5.6, 9.8 dB | T, different population | 5.5941 and 9.7865 over **32** standpoints per site; the headline 4.93 / 9.58 are over 80 |
+| axis widths | 5.6, 9.8 dB | T, different population | 5.5941 and 9.7865 over **32** standpoints per site. The headline 4.93 / 9.58 are over 80 |
 | MRT reversals | none street, two rooftop at 0.58 dB or less | D | `*_element` columns, $\tau = 1.000$ and 0.9273, gaps 0.5812 and 0.0150 |
 | crowd density and bodies | 2.15 per m$^2$, 2867 | T, label loose | 2.152782, `bodies_median` over 24 realisations spanning 759 to 4609, per walkable m$^2$ |
 | crowd losses | street 1.40, rooftop 1.07 dB | T | $-1.39606$, $-1.06897$ |
@@ -572,64 +763,48 @@ Arithmetic is shown for every D.
 | arriving shares | 0.212, 0.185, ratio 1.15 | D | 0.211643, 0.184726, ratio 1.1457 |
 | isotropic crowd change | 0.070 dB | T | $-0.0700164$ |
 | noise floors | 0.009 / 0.035 / 0.112 dB | T | `korenmarkt_15ghz_noise_floor.json`, `median_abs_db` 0.008654 / 0.035428 / 0.112325 |
-| ratios to the floor | 8, 30, 12 | D | $0.070016/0.008654 = 8.09$; $1.068968/0.035428 = 30.17$; $1.396061/0.112325 = 12.43$ |
-| isotropic 5th and 95th percentiles | $-0.59$, $+0.04$ | T | $-0.590707$, $+0.039015$, reproduced from the rows file; interpolated between adjacent sample members |
-| absorber control | 0.708 / 1.332 / 1.607 dB | T | current absorber summary; but the run is 8 standpoints against the crowd arm's 12 |
+| ratios to the floor | 8, 30, 12 | D | $0.070016/0.008654 = 8.09$. $1.068968/0.035428 = 30.17$. $1.396061/0.112325 = 12.43$ |
+| isotropic 5th and 95th percentiles | $-0.59$, $+0.04$ | T | $-0.590707$, $+0.039015$, reproduced from the rows file. Interpolated between adjacent sample members |
+| absorber control | 0.708 / 1.332 / 1.607 dB | T | current absorber summary. But the run is 8 standpoints against the crowd arm's 12 |
 | 0.3 per m$^2$ costs 0.5 and 0.3 dB | | T | $-0.495046$, $-0.331506$ |
-| crowd geometry | 13 / 2.6 / 0.4 m | D | $0.23/\tan(1^\circ) = 13.18$, $/\tan(5^\circ) = 2.629$, $/\tan(30^\circ) = 0.398$; $1.73-1.50 = 0.23$ |
-| crop convergence radii | 60 / 100 / 200 m | D | recomputed from `crop_convergence/korenmarkt_crop_convergence.json` at a 0.5 dB criterion: isotropic and sky at 60 m, **rooftop at 160 m**, street at 250 m. See the unsettled section |
-| 130 to 250 m change | $-0.06$ / $-0.56$ / $-7.05$ dB | D, near | recomputed on the same file: $-0.031$ / $-0.653$ / $-7.404$ on medians. See the unsettled section |
-| range cap absolute swing | 7.40 / 9.24 dB | D, range mislabelled | 7.398 / 9.242 over **100 to 400 m**; over 50 to 500 m they are 10.601 / 15.485 |
-| between-city contrast swing | 0.51 dB | D, range mislabelled | 0.5072 over 100 to 400 m; 0.741 over 50 to 500 m |
-| endpoint Spearman and rank changes | 0.81, 7 of 11 | T | `contrast.spearman_endpoint_to_endpoint` = 0.8091, `rank_changes` = 7 |
-| $\rho_+^{-1.2}$ | $-1.2$ | D | median log-log slope $-1.181$ over 50 to 500 m, $-1.287$ over 100 to 400 m |
+| crowd geometry | 13 / 2.6 / 0.4 m | D | $0.23/\tan(1^\circ) = 13.18$, $/\tan(5^\circ) = 2.629$, $/\tan(30^\circ) = 0.398$. $1.73-1.50 = 0.23$ |
+| crop convergence radii | 60 / 100 / 200 m | D | `crop_convergence/korenmarkt_crop_convergence.json` with the rule in `FIGURES/make_crop_convergence.py` lines 49 and 97 to 103, applied to the `*_mean` series: 60 / 60 / 100 / 200 m for isotropic, sky, rooftop, street. All four match. The radius ladder is 60, 100, 120, 130, 160, 200, 250, 300, 340 m, so 250 m is one step past 200 m |
+| 130 to 250 m change | $-0.06$ / $-0.56$ / $-7.05$ dB | D | means on the same file: $10\log_{10}(0.28367173/0.28754666) = -0.0589$, $-0.5610$, $-7.0451$. The medians would give $-0.031$ / $-0.653$ / $-7.404$ and `law_comparison` on its own 40 walk standpoints gives $-0.513$ / $-6.941$, so the population matters and is not stated |
+| 250 m one step past the criterion | | T | the `crop_bound_note` in `cities250_corrected_15ghz_summary.json` is the same measurement at a 0.1 dB budget, which I reproduce as 100 / 100 / 200 / 250 m. No conflict |
+| range cap absolute swing | 7.40 / 9.24 dB | D, range mislabelled | 7.3984 / 9.2425 over **100 to 400 m**, the window hard-coded in `make_sensitivity_study.py` `invariants()`. Over the stated 50 to 500 m they are 10.601 / 15.485. Harvested at 40 standpoints per site |
+| between-city contrast swing | 0.51 dB | D, range mislabelled, rooftop only | 0.5072 over 100 to 400 m. 0.741 over 50 to 500 m. Genuinely a between-square quantity: per-site median $\chi$ in dB minus the cross-city mean dB level at that cap, then `ptp` per site, then the median over eleven. Street gives 1.8215 |
+| endpoint Spearman and rank changes | 0.81, 7 of 11 | T, rooftop only | `rooftop.contrast.spearman_endpoint_to_endpoint` = 0.8091, `rank_changes` = 7, `max_rank_move` = 5. Street gives 0.8364 and 9 |
+| $\rho_+^{-1.2}$ | $-1.2$ | O | no fit exists in `sensitivity.json` or its generator. My own fit gives $-1.283$ on the median curve and $-1.287$ as the median of per-site exponents over 100 to 400 m, so $-1.3$ is the honest round |
 
 ### Discussion
 
 | claim | value | verdict | source |
 |---|---|---|---|
-| standpoints replaced | 56 to 76 of 80 at eight sites | D | complement of `SPINE.md`'s "4 to 24 survived"; eight is right because Korenmarkt keeps all 80 and Krakow and Toulouse are the two large movers |
-| per-city median rms | 0.128 / 0.061 / 0.188 dB | D | over the eight small-mover sites, `_corrected` against the fixed-datum run |
-| largest changes | 0.242 / 0.116 / 0.326 dB | D | same population |
+| standpoints replaced | 56 to 76 of 80 at eight sites | D | complement of `SPINE.md`'s "4 to 24 survived". Eight is right because Korenmarkt keeps all 80 and Krakow and Toulouse are the two large movers |
+| per-city median rms | 0.128 / 0.061 / 0.188 dB | D, not reproducible from disk | recomputed 0.1281 / 0.0606 / 0.1888 over the eight small-mover sites, `city250_corrected` against `city250_datum`, **only with New York's values taken from `GROUND_DATUM.md`**. The file on disk is truncated and gives 0.1245 / 0.0660 / 0.1805. Both legs at `max_bounces: 4` |
+| largest changes | 0.242 / 0.116 / 0.326 dB | D | Brussels isotropic 0.2420, Mexico rooftop 0.1159, New York street 0.3279 (the paper's 0.326 is `GROUND_DATUM.md`'s 4 dp rounding) |
 | "7 to 47 times their Monte Carlo floors" | 7 to 47 | D, denominator O | against the rescaled floors 0.0051 / 0.0167 / 0.0420: largest changes give $0.116/0.0167 = 6.9$ and $0.242/0.0051 = 47.5$. The rms values against the same floors give 3.7 to 25.1, so "these values" must mean the largest changes only |
-| monostatic first-order share | 98.6% | T | `monostatic/mono250_correlations.json` |
-| two-way range | 4.05 m | T | same |
-| return medians | $-70.81$ against $-70.99$ dB | T | same |
-| pooled Spearman, partial, sky | $-0.526$, $-0.010$, $+0.961$ | T | same |
-| second-order partial and share | $-0.345$, 0.37%, 24 dB below | T, D | $10\log_{10}(0.986/0.0037) = 24.3$ dB |
-| cross-validation agreement | 0.25 / 0.16 dB against a 0.24 to 0.46 dB floor | T | `outputs/cross_validation/`; second square is Brussels Grand-Place |
+| monostatic population | 440 standpoints | T | 40 records in each of the eleven `mono250_*_locations.jsonl`. 100000 rays, half the published count |
+| monostatic first-order share | 98.6% | T, median | median of `mono_first_order_share` = 0.986072. The pooled power-weighted share is 0.850 |
+| two-way range | 4.05 m | T, median | median of `mono_mean_two_way_range_m` = 4.0506. Power weighting holds within a standpoint, not across them. Pooled is 3.59 m |
+| return median | $-70.81$ dB | T | median of `mono_gain_db` = $-70.8091$ |
+| rough half-space closed form | $-70.99$ dB | O | `MONOSTATIC.md` line 142 only. `monostatic_validation.json` has six checks and no half-space row |
+| pooled Spearman, partial, sky | $-0.526$, $-0.010$, $+0.961$ | T, mixed coefficients | 0.5263435, 0.0100772, 0.9607733. The partial is a **Pearson** set against a Spearman. The comparable non-partial Pearson is $-0.445$ |
+| second-order partial and share | $-0.345$, 0.37%, 24 dB below | T, D | $-0.3446541$. Median of $o_2/g$ = 0.003732. $10\log_{10}(0.986/0.0037) = 24.3$. Pooled power would give 19.4 dB |
+| cross-validation agreement | 0.25 / 0.16 dB | D, misdescribed | recomputed production-mode medians over 8 standpoints: Korenmarkt $+0.2544$ / $+0.2421$ / $-0.1890$, Grand-Place $+0.1536$ / $-0.0251$ / $-0.0590$. 0.25 and 0.16 are the **worst of the three models**. The median over the three, which is what the text says, is 0.24 and 0.03 |
+| cross-validation floor | 0.24 to 0.46 dB | D, widened | recomputed per-model medians of $10\log_{10}(1+\sigma/\chi)$: production rows span 0.231 to 0.346. The 0.44+ end is the `specular` mode, which was not shipped |
+| cross-validation setup | | T | Sionna RT `cuda_ad_mono_polarized`, `max_depth: 4`, 150000 samples per source, diffraction off, same 250 m meshes, materials byte-identical to the `_L3` manifest, 8 standpoints per site. The estimator leg is `max_bounces: 4`, not the published 3. Neither the tracer nor the second square is named in the text |
 | walk median standard errors | 0.0042 / 0.0136 / 0.0343 dB | O | `CODE_AUDIT.md` section 4.1 only |
 | superseded street value | 0.079 dB | T | `coverage_ladder_conflict_gated_15ghz.json`, rung `clean_walk9`, `chi_street_small_cell.distribution_median_shift_db` = 0.07854. The "lowest of eight seed draws" qualifier is `CODE_AUDIT.md` only |
-| seed-averaged shift | $0.167 \pm 0.022$ dB | O | `CODE_AUDIT.md` section 4.2; internally consistent, mean 0.16725, sd 0.0622, $0.0624/\sqrt8 = 0.02206$ |
-| 7.6 and 2.7 standard errors | | D | $0.167/0.022 = 7.59$; $0.167/0.0624 = 2.68$. The 0.0624 appears nowhere in the paper |
+| seed-averaged shift | $0.167 \pm 0.022$ dB | O | `CODE_AUDIT.md` section 4.2. Internally consistent, mean 0.16725, sd 0.0622, $0.0624/\sqrt8 = 0.02206$ |
+| 7.6 and 2.7 standard errors | | D | $0.167/0.022 = 7.59$. $0.167/0.0624 = 2.68$. The 0.0624 appears nowhere in the paper |
 | earlier headline | 0.298 dB | T | same file, `chi_rooftop_fixed_height.distribution_median_shift_db` = 0.29798, and the file's own `law_note` confirms it is the superseded law |
-| crowd retrace bound | at most 0.03 dB | O | the six-interaction run was overwritten; only a 2 dp stdout log survives |
+| crowd retrace bound | at most 0.03 dB | O | the six-interaction run was overwritten. Only a 2 dp stdout log survives |
 | honesty table, all rows | | T | each row traces to the corresponding result above |
 
 ---
 
 ## What could not be settled
-
-**The crop-convergence radii do not reproduce cleanly.** The paper says isotropic and
-sky fraction converged at 60 m, rooftop at 100 m and street at 200 m under a criterion of
-"the smallest radius from which every later step stayed below 0.5\,dB". Applying that
-criterion literally to `outputs/crop_convergence/korenmarkt_crop_convergence.json`, on
-medians, I get isotropic and sky at 60 m (agreeing), **rooftop at 160 m** and **street at
-250 m**, because the 130 to 160 m rooftop step is $-0.538$ dB and the 200 to 250 m street
-step is $-0.858$ dB. On means the answer moves again. The paper's "street illumination at
-200\,m" and the sentence that follows it, "the common 250\,m operating point was
-therefore set by the street model alone and lay one crop step past the criterion", would
-become "set by the street model at the criterion" under my reading. Settling this needs
-the reduction the figure script actually uses: whether the step is scored on the mean or
-the median, whether it is signed or absolute, and whether the criterion is applied to the
-step or to the offset from the widest crop.
-
-**The 130 to 250 m crop deltas differ from my recomputation.** The paper gives $-0.06$,
-$-0.56$, $-7.05$ dB. On the same file, on medians, I get $-0.031$, $-0.653$, $-7.404$;
-`run_law_comparison.py` on a different 40-standpoint observer set gives $-0.513$ rooftop
-and $-6.941$ street. Three near-but-not-equal triples exist and the paper does not say
-which observer set or which statistic it took. The conclusion is unaffected. The
-provenance is not clean.
 
 **The Monte Carlo error model cannot be reproduced at all.** 0.0042 / 0.0136 / 0.0343 dB,
 the rescaled 0.0051 / 0.0167 / 0.0420, 0.0624, and the eight per-seed medians exist only
@@ -655,3 +830,23 @@ never swept them. Settling the second needs either a sweep or a rewording.
 survives on a matched set is untested: the two arms share only 2 of 8 standpoints and
 carry different crowds. Settling this needs the absorber arm re-run on the crowd arm's
 12 standpoints.
+
+**The $-70.99$ dB rough half-space cannot be checked.** The monostatic validate harness
+builds six checks and none of them is a half-space. Settling this needs either the closed
+form written into `run_monostatic.py --validate` or the comparison dropped from the
+paper's opening monostatic sentence.
+
+**New York's `_corrected` standpoints are not recoverable.** One record in
+`city250_corrected_newyork_timessquare_15ghz_locations.jsonl` was truncated by an
+interleaved write. Until that site is re-traced under the `_corrected` datum, the
+abstract's 0.128 dB rests on a markdown table. Settling this needs the New York
+`_corrected` run repeated, which is one site at 80 standpoints.
+
+**Two things I checked and can now report as settled, listed here because earlier notes
+in this directory treat them as open.** The crop-convergence radii 60 / 100 / 200 m do
+reproduce exactly once the criterion is read the way `FIGURES/make_crop_convergence.py`
+applies it, on the `*_mean` series rather than medians, and the `crop_bound_note`'s
+200 / 250 m is the same measurement at a 0.1 dB budget rather than a contradiction. And
+the dielectric bracket's small mismatch against a recomputation is entirely explained by
+the choice of paired median against ratio of medians. The paper uses the paired one and
+is correct.
