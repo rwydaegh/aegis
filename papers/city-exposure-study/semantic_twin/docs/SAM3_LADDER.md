@@ -1,5 +1,10 @@
 # The material axis, tested
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street small cell columns
+> in every table below, and the percentile spreads the null is measured against, are
+> integrals against the old height and range bands. The null survives, because it is a
+> statement about material contrast, but the ratio it forms has to be recomputed.
+
 Run 2026-08-02. This closes the gap PAPER_METHODS.md section 9.3 flagged under
 "what this ladder does not test": the published evidence ladder varied **entity**
 coverage while the material of every facade was fixed by construction, so it
@@ -137,6 +142,10 @@ Same 120 standpoints, same seed, same walk, same geometry. Rooftop is the
 corrected law of section 4.2. Shifts are ratios of distribution medians, and the
 standpoint counts are paired per standpoint.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The corrected law of section 4.2 is the
+> old law with its elevation support fixed, so every rooftop and street column below still
+> carries the height and range bands. The isotropic columns do not and survive as printed.
+
 ### 3.1 Every rung, against the zero evidence baseline
 
 The four published rungs first, entity axis only, re-run at HEAD:
@@ -197,6 +206,11 @@ moves 0.110 dB against the 1.98 dB that entity coverage moves it.
 
 The 0.929 dB street outlier is one standpoint and does not repeat in the other
 two models, so it is a single grazing geometry rather than a systematic effect.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The 8.4 dB and 16.7 dB spreads this null
+> is judged against are themselves quoted per illumination model, so the denominator of
+> the comparison moves along with the numerator. The isotropic line is untouched by the
+> law change and carries the null on its own.
 
 Repeating the same comparison on the top rung of the ladder, the nine conflict
 gated stations at 10.982 % of area, gives the same answer with nothing added:
@@ -311,6 +325,10 @@ of the surface and which no panorama count reaches.
 ## 5. Replacement text for PAPER_METHODS.md
 
 Another agent owns that file. Below is the exact text to merge.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The text below prints rooftop and street
+> small cell decibels straight into the paper. The sentences survive, those numbers do
+> not, so they have to be recomputed before this block is merged.
 
 ### 5.1 Replaces the block headed "#### What this ladder does not test" in section 9.3
 

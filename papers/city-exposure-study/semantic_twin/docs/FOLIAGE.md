@@ -1,5 +1,10 @@
 # Foliage
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Nothing in the vegetation result depends
+> on the illumination, because every crossing fraction and every decibel here is reported
+> under the isotropic model. Two remarks lean on the old law and are marked where they
+> sit, in part 3 and in part 5.
+
 Vegetation is the one class in this twin where the geometry is wrong as well as
 the material. Photorealistic 3D Tiles reconstructs a tree as an opaque lumpy
 blob because multi view stereo cannot resolve a canopy of leaves, and the
@@ -282,6 +287,11 @@ susceptibilities are in the JSON. The 0.3% and 2% are asserted in the header of
 `run_foliage_study.py` and are not recomputed into `sensitivity.json`, so they
 are the one pair of numbers in this part with no output file behind them.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The reason given for not reporting the
+> two site models is that the old bands put their weight within a few degrees of the
+> horizon. That reason has to be rechecked under the new law, and the isotropic result
+> reported here does not depend on it either way.
+
 The canopy fraction on the x axis is measured the same way the site numbers
 were: share of directions from the observation point that look into vegetation.
 So Korenmarkt's 2.0% and Milan's 0.9% are directly comparable and are marked.
@@ -405,6 +415,10 @@ Stated up front so it can be checked rather than defended.
    models put their weight. The crossing fractions would move, probably
    downward, and that geometry is worth a second sweep if the ten city set has
    such a site.
+
+   > **Old illumination law, see `LAW_CHANGE.md`.** That both site models put their
+   > weight near the horizon is a property of the old bands. The item survives as a
+   > question, but which elevations matter now has to be read off the new law.
 
 ## Hook needed in the shared tracer
 

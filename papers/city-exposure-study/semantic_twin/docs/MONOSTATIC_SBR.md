@@ -281,6 +281,22 @@ location as the covariate the `OVERVIEW.md` gap list has been missing.
 
 ### 2.7 Canonical illumination scalars
 
+> **Old illumination law, and this time the whole family goes, see
+> `LAW_CHANGE.md`.** Read this before the 2026-08-02 correction below it, because
+> that correction is not the current state. Both the fixed height law of 2.7 and
+> its band replacement in 2.7.1 describe the network by a height band and a
+> horizontal range band, and both are being replaced by a law that reads the
+> network off the geometry: sites sit on facade tips, the top edge where a wall
+> meets the sky, so there is no mast, no height band and no range cap, and each
+> azimuth carries one source distance taken from the skyline. The reason is in
+> 2.7.1's own closed form, whose path loss weighted branch integrates `dr` over
+> `[r_lo, r_hi]`, which is logarithmic in the cap, so `d_max` sets the answer
+> rather than bounding it. `DEPLOYMENT_GEOMETRY.md` section 7.5 measures that as
+> 7.8 dB. Everything in 2.7 and 2.7.1 stays as written, because every published
+> rooftop and street small cell number was computed under one of the two, and the
+> replacement's own numbers are provisional and are not written here. The
+> isotropic scalars, the sky fraction and `M_S` are untouched by any of this.
+
 > **Correction, 2026-08-02.** The two directional weights in this section, the
 > rooftop one and the street small cell one, were wrong on the interior of their
 > support and are superseded by section 2.7.1. The text below is kept unedited
@@ -429,6 +445,15 @@ integrated quantity, never per direction, since `K_S^(0)` is zero in blocked
 directions and the per-direction ratio diverges.
 
 ### 2.7.1 The corrected directional weight, 2026-08-02
+
+> **Superseded in turn, see `LAW_CHANGE.md`.** This section fixed the shape on
+> the support but kept the four numbers, and the four numbers are what is now
+> going. The replacement has no height band and no range band, so `M_2`, `M_0`,
+> `r_lo`, `r_hi`, the knots and the peaks below all describe a model that is being
+> retired. Keep the derivation: it is what showed that the count weighted branch
+> goes as `r_hi^3` and the path loss weighted branch as `r_hi`, and a law whose
+> answer grows without limit in its own outer cap is a law that has to be given a
+> physical outer edge instead of an assumed one. The facade tip is that edge.
 
 This replaces the rooftop and street small cell weights of section 2.7. It is
 implemented as the elevation laws `uniform_sites_band` and

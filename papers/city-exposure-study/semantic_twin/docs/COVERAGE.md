@@ -438,6 +438,11 @@ so generalising that tuple to the requested site is the piece of work that turns
 into a question about whether the answer travels. It is left alone here because `run_exposure.py` is
 under concurrent edit and this report's one change to it is the materials guard.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The ladder reports how far an exposure
+> distribution moves, and that distribution is integrated against the law being replaced.
+> The bound area fractions in this document are geometry and survive untouched, but any
+> ladder shift measured before the new law lands is stale and has to be rerun.
+
 It is still not a bound run in the sense a reader will assume, and the geometry says why. At the sites
 with a station set, the admitted cameras sit within 29 to 62 m of their own centroid, against a
 crop that reaches 130 or 250 m. A camera at street level in a square sees the frontages around that

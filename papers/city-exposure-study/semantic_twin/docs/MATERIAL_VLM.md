@@ -1,5 +1,9 @@
 # A vision model on the facade material axis
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street small cell
+> decibels here are integrals against the old height and range bands. Those numbers move,
+> the findings do not, because material contrast does not turn on the shape of Q.
+
 The material axis of this twin is not a model. It is a constant.
 
 Mask2Former assigns a Mapillary Vistas entity per face, `vistas_material_prior`
@@ -389,6 +393,11 @@ ignorance error bar the argmax cannot produce at all.
 | bracket, every facade stone | 0.30552 | **+0.239 dB** | +0.16 to +0.34 | +0.414 dB | +0.322 dB | 0 of 24 |
 | bracket, every facade metal | 0.51419 | **+2.502 dB** | +1.68 to +3.93 | +4.374 dB | +3.808 dB | **24 of 24** |
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The paired roof and paired street columns,
+> and the 8.7 dB and 13.0 dB standpoint spreads quoted just below, are weighted by the old
+> bands. The isotropic column and the bracket argument survive, and what has to be
+> recomputed is the ratio of shift to spread rather than the shift alone.
+
 Five things fall out of that table.
 
 **The control is exact.** Sending a point mass posterior through
@@ -578,6 +587,10 @@ ignorance rather than a point estimate with no stated uncertainty.
   rooftop illuminator onto an upper storey rather than a street canyon. The
   cross city runs at 250 m under the corrected illumination law would be the
   place to check whether any site is normal incidence dominated.
+
+  > **Old illumination law, see `LAW_CHANGE.md`.** The check proposed here reads
+  > incidence off the old law, where an illuminator is a band of heights and ranges.
+  > The question survives and is now sharper, but it has to be asked of the new law.
 - **Closing the substrate versus coating ambiguity in the prompt.** Ask only for
   the outermost layer, in one field, with the substrate explicitly out of scope.
   This is a two line change and it removes the largest single term in the budget.

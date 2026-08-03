@@ -267,6 +267,56 @@ the same square. The 5th to 95th percentile of the paired street small cell shif
 at the top density spans -3.90 to -0.84 dB, so the median understates what
 happens to individual pedestrians who end up boxed in.
 
+## Whose exposure these rays measure
+
+Once there are other people in the scene it is natural to ask what they are
+absorbing. This study cannot answer that, and the reason is the direction the
+rays travel.
+
+Every ray leaves the pedestrian's own head. The estimator is adjoint: a ray that
+leaves the standpoint, bounces and escapes towards `u_s` is the reverse of a
+path carrying power from a source at `u_s` into that standpoint, which is the
+reciprocity dictionary the tracer's module docstring opens with. The ray
+population and the throughputs it carries are therefore a property of the point
+it started from and of nothing else.
+
+A ray that lands on a bystander is power that was on its way to the pedestrian
+and hit somebody else instead. Scoring the bystander on the rays that touch them
+would score them on a field defined by where the pedestrian is standing, weighted
+by the pedestrian's own throughput. It is the wrong quantity, and no factor
+converts one into the other. The correct calculation traces from the bystander's
+own head, at which point they are one more standpoint, and the eleven city run
+already has 880 of those.
+
+The question this arrangement can answer, and that a sweep of lone standpoints
+cannot, is the other one: **how much does standing in a crowd change your own
+exposure**. That is a paired comparison of one trace with the crowd present
+against one without, at the same standpoint under the same ray seed, which is
+exactly the ladder above. Over the defensible density range with adult statures
+it is 0.0 to 0.1 dB under isotropic illumination, 0.1 to 1.1 dB under the
+rooftop model and 0.1 to 1.4 dB under the street small cell model.
+
+Both halves of that are already separated, and the separation was not free. A
+crowd blocks and a crowd also reflects, and the two pull in opposite directions.
+`--body-absorber` keeps the geometry and removes only the reflected half, so the
+gap between the two runs is what reflection returns to the pedestrian. At 2.153
+people per square metre with adult statures, from
+`outputs/bystander_study/korenmarkt_15ghz_summary.json` and
+`outputs/bystander_study/korenmarkt_absorber_15ghz_summary.json`:
+
+| model | crowd of skin (dB) | crowd of absorbers (dB) | returned by reflection (dB) |
+| --- | --- | --- | --- |
+| isotropic | -0.070 | -0.708 | 0.64 |
+| rooftop | -1.069 | -1.332 | 0.26 |
+| street small cell | -1.396 | -1.607 | 0.21 |
+
+The last column is indicative and not exact, because the two runs draw different
+standpoint subsets, 24 rows against 8, as the caveat below records. The clean
+within-run form of the same split is the ratio table above. Read either way,
+reflection is the whole story for isotropic, where it returns 0.64 dB against a
+net cost of 0.07 dB, and a quarter to a seventh of the story for the two
+directional models, 0.26 dB against a net 1.07 and 0.21 dB against a net 1.40.
+
 ## Method
 
 ### Where the bodies come from

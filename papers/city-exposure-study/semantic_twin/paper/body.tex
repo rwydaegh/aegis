@@ -1,3 +1,36 @@
+% ======================================================================
+% LAW CHANGE NOTE, 2026-08-03. See ../docs/LAW_CHANGE.md.
+%
+% THE DENOMINATOR DEFINED BELOW IS SUPERSEDED, and this is a separate change
+% from the illumination law itself.
+%
+% chi is defined here as the arriving power density over what THE SAME NETWORK
+% would deliver at the same point OVER OPEN GROUND. That needs the network to
+% still exist once the buildings are removed. Under the replacement law the
+% sites sit ON the buildings, on the facade tips, so removing the buildings
+% removes the network and the denominator is empty.
+%
+% The replacement is to report the geometric quantity per unit site density and
+% per unit transmit power, with a second reference taken against the unoccluded
+% roofline.
+%
+% Two things that DO survive:
+%  - The argument for reporting a ratio at all. The absolute level is still
+%    unknowable and a common multiplier still cancels. Site density and
+%    transmit power enter as one multiplier in front of every city's answer,
+%    so neither ever has to be stated or defended.
+%  - The shadowing result, which is the most robust thing in the study because
+%    it needs no photographs and holds at all eleven cities.
+%
+% Related: normalising the line of sight term to one is a REPORTING SPLIT, not
+% a definition of source power. Reading it as a definition would mean operators
+% radiate harder where there is less sky, and it would delete the shadowing
+% result. The answer is reported as two factors, the line of sight term and the
+% multipath surplus on top of it.
+%
+% Nothing below has been edited.
+% ======================================================================
+
 \section{Exposure ratio}
 \label{sec:ratio}
 
@@ -187,6 +220,15 @@ to this term, and the shortfall grows with how narrow and how enclosed the stree
 is. A low bias is the right direction for an omission in an exposure study to
 run, and it is stated here rather than assumed away.
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The diffraction bound below is
+% integrated against the illumination measure, so the 0.15 dB rooftop and
+% 0.42 dB street uplifts, and the 1.14 % and 3.70 % mask disagreements, are
+% old-law numbers and need recomputing. The 0.06 dB isotropic figure stands.
+% The mask itself, the sign argument and the frequency argument are geometry
+% and hold whatever shape Q has. The band-by-band argument two paragraphs up,
+% which turns on street sites sitting below the roofline and rooftop sites
+% above it, has to be made again: the new law puts sources on the facade tip
+% itself, which is neither above nor below the roofline but on it.
 The fourth is the size of it, measured here. A dense mask of 720 azimuths by 600
 elevation bands is cast at each standpoint on the same meshes and the same
 standpoint coordinates as the reported runs. Every shadowed direction is given a
@@ -367,6 +409,31 @@ nor derived from one another.
 \section{Illumination model}
 \label{sec:illum}
 
+% ======================================================================
+% LAW CHANGE NOTE, 2026-08-03. See ../docs/LAW_CHANGE.md.
+%
+% This whole section describes the illumination law that is being replaced.
+% It models the network by four numbers per class, a height band above the
+% head and a horizontal range band, uniform in azimuth.
+%
+% The replacement reads the network off the geometry instead. Sites sit on
+% facade tips, the top edge where a wall meets the sky, so there is no mast,
+% no height band and no range cap, and each azimuth carries one source
+% distance taken from the skyline rather than a distribution over one.
+%
+% Why: the path loss weighted branch integrates dr over [r_lo, r_hi], which
+% is logarithmic in the outer cap, so d_max set the answer rather than
+% bounding it. Worth 7.8 dB across the defensible span of the cap, against a
+% 4.93 dB between-square spread.
+%
+% Nothing below has been edited. The section, tab:models and every rooftop
+% and street-cell number in the results are the record of runs that happened
+% under the old law. The replacement's own numbers are provisional and are
+% deliberately absent.
+%
+% The isotropic model is untouched by the change.
+% ======================================================================
+
 Where the base stations are is unknown, so the model integrates over where they
 could be. Operators do not place millimeter wave sites at arbitrary heights and
 ranges: a site sits either on a roof or on street furniture, and beyond some
@@ -505,6 +572,9 @@ European antenna registers, the band edges are not calibrated against measured
 millimeter wave siting, and the sensitivity of $\chi$ to them is reported rather
 than assumed.
 
+% LAW CHANGE NOTE: tab:models prints the eight endpoint numbers of the old
+% law. It is a model definition, so it has to be rewritten rather than
+% recomputed. The isotropic row survives. See ../docs/LAW_CHANGE.md.
 \begin{table}[!t]
   \caption{Illumination models}
   \label{tab:models}
@@ -985,6 +1055,18 @@ blocked near horizon paths, and the near horizon is where the illumination
 models put most of their measure. The converged radius is a property of the
 illumination model and not of the square, so it is reported per model.
 
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. Three things in this paragraph
+% and the one below go with the old law.
+%  1. The converged crop radius per model, and the claim that 250 m follows,
+%     rest on the street model's low elevation measure. Remeasure.
+%  2. The whole rho_+ paragraph sweeps a parameter the new law does not have.
+%     The 7.4 dB and the rho_+^-1.2 fit stay as the diagnosis, not as a
+%     sensitivity band. The point that no absolute chi can be quoted without
+%     its radius is exactly what the change is meant to remove.
+%  3. "every band law is uniform in azimuth, so one trace reduces to an
+%     elevation histogram" does NOT carry over. The facade tip law reads a
+%     skyline, so it is not azimuth uniform and the reduction is lost. This is
+%     machinery, not just a number.
 One radius converges and one does not, and they are easy to confuse. The crop
 radius above is the extent of the mesh. The outer radius $\rho_+$ of the
 deployment box in Section~\ref{sec:illum} is a different number, and sweeping it

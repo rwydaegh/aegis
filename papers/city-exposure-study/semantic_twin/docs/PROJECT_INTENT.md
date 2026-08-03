@@ -129,7 +129,8 @@ read chatgpt explanation and i simply dont understand what he's trying to say. D
 you believe in its flaw, honestly?"* By 18:01 he had worked it out himself and
 started refining it, asking whether Omega could be restricted to directions above
 the skyline. So the adjoint framing is his, adopted after he understood it, and
-`METHOD.tex` was written to explain it at his request. `DECISIONS.md` records the
+`METHOD.tex` was written to explain it at his request, and moved to
+`../archive/METHOD.tex` on 2026-08-03 when `METHOD.md` replaced it. `DECISIONS.md` records the
 call correctly under "Observable: adjoint transfer tensor, not the monostatic
 loop", including the argument that the monostatic loop ranks locations backwards.
 
@@ -219,6 +220,11 @@ is gated on official Street View coverage".
 **Built**, and it became the illumination law. `directions.py:238-241` restricts
 sources to height bands above the pedestrian head.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The status line describes the law as a
+> height band above the head. Stale, because the new law reads the sources off the facade
+> tips instead, and his question, whether the directions just above the skyline are
+> enough, is answered more directly by the new law than by the old one.
+
 > *"are you sure we dont need to parameterize anything more about the antenna?
 > It's of course going to be MIMO (so phase differences per AE)"*
 
@@ -302,6 +308,11 @@ correct?"* and `DEPLOYMENT_GEOMETRY.md` was written to answer it, which is the
 right response. The code comment at `directions.py:236` points at
 `MONOSTATIC_SBR.md` section 2.7 rather than at the campaign evidence, so a reader
 of the code alone still cannot tell where the numbers came from.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The four band constants quoted here are
+> the old law in full. Stale, and his 22:18 question turned out to be the right one: the
+> new law drops both bands and reads one source distance per azimuth off the geometry, so
+> nothing is left to call arbitrary. His two physical bounds are honoured either way.
 
 **19:03, the antenna zoo.** On an agent that had scraped three national antenna
 registers: *"idk how he did it, but it's lowkey wasted work as aegis/ has done

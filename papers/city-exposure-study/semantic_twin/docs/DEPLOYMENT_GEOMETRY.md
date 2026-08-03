@@ -1,5 +1,47 @@
 # Deployment geometry
 
+> **Read this first. The law this document describes is being replaced, and this
+> document is not being retired with it. See `LAW_CHANGE.md`.**
+>
+> Every section below is about a network described by four numbers per class, a
+> height band above the head and a horizontal range band. The replacement drops
+> all four. It reads the network off the geometry instead: sites sit on facade
+> tips, the top edge where a wall meets the sky, so there is no mast, no height
+> band and no range cap, and each azimuth carries one source distance taken from
+> the skyline rather than a distribution over one.
+>
+> **Why the change, in one line.** The range integrand of the old law goes as
+> `1/d`, which is logarithmic, so the 250 m cap did not bound the answer, it set
+> it. Section 7.5 measures that as 7.8 dB across the defensible span of the cap,
+> and that measurement is the strongest single argument for dropping the cap.
+>
+> **What survives, and it is the part worth keeping.** Section 4.3 shows that
+> across 3 863 228 European antennas the count of deployed cellular access
+> antennas above 6 GHz is zero. There is no FR3 or mmWave macro network anywhere
+> to calibrate any illumination law against, old or new. That argument does not
+> depend on the shape of the law and it is more important under the replacement,
+> not less, because the replacement also cannot be calibrated against a
+> deployment and has to be argued from mechanism in the same way. Sections 4.4 on
+> height being flat against frequency, 4.2 and 5 on measured heights at the study
+> sites, 4.5 to 4.7 on morphology, and 14 on data quality in the base station
+> pipeline are all measurements of what is deployed and they stand as written.
+>
+> **Section 11.1 is the nearest thing here to the replacement.** It already asks
+> for classes defined against the local roofline rather than against two global
+> metre bands. The facade tip law goes further and removes the mast as well, so
+> read 11.1 as the direction of travel rather than as the destination.
+>
+> **What does not survive as a result.** Every recommended band, every support
+> edge, every elasticity, and the whole of section 7, are statements about
+> parameters the replacement does not have. They are not wrong about the runs
+> they describe. They are moot as recommendations. Nothing here has been deleted
+> or edited, because these are the record of a real argument about a real model,
+> and section 7.5 in particular is now evidence rather than advice.
+>
+> **The replacement's own numbers are provisional and are deliberately absent
+> from this file.** A first closed form for it has already turned out to be an
+> approximation rather than the law.
+
 `MONOSTATIC_SBR.md` section 2.7 models the external network as an angular
 illumination density rather than a site list. Two deployment classes are
 defined, each by a height band and a horizontal range band, and eight endpoint
@@ -29,6 +71,14 @@ hand-written one-decimal supports 3.1 to 60.1 and 0.95 to 33.0 deg, and exist
 only so that pre-correction numbers can be reproduced.
 
 **Four findings, if you read nothing else.**
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Of the four findings below, the
+> first survives whole and is the reason to keep this file, because no
+> illumination law of any shape can be calibrated against a deployment that does
+> not exist. The second is now the argument for the change rather than advice to
+> the paper, since a cap that moves the answer by 7.8 dB across its defensible
+> span is a cap that sets the answer. The third and fourth are about the height
+> band, which the replacement does not have.
 
 **These numbers cannot be cited, because the deployment they describe does not
 exist.** Across 3 863 228 European antennas in the AEGIS base station database,
@@ -610,6 +660,12 @@ the database should be preferred.
 
 ### 4.3 No register anywhere contains a deployed FR3 or mmWave cellular antenna
 
+> **Unaffected by the illumination law change, see `LAW_CHANGE.md`.** This
+> section is a count over a register and it does not touch `Q_S` at all, so it
+> survives the change whole. It also applies to the replacement, which likewise
+> has no frequency matched deployment to calibrate against and has to be argued
+> from mechanism.
+
 This is the finding that governs everything else in the section, and it is a
 negative result.
 
@@ -909,6 +965,13 @@ under cover. It is excluded from the ratio statistics below and should be looked
 at independently.
 
 ## 7. What the numbers do to the answer
+
+> **Old illumination law, see `LAW_CHANGE.md`.** All of section 7 sweeps the
+> height band and the range cap, which are parameters the replacement does not
+> have, so none of these numbers can be carried forward as a sensitivity band.
+> They stay because they are what measured the defect: 7.2 and 7.5 show the range
+> cap dominating the height band, and that dominance is why the cap is being
+> removed rather than re-argued. Read section 7 as the diagnosis, not as a result.
 
 ### 7.1 The superseded elevation law was not the mixture the bands describe
 
@@ -1215,6 +1278,11 @@ That belongs in the paper's limitations, and it is a stronger statement than any
 of the endpoint arguments this document spent its length on.
 
 ## 8. Deriving the range cap instead of asserting it
+
+> **Old illumination law, see `LAW_CHANGE.md`.** This section tries to derive a
+> number the replacement does not have, so it is moot as a recommendation. The
+> reasoning it contains is the reason the cap could not be derived, and that is
+> worth reading before anyone proposes putting a cap back.
 
 The range cap is the number the task called weakest, and it is. No source
 anywhere states "sources beyond 250 m do not matter". What can be derived is
@@ -1536,6 +1604,13 @@ fixed.
 
 ### 11.1 Primary recommendation: define the classes against the local roofline
 
+> **Old illumination law, see `LAW_CHANGE.md`.** This is the closest antecedent
+> in the study to the replacement, because it already asks for the classes to be
+> read off each site's own roofline rather than off two global bands. The
+> replacement goes further and drops the mast term as well, putting sites on the
+> facade tip itself, so the metre bands below are superseded but the argument for
+> a roofline relative definition is the one that won.
+
 Replace the two global metre bands with a roofline-relative definition, which is
 what both 3GPP and ITU-R actually use, and let the metres fall out of each site's
 measured DSM.
@@ -1570,6 +1645,12 @@ correct for each city rather than a comparison contaminated by a `Q_x` that is
 wrong for all of them in a morphology-correlated direction (section 9).
 
 ### 11.2 Fallback: a single global band, if one is required
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The recommended bands here are
+> moot, because the replacement has no band to set. Keep the table as the record
+> of what a defensible global band would have been, and note that its own closing
+> argument, that the height question is worth under a decibel while the cap is
+> worth 7.8, is what sent the model in the other direction.
 
 If the paper needs one band for all sites, these are the defensible numbers.
 
@@ -1782,6 +1863,12 @@ superseded pair survives as `ROOFTOP_FIXED_HEIGHT` and
 reproduced, which is what section 7.4's superseded columns are.
 
 ## 12. What the evidence does to the current numbers
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Every row of this table
+> recommends a move to one of the eight band endpoints, and the replacement has
+> none of them, so the whole table is moot as a set of recommendations. The
+> evidence columns behind it, which are measurements of deployed antennas, are
+> untouched and live in sections 4 and 5.
 
 | Number | Current | Recommended | Direction and size | Confidence |
 | --- | --- | --- | --- | --- |

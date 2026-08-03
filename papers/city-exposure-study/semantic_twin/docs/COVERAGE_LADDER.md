@@ -16,6 +16,12 @@ crop, where two to four times as much of the scene carries evidence, moves the t
 shift by between -0.04 and +0.05 dB. Whatever the image evidence is worth, it is not worth more when
 more of the square has it.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Both headline findings are stated on
+> the rooftop model, whose sources sit in a height band and a range band above the
+> head. The sign of the effect and the null on bound area survive, because both sides
+> of every comparison carry the same weights, and every decibel quoted is an old law
+> number.
+
 ## The seven squares, at 250 m
 
 Every run is 80 standpoints at 200,000 rays on the 250 m mesh the headline table uses, repeated over
@@ -47,6 +53,11 @@ same photographs. Tokyo has no fishnet, so six squares rather than seven.
 | Milan Duomo | 3.3 % | 4 | +0.078 +/- 0.026 | +0.080 +/- 0.023 | +0.066 +/- 0.040 |
 | Korenmarkt | 0.7 % | 4 | +0.100 +/- 0.050 | +0.031 +/- 0.013 | +0.129 +/- 0.027 |
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street columns of
+> both tables are shifts of old law integrals, and both tables are ordered by the
+> rooftop one. The bound and seen areas, the station and view counts and the
+> isotropic column survive, and the two directional columns need recomputing.
+
 ## The six squares that also run at 130 m
 
 Same standpoint count, ray count and seeds, on the 130 m mesh. Milan has no 130 m build so it drops
@@ -70,6 +81,11 @@ Madrid on 18.7, +0.202 +/- 0.015 at Prague on 33.0, +0.177 +/- 0.070 at Korenmar
 `outputs/exposure_korenmarkt/coverage_ladder_cross_site_250m_15ghz.json` and
 `coverage_ladder_cross_site_130m_c130_15ghz.json` hold every per seed value behind these means, with a
 figure beside each plotting the shift against the bound area.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The 130 m rooftop and street shifts,
+> and the fishnet figures in the paragraph above them, carry the old weights. The
+> crop pair itself and the bound areas survive, because they are properties of the
+> mesh and of where a camera could stand.
 
 ## Read the bound fraction before you read the shift
 
@@ -110,6 +126,11 @@ function of how much of the square carries evidence, it would grow.
 | Korenmarkt | 3.2 % to 10.6 %, x3.3 | +0.115 to +0.075 | **-0.041 dB** |
 | Tokyo Hachiko | 7.9 % to 15.5 %, x2.0 | -0.056 to -0.009 | **+0.046 dB** |
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The paired per standpoint shifts in
+> this table are rooftop numbers. The null they carry survives, because it is a
+> difference of two differences taken under the same weights inside each crop, and
+> the values themselves move.
+
 The statistic here is the median of the paired per standpoint ratios, how far a typical standpoint
 moves, which for reasons given below is far the more stable of the two the ladder reports. **Four of
 the six change by a hundredth of a decibel or less while their bound area roughly quadruples.** The
@@ -138,6 +159,12 @@ rooftop model's sources sit near the horizon with its multipath dominated by the
 around the standpoint. Adding rear elevations and further frontages adds bound area without adding the
 surfaces that matter. Six squares that cannot resolve a slope cannot confirm a mechanism either.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The correlations two paragraphs up
+> are run on rooftop shifts, and the reading just above rests on the rooftop model's
+> sources sitting near the horizon, which is the old law's elevation support. The
+> refusal to claim a slope survives, and the reading is stale as written, because the
+> facade tip law puts the sources on the roofline of the square itself.
+
 ## The two routes agree, except where their coverage differs
 
 At the five squares that can answer both ways, the fishnet route and the fused station route are built
@@ -153,6 +180,11 @@ class per tracer triangle. They can disagree, which is why both are carried.
 | Mexico Zocalo | +0.354 | +0.271 | +0.084 dB | 6.6 % against 5.2 % |
 | Milan Duomo | +0.221 | +0.078 | +0.142 dB | 4.0 % against 3.3 % |
 | Korenmarkt | +0.501 | +0.100 | +0.401 dB | 3.2 % against 0.7 % |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Both shift columns and the
+> difference between them are rooftop numbers under the old weights. That two
+> independently built bindings agree at four of the six squares is a statement about
+> the bindings and survives, and the size of each agreement moves.
 
 Four of the six agree to within a tenth of a decibel, which for two independently built bindings is a
 real cross check and one the study previously had at no square. The two that do not are the two whose
@@ -193,6 +225,12 @@ eleven of them are Korenmarkt, so no other square can score the material axis at
 `build_site_semantics.py` writes carry the entity axis only. Reading this report's +0.17 to +0.50 dB
 as a contradiction of that 0.024 dB would be comparing the value of having a photograph against the
 value of segmenting it more finely.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The +0.383 rooftop and +0.167 street
+> figures quoted for Korenmarkt, the +0.17 to +0.50 dB range set beside them and the
+> 0.029 dB rooftop material axis shift are all old law weighted. Which of the two
+> single square results travels and which stays at one square is a property of the
+> evidence and survives.
 
 ## The error budget, and a warning about the headline statistic
 
@@ -243,6 +281,12 @@ negative in either table. Tokyo is also the only square whose distribution media
 standpoint move in opposite directions, +0.168 dB against -0.056 dB at 250 m. Three admitted stations
 in the deepest and most enclosed of the seven sites is a thin basis, and the disagreement between the
 three illumination models there is a real limit rather than a rounding artefact.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The 0.0167 dB rooftop and 0.0420 dB
+> street ray noise floors, every rooftop distribution median in this section and the
+> two Tokyo rows are old law quantities. The warning that the distribution median is
+> the noisier of the two statistics survives, because it follows from taking a ratio
+> of two quantiles.
 
 ## Four squares could not answer, and one route at one square could not
 
@@ -296,6 +340,12 @@ published 130 m stems are complete 120 standpoint runs made under the superseded
 every manifest field except the law itself matches what a new sweep would write. `reusable` compares
 the standpoint count, square, crop radius, ray count, seed, bounce budget and the illumination law of
 all three models, and refuses on any disagreement.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The superseded law named here is the
+> fixed height one, and the band law that replaced it on 2026-08-02 is superseded in
+> turn by the facade tip law. The guard survives and matters more than before,
+> because every stem this report made was traced under the band law and `reusable`
+> will now refuse all of them.
 
 **A sweep must not overwrite a run it cannot reuse.** Having refused those three stems, the sweep would
 otherwise have retraced straight over them. It now raises and names `--tag-suffix` instead, which is

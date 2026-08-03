@@ -26,6 +26,12 @@ under all three illumination models.** `PAPER_METHODS.md` currently records
 external cross validation as absent, and that is no longer the case. Section 6
 gives the two site tables and section 8 the exact wording the claim can carry.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The 0.25 dB and 0.31 dB medians are
+> quoted "under all three illumination models", two of which are the old height band
+> and range band models. The check survives as a check, because it tests the
+> transport into the exit direction bins, and both per model figures have to be
+> recomputed under the facade tip law.
+
 Three qualifications belong with that headline and none of them is cosmetic.
 
 1. **The agreement is on the multipath term, and the direct term is not
@@ -151,6 +157,11 @@ this comparison **measures** it rather than eliminating it. The measurement is t
 - **Shared omissions.** Diffraction is off in both for the primary comparison, so
   the omission cancels rather than showing up. Section 7.3 turns it on in the
   oracle alone and measures what it is worth, which is about 0.01 dB.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The shared illumination bullet says
+> this comparison cannot validate the illumination law, and the law has since been
+> replaced. Nothing in 3.2 is stale, and that bullet is now the load bearing sentence
+> of the document, because it is the reason a law change leaves the check standing.
 
 ## 4. Harness validation, on closed forms, before any city
 
@@ -415,6 +426,12 @@ rooftop and 0.118 dB street small cell. **So a residual of a quarter of a decibe
 is at or below the oracle's own noise, and essentially none of it is the
 estimator's.**
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The 3000 sky directions are
+> importance sampled over the three old models, and both site tables below carry a
+> rooftop and a street row for every mode. The isotropic rows and the direct against
+> multipath split survive, the two directional rows are old law integrals, and the
+> sky sample would be redrawn for the facade tip law.
+
 ### 6.1 Korenmarkt, 250 m crop, 15 GHz
 
 | mode | model | median | mean abs | max abs | MC floor | direct term | multipath term |
@@ -494,6 +511,12 @@ illumination in an elevation band from 0.95 to 33 degrees, so a standpoint in a
 closed square sees almost none of it and a decibel there is a decibel on almost no
 absorbed power. The bridge argument is a median argument and is stated as one.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The bridge table is read through the
+> old models on four of its six columns, and the 0.95 to 33 degree band named in the
+> paragraph above is the old street model's support. The argument that the estimator
+> barely depends on the roughness model survives in kind, and every rooftop and
+> street decibel in the table is old law weighted.
+
 ### 6.4 The estimator leg is the published run
 
 Re-tracing the eight Korenmarkt standpoints at the published per location seed
@@ -509,6 +532,11 @@ current `TraceConfig` starts it at the fourth, so the two ray streams diverge
 wherever roulette fires, and the residual above is that divergence rather than
 zero. Both legs are at four interactions and 200,000 rays, and the oracle is at
 four interactions as well.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The reproduction residuals are given
+> per model, 0.00098 dB isotropic, 0.0099 rooftop and 0.083 street. That the
+> estimator leg is the published run survives, because it is a statement about seeds
+> and ray streams, and the two directional residuals are old law numbers.
 
 ## 7. What is truncated, and what it costs
 
@@ -564,6 +592,12 @@ requires, and that the argument for three is the one `BOUNCE_BUDGET.md` makes
 about how far the photographic evidence reaches, which is not a convergence
 argument.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows, and the
+> `L = 2` verdict at Brussels that the street row alone sets, are steps measured
+> under the old band weights. The finding that the shipped three interactions is
+> deeper than the criterion needs survives, because the isotropic column gives it on
+> its own, and the two directional columns move.
+
 ### 7.2 Dynamic range
 
 The floor is referenced to each standpoint's own strongest component, which in
@@ -598,6 +632,11 @@ more than the criterion needs. Nothing here argues for reducing either, since bo
 are already paid for and the cost of being deeper than necessary is compute rather
 than credibility. It does argue against citing 4 and 25 dB as measured minima.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows are the
+> `chi` lost to the prune, weighted by the old models. The conclusion that 20 dB
+> already meets a 0.1 dB criterion survives on the isotropic column, and the two
+> directional columns need recomputing.
+
 ### 7.3 Diffraction, the one mechanism the estimator does not have
 
 The estimator has no diffraction at all. `PAPER_METHODS.md` section 9.3 bounds
@@ -625,6 +664,12 @@ order shadowed path is not in it. And these eight standpoints are in an open
 square with a wide sky view, where the direct term dominates and there is little
 for a wedge to add. A standpoint in a closed courtyard with no sky is the case
 where diffraction should matter and it is not sampled here.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The three rows are the diffraction
+> increment integrated against the old models. The finding that first order
+> diffraction is worth about a hundredth of a decibel survives, because it is two
+> orders of magnitude below anything a reweighting can move, and only the rooftop and
+> street values change.
 
 ## 8. What the paper may claim, and what it may not
 
@@ -660,6 +705,12 @@ Three things the paper may **not** claim on this evidence.
 If the paper wants a single number, the defensible one is **0.25 dB median
 agreement with an independent solver on the shipped configuration at two sites,
 with the illumination law explicitly out of scope**.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The two agreement figures the paper
+> is told it may claim, and the phrase "over three illumination models", rest on the
+> old rooftop and street weights. The scope sentence, that the check covers the
+> propagation kernel and not the illumination law, survives and is the part to keep,
+> and the two decibel figures have to be restated once the facade tip law settles.
 
 ### 8.1 The two places the paper currently says this is missing
 

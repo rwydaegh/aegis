@@ -13,6 +13,12 @@ rooftop and street small cell figure in the study. Entries computed under the ol
 law carry a supersession note in place. If an entry has no such note and quotes a
 rooftop or street number, check its date before quoting it.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The 2026-08-02 correction named
+> just above swapped a fixed-height law for a height-band and range-band law, and
+> both of those are now replaced by the facade tip law, which has no bands at all.
+> So an existing supersession note in this file marks the older change and is not
+> the current state.
+
 ## 2026-08-01
 
 ### Observable: adjoint transfer tensor, not the monostatic loop
@@ -49,7 +55,14 @@ masts at 50 to 200 m turn out to be too near for a plane-wave treatment and the
 exit point rather than only the exit direction is needed for coherent work. Then
 fall back to a near-field formulation, not to the monostatic loop.
 
-Full argument in `METHOD.tex`.
+> **Old illumination law, see `LAW_CHANGE.md`.** The decision survives, since the
+> transfer tensor is a property of the scene and does not know where the sources
+> are. What moves is the trigger named in the reversal condition: sources sit on
+> facade tips a few tens of metres away rather than on masts at 50 to 200 m, so the
+> plane wave question has to be asked at the new distances.
+
+Full argument in `METHOD.tex`, which moved to `../archive/METHOD.tex` on
+2026-08-03. `METHOD.md` replaces it.
 
 ### Line of sight is the zero-bounce term, measured not modelled
 
@@ -70,6 +83,12 @@ density the line-of-sight integral goes as the integral of `1/r^2` against
 `2 pi r dr` in horizontal range `r`, which diverges logarithmically. What
 regularises it is p_LOS decaying with range, and since p_LOS is now measured, the
 cutoff is set by data rather than assumed.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The divergence argument assumes
+> sources spread over horizontal range at uniform density, which is what makes a
+> cutoff necessary in the first place. The facade tip law carries one source
+> distance per azimuth, so there is no range integral to regularise and this
+> paragraph is moot, while the measured p_LOS result beside it stands on its own.
 
 ### Ray termination: admissible bound, per-class range law
 
@@ -309,6 +328,11 @@ sectorisation model re-runs a quadrature rather than the study.
 field, not merely its finite range, reaches the scene, at which point the
 plane-wave-per-direction decomposition fails and the source has to enter the
 trace itself.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** This survives, because every
+> illumination law enters through `Q` and the change is a change of `Q`. One thing
+> to carry over: the stored angular grid has to be scored in azimuth as well as
+> elevation now, since the facade tip law is not uniform in azimuth.
 
 ### Coherent across the array, incoherent across the multipath
 
@@ -1122,6 +1146,13 @@ the last truncation step rather than asserted.
 > the conclusion to acquire at 250 m survives. The absolute dB in the table do
 > not. The sweep has not been rerun under the corrected law.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The note above marks the
+> 2026-08-02 change, and both laws it names are height-band and range-band laws
+> that the facade tip law replaces, so the rooftop and street columns below are
+> stale twice over. The ordering by how close to the horizon a law puts its weight
+> is a mechanism and survives, though it has to be re-read for a law whose weight
+> follows a skyline, and the isotropic column is untouched.
+
 Measured at Korenmarkt over nine crops from 60 to 340 m, with the observers held
 fixed inside the smallest so every radius scores the same 32 pedestrian
 standpoints and only the surroundings change. 200,000 rays, four bounces. Error is
@@ -1257,6 +1288,12 @@ statement about the edge coefficient and not about the elevation weight, but the
 elevation half of it should not be quoted as it stands. Recomputing the corrected
 weight over 35 to 86 degrees is a call to `measure_below` and has not been done.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Both the `1/sin^3(alpha)` weight
+> and the corrected band weight quoted here belong to laws the facade tip law
+> replaces, so the 61.7 and 9.4 percent figures no longer say where the illumination
+> sits. The power-integral bound on the edge coefficient does not use the elevation
+> weight at all and survives, which is what the decision rests on.
+
 The old text conflated the link with the local tensor:
 over-rooftop multiscreen transport is upstream of `K_x` and factored out by
 construction, and what `K_x` must capture is only the last edge.
@@ -1295,6 +1332,12 @@ different crop questions had been running together.
    quote. -->
 
    at `Delta_h = 8` m, 79.4% at 15 m, 88.5% at 20 m and 94.9% at 30 m.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The support named in item 3, a
+> height band of 13.5 to 43.5 m against a horizontal range of 25 to 250 m, is
+> exactly what the new law does not have. Those percentages are moot as a statement
+> about sources outside the crop, and the question becomes whether the visible
+> roofline itself is inside the crop.
 
 The delay-spread bound retires the first and not the other two. The repair for
 the third is a reporting change: either narrow the stated support of `w_roof` to
@@ -1500,6 +1543,12 @@ so geometry that has disappeared never enters the denominator.
 
 ### The illumination model is the law, not the bands
 
+> **Old illumination law, see `LAW_CHANGE.md`.** This entry chose the band pair over
+> the fixed-height law, and the facade tip law drops both, because it reads the
+> sites off the geometry and so has no height band and no range band to choose
+> between. The reasoning survives, that a deployment is a physical claim rather than
+> a convenient weight, and the new law is that reasoning carried further.
+
 `MONOSTATIC_SBR.md` section 2.7 gives both a `1/sin^3(alpha)` weight and a pair of
 height and range bands, and they are not the same network. The law is derived
 for a fixed height above head, the bands are used only to widen the support, and
@@ -1575,6 +1624,11 @@ column, which is law-independent, moves 0.0013 dB. The site stays in the cross
 city comparison and its poses are treated as unregistered. A mesh can be too
 broken to align against and good enough to trace.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street columns of
+> the sub-street ablation are stale under the new law as much as under the old one.
+> The decision survives, because what the ablation bounds is a geometry effect and
+> the isotropic column, which no illumination law touches, carries it.
+
 ### The headline run is eleven squares at 250 m, and it carries no image evidence
 
 **Superseded 2026-08-03, on the run tag and on every number in this entry.** The
@@ -1585,6 +1639,11 @@ Cloth Hall and of the Capitole. The spans below become 3.71 dB isotropic and
 4.93 dB rooftop, and Mexico City Zocalo rather than Krakow is the highest site.
 `AGGREGATE_REBUILD.md` carries the audit and `GROUND_DATUM.md` the datum fix. The
 entry is left as written because it is what was decided on 2 August.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The 4.93 dB rooftop span in the
+> note above is a band-law number and does not survive the facade tip law. The
+> 3.71 dB isotropic span and the datum fix behind both spans are untouched by the
+> change.
 
 **Decision.** `city250_corrected_*` in `outputs/exposure_korenmarkt/` is the
 headline. Eleven squares, 250 m crop, 80 standpoints each, 200,000 rays, four
@@ -1609,6 +1668,12 @@ at Madrid on the rooftop median, and the rank correlation between the superseded
 and corrected orderings is 0.78, so it reorders the squares. Korenmarkt moves
 5.27 dB rooftop and 4.27 dB street. Anything that quotes a rooftop or street
 number has to say which law it was computed under.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street spans, the
+> per site shifts and the 0.78 rank correlation are all measured between two band
+> laws, so they are stale as statements about the current directional numbers. The
+> shape of the finding survives, that a law change reorders the squares rather than
+> offsetting them, and the isotropic medians are unaffected.
 
 **What it does not measure, and this is the load-bearing caveat.** All eleven
 manifests carry `semantic_binding.materials = "geometric"` with

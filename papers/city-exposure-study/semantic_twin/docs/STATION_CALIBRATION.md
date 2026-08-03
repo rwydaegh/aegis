@@ -1,5 +1,10 @@
 # Running the exposure where the camera stood
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The stations calibrated here are panorama
+> cameras and not base stations, so nothing in this document fits the old law's bands or
+> is made moot by dropping them. What moves is the rooftop and street small cell decibels,
+> which are integrals against the old weights.
+
 **At the exact spots where the panoramas were taken, using photographs to set facade
 materials raises the rooftop exposure by +0.12 to +1.10 dB at six squares and lowers it
 by 0.12 dB at the seventh. Over the whole walk of the same square the same change runs
@@ -61,6 +66,10 @@ All three illumination models, at the cameras against over the walk:
 
 Korenmarkt's isotropic +1.836 dB is the largest single number anywhere in this study, and
 it comes from nine spots.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street cell columns are
+> weighted by the old bands and have to be recomputed. The isotropic column survives as
+> printed, and the largest number in the study sits in it.
 
 ## Two things changed at once, not one
 

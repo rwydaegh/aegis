@@ -49,10 +49,10 @@ collections empty.
 
 | Site | Blend | Figures | Layers it has | Layers it does not, and why |
 | --- | --- | --- | --- | --- |
-| korenmarkt | 31 MB | 20 | all fourteen | none |
+| korenmarkt | 31 MB | 20 | all fifteen | none |
 | newyork_timessquare | 11 MB | 16 | Vistas fishnet over two panoramas, coverage, refusals, 14 poses | no SAM 3 and no depth buffers were ever run here, and the dynamic body layer has not been run |
-| brussels_grandplace | 7.4 MB | 10 | the traced seven | no fishnet has been cut for this site |
-| krakow_rynek | 5.4 MB | 10 | the traced seven | no fishnet has been cut for this site |
+| brussels_grandplace | 7.4 MB | 10 | the traced eight | no fishnet has been cut for this site |
+| krakow_rynek | 5.4 MB | 10 | the traced eight | no fishnet has been cut for this site |
 
 Every one of those absences is a pipeline stage that has not run at that site,
 not a stage that failed and not something this exporter drops. Milan has a
@@ -64,7 +64,7 @@ under each capture rather than at the site root, and its support mesh is named
 in a site level manifest rather than a per run one, so the fishnet was on disk
 and silently never reached a blend.
 
-## One file, fourteen collections
+## One file, fifteen collections
 
 There is one blend per site and it holds everything, in numbered collections
 named for a reader rather than for this script:
@@ -81,14 +81,15 @@ named for a reader rather than for this script:
 | `08 walk standpoints` | yes | the traced half |
 | `09 ray paths by fate` | yes | the traced half |
 | `10 ray paths by bounce` | no | the same paths, cut at their reflections |
-| `11 arrival spectrum` | yes | the traced half |
-| `12 transmitter positions` | yes | the illumination model |
-| `13 body exposure` | yes | the traced half |
-| `14 cameras` | yes | the figure cameras and one per registered pose |
+| `11 sources on the facade tips` | yes | the skyline at the hero standpoint |
+| `12 next event estimation` | no | a few dozen of the same paths, with their connections |
+| `13 arrival spectrum` | yes | the traced half |
+| `14 body exposure` | yes | the traced half |
+| `15 cameras` | yes | the figure cameras and one per registered pose |
 
 Every collection is created at every site whether or not the data for it
 exists, so an empty `05 depth clouds` says this site has no depth buffers rather
-than leaving you to notice a missing row. The seven that start off are off
+than leaving you to notice a missing row. The eight that start off are off
 because they are heavy or because they duplicate a layer that is already on, not
 because they are secondary.
 
@@ -114,7 +115,9 @@ three quarter angle with the clip opened past the far edge, in every workspace.
 | `path_*` | per recorded ray | polylines, throughput, exit direction, termination |
 | `local_grid`, `rho_*` | per direction | the angular power spectrum at the hero standpoint |
 | `body_vertices`, `body_faces`, `body_sab_w_m2` | per phantom triangle | absorbed power density |
-| `network_*` | per source | where the illumination model's sources sit |
+| `network_*` | per source | the band population, kept and hidden, see below |
+| `rim_*` | per azimuth | the facade tip the hero standpoint sees along that azimuth |
+| `nee_*` | per connection | one shadow ray per scattering vertex, and whether it is clear |
 
 The recorded paths are drawn twice, from the same arrays. `09 ray paths by fate`
 splits them by what happened at the end, five exclusive bundles. `10 ray paths
@@ -134,6 +137,68 @@ visible; as `value_throughput`, the exact number, in the spreadsheet; and as
 `power_db`, a colour over the decades the fan spans. The default shading layer
 is `fate`, the constant colour of the bundle, so the two readings are a click
 apart and neither has to be chosen at build time.
+
+### Where the sources are, the `network` collection
+
+A site sits on the tip of a facade, the top edge where the wall meets the sky,
+and there is no mast under it. One azimuth therefore carries one source, at the
+elevation `alpha` and the horizontal distance `d` of the tip visible along it,
+and the direct term is a mean over azimuth of `cos^2(alpha) / d`. There is no
+height band and no range band in that, because each azimuth holds one source
+distance rather than a distribution over one.
+
+`rim_*` is that skyline, read at the hero standpoint over 720 azimuths by
+`measure_skyline.skyline`, which is imported rather than copied so the drawn rim
+is the silhouette the law was measured on. The manifest carries the sky fraction
+the silhouette implies next to the one the tracer cast at the same standpoint,
+and at Korenmarkt they are 0.2624 and 0.2633.
+
+It is drawn twice from the one curve. `skyline_rim` is a tube along the tip,
+broken where the silhouette has no tip and again where it steps onto a facade
+behind the one it was on. `skyline_sites` is one marker every five degrees
+sitting on that tube, uniform in azimuth because the law is a mean over azimuth
+and one azimuth is one site. Colour on both is the direct flux over its base ten
+logarithm, so a roofline that delivers is bright and one that does not is dark.
+Thickness is the square root of the slant range and carries no flux, so the far
+rim neither swells nor vanishes and there is no second reading of the same
+number to reconcile.
+
+Some tips stand further out than the mesh this file draws, 219 of the 720 at
+Times Square and 140 at Korenmarkt. Those go in `skyline_rim_beyond_the_drawn_mesh`,
+which starts hidden. They are measured the same way and they count the same in
+the law, but with no building under them in this file they read as pieces of
+light hanging in empty air, which is the picture the rim was built to replace.
+
+`network_*` is the older population, heights uniform on a band 13.5 to 43.5 m
+above the head and ranges uniform by area from 25 to 250 m. It draws a shell of
+points floating in the air, which is not where a base station is. It is still
+built and it starts hidden in the viewport and the render, because it is the
+geometry the trace in the same payload integrated and dropping it would leave
+the picture and the numbers with nothing connecting them. Each cloud says on
+itself which of the two it is.
+
+### The estimator, the `nee` collection
+
+`nee_*` is the step a picture of a ray fan never shows. A ray leaves the head
+and bounces off the buildings, and at the head and again at every bounce it is
+connected by one straight line to a site sampled on the facade tip. The
+connection is the contribution and whether anything stands in the way of it is
+the whole of the visibility term.
+
+Every connection is cast against the same mesh the trace ran on. Sites are
+sampled uniformly in azimuth. Clear connections take the flux colour of the site
+they reached and blocked ones are flat dark red and thinner, and `value_blocked`
+holds the same answer exactly. The connections from the head come back clear at
+every site, which is a check on the geometry rather than a result: the tip is
+the silhouette from the head, so the head can always see it.
+
+Sixteen paths rather than the nine hundred in `09 ray paths by fate`, because
+the question here is how the method works and a dense fan hides it. The leg that
+left the scene is drawn 30 m long rather than out to the sky sphere 176 m away,
+which is the one thing in the collection that is shortened rather than measured,
+and the object says so. A connection whose site lands past the drawn crop is left
+out of the drawing for the same reason the rim beyond it is hidden, 10 of the 52
+at Times Square, and `connections_left_out` holds the count.
 
 ## The evidence half
 
@@ -309,13 +374,19 @@ manifest and on the object as `class_names`.
 
 ## The figures
 
-Nineteen PNGs land in `outputs/propagation_viz/figures`, named after what they
+Twenty PNGs land in `outputs/propagation_viz/figures`, named after what they
 are about rather than after the camera that took them. One through seven are the
 traced walkthrough and were there before. Eight through seventeen are one per
 evidence layer: the Vistas classes, the confidence, the split posterior, the SAM
 3 materials, the refusals, clean against withheld, the mesh first hit, the
 refused monocular depth, the registered poses and the bystanders. Eighteen is
-the bounce depth. Nineteen is everything at once.
+the bounce depth. Nineteen is everything at once. Twenty shades the ray fan by
+power. Twenty one is the estimator: the head, a few dozen rays, and the
+connection each of their vertices makes to a site on the facade tip.
+
+Figure two shows the rim and hides the band clouds, and figure twenty one hides
+them too. A frame captioned where the sources are should not be showing a
+population that is not where they are.
 
 Three things sit out of the everything shot and none of the reasons is
 aesthetic. `evidence` and `refused` are drawn on the same support triangles the

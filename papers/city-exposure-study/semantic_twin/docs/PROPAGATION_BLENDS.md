@@ -35,6 +35,12 @@ the Cloth Hall and the Capitole.
 `propagation_blender.py` skips a view whose layer the site does not have, and it says
 so in the log rather than rendering an empty frame.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** All eleven traces integrated the height
+> and range band population, so every susceptibility layer and every source cloud drawn
+> from that population is stale and the frames showing them need rebuilding. The meshes,
+> the walks, the ground datums and the evidence layers survive, since none of them touches
+> the illumination.
+
 Nothing was carried over from the four site build. Every payload was retraced,
 because the old Krakow payload sat on the superseded datum at 269.124 m and three of
 the four ran at a bounce budget of four. The retrace is visible in Krakow's walk
@@ -67,6 +73,12 @@ the printed digit.
 
 Prague is the one square with no superlative, and its entry says so and gives its
 rank in three panels instead of manufacturing one.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Every rooftop and street small cell
+> median, rank and spread in the table above, and the datum costs quoted beside them, were
+> integrated against the old law. Stale, so the archive index text has to be rewritten a
+> second time, while the sky medians, bounce counts and excess delays survive because they
+> do not touch the illumination.
 
 ### Three of the four existing entries were rewritten
 
@@ -192,3 +204,121 @@ them is a default.
 Nothing in `.gitignore`'s way was staged. The meshes, the blends and the archive are
 all ignored, and the commit carries `build_propagation_blends.py`,
 `config/toulouse_capitole.json` and this file.
+
+## Where the sources are, rewritten on 2026-08-03
+
+The blends drew the sources as a cloud of points floating in the air. That is
+what a height band 13.5 to 43.5 m above the head and a range band 25 to 250 m,
+uniform in azimuth, samples to, and it looks like a starry night over the square.
+It is also not where a base station is.
+
+A site sits on the tip of a facade, the top edge where the wall meets the sky,
+and there is no mast under it. One azimuth therefore carries one source, at the
+elevation `alpha` and the horizontal distance `d` of the tip visible along it,
+and the direct term is a mean over azimuth of `cos^2(alpha) / d`. What that draws
+is a rim along the rooflines.
+
+`export_propagation_payload.py` now measures that rim at the hero standpoint over
+720 azimuths, using `measure_skyline.skyline` itself rather than a second copy of
+it, and writes six arrays. Its own check travels with it: the sky fraction the
+silhouette implies sits in the manifest next to the sky fraction the tracer cast
+at the same standpoint. Over the eleven squares the two agree to 0.007 or better
+at ten of them, and Milan is the exception at 0.2335 against 0.2844, which is the
+square with the 109 m spire and the widened crop.
+
+| square | direct term | tip elevation deg | tip distance m | sky implied | sky cast |
+|---|---|---|---|---|---|
+| `korenmarkt` | 0.05817 | 30.5 | 30.9 | 0.2624 | 0.2633 |
+| `brussels_grandplace` | 0.01689 | 28.3 | 41.6 | 0.2605 | 0.2607 |
+| `krakow_rynek` | 0.03346 | 28.0 | 24.8 | 0.2391 | 0.2393 |
+| `london_trafalgar` | 0.01327 | 14.2 | 88.8 | 0.3640 | 0.3689 |
+| `madrid_plazamayor` | 0.01882 | 22.2 | 49.9 | 0.2968 | 0.2968 |
+| `mexico_zocalo` | 0.02817 | 19.9 | 27.7 | 0.2454 | 0.2448 |
+| `milan_duomo` | 0.01307 | 32.2 | 55.6 | 0.2335 | 0.2844 |
+| `newyork_timessquare` | 0.00896 | 56.4 | 72.8 | 0.1265 | 0.1334 |
+
+These are one standpoint each, the hero of that square's blend, so they are not
+the medians `outputs/skyline/skyline_250m.json` reports over 24 standpoints and
+they should not be read against them.
+
+### Strip or markers
+
+Both, from the one measured curve, because they answer different questions and
+cannot disagree with each other. `skyline_rim` is a tube along the tip, which is
+the continuum the law integrates and which shows where the silhouette breaks.
+`skyline_sites` is one marker every five degrees sitting on that tube, which says
+the deployment is still a set of sites and stays readable from an overview of a
+square where a thin tube does not.
+
+Colour on both is the direct flux over its base ten logarithm, so the part of the
+skyline that delivers is bright and the part that does not is dark. Thickness is
+the square root of the slant range and carries no flux, so nothing in the picture
+is the same number said twice. The rim breaks at an azimuth with no tip, and again
+where the tip steps by more than 0.15 of its own range in half a degree, which is
+the silhouette moving onto a facade behind the one it was on rather than a
+roofline continuing.
+
+The rim reaches past the block each file draws. The mesh is a 110 m disc about the
+scene origin, the silhouette is measured from the head, and the head stands 7 to
+60 m off that origin, so part of the skyline it sees has no building under it here.
+
+| square | tips outside the drawn mesh | connections left out |
+|---|---|---|
+| `brussels_grandplace` | 0 of 720 | 0 of 49 |
+| `madrid_plazamayor` | 3 | 1 of 48 |
+| `prague_staromestske` | 75 | 5 of 44 |
+| `tokyo_hachiko` | 109 | 4 of 49 |
+| `korenmarkt` | 140 | 10 of 44 |
+| `toulouse_capitole` | 144 | 10 of 43 |
+| `mexico_zocalo` | 156 | 13 of 42 |
+| `london_trafalgar` | 163 | 7 of 42 |
+| `milan_duomo` | 177 | 17 of 44 |
+| `newyork_timessquare` | 219 | 10 of 52 |
+| `krakow_rynek` | 231 | 14 of 44 |
+
+Those pieces go into
+`skyline_rim_beyond_the_drawn_mesh`, which is built and starts hidden, and the
+markers are placed only on the part with a building under it. Left in the frame
+they are lit fragments floating over nothing, which is the picture this whole
+change set out to get rid of, and at Times Square that was plain to see because
+the towers are tall enough that the overview camera pulls back far enough to
+catch them.
+
+The band population is still built and starts hidden in the viewport and the
+render. It is the geometry the trace in the same file integrated, so dropping it
+would leave the picture and the numbers with nothing connecting them, and each
+cloud carries a property saying which of the two it is. Figures two and twenty one
+hide it, because a frame captioned where the sources are should not show a
+population that is not where they are.
+
+## The estimator, drawn
+
+`12 next event estimation` is new and is the step a picture of a ray fan never
+shows. A ray leaves the head and bounces off the buildings up to three times, and
+at the head and again at every bounce it is connected by one straight line to a
+site sampled on the facade tip. The connection is the contribution. A clear one is
+bright and a blocked one is dark red and thinner, and switching the colour layer
+shades each clear line by the flux of the site it reached instead.
+
+Every connection is cast against the same mesh the trace ran on. The connections
+from the head come back clear at every site at all eleven squares, which is a check
+on the geometry rather than a result: the tip is the silhouette from the head, so
+the head can always see it. Off the head, 0.14 to 0.36 of the connections are
+blocked depending on the square.
+
+Sixteen paths rather than the nine hundred in `09 ray paths by fate`. The question
+here is how the method works and a dense fan hides it.
+
+A connection is drawn only when the site it reached is drawn. At Times Square 10
+of the 52 land past the 110 m crop, and a line to a site with no building under it
+ends in empty air, which is what this picture exists to rule out. They were cast
+and counted the same as the rest, and the object carries how many were left out.
+
+## What still needs a pass on the GPU box
+
+The rim and the connections are measured into all eleven payloads and the code is
+in place, but the archive's 151 figures were rendered before any of this. Only
+Korenmarkt and Times Square carry the new figures two, twenty one and twenty two.
+Re-rendering the full set is a `build_propagation_blends.py` run on `blgpu`, not
+something to start on this host: one 1920 by 1080 Cycles frame at 48 samples is
+three to four minutes here under load.

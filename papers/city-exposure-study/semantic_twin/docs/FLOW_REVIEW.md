@@ -96,6 +96,11 @@ reviewer who glances at Table 2 catches it in ten seconds. The physics survives 
 0.3 m aperture, $2D^2/\lambda = 9$ m at 15 GHz, so 10 m still clears far field) but the
 sentence has to say 10 m, and the margin then becomes thin enough to be worth one clause.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Both numbers are edges of the street range
+> band. Stale, and the contradiction dissolves rather than being fixed, because the new law
+> has no range band at all. The far field question survives and has to be asked again
+> against the nearest facade tip instead.
+
 ---
 
 ## 4. The body coupling section is one 33-line paragraph
@@ -134,6 +139,11 @@ eq (11) deliberately uses the uncontrolled spreading law because it answers a di
 question, an absolute level rather than a per-site share. Also say outright that the
 $\rho_+ - \rho_-$ in eq (11) is the same object as the sensitivity variant at line 315 —
 that connection is free and defuses half the tension by itself.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The whole item is about how to weight a
+> population spread over a range band, and the 88 and 42 percent below 5 degrees come from
+> integrating that band two ways. Stale, because each azimuth now carries one source
+> distance, so there is no distribution over range left to weight.
 
 ---
 
@@ -305,6 +315,11 @@ Every number I could independently recompute reproduces, several to three figure
   derivation of eq (11) itself is correct and dimensionally clean.
 - "Nearly three orders of magnitude": 547x, so 2.7. Fair.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Two rows of this list are the old law: the
+> four Table 2 elevation limits, and the 87.9 and 9.4 percent crowd measure split. Stale as
+> quantities, even though the check itself was sound, and the other rows survive because
+> they are geometry, aperture and closed form arithmetic.
+
 Three passages read particularly well and I would leave them alone: the three-leg diffraction
 defence (167-186), which is the right shape for the objection it answers; the eighth-station
 admission at 578-582, which is the kind of thing reviewers trust a paper for; and the
@@ -379,6 +394,12 @@ leg appear to cover the whole study.
    names its bracket as the same object as the A4 variant and says why it uses
    the uncontrolled law. Verified 87.9 % and 42.2 % below 5 degrees with
    `measure_below`, so the "not cosmetic" clause in A4 stands.
+
+   > **Old illumination law, see `LAW_CHANGE.md`.** Items 3 and 5 above were closed against
+   > the range band, the 10 to 150 m constant and the two weighting laws over it. Stale,
+   > and both close differently under the new law rather than needing a different fix,
+   > since there is no range band for either question to be about.
+
 6. **Already fixed.** Two measured plus one corroborated, the single-run error
    points at IV-A, and V-C is a pointer rather than a restatement.
 7. **Fixed.** See the lead.

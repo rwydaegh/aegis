@@ -639,6 +639,12 @@ are good and stay on disk. The poses in `alignment/` should be treated as unregi
    is 4032 tiles, 8128 requests and 397 MB, in about two minutes concurrently, plus seven minutes of
    Blender. Note that the downloader has no cross-run cache, so the 250 m pull re-fetched the inner
    130 m rather than reusing it: the cost above is a full pull, not an annulus.
+
+   > **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street small cell crop
+   > errors quoted here, and the claim that 250 m stands on the street model alone, come from
+   > the height and range bands. Stale, because the new law has no range band to cap, though
+   > the 250 m tiles and shells already on disk are geometry and stay.
+
 8. **Read the sky versus mesh conflict metric** on every site whose walk predates 2020, before its
    semantics are trusted. That is now Prague at 2014-06 and the Zocalo at 2016-10 among the sites with
    semantics, and both have a recent walk available for cross-checking, Prague 2025-04 with 23

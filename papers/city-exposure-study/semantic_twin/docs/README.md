@@ -1,10 +1,20 @@
 # The notes
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Every note indexed here that
+> carries a macro rooftop or street small cell number computed it under the band
+> law that is being replaced, so treat those columns as stale wherever they
+> appear. Isotropic results, and anything read off geometry or materials alone,
+> are untouched.
+
 Forty-one working notes plus one standalone writeup, moved here on 2026-08-03
 from the top of `semantic_twin/`. No file was renamed, so every "see `SPINE.md`"
 in the text still points at something you can find.
 
 ## Where to start
+
+`LAW_CHANGE.md` first, because it says which of the numbers below are still live
+claims and which are the record of a superseded run. It carries the
+survive-against-recompute table for the whole study.
 
 `SPINE.md` is the current source of truth for the argument and the numbers.
 `OVERNIGHT.md` is the most recent dated status note and links the audit trail in
@@ -47,7 +57,14 @@ quoting either.
 | `ROUGHNESS.md` | Surface roughness, and what the literature actually supports. |
 | `FOLIAGE.md` | Vegetation attenuation. |
 | `PAPER_METHODS.md` | Superseded by `SPINE.md`. Kept for the derivations. |
-| `METHOD.tex` | A standalone eight-page writeup of the co-located transmitter argument, written for Robin. Builds with `latexmk -pdf METHOD.tex`. |
+| `METHOD.md` | A standalone writeup of the co-located transmitter argument, written for Robin. |
+| ~~`METHOD.tex`~~ | The older LaTeX version of the same writeup. Moved to `../archive/METHOD.tex` on 2026-08-03, because its worked example puts the source on a rooftop mast and the illumination law no longer has masts. See `LAW_CHANGE.md`. |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** `DEPLOYMENT_GEOMETRY.md` is
+> where the height bands, the range bands and the elevation supports of the two
+> deployment classes are stated, so it is the file this change supersedes most
+> directly. `SENSITIVITY.md` in the results table goes with it, since its range
+> cap sweep is a sweep over a parameter the new law does not have.
 
 ### Results
 

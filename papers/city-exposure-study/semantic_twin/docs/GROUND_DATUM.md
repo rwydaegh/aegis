@@ -231,6 +231,11 @@ old columns are `city250_corrected_*`, the new ones `city250_datum_*`, both in
 | Trafalgar Square, London | -0.026 | 0.3894 | 0.3947 | 0.2868 | 0.2886 | 0.0268 | 0.0276 |
 | Zocalo, Mexico City | -0.013 | 0.3974 | 0.3978 | 0.2990 | 0.3071 | 0.0297 | 0.0292 |
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The four rooftop and street columns
+> are susceptibilities integrated against the height band and range band law. The
+> datum shift and the isotropic columns survive, because a datum is geometry and the
+> isotropic weight is uniform, and the directional columns have to be recomputed.
+
 The same thing in decibels, with the sky fraction beside it because it is the one
 quantity that carries no illumination assumption:
 
@@ -254,6 +259,12 @@ than a square: Krakow 0.77 to 1.70 dB isotropic and 2.26 to 2.85 dB rooftop,
 Toulouse 2.31 to 5.17 dB isotropic and 5.30 to 11.39 dB rooftop. The nine others
 move by at most 1.5 dB rooftop, at Tokyo.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street decibels in
+> the table above, and the rooftop spreads in this paragraph, are movements of old
+> law integrals. The isotropic decibels and both sky fraction columns survive, and
+> the line beside the table already says the sky fraction carries no illumination
+> assumption.
+
 ### Ghent does not regress
 
 Korenmarkt is the control and it behaves like one. Its datum moves 0.034 m, its
@@ -262,6 +273,11 @@ standpoints to the millimetre**. The only thing that changes at all is 228
 triangles of 617091 crossing the ground and facade boundary, and the medians move
 by -0.0009 dB isotropic, +0.0009 dB rooftop and +0.0055 dB street. All three are
 below the Monte Carlo noise floor of `CODE_AUDIT.md` section 4.1.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The +0.0009 dB rooftop and
+> +0.0055 dB street medians, and the two floors they are held against, are old law
+> numbers. That Korenmarkt returns the same 80 standpoints to the millimetre and
+> moves 228 triangles is geometry and survives whole.
 
 ### The nine small movers do move, and it is not Monte Carlo noise
 
@@ -275,6 +291,11 @@ standpoints to 80 by the square root of the count:
 | isotropic | 0.0051 dB | 0.128 dB | 0.242 dB, Brussels | 47 |
 | rooftop | 0.0167 dB | 0.061 dB | 0.116 dB, Mexico City | 7.0 |
 | street small cell | 0.0420 dB | 0.188 dB | 0.326 dB, New York | 7.8 |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows are
+> noise floors on, and shifts of, old law integrals. The isotropic row survives, and
+> so does the finding the section reaches, because the standpoints held in common
+> are a property of the walk and not of the illumination.
 
 So the movement is real and it is 7 to 47 times larger than the estimator noise.
 The cause is not the datum and not the physics. It is which standpoints get
@@ -313,6 +334,11 @@ and 2.26 dB become 1.70 and 2.85 dB. Toulouse Capitole isotropic 0.3992 becomes
 0.2964, rooftop 0.3383 becomes 0.2221, street 0.0318 becomes 0.0175, spreads 2.31
 and 5.30 dB become 5.17 and 11.39 dB.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street replacements
+> listed for Krakow and Toulouse, and their rooftop spreads, are old law numbers.
+> That the two rows were invalid and are now valid is a datum result and survives,
+> so only the directional values printed here change.
+
 **The nine other rows all move too**, by 0.03 to 0.24 dB, because their
 standpoints resampled. Every number in the table should come from the
 `city250_datum_*` runs rather than being patched two rows at a time.
@@ -321,6 +347,12 @@ standpoints resampled. Every number in the table should come from the
 **3.71 dB isotropic** against the published 5.13 dB, **4.93 dB rooftop** against
 9.65 dB, and 9.57 dB street against 18.53 dB. Roughly half the spread this study
 reported between cities was one observer standing on a cloth hall.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The 4.93 dB rooftop and 9.57 dB
+> street spans, and the 9.65 and 18.53 dB they replace, are between city spreads
+> under the old band models. The isotropic span survives, and so does the within
+> against between city claim in the next paragraph, which is stated on isotropic
+> alone.
 
 **The claim about within versus between city variation gets stronger, not
 weaker.** The largest spread inside one square is now 6.45 dB isotropic at
@@ -333,6 +365,11 @@ doubles.
 on both isotropic and rooftop. Krakow falls from first to third on both, and
 Toulouse from second to seventh isotropic and second to sixth rooftop. On street
 small cell Krakow falls from first to fifth.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street orderings
+> rank old law integrals and can reorder again under the facade tip law. The
+> isotropic ordering survives, and so does the paragraph below it, which reads sky
+> fraction and isotropic spread.
 
 **The paragraph beginning "The ordering is not simply built density" is now
 wrong.** "Krakow's wide open Rynek runs highest and most uniform, 0.53 with only

@@ -361,6 +361,11 @@ Between the eleven site medians the total return gives Pearson -0.49 and Spearma
 -0.68 against `chi_isotropic`, and -0.38 and -0.35 against
 `chi_street_small_cell`.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The two rows against
+> `chi_street_small_cell` were computed under the height and range bands. Stale, and they
+> have to be recomputed, while every `chi_isotropic` correlation here survives because the
+> change does not touch isotropic illumination.
+
 Three things have to be said about that.
 
 **The sign is negative and it is not a bug.** A standpoint with more sky over it

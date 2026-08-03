@@ -32,6 +32,11 @@ dB:
 *(Recomputed directly from the `_L3` summaries in session, not taken from a
 report.)*
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The macro rooftop and street
+> small cell rows, and the counter case read off them, come from the four number
+> band model that is being replaced. Both rows are stale because the comparison
+> depends on the shape of $Q_S$. The isotropic row is untouched.
+
 **State this at exactly its strength and no further.** For the two models where a
 base station is above the head, the typical square already spreads $\chi$ by more
 than the eleven squares differ from each other, and for the rooftop model 8 of 11
@@ -60,12 +65,41 @@ power density the same network would deliver at the same point over open ground.
 Dimensionless, 1 in free space, below 1 where buildings shadow more than they
 reflect, above 1 where they reflect more than they shadow.
 
+> **This denominator is superseded, see `LAW_CHANGE.md`.** Separate change from
+> the illumination law, and the more serious of the two. Open ground works as a
+> reference only while the network exists independently of the buildings. Under
+> the replacement the sites sit on the buildings, on the facade tips, so taking
+> the buildings away takes the network away and there is nothing left to divide
+> by. The replacement reports the geometric quantity per unit site density and
+> per unit transmit power, with a second reference against the unoccluded
+> roofline.
+>
+> Two things survive. Site density and transmit power enter as one multiplier in
+> front of every city's answer, so neither ever has to be stated or defended, and
+> that is the same reason a ratio was reported in the first place. And
+> normalising the line of sight term to one stays a way of reporting the answer
+> in two parts, the line of sight term and the multipath surplus on top of it. It
+> is not a claim about source power. Reading it as one would mean operators
+> radiate harder where there is less sky, and it would delete the shadowing
+> result, which is the most robust thing in the study because it needs no
+> photographs and holds at all eleven cities.
+
 The ratio and not the level, because the level is not knowable. The same site
 density that builds the model puts $S_0$ between 0.0075 and 3.0 W/m² for rooftop
 macro sites and 0.010 to 4.1 W/m² for street cells, across 25 to 100 sites per
 km² at 55 to 75 dBm, against a 10 W/m² general public reference level. Three
 orders of magnitude, set by numbers that are not public. The ratio removes all of
 it. *(verified in session; ICNIRP 2020 general public, 2 to 300 GHz.)*
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The two $S_0$ brackets are
+> quoted per deployment class, so they carry the old height and range bands. The
+> argument survives, because it needs only that the level is unknown and that the
+> ratio removes it, which holds whatever shape $Q_S$ has.
+>
+> **Narrowing that, added later the same day.** What survives is the argument for
+> reporting a ratio. The particular ratio $S/S_0$ does not, for the reason given
+> under the definition above. Read the note here as being about the two brackets
+> and not about the denominator.
 
 ## The move, and why it is more than a speed trick
 
@@ -252,6 +286,11 @@ the four undefined ones are ranked at the top, and the sorted sample has no valu
 at 1.84 at all. Every other entry in that table reproduces to the last digit, so
 it reads as a transcription slip. Use 1.26 and say which 56.)*
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street uplift
+> rows, their reproduction percentages, and the concession that rests on 87.9 %
+> of street measure below 5° are stale, since all three weight the mask with the
+> old law. The isotropic row and the mask itself survive, being geometry.
+
 Every assumption errs upward: a single absorbing half plane, a distant source, no
 re-blocking, a knife edge rather than a lossy wedge, P.526's angle form used past
 its 12° validity, and the diffracted term multiplied by each standpoint's own
@@ -323,6 +362,11 @@ isotropic, so these are the paper's own numbers rather than a re-derivation.
 illumination law. $Q$ is shared by both legs, so an error in the law cancels
 exactly. It validates the transport, not the weighting.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The medians are taken over the
+> three models, so the rooftop and street legs used the old law. The result
+> survives, because $Q$ cancels between the two legs and what is compared is
+> transport.
+
 A second honesty item, self reported: the two modes are exact *roughness*
 matches, not exact model matches. The estimator forms a product of per bounce
 polarisation averages while the other forms an average of products. That
@@ -386,6 +430,11 @@ isotropic, which is the datum estimator and not the bounce budget, since
 
 Spearman rooftop against isotropic +0.936, street against isotropic +0.345.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Every rooftop and street number
+> here, the two spreads, the Krakow and Toulouse datum shifts in those columns
+> and both rank correlations, is weighted by the old law and is stale. The
+> isotropic column and the standpoint geometry behind it are untouched.
+
 *Source: `AGGREGATE_REBUILD.md`. Figures `FIGURES/16_eleven_cities_exposure.png`,
 `FIGURES/11_eleven_cities.png`.*
 
@@ -393,6 +442,12 @@ Spearman rooftop against isotropic +0.936, street against isotropic +0.345.
 `REPORT.md` still carry it and their Krakow and Toulouse rows are the roof.
 
 ### R2. The illumination law is the single most consequential modelling choice
+
+> **Old illumination law, see `LAW_CHANGE.md`.** This whole result compares two
+> band laws, the fixed height one and the height integrated one, and both are
+> now superseded, so every shift, elasticity and reordering below is stale as a
+> statement about the current model. The finding that the law dominates the
+> answer survives, and is the reason the law changed again.
 
 Not a footnote. The earlier law placed sites at a fixed height, the corrected one
 integrates the cone volume over the height band. Both laws are evaluated on the
@@ -457,6 +512,12 @@ and 0.105 dB street on any site's shift.
 for the eleven.*
 
 ### R3. Material discrimination does not move exposure
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Every rooftop and street small
+> cell column in this result is weighted by the old law, so those shift figures
+> move. The isotropic column and the conclusion that the photographs establish a
+> family, masonry against glass and metal, survive: that is a statement about
+> material contrast and the bracket argument does not turn on the shape of $Q$.
 
 Change only the material of the facades the entity axis had resolved to brick,
 2950 m² of facade, 28.5 % of the entity brick area, including 1258 m² that goes
@@ -535,6 +596,12 @@ jobs.*
 
 ### R4. Beamforming that tracks the user cancels, and the version real networks use does not
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street columns,
+> the direct path floors, the element taper at the 9.5° rooftop median and the
+> ordering reversals all sample the old law's elevation support, so those numbers
+> are stale. The exactness of the maximum ratio cancellation and the one sided
+> direction of the steering inequality survive, since neither uses $Q$'s shape.
+
 Exact for full digital maximum ratio transmission: the matched filter delivers
 the whole channel power, the $MN$ array gain is common to the square and to open
 ground, so it cancels with no assumption about the paths.
@@ -605,6 +672,12 @@ table digit for digit.*
 
 ### R5. Bystanders, and a prediction that failed usefully
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street losses,
+> the 88 % and 9 % sent shares and the arriving shares below 5° are all read off
+> the old law's elevation support, so their sizes are stale. The isotropic
+> column, the absorber control on it and the mechanism, that facades redistribute
+> the power before any crowd sees it, survive.
+
 Geometry says a crowd is opaque along the horizon and transparent above ~10°: a
 standing adult adds only 0.23 m above head height, so a ray clears the crowd
 after $0.23/\tan\alpha$, which is 13 m at 1°, 2.6 m at 5°, 0.4 m at 30°.
@@ -674,6 +747,11 @@ rooftop one at -0.51 dB on a different observer set at the same two crops.
 surface interactions on the measured datum. Figure
 `FIGURES/15_crop_convergence.png`.*
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The converged radius is reported
+> per model, so the 100 m rooftop and 200 m street entries, and with them the
+> justification that the published 250 m is set by the street model alone, are
+> stale. The isotropic and sky fraction radii at 60 m survive.
+
 The **deployment box range cap** $\rho_+$ is a different parameter and it does
 **not** converge. Swept continuously from 50 to 500 m it never saturates:
 $\chi \propto d_\mathrm{max}^{-1.2}$ averaged over 100 to 400 m, worth 7.40 dB at
@@ -681,6 +759,12 @@ the median site rooftop and 9.24 dB street, from 2.67 dB at New York to 9.91 dB
 at Madrid. The mechanism is the lower support edge, which moves from 7.7° to
 1.9°. That is not a bug, it is what an unbounded uniform site density does, but
 it means **no single absolute $\chi$ can be quoted without its cap**.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The cap sweep, its elasticity,
+> the support edges, the height edge terms and the clean cap advice in the
+> paragraphs below all describe a parameter the new law does not have, because
+> each azimuth now carries one source distance. Stale, and it is why the law
+> changed.
 
 The sweep is free rather than expensive, and the reason is worth a sentence
 because it is the same trick as the adjoint move: $\chi$ is linear in the
@@ -737,6 +821,12 @@ Everything a referee would find, found first and stated with its size and sign.
 | the ladder rerun likewise | confounded by the elevation law correction, isotropic moves -0.002 dB while rooftop moves +2.16 dB at every standpoint | that is the law, not the budget |
 | diffuse scattering strength is a modelled Rayleigh split, not fitted | ablating diffuse scattering moves published RMSE from 6 to 13 dB up to 25 to 37 dB at 28 and 38 GHz (Vitucci et al., Radio Science 2019) | unknown, and the larger referee risk than diffraction |
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Three rows carry old law sizes:
+> the diffraction row in its rooftop and street entries, the ground polarisation
+> row through the 7.8 % and 0.4 % measure shares, and the ladder rerun row, which
+> is about the previous law correction. Standpoint sampling as the dominant error
+> term survives as a mechanism, and the truncation and coverage rows are geometry.
+
 Two things that must not be quoted as measured:
 
 - **The 0.079 dB street small cell shift is the lowest of eight seed draws, not
@@ -747,6 +837,11 @@ Two things that must not be quoted as measured:
   wrong denominator.)*
 - The 0.298 dB headline figure in older notes came from a superseded law and was
   never measured under the corrected one.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The street small cell seed study
+> and the superseded law behind the 0.298 dB figure are both band law work. Both
+> warnings stand and get stronger, since the law they were corrected to is itself
+> now replaced.
 
 Monte Carlo standard errors, walk median over 8 seeds: 0.0042 dB isotropic,
 0.0136 rooftop, 0.0343 street small cell. Per standpoint: 0.004, 0.024, 0.118.
@@ -767,6 +862,12 @@ are drawn rather than how many rays each shoots.** Nothing in the study has
 quoted this. It does not threaten the headline, which is a 3.71 dB between city
 spread, but it does threaten any claim that two adjacent cities differ, and every
 per site number should carry it.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street entries
+> in the noise floors and in the 0.128 / 0.061 / 0.188 dB rms triple were scored
+> under the old law and their sizes move. That standpoint sampling is the
+> dominant error term survives, because it is set by how many standpoints are
+> drawn rather than by how the directions are weighted.
 
 *Source: `GROUND_DATUM.md`.*
 

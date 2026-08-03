@@ -117,6 +117,11 @@ superseded: it was computed under the fixed-height elevation law replaced on
 The sequencing call was right anyway. The sweep ran, the study re-acquired at
 250 m, and the eleven site table is a 250 m run.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The corrected weight named here is
+> the band law of 2026-08-02, which the facade tip law now replaces, so the rooftop
+> percentages are superseded twice over. The crop radius call held under the band
+> law and has to be checked again under a law that has no range cap.
+
 ## Phase 5: validation. Partly done
 
 Of the seven tests of `MONOSTATIC_SBR.md` section 11, four are in
@@ -152,6 +157,11 @@ not the headline, because its ground datum put the Krakow and Toulouse walks on 
 roof. `AGGREGATE_REBUILD.md` audits the replacement. Krakow Rynek, Toulouse Capitole, Mexico Zocalo,
 London Trafalgar, Prague Staromestske, Milan Duomo, Madrid Plaza Mayor,
 Korenmarkt, Brussels Grand-Place, Tokyo Hachiko and New York Times Square.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** "Under the corrected illumination
+> law" here means the band law of 2026-08-02 and not the current one, so the rooftop
+> and street columns of this run are stale. The geometry, the ground datum and the
+> isotropic results are what the run still supports.
 
 **What this run does not use is any image evidence.** Every one of the eleven
 manifests carries `semantic_binding.materials = "geometric"` with
@@ -211,6 +221,11 @@ And camera placement by fixed offset fails at any site that is not a low rise
 square, which is now a search for an open bearing rather than an assumption that
 one exists.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The blends draw the sources at a
+> mast range and height that the facade tip law does not use, and the 2026-08-02
+> correction described here is not the current one. The method point survives, that
+> sampling a model catches defects reading it does not.
+
 ## What is actually blocking the paper
 
 Three things, in the order they threaten a submission.
@@ -221,6 +236,11 @@ geometry-and-prior study wearing the name of a semantic twin. The one binding
 that exists is Korenmarkt at the 130 m crop, and the crop study says 130 m is not
 converged for either directional model, so the semantic ablation and the
 converged cross city table cannot currently be the same run.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The convergence claim for the two
+> directional models is a band-law result and has to be made again. The blocking
+> item itself survives, because it is about the material binding rather than about
+> the illumination.
 
 **The evidence pipeline ran on almost nothing.** SAM 3, which is the entire
 material axis, ran on 2 of the 96 panoramas that carry semantics, Korenmarkt and

@@ -1,5 +1,10 @@
 # Photographs only change the answer near where they were taken
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Every headline number here is a rooftop
+> decibel, so it is weighted by the old height and range bands. The reach result survives,
+> because how far a photograph carries is a property of the geometry and of which walls
+> were covered, but the decibels that measure it move.
+
 **Using photographs to set facade materials, instead of guessing them from which way a
 wall faces, raises the rooftop exposure by 0.16 to 0.50 dB at spots within 20 m of a
 photograph. Past 40 to 60 m it changes almost nothing, under 0.01 dB. The paper
@@ -58,6 +63,10 @@ Rooftop illumination, median dB. Bins holding fewer than eight rows are left bla
 | Milan Duomo | -- | +0.144 | +0.157 | +0.196 | +0.224 | +0.134 | +0.032 |
 | Tokyo Hachiko | -0.089 | -0.122 | -0.001 | +0.140 | -0.139 | -0.078 | -0.113 |
 
+> **Old illumination law, see `LAW_CHANGE.md`.** This table is rooftop weighted, so each
+> entry is an integral against the old bands. The shape of the drop off survives, because
+> it follows which walls a photograph covered, but the bin values have to be recomputed.
+
 Five squares drop to within 0.01 dB of zero and stay there. Korenmarkt, Brussels and
 Mexico get there by 60 to 80 m, Madrid and Prague by 40 to 60 m. Two squares do not
 follow, and neither of them argues against the pattern. They are covered below.
@@ -104,6 +113,10 @@ is -0.0001 dB, which is zero to four decimal places.
 | Korenmarkt | +0.275 / **-0.000** | +0.387 / +0.004 | +0.329 / +0.010 |
 | Brussels | +0.243 / +0.001 | +0.379 / +0.008 | +0.349 / +0.004 |
 | Mexico | +0.187 / +0.024 | +0.352 / +0.035 | +0.493 / +0.045 |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Two of the three columns are the old
+> directional models. The isotropic column survives as printed and already shows the near
+> to far contrast on its own, so the rooftop and street columns are the ones to redo.
 
 ## How close the photographs are, square by square
 
@@ -162,6 +175,10 @@ Suggested replacement, every number from the tables above:
 > panorama, and by under 0.01 dB past 40 to 60 m. The median over a square therefore
 > depends on how many of its standpoints lie near a panorama, which runs from 25 to 97
 > percent within 40 m.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The suggested sentence quotes rooftop
+> decibels, which are integrals against the old bands. The claim about reach survives, the
+> two numbers in it do not, so they have to be recomputed before the paper prints them.
 
 Two squares support that on many spots and three agree on few, so the count should be
 written down rather than left implied.

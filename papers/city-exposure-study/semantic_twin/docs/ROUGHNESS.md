@@ -557,6 +557,9 @@ evidenced thing in this file and render has no exterior metrology at all.
 
 ### Two: the millimetre of roughness `METHOD.tex` used to assume
 
+`METHOD.tex` moved to `../archive/METHOD.tex` on 2026-08-03. The finding below
+is about surface roughness and is unaffected by that move.
+
 An earlier draft of `METHOD.tex` stated that at 28 GHz with realistic surface
 roughness most of the reflected power is diffuse, so the specular search covers a
 minority of the physics, and supported it with a worked example putting 1 mm of

@@ -74,6 +74,11 @@ is the worst of three illumination models, not a median over them, and its quote
 0.24 to 0.46 dB noise floor is 0.231 to 0.346 in production, with the top of that
 range coming from a mode that was never shipped.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street worst standpoints,
+> +1.56 and +2.48 dB, are per model numbers under the height and range bands. Stale as
+> values, while the finding they illustrate, that a median was being presented as a bound,
+> is about how the number was reported and survives the law change.
+
 **5. One site's column presented as the overall result, twice.** The diffraction
 cross check claimed agreement "to within 0.34, 1.73 and 7.3 percent". Those three
 are the Times Square column of a three-site table, the worst site, with nothing
@@ -104,6 +109,12 @@ moved furthest scores 0.978. The observation survives, the mechanism does not.
   counter case, is *"Relative pedestrian exposure varies as much within a city
   square as between squares at 15 GHz"*. One line to change. I left it rather
   than thrash it overnight.
+
+  > **Old illumination law, see `LAW_CHANGE.md`.** Which models put the within square
+  > spread above the between square spread is decided by the shape of the illumination
+  > law. Stale, so the title question reopens: the isotropic half of the comparison
+  > survives and the two directional models behind "two of the three" do not.
+
 - **The SAM 3 citation.** The bibliography cites the 2023 Segment Anything paper,
   but `sam3_concepts.py` sets `MODEL = "facebook/sam3"`, so SAM 3 is what
   produced the material masks. The text now cites the 2023 paper for the
@@ -234,6 +245,12 @@ Four of the open items were closed rather than left, and one bug was fixed.
   the 32-standpoint run, while 4.93 and 9.58 dB are the 80-standpoint headline,
   and both were called the eleven-square spread about 200 lines apart. Named, and
   the antenna row added to the configuration table.
+
+  > **Old illumination law, see `LAW_CHANGE.md`.** All four widths are rooftop and street
+  > small cell spreads across the eleven squares. Stale as values, and the point that two
+  > different populations were being called the same thing survives, since it is about
+  > which standpoints were pooled and not about the illumination.
+
 - **The element effect's worst square depends on the reduction.** 0.62 dB at the
   median square is stable either way. Madrid at 1.07 dB is the paired
   per-standpoint convention. The ratio of per-square medians gives 1.22 dB and
@@ -262,6 +279,11 @@ convention was chosen because it is what the shipped figure plots, and because
 the same paragraph quotes a percentage that is already 56-based. This also
 explains the 1.84 dB street percentile that would not reproduce earlier in the
 week: it is the 60-standpoint convention.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The street diffraction median and the four
+> standpoints with a zero direct term exist only because the street model's elevation
+> support is a narrow band near the horizon. Stale, and the zero over zero problem may not
+> even arise under the new law, while the two conventions are arithmetic and survive.
 
 ## Build
 

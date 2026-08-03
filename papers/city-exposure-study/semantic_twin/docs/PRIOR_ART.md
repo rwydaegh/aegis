@@ -1,7 +1,8 @@
 # Prior art and positioning
 
 Hostile review, run 2026-08-01. The brief was to find what kills or weakens the
-novelty claim, not to confirm it. Companion to `METHOD.tex` (what the method is),
+novelty claim, not to confirm it. Companion to `METHOD.md` (what the method is,
+and its older LaTeX version is now `../archive/METHOD.tex`),
 `MONOSTATIC_SBR.md` (the formulation) and `DESIGN.md` (reconstruction).
 
 Papers marked "full PDF read" were downloaded and grepped. Everything else is
@@ -887,6 +888,11 @@ three orders of magnitude.** Section 9.3 conflates the link with the local tenso
 the over-rooftop multiscreen transport a macrocell link needs is upstream of `K_x`
 and factored out by construction. What `K_x` must capture is only the last edge.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The geometry argument turns on where the
+> 3 to 60 degree band sits and on the `1/sin^3` weight suppressing the top of it. Stale, so
+> the defence has to be rebuilt on the new law, and the measurements it rests on, the under
+> 1 percent diffracted share and the -42 dB coefficient, are literature and stand.
+
 **And the power-integral error is unmeasurable.** With blocked directions carrying
 -45 dB, the error from omitting diffraction is 0.000 dB at open-azimuth fraction
 0.30, 0.003 dB at 0.05, 0.014 dB at 0.01 and 0.135 dB at 0.001. Reaching 1 dB
@@ -1012,6 +1018,12 @@ in that direction at full per-direction strength, which is why directions beyond
 90 m carry -28.4 dB of the isotropic weight and that figure is still growing with
 radius against a 30 dB budget. The delay-spread bound above does not retire that
 one. The three compound rather than cancel.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The source support leg of this section is
+> the `h` in [13.5, 43.5] m and `r` in [25, 250] m rectangle, and every percentage of
+> measure below 5 and 9 degrees follows from it. Stale, because the new law has no source
+> support to place outside a crop, while the scatterer and occlusion legs survive as
+> geometry.
 
 ## 4.3 Three novelty claims already in print
 

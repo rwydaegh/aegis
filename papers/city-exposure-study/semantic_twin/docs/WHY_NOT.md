@@ -336,6 +336,11 @@ above the skyline at several of the eleven squares. For a standpoint deep in a
 side street with no illuminated facade in view, that is the Adhikari geometry, and
 the estimator is in its worst case there. Section 2.6 bounds it.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The concession rests on the height band
+> putting sources above the skyline. Stale as written, because the new law stands every
+> source on a facade tip rather than above one, so whether the over rooftop geometry is
+> still inside scope has to be re-argued. The Adhikari measurement itself stands.
+
 **And a reminder that the deep shadow story is not simply "diffraction over
 predicts".** Lopes et al., Sci. Rep. 16:17345, 2026,
 doi 10.1038/s41598-026-41462-x: knife edge reaches 3.1 dB RMSE for 60 GHz links
@@ -462,6 +467,12 @@ Pooled over all 60 standpoints:
 | isotropic | 0.06 dB | 0.13 dB | 0.19 dB | 0.18 dB | 3.09, which is 4.9 dB |
 | macro rooftop | 0.15 dB | 0.37 dB | 1.20 dB | 0.53 dB | 3.53, which is 5.5 dB |
 | street small cell | 0.44 dB | 1.84 dB | 12.64 dB | 1.82 dB | 4.98, which is 7.0 dB |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows of every table
+> in this section, the 25 to 250 m source assumption, and the 87.9 percent of measure below
+> 5 degrees are all the height and range bands. Stale, and the whole bound has to be
+> reintegrated against the new law, while the isotropic rows and the machinery, grid,
+> validation method and frequency argument survive untouched.
 
 **What this says.**
 
@@ -594,6 +605,11 @@ sources, solve the pair problem once per source, and quadrature the results, whi
 is a Monte Carlo estimator with the sampling done in the worst possible place: on
 the source, where the integrand $Q$ varies over four orders of magnitude and
 concentrates within a few degrees of the horizon.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The four orders of magnitude and the few
+> degrees above the horizon describe the shape the height and range bands gave $Q$. Stale
+> as a description, while the argument around it survives, since it needs only that the
+> deployment is a continuum on the sphere and not that the density has any given shape.
 
 Sionna's own measurement of that cost is in the technical report, section 3.4:
 "When $N_S$ samples are generated per source, the total number of samples produced
@@ -827,6 +843,11 @@ model** (`semantic_twin.propagation.directions.elevation_band_measure`). The
 network is also not necessarily vertically polarised, and if it is not then both
 components are present and the average is closer to right.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The two exposed shares are the fraction of
+> the old law's measure inside a 5 degree band about 23.6 degrees. Stale, because the new
+> law redistributes that measure, while the Fresnel table, the pseudo-Brewster angles and
+> the TE against TM argument are material physics and survive.
+
 The honest summary is therefore: **on a single specular bounce off a vertical
 facade the unpolarised average is within 3 dB and biased low, on the ground
 bounce it can be biased high at a few percent of the illumination measure, and the
@@ -880,6 +901,12 @@ prose should not claim a single value.
 
 These are written to be pasted. I do not own that file, so nothing here has been
 applied to it.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The replacement prose carries the rooftop
+> and street bounds of 6.1, the ground bounce shares of 6.2 and the claim in 6.3 that the
+> illumination density concentrates within a few degrees of the horizon. Stale, so none of
+> the three should be pasted until the new law has been integrated, and the diffraction,
+> polarisation and estimator arguments they sit inside survive.
 
 ### 6.1 Replaces section 10, threat 1
 

@@ -28,6 +28,11 @@ being asked to divide. At the configuration the numerator actually comes from,
 the rooftop worst case is **3.0** times its floor rather than 7.0. The rooftop
 row is the one to look at again.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street ratios in
+> this summary divide by Monte Carlo floors measured under the band law, so they go
+> stale with the law. The three standpoint sampling numbers themselves and the
+> isotropic figures do not depend on the illumination law and survive.
+
 Everything measured here is in `outputs/mc_error/`. Nothing under `paper/` was
 edited and no published artefact was overwritten.
 
@@ -116,6 +121,12 @@ The crossing counts hold too. Isotropic 16 to 18 of 120 across the rung against
 0 from a seed change alone, rooftop 7 to 8 against 0, street 1 to 2 against 0 to
 1. The street count is inside its own control, as the audit said.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street columns are
+> spreads of a band-law weighting, and how a weight concentrates in elevation is
+> what sets them, so they do not carry over to a law that reads a skyline. The seed
+> rule, the method and the isotropic column survive, and the tables stay a correct
+> record of the runs.
+
 ### What does not reproduce
 
 **The three numbers the paper actually quotes.** The audit's "sd of the walk
@@ -144,6 +155,12 @@ is not normal, which is why the eight replica interval for isotropic,
 edge. Any figure of this kind measured from eight draws should be read as
 indicative.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street floors have
+> to be measured again under the new law, since a floor is a property of how the
+> weight concentrates in elevation. What this section says about the estimator,
+> that a median over 120 standpoints is fragile, is about the quantity rather than
+> the law and survives.
+
 **The audit's claim that the semantic binding is noisier does not reproduce
 either.** It reports the walk median sd rising from 0.0136 to 0.0199 rooftop and
 0.0343 to 0.0594 street when the binding goes from geometric to semantic.
@@ -157,6 +174,11 @@ more noise is not supported by this pair.
 The 0.298 dB fixed height figure is still unmeasured under the corrected law,
 because the superseded law is not carried by the current code. That was true
 before and is unchanged.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The corrected law named here is the
+> band law of 2026-08-02, which the facade tip law replaces in turn. The 0.298 dB
+> figure stays unmeasured and there are now two superseded laws standing between it
+> and the current one.
 
 ## Item 2. The two torn result files
 
@@ -212,6 +234,11 @@ Prague read from the repair:
 All three survive. So do the two sentences that qualify them. The Discussion's
 "recomputing from what remains gives 0.125, 0.066, and 0.181 dB" is now
 obsolete rather than wrong: what remains is no longer all there is.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows are
+> band-law numbers and will move with the law. Standpoint sampling being the
+> dominant error term is a mechanism about where the walk stands rather than about
+> the weighting, so it survives, and the isotropic row is untouched.
 
 ## What the paper's ratios become
 
@@ -270,6 +297,11 @@ standpoint sampling:
 
 So the isotropic and street numbers are standpoint sampling almost entirely, and
 **most of the rooftop 0.061 dB is Monte Carlo noise, not standpoint sampling.**
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Both legs of every rooftop and
+> street ratio here, the rms and the floor it divides, are band-law quantities, so
+> the ratios are stale. The argument that a floor has to be measured at the
+> configuration it divides survives untouched and applies to the new law as well.
 
 ## The material result's "5.7 times"
 
@@ -409,3 +441,8 @@ models still hides that. The sizes change: the isotropic ratio is 41 rather than
 2.4 and 4.5 rather than 1.6 and 3.0.
 
 `paper/paper.tex` and `paper/si.tex` carry the recomputed values.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The recomputed rooftop and street
+> floors are band-law floors and go stale with the law, as does every ratio built on
+> them. The contradiction this correction reports, a rooftop floor sitting above a
+> street floor, is about consistency inside the old runs and stands.

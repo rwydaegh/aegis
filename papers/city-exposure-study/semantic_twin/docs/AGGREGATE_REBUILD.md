@@ -151,6 +151,11 @@ Noise is the walk median standard deviation over eight seeds from
 `CODE_AUDIT.md` section 4.1: 0.0042 dB isotropic, 0.0136 dB rooftop, 0.0343 dB
 street small cell. A shift is called resolved below when it exceeds two of those.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street small
+> cell tables below, and their two noise floors, weight the exit directions with
+> the old band law, so those medians are stale. The isotropic table survives, and
+> so does the attribution to the datum estimator, which is a geometry change.
+
 ### Isotropic median
 
 | site | published | rebuilt | shift dB | resolved |
@@ -239,6 +244,10 @@ across eleven squares on three continents is 3.71 dB. Where a person stands in
 one square matters more than which city the square is in, and the margin is now
 2.75 dB rather than 1.02 dB.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Four of the six rows are rooftop
+> or street small cell, so those spreads are stale. The two isotropic rows
+> survive, and the headline claim in this subsection rests on them alone.
+
 ### Rank structure
 
 | correlation | published | rebuilt |
@@ -265,6 +274,11 @@ top. No other site moves by more than two places.
 The old figure's most quotable feature, Krakow as the dark red outlier standing
 clear of the other ten in all three panels, was the Cloth Hall roof. It is gone.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Every correlation that involves
+> a rooftop or street small cell ordering is stale, because a reordering is
+> exactly what a change in the shape of $Q_S$ produces. The isotropic ordering
+> row and the account of Krakow and Toulouse falling off their roofs survive.
+
 ## What this does not settle
 
 **The published text still carries the old numbers.** `PAPER_METHODS.md` section
@@ -277,6 +291,11 @@ artefact. `GROUND_DATUM.md` owns that correction and lists it.
 its replacement so that any number published before 2026-08-02 could be located.
 That column was computed at a bounce budget of 4 on the old datum, and neither is
 the operating point any more.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** This paragraph counts revisions
+> of the rooftop column and the count is now one higher, since the band law that
+> replaced the fixed height one is itself replaced. Both directional columns of
+> this figure need retracing, the isotropic one does not.
 
 **Nothing in this figure uses image evidence.** The eleven city comparison holds
 materials constant by a geometric class prior, which is the point, but it means

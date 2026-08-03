@@ -22,6 +22,12 @@ shifts clear the noise by 105 and 22 standard errors. The street small cell
 shift does not read as published. Its true value is 0.167 +/- 0.022 dB and the
 printed 0.079 dB is the lowest of eight draws, which changes what the row says.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The isotropic, rooftop and street
+> shifts in this finding are integrals against the old height band and range band
+> models. The isotropic figure survives, and so does the finding that the published
+> street row is the lowest of eight draws, while both directional values have to be
+> measured again.
+
 **The bounce depth the paper claims is not the one several published runs
 used.** The paper describes "the four bounce operating point". The headline
 eleven city figure is at 4, the evidence ladder is at 6, the class default is 12
@@ -154,6 +160,11 @@ Measured against it, at 800k rays over 24 independent seeds:
 | rooftop | -0.00014 | 0.00212 | 0.00475 |
 | street small cell | -0.00130 | 0.00367 | 0.00860 |
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows are
+> residuals against a closed form evaluated with the old models. The closed form
+> above holds for any illumination density, so the check itself survives and only its
+> two directional rows have to be taken again.
+
 and across five material and roughness combinations at 2M rays, every ratio to
 the closed form lands between 0.9998 and 1.0012.
 
@@ -264,6 +275,12 @@ and the uniform mean of a constant are the same number, and it cannot see the
 `kappa` power either, because both branches sample the same constant `Q`. The
 rooftop law sees all four, which is the one to reach for.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The 0.644, 1.446 and 1.751 targets,
+> the 4.3 dB spread and every percentage in the table are computed under the old
+> models, and the band law test named above tests the law this change replaces. The
+> design survives, because a law dependent target is exactly what was missing, and
+> the targets themselves have to be regenerated.
+
 New file: `tests/test_propagation_closed_form.py`, 9 tests, 74 to 200 s
 depending on how loaded the box is. That is a real cost against a 110 s suite
 and it is deliberate: these are the only targets in the repository that
@@ -297,6 +314,12 @@ comparison is against the real thing and not a near miss.
 | rooftop | 0.024 dB | 0.040 dB | 0.066 dB | 0.0136 dB |
 | street small cell | 0.118 dB | 0.224 dB | 0.954 dB | 0.0343 dB |
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows are
+> noise floors on old law integrals, and the thirty degree support named just below
+> is the old street model's. The isotropic row survives, and so does the explanation,
+> that the variance follows how much of the ray budget lands inside the support of
+> `Q`, which will hold for the facade tip law too.
+
 The factor of thirty between isotropic and street small cell is not a surprise
 once stated. The variance is set by how much of the ray budget lands inside the
 support of `Q`, and the street law crowds its whole mass into the first thirty
@@ -317,6 +340,12 @@ difference:
 | isotropic | 0.350 0.344 0.343 0.346 0.349 0.349 0.344 0.352 | **+0.347** | 0.0033 | 0.3498 |
 | rooftop corrected | 0.364 0.396 0.385 0.416 0.366 0.386 0.383 0.371 | **+0.383** | 0.0170 | 0.3642 |
 | street small cell | 0.079 0.269 0.211 0.155 0.095 0.162 0.207 0.160 | **+0.167** | 0.0624 | 0.0785 |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows are
+> shifts of old law integrals, and the caveat below about the superseded fixed height
+> `1/sin**3` law now covers the band law that replaced it as well, since the facade
+> tip law supersedes both. That the published street number is the lowest of eight
+> draws survives, because it is a statement about draws from one distribution.
 
 **The ladder negative is not a noise artefact.** The isotropic shift is 105
 standard errors from zero and the corrected rooftop shift 22. The section 9
@@ -377,6 +406,11 @@ configuration:
 | isotropic | 17 17 17 17 17 18 18 18 | 0 0 0 0 0 0 0 |
 | rooftop corrected | 8 8 8 7 8 8 8 8 | 0 0 0 0 0 0 0 |
 | street small cell | 1 1 1 1 1 1 1 1 | 0 2 1 0 0 1 0 |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows count
+> standpoints crossing 1 dB on old law integrals, so those counts and the 0.12 dB
+> street figure quoted at the end of the section move. The isotropic row survives,
+> and so does the method, which is a count against a reseeded control.
 
 The isotropic "17 of 120" and the rooftop "8 of 120" are solid: they barely move
 across seeds and reseeding alone never produces a single crossing. The section 9
@@ -515,6 +549,12 @@ Consequence in the test suite: `test_propagation.py:375` widens a tolerance for
 `model.law in ("uniform_sites", "uniform_sites_pathloss")`, and the second arm
 can never be reached.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Every law named in this section
+> belongs to the old family, since `uniform_sites` and its path loss twin are fixed
+> height laws and the two band laws in `VARIANTS` are their replacement. The defect
+> is a code fact and survives, and the module it sits in is the one the facade tip
+> law rewrites.
+
 ### 6.4 The per cell ratio estimator carries a small real bias
 
 `chi` is computed as a sum of per cell means times the *nominal* solid angle
@@ -531,6 +571,12 @@ error of the mean:
 | 256 | -0.00003 | +0.00099 | -0.00200 |
 | 1024 | -0.00001 | +0.00049 | -0.00051 |
 | 4096 | +0.00000 | +0.00025 | -0.00069 |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street columns are
+> biases measured against the old models, and "the narrowest illumination law" below
+> means the old street one. The finding that the bias shrinks with the cell count and
+> stays well under the Monte Carlo noise survives, because it is a property of the
+> quadrature rather than of the weights.
 
 So at the production setting of 512 cells the binning costs a few parts in a
 thousand on the narrowest illumination law and essentially nothing on the
@@ -906,6 +952,12 @@ with an eightfold refinement to 5 percent over a 1 to 60 degree sweep, for both
 site populations and for the isotropic limit. The corrected rule delivers 1.3
 percent worst case for rooftop and 3.4 percent for street, so the bar is six
 times inside the error the old rule carried and could not let it back through.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The quadrature is refined over the
+> rooftop and street site populations, so the 29 percent error, the 2 degree rooftop
+> test point and the 1.3 and 3.4 percent convergence bars are all read against the
+> old law. The bug and the fix are quadrature and survive whole, and the two
+> populations the new test sweeps have to be rebuilt.
 
 ### 11.5 `steering_artefact` crashed on the scene it is measured against
 

@@ -1,5 +1,12 @@
 # Overnight run, 1 to 2 August 2026
 
+> **Old illumination law, see `LAW_CHANGE.md`.** This file predates the move to a
+> facade tip illumination law, so every rooftop and street small cell number in it
+> belongs to the superseded height and range band model. The banner below and the
+> many "superseded" marks through the file record an earlier fix of 2026-08-02
+> that swapped one band law for another, so the numbers those marks call corrected
+> are old too.
+
 What was built, what was measured, and what turned out to be wrong. Numbers in
 this file are measured unless explicitly labelled otherwise. Where a claim was
 checked twice by different means, both are given, including the cases where the
@@ -55,6 +62,13 @@ The convergence measurement below sizes that at 0.0004 dB, and the isotropic
 column, which both runs share and which the law does not touch, reproduces to the
 fourth decimal at every site.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The corrected pair this banner
+> announces reads a height band and a range band and derives the elevation support
+> from them, which is the same family as the fixed height law it replaced, and both
+> are now replaced by sites on facade tips with one source distance per azimuth.
+> Stale, so both columns of the table above are old law and the 61.7 against 9.4 %
+> below 5 degrees compares two superseded shapes. The isotropic row survives.
+
 ## The short version
 
 - **Eleven squares are built and all eleven are compared**, nine acquired
@@ -88,6 +102,13 @@ fourth decimal at every site.
   city figure therefore averages over a variation larger than the differences it
   reports. A split half test says these characterise the walk rather than the
   square, so an area representative number needs a sampling design.
+
+  > **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street spans in
+  > this bullet, 14.49, 9.65, 4.93 and 9.58 dB, and the 13.29 dB Brussels spread,
+  > are all band law numbers at one stage or another of the old model. Stale, while
+  > the isotropic figures and the conclusion drawn from them, that within square
+  > variation exceeds between city variation, stand because isotropic carries no
+  > illumination assumption.
 - **Image evidence barely moves exposure, and this is now conclusive.** Going
   from no image evidence at all to a tenth of the scene bound by it shifts the
   median 0.29 dB and moves exactly one location in 120 by more than a decibel. A
@@ -135,6 +156,13 @@ fourth decimal at every site.
   model alone, rooftop having converged in to 200 m. The cross site crop
   correction has not been remeasured under the corrected law, and at Korenmarkt,
   where it has, the 130 to 250 m rooftop shift falls from 4.58 to 1.09 dB.
+
+  > **Old illumination law, see `LAW_CHANGE.md`.** Every directional figure in
+  > this bullet is band law, including the 0.05 to 4.80 dB rooftop and 0.16 to
+  > 11.39 dB street crop corrections and the claim that 250 m is set by the street
+  > model. Stale, because how much crop a site needs follows from how much measure
+  > the law puts near the horizon, which is the thing being replaced. The isotropic
+  > crop numbers survive.
 
   **Superseded again, 2026-08-03.** The 9.65 dB was measured on the run whose
   ground datum put two walks on a roof. On `city250_L3_*` the between city
@@ -375,6 +403,13 @@ An earlier form of this paragraph reported 0.29894 at four bounces against
 interactions rather than one more than it, and the file that produced them has
 been overwritten. The conclusion, that four is enough, is unchanged.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The three named illumination
+> models are the old set, so the pilot's directional levels are stale. Everything
+> the section rests on survives: the zero bounce identity against sky fraction, the
+> perfect conductor and concrete plane closed forms, the body area consistency check
+> and the bounce and ray count convergence are properties of the estimator and the
+> geometry, and $Q$ enters only as a weight applied after the transport.
+
 ### The first distribution
 
 Over 120 locations at Korenmarkt, the susceptibility spread from the fifth to the
@@ -416,6 +451,12 @@ radius used here the rooftop susceptibility is 3.24 dB high under the superseded
 law and **1.09 dB** high under the corrected one. The isotropic row carries no
 such caveat, and the spread within a row, which is what the paragraph above is
 about, is far less affected than the level.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Both directional rows of the
+> table and both of their spread columns are band law, as are the 7.8 and 8.6 dB
+> body side spans and the claim that the illumination model matters more than the
+> position. Stale, because a spread over standpoints is set by which elevations the
+> square admits. The isotropic row and its 3.5 dB survive.
 
 ### The finding hiding in the manifest
 
@@ -468,6 +509,12 @@ than it looked, and weaker still under isotropic illumination, where 17 of 120
 move over a decibel against a distribution only 3.4 dB wide. The median claim
 should be quoted, the per standpoint claim should not be quoted as a null.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The ladder is scored on a rooftop
+> median under the old band law, and the 0.29, 0.008 and 0.36 dB shifts inherit
+> that level. The result survives, because it compares two material fields over one
+> set of rays and the isotropic reading, which the law change does not touch, is the
+> one that moves most.
+
 So the answer is a clean negative, and it reframes what this project should claim.
 Not that semantic materials make exposure right, but that **the geometry sets the
 distribution, and the semantic layer earns its place through occlusion handling,
@@ -499,6 +546,12 @@ isotropic, 4.93 dB rooftop and 9.58 dB street small cell, the largest within cit
 spread is 6.46 dB isotropic at Madrid and 12.89 dB rooftop at Brussels, and
 Mexico City Zocalo rather than Krakow is the most exposed square. The section is
 kept as written because it is the record of what was believed on 2 August.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The replacement this banner points
+> to, `city250_L3_*`, is itself under a height and range band law, so both rooftop
+> columns of the table below and the ordering they give are stale twice over rather
+> than once. The isotropic column, its 5.13 dB span and the ground datum problem at
+> Krakow and Toulouse are geometry and survive.
 
 80 walk locations per city at 15 GHz, one common 250 m crop radius where the
 directional illumination models converge, one common material treatment, so what
@@ -591,6 +644,13 @@ source*. Street small cells reach only 150 m and should therefore have converged
 sooner. They converge later, and are three times worse at 130 m. The coincidence
 was a coincidence.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The two directional columns of the
+> sweep are labelled by the old elevation supports, 3.1 to 60 and 0.95 to 33
+> degrees, and the ordering of the three models by how much crop each needs follows
+> straight from those supports. Stale, including the conclusion that rooftop needs
+> 250 m and street 250 to 300. The isotropic column, which converges by 100 m, and
+> the refutation of the reach the farthest source rule both survive.
+
 What actually orders the three is **how close to the horizon each model puts its
 weight**: full sphere, then 3.1 to 60 degrees, then 0.95 to 33, which is also the
 order of how much crop each needs. That ordering is measured, and the geometry
@@ -631,6 +691,13 @@ The consequence lands on the case that matters most. **Street level small cells
 are the geometry most relevant to dense urban deployment and they are the worst
 affected.** Acquire at 250 m minimum, where all three models are within 0.19 dB,
 and 300 m for comfort.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The 2.3 % share of measure in the
+> newly blocked sliver and the 0.043 converged rooftop susceptibility are read off
+> the old band law, so the rooftop and street rows of the blocking table and the
+> 250 m recommendation are stale. The decomposition itself survives, since
+> susceptibility splits into a zero bounce and a multi bounce part with no residual
+> whatever weight the exit directions carry, as does the isotropic row.
 
 ### The same bias, found from a different direction
 
@@ -726,6 +793,11 @@ So the honest verdict is symmetric: **1.40 dB is not a validation and 8.2 dB is
 not a refutation**, because the disagreement is smaller than the measurement's own
 repeat scatter. The model is validated at 4 GHz and unvalidated at FR2, and that
 is the top open item for this workstream.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Nothing in the brickwork work, or
+> in the foliage section that follows, evaluates a directional model. Both are
+> material and geometry results, computed per angle of incidence and never
+> integrated against $Q$, so they survive the law change unchanged.
 
 ## Foliage
 
@@ -944,6 +1016,11 @@ under the street model.
 `outputs/substreet_ablation/newyork_timessquare_substreet.json` and
 `brussels_grandplace_substreet.json`.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows of the
+> ablation table are band law levels. The conclusion survives, that geometry below
+> the street is worth at most 0.24 dB, because it is a paired difference on one set
+> of rays and its size against the isotropic row alone already settles it.
+
 Not one of the forty standpoints moves by half a decibel under any model. The
 sign is worth reading too: every shift is positive, meaning the spurious
 geometry was absorbing a little power that should have escaped, which is exactly
@@ -1063,6 +1140,12 @@ fixed and the sweep retraced at three bounces the between city rooftop spread is
 4.93 dB, per `AGGREGATE_REBUILD.md`. The lesson the paragraph above draws is
 unchanged and is now demonstrated twice.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Both of these entries are about
+> the 2026-08-02 band law audit, whose replacement numbers are themselves band law,
+> so the 9.65 and 4.93 dB spreads and the 1.06 to 6.33 dB per site shift are stale.
+> The lesson they draw, that a number and the file it came from have to be traced
+> together, survives and now has a third instance.
+
 **A published figure was built from a partial aggregate.** `16_eleven_cities`
 was copied out of an aggregate a concurrent run was still writing, so its
 Brussels curve carries 3 locations against the 80 every per site record holds.
@@ -1119,6 +1202,13 @@ from or it did not. **An escape outside the band contributes nothing under that
 model no matter how far the ray travelled**, so the orange and pale yellow
 bundles are the ones carrying rooftop power and the blue cone going straight up
 is carrying none of it.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The collection drawing the
+> illumination model's sources at true range and height, and the split of paths by
+> whether they escape into a model's elevation band, both assume masts at a height
+> and a range, which the facade tip law does not have. Stale as drawn, and the
+> blends need rebuilding. The mesh, the recorded paths and the standpoint colouring
+> under isotropic illumination survive.
 
 Three things in those files are drawn rather than measured, and all three are
 recorded as custom properties on the object that carries them. The arrival lobe
@@ -1190,6 +1280,12 @@ in this file as a timestamp rather than a property.
   `semantic_twin/propagation/directions.py` the implementation. What remains open
   is the re-running: the eleven city sweep and the Korenmarkt walk are done, the
   nine radius crop sweep and the cross site crop correction are not.
+
+  > **Old illumination law, see `LAW_CHANGE.md`.** This item is the 2026-08-02
+  > band law fix, and the law it installs has since been replaced by sites on
+  > facade tips, so the re-running it tracks is superseded rather than outstanding.
+  > Stale, and the open work is now the whole directional set rather than the two
+  > sweeps named here.
 - **Tokyo needs re-screening from the street.** The walk definition selects the
   largest set of same-date linked panoramas, and at a transit hub that is the
   station. Screening should require a minimum sky fraction on the panorama

@@ -1,5 +1,13 @@
 # Sensitivity of the susceptibility to the deployment geometry
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Every sweep in this document moves
+> a height band edge or a range cap, and the replacement law reads the sites off the
+> facade tips, so it has neither band. The sweeps are moot as sensitivity bands on
+> the published result and they survive as the measurement that the old law was set
+> by its own range cap rather than bounded by it, which is the argument for
+> replacing it. The band law used throughout here is itself the 2026-08-02
+> correction of a fixed-height law, and the facade tip law supersedes both.
+
 The three illumination models integrate over base stations of uniform areal
 density lying in a height band and a range band. `DEPLOYMENT_GEOMETRY.md`
 section 4.3 audits 3.86 million European antennas and finds zero deployed
@@ -53,6 +61,12 @@ scored on the same rays.
 rule of this study. No path is written. `HarvestTracer` extends the shipped
 `_deposit` rather than replacing it, touches no random draw, and returns a
 `chi` identical to the plain tracer's on the same seed.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The dot product survives, because
+> `chi` stays linear in the illumination density whatever that density is. The
+> elevation-only harvest does not, because `W[b]` bins by elevation alone on the
+> grounds that every band law is uniform in azimuth, and the facade tip law reads a
+> skyline, so a sweep under it needs the escaping rays binned in azimuth too.
 
 ### 1.1 Validation
 
@@ -148,6 +162,12 @@ eleven scenes differ most from each other. New York, whose open-sky fraction is
 nearly flat with elevation, barely notices at 2.67 dB. Madrid and Brussels,
 whose sky closes hard below 15 degrees, move 9.9 and 9.2 dB.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The range cap, and the elevation
+> support the cap sets, are both properties of the old law, and the new law has no
+> cap to sweep. Read this section as the diagnosis rather than as a sensitivity
+> band: it is the measurement that the 250 m cap set the answer instead of bounding
+> it, which is why the law is being replaced.
+
 ## 3. The height band edges
 
 Each endpoint moved on its own, everything else held at the published value,
@@ -176,6 +196,12 @@ across to a band it does not describe. The street band's upper support edge is
 `atan(h_max/d_min)`, and halving `d_min` from 10 to 5 m opens it from 33 to 52
 degrees, which is a large change to a model that carries 88 percent of its
 measure below 5 degrees.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The four endpoints swept here, two
+> height edges and two range edges, do not exist in the facade tip law, which
+> carries one source distance per azimuth and no assumed height. The spans stay true
+> of the runs they were measured on and are moot as error bars on the published
+> result.
 
 ## 4. The interaction, and an exact invariance
 
@@ -216,6 +242,11 @@ in the range cap alone explains 97 to 99 percent. So the tempting reduction, tha
 the two uncitable endpoints collapse into one citable elevation edge, is wrong,
 and the paper should not make it.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The scale freedom and the four
+> elasticities are properties of a height band crossed with a range band. The new
+> law is tied to measured facade heights and measured distances, so neither the
+> invariance nor the elasticity table carries over, and both are moot.
+
 ## 5. Which parameter dominates, per site
 
 The range cap dominates at all eleven sites and in both band models, on the
@@ -237,6 +268,10 @@ section 7.5 made on the proxy, now measured on `chi`.
 The isotropic model is the control. It has no band at all, so its sensitivity to
 every parameter here is identically zero by construction, and nothing in the
 harness perturbs it.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Which of the four endpoints
+> dominates is moot once the endpoints are gone. The isotropic control is untouched
+> by the change and its zero sensitivity still holds.
 
 ## 6. The crop radius against the range cap, which are not the same thing
 
@@ -297,6 +332,11 @@ bracket whose lower end is the "sources refused" column. The truth is between
 them and closer to the top, since not every unbuilt line of sight would have been
 blocked. Quoting the bracket is honest. Quoting the 400 m number alone is not.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The built-extent measurements are
+> geometry and survive, but the question this section poses, whether the cap outruns
+> the crop, is moot because the new law has no cap. Sources now sit on facade tips
+> that are inside the mesh, so the crop question has to be asked again in that form.
+
 ## 7. Is there a better invariant than the absolute number
 
 Four candidate reported quantities, each scored the same way: how far does it
@@ -337,6 +377,13 @@ cross-site spread also breathes, from 4.63 to 6.32 dB rooftop and 7.70 to
 be made at a stated cap, even though the size of the gap between a typical pair
 is stable.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Every swing in this section is
+> measured by sweeping the cap, and the between-city contrasts, the Spearman
+> correlations and the cross-site spreads are rooftop and street quantities, so they
+> are stale as they stand. The search for a cap-robust invariant is moot, and
+> whether the contrast is the steadier quantity has to be asked again of the new
+> law.
+
 ## 8. The reporting recommendation
 
 1. **Report the curve, not a point.** `chi` against the range cap is one dot
@@ -366,6 +413,11 @@ is stable.
    measures it at 2.85 dB median and 6.77 dB at Madrid, which is not the low
    sensitivity the macro result would suggest.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Six of these seven items tell the
+> paper what to do about a range cap or a height band, and are moot under a law that
+> has neither. Item 3, lead with the contrast, is the one that could still hold, and
+> it has to be remeasured before it is repeated.
+
 ## 9. What this does not settle
 
 The height distribution inside the band is uniform throughout, as it is in the
@@ -388,3 +440,8 @@ The crop bracket of section 6 is one-sided by construction. It says what `chi`
 would be if every unbuilt line of sight were fully blocked, which is the far end
 of the bracket rather than a correction. Measuring the true value needs larger
 crops, and only Korenmarkt has a mesh beyond 250 m.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The open item named here, that the
+> bands are global and should instead be defined against the local roofline, is what
+> the new law does. It is closed by the change rather than still open, and as this
+> section says, no sweep over a global band could anticipate it.

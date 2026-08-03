@@ -159,6 +159,11 @@ The SQR1 rows, which do use $h_{\rm BS} = 5$ m, were measured at 27.45 and
 this frequency in this dataset. Quote the SQR2 numbers for the street law and say
 that the rooftop law has no matched measurement here.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The caveat matches a 2.6 m terminal height
+> to the street small cell class and away from the macro rooftop one. Stale, because
+> neither class exists under the new law, and the XPR numbers and the site description
+> themselves are literature and stand whatever the illumination becomes.
+
 ### 2.3 Addition: the pair structure is Sionna's own stated cost driver
 
 Section 3.1 makes the per pair point from the definitional sentence. The sentences

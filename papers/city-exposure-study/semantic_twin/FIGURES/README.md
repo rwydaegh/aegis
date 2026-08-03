@@ -8,6 +8,13 @@ The two assembled scenes are `outputs/showcase_korenmarkt/korenmarkt.blend` and
 shot and carry one named camera per figure below, so switching camera in Blender
 reproduces the figure rather than approximating it.
 
+> **Old illumination law, see `../docs/LAW_CHANGE.md`.** Figures 14, 15, 16, 17, 24 and 25
+> plot rooftop or street small cell numbers, and 18 and 19 draw the height and range bands
+> themselves, so those eight need regenerating, figure 15's "250 m is set by the street
+> model alone" with them. Everything else here survives, because the isotropic curves, the
+> sky fraction panel and the geometry, material and coverage sheets do not touch the
+> illumination.
+
 ## 01, 02: the twin at two sites
 
 Korenmarkt in Ghent and Piazza del Duomo in Milan, assembled from the shipped

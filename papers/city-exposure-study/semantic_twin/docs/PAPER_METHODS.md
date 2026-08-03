@@ -1,5 +1,12 @@
 # Methods and results, end to end
 
+> **Old illumination law, see `LAW_CHANGE.md`.** This file predates the move to a
+> facade tip illumination law, so every height band, range band and elevation
+> support in it belongs to the superseded model. The section 4.2 correction of
+> 2026-08-02, marked all through the file, replaced one height and range band law
+> with another and is superseded as well, so a note reading "corrected" below
+> still means the old family.
+
 > **Superseded as the drafting source.** `SPINE.md` is now the source of truth
 > for what is claimed and at what strength, and `paper/methods.tex` and
 > `paper/paper.tex` are the submission drafts. This file is kept because it
@@ -63,6 +70,13 @@ only 25 m away, the single closest and tallest corner of the assumed deployment
 box. The two 13.5 m masts differ only in range, and that alone moves them from
 10 deg to 3 deg. Any statement of the form "sources between 3 and 60 degrees"
 therefore describes a corner of a two dimensional box, not a physical band.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The two swappable assumptions
+> named here, a height distribution and a range cap, and the 43.5 m at 25 m corner
+> in the figure, are the old model's, and sites now sit on facade tips with one
+> source distance per azimuth. Stale as a description of how $Q$ is built, though
+> the point the figure makes, that elevation is a ratio and not a height, still
+> holds.
 
 ### 1.3 The quantity: how much the square changes the answer
 
@@ -511,6 +525,12 @@ $3.0^\circ$ lower edge that no version of the model ever ran. 61.7 % is the figu
 that describes the published runs, and the support tuple is now pinned by test
 alongside all three values so the two cannot drift apart again.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The whole ring counting
+> construction, the $\cos\alpha/\sin^{3}\alpha$ marginal and the 61.7 % of measure
+> below 5 degrees follow from scattering sites on the ground at a height above the
+> head, which the facade tip law does not do. Stale, because the shape of $Q$ is
+> what every one of these numbers is about.
+
 ### 4.2 The two caps, and why a hard elevation band cannot express them
 
 Two physical limits bound the source population. There is a **maximum height** a
@@ -583,6 +603,13 @@ it raises the rooftop susceptibility by 5.27 dB and the street one by 4.27 dB,
 across the eleven squares the per site shift spans 1.06 to 6.33 dB, and because
 the shift is not common mode it **reorders the cities**. Section 9.2 reports it.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** This section is the 2026-08-02
+> correction, which swapped a fixed height $1/\sin^{3}$ law for a law integrated
+> over a height band and a range band, and both of those are height and range band
+> laws. Stale, so a number this file calls corrected is one step newer than the
+> superseded one and still not the current law, and the 5.27 and 4.27 dB shifts
+> measure the distance between two old models.
+
 ### 4.3 The three models used
 
 | name | $h$ [m] | $r$ [m] | elevation support [deg] |
@@ -596,6 +623,12 @@ $\chi$ under it reduces to a purely geometric openness measure and carries no
 network assumption at all. Reporting it beside the directional models separates
 what the built form does from what the deployment assumption does, and section
 9.2 shows that separation is the main result.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The two directional rows of this
+> table, their height and range bands and their elevation supports, are exactly
+> what the facade tip law replaces, and there is no range band or height band to
+> quote under it. The isotropic row survives untouched, because it carries no
+> elevation weight at all.
 
 ### 4.3.1 There is no deployment to calibrate these against
 
@@ -676,6 +709,15 @@ Madrid, so the illumination assumption concentrates in exactly the deep canyon
 sites that carry the most interpretive weight. Reporting $\chi$ at 150, 250 and
 400 m is the honest presentation.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The 7.8 dB range cap leverage,
+> the 0.7 to 2.0 dB height band leverage, the per site 0.6 to 10.0 dB range cap
+> spread and the Kista band comparison all price parameters that the facade tip
+> law does not have, since each azimuth carries one source distance read off the
+> geometry. Stale. What survives is the register evidence above it, that zero
+> cellular access antennas above 6 GHz are deployed across 3,863,228 European
+> records and that deployed height is flat in carrier frequency, because that is a
+> statement about a database.
+
 ### 4.4 Normalisation
 
 Write $\tilde Q(\alpha) = W(\alpha)/\sin^{3}\alpha$ for the unnormalised weight of
@@ -692,6 +734,12 @@ resolve. For the same reason, any numerical comparison against $Q$ must integrat
 each bin rather than sample its midpoint: $1/\sin^3$ is convex, so the midpoint
 rule underestimates, and it underestimates most in the widest bin. Read at face
 value that quadrature error looks like a factor of six error in the physics.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The weight being normalised here,
+> $W(\alpha)/\sin^{3}\alpha$ on a support with an upper and lower elevation edge,
+> is the old law's shape. Stale as written, although the warning it carries, that
+> a peaked $Q$ must be integrated per bin rather than sampled at bin centres, is
+> about quadrature and applies to whatever shape replaces it.
 
 ---
 
@@ -730,6 +778,12 @@ $$\rho_c = \frac{1}{n_c}\sum_{j \in c} w_j\, Q(\hat u_{{\rm ext},j}),
 $w=1$ and $\hat u_{\rm ext} = \hat u_{\rm loc}$, so
 $\mathbb E[\hat\chi] = 4\pi\, \mathbb E[Q(\hat u)] = 4\pi \cdot \frac{1}{4\pi}\int Q \, d\Omega = 1$
 for any $Q$. This is a parameter free identity, not a calibration.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Nothing in the estimator changes.
+> $Q$ enters only as a weight on the exit direction of an escaped ray, after the
+> transport is done, so the reciprocity dictionary, the throughput $w$, the deposit
+> into direction cells, the roulette and the free space identity hold for any $Q$
+> by construction and survive the law change.
 
 ### 5.2 The bounce loop
 
@@ -918,6 +972,12 @@ models are noisier only because their measure is concentrated in a narrow
 elevation band. That file predates the section 4.2 correction, so its rooftop and
 street entries are the superseded law. The identity itself is law independent.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The 0.9874 rooftop and 1.0107
+> street free space returns are runs under a height and range band $Q$, and so are
+> the ones under the 2026-08-02 law that replaced it. The identities themselves
+> survive, since free space returns 1 for any normalised $Q$ and the closed forms
+> of section 8.2 are scored per elevation band with no illumination model in them.
+
 #### What section 8 cannot catch
 
 Every test here is either an invariant the estimator was built to satisfy or a
@@ -1031,6 +1091,13 @@ Percentiles are the corrected law, `clean_geometric`. The superseded column is
 `korenmarkt_geometric`, whose medians are 0.310, 0.138 and 0.065. Isotropic is
 untouched by the correction, as it must be.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Both directional rows and both
+> directional spread columns, 8.1 and 16.7 dB as well as the 12.5 and 18.5 dB
+> beside them, are band law numbers, and so are the 7.8 dB peak $S_{ab}$ and 8.6 dB
+> SAR spreads below. Stale, because a within square spread is set by which
+> elevations the built form admits and that is precisely the shape being replaced.
+> The isotropic row and its 3.4 dB survive.
+
 **This run is at the 130 m crop, which section 9.4 shows is not converged for
 either directional model.** The directional columns are therefore upper bounds:
 at 130 m the corrected rooftop number is inflated by about 0.6 dB and the street
@@ -1143,6 +1210,13 @@ Mexico City Zocalo is the most exposed of the eleven on both isotropic and
 rooftop illumination. Rank correlation between the columns is Spearman +0.936
 for rooftop against isotropic and +0.345 for street against isotropic.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street columns,
+> the 4.93 and 9.58 dB between city spans, the rooftop within city spreads and both
+> Spearman figures are computed against a height and range band $Q$, so the city
+> order under directional illumination is stale and has to be remeasured. The
+> isotropic column, its 3.71 dB span, the 6.46 dB Madrid spread and the ground
+> datum work behind them are geometry alone and survive.
+
 ![Eleven squares, one pipeline](FIGURES/16_eleven_cities_exposure.png)
 
 **Figure 8.** The study's central object. 80 standpoints per city at the
@@ -1226,6 +1300,13 @@ rather than illumination: grazing power escaping through occluders the small cro
 had deleted, which varies violently from standpoint to standpoint. So this is not
 an argument that the within square spread reported in section 9.1 is inflated.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** This entire comparison prices one
+> band law against another band law, so the 1.06 to 6.33 dB per site shift, the
+> Spearman 0.78 reordering, the fall of New York by six places, the 11.32 dB to
+> 6.12 dB narrowing and the 0.56 to 0.85 correlation rise are all distances between
+> two superseded models. Stale, and the facade tip law has to be paired against
+> these runs again before any of it can be repeated.
+
 **Under isotropic illumination, variation inside one square exceeds variation
 between eleven cities on three continents.** A per city or per country exposure
 figure therefore averages over a variation larger than the differences it reports.
@@ -1288,6 +1369,13 @@ Every illumination model, at the top rung against the zero evidence rung:
 | rooftop, section 4.2 corrected | 0.2165 | 0.2354 | 0.364 dB | 8 of 120 | 8.13 dB | 8.40 dB |
 | rooftop, as published | 0.1377 | 0.1475 | 0.298 dB | 1 of 120 | 12.47 dB | 12.47 dB |
 | street small cell, corrected | 0.0965 | 0.0982 | 0.079 dB | 1 of 120 | 16.70 dB | 16.63 dB |
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows of
+> both tables, their medians, their shifts and their 8 to 17 dB spreads, are band
+> law runs, so the levels move under the facade tip law. The finding survives,
+> because it is a comparison of two material fields on one set of rays and the
+> isotropic row, which no illumination change touches, carries the largest movement
+> of the four.
 
 **The street small cell row is a single draw from a noisy distribution and is
 not resolved.** `CODE_AUDIT.md` section 4.2 retraced this shift over eight
@@ -1370,6 +1458,13 @@ the 1.98 dB the worst standpoint moves when entity coverage goes from 0 to
 Repeating it on the nine conflict gated stations gives 0.023 dB isotropic and
 0.024 dB rooftop with the same 0 of 120, so the null does not depend on which
 walk set is used.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street rows of the
+> table are band law runs and their levels will move. The conclusion survives: the
+> photographs establish a material family, masonry against glass and metal, rather
+> than tune a permittivity, and that bracket argument rests on the 2.35 dB brick to
+> glass and 9.67 dB brick to metal reflectance contrasts and on the area
+> reassigned, none of which turns on the shape of $Q$.
 
 **One measurement in this experiment moves and must not be misread.** Replacing
 the *whole* material field with the SAM 3 axis, rather than only the facades,
@@ -1492,6 +1587,14 @@ relax the binding one. A 130 m crop still misprices street small cell illuminati
 by 7.23 dB, against 10.36 before, so this is a 3.1 dB reduction in a defect that
 was never small.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The claim that 250 m is set by the
+> street model alone is stale, because both directional columns of the crop table
+> are band law runs and the crop requirement follows directly from how much measure
+> a law puts near the horizon. The mechanism survives, that a wider crop adds
+> blockers rather than scatterers, and so does the isotropic column, which converges
+> by 100 m. The crop radius has to be re-established under the facade tip law before
+> 250 m can be justified again.
+
 The mechanism is that a small crop holds no geometry able to occlude near horizon
 sources, so rays escape to sky that a real building would have blocked. A larger
 crop adds missing **blockers**, not missing scatterers, and the number goes down.
@@ -1578,12 +1681,26 @@ reproducible, it just has not been written down.
    gate is not. Feeding the conflict fraction into `ObservationQuality` is the
    outstanding work, and any new site is exposed until it is done.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Threat 1 rests on the old law's
+> low elevation weight and threat 7 says the caps are uncited, and the facade tip
+> law has no caps to cite, so both are stated against a model that no longer
+> applies. Threats 2 to 6, 8 and 9 are about geometry, materials, sampling and
+> registration and survive as written.
+
 ---
 
 ## 11. Status of each result
 
 Being explicit about what is finished. Updated 2026-08-02, after the illumination
 correction of section 4.2 was derived, implemented and measured.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Every row that reads recomputed,
+> restated or corrected means recomputed under the 2026-08-02 band law, which is
+> itself superseded, so no row here is a statement about the current law. The rows
+> for the eleven city rooftop column, the within square spread, the crop radius, the
+> per site crop correction and the deployment caps are stale. The isotropic rows,
+> the validation ladder, the datum fix, the registration row and the run provenance
+> row survive.
 
 | result | status |
 |---|---|

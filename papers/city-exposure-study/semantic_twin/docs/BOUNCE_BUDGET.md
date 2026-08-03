@@ -1,5 +1,10 @@
 # The bounce budget, and why it is three
 
+> **Old illumination law, see `LAW_CHANGE.md`.** Every column labelled rooftop or street
+> small cell here is weighted by the old height and range bands. The budget decision
+> survives untouched, because truncation is a property of the transport and is measured as
+> a fraction of escaping power rather than against the illumination.
+
 The operating point is three surface interactions. `DEFAULT_MAX_BOUNCES` in
 `semantic_twin/propagation/tracer.py` is the only place that number is written
 down, and `TraceConfig`, `run_exposure.py`, `run_crop_convergence.py`,
@@ -285,6 +290,11 @@ moves a standpoint by more than 0.12 dB. Not one standpoint out of 40 moves half
 a decibel at any budget, so the choice between 3, 4 and 6 is invisible in every
 published number.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The rooftop and street small cell columns
+> are integrals against the old bands, so the cost of the budget in decibels moves with
+> the law. The decision does not, because the isotropic column alone puts the cost three
+> orders of magnitude below anything the study reports.
+
 ## The reruns, and what they cannot be compared against
 
 The eleven city set and the Korenmarkt evidence ladder were both rerun at three
@@ -333,6 +343,11 @@ published figures under the old law were +0.008 and +0.289 dB. The numbers move,
 the finding does not: adding image evidence moves the exposure distribution by
 well under half a decibel.
 
+> **Old illumination law, see `LAW_CHANGE.md`.** The +2.16 dB signature and the ladder
+> shifts both belong to the old law, once before and once after its elevation support was
+> fixed. The reasoning survives as a record of what a law change looks like in a diff, and
+> the numbers become moot rather than wrong, since that law is now being replaced.
+
 **One thing found while doing this, which is not mine to fix.** Two published
 files under `outputs/exposure_korenmarkt` have malformed JSONL rows,
 `city250_corrected_newyork_timessquare` with two and
@@ -366,6 +381,10 @@ directional illumination models weight it far below the early bounces.
 Reported as a number rather than as a reassurance: at three bounces the study
 under-reports by a median 0.002 dB and by at most 0.06 dB at the worst standpoint
 under the worst of the three illumination models.
+
+> **Old illumination law, see `LAW_CHANGE.md`.** Turning 0.38 percent of escaping power
+> into 0.002 dB of chi uses the old directional weights, so the 0.002 dB and the 0.06 dB
+> move. The escaping power share and the sign of the bias do not, and they are the result.
 
 ## Russian roulette no longer does anything, and it is switched off
 

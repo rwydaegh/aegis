@@ -62,6 +62,12 @@ writes a summary, a CDF and a manifest per run under
 directions live in `semantic_twin/propagation/directions.py`, and the corrected
 band law of 2026-08-02 is the one the current results use.
 
+> **Old illumination law, see `docs/LAW_CHANGE.md`.** The band law named here is
+> being replaced by one that reads source positions off the building geometry
+> instead of assuming height and range bands. Stale as a description of what the
+> directional models will do, and every rooftop and street small cell number in
+> the notes below is under the band law.
+
 ## Reading order
 
 The notes below all live in `docs/`, which has its own index sorting them by
@@ -83,8 +89,9 @@ kind and saying which ones are current.
   provenance, since much of what the literature reports as a measured roughness
   is a radio fit wearing a metrology citation.
 - `docs/PRIOR_ART.md` is a hostile review of what the published work already owns.
-- `docs/METHOD.tex` is the explanatory writeup of the co-located transmitter argument
-  and where it stops applying.
+- `docs/METHOD.md` is the explanatory writeup of the co-located transmitter argument
+  and where it stops applying. The older LaTeX version of it, which explains the
+  method before the illumination law changed, moved to `archive/METHOD.tex`.
 - `FIGURES/README.md` says what each numbered figure shows and which script
   regenerates it.
 
@@ -155,9 +162,18 @@ for sources at one fixed height and was then being used over the support of a
 height band. Anything computed before that date under the rooftop or street small
 cell models is superseded. The old pair is kept as `ROOFTOP_FIXED_HEIGHT` and
 `STREET_SMALL_CELL_FIXED_HEIGHT` so those numbers stay reproducible. The
-correction is site dependent, 1.06 dB at Krakow to 6.33 dB at Madrid on the
+correction is site dependent, 1.05 dB at New York to 6.33 dB at Madrid on the
 rooftop median, so it cannot be undone with a constant offset and it reorders the
-squares.
+squares. An earlier version of this line read 1.06 dB at Krakow. That figure is
+real but comes from the sweep before the ground datum fix below, the one where
+Krakow's standpoints stood 18 m up on the Cloth Hall. Both numbers here are from
+`outputs/law_comparison/eleven_city_law_ordering.json`.
+
+> **Old illumination law, see `docs/LAW_CHANGE.md`.** This paragraph describes
+> the move from one band law to another, and the band law it moved to is now
+> being replaced in turn, so the 1.05 to 6.33 dB shift is stale as the last word
+> on the directional models. The reason it is quoted, that the law choice
+> reorders the squares, holds.
 
 A second correction lands on 2026-08-03 and is independent of the first. The
 ground datum estimator took the median downward first hit at the crop centre,

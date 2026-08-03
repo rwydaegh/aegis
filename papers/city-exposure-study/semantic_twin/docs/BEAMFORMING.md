@@ -356,6 +356,116 @@ already named in MONOSTATIC_SBR.md section 2.7 as `K_max`, since the largest
 singular value of the transfer tensor over directions is a power domain quantity.
 That is not implemented here.
 
+### 4.3 There is no channel matrix, and the MRT answer does not need one
+
+MIMO in this study means maximum ratio transmission, and MRT needs `h`, the
+complex path amplitudes of one site seen at each of its elements. That object
+does not exist here, and section 4.2 is the first half of why. This section is
+the direct answer to "if we have `H` we have MRT, do you", so it says what is
+missing and then says why the MRT number is on disk anyway.
+
+**No phase is carried.** The module docstring of
+`semantic_twin/propagation/tracer.py` states it as a design rule: what is
+accumulated is power, never amplitude. The reason it gives is that the phase of
+an escaping path turns at `k |x_K - S|` radians per radian of exit angle. At 15
+GHz `k` is 314 rad/m, so a last vertex 100 m from the observer turns 3.1e4
+radians per radian and one at the 250 m crop edge turns 7.9e4. The escaping
+directions are read on 512 Fibonacci cells, whose spacing is 0.157 rad, so
+amplitudes added inside one of those cells would be added at effectively random
+phase, and nothing in the output would look wrong.
+
+**No transmitter position is committed to.** This is the deeper half and it is
+section 4.2's obstruction restated. A phase needs a distance and a distance
+needs a position, and the trace never fixes one. That is not a shortcoming, it
+is the whole point of the adjoint move: one trace answers a population of source
+positions precisely because it never picks one. Building `h` means placing sites
+and tracing to each, which is the different experiment section 4.2 already
+describes and prices.
+
+So there is no `h` and no `H`, and this section does not reopen section 4.2.
+Nothing below optimises a precoder. MRT is the one transmit rule whose answer is
+closed form, which is why it survives without a channel while the ECBF solver
+does not.
+
+**The MRT answer is section 3.3 read together with section 6.3.** Section 3.3
+proves that MRT's array gain `MN` lands on the scene sum and on the free space
+reference alike and cancels, so `chi` under MRT equals `chi` computed with the
+element pattern alone. Section 6.3 measures the other matched policy: a beam
+aimed at the pedestrian's coordinates holds the peak on the direct path only,
+and every bounced path leaves its site towards a last vertex somewhere else and
+collects a sidelobe, so `chi` falls. The two sit on one axis, so the advantage
+of MRT over geometric steering is the reciprocal of the suppression measured in
+6.3. Both policies put the same gain on the free space reference, because in
+free space there is one path and both aim at it, so this is a ratio of received
+powers at fixed transmit power and not only a ratio of `chi`.
+
+**Its ceiling is the direct fraction.** Write `f` for the share of `chi` that
+arrives without touching a surface. Those paths keep the peak under any aiming
+rule, so
+
+```
+chi (geometric steering) / chi (MRT)  >=  f
+```
+
+and MRT beats an arbitrarily narrow geometrically steered beam by at most `1/f`.
+This is the same inequality as the floor row of section 6.3, read in the other
+direction.
+
+**`1/f` is already on disk for all eleven squares.** `PointResult` in `tracer.py`
+carries `susceptibility_direct` next to `susceptibility`, filled from the
+`bounces == 0` rays in `_deposit`, and `scalars()` writes both out along with
+their ratio under the name `multipath_gain_<model>`. That ratio is `1/f`. It is
+in every row of the published run, so the ceiling on the MRT advantage needs no
+re-trace, no path recorder and no channel. Median over the 80 standpoints of
+each site, from `outputs/exposure_korenmarkt/city250_L3_<site>_15ghz_locations.jsonl`.
+
+| site | rooftop (dB) | street small cell (dB) | standpoints with no direct arrival |
+|---|---|---|---|
+| brussels_grandplace | 2.11 | 4.06 | 5 |
+| korenmarkt | 1.45 | 2.66 | 0 |
+| krakow_rynek | 1.26 | 2.57 | 0 |
+| london_trafalgar | 1.18 | 1.96 | 0 |
+| madrid_plazamayor | 1.23 | 2.31 | 1 |
+| mexico_zocalo | 1.09 | 1.58 | 0 |
+| milan_duomo | 1.67 | 2.71 | 0 |
+| newyork_timessquare | 2.25 | 2.07 | 0 |
+| prague_staromestske | 1.36 | 2.57 | 1 |
+| tokyo_hachiko | 1.93 | 3.68 | 0 |
+| toulouse_capitole | 1.42 | 2.81 | 2 |
+| **median across sites** | **1.42** | **2.57** | |
+
+The last column is standpoints where nothing at all arrives on the direct
+direction, so `f` is zero and the ratio is infinite. They are kept in the median
+at infinity rather than dropped, which is why the Brussels street entry differs
+from the value the finite rows alone would give.
+
+Three readings.
+
+**The ceiling is a decibel or two and it is set by the square.** Nothing here is
+a property of the array. A square that lets a pedestrian see sky along the
+direct direction has a high `f` and little for any aiming rule to take away.
+
+**The street model leaves close to twice the room the rooftop model does.** Its
+sites sit low, so more of what arrives has bounced, so `f` is smaller. The same
+asymmetry runs through every table in section 6.
+
+**These are not the same numbers as the floor row in section 6.3, and the
+difference is the standpoint set.** Section 6.3 reads `f` at 0.6955 rooftop and
+0.5054 street from `outputs/antenna/paper_artefact_250m.json`, which is a 20
+standpoint re-trace at 30 000 rays, and those give 1.58 dB and 2.96 dB. The
+published run reads 1.45 dB and 2.66 dB at Korenmarkt over 80 standpoints at
+200 000 rays. Only four standpoints are shared by the two subsets, and on those
+four the two agree to 0.05 dB rooftop and 0.39 dB street, so this is a
+standpoint sampling difference and not a disagreement about what is being
+measured. Section 6.3's floor belongs to its own 20 standpoint run and should be
+quoted with it.
+
+One rider on the bound. Section 6.3 holds the element pattern at unity on both
+sides so that its number reads as array factor alone, while a real MRT
+comparison carries the element taper into both policies. The taper reweights the
+average that defines `f` and does not add a factor of its own, so the shape of
+the bound is unchanged and only its weighting moves.
+
 ---
 
 ## 5. What does move `chi`, and the assumptions each one needs
@@ -896,6 +1006,9 @@ observed. **Gap** means it was asked and is not answered.
 | Best beam selection lies above the nearest beam column on the same codebook | proved, so the measured column is a lower bound and not an estimate | 6.4 |
 | Where best beam selection actually sits | **gap**, it needs one site's path set and the marginalisation has removed it | 6.4 |
 | The coherent stack cannot be used on this traced object | proved, the transmit degree of freedom is marginalised away, so the operator is rank one per site | 4.2 |
+| There is no per site channel `h`, so MRT cannot be run numerically | proved, no phase is carried and no source position is fixed | 4.3 |
+| MRT beats geometric steering by at most `1/f`, the reciprocal of the direct share of `chi` | proved, and `1/f` is already written to disk as `multipath_gain_<model>` | 4.3 |
+| `1/f` is 1.42 dB rooftop and 2.57 dB street at the median site | measured, eleven cities, 880 published standpoints, no re-trace | 4.3 |
 | PAPER_METHODS section 1.4 conflates two phase scales three orders of magnitude apart | proved, 22 rad per rad across the aperture against 3.1e4 through the environment | 4.1 |
 | The broadcast beam moves `chi` by 0.33 to 4.20 dB depending on the city | measured, eleven cities, 32 standpoints each | 6.5 |
 | Its sign is not guaranteed and two entries are positive | measured | 6.5 |
