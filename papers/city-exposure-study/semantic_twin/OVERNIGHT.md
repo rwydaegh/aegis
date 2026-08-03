@@ -12,8 +12,14 @@ finishing when this was written and their own commits land after it, so check
   bibliography of 24 entries that have each been checked against the actual
   work.
 - **`paper/methods.tex`**, the standalone methods document, 11 pages.
-- **`paper/si.tex`**, supplementary information, because the body deferred to one
-  twice and there was none. In flight.
+- **`paper/si.tex`**, supplementary information, 11 pages, because the body
+  deferred to one twice and there was none. Registration, projection, seeds and
+  ray counts, then the per-square numbers and the sweeps in fuller form.
+  `paper/SI_NOTES.md` lists nine quantities it could not source and states them
+  as not reported rather than filling them in.
+- **`paper/body.tex`**, the methods body, which `paper.tex` and `methods.tex` now
+  both `\input`. They previously held two copies that had drifted into stating
+  different numbers for the same quantities.
 - **`SPINE.md`**, the drafting source of truth. `PAPER_METHODS.md` is now marked
   superseded in its own header and kept for the derivations and the history.
 - **`paper/CITATIONS.md`**, `paper/PROVENANCE.md`, `FLOW_REVIEW.md`,
@@ -68,10 +74,24 @@ is the worst of three illumination models, not a median over them, and its quote
 0.24 to 0.46 dB noise floor is 0.231 to 0.346 in production, with the top of that
 range coming from a mode that was never shipped.
 
-**5. One site's column presented as the overall result.** The diffraction cross
-check claimed agreement "to within 0.34, 1.73 and 7.3 percent". Those three are
-the Times Square column of a three-site table, the worst site, with nothing
-saying so.
+**5. One site's column presented as the overall result, twice.** The diffraction
+cross check claimed agreement "to within 0.34, 1.73 and 7.3 percent". Those three
+are the Times Square column of a three-site table, the worst site, with nothing
+saying so. Separately, and worse because it is a bound rather than an agreement,
+the paper said the three-interaction budget changed "no standpoint by more than
+0.063 dB". That is Korenmarkt at the 130 m crop. The worst across the squares is
+**0.384 dB at Grand-Place**, six times larger, and it is the number that licenses
+the bounce budget on power grounds.
+
+**6. A causal claim the data does not support, which I introduced myself.** I
+wrote into the methods that one station's first-interaction coverage rises from
+0.362 to 1.000 when it is re-registered, offered as evidence that coverage is a
+sharper pose test than the skyline residual. Writing the supplementary
+information showed the pose file holds only **one** registration of that camera,
+and the "before" position is byte-identical to the raw provider pose. The eight
+probe standpoints are provider poses displaced 3.91 to 5.50 m from their
+registered camera, and the displacement does not order coverage: the one that
+moved furthest scores 0.978. The observation survives, the mechanism does not.
 
 ## What is open, and what needs you
 
