@@ -174,10 +174,12 @@ for which the support mesh returns a first hit, read together with the range of 
 pose sits near zero with its few conflicts tens of metres away. A pose at 1.0 with a median conflict
 range under a metre is inside a building.
 
-Of 83 registered poses, 26 are inside the geometry and 6 of those 26 pass the residual gate. So the two
-tests are not redundant, the residual admits poses that are unusable, and the honest count of usable
-stations is 48 rather than 83. `build_site_semantics.py` admits on both, and records every refusal with
-the test that made it.
+As the poses were shipped, 26 of the 83 were inside the geometry and 6 of those 26 passed the residual
+gate. So the two tests are not redundant and the residual admits poses that are unusable.
+`build_site_semantics.py` admits on both, and records every refusal with the test that made it. The
+re-registrations described below take the inside count from 26 to 14 and the admitted count to 51, and
+6 of the 14 still pass the residual gate, so the disagreement between the two tests survives the fix
+rather than being an artefact of it.
 
 The rule reproduces the one published station set. Korenmarkt's `walk_semantic.json` names the eight
 Mapillary stations the shipped binding was built from, chosen by hand at the time. The two tests applied
@@ -189,7 +191,8 @@ the study never looked.
 
 Two sites lost everything under those two tests, Times Square with 12 of 14 poses inside the geometry
 and Hachiko with 3 of 3. The next two sections are about why, because the two turned out to have
-different diseases, only one of them was the site's fault, and that one is now fixed.
+different diseases. Hachiko's was the crop and it is fixed. Times Square's is the objective, and
+re-registering it takes its cameras out of the buildings without making a single one of them usable.
 
 ## Why a camera ends up under its own pavement
 
@@ -289,6 +292,18 @@ That is a real limit on the method rather than a defect to be fixed, and it is w
 paper in those terms. The panoramas at Times Square are fine. The mesh is fine. The two cannot be
 brought into correspondence by matching where the sky ends.
 
+Times Square was re-registered at 250 m with the same clamp anyway, because the prediction was worth
+testing and because a buried camera is worth removing whether or not its pose is usable. The clamp does
+exactly what the mechanism says it should and nothing more. Poses inside the geometry fall from 12 of
+14 to 3, eleven of the twelve having sat at a sky conflict of 1.00 with a median conflict range under a
+metre, and 9 of the 14 now read their nearest conflicting surface more than 5 m away. The
+residual barely moves: the median goes from 10.17 to 9.13 degrees and the best station in the site
+reaches 7.20, against an admission gate of 4.0. Not one station is admitted before or after.
+
+That is the cleanest available statement of the two failures being independent. The altitude collapse
+was a consequence of the crop and it is gone at both sites. The residual at Times Square was never
+about altitude, and putting the cameras back on the street leaves it where it was.
+
 ## Four sites had their image evidence built and unreachable
 
 The fishnet path and the fused station path are different bindings, not two names for one. The fused
@@ -303,16 +318,21 @@ level down. The surfaces existed, 171,532 faces at Grand-Place through to 383,04
 and nothing could read them. Times Square had been flattened by hand and Korenmarkt and Milan were flat
 already, each being a single panorama, so the layout split the corpus without anyone choosing it.
 
-`flatten_fishnet_outputs.py` publishes each nested view at the top of its directory under a name that
-keeps the panorama it came from, `pano_00_4Cxfyuve.../h+00_090_fishnet.npz` becoming
-`pano_00_4Cxfyuve..._h+00_090_fishnet.npz`, which is the convention Times Square was flattened to. The
-published entries are relative symlinks rather than copies, so the per panorama layout stays
-authoritative and a rebuilt view is picked up without republishing. Nothing is recomputed and no
-fishnet changes.
+The fix needs no new code and no rebuild. `build_site_fishnets.py --all-sites --flatten-only` moves
+each nested view to the top of its site directory under a name carrying the panorama it came from,
+`pano_00_4Cxfyuve.../h+00_090_fishnet.npz` becoming `pano_00_4Cxfyuve..._h+00_090_fishnet.npz`, and
+rewrites the site manifest. The builder writes that layout natively now, so the four sites are the ones
+built before it did. Running it moved 164 surface sets and recomputed nothing.
 
 What that returns is substantial, and it is measured rather than asserted. Binding each site's views
 onto the mesh they were cut against covers 33.0 percent of the area at Old Town Square from 52 views,
 23.4 at the Zocalo from 56, 18.7 at Plaza Mayor from 24 and 11.2 at Grand-Place from 32.
+
+It is checked end to end rather than by reading, on the same terms the walk guard was. At Old Town
+Square over the 130 m crop the fishnet binding puts 38,222 of the mesh's 171,747 triangles onto an
+image derived material, 27,530 of brick, 3,738 of effective vegetation, 1,904 of wood, 1,899 of metal,
+1,171 of marble, 1,039 of asphalt and 941 of concrete, and `load_bindings` resolves every one of those
+classes to an ITU row at 15 GHz. The remaining 133,525 fall back to facade, roof and soffit.
 
 The two routes land close to each other without being the same number, which is the useful part. At
 130 m the fused station path reads 31.1, 26.2, 20.2 and 13.3 percent at those four sites against the
@@ -323,10 +343,18 @@ by site, is a cross check the study did not previously have anywhere except Ghen
 nearer the truth is not settled here and should not be asserted from the fractions alone.
 
 The one site where this changes nothing is the one that most looks like it should. Times Square's 8
-views cover 6.5 percent of the area and were cut from two cameras, neither of which is admitted, both
-of which the sky conflict test places inside the buildings they are pointed at. The matrix reports the
-coverage and refuses the route, and the fishnet column carries the count of admitted poses behind every
-site's surfaces so that this stays visible rather than being an argument made once in prose.
+views cover 6.5 percent of the area and were cut from two cameras, neither of which is admitted, and
+both of which were sitting inside the buildings they were pointed at when the surfaces were cut. Those
+two poses have since been replaced by the re-registration above, so the surfaces are stale as well as
+inadmissible. The matrix reports the coverage and refuses the route, and the fishnet column carries the
+count of admitted poses behind every site's surfaces so that this stays visible rather than being an
+argument made once in prose.
+
+The count in that column uses the stricter of the two gates in the study. `build_site_fishnets.py`
+admits a panorama on sky conflict alone, which is the right gate for cutting a surface, so it built
+from 14 panoramas at the Zocalo and 13 at Old Town Square where the combined residual and conflict gate
+admits 12 at each. The two extra surfaces per site are included in the coverage fractions above and
+their provenance is on the page.
 
 ## The coverage matrix
 
@@ -337,19 +365,19 @@ seconds.
 
 <!-- COVERAGE_TABLE -->
 
-| Site | Panoramas | Registered | Median residual | Worst residual | Median pose sigma | At altitude bound | Inside the geometry | Admitted | SAM 3 material axis | Fishnet faces | Bound area at 130 m | Bound area at 250 m | Materially bound run |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| brussels_grandplace | 14 | 14 | 2.87 deg | 11.16 deg | 0.47 m | 6 | 6 | 8 | 0 of 14 | 171532 nested | 13.3% (8 stations) | 4.6% (8 stations) | 130 m, 250 m |
-| korenmarkt | 13 | 13 | 3.06 deg | 8.10 deg | 0.17 m | 7 | 0 | 9 | 11 of 13 | 10534 | 11.2% (9 stations) | 3.2% (9 stations) | 130 m, 250 m |
-| krakow_rynek | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | none | none | no |
-| london_trafalgar | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | none | none | no |
-| madrid_plazamayor | 10 | 10 | 0.40 deg | 2.92 deg | 0.26 m | 5 | 4 | 6 | 0 of 10 | 157946 nested | 20.2% (6 stations) | 5.1% (6 stations) | 130 m, 250 m |
-| mexico_zocalo | 14 | 14 | 2.76 deg | 4.59 deg | 1.86 m | 4 | 0 | 12 | 0 of 14 | 269675 nested | 26.2% (12 stations) | 7.0% (12 stations) | 130 m, 250 m |
-| newyork_timessquare | 14 | 14 | 10.17 deg | 12.00 deg | 1.65 m | 5 | 11 | 0 | 0 of 14 | 40057 | none | none | no |
-| prague_staromestske | 14 | 14 | 0.82 deg | 9.33 deg | 0.25 m | 2 | 1 | 12 | 0 of 14 | 383044 nested | 31.1% (12 stations) | 9.9% (12 stations) | 130 m, 250 m |
-| milan_duomo | 1 | 1 | 0.74 deg | 0.74 deg | 0.26 m | 1 | 0 | 1 | 1 of 1 | 33753 | none | 4.0% (1 stations) | 250 m |
-| tokyo_hachiko | 3 | 3 | 3.08 deg | 3.70 deg | 0.48 m | 1 | 0 | 3 | 0 of 3 | none | 15.9% (3 stations) | 8.1% (3 stations) | 130 m, 250 m |
-| toulouse_capitole | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | none | none | no |
+| Site | Panoramas | Registered | Median residual | Worst residual | Median pose sigma | At altitude bound | Inside the geometry | Admitted | SAM 3 material axis | Fishnet faces | Fishnet bound area | Walk bound area at 130 m | Walk bound area at 250 m | Materially bound run |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| brussels_grandplace | 14 | 14 | 2.87 deg | 11.16 deg | 0.47 m | 6 | 6 | 8 | 0 of 14 | 171532 | 11.2% (32 views) from 8 of 8 admitted poses | 13.3% (8 stations) | 4.6% (8 stations) | walk at 130 m, walk at 250 m, semantic at 130m |
+| korenmarkt | 13 | 13 | 3.06 deg | 8.10 deg | 0.17 m | 7 | 0 | 9 | 11 of 13 | 10534 | 3.2% (4 views), poses unattributed | 11.2% (9 stations) | 3.2% (9 stations) | walk at 130 m, walk at 250 m, semantic at 130m |
+| krakow_rynek | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | not measured | none | none | no |
+| london_trafalgar | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | not measured | none | none | no |
+| madrid_plazamayor | 10 | 10 | 0.40 deg | 2.92 deg | 0.26 m | 5 | 4 | 6 | 0 of 10 | 157946 | 18.7% (24 views) from 6 of 6 admitted poses | 20.2% (6 stations) | 5.1% (6 stations) | walk at 130 m, walk at 250 m, semantic at 130m |
+| mexico_zocalo | 14 | 14 | 2.76 deg | 4.59 deg | 1.86 m | 4 | 0 | 12 | 0 of 14 | 269675 | 23.4% (56 views) from 12 of 14 admitted poses | 26.2% (12 stations) | 7.0% (12 stations) | walk at 130 m, walk at 250 m, semantic at 130m |
+| newyork_timessquare | 14 | 14 | 9.13 deg | 11.25 deg | 1.44 m | 5 | 3 | 0 | 0 of 14 | 40057 | 6.5% (8 views) from 0 of 2 admitted poses | none | none | no |
+| prague_staromestske | 14 | 14 | 0.82 deg | 9.33 deg | 0.25 m | 2 | 1 | 12 | 0 of 14 | 383044 | 33.0% (52 views) from 12 of 13 admitted poses | 31.1% (12 stations) | 9.9% (12 stations) | walk at 130 m, walk at 250 m, semantic at 130m |
+| milan_duomo | 1 | 1 | 0.74 deg | 0.74 deg | 0.26 m | 1 | 0 | 1 | 1 of 1 | 33753 | 6.7% (4 views), poses unattributed | none | 4.0% (1 stations) | walk at 250 m, semantic at 170m |
+| tokyo_hachiko | 3 | 3 | 3.08 deg | 3.70 deg | 0.48 m | 1 | 0 | 3 | 0 of 3 | none | not measured | 15.9% (3 stations) | 8.1% (3 stations) | walk at 130 m, walk at 250 m |
+| toulouse_capitole | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | not measured | none | none | no |
 
 <!-- END_COVERAGE_TABLE -->
 
@@ -369,8 +397,8 @@ they are aggregated onto the mesh they were cut against, followed by how many of
 them hold a pose that passed admission. That second figure is there because a fishnet inherits the
 error of the camera that cut it, and a site can have surfaces without having evidence. `site_fishnet`
 also reads the mesh a fishnet was cut against out of that fishnet's own manifest instead of deriving it
-from the crop radius of the run. `bind` joins
-each fishnet face back to a source triangle index, so handing it the mesh of the run rather than the
+from the crop radius of the run. `bind` joins each fishnet face back to a source triangle index, so
+handing it the mesh of the run rather than the
 mesh of the cut would join two different triangle numberings and would do it without complaining. That
 is not hypothetical. Korenmarkt and Times Square were cut against `inhouse_leaf_130m.ply` and Milan
 against `inhouse_leaf_170m.ply`, so no crop radius derives all three and a run at 250 m derives none of
