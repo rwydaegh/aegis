@@ -18,10 +18,28 @@ The shape of a city square changes how much radio power reaches a pedestrian at
 network, and it can be measured from a photogrammetric mesh with one ray trace
 per standpoint.
 
-**And the first thing it measures is that the square is the wrong unit.** Where a
-pedestrian stands inside one square spreads $\chi$ by up to 6.46 dB, while the
-medians of eleven squares on four continents spread by 3.71 dB. A single number
-per city is a poor summary of that city, by a margin of 2.75 dB.
+**And the first thing it measures is that the square is close to the wrong
+unit.** Comparing the spread of $\chi$ across the 80 standpoints inside one
+square against the spread of the eleven square medians, both as p95 over p05 in
+dB:
+
+| model | between the eleven squares | within a square, min / median / max | squares whose own spread exceeds the between spread |
+|---|---|---|---|
+| isotropic | 3.71 | 1.70 / 3.92 / 6.46 | 6 of 11 |
+| macro rooftop | 4.93 | 2.55 / 5.46 / 12.89 | 8 of 11 |
+| street small cell | 9.58 | 4.80 / 8.43 / 19.01 | 4 of 11 |
+
+*(Recomputed directly from the `_L3` summaries in session, not taken from a
+report.)*
+
+**State this at exactly its strength and no further.** For the two models where a
+base station is above the head, the typical square already spreads $\chi$ by more
+than the eleven squares differ from each other, and for the rooftop model 8 of 11
+squares do individually. For the street small cell model it does not: that model
+has the largest between square spread of the three and the median square falls
+short of it. So the honest claim is that a single number per square is a poor
+summary of that square under most of the deployments considered, not under all of
+them. The counter case is named rather than dropped.
 
 That claim is only available to a method that is cheap per standpoint. Ray
 tracing between known transmitter and receiver pairs costs one trace per pair, so
