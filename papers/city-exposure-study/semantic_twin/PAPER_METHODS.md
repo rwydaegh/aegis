@@ -101,10 +101,10 @@ The estimator accumulates power. This is forced, not preferred.
 
 An escaping path leaves the scene from its last scattering vertex $\mathbf x_K$.
 Perturbing the exit direction by $\delta$ changes the path phase by
-approximately $k\,|\mathbf x_K - S|\,\delta$. At 15 GHz, $\lambda = 20$ mm, and a
+approximately $k\,|\mathbf x_K - \mathbf x|\,\delta$. At 15 GHz, $\lambda = 20$ mm, and a
 last vertex 100 m from the observer,
 
-$$k\,|\mathbf x_K - S| = \frac{2\pi \times 100\ \mathrm{m}}{0.02\ \mathrm{m}}
+$$k\,|\mathbf x_K - \mathbf x| = \frac{2\pi \times 100\ \mathrm{m}}{0.02\ \mathrm{m}}
 \approx 3.1\times 10^{4}\ \text{rad per radian of exit angle}.$$
 
 Holding the phase error below 1 rad therefore needs angular cells no wider than
@@ -135,7 +135,8 @@ that sign matters and it is the only place it appears.
 $d\alpha$ and $dh$ never have to be read twice. Finite increments are $\delta$.
 
 **Capital for solid angle, lowercase for elevation.** $Q(\hat u)$ is a density on
-the sphere in sr$^{-1}$; $q(\alpha)$ is its marginal in elevation in rad$^{-1}$.
+the sphere in sr$^{-1}$, and $q(\alpha)$ is its marginal in elevation in
+rad$^{-1}$.
 Section 4.1 gives the factor between them. The same discipline separates the
 admissible height window $W$ from the cell count $M$, and the ray throughput $w$
 from the tissue transmission coefficient $T_0$, both of which were one letter in
@@ -187,8 +188,9 @@ Rayleigh roughness split decides whether the outgoing direction is specular or
 diffuse. When the ray escapes, its surviving $w$ is deposited into the angular
 bin of the direction it originally **left $\mathbf{x}$** in, weighted by $Q$ evaluated
 at the direction it escaped in. Line thickness is $w$. Section 5.2 gives the
-loop, including Russian roulette from bounce 3 and the four bounce operating
-point.
+loop, including Russian roulette from bounce 3 and the bounce depth. Section 8.3
+measures four interactions as sufficient and records which runs used four and
+which six.
 
 ---
 
@@ -244,8 +246,12 @@ GHz,
 
 $$\varepsilon_r' = a f^{\,b}, \qquad \sigma = c f^{\,d}\ \ [\mathrm{S\,m^{-1}}],$$
 
-from which the complex relative permittivity follows with the negative imaginary
-part convention,
+where $a$, $b$, $c$ and $d$ are P.2040-4's own four coefficients per material
+row. They are the one place where $d$ is not the differential of section 1.5 and
+where $a$ and $b$ are not the window limits of section 4.2, and the letters are
+kept because a reader will check them against the recommendation. From the power
+laws the complex relative permittivity follows with the negative imaginary part
+convention,
 
 $$\varepsilon = \varepsilon_r' - j\,\frac{\sigma}{2\pi f \varepsilon_0}.
 \tag{2}$$
@@ -259,7 +265,7 @@ raises rather than extrapolating silently.
 ## 3. Image evidence
 
 This layer exists to replace the geometric rule of section 2.2 with observed
-material where a camera saw the surface. Section 10.3 reports what it is worth,
+material where a camera saw the surface. Section 9.3 reports what it is worth,
 and the answer is not what the project assumed.
 
 ### 3.1 Panorama selection
@@ -290,14 +296,24 @@ area, worth more than tripling the camera count in the middle.
 
 ![What one registered panorama actually sees](FIGURES/03_what_one_panorama_sees.png)
 
-**Figure 4.** How little of a square a street level camera reaches. One
-registered panorama is a first hit on 3.3 % of support triangles and 4.4 % by
-area. Fusing twelve raises directly observed surface to 24.1 % by area and then
-saturates: twelve panoramas reach 77 % of what the site can ever offer and
-twenty six reach 90 %, which sets the per site budget at twelve to sixteen. The
-remaining half of the scene is roofs, courtyards and rear elevations that no
-street level capture ever sees, and that ceiling is the reason section 9.3 can
-only test a partially evidence bound scene.
+**Figure 4.** How little of a square a street level camera reaches. Over the full
+sphere one registered panorama is a first hit on 4.3 % of support triangles and
+6.9 % by area, and fusing twelve raises directly observed surface to 15.9 % of
+triangles and 24.1 % by area. Inside the four 90 degree rectilinear crops the
+fishnet actually cuts against, one panorama reaches only 2.3 % of triangles and
+3.2 % by area, counted over the distinct source triangles in
+`outputs/korenmarkt_fishnet_vistas/*_fishnet.npz`. So the two single capture
+figures quoted elsewhere in this repository are not comparable and the full
+sphere pair is the one to read against the fused number. A third pair, 3.3 % of
+triangles and 4.4 % by area, appears in `REPORT.md` and in `FIGURES/README.md`
+for this same figure and reproduces from nothing shipped.
+Coverage then saturates: twelve panoramas reach 77 % of the area the site can
+ever offer within 60 m and twenty six reach 90 % of its triangles, which sets the
+per site budget at twelve to sixteen. The remaining 55 % of the scene is roofs,
+courtyards and rear elevations that no street level capture ever sees, and that
+ceiling is the reason section 9.3 can only test a partially evidence bound scene.
+Source `outputs/walk_korenmarkt/walk_coverage.json` and
+`outputs/walk_korenmarkt_saturation/walk_saturation.json`.
 
 ### 3.2 Registration
 
@@ -360,8 +376,10 @@ $\pm 8$ m runs to $-7.81$ m at the same 9.52, and $\pm 25$ m runs to $-22.60$ m 
 absorbing the mesh skyline bias, not of convergence.
 
 The practical consequence is that a pose gate must consume the conflict fraction
-rather than the residual. 30 of the 83 poses are pinned against a 3 m altitude
-bound, and a 4 degree residual threshold passes many of them.
+rather than the residual. 32 of the 83 poses sit at their altitude search bound,
+24 of them at a 3 m bound, and a 4 degree residual threshold passes 13 of the 40
+conflicting poses. The table above and both counts are
+`outputs/registration_sky_conflict.csv`.
 
 ### 3.3 Fishnet: cutting the surface against the image
 
@@ -419,7 +437,7 @@ numbers are the honest statement of how much of the result is evidence based.
 
 Consider base stations scattered on the ground at uniform areal density $\nu$, each
 at height $h$ above the pedestrian head and horizontal range $r$, so the
-elevation at which the pedestrian sees it is $\alpha = \arctan(h / d)$.
+elevation at which the pedestrian sees it is $\alpha = \arctan(h / r)$.
 The goal is to convert *sites per unit ground area*, which is what a deployment
 has, into *sites per unit elevation*, which is what the sky looks like from the
 standpoint.
@@ -569,7 +587,7 @@ The isotropic model is a control, not a deployment. It is uniform over $4\pi$, s
 $\chi$ under it reduces to a purely geometric openness measure and carries no
 network assumption at all. Reporting it beside the directional models separates
 what the built form does from what the deployment assumption does, and section
-10.1 shows that separation is the main result.
+9.2 shows that separation is the main result.
 
 ### 4.3.1 There is no deployment to calibrate these against
 
@@ -621,11 +639,19 @@ That turns out not to matter, because the model consumes an elevation
 distribution and not a height. Running the same band law on the Kista geometry
 and comparing where each class puts its weight:
 
-| model | height above ground | below 5 deg | 5 to 20 deg | above 20 deg |
-|---|---|---|---|---|
-| street small cell | 4 to 8 m | 87.9 % | 11.8 % | 0.3 % |
-| Kista, as measured | 8.5 to 12 m | 84.0 % | 15.3 % | 0.8 % |
-| macro rooftop | 15 to 45 m | 9.4 % | 80.8 % | 9.8 % |
+| model | height above ground | range band | below 5 deg | 5 to 20 deg | above 20 deg |
+|---|---|---|---|---|---|
+| street small cell | 4 to 8 m | 10 to 150 m | 87.9 % | 11.8 % | 0.3 % |
+| Kista, as measured | 8.5 to 12 m | 10 to 250 m | 84.0 % | 15.3 % | 0.8 % |
+| macro rooftop | 15 to 45 m | 25 to 250 m | 9.4 % | 80.8 % | 9.8 % |
+
+Heights are above ground and the model's own bands are above the pedestrian head,
+1.5 m lower. The Kista row needs a range band that the campaign does not state, and
+10 to 250 m is used because the campaign measured out to 250 m and its transmitters
+stand on the square itself. The row is sensitive to that choice: holding the height
+band and moving the near cap from 10 m to 25 m moves the grazing measure from
+84.0 % to 84.6 % and the above-20 entry from 0.8 % to 0.1 %, which does not change
+the conclusion below.
 
 A source in the height gap is illuminationally a small cell, not something
 between the classes: it differs from the street model by 3.9 points of grazing
@@ -644,11 +670,13 @@ sites that carry the most interpretive weight. Reporting $\chi$ at 150, 250 and
 
 ### 4.4 Normalisation
 
-$Q$ is normalised by quadrature in elevation and not on the direction grid:
+Write $\tilde Q(\alpha) = W(\alpha)/\sin^{3}\alpha$ for the unnormalised weight of
+(4), which is a density on the sphere up to a constant. $Q$ is normalised by
+quadrature in elevation and not on the direction grid:
 
 $$\mathcal N = 2\pi \int_{\alpha_{\min}}^{\alpha_{\max}}
-w(\alpha)\, \cos\alpha \ d\alpha,
-\qquad Q = w / \mathcal N .$$
+\tilde Q(\alpha)\, \cos\alpha \ d\alpha,
+\qquad Q = \tilde Q / \mathcal N .$$
 
 This matters because a $1/\sin^3$ law puts most of its mass in the first few
 degrees above the horizon, which a few hundred cell direction grid cannot
@@ -699,8 +727,8 @@ for any $Q$. This is a parameter free identity, not a calibration.
 
 For each ray, from the current position $\mathbf x$ and direction $\hat u$:
 
-1. **Intersect** the support mesh. No hit means the ray escapes; deposit it into
-   (6) and stop.
+1. **Intersect** the support mesh. No hit means the ray escapes, so deposit it
+   into (6) and stop.
 2. **Advance** to the hit point, accumulate path length, orient the surface normal
    against the incoming ray, and form $\cos\theta = -\hat u \cdot \hat n$.
 3. **Attenuate** by the unpolarised power reflectance of the surface class,
@@ -746,7 +774,7 @@ walkability gate in section 6.
 **Excess delay.** For an escaping ray with total path length $\ell_K$ and last
 vertex $\mathbf x_K$,
 
-$$\Delta = \ell_K - \hat u_{\rm ext}\cdot(\mathbf x_K - S),
+$$\Delta = \ell_K - \hat u_{\rm ext}\cdot(\mathbf x_K - \mathbf x),
 \tag{9}$$
 
 which is the extra path relative to a plane wave arriving from
@@ -778,21 +806,25 @@ drawn in a figure are the rays that were integrated.
 ## 6. Standpoint sampling
 
 Walkable ground is decided by ray casting, not by a map layer. Over a candidate
-grid of spacing $\Delta$ within radius $R_{\rm walk}$ of the anchor:
+grid of spacing $\delta$ within radius $R_{\rm walk}$ of the anchor, 3 m and 90 m
+in every run reported here:
 
-1. cast downward, keep the first hit;
-2. require a near horizontal face, $\lvert n_z\rvert \ge 0.85$;
-3. require the hit within a tolerance of the square's ground datum, which rejects
-   roofs and bridged geometry;
-4. require a clearance standoff so the head is not inside a wall or a market
-   stall;
-5. require $f_{\rm sky} \ge 10^{-2}$, which is the test that catches a standpoint
+1. cast downward and keep the first hit.
+2. Require a near horizontal face, $\lvert n_z\rvert \ge 0.85$.
+3. Require the hit within a tolerance of the square's ground datum, which rejects
+   roofs and bridged geometry.
+4. Require a clearance standoff so the head is not inside a wall or a market
+   stall.
+5. Require $f_{\rm sky} \ge 10^{-2}$, which is the test that catches a standpoint
    inside a building. A clearance test alone does not: a point in the middle of a
    large room has metres of space in every direction and passes, then traces to a
-   susceptibility seven orders of magnitude below its neighbours.
+   susceptibility orders of magnitude below its neighbours.
 
 Survivors are chained by greedy nearest neighbour into a walk, and a run traces a
-stratified subset of it.
+stratified subset of it. At Korenmarkt the clearance standoff takes 821
+candidates to 801 and the sky fraction gate then rejects none of them, so gate 5
+is insurance rather than a load bearing filter at this site. The counts are in
+the `walk` block of every manifest.
 
 **This is a walk, not a sampling design, and the distinction is load bearing.** A
 contiguous split half of one site's standpoints gives a Kolmogorov statistic of
@@ -827,11 +859,18 @@ $$P_{\rm abs} = \oint S_{ab}\, dA,
 \qquad
 \mathrm{SAR}_{\rm wb} = \frac{P_{\rm abs}}{m_{\rm body}} .$$
 
-The phantom is the IT'IS adult male, standing, 72.4 kg, 56,024 surface triangles.
+The phantom is the IT'IS adult male Duke, standing, 72.4 kg, 56,024 surface
+triangles.
 
-**A free consistency check.** Dividing $P_{\rm abs}$ by the mean $S_{ab}$ recovers
-1.956 m$^2$, an adult male body surface area, from two independently computed
-quantities.
+**A weak consistency check.** Dividing $P_{\rm abs}$ by the mean $S_{ab}$ recovers
+1.96 m$^2$ at the median of the 120 Korenmarkt standpoints under rooftop
+illumination, which is an adult male body surface area, from two independently
+computed quantities. It is weak rather than exact because $P_{\rm abs}$ is the
+area weighted integral while the reported mean $S_{ab}$ is an unweighted mean over
+triangles, so the ratio is the area only up to the correlation between triangle
+area and illumination. Across the 120 standpoints and the three illumination
+models it spans 1.80 to 2.05 m$^2$. Recovering the area exactly would need an
+area weighted mean, which the pipeline does not currently store.
 
 ---
 
@@ -844,11 +883,32 @@ suite rather than a one off.
 
 **Zero bounce isotropic susceptibility equals the sky fraction.** Under
 $Q = 1/4\pi$, the zero bounce part of (5) is $4\pi \cdot N_{\rm sky}/N \cdot
-1/4\pi = f_{\rm sky}$. Measured: median 0.2599 against 0.2599, agreeing to every
-digit printed. One check exercises the direction binning, the solid angle weights,
-the occlusion test and the normalisation simultaneously.
+1/4\pi = f_{\rm sky}$. One check exercises the direction binning, the solid angle
+weights, the occlusion test and the normalisation simultaneously, and unlike the
+ground plane cases it holds for any geometry at all. It is asserted on a plane, on
+a sphere and on empty space in
+`tests/test_propagation.py::test_zero_bounce_susceptibility_equals_the_sky_fraction`,
+and no file in `outputs/` records a measured pair.
 
-**Free space returns exactly 1**, for every illumination model.
+The identity holds to Monte Carlo precision rather than exactly, and the near miss
+is worth stating because it reads like a bug. The sky fraction is a ratio of sums
+over all rays while the zero bounce susceptibility sums a per cell mean, so the two
+differ by the covariance between a cell's escape rate and its ray count. Over the
+120 Korenmarkt standpoints of `clean_geometric` the median pair is 0.2465 against
+0.2470 and the worst standpoint disagrees by 1.2 %. A companion test asserts the
+residual falls as the ray count grows, which a genuine normalisation error would
+not. An earlier draft of this section quoted a median of 0.2599 against 0.2599
+agreeing to every digit printed, and nothing in `outputs/` reproduces that pair, so
+it is not carried forward.
+
+**Free space returns 1 to within the Monte Carlo noise of the run**, for every
+illumination model. `outputs/exposure_korenmarkt/exposure_validation.json`, at
+400,000 rays and 256 direction cells, gives 1.0000000 isotropic, 0.9874 rooftop
+and 1.0107 street small cell, so the directional models sit inside 1.3 %. The
+identity is exact in expectation, not per realisation, and the two directional
+models are noisier only because their measure is concentrated in a narrow
+elevation band. That file predates the section 4.2 correction, so its rooftop and
+street entries are the superseded law. The identity itself is law independent.
 
 #### What section 8 cannot catch
 
@@ -865,13 +925,20 @@ rederiving the integral, not by any test failing.
 
 ### 8.2 Closed forms
 
-| case | closed form | measured |
-|---|---|---|
-| perfectly conducting ground plane | $\chi = 2$ exactly | exact |
-| dielectric ground plane, 9 elevation bands | band averaged Fresnel | 1.02 % |
-| Lambertian plane | $K = 1 + 2\sin\alpha$ | exact |
-| ground plane excess delay | $\Delta = 2z\sin\alpha$ for an observer $z$ above the plane, mean $z/2$ throughput weighted | 2 % |
-| closed lossless cavity | energy conserving | pass |
+| case | closed form | measured | in `exposure_validation.json` |
+|---|---|---|---|
+| perfectly conducting ground plane | $\chi = 2$ exactly | upper hemisphere mean 1.9999823, worst cell 1.15 % | yes |
+| dielectric ground plane, 9 elevation bands | band averaged Fresnel | 1.02 % worst relative error | yes |
+| Lambertian plane | $K = 1 + 2\sin\alpha$ | exact | **no file** |
+| ground plane excess delay | $\Delta = 2z\sin\alpha$ for an observer $z$ above the plane, mean $z/2$ throughput weighted | 2 % | **no file** |
+| closed lossless cavity | energy conserving | pass | **no file** |
+
+The last three rows run as tests in `tests/test_propagation.py` and leave no
+artifact in `outputs/`, so their tolerances are the assertions in the suite rather
+than a recorded measurement. The first two are in
+`outputs/exposure_korenmarkt/exposure_validation.json`, which was written before
+the section 4.2 correction. Neither depends on the illumination law: the perfect
+conductor and the dielectric plane are both scored per elevation band.
 
 The perfect conductor case **cannot discriminate**: both polarisations reflect
 fully, so it returns 2 whether the Fresnel average is right, TE only or TM only.
@@ -883,9 +950,52 @@ the difference.
 
 | parameter | curve | operating point |
 |---|---|---|
-| bounce depth $L$ | $\chi = 0.29894$ at $L=4$ against $0.29902$ at $L\ge6$; truncated throughput share $0.567$ at $L=1$, $6.9\times10^{-4}$ at $L=4$, $0$ by $L=8$ | $L=4$ |
-| ray count $N$ | $f_{\rm sky} = 0.24596$ at $2\times10^{5}$, $0.2459935$ at $2\times10^{6}$ | $2\times10^{5}$ |
+| bounce depth $L$ | $\chi_{\rm iso} = 0.35134$ at $L=4$ against $0.35137$ at $L\ge6$, a 0.0004 dB difference. Truncated throughput share $0.2515$ at $L=1$, $6.3\times10^{-4}$ at $L=4$, $1.4\times10^{-5}$ at $L=6$, $0$ by $L=8$ | $L=3$, see `BOUNCE_BUDGET.md` |
+| ray count $N$ | over four seeds, $f_{\rm sky} = 0.23711 \pm 0.00085$ at $2\times10^{5}$ and $0.23695 \pm 0.00027$ at $1.6\times10^{6}$, with the relative standard deviation of $\chi_{\rm roof}$ falling from 2.2 % to 0.8 % over that span | $2\times10^{5}$ |
 | crop radius $R_{\rm crop}$ | section 9.4 | 250 m |
+
+Both rows are one standpoint of Korenmarkt at the 130 m crop, recorded in
+`outputs/exposure_korenmarkt/exposure_convergence.json`, and that file states it
+was recomputed after a `max_bounces` off by one fix so that the parameter now
+counts surface interactions. An earlier draft of this table carried
+$\chi = 0.29894$ against $0.29902$, a truncated share of $0.567$ at $L=1$ and
+$f_{\rm sky} = 0.24596$ at $2\times10^{5}$, which are the pre-fix numbers and are
+not reproducible from any file in `outputs/`.
+
+**The $L=4$ against $L=6$ comparison is paired, and read otherwise it means
+nothing.** The two differ by 0.0004 dB, far inside the per standpoint Monte Carlo
+noise of a single run, so a reader who applies that run's error bar to it would
+correctly conclude the comparison is empty. It is not, because both legs trace
+*the same rays* at the same seed and are identical up to the fourth interaction.
+The difference is a paired one and its error is orders of magnitude smaller than
+either number's own.
+
+The operating point is now three surface interactions and it is written in one
+place, `DEFAULT_MAX_BOUNCES` in `semantic_twin/propagation/tracer.py`, which
+`TraceConfig`, `run_exposure.py` and every driver read. `BOUNCE_BUDGET.md` owns
+the justification, which is about where the photographic evidence reaches rather
+than about a convergence threshold, and it measures the drop from 4 to 3 at a
+median 0.002 dB with no standpoint of 40 moving half a decibel. Russian roulette
+is off at that budget, pinned by `roulette_start = DEFAULT_MAX_BOUNCES + 1`.
+
+The operating point was not uniform across the results that predate that change,
+and the manifests rather than the prose are the record. Section 9.2's eleven city
+run has been retraced at three as `city250_L3_*`. The crop convergence sweep, the
+sub street ablation and the law comparison ran at $L=4$. The evidence ladder of
+section 9.3, the 120 standpoint Korenmarkt runs behind section 9.1, and the
+superseded eleven city run ran at $L=6$. The table above puts $L=4$ and $L=6$
+0.0004 dB apart, so those runs are interchangeable at the reported precision.
+
+**Almost no result in this study carries a Monte Carlo error bar.** `PointResult`
+has no variance field and no run under `outputs/` reports one. The estimator is
+stochastic from the first interaction, not only at the roulette, because the
+specular against diffuse choice is a draw on the Rayleigh coherent fraction and
+the diffuse directions are cosine sampled. Seeds are fixed so runs reproduce, and
+reproducible is not converged. The exception is `CODE_AUDIT.md` section 4, which
+retraced 120 standpoints over eight disjoint seed streams and measured the walk
+median standard deviation at 0.0042 dB isotropic, 0.0136 dB rooftop and 0.0343 dB
+street small cell, and the per standpoint median at 0.004, 0.024 and 0.118 dB.
+Those are the only variance measurements in the study.
 
 ---
 
@@ -897,31 +1007,55 @@ claim.
 
 ### 9.1 Within one square
 
-120 standpoints at Korenmarkt, fifth to ninety fifth percentile:
+120 standpoints at Korenmarkt, the geometric material prior, fifth to ninety
+fifth percentile. Both illumination laws are shown because the correction of
+section 4.2 changes this table more than any other in the document, and the
+superseded column is what every figure and report written before 2026-08-02
+carries.
 
-| illumination | $p_{05}$ | median | $p_{95}$ | spread |
-|---|---|---|---|---|
-| isotropic | 0.195 | 0.314 | 0.441 | **3.5 dB** |
-| macro rooftop | 0.022 | 0.138 | 0.393 | **12.5 dB** |
-| street small cell | 0.004 | 0.066 | 0.274 | **18.0 dB** |
+| illumination | $p_{05}$ | median | $p_{95}$ | spread, corrected | spread, superseded |
+|---|---|---|---|---|---|
+| isotropic | 0.195 | 0.310 | 0.422 | **3.4 dB** | 3.4 dB |
+| macro rooftop | 0.077 | 0.217 | 0.503 | **8.1 dB** | 12.5 dB |
+| street small cell | 0.007 | 0.096 | 0.314 | **16.7 dB** | 18.5 dB |
+
+Percentiles are the corrected law, `clean_geometric`. The superseded column is
+`korenmarkt_geometric`, whose medians are 0.310, 0.138 and 0.065. Isotropic is
+untouched by the correction, as it must be.
+
+**This run is at the 130 m crop, which section 9.4 shows is not converged for
+either directional model.** The directional columns are therefore upper bounds:
+at 130 m the corrected rooftop number is inflated by about 0.6 dB and the street
+one by about 7.2 dB against a 340 m reference. There is no 250 m run over these
+120 standpoints, only over the 80 standpoint city walk, so this table cannot be
+lifted to the converged radius without retracing.
 
 **The illumination model matters more than the position.** Standing anywhere in
-one square changes exposure by 3.5 dB under isotropic illumination, by 12.5 dB
-under rooftop macro sites and by 18 dB under street small cells, because
+one square changes exposure by 3.4 dB under isotropic illumination, by 8.1 dB
+under rooftop macro sites and by 16.7 dB under street small cells, because
 directional sources arrive in narrow elevation bands that the built form either
-admits or blocks completely.
+admits or blocks completely. Under the superseded law the two directional
+figures were 12.5 and 18.5 dB, so the correction cuts the rooftop claim by more
+than 4 dB while leaving the ordering intact.
 
-Carried to the body, the same standpoints give a peak $S_{ab}$ spanning 12.7 dB
-and a whole body SAR spanning 13.0 dB. The dosimetric endpoint inherits the
-illumination geometry's spread, not the scene's average openness.
+Carried to the body, the same standpoints give a peak $S_{ab}$ spanning 7.8 dB
+and a whole body SAR spanning 8.6 dB under the corrected rooftop law, against
+12.7 and 13.0 dB superseded. The dosimetric endpoint inherits the illumination
+geometry's spread, not the scene's average openness.
 
 ![Exposure distribution over one square](FIGURES/14_exposure_cdf_korenmarkt.png)
 
 **Figure 7.** Korenmarkt over 120 standpoints. Left is the environment side, the
 susceptibility under the three illumination models. Middle is the body side,
 absorbed power density through the phantom. Right places each standpoint on the
-ground. The spatial panel carries the point: the open square runs 10 to 15 dB
-hotter than the streets leaving it, and that is geometry rather than material.
+ground, spanning 22 dB from the open square to the deepest street. The spatial
+panel carries the point: the open square runs 10 to 15 dB hotter than the streets
+leaving it, and that is geometry rather than material.
+
+**This asset is stale and must be rebuilt before submission.** It is the
+superseded illumination law, it does not match any file currently in `outputs/`,
+and its axis label still carries the pre-overhaul symbol $\chi_S$. The rooftop and
+street curves in the left panel are the superseded column of the table above.
 
 ### 9.2 Across eleven squares
 
@@ -943,9 +1077,13 @@ worth stating plainly, because it is large.
 | stage | built for | reaches this table |
 |---|---|---|
 | panoramas acquired | 10 of 11 sites | none |
-| skyline registrations | 83 poses at 9 sites | none |
+| skyline registrations | 83 poses at 8 sites | none |
 | fishnet surfaces | 2 sites | none |
-| SAM 3 material axis | 2 panoramas | none |
+| SAM 3 material axis | 12 panoramas, the two hero captures plus the ten Korenmarkt walk stations | none |
+
+The 83 poses carry nine site labels in
+`outputs/registration_sky_conflict.csv`, but `korenmarkt` and `korenmarkt_walk`
+are the same square, so the distinct site count is eight.
 
 Krakow, London and Toulouse have no panoramas at all, so a materially bound
 eleven city comparison is not merely unbuilt, it is unacquirable without
@@ -956,30 +1094,46 @@ therefore about **built form under a common material assumption**, and the word
 semantic in this pipeline's name describes section 9.3's Korenmarkt experiment
 rather than the eleven city result.
 
-| site | isotropic median | rooftop, superseded | rooftop, corrected | street, corrected | isotropic spread [dB] | rooftop spread [dB] |
-|---|---|---|---|---|---|---|
-| Krakow Rynek | 0.5304 | 0.7052 | **0.9001** | 0.4600 | 0.77 | 2.26 |
-| Toulouse Capitole | 0.3992 | 0.0981 | **0.3383** | 0.0318 | 2.31 | 5.30 |
-| Mexico City Zocalo | 0.3974 | 0.0816 | **0.2990** | 0.0297 | 2.14 | 4.39 |
-| London Trafalgar | 0.3894 | 0.0767 | **0.2868** | 0.0268 | 3.54 | 3.07 |
-| Prague Staromestske | 0.3626 | 0.0631 | **0.2357** | 0.0194 | 4.33 | 5.86 |
-| Milan Duomo | 0.3538 | 0.0799 | **0.2477** | 0.0351 | 2.73 | 2.51 |
-| Madrid Plaza Mayor | 0.3473 | 0.0341 | **0.1462** | 0.0080 | 6.15 | 8.38 |
-| Ghent Korenmarkt | 0.2917 | 0.0483 | **0.1627** | 0.0143 | 2.85 | 6.39 |
-| Brussels Grand-Place | 0.2351 | 0.0251 | **0.0976** | 0.0065 | 5.96 | 13.29 |
-| Tokyo Hachiko | 0.2238 | 0.0363 | **0.1009** | 0.0155 | 3.42 | 6.98 |
-| New York Times Square | 0.1629 | 0.0924 | **0.1294** | 0.0561 | 3.67 | 6.34 |
+The run is `city250_L3_*`, the single writer sweep at a bounce budget of three on
+the measured ground datum, 880 standpoints with no torn records.
+`AGGREGATE_REBUILD.md` audits it and lists every number that moved against the
+earlier `city250_corrected_*` tag this section used to carry.
 
-Spreads are the fifth to ninety fifth percentile of the corrected run. The
-superseded rooftop column is kept beside its replacement rather than deleted, so
-any number published before 2026-08-02 can be located rather than merely
-apologised for.
+| site | isotropic median | rooftop median | street median | isotropic spread [dB] | rooftop spread [dB] |
+|---|---|---|---|---|---|
+| Mexico City Zocalo | 0.3977 | 0.3070 | 0.0291 | 2.19 | 5.06 |
+| London Trafalgar | 0.3946 | 0.2884 | 0.0276 | 4.04 | 4.55 |
+| Krakow Rynek | 0.3841 | 0.2681 | 0.0232 | 1.70 | 2.86 |
+| Prague Staromestske | 0.3584 | 0.2377 | 0.0197 | 4.29 | 4.95 |
+| Milan Duomo | 0.3559 | 0.2451 | 0.0375 | 2.80 | 2.55 |
+| Madrid Plaza Mayor | 0.3433 | 0.1447 | 0.0079 | 6.46 | 9.35 |
+| Toulouse Capitole | 0.2963 | 0.2219 | 0.0174 | 5.17 | 11.40 |
+| Ghent Korenmarkt | 0.2916 | 0.1626 | 0.0143 | 2.85 | 6.39 |
+| Tokyo Hachiko | 0.2334 | 0.0996 | 0.0161 | 3.36 | 5.46 |
+| Brussels Grand-Place | 0.2223 | 0.0987 | 0.0067 | 5.88 | 12.89 |
+| New York Times Square | 0.1694 | 0.1271 | 0.0604 | 3.92 | 5.77 |
 
-Corrected medians span **5.13 dB isotropic and 9.65 dB rooftop**, against 14.49 dB
-rooftop under the superseded law. The largest spread *within* one square is
-6.15 dB isotropic at Madrid, and 13.29 dB rooftop at Brussels. So under isotropic
-illumination, where in a square a person stands can matter more than which of
-eleven cities on three continents the square is in.
+Spreads are the fifth to ninety fifth percentile within each site. All three
+illumination columns are the corrected law of section 4.2.
+
+**The superseded rooftop column that used to sit inside this table has moved to
+the law comparison below**, because it belongs to a different run in two ways at
+once. It was computed under the superseded elevation law *and* on the superseded
+ground datum, which put the Krakow and Toulouse standpoints on the roof of the
+Cloth Hall and of the Capitole. Reading it as a column of this table implied a
+pairing that does not exist. The runs it comes from, `city250_*` and
+`city250_corrected_*`, are kept on disk so any number published before
+2026-08-03 can still be located.
+
+Medians span **3.71 dB isotropic, 4.93 dB rooftop and 9.58 dB street small
+cell**. The largest spread *within* one square is 6.46 dB isotropic at Madrid,
+and 12.89 dB rooftop at Brussels. So under isotropic illumination, where in a
+square a person stands matters more than which of eleven cities on three
+continents the square is in, by a margin of 2.75 dB.
+
+Mexico City Zocalo is the most exposed of the eleven on both isotropic and
+rooftop illumination. Rank correlation between the columns is Spearman +0.936
+for rooftop against isotropic and +0.345 for street against isotropic.
 
 ![Eleven squares, one pipeline](FIGURES/16_eleven_cities_exposure.png)
 
@@ -990,17 +1144,40 @@ fraction, right is peak absorbed power density at the phantom. The middle panel
 is the one to trust unreservedly, because sky fraction converges by 100 m and
 carries no illumination assumption at all.
 
-Krakow is the dark red outlier at the right of all three panels, and it is not an
-open square outperforming the rest. Its ground datum sits 18.6 m above the
-surrounding pavement, so its standpoints are on the roof of the Cloth Hall.
-Toulouse has the same defect at 13.6 m. Those two rows are invalid pending a fix
-to the datum estimator, and the remaining nine are unaffected.
+**This asset was rebuilt on 2026-08-03 and now draws the table above.** It comes
+from `city250_L3_*` through `FIGURES/make_eleven_cities_exposure.py`, which
+refuses to draw unless all eleven sites are present, every standpoint count is
+equal and no line failed to parse. The version shipped before that date was
+copied from an aggregate a concurrent run was still writing, so its legend read
+`brussels grandplace (3)` and its rooftop panel was the superseded law.
+`AGGREGATE_REBUILD.md` is the audit of that failure. One cosmetic defect
+survives the rebuild: the susceptibility axis still carries the pre-overhaul
+symbol $\chi_S$.
 
-**Both rooftop columns are shown because the correction is not cosmetic.** The
-isotropic column is unaffected and comes out bit identical, to within 0.001 dB at
-every site, because the isotropic model has no elevation weight to correct. What
-the correction does to the rooftop column, on the same standpoints at the same
-crop:
+Krakow is no longer the outlier at the right of the panels, and the reason is
+worth keeping rather than quietly dropping. Under the superseded ground datum its
+datum sat 18.19 m above the surrounding pavement, so its standpoints were on the
+roof of the Sukiennice, and Toulouse had the same defect at 13.94 m on the
+Capitole. The estimator took the median downward first hit over a 15 m disc at
+the crop centre, and at both sites the centre of the square is a building.
+`GROUND_DATUM.md` carries the replacement rule, the eleven measured datums, and
+three independent checks on them, including agreement with the registered camera
+ground height to 0.30 m at the eight sites that carry one. Coming down to the
+pavement moved Krakow by $-1.40$ dB isotropic, $-5.26$ dB rooftop and $-12.97$ dB
+street, and Toulouse by $-1.29$, $-1.83$ and $-2.61$ dB. Nine of the eleven
+datums move by less than a quarter of a metre and their medians move by 0.001 to
+0.24 dB, which is the standpoint resampling rather than the physics.
+
+**The law correction is not cosmetic, and it is measured on the superseded
+datum run rather than on the table above.** The comparison below pairs
+`city250_*` against `city250_corrected_*`, both at the old datum, because those
+are the only two runs that share standpoints and differ only in the elevation
+law. Its Krakow and Toulouse rows are therefore the roof, and its absolute levels
+are not the ones in the table above. What survives the datum fix is the shape of
+the correction, not the levels. The isotropic column is unaffected and comes out
+bit identical, to within 0.001 dB at every site, because the isotropic model has
+no elevation weight to correct. What the correction does to the rooftop column,
+on the same standpoints at the same crop:
 
 | | superseded | corrected |
 |---|---|---|
@@ -1064,6 +1241,13 @@ section 4.2, so the first three rows are the numbers published before
 2026-08-02 and reproduce them to the last stored digit at every one of the 120
 standpoints.
 
+**The 0.298 dB figure must not be quoted as measured.** It is computed under the
+superseded fixed height law, it has never been measured under the corrected one,
+and the eight seed replica study of `CODE_AUDIT.md` section 4.2 does not carry
+it, so no standard error exists for it. The corrected law equivalents are the
+first two rows of the every model table below, at 0.350 dB isotropic and
+0.364 dB rooftop.
+
 **No rung of this ladder ever consumed a conflicting pose.** Korenmarkt has
 thirteen registered poses and three of them conflict on their whole sky, and all
 three sat outside the ladder already, because the semantic stage gates on a
@@ -1080,7 +1264,8 @@ area rather than eroding it.
 
 Ungated, the three failing poses would have read as the best rung of the ladder.
 Apparent coverage doubles to 22.75 % of area and 14.82 % of faces, and it is
-fake: 6430 roof triangles are relabelled brick against 1328 in the clean set,
+fake: 6430 triangles the orientation rule calls roof or soffit are relabelled
+brick, against 1328 in the published eight and 1438 in the conflict passing nine,
 because a camera inside the geometry sees roof surfaces no street level camera
 can see. The exposure distribution does not notice that either, giving a rooftop
 median of 0.1477 and a 0.302 dB shift against the clean set's 0.298 dB. So the
@@ -1096,6 +1281,15 @@ Every illumination model, at the top rung against the zero evidence rung:
 | rooftop, as published | 0.1377 | 0.1475 | 0.298 dB | 1 of 120 | 12.47 dB | 12.47 dB |
 | street small cell, corrected | 0.0965 | 0.0982 | 0.079 dB | 1 of 120 | 16.70 dB | 16.63 dB |
 
+**The street small cell row is a single draw from a noisy distribution and is
+not resolved.** `CODE_AUDIT.md` section 4.2 retraced this shift over eight
+disjoint seed streams and got 0.079 to 0.269 dB, a factor of 3.4, with the seed 7
+value printed above the lowest of the eight. The seed averaged value is
+$0.167 \pm 0.022$ dB. So the tempting reading of the four rows, a shift that
+shrinks monotonically as the illumination gets more directional, does not
+survive: on seed averaged numbers the trend is 0.347, 0.383 and 0.167 dB and it
+is not monotone.
+
 The isotropic row is the one the section 4.2 correction cannot touch, and it is
 also the row that moves most, both in the count of standpoints and in the width
 of the distribution, which goes from 3.36 to 3.88 dB. That is the narrowest of
@@ -1103,12 +1297,13 @@ the four distributions, so a movement that is negligible against a 12 dB spread
 is not negligible against a 3 dB one. **The per standpoint picture is
 not a null and should not be quoted as one.** Under isotropic illumination the
 worst single standpoint moves by 1.98 dB and 17 of 120 move by more than 1 dB,
-while the typical standpoint moves by 0.001 dB and the distribution median by
-0.35 dB. The movement is strongly asymmetric: the 53 standpoints that fall do so
-by at most 0.24 dB, and the tail that rises reaches 1.98 dB. So the effect is
-concentrated in a minority rather than absent. The published "1 of 120" is
-true of the rooftop model it was measured on and is the most flattering of the
-four rows.
+while the median standpoint moves by 0.06 dB and the distribution median by
+0.35 dB. The movement is strongly asymmetric: 53 standpoints fall and 66 rise, the
+falls reach at most 0.24 dB and the rises reach 1.98 dB, which is why the median
+*signed* shift is 0.0007 dB and quoting that as the typical movement understates
+it by two orders of magnitude. The effect is concentrated in a minority rather
+than absent. The published "1 of 120" is true of the rooftop model it was measured
+on and is the most flattering of the four rows.
 
 **This is a strong negative rather than a null.** The semantic posterior and the
 orientation prior **disagree on 50 % of the area they both cover** over the
@@ -1125,40 +1320,80 @@ layer earns its place through occlusion handling, evidence confidence and cross
 capture validation rather than by moving the exposure number.** That is both more
 defensible and more falsifiable than the claim it replaces.
 
-#### What this ladder does not test
+#### The material axis, tested
 
-The material axis never varied on facades, so the result is about **entity**
-segmentation and not about material discrimination.
+The ladder above varies entity coverage. Whether resolving brick against glass on
+the same facade also moves exposure is a separate question, and it was untested
+until 2026-08-02. It is now tested and the answer is a stronger null.
 
 `semantics.py` runs a cascade. Mask2Former on Mapillary Vistas owns the entity
 axis, and SAM 3 owns the material axis, because Vistas has a single `Building`
 class covering brick, render, ashlar, glass curtain wall and metal cladding,
-whose permittivity and roughness are not close to each other. Of the 96 panoramas
-processed for this study, **94 ran `mask2former` alone and 2 ran the hybrid
-cascade**, those two being the Korenmarkt and Milan hero panoramas used for the
-scene figures. Every one of the eight walk stations behind the top rung is
-`mask2former` only.
+whose permittivity and roughness are not close to each other. The published
+ladder ran `mask2former` alone on all eight walk stations, so `bind_from_walk`
+mapped the Vistas entity through a fixed $p(\text{material}\mid\text{entity})$
+table and took the argmax. `Building` resolves to `brick` deterministically, and
+`Building` is **74.3 %** of the 42,005 face observations the eight stations bind,
+74.6 % of the 44,755 the nine bind. In that binding `semantic_glass` claims 1
+triangle of 157,862 and `semantic_plasterboard` claims none.
 
-`bind_from_walk` therefore maps the Vistas entity through a fixed
-$p(\text{material}\mid\text{entity})$ table and takes the argmax. `Building`
-resolves to `brick` deterministically, and `Building` is **74.3 %** of the
-face observations the eight stations bind. So three quarters of the image
-evidence in the top rung carries one material by construction, and the ladder
-could not have moved it whatever the photographs showed. What it did move is the
-minority where the entity itself implies the material: vegetation, road,
-pedestrian area, poles and rail.
+The hybrid backend has now been run on all eight stations, with the dense pass
+reused from cache so the entity axis is byte identical and only the material axis
+is new. Pooled over the eight, SAM 3 splits the `Building` and `Wall` pixels
+59.8 % brick, 23.0 % glass, 14.4 % plasterboard and 1.8 % marble, and 28.5 % of
+the facade area the entity axis called brick is reassigned: 11.9 % to glass,
+9.5 % to plasterboard, 4.8 % to marble. `semantic_glass` goes from 1 triangle to
+958 and `semantic_plasterboard` from 0 to 653. At 15 GHz brick to glass is
+$+2.35$ dB in normal incidence reflectance and specular rather than rough, and
+brick to plasterboard is $-2.49$ dB.
 
-This does not overturn the negative, it bounds it. Coverage genuinely rises from
-0 to 11 % of area and the distribution genuinely does not follow. But the claim
-licensed is that *entity* coverage does not move exposure. Whether resolving
-brick against glass on the same facade moves it is untested here, and testing it
-means running the hybrid backend on the walk stations rather than on two hero
-panoramas.
+Rebinding those facades and rerunning the same 120 standpoints:
 
-One limit stands. The ladder spans 0 to 11.0 %, which is as far as street level
-capture reaches, and it licenses nothing about a fully evidence bound scene. Roofs,
-courtyards and rear elevations are 55 % of the surface and no panorama count
-reaches them.
+| illumination | entity axis | SAM 3 material on the facades | shift | standpoints $>0.5$ dB | worst standpoint |
+|---|---|---|---|---|---|
+| isotropic | 0.3360 | 0.3379 | **0.024 dB** | **0 of 120** | 0.110 dB |
+| rooftop, corrected | 0.2354 | 0.2369 | **0.029 dB** | **0 of 120** | 0.193 dB |
+| street small cell | 0.0984 | 0.0989 | **0.022 dB** | 1 of 120 | 0.929 dB |
+
+Against fifth to ninety fifth percentile spreads of 3.9 dB isotropic, 8.4 dB
+rooftop and 16.7 dB street small cell in those same distributions, and against
+the 1.98 dB the worst standpoint moves when entity coverage goes from 0 to
+10.6 %, material discrimination on the facades is not a term in this problem.
+Repeating it on the nine conflict gated stations gives 0.023 dB isotropic and
+0.024 dB rooftop with the same 0 of 120, so the null does not depend on which
+walk set is used.
+
+**One measurement in this experiment moves and must not be misread.** Replacing
+the *whole* material field with the SAM 3 axis, rather than only the facades,
+shifts the isotropic median by $-0.218$ dB and moves 15 of 120 standpoints by
+more than 1 dB. That is not material discrimination. It is the material axis
+overwriting surfaces whose entity already determines their material: 932 m$^2$
+the entity called metal, 982 m$^2$ marble, 306 m$^2$ vegetation and 177 m$^2$
+asphalt all flow into brick, and metal to brick alone is a 9.67 dB reflectance
+drop on poles and street furniture. Measured on the axis it is competent at, the
+open vocabulary pass is worse than the class prior. So the conclusion is the one
+this section already reached, now confirmed on the second axis: **entity
+segmentation carries the material field, and material segmentation on top of it
+does not move exposure.**
+
+Cross capture agreement is the weakest number in the experiment. Independent
+captures of the same facade agree on the entity 71.3 % of the time across
+sequences and on the material only 42.3 %, with a worst pair at 24.5 %. The
+material axis is therefore noisier evidence as well as less consequential
+evidence, and a study that needed material at higher confidence would need more
+than one detector.
+
+This result is bounded by the square it was measured in. Korenmarkt is historic
+masonry, so the `Building` prior's brick default is approximately right and the
+tested swap is brick to glass at 2.35 dB. A square of metal cladding or glass
+curtain wall would test brick to metal at 9.67 dB, and nothing here licenses that
+case. The full run is in `SAM3_LADDER.md` and
+`outputs/exposure_korenmarkt/sam3lad_*`.
+
+One limit stands unchanged. The ladder spans 0 to 11.0 % of area, which is as far
+as street level capture reaches, and it licenses nothing about a fully evidence
+bound scene. Roofs, courtyards and rear elevations are 55 % of the surface and no
+panorama count reaches them.
 
 Every number here is in `outputs/exposure_korenmarkt/coverage_ladder_conflict_gated_15ghz.json`,
 the conflict passing station set is `outputs/walk_korenmarkt/walk_semantic_conflict9.npz`,
@@ -1178,6 +1413,13 @@ is the result. Note that the axis is the rooftop model, which is the most
 flattering of the four: the per standpoint movement under isotropic is larger,
 and the table above is the one to read for that.
 
+**This asset predates the conflict gate and the section 4.2 correction.** It shows
+three rungs at 0.0, 3.1 and 10.6 % of area rather than the four in the table, its
+axis is the superseded rooftop law, and it carries the pre-overhaul symbol
+$\chi_S$. The conclusion is unchanged under all four laws, so the figure is stale
+rather than wrong, but it should be rebuilt from
+`outputs/exposure_korenmarkt/coverage_ladder_conflict_gated_15ghz.json`.
+
 ---
 
 ### 9.4 The crop radius is not a free parameter
@@ -1185,13 +1427,15 @@ and the table above is the one to read for that.
 ![Crop convergence at Korenmarkt](FIGURES/15_crop_convergence.png)
 
 **Figure 10.** Nine crops from 60 to 340 m with the standpoints held fixed inside
-the smallest, so every radius scores the same pedestrians and only the
+the smallest, so every radius scores the same 32 pedestrians and only the
 surroundings change. The three illumination models order by how close to the
 horizon they put their weight, and that is also the order of how much crop they
 need. Throughout, the small crop is not missing scatterers that would add power,
 it is missing **blockers** that would remove it, which is why every curve
-approaches its limit from above.
-
+approaches its limit from above. The asset is
+`outputs/crop_convergence/korenmarkt_crop_convergence.json` and its plot, which is
+**the superseded illumination law only**. The corrected law is the table below and
+is not in this figure.
 
 Nine crops at Korenmarkt from 60 m to 340 m with the standpoints held fixed, so
 only the surroundings change.
@@ -1209,6 +1453,26 @@ nothing here turns on the statistic.
 | 250 m | 0.014 | 0.000 | 0.200 | **0.059** |
 | 300 m | $-0.001$ | $-0.001$ | 0.019 | 0.001 |
 
+**This table has no source file.** Nothing in `outputs/` reproduces it, and the
+same table appears in `MONOSTATIC_SBR.md` with two further columns for a path loss
+weighted law, also unsourced. Two crop sweeps were persisted and neither is this
+one. `outputs/crop_convergence/korenmarkt_crop_convergence.json` holds 32
+observers and `outputs/exposure_korenmarkt/exposure_crop_by_illumination.json`
+holds 27, both against the same 340 m reference, and both carry the superseded law
+alone. Their 130 m rows are
+
+| observers | rooftop, superseded | street, superseded |
+|---|---|---|
+| 32 | 3.236 | 9.930 |
+| 27 | 3.277 | 10.181 |
+| 24, this table | 3.545 | 10.359 |
+
+so the unsourced set sits 0.3 dB above both. That is the size of the standpoint set
+disagreement rather than a contradiction, and it is also the check quoted below as
+"a reproduction with a different standpoint set agreeing to 0.25 dB", which is the
+street column of the 32 against the 27. The corrected columns have no counterpart
+at all. The run has to be rerun and committed before this table can be published.
+
 Converged at a 0.1 dB criterion: sky fraction and isotropic by 100 m, rooftop 250
 to **200 m**, street small cell 300 to **250 m**.
 
@@ -1223,19 +1487,36 @@ was never small.
 The mechanism is that a small crop holds no geometry able to occlude near horizon
 sources, so rays escape to sky that a real building would have blocked. A larger
 crop adds missing **blockers**, not missing scatterers, and the number goes down.
-Decomposed, blocking accounts for 69 to 77 % of the effect and redistribution for
-the rest.
+Decomposed, blocking accounts for 69 % of the rooftop effect and 77 % of the
+street one, with redistribution of multi bounce throughput carrying the rest.
+$\chi$ splits with no residual into its zero bounce and multi bounce parts, so
+this decomposition contains no modelling. Source
+`outputs/exposure_korenmarkt/exposure_crop_decomposition.json`, 27 observers,
+superseded law.
 
-**The correction is not a constant offset.** Across eleven cities it ranges 0.05
-to 4.80 dB rooftop, 0.16 to 11.39 dB street and 0.03 to 0.96 dB even isotropic,
-where tall cities move most. That range is comparable to the whole between city
-spread, so a narrow crop distorts sites relative to each other rather than
+**The crop correction is not a constant offset.** Measured as the shift in the
+median from a 130 m mesh to a 250 m mesh over the ten sites that have both, Milan
+being the one site with no 130 m build, it ranges 0.05 to 4.80 dB rooftop, 0.16 to
+11.39 dB street and $-0.17$ to 0.96 dB isotropic, where tall cities move most and
+Brussels alone moves the other way. That range is comparable to the whole between
+city spread, so a narrow crop distorts sites relative to each other rather than
 shifting them together, and a between site comparison at 130 m is not safe either.
+Both legs of this comparison are the **superseded** illumination law, the
+`city_*` and `city250_*` tags, and it has not been remeasured across the ten sites
+under the corrected law. At Korenmarkt, where it has, the 130 m to 250 m median
+shift falls from 4.58 to 1.09 dB rooftop and from 11.37 to 8.21 dB street on the
+80 city standpoints, and from 3.64 to 0.51 dB and 10.08 to 6.94 dB on the 40
+standpoint set of `outputs/law_comparison/korenmarkt_law_comparison.json`. The two
+standpoint sets disagree on the size and agree on the direction and on which model
+binds.
 
-Three independent routes agree on this. The crop sweep itself; a reproduction with
-a different standpoint set agreeing to 0.25 dB; and registration, where the worst
-site's poses all look south across 200 m of open plaza and improve by about 30 %
-when re fitted against the 250 m shell.
+Three independent routes agree on this. The crop sweep itself. A reproduction on a
+different standpoint set, 27 observers against 32, agreeing to 0.04 dB rooftop and
+0.25 dB street at the 130 m radius where the disagreement is largest. And
+registration, where the worst site's poses all look south across 200 m of open
+plaza and improve by about 30 % when re fitted against the 250 m shell. The third
+route has no persisted artifact and is reported here as a recollection rather than
+a measurement.
 
 A refuted rule is recorded because it read well: *the crop must reach the farthest
 source*. Rooftop sources reach 250 m and rooftop converges at 250 m, which looks
@@ -1253,7 +1534,10 @@ sign agreement the mechanism previously rested on.
 site with meshes at multiple radii, 170, 200 and 250 m. It agrees on rooftop, with
 0.08 dB left in the 200 to 250 step, and it does not agree on street, where 0.95 dB
 is still moving against Korenmarkt's 0.50, and there is no larger Milan mesh to
-settle it. If anything the pressure on the street requirement is upward.
+settle it. If anything the pressure on the street requirement is upward. These four
+numbers come from the same unpersisted run as the paired table above and share its
+provenance problem. The three Milan meshes exist, so the comparison is
+reproducible, it just has not been written down.
 
 ---
 
@@ -1295,25 +1579,32 @@ correction of section 4.2 was derived, implemented and measured.
 
 | result | status |
 |---|---|
-| Section 8, validation ladder | **stable.** The closed forms are single height or isotropic, so the correction cannot touch them, and the suite passes under the corrected law |
-| Section 9.1, within square spread | **stable.** At a converged crop the correction moves it 0.72 dB rooftop and 0.14 dB street |
+| Section 8, validation ladder | **stable, partly unpersisted.** The closed forms are single height or isotropic, so the correction cannot touch them, and the suite passes under the corrected law. Only the conducting and dielectric planes leave an artifact in `outputs/`. The Lambertian plane, the excess delay and the cavity are assertions in `tests/test_propagation.py` with no recorded measurement |
+| Section 8.3, convergence table | **recomputed and previously stale.** The bounce and ray count rows now come from `exposure_convergence.json`. The figures an earlier draft carried predate a `max_bounces` off by one fix and are not reproducible |
+| Section 9.1, within square spread | **restated under the corrected law and at an unconverged crop.** It was 12.5 dB rooftop and 18.0 dB street, both superseded and both unlabelled. Corrected it is 8.1 and 16.7 dB. The run is at the 130 m crop, so both directional figures are upper bounds. At a converged crop the correction moves the spread only 0.72 dB rooftop and 0.14 dB street, which is a different comparison and not a substitute for retracing these 120 standpoints at 250 m |
 | Section 9.2, eleven cities, isotropic column | **stable and bit identical.** The isotropic model has no elevation weight to correct |
-| Section 9.2, eleven cities, rooftop column | **recomputed, all eleven sites.** Site dependent shift of 1.06 to 6.33 dB, reorders the cities, cannot be offset corrected. Both columns are in the table |
-| Section 9.3, material axis | **untested.** SAM 3 ran on 2 of 96 panoramas and on none of the eight walk stations. The ladder varied entity coverage, and `Building`, 74.3 % of bound observations, resolves to brick by construction |
+| Section 9.2, eleven cities, rooftop column | **recomputed twice, all eleven sites.** First for the law, a site dependent shift of 1.06 to 6.33 dB that reorders the cities and cannot be offset corrected, then again for the ground datum. The table now carries `city250_L3_*` only, and the law comparison is stated separately because it lives on the superseded datum run |
+| Section 9.3, material axis | **tested, and the null holds.** SAM 3 now runs on all eight walk stations. It reassigns 28.5 % of the facade area the entity prior called brick, putting 958 triangles on glass and 653 on plasterboard against 1 and 0 before, and the exposure distribution moves 0.024 dB isotropic and 0.029 dB rooftop with 0 of 120 standpoints moving as much as 0.5 dB, and 0.023 and 0.024 dB on the nine station set. Bounded to a masonry square: the tested swap is brick to glass at 2.35 dB, not brick to metal at 9.67 dB |
 | Section 9.3, evidence ladder | **stable, and re-run under both laws over conflict passing poses only.** None of the three failing Korenmarkt poses was ever in it, the top rung rises from 10.57 to 11.02 % of area, and the conclusion is unchanged under isotropic, corrected rooftop and street |
-| Section 9.4, crop radius | **stable, and re-derived under the corrected law.** 250 m still required, now set by the street model alone. Measured at one site, with Milan disagreeing on street |
+| Section 9.4, crop radius | **conclusion stable, evidence partly unpersisted.** 250 m still required, now set by the street model alone, measured at one site with Milan disagreeing on street. The paired superseded against corrected table, the Milan comparison, and the "reorders the cities" crop claim all come from a 24 observer run that was never written to `outputs/`. Two persisted sweeps at 27 and 32 observers cover the superseded law only and sit 0.3 dB below it. Rerun and commit before submission |
+| Section 9.4, per site crop correction | **superseded law, ten sites not eleven.** The 0.05 to 4.80 dB rooftop and 0.16 to 11.39 dB street ranges are `city_*` against `city250_*`, both the old law, and Milan has no 130 m mesh so it cannot enter. The isotropic range is $-0.17$ to 0.96 dB, not 0.03 to 0.96: Brussels moves the other way |
 | Section 4.3, deployment caps | **assumptions with a measured sensitivity, not citations.** No deployed FR3 exists to calibrate against, section 4.3.1 |
 | Section 9.2, material coverage | **the eleven city table carries no image evidence.** `materials: geometric`, covered area 0.0 at every site. Only Korenmarkt has a binding, and three of the eleven cities have no panoramas at all. 69 of 83 registrations feed no result |
+| Monte Carlo error bars | **absent everywhere.** No result in this document carries one. The only variance measurement in the study is the ray count row of section 8.3, at one standpoint. Fixed seeds make runs reproducible, which is not the same as converged |
+| Bounce depth provenance | **the stated operating point is not uniform.** $L=4$ for the corrected eleven cities, the crop sweep, the sub street ablation and the law comparison. $L=6$ for the evidence ladder, the 120 standpoint Korenmarkt runs and the superseded eleven cities. Class default 12, CLI default 6. Worth 0.0004 dB, so the numbers stand and the prose should not claim a single operating point |
 | Section 8, external cross validation | **absent.** The tracer is checked against closed forms it was built to satisfy, plus internal invariants. There is no independent solver in the loop, so a shared conceptual error would survive every test in section 8 |
 | Section 3.2.1, registration | **stable, but the poses it validates are mostly unused.** 83 poses, diagnostic persisted and independently reproducible |
-| Section 9.2, Krakow and Toulouse rows | **invalid.** `ground_datum()` takes the median first hit from above within 15 m of the anchor, so an anchor standing on a building returns that building's roof. Krakow's datum is 18.6 m above the surrounding pavement and Toulouse's is 13.6 m, which puts their standpoints on the Cloth Hall and the Capitole roofs. Madrid at 5.0 m is suspect, every other site is inside 3.9 m. The fix is a low quantile over a wider radius plus a hard gate, then a rerun of those rows |
-| The eleven city figure asset | **regenerate before submission.** The committed PNG was copied from an aggregate that a concurrent run was still writing, so it shows Brussels at 3 standpoints. Every per site record at both 250 m tags carries 80. Rebuild it from the completed corrected aggregate |
+| Section 9.2, Krakow and Toulouse rows | **fixed, and the requalified run has landed.** The table above is `city250_L3_*` on the measured datum, so both rows are now street level. The old `ground_datum()` took the median first hit from above within 15 m of the anchor, so an anchor standing on a building returned that building's roof. Krakow's datum was 18.19 m above the surrounding pavement and Toulouse's 13.94 m, which put their standpoints on the Sukiennice and the Capitole. `GROUND_DATUM.md` carries the replacement, a lowest major level over the walk disc, which agrees with the registered camera ground height to 0.30 m at the eight sites carrying one and with an independently written second estimator to 0.19 m. Nine of the eleven datums move by less than a quarter of a metre and Madrid, previously flagged as suspect at 5 m, is not one of them |
+| The eleven city figure asset | **regenerated on 2026-08-03.** It is drawn from `city250_L3_*` by `FIGURES/make_eleven_cities_exposure.py`, which refuses to draw a ragged or torn aggregate and names the offending sites. The committed PNG before that date had been copied from an aggregate a concurrent run was still writing, so it showed Brussels at 3 standpoints under the superseded rooftop law. The axis still carries the pre-overhaul symbol $\chi_S$, which is the one defect left |
+| Figure assets 14, 16 and 17 | **16 is regenerated, 14 and 17 are still orphaned.** Neither of the remaining two matches any file now in `outputs/`, so the plots behind figures 7 and 9 cannot be reproduced from the committed data without rerunning the plotting step. Those two are the superseded law and the old notation. Asset 15 is byte identical to `outputs/crop_convergence/korenmarkt_crop_convergence.png` and is fine, but it shows the superseded law only |
+| Run provenance | **three holes.** `dirty_walk12` binds from a `walk_semantic_all12.npz` that lives in a session scratch directory rather than in `outputs/`, and several `mesh_study_scores/*.json` name their input mesh the same way. Those runs are not reproducible from the repository as committed. And the published `clean_geometric`, `clean_semantic`, `clean_walk8` and `clean_walk9` runs came from a working tree carrying a fourth illumination model that is not at HEAD, so re-running them at HEAD reproduces the isotropic median to three digits but moves individual standpoints by up to 0.011 dB isotropic, 0.034 dB rooftop and 0.614 dB street. The tracer itself is exactly deterministic across machines and core counts, so that is code state and nothing else. Section 9.3's material axis experiment was re-run at HEAD for this reason |
 
-Two things a reader should be able to check quickly. The runs computed under the
-superseded law are kept beside their replacements rather than overwritten, under
-the `city250_*` tags against `city250_corrected_*`. And the superseded elevation
-laws are still in `propagation/directions.py` as named models, so any published
-number can be reproduced rather than merely apologised for.
+Two things a reader should be able to check quickly. Every superseded run is kept
+beside its replacement rather than overwritten, so the eleven city sequence
+`city250_*`, `city250_corrected_*`, `city250_datum_*` and `city250_L3_*` is all
+on disk and each step of it can be diffed against the next. And the superseded
+elevation laws are still in `propagation/directions.py` as named models, so any
+published number can be reproduced rather than merely apologised for.
 
 ---
 
@@ -1327,11 +1618,25 @@ python -m semantic_twin.semantics --panorama .. --backend mask2former --view-siz
 python -m semantic_twin.align_skyline --mesh .. --semantics .. --pose ..
 python build_fishnet_surface.py
 python run_exposure.py --validate                          # section 8
-python run_exposure.py --locations 120 --materials walk    # sections 9.1, 9.3
-python run_exposure.py --all-sites --locations 80          # section 9.2
-python run_crop_convergence.py                             # section 9.4
+python run_exposure.py --locations 120 --materials geometric \
+    --tag clean_geometric                                  # section 9.1
+python run_exposure.py --locations 120 --materials walk \
+    --tag clean_walk9 \
+    --walk-npz outputs/walk_korenmarkt/walk_semantic_conflict9.npz   # section 9.3
+python run_exposure.py --all-sites --locations 80 --crop-m 250 \
+    --rays 200000 --max-bounces 3 --seed 7 --tag-suffix _L3   # section 9.2
+python run_crop_convergence.py                             # figure 10 only
 python build_propagation_blends.py                         # the walkthrough blends
 ```
+
+One default does not match the shipped runs and has to be passed explicitly.
+`--crop-m` defaults to 130 while section 9.2 is at 250. `--max-bounces` now
+defaults to 3, which is what section 9.2 ran at, so passing it is documentation
+rather than necessity. The 120 standpoint runs of sections 9.1 and 9.3 are at the
+130 m crop and at $L=6$, which is what their manifests record and which no
+current default will reproduce. `run_crop_convergence.py` writes the 32 observer sweep
+behind figure 10 and does not produce the paired corrected table of section 9.4,
+which has no script in the repository.
 
 Full design in `MONOSTATIC_SBR.md`, decisions in `DECISIONS.md`, the fishnet in
 `FISHNET.md`, the walk in `WALK.md`, acquisition and screening in `CITIES.md`.
@@ -1347,15 +1652,22 @@ Full design in `MONOSTATIC_SBR.md`, decisions in `DECISIONS.md`, the fishnet in
 | $\hat u$ | unit direction on the sphere, measured **outward** from $\mathbf{x}$ | |
 | $\hat k$ | propagation direction of an arriving wave, $\hat k = -\hat u$ | |
 | $\hat n(\mathbf r)$ | outward surface normal at a body point | |
+| $\mathbf x_K$ | last scattering vertex of an escaping path | m |
+| $\ell_K$ | total path length of an escaping ray | m |
 | $\alpha$ | elevation above the pedestrian's horizon | rad or deg |
 | $\phi$ | azimuth | rad |
 | $\theta$ | angle of incidence from a surface normal | rad |
 | $r$ | horizontal range from pedestrian to source | m |
 | $h$ | source height above the pedestrian head | m |
+| $z_0$ | local ground datum of the square | m |
+| $\delta$ | any finite increment, including the standpoint grid spacing | |
+| $R_{\rm crop}$, $R_{\rm walk}$ | scene crop radius and standpoint search radius | m |
 | **Illumination** | | |
 | $\nu$ | areal density of base station sites on the ground | m$^{-2}$ |
 | $f_h(h)$ | height distribution of the source population | m$^{-1}$ |
 | $Q(\hat u)$ | illumination density on the sphere, $\int_{4\pi} Q\, d\Omega = 1$ | sr$^{-1}$ |
+| $\tilde Q(\alpha)$ | the same weight before normalisation, $W/\sin^{3}\alpha$ | |
+| $\mathcal N$ | its normalisation, section 4.4 | |
 | $q(\alpha)$ | its marginal in elevation, $q = 2\pi\cos\alpha\ Q$ | rad$^{-1}$ |
 | $W(\alpha)$ | admissible height window at a given elevation, equation (4) | m$^{3}$ |
 | $a(\alpha), b(\alpha)$ | lower and upper limits of that window | m |
@@ -1364,8 +1676,12 @@ Full design in `MONOSTATIC_SBR.md`, decisions in `DECISIONS.md`, the fishnet in
 | $\chi$ | susceptibility, $=1$ in free space | |
 | $\rho(\hat u)$ | arriving angular power density, $\int \rho\, d\Omega = \chi$ | sr$^{-1}$ |
 | $w_j$ | throughput of ray $j$ where it escapes the scene | |
-| $N$ | rays launched per standpoint | |
-| $M$ | Fibonacci cells partitioning the sphere | |
+| $N$ | rays launched per standpoint, $2\times10^{5}$ | |
+| $M$ | Fibonacci cells partitioning the sphere, 512 | |
+| $\Delta\Omega$ | solid angle of one such cell, $4\pi/M$ | sr |
+| $L$ | maximum surface interactions per ray | |
+| $p$, $p_{\min}$ | Russian roulette survival probability and its floor, 0.05 | |
+| $\Delta$ | excess delay of an escaping ray, equation (9) | m |
 | $f_{\rm sky}$ | fraction of the sphere from which a ray escapes unobstructed | |
 | **Materials and body** | | |
 | $\varepsilon$ | complex relative permittivity, negative imaginary part | |
@@ -1376,10 +1692,15 @@ Full design in `MONOSTATIC_SBR.md`, decisions in `DECISIONS.md`, the fishnet in
 | $S_0$ | free space incident power density the network would deliver | W m$^{-2}$ |
 | $S_{\rm arr}$ | power density actually arriving, $S_{\rm arr} = S_0\chi$ | W m$^{-2}$ |
 | $S_{ab}(\mathbf r)$ | absorbed power density at body surface point $\mathbf r$ | W m$^{-2}$ |
+| $P_{\rm abs}$, $m_{\rm body}$ | absorbed power and phantom mass, 72.4 kg | W, kg |
 | $T_0$ | tissue power transmission coefficient at normal incidence | |
+| $\lambda$ | free space wavelength, 20 mm at 15 GHz | m |
 
 Symbols local to one argument are not listed. Section 2.1 uses $\varrho$ for a
 tile request radius and $H$ for ellipsoidal height, and neither appears again.
+Section 2.3 uses $a$, $b$, $c$ and $d$ for P.2040-4's four power law coefficients,
+which is the one place those letters are not the window limits of section 4.2 and
+the one place $d$ is not a differential.
 
 ---
 

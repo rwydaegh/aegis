@@ -5,17 +5,28 @@ illumination density rather than a site list. Two deployment classes are
 defined, each by a height band and a horizontal range band, and eight endpoint
 numbers carry those two bands:
 
-| Class | Height above head | Horizontal range | Elevation support |
-| --- | --- | --- | --- |
-| Macro rooftop | 13.5 to 43.5 m | 25 to 250 m | 3.1 to 60.1 deg |
-| Street small cell | 2.5 to 6.5 m | 10 to 150 m | 0.95 to 33 deg |
+| Class | Height above head | Height above ground | Horizontal range | Elevation support |
+| --- | --- | --- | --- | --- |
+| Macro rooftop | 13.5 to 43.5 m | 15 to 45 m | 25 to 250 m | 3.09 to 60.11 deg |
+| Street small cell | 2.5 to 6.5 m | 4 to 8 m | 10 to 150 m | 0.95 to 33.02 deg |
+
+The two height columns are the same band read against two datums, and both forms
+appear across this project. Section 1 states the datum once. The code holds the
+above-head form: `ROOFTOP_HEIGHT_BAND_M = (13.5, 43.5)`,
+`STREET_HEIGHT_BAND_M = (2.5, 6.5)`.
 
 None of the eight had a citation. This document supplies the evidence, states
 what the evidence does not cover, and says by how much and in which direction
 the evidence moves each number.
 
 Code is `semantic_twin/propagation/directions.py`, constants `ROOFTOP` and
-`STREET_SMALL_CELL`.
+`STREET_SMALL_CELL`. Since the corrected law landed on 2026-08-02 the elevation
+support is no longer a written constant. `IlluminationModel.__post_init__`
+derives it from the two bands as `[atan(h_min/r_max), atan(h_max/r_min)]`, which
+is why the supports above carry two decimals. The superseded models
+`ROOFTOP_FIXED_HEIGHT` and `STREET_SMALL_CELL_FIXED_HEIGHT` still carry the
+hand-written one-decimal supports 3.1 to 60.1 and 0.95 to 33.0 deg, and exist
+only so that pre-correction numbers can be reproduced.
 
 **Four findings, if you read nothing else.**
 
@@ -33,18 +44,34 @@ span of the range cap, 100 to 400 m, the headline susceptibility proxy moves
 **7.8 dB**. Across the defensible span of the height band it moves 0.7 to 2.0 dB
 (section 7.5). Report `chi` at 150, 250 and 400 m, and stop arguing about the
 height band, which is where sections 10 and 11 spent most of their length for
-under a decibel of effect.
+under a decibel of effect. Caveat before this reaches the paper: the 7.8 dB is a
+zero-bounce proxy, section 7.4 shows proxies overstate, and no script in this
+repository recomputes it. It is a statement about relative leverage, not a
+sensitivity band ready to publish.
 
-**The largest correctable defect is not one of the eight numbers, and it may
-invalidate a published figure.** `IlluminationModel` evaluates the pure
-`1/sin^3(el)` law on a support derived from the height bands, which is a
-different distribution from the one the bands describe (section 7.1). At the
-study's 250 m crop the correction moves `chi_rooftop` by **+5.3 to +5.7 dB** at
-canyon sites and +1.0 dB at the open plaza, and across the five sites measured so
-far it **compresses the cross-site spread from 11.75 to 7.43 dB** (section 7.4).
-Roughly a third of the reported cross-city spread looks like an artefact of the
-elevation law. This is free to fix, it should be fixed first, and the cross-city
-spread figure should not be published until the remaining seven sites land.
+**The largest defect was not one of the eight numbers, and it did invalidate a
+published figure. It is now corrected in the code and the study has been
+re-run.** The old `IlluminationModel` evaluated the pure `1/sin^3(alpha)` law,
+which is derived for sites at a single fixed height, on a support taken from the
+extremes of a height band. That admits sources violating the range cap at low
+elevation. The corrected law integrates an admissible height window `W(alpha)`
+at each elevation under both caps (section 7.1). Across all eleven sites at the
+study's 250 m crop the correction moves the site-median `chi_rooftop` by
+**+1.06 dB at the open plaza to +6.33 dB at the tightest canyon**, and it
+**compresses the between-city rooftop spread from 14.49 dB to 9.65 dB**
+(section 7.4). A third of the previously reported cross-city spread was an
+artefact of the elevation law. The superseded cross-city figure must not be
+published, and every rooftop or street number in this document dated before
+2026-08-02 carries the superseded law unless it says otherwise.
+
+**Both of those spreads have since moved again, for an unrelated reason.** The
+14.49 to 9.65 dB pair is a paired law comparison on `city250_corrected_*`, whose
+ground datum put the Krakow and Toulouse walks 18.19 and 13.94 m up on the Cloth
+Hall and the Capitole. On the requalified `city250_L3_*` sweep the between-city
+rooftop spread is **4.93 dB** and the isotropic one 3.71 dB
+(`AGGREGATE_REBUILD.md`). The law comparison below is still the right measurement
+of the law, because both of its legs share the same standpoints, but its absolute
+levels are not the study's current ones.
 
 **Sub-6 heights are still the right prior for the macro class, for a reason that
 is not frequency.** Deployed median height is flat against carrier frequency
@@ -66,7 +93,7 @@ local ground** (`semantic_twin/propagation/walk.py`, `head_height_m: float =
 ground-referenced height converts as
 
 ```
-Delta_h = h_ground_referenced - 1.5 m
+h = h_ground_referenced - 1.5 m
 ```
 
 The current bands are therefore **15 to 45 m above ground** for macro and **4 to
@@ -522,26 +549,37 @@ heights. Something else does, and 4.5 shows what.
 ### 4.2 What is actually deployed
 
 The database carries usable heights for **four of the eleven study sites**.
-Restricting to `CenterHeight` in (0, 100] m:
+Restricting to `CenterHeight` in (0, 100] m, with the site centres of
+`screen_cities.py` and an equirectangular distance:
 
 | Study site | Region | Radius | n | p5 | p25 | median | p75 | p95 | max |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Place du Capitole | france | 250 m | 137 | 17.9 | 20.8 | **21.3** | 25.1 | 32.1 | 32.4 |
-| Place du Capitole | france | 500 m | 636 | 17.6 | 20.2 | **21.1** | 26.2 | 31.6 | 33.8 |
-| Korenmarkt | flanders | 250 m | 418 | 18.8 | 26.2 | **27.6** | 42.5 | 42.5 | 42.5 |
-| Korenmarkt | flanders | 500 m | 1164 | 18.8 | 22.4 | **25.8** | 28.0 | 42.5 | 42.5 |
+| Place du Capitole | france | 500 m | 657 | 17.6 | 20.2 | **21.3** | 25.8 | 31.5 | 33.8 |
+| Korenmarkt | flanders | 250 m | 367 | 18.8 | 26.2 | **29.1** | 42.5 | 42.5 | 42.5 |
+| Korenmarkt | flanders | 500 m | 1283 | 18.8 | 22.4 | **26.5** | 29.3 | 42.5 | 42.5 |
 | Grand Place | brussels | 250 m | 94 | 6.5 | 32.5 | **33.5** | 34.1 | 35.3 | 35.3 |
 | Grand Place | brussels | 500 m | 360 | 7.9 | 29.7 | **32.5** | 34.7 | 51.6 | 54.2 |
 | Rynek Glowny | poland | 250 m | 73 | 14.8 | 25.0 | **38.0** | 42.0 | 42.0 | 42.0 |
 | Rynek Glowny | poland | 500 m | 224 | 12.0 | 25.0 | **28.0** | 35.0 | 42.0 | 42.0 |
 
+Recomputed 2026-08-02 against `data/basestations/merged/*.parquet`. Brussels,
+Krakow and Toulouse at 250 m reproduce an earlier draft of this table exactly,
+every percentile. The two Korenmarkt rows do not, and the earlier draft's
+n = 418 and n = 1164 could not be reproduced under any radius or bounding shape
+tried, so the recomputed values are the ones above. The 500 m rows are the
+sensitive ones either way: register sites arrive in co-located clusters, so a
+different distance metric moves n by a few percent and the median by a few
+tenths of a metre. **No register number in this document is safe without its
+radius and its distance convention.**
+
 Two of these, Brussels and Krakow, were listed as blocked in an earlier draft of
 this document. They were not blocked, they were already extracted.
 
-**The four medians run from 21.1 to 32.5 m at 500 m radius.** That is an 11 m
+**The four medians run from 21.3 to 32.5 m at 500 m radius.** That is an 11 m
 spread across four European historic squares, and it is the most direct evidence
 in this document for the section 9 argument that a single global height band
-cannot represent all eleven sites. Toulouse and Krakow differ by more than the
+cannot represent all eleven sites. Toulouse and Brussels differ by more than the
 width of any band either of them would justify alone.
 
 Spain has 178 207 antennas with 100 % frequency coverage and **0 % height
@@ -637,7 +675,10 @@ The one region that is not flat does not rescue the extrapolation either. Canada
 gives 42.7 m at 0.7 to 1.0 GHz against 36.0 m at 3.5 GHz, but its highest band is
 its *lowest* antennas only in the sense that its low band sits on tall rural
 coverage towers. The gradient runs the wrong way for anyone wanting to argue that
-higher frequencies get sited lower.
+higher frequencies get sited lower. Note that those two Canadian figures were
+taken with no height cap, unlike the four-region table above. Under the same
+`CenterHeight` in (0, 100] m restriction Canada reads 40.0 m and 35.7 m, so the
+gradient shrinks but keeps its sign.
 
 **This cuts two ways and both matter.**
 
@@ -668,8 +709,9 @@ not evidence that it is what will be built.
 
 One empirical check survives all of this. Section 5 measures a roof p50 of 17.1 m
 at Toulouse. Adding the 3 to 5 m mast of section 11.1 gives 20.1 to 21.1 m,
-against a database median of 21.1 m within 500 m. The mast convention, which
-section 13 lists as uncited, survives its one available test to within a metre.
+against a database median of 21.3 m within 500 m and 20.9 m within 130 m. The
+mast convention, which section 13 lists as uncited, survives its one available
+test to within a metre.
 
 ### 4.5 The two modes are real, the gap between them is not as empty as an earlier draft claimed
 
@@ -679,7 +721,10 @@ centres. The larger database does not support the strong form of that claim, and
 the correction is worth recording because the weak form still carries the
 argument.
 
-Pooled over the six European regions with height coverage, n = 3 459 777:
+Pooled over the six European regions carrying access-antenna heights, which are
+Belgium-Brussels, Flanders, France, Germany, the Netherlands and Poland, with
+`CenterHeight` in (0, 100) m, n = 3 459 777. The UK is excluded because it holds
+no access antennas at all (4.3):
 
 ```
   0 to  4 m    0.34 %          18 to 20 m    5.56 %
@@ -725,7 +770,7 @@ is what makes it usable here at all when 4.3 says almost nothing else does.
 
 Section 9 argues that a single global height band is wrong because morphology
 varies. Section 4.2 tests that on deployed antennas rather than on rooftops, and
-it holds: the four study-site medians run 21.1, 25.8, 28.0 and 32.5 m at 500 m
+it holds: the four study-site medians run 21.3, 26.5, 28.0 and 32.5 m at 500 m
 radius. An 11 m spread across four European historic squares is larger than
 either of the two height changes section 12 recommends, which means the choice of
 *which city* currently matters more to the source height than any endpoint
@@ -733,8 +778,9 @@ argument in this document.
 
 The radius matters too, and it must always be quoted. Krakow's median is 38.0 m
 within 250 m and 28.0 m within 500 m, because the immediate centre carries a few
-tall sites and the wider grid regresses toward the regional norm. No register
-number in the paper should appear without its radius.
+tall sites and the wider grid regresses toward the regional norm. Korenmarkt runs
+the same way, 29.1 m within 250 m against 26.5 m within 500 m. No register number
+in the paper should appear without its radius.
 
 ### 4.7 What is genuinely missing, which is less than an earlier draft claimed
 
@@ -767,6 +813,11 @@ sites, 200 m for Milan), sample a 300 by 300 grid inside the crop disc, cast one
 ray straight down from above the bounding box, and take the first hit height
 minus the crop-centre ground datum. Statistics are over the built-up part only,
 defined as return height above 3 m, which removes the plaza floor.
+
+⚠️ **No script in this repository reproduces this table.** It was computed in an
+ad hoc session against the twin meshes and the numbers were transcribed here.
+Nothing downstream reads them, so nothing silently inherits an error, but the
+table cannot be regenerated and should not be quoted in the paper until it can.
 
 | Site | Built fraction | Roof p10 | Roof p50 | Roof p90 | Max | Rayleigh gamma | KS |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -813,9 +864,17 @@ used, which no measurement in this repository can settle.
 ## 6. Where the illumination weight can actually be used
 
 A separate raycast measures, at head height, the fraction of azimuth that is
-open sky as a function of elevation. This is `f_open(el)` in the sense of
+open sky as a function of elevation. This is `f_open(alpha)` in the sense of
 `MONOSTATIC_SBR.md` section 9.3, computed at the crop centre with 720 azimuths
 per elevation.
+
+⚠️ **Same provenance warning as section 5, and it reaches further.** Nothing in
+this repository computes `f_open`, so neither this table nor the `K0` columns of
+sections 7.3 and 7.5 that are built on it can be regenerated. `PRIOR_ART.md`
+section 4.1 records the same gap from the other side, where publishing `f_open`
+per location was adopted as the validity flag for the diffraction omission and
+then not implemented. Everything in sections 6, 7.3 and 7.5 is a proxy argument
+about relative leverage, and section 7.4 is the part that rests on stored runs.
 
 | Site | 1 deg | 3 deg | 5 deg | 10 deg | 15 deg | 20 deg | 30 deg | 45 deg |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -838,7 +897,7 @@ footprints and bias the mean down.
 
 The point of the table is not the tracer, which handles blockage correctly
 without help. The point is that **the low-elevation region where the
-`1/sin^3(el)` weight concentrates its mass is the region where these scenes have
+`1/sin^3(alpha)` weight concentrates its mass is the region where these scenes have
 almost no sky**. Any change to the elevation law that moves mass across the
 5 to 20 degree range is a first-order change to the published `chi_rooftop`,
 because that is exactly where `f_open` goes from 0.00 to 0.6. Section 7.3
@@ -851,118 +910,137 @@ at independently.
 
 ## 7. What the numbers do to the answer
 
-### 7.1 The elevation law as coded is not the mixture the bands describe
+### 7.1 The superseded elevation law was not the mixture the bands describe
 
-`MONOSTATIC_SBR.md` section 2.7 already records that the height band and the
-elevation law are two different models and that the code evaluates the law.
-Expressed as a CDF over elevation, the gap is large. Under the honest mixture,
-with `Delta_h` drawn from a band and `d` uniform by area on a **fixed** range
-annulus, the elevation density is
+`MONOSTATIC_SBR.md` section 2.7 records that the height band and the elevation
+law were two different models and that the code used to evaluate the law.
+Expressed as a CDF over elevation, the gap is large. Under the band mixture,
+with `h` drawn from a band and `r` uniform by area on a **fixed** range annulus,
+the elevation marginal is
 
 ```
-N(el) proportional to  cos(el)/sin^3(el) * [ G(d_max tan el) - G(d_min tan el) ]
-G(x) = integral from 0 to x of f(h) h^2 dh
+q(alpha) proportional to  cos(alpha)/sin^3(alpha) * W(alpha)
+W(alpha) = G(r_max tan alpha) - G(r_min tan alpha)
+G(x)     = integral from 0 to x of f_h(h) h^2 dh
 ```
 
-which recovers the pure `cos/sin^3` law exactly on
-`[atan(h_max/d_max), atan(h_min/d_min)]` and rolls off outside it to the stated
-support `[atan(h_min/d_max), atan(h_max/d_min)]`. For the macro numbers the pure
-law holds only between 9.9 and 28.4 degrees, and the roll-off covers 3.1 to 9.9
-and 28.4 to 60.1 degrees. Under the pure law almost two thirds of the weight
-sits below 5 degrees, which is inside the lower roll-off, so the roll-off is not
-a correction at the edges. It is where nearly all of the mass is.
+`W(alpha)` is the admissible height window: the part of the height band that a
+source at elevation `alpha` can occupy without violating the range cap at either
+end. The construction recovers the pure `cos/sin^3` law exactly on
+`[atan(h_max/r_max), atan(h_min/r_min)]` and rolls off outside it to the support
+`[atan(h_min/r_max), atan(h_max/r_min)]`. For the macro numbers the pure law
+holds only between 9.9 and 28.4 degrees, and the roll-off covers 3.09 to 9.9 and
+28.4 to 60.11 degrees. Under the pure law almost two thirds of the weight sits
+below 5 degrees, which is inside the lower roll-off, so the roll-off is not a
+correction at the edges. It is where nearly all of the mass is.
+
+Recomputed 2026-08-02 from `directions.py` itself, `measure_below` on each model.
 
 | Macro model | below 5 deg | below 10 deg | below 20 deg | median | p90 |
 | --- | --- | --- | --- | --- | --- |
-| Pure law on [3.1, 60.1] deg, as coded | 0.620 | 0.907 | 0.979 | 4.36 deg | 9.65 deg |
-| Honest mixture, `f` uniform on [13.5, 43.5] | 0.094 | 0.549 | 0.902 | 9.50 deg | 19.84 deg |
-| Honest mixture, `f` lognormal median 18 m, sigma 0.35 | 0.228 | 0.764 | 0.952 | 6.80 deg | 14.77 deg |
+| Pure law on [3.1, 60.1] deg, **superseded** (`ROOFTOP_FIXED_HEIGHT`) | 0.617 | 0.907 | 0.979 | 4.38 deg | 9.68 deg |
+| Band mixture, `f_h` uniform on [13.5, 43.5], **shipping** (`ROOFTOP`) | 0.094 | 0.549 | 0.902 | 9.50 deg | 19.84 deg |
+| Band mixture, `f_h` lognormal median 18 m, sigma 0.35, truncated to the band | 0.228 | 0.764 | 0.952 | 6.80 deg | 14.77 deg |
 
 | Small cell model | below 3 deg | below 5 deg | below 10 deg | median | p90 |
 | --- | --- | --- | --- | --- | --- |
-| Pure law on [0.95, 33] deg, as coded | 0.899 | 0.964 | 0.992 | 1.35 deg | 3.01 deg |
-| Honest mixture, `f` uniform on [2.5, 6.5] | 0.654 | 0.879 | 0.973 | 2.50 deg | 5.49 deg |
+| Pure law on [0.95, 33] deg, **superseded** (`STREET_SMALL_CELL_FIXED_HEIGHT`) | 0.900 | 0.965 | 0.992 | 1.34 deg | 2.99 deg |
+| Band mixture, `f_h` uniform on [2.5, 6.5], **shipping** (`STREET_SMALL_CELL`) | 0.654 | 0.879 | 0.973 | 2.50 deg | 5.49 deg |
 
-The coded law puts the median arrival 5.1 degrees lower than the band it is
-documented with, for macro, and 1.2 degrees lower for small cells.
+The superseded law put the median arrival 5.1 degrees lower than the band it was
+documented with, for macro, and 1.2 degrees lower for small cells. An earlier
+draft of this document gave the superseded macro row as 0.620, 4.36 deg and
+9.65 deg. Those came from a coarser quadrature. The closed form on [3.1, 60.1]
+gives 0.617, 4.38 deg and 9.68 deg, and a still older draft's "64 % below
+5 degrees" needs a 3.0 deg lower edge that no version of the code ever ran.
 
 ### 7.2 Both bands are more sensitive to the range cap than the height cap
 
-Holding the other band fixed and sweeping, under the honest mixture:
+Holding the other band fixed and sweeping, under the band mixture. Every row
+recomputed from `directions.py` 2026-08-02:
 
-| Macro range cap `d` | below 5 deg | below 10 deg | median |
+| Macro range band `r` | below 5 deg | below 10 deg | median |
 | --- | --- | --- | --- |
 | 25 to 150 m | 0.000 | 0.182 | 15.43 deg |
 | 25 to 250 m | 0.094 | 0.549 | 9.50 deg |
 | 25 to 400 m | 0.351 | 0.825 | 5.99 deg |
 | 25 to 800 m | 0.820 | 0.956 | 3.01 deg |
 
-| Macro height band `Delta_h` | below 5 deg | below 10 deg | median |
+| Macro height band `h` | below 5 deg | below 10 deg | median |
 | --- | --- | --- | --- |
 | 8.5 to 18.5 m | 0.608 | 0.911 | 4.44 deg |
 | 10.5 to 28.5 m | 0.274 | 0.798 | 6.48 deg |
 | 13.5 to 43.5 m | 0.094 | 0.549 | 9.50 deg |
 | 13.5 to 100 m | 0.033 | 0.190 | 18.63 deg |
 
-Changing `d_min` from 25 to 50 m or 10 m barely moves anything (median 9.34 and
-9.54 degrees against 9.50). Only `d_max` matters. The range cap, which is the
+Changing `r_min` from 25 to 50 m or 10 m barely moves anything (median 9.34 and
+9.54 degrees against 9.50). Only `r_max` matters. The range cap, which is the
 number with the weakest evidence, is at least as influential as the height band,
 which is the number with the strongest. That ordering is uncomfortable and is
 the main reason section 8 derives the cap rather than asserting it.
 
 ### 7.3 How much of this reaches the published number
 
-Combining the measured `f_open(el)` of section 6 with the elevation laws gives a
-zero-bounce susceptibility proxy `K0 = integral of f_open(el) Q(el) dOmega`,
-which bounds the direct-path part of `chi`. Over the ten sites excluding
-Toulouse:
+Combining the measured `f_open(alpha)` of section 6 with the elevation laws gives
+a zero-bounce susceptibility proxy `K0 = integral of f_open(alpha) Q(alpha)
+dOmega`, which bounds the direct-path part of `chi`. Over the ten sites excluding
+Toulouse. **This subsection is the pre-correction argument, kept because 7.4
+overturns part of it.** It has no reproducing script, for the reason section 6
+gives:
 
 | Comparison | min | median | max | median in dB |
 | --- | --- | --- | --- | --- |
-| Macro: honest mixture over pure law as coded | 1.15 | 4.47 | 4.82 | +6.5 dB |
-| Small cell: honest mixture over pure law as coded | 0.94 | 2.58 | 3.15 | +4.1 dB |
+| Macro: band mixture over superseded pure law | 1.15 | 4.47 | 4.82 | +6.5 dB |
+| Small cell: band mixture over superseded pure law | 0.94 | 2.58 | 3.15 | +4.1 dB |
 | Macro: band [8.5, 33.5] over band [13.5, 43.5], both mixed | 0.51 | 0.56 | 0.94 | -2.5 dB |
 | Small cell: band [3, 10] over band [2.5, 6.5], both mixed | 1.07 | 2.44 | 3.21 | +3.9 dB |
 
-Put that next to the result the study reports. In the 250 m run, the site-median
-`chi_rooftop` runs from 0.0251 (Brussels) to 0.7052 (Krakow), a 14.5 dB spread,
-but Krakow is an open-plaza outlier and the other ten sites span 0.0251 to 0.0981,
-which is **5.9 dB**. A 6.5 dB median shift from changing the elevation law is
-therefore **larger than the entire cross-city spread among ten of the eleven
-sites**. The illumination model is not a boundary condition on the headline
-result, it is comparable in size to the result.
+Put that next to the result the study reported at the time. In the **superseded**
+250 m run, the site-median `chi_rooftop` ran from 0.0251 (Brussels) to 0.7052
+(Krakow), a 14.49 dB spread, but Krakow is an open-plaza outlier and the other
+ten sites spanned 0.0251 to 0.0981, which is **5.93 dB**. A 6.5 dB median shift
+from changing the elevation law is therefore **larger than the entire cross-city
+spread among ten of the eleven sites**. On that reading the illumination model is
+not a boundary condition on the headline result, it is comparable in size to the
+result.
 
 Two things keep this from being a verdict.
 
 The proxy covers the zero-bounce term only. The full `chi` includes multipath,
 which is far less elevation-selective, and the evidence that multipath carries
 most of `chi` here is in the table itself: Toulouse has an `f_open` of 0.00 below
-45 degrees and still reports `chi_rooftop` = 0.0981, the second highest of the
-eleven. So the true sensitivity is smaller than 6.5 dB, probably by a lot.
+45 degrees and still reported a superseded `chi_rooftop` of 0.0981, the second
+highest of the eleven. So the true sensitivity is smaller than 6.5 dB.
 
-Bounding it properly needs a re-weighting run against the stored `K_S`, which the
-current `*_spectra.npz` files cannot support: they store `rho_rooftop` with the
-illumination already folded in, for three locations.
+Bounding it properly needed a re-weighting run against the stored `K_x`, which
+the `*_spectra.npz` files cannot support: they store `rho_rooftop` with the
+illumination already folded in, for three locations. That run was instead done by
+re-tracing, and it is section 7.4.
 
 ### 7.4 The re-weighting run, measured
 
 That run has since been done, so 7.3's proxy can be replaced with the real
 number. The corrected band mixture of 11.4 was implemented and the study re-run
 at Korenmarkt over 120 walk locations on the 130 m crop, holding the geometry
-and the tracer fixed so that only the illumination weight changes.
+and the tracer fixed so that only the illumination weight changes. Sources are
+`korenmarkt_walk_15ghz_summary.json` for the superseded law and
+`bandlaw_korenmarkt_walk_15ghz_summary.json` for the corrected one, both under
+`outputs/exposure_korenmarkt/`, medians at quantile 0.5.
 
-| Quantity | Old law | Corrected mixture | Median change | Spread p95/p05 |
+| Quantity | Superseded law | Corrected mixture | Median change | Spread p95/p05 |
 | --- | --- | --- | --- | --- |
 | `chi_rooftop` | 0.1472 | 0.2355 | **+2.04 dB** | 12.45 to **8.44 dB** |
 | `chi_rooftop_direct` | 0.0975 | 0.1616 | +2.19 dB | 13.52 to **9.06 dB** |
-| `chi_street_small_cell` | 0.0675 | 0.0983 | +1.64 dB | 18.48 to 16.62 dB |
-| `multipath_gain_rooftop` | 1.487 | 1.500 | +0.04 dB | 2.75 to 2.22 dB |
+| `chi_street_small_cell` | 0.0675 | 0.0983 | +1.63 dB | 18.48 to 16.62 dB |
+| `multipath_gain_rooftop` | 1.4868 | 1.5004 | +0.04 dB | 2.75 to 2.22 dB |
 | `chi_isotropic` | 0.3360 | 0.3360 | +0.00 dB | 3.85 to 3.85 dB |
 
 `sky_fraction`, `mean_bounces`, `escaped_fraction`, `mean_excess_delay_ns` and
 `chi_isotropic` are bit-identical across the pair, which is the control: the
 isotropic model has no elevation weighting to correct, so anything that moved in
-its column would have been a harness artefact. Nothing moved.
+its column would have been a harness artefact. Nothing moved. Checked location by
+location on the two `*_locations.jsonl` files, all 120 rows, exact equality on
+all five fields.
 
 **Two corrections to 7.3 follow, and the first is against this document's own
 argument.** The zero-bounce proxy said 6.5 dB. The measured full effect on
@@ -971,60 +1049,91 @@ direction 7.3 predicted but by more than 7.3 allowed for. The mechanism is
 visible in the table: `multipath_gain_rooftop` barely moves at 0.04 dB, so the
 correction acts almost entirely on the direct term, and the multipath term
 dilutes it. The claim in 7.3 that the illumination model is "comparable in size
-to the result" is therefore **too strong**. At 2.04 dB against a 5.9 dB
-cross-city spread it is a third of the spread, which is a serious systematic and
-not a rival to the result.
+to the result" is therefore **too strong** at this crop radius. At 2.04 dB
+against a 5.93 dB cross-city spread it is a third of the spread, which is a
+serious systematic and not a rival to the result.
 
 The second correction is more interesting, and it was not predicted at all.
 **The correction narrows the location-to-location spread by 4 dB**, from 12.45
-to 8.44 dB across the 120 walk locations. The old law was not merely biased low,
-it was differentially wrong across locations, hardest at the ones where the
-sky is most restricted. Section 9 argues that a wrong `Q_S` distorts spread as
-well as level and could only assert the sign. This measures it, at one site, and
-the sign holds.
+to 8.44 dB across the 120 walk locations. The superseded law was not merely
+biased low, it was differentially wrong across locations, hardest at the ones
+where the sky is most restricted. Section 9 argues that a wrong `Q_x` distorts
+spread as well as level and could only assert the sign. This measures it, at one
+site, and the sign holds.
 
-Caveat on scope: one site, 120 locations, 130 m crop.
+Caveat on scope: one site, 120 locations, 130 m crop. The 250 m result below is
+the one that applies to the paper.
 
-**Update, cross-city, partial.** The cross-city version is running and five of
-eleven sites have landed, at the study's actual **250 m crop** with 80 locations
-and 200 000 rays. Old and new law are evaluated on the same rays at each site, so
-the level difference carries no Monte Carlo noise.
+**Cross-city, complete.** All eleven sites have landed at the study's actual
+**250 m crop** with 80 locations and 200 000 rays. Superseded and corrected law
+are evaluated on the same geometry and the same standpoint set at each site.
+Sources are `city250_<site>_15ghz_summary.json` for the superseded law and
+`city250_corrected_<site>_15ghz_summary.json` for the corrected one, medians at
+quantile 0.5. Read the per-site files rather than the `cities250_*` aggregates.
 
-| Site | `chi_rooftop` old | new | Rooftop law shift | Small cell |
-| --- | --- | --- | --- | --- |
-| Ghent Korenmarkt | 0.0478 | 0.1621 | **+5.30 dB** | +4.36 dB |
-| London Trafalgar | 0.0774 | 0.2871 | **+5.69 dB** | +3.59 dB |
-| Mexico Zocalo | 0.0825 | 0.2985 | **+5.59 dB** | +4.09 dB |
-| Milan Duomo | 0.0785 | 0.2465 | **+4.97 dB** | not yet read |
-| Krakow Rynek | 0.7159 | 0.8978 | **+0.98 dB** | +2.48 dB |
+| Site | `chi_iso` | `chi_rooftop` superseded | corrected | Rooftop law shift | Street shift |
+| --- | --- | --- | --- | --- | --- |
+| Krakow Rynek | 0.5304 | 0.7052 | 0.9001 | **+1.06 dB** | +2.40 dB |
+| Toulouse Capitole | 0.3992 | 0.0981 | 0.3383 | **+5.38 dB** | +4.31 dB |
+| Mexico Zocalo | 0.3974 | 0.0816 | 0.2990 | **+5.64 dB** | +4.22 dB |
+| London Trafalgar | 0.3894 | 0.0767 | 0.2868 | **+5.73 dB** | +3.55 dB |
+| Prague Staromestske | 0.3626 | 0.0631 | 0.2357 | **+5.73 dB** | +3.98 dB |
+| Milan Duomo | 0.3538 | 0.0799 | 0.2477 | **+4.92 dB** | +2.28 dB |
+| Madrid Plaza Mayor | 0.3473 | 0.0341 | 0.1462 | **+6.33 dB** | +4.29 dB |
+| Ghent Korenmarkt | 0.2917 | 0.0483 | 0.1627 | **+5.27 dB** | +4.27 dB |
+| Brussels Grand Place | 0.2351 | 0.0251 | 0.0976 | **+5.91 dB** | +3.65 dB |
+| Tokyo Hachiko | 0.2238 | 0.0363 | 0.1009 | **+4.44 dB** | +2.15 dB |
+| New York Times Square | 0.1629 | 0.0924 | 0.1294 | **+1.46 dB** | +2.13 dB |
 
-Three things, all of which matter more than anything in sections 9 to 11.
+Four things, all of which matter more than anything in sections 9 to 11.
 
 **The 130 m figure understated it.** At the 250 m crop the Korenmarkt shift is
-+5.30 dB against +2.04 dB at 130 m. The correction grows with the crop because a
++5.27 dB against +2.04 dB at 130 m. The correction grows with the crop because a
 larger crop admits more low-elevation geometry, which is exactly where the two
 laws differ most. **The headline configuration is the 250 m one**, so +5.3 dB is
-the number that applies to the published result, not +2.0 dB.
+the number that applies to the published result, not +2.0 dB. An earlier draft of
+this table read five sites off a run still in progress and gave Korenmarkt 0.0478
+against 0.1621 for +5.30 dB, London +5.69, Mexico +5.59, Milan +4.97 and Krakow
++0.98. Those are superseded by the finished per-site summaries above, which move
+each shift by at most 0.1 dB except Krakow at 0.08 dB and Milan at 0.05 dB.
+
+**The isotropic control holds across every site.** `chi_isotropic` agrees between
+the two laws to within 0.0005 dB at all eleven, which is the same control the
+130 m pair gives bit-identically. The isotropic model has no elevation weighting
+to correct, so nothing should have moved and nothing did.
 
 **The shift is strongly site-dependent, and in the direction section 9
-predicted.** Krakow, the open plaza with 0.09 built fraction, moves +0.98 dB. The
-four canyon sites move +4.97 to +5.69 dB. The law error is small where the sky is
-open and large where it is not, which is the same morphology dependence section
-7.5 finds for the range cap.
+predicted.** Krakow, the open plaza with 0.09 built fraction, moves +1.06 dB, and
+Times Square, whose sky is a narrow strip at high elevation, moves +1.46 dB. The
+enclosed mid-rise squares move +4.44 to +6.33 dB. The law error is small where
+the low-elevation sky is either wide open or entirely shut, and large in between,
+which is the same morphology dependence section 7.5 finds for the range cap.
 
-**It compresses the cross-site spread by 4.3 dB.** Across these five sites the
-spread of `chi_rooftop` falls from **11.75 dB to 7.43 dB** when the law is
-corrected. Section 13 item 9 lists "a fixed global `Q_S` compresses the measured
+**It compresses the between-city spread by 4.85 dB.** Across all eleven sites the
+spread of the site-median `chi_rooftop` falls from **14.49 dB to 9.65 dB** when
+the law is corrected. Dropping Krakow as an outlier, the remaining ten fall from
+5.93 dB to 5.40 dB, so most of the compression is Krakow rejoining the pack
+rather than the pack tightening. The per-site shift itself spans 5.27 dB, from
+1.06 to 6.33 dB, which is the whole of the effect: the superseded law was not a
+constant offset. Rank order is not preserved either, Spearman 0.78 between the
+two orderings, and the corrected `chi_rooftop` tracks `chi_isotropic` far more
+closely than the superseded one did, correlation of the logs rising from 0.56 to
+0.85. Section 13 item 9 listed "a fixed global `Q_x` compresses the measured
 cross-city spread" as an argument whose sign was sound but whose magnitude was
-unmeasured. It is now measured on four sites and the magnitude is large: roughly
-a third of the reported spread is an artefact of the elevation law. If this holds
-over the remaining seven sites, **the paper's cross-city spread figure has to be
-recomputed before it is published**, and that is the single most consequential
-finding in this document.
+unmeasured. It is now measured on all eleven sites. **Roughly a third of the
+previously reported spread was an artefact of the elevation law, and the
+superseded cross-city figure must not be published.**
 
-Treat these five numbers as provisional until all eleven land. The run was still
-adding sites when this document was written, and every site added so far has
-fallen inside the pattern above.
+`chi_street_small_cell` moves the same way but less: the corrected between-city
+spread is 18.53 dB against 19.77 dB superseded, and the street spread stays far
+wider than the rooftop one under either law.
+
+**Every absolute spread in this subsection is on the superseded ground datum.**
+Both legs of the comparison run on `city250_corrected_*` standpoints, two of
+whose walks stood on a roof, so the comparison is sound and the levels are not
+current. On `city250_L3_*` the between-city spreads are 3.71 dB isotropic,
+4.93 dB rooftop and 9.58 dB street small cell. Read the shifts here, not the
+spans.
 
 ### 7.5 The sensitivity analysis that replaces the citation the caps cannot have
 
@@ -1035,12 +1144,16 @@ instead, and this subsection is that report. **It should be the centrepiece of
 how the paper handles deployment geometry.**
 
 The statistic is the zero-bounce susceptibility proxy
-`K0 = integral of f_open(el) Q(el) dOmega` of section 7.3, evaluated per site on
-the measured `f_open(el)` of section 6, with the macro band mixture. It is a
-proxy rather than `chi`, and section 7.4 shows proxies overstate, so read the
-columns as relative leverage rather than as predicted `chi` shifts.
+`K0 = integral of f_open(alpha) Q(alpha) dOmega` of section 7.3, evaluated per
+site on the measured `f_open(alpha)` of section 6, with the corrected macro band
+mixture. It is a proxy rather than `chi`, and section 7.4 shows proxies overstate,
+so read the columns as relative leverage rather than as predicted `chi` shifts.
+The same provenance warning applies as in section 6: nothing in this repository
+recomputes these columns, and the ratios below have been checked only for
+internal consistency, which they have (the medians and per-site spans quoted
+after each table follow from the table itself).
 
-**Range cap, across its defensible span.** `d_min` = 25 m throughout.
+**Range cap, across its defensible span.** `r_min` = 25 m throughout.
 
 | Site | 100 m | 150 m | 250 m | 400 m | span |
 | --- | --- | --- | --- | --- | --- |
@@ -1073,8 +1186,8 @@ worth about **7.8 dB** on the headline susceptibility.
 is worth 7.8 dB. Moving the height band across its defensible span is worth 0.7
 to 2.0 dB. The height band would need to be collapsed to a delta function, which
 no one proposes, before it reached the leverage the range cap has by default.
-This is the same ordering section 10.1 found in degrees of arrival elevation,
-18.2 against under 1, now expressed in the quantity the paper actually reports.
+This is the same ordering section 10.1 finds in degrees of arrival elevation,
+16.1 against under 0.5, now expressed in the quantity the paper actually reports.
 
 So the paper should:
 
@@ -1084,9 +1197,10 @@ So the paper should:
 2. State the height band as low leverage and stop arguing about it. Sections 10
    and 11 argue the shape question at length and the answer is that it is worth
    under a decibel.
-3. Fix the law-versus-band inconsistency first regardless, since section 7.4
-   measures it at +2.04 dB and 4 dB of spread, which is real and is free to
-   correct.
+3. **Done.** The law-versus-band inconsistency was fixed in `directions.py` on
+   2026-08-02 and every site re-run. Section 7.4 measures it at +5.3 dB on the
+   Korenmarkt median at the headline 250 m crop and 4.85 dB off the between-city
+   spread.
 
 **One structural observation, which is new.** The per-site spans run from 0.6 dB
 at Krakow to 10.0 dB at Brussels and Madrid. The range cap barely matters in an
@@ -1111,7 +1225,7 @@ For a uniform areal density of sites, the incoherent sum over a ring at range
 
 ```
 tail(D) = integral from D to infinity of r P_rx(r) dr
-        / integral from d_min to infinity of r P_rx(r) dr
+        / integral from r_min to infinity of r P_rx(r) dr
 ```
 
 Evaluating `P_rx` with the 3GPP TR 38.901 UMi-street canyon pathloss (Table
@@ -1126,8 +1240,8 @@ Evaluating `P_rx` with the 3GPP TR 38.901 UMi-street canyon pathloss (Table
 | 400 m | 0.029 | 0.284 | 0.016 |
 | 800 m | 0.008 | 0.131 | 0.005 |
 
-with `h_BS = 25 m` and `d_min = 25 m`. For the small cell case, `h_BS = 6 m` and
-`d_min = 10 m`:
+with `h_BS = 25 m` and `r_min = 25 m`. For the small cell case, `h_BS = 6 m` and
+`r_min = 10 m`:
 
 | `D` | LOS/NLOS mix |
 | --- | --- |
@@ -1163,7 +1277,7 @@ rather than in measure: the scene is truncated harder than the source model is.
 
 The same computation with ITU-R P.1411-13's own measured distance exponents,
 which are independent of 3GPP, gives the same picture with a wider spread. Using
-a pure power law `r^-alpha` so the tail beyond `D` is `(D/d_min)^-(alpha-2)`:
+a pure power law `r^-alpha` so the tail beyond `D` is `(D/r_min)^-(alpha-2)`:
 
 | P.1411-13 case | alpha | Tail beyond the relevant cap |
 | --- | --- | --- |
@@ -1231,6 +1345,12 @@ annulus gives:
 | New York Times Square | 39.8 m | 0.099 | 0.335 | 15.96 deg | 51.80 deg |
 | Global band [13.5, 43.5] uniform | n/a | 0.094 | 0.549 | 9.50 deg | 19.84 deg |
 
+The last row agrees with section 7.1 and with `measure_below` on the shipping
+`ROOFTOP` model, which is the check that this table uses the elevation marginal
+rather than the double-weighted statistic an earlier draft of section 10.1 used.
+The per-site rows inherit section 5's provenance warning: they are built on the
+DSM table there, which no script regenerates.
+
 The median arrival elevation spans 2.5 to 16.0 degrees across sites, a factor of
 6.3, against a single global value of 9.5 degrees. Ten of the eleven sites come
 out **below** the global band's median, Times Square being the only exception,
@@ -1241,10 +1361,10 @@ biased high for most.
 
 That last point deserves emphasis because it is the paper's own quantity. The
 `MONOSTATIC_SBR.md` argument is that essentially all the cross-city exposure
-spread has to live in `K_S`, since the body-side coupling `F` moves only 18 %.
-But if `Q_S` is held global while the true `Q_S` varies by a factor of 6 in
+spread has to live in `K_x`, since the body-side coupling `F` moves only 18 %.
+But if `Q_x` is held global while the true `Q_x` varies by a factor of 6 in
 median elevation and that variation is **correlated with the morphology that
-drives `K_S`**, then a fixed `Q_S` does not merely add noise. It systematically
+drives `K_x`**, then a fixed `Q_x` does not merely add noise. It systematically
 compresses the spread it is trying to measure. Tall-building sites get a
 too-low illumination elevation, low-building sites get a too-high one, and both
 errors push `chi` toward the middle.
@@ -1259,7 +1379,7 @@ actually cap. What binds is a set of radio and engineering costs that all grow
 with height:
 
 1. **The vertical span a sector must cover grows with height.** Serving
-   `d` in [25, 250] m needs an elevation range of `atan(h/25) - atan(h/250)`:
+   `r` in [25, 250] m needs an elevation range of `atan(h/25) - atan(h/250)`:
    19.5 degrees at `h = 10` m, 34.1 at 20 m, 50.2 at 43.5 m, 54.2 at 100 m. A
    mmWave or FR3 panel has limited elevation scan and loses gain toward the scan
    edges, so a high site either accepts a large scan loss or gives up the near
@@ -1317,15 +1437,15 @@ bimodal. So the recommendation is Rayleigh for mid-rise cores and an explicitly
 two-component form, or a per-site empirical DSM, for high-rise ones.
 
 **Uniform-in-`h` is not neutral, it is tall-weighted.** The number of sites seen
-at a given elevation carries a `Delta_h^2` factor (`MONOSTATIC_SBR.md` section
+at a given elevation carries a `h^2` factor (`MONOSTATIC_SBR.md` section
 2.7). Under a fixed range annulus the *total* site count per height is
-independent of `Delta_h`, because the `Delta_h^2` cancels against the shrinking
+independent of `h`, because the `h^2` cancels against the shrinking
 elevation support, but at any elevation where the whole band is in support the
-`Delta_h^2` is uncancelled and sites in the top third of the band by height
+`h^2` is uncancelled and sites in the top third of the band by height
 contribute 56 % of the weight. That is the middle window of section 7.1, 9.9 to
 28.4 degrees. A uniform band on [13.5, 43.5] has a mean of 28.5 m but
 an RMS of 29.8 m and an `h^2`-weighted mean height of 33.3 m, well above every
-measured roofline in the European set. If the true `f(h)` decreases above the
+measured roofline in the European set. If the true `f_h` decreases above the
 roofline, which sections 5 and 9 both say it does, then uniform is wrong in the
 direction of over-weighting tall sites, and the `h^2` factor amplifies that
 error rather than cancelling it.
@@ -1339,64 +1459,78 @@ raises the mass below 5 degrees from 0.094 to 0.228.
 The four arguments are about whether uniform *describes* deployment. They are
 right, and section 4.5 settles the descriptive question on 3.46 million deployed
 antennas rather than fifty campaign entries. But the question that matters for
-this paper is different: does the shape of `f(h)` change the answer? The
+this paper is different: does the shape of `f_h` change the answer? The
 lognormal comparison above was a hypothetical. Section 4 supplies the real
-`f(h)`, so the comparison can be done properly, and it gives a different verdict
+`f_h`, so the comparison can be done properly, and it gives a different verdict
 from the one the `h^2` argument suggests.
 
-Drawing `d` with uniform areal density on [25, 250] m and weighting by `h^2`,
-with `f(h)` taken from the 3 007 343 database antennas at or above 18 m:
+Drawing `r` with uniform areal density on [25, 250] m, with `f_h` taken from the
+3 007 343 database antennas at or above 18 m:
 
-| `f(h)`, above head | Median arrival elevation |
+| `f_h`, above head | Median arrival elevation |
 | --- | --- |
-| Uniform on [13.5, 43.5], current | 10.88 deg |
-| **Pooled database macro, measured (section 4.5)** | **11.30 deg** |
-| Uniform on [16.5, 38.5], proposed in 11.2 | 9.85 deg |
+| Uniform on [13.5, 43.5], current | 9.50 deg |
+| **Pooled database macro, measured (section 4.5)** | **9.50 deg** |
+| Uniform on [16.5, 38.5], proposed in 11.2 | 9.03 deg |
+
+**Corrected 2026-08-02.** An earlier draft of this table applied an explicit
+`h^2` weight on top of the `r`-uniform-by-area draw and reported 10.88, 11.30 and
+9.85 degrees. That double-counts. The `h^2` site-count factor is already produced
+by the Jacobian of `alpha = atan(h/r)` against an areal draw, which is how
+section 7.1 derives `q(alpha)` in the first place, so applying it again tilts
+every non-degenerate `f_h` toward the tall end. The corrected medians above agree
+with `measure_below` on the shipping `ROOFTOP` model to 0.01 degrees, which the
+old ones did not. The delta-function rows further down were unaffected, because a
+constant `h^2` cancels out of a median.
 
 **The current uniform band reproduces the measured elevation distribution to
-within 0.42 degrees.** The reason is visible in the moments: the pooled database
-macro population has an `h^2`-weighted mean of 35.3 m above head against 33.3 m
-for the current uniform band, and `E[h^2]` differs by 0.29 dB. The measured
-distribution is peaked near where the uniform band's `h^2` centroid already sits,
-so the `h^2` factor that makes shape look dangerous also makes these two
-particular distributions nearly equivalent.
+within 0.01 degrees**, which is a stronger version of what the earlier draft
+claimed at 0.42 degrees. The reason is visible in the moments: the pooled
+database macro population has an `h^2`-weighted mean of 35.3 m above head against
+33.3 m for the current uniform band, and `E[h^2]` differs by 0.29 dB. The
+measured distribution is peaked near where the uniform band's `h^2` centroid
+already sits, so the `h^2` factor that makes shape look dangerous also makes
+these two particular distributions nearly equivalent.
 
-An earlier draft ran this comparison on the direct harvest instead and got
-10.24 degrees, that is 0.64 degrees on the other side of the uniform band. The
-two extraction paths therefore **bracket** the current band, one 0.64 degrees
-below and one 0.42 degrees above. That disagreement is itself the strongest
-statement available here: the shape question cannot even be resolved to the
-precision at which it would start to matter, and it does not matter at that
-precision either.
+An earlier draft also ran this comparison on the direct harvest and got
+10.24 degrees, which was on the other side of the uniform band and was used here
+to argue that the two extraction paths **bracket** it. That bracket rested on the
+double-counted weighting and has not been recomputed, so it is withdrawn rather
+than restated. The conclusion it supported survives on the corrected numbers
+alone and more cleanly: between defensible shapes the shape question does not
+move the answer at all.
 
 Shape has leverage in principle. Concentrating all mass at the band floor gives a
-median elevation of 4.35 degrees and all mass at the ceiling gives 13.76, a span
-of 9.4 degrees. But between *defensible* shapes the span is under 1 degree. The
-range cap, over its own defensible span, moves the same statistic much further:
+median elevation of 4.34 degrees and all mass at the ceiling gives 13.76, a span
+of 9.4 degrees. But between *defensible* shapes the span is under half a degree.
+The range cap, over its own defensible span, moves the same statistic much
+further:
 
-| `d_max`, macro | Median arrival elevation |
+| `r_max`, macro | Median arrival elevation |
 | --- | --- |
-| 100 m | 25.10 deg |
-| 150 m | 17.62 deg |
-| 250 m, current | 10.89 deg |
-| 400 m | 6.87 deg |
+| 100 m | 22.10 deg |
+| 150 m | 15.43 deg |
+| 250 m, current | 9.50 deg |
+| 400 m | 5.99 deg |
 
-The same holds for the small cell class, where `d_max` from 50 to 250 m moves the
-median from 8.15 to 1.67 degrees while the whole height band from floor to
-ceiling moves it only from 1.35 to 3.50.
+Those four agree with the section 7.2 sweep, as they must, since they are the
+same statistic on the same model. The same holds for the small cell class, where
+`r_max` from 50 to 250 m moves the median from 7.34 to 1.50 degrees while the
+whole height band from floor to ceiling moves it only from 1.35 to 3.50.
 
 **So the honest answer to "is uniform defensible" is split.** As a description of
 deployment, no, and section 4.5 is the evidence. As an input to this particular
-integral, yes, and the cost of keeping it is under 1 degree of median elevation
-and about 0.5 dB in `E[h^2]`. The premise that the `h^2` weighting makes `f(h)`
+integral, yes, and the cost of keeping it is 0.01 degrees of median elevation and
+0.29 dB in `E[h^2]`. The premise that the `h^2` weighting makes `f_h`
 consequential is correct in the abstract and does not survive contact with the
 measured distribution, because `h` spans a factor of 3.2 across the band while
-`d` spans a factor of 10, and the range spread dominates.
+`r` spans a factor of 10, and the range spread dominates.
 
-The practical consequence is a reordering. The shape of `f(h)` is a second-order
-correction worth making for realism. The range cap and the law-versus-band
-inconsistency of section 7.1, worth 6.5 dB, are where the uncertainty actually
-lives, and they should be fixed first.
+The practical consequence is a reordering. The shape of `f_h` is a second-order
+correction worth making for realism. The range cap is where the uncertainty
+actually lives. The law-versus-band inconsistency of section 7.1, worth +5.3 dB
+on the Korenmarkt median at the headline crop, was the other one and it is now
+fixed.
 
 ## 11. Recommendation
 
@@ -1409,16 +1543,16 @@ measured DSM.
 **Above-roofline class (currently "macro rooftop").**
 
 ```
-h_site = h_roof + m,   h_roof ~ site's own measured rooftop DSM (section 5)
-                       m      = rooftop mast, 3 to 5 m
-Delta_h = h_site - 1.5 m
+h_site = h_roof + mast,  h_roof ~ site's own measured rooftop DSM (section 5)
+                         mast   = rooftop mast height, 3 to 5 m
+h      = h_site - 1.5 m
 ```
 
 **Below-roofline class (currently "street small cell").**
 
 ```
 h_site in [4, 8] m above ground, truncated above at min(h_roof)
-Delta_h = h_site - 1.5 m
+h = h_site - 1.5 m
 ```
 
 The truncation matters: "below rooftop" is the defining property, so at a site
@@ -1430,9 +1564,9 @@ of the eleven sites, and section 11.3 notes that at Toulouse the two constructio
 agree to within 1 m while the pooled register median sits 9 m above the generic
 DSM-plus-mast estimate. The register measures antennas. The DSM infers them.
 
-Each site then reports its own elevation support and its own `Q_S`, and the
-cross-city comparison becomes a comparison of `K_S` under a `Q_S` that is
-correct for each city rather than a comparison contaminated by a `Q_S` that is
+Each site then reports its own elevation support and its own `Q_x`, and the
+cross-city comparison becomes a comparison of `K_x` under a `Q_x` that is
+correct for each city rather than a comparison contaminated by a `Q_x` that is
 wrong for all of them in a morphology-correlated direction (section 9).
 
 ### 11.2 Fallback: a single global band, if one is required
@@ -1475,8 +1609,8 @@ macro site population** and the right band is the one that spans it. Not because
 15 GHz behaves like 900 MHz, but because it would be bolted to the same parapet.
 
 Spanning the four study sites that have deployed heights (section 4.2), the
-central mass at 500 m radius runs from a median of 21.1 m at Toulouse to 32.5 m
-at Brussels, with p25 values of 20.2 to 29.7 m and p95 values of 31.6 to 51.6 m.
+central mass at 500 m radius runs from a median of 21.3 m at Toulouse to 32.5 m
+at Brussels, with p25 values of 20.2 to 29.7 m and p95 values of 31.5 to 51.6 m.
 A band of 18 to 40 m covers the interquartile range of all four and the p95 of
 three. That is the derivation, and its premise is the overlay branch of 4.4.
 
@@ -1590,16 +1724,22 @@ NLoS urban low-rise model a measured validity of exactly 10 to 250 m.
 
 ### 11.3 Shape
 
-**Do this only after 11.4.** Section 10.1 measures the shape correction at under
-1 degree of median arrival elevation and about 0.5 dB in `E[h^2]`, against 6.5 dB
-for the law-versus-band fix. The ordering is not close.
+**11.4 came first, and it has been done.** Section 10.1 measures the shape
+correction at 0.01 degrees of median arrival elevation and 0.29 dB in `E[h^2]`,
+against +5.3 dB for the law-versus-band fix. The ordering was not close, and the
+law fix landed on 2026-08-02.
 
-When it is done, the best available `f(h)` is the register histogram of section
-4.3, not a fitted family. It is measured, it is large-sample, it is
+When shape is done, the best available `f_h` is the register histogram of section
+4.5, not a fitted family. It is measured, it is large-sample, it is
 ground-referenced, and at two of the eleven sites it is measured at the site
 itself. Use Toulouse's ANFR distribution at Toulouse and Ghent's at Ghent, and
-the pooled three-city macro distribution elsewhere. Its summary statistics, above
-ground: median 26.9 m, mean 28.3 m, `h^2`-weighted mean 33.3 m.
+the pooled database macro distribution elsewhere. Its summary statistics, above
+ground and over the whole pooled set of section 4.5: median 28.3 m, mean 28.7 m,
+`h^2`-weighted mean 35.9 m. Restricted to the macro population at or above 18 m
+they are 29.0, 31.0 and 36.5 m. An earlier draft gave 26.9, 28.3 and 33.3 m,
+which came from the three-city direct harvest that section 4.5 rules out as the
+wrong counting unit, and its `h^2`-weighted mean is the uniform band's own value
+rather than a register one.
 
 Where a parametric form is needed, Rayleigh per ITU-R P.1410-5 eq. (17) remains
 the only shape any primary source proposes, with the mode `gamma` taken from the
@@ -1620,21 +1760,26 @@ peaked at the floor: Ghent p25 5.0 m and median 6.0 m inside a 4 to 8 m band,
 and the campaigns agree (NYU FR3 at 4 m, Aalto's open-square lamp post at 5 m,
 Fraunhofer Berlin at 5 m, Bristol at 6.45 m, NYU's six Manhattan sites at 7 m).
 
-### 11.4 Also fix the law-versus-band inconsistency
+### 11.4 The law-versus-band inconsistency, fixed 2026-08-02
 
-Independently of the numbers, `IlluminationModel` evaluates the pure
-`1/sin^3(el)` law on a support derived from the bands, and section 7.1 shows
-that is not the same distribution as the bands describe. Section 7.3 puts the
+Independently of the numbers, `IlluminationModel` used to evaluate the pure
+`1/sin^3(alpha)` law on a support derived from the bands, and section 7.1 shows
+that is not the same distribution as the bands describe. Section 7.3 put the
 zero-bounce cost of the discrepancy at a median 6.5 dB for macro and 4.1 dB for
-small cell. Whichever bands are adopted, the law should be replaced by the
-mixture
+small cell, and section 7.4 measures the delivered cost at +5.3 dB on the
+Korenmarkt median at the 250 m crop. The law has been replaced by the mixture
 
 ```
-N(el) proportional to cos(el)/sin^3(el) * [G(d_max tan el) - G(d_min tan el)]
+q(alpha) proportional to cos(alpha)/sin^3(alpha) * W(alpha)
+W(alpha) = G(r_max tan alpha) - G(r_min tan alpha)
 ```
 
-which is closed-form given `f(h)`, reduces to the current law inside
-`[atan(h_max/d_max), atan(h_min/d_min)]`, and needs no sampling.
+which is closed-form given `f_h`, reduces to the superseded law inside
+`[atan(h_max/r_max), atan(h_min/r_min)]`, and needs no sampling. It ships as the
+`uniform_sites_band` law backing `ROOFTOP` and `STREET_SMALL_CELL`. The
+superseded pair survives as `ROOFTOP_FIXED_HEIGHT` and
+`STREET_SMALL_CELL_FIXED_HEIGHT` so that pre-correction numbers can be
+reproduced, which is what section 7.4's superseded columns are.
 
 ## 12. What the evidence does to the current numbers
 
@@ -1642,14 +1787,14 @@ which is closed-form given `f(h)`, reduces to the current law inside
 | --- | --- | --- | --- | --- |
 | Macro height floor | 13.5 m above head | 16.5 m | **Up 3 m** | Low, and conditional. Derived from the overlay branch of 4.4, not from any FR3 measurement. Under the densification branch it belongs near 8.5 m instead |
 | Macro height ceiling | 43.5 m above head | 38.5 m | Down 5 m | Medium. Two frequency-matched AT&T deployments at 7 to 15 GHz sit inside 18 to 40 m, and the four study-site p25 to p75 ranges are covered |
-| Macro range floor | 25 m | 25 m | No change | Low sensitivity. Section 7.2 shows `d_min` barely moves the answer |
+| Macro range floor | 25 m | 25 m | No change | Low sensitivity. Section 7.2 shows `r_min` barely moves the answer |
 | Macro range cap | 250 m | **Report 150, 250 and 400 m** | The value does not change, the presentation must | This is the number that matters. Section 7.5 measures a 7.8 dB span across the defensible range, four to ten times the height band's leverage. It cannot be cited, so it has to be a reported sensitivity |
 | Small cell height floor | 2.5 m above head | 2.5 m | No change | Medium-high. Frequency-matched: NYU FR3 at 6.75 and 16.95 GHz used exactly 4 m above ground, and ITU-R P.1411-13 Table 12 records 4.0 m at 3.35 to 15.75 GHz |
 | Small cell height ceiling | 6.5 m above head | 6.5 m | **No change. An earlier draft said up 4 m and is withdrawn** | Medium. 3.46 M deployed antennas show no mode anywhere in 6 to 18 m, and the 3GPP UMi 10 m that motivated the increase is a modelling convention in all five tables it appears in |
 | Small cell range floor | 10 m | 10 m | No change | Low sensitivity |
 | Small cell range cap | 150 m | 150 m | No change | Medium. 4.8 % truncation, matches the macro criterion |
-| Height distribution shape | Uniform | Register empirical, else Rayleigh | Qualitative change, small numerical effect | High on direction, but section 10.1 measures the effect at under 1 degree of median elevation. Do it after the law fix, not before |
-| Elevation law | Pure `1/sin^3(el)` on a band-derived support | The band mixture of 11.4 | **+2.04 dB on median `chi_rooftop`, and 4 dB off the location spread** | High, and now measured rather than proxied (section 7.4). The largest single defect found, and it is not a number at all, it is an inconsistency |
+| Height distribution shape | Uniform | Register empirical, else Rayleigh | Qualitative change, no measurable numerical effect | High on direction, but section 10.1 measures the effect at 0.01 degrees of median elevation once the double-counted `h^2` is removed. Do it for realism, not for accuracy |
+| Elevation law | Pure `1/sin^3(alpha)` on a band-derived support | The band mixture of 11.4. **Shipped 2026-08-02** | **+1.06 to +6.33 dB on the site-median `chi_rooftop` at the 250 m crop, and 4.85 dB off the between-city spread** | High, measured on all eleven sites (section 7.4). The largest single defect found, and it is not a number at all, it is an inconsistency |
 
 **The table is the least important thing in this document, and saying so is the
 main conclusion.** Four points, in decreasing order of what they should change
@@ -1671,10 +1816,12 @@ and 400 m and treat the height endpoints as settled-enough detail. Sections 9,
 and section 7.5 shows the whole argument is worth under a decibel. That
 misallocation is worth recording so the paper does not repeat it.
 
-**The one free fix is the law, not any endpoint.** Section 7.4 measures the
-law-versus-band inconsistency at +2.04 dB on median `chi_rooftop` and 4 dB off
-the location spread, with a bit-identical isotropic control. It costs nothing to
-correct and it is larger than every height endpoint change combined.
+**The one free fix was the law, not any endpoint, and it is done.** Section 7.4
+measures the law-versus-band inconsistency at +5.3 dB on the Korenmarkt median at
+the headline 250 m crop, 1.06 to 6.33 dB across the eleven sites, and 4.85 dB off
+the between-city spread, with an isotropic control that holds to 0.0005 dB
+everywhere. It cost nothing to correct and it is larger than every height
+endpoint change combined.
 
 **The endpoints themselves barely moved, and two of this document's own earlier
 recommendations were withdrawn.** Of the eight, four are unchanged and the two
@@ -1730,11 +1877,13 @@ Listed plainly rather than buried.
    engineering, but no paper was found that quantifies overshoot as a function
    of site height at FR3 or mmWave. It is stated as reasoning and should not be
    cited as a result.
-9. **Resolved, and larger than expected.** The claim that a fixed global `Q_S`
-   compresses the measured cross-city spread (section 9) is now measured on five
-   sites at the 250 m crop: the spread falls from 11.75 to 7.43 dB when the law
-   is corrected (section 7.4). No longer a judgement call. Pending the other
-   seven sites.
+9. **Resolved, and larger than expected.** The claim that a fixed global `Q_x`
+   compresses the measured cross-city spread (section 9) is now measured on all
+   eleven sites at the 250 m crop: the between-city rooftop spread falls from
+   14.49 to 9.65 dB when the law is corrected, and the per-site shift itself
+   spans 5.27 dB (section 7.4). No longer a judgement call. Note this measures
+   only the law, not the section 11.1 per-site `Q_x`, which item 16 still lists
+   as unrun.
 
 **Judgement calls that are defensible but are calls.**
 
@@ -1751,22 +1900,30 @@ Listed plainly rather than buried.
     Biases roof p10 down and built fraction up.
 13. **Excluding Toulouse from the ratio statistics** in sections 6 and 7.3. Its
     crop centre reads 0.00 open below 45 degrees, which makes every ratio
-    degenerate. That site needs its own look, since it still reports the second
-    highest `chi_rooftop` of the eleven.
+    degenerate. That site needs its own look. It used to report the second
+    highest `chi_rooftop` of the eleven, which was its walk standing on the
+    Capitole roof. On the requalified `city250_L3_*` sweep it is sixth.
 14. **Krakow's 0.09 built fraction** makes its rooftop statistics and its
     Rayleigh fit unrepresentative. It is reported but should not drive anything.
 
-**The one measurement that would settle the most, now partly done.**
+**The one measurement that would settle the most, now done.**
 
-15. The re-weighting run is **done for one site and running for the rest**.
-    Section 7.4 has Korenmarkt at the 130 m crop and four sites at the 250 m
-    crop. Six sites are outstanding. Until they land, the cross-site
-    compression figure of 11.75 to 7.43 dB rests on five points, four of which
-    are canyons and one of which is an open plaza, so the pooled number is
-    sensitive to which morphologies the remaining seven add.
-16. **The recommended per-site `Q_S` of section 11.1 has not been run at all.**
+15. The re-weighting run is **complete**. Section 7.4 has Korenmarkt at the
+    130 m crop over 120 walk locations and all eleven sites at the 250 m crop
+    over 80 standpoints each. The between-city compression figure of 14.49 to
+    9.65 dB rests on all eleven and is no longer morphology-sampling dependent.
+    What it does not cover is the 130 m crop set, whose superseded numbers have
+    not all been re-run, and the crop convergence study of
+    `outputs/crop_convergence/`, which is still entirely under the superseded
+    law.
+16. **The recommended per-site `Q_x` of section 11.1 has not been run at all.**
     Section 7.4 changes only the law, not the bands, and not the
     morphology-conditioned weighting. The section 9 argument remains unmeasured.
+17. **Sections 5, 6, 7.3 and 7.5 have no reproducing script.** The DSM table, the
+    `f_open` table and the `K0` sensitivity columns were computed once by hand
+    and transcribed. They are the parts of this document that cannot be checked
+    against a file, and the range-cap leverage argument of 7.5, which section 12
+    calls the deliverable, rests entirely on them.
 
 ## 14. Data quality findings for the AEGIS base station pipeline
 

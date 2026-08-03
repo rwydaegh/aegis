@@ -96,7 +96,7 @@ One exposure run, which is what every published number is made of:
 
 ```bash
 python run_exposure.py --site korenmarkt --crop-m 250 --locations 80 \
-  --rays 200000 --max-bounces 4 --seed 7 --tag city250_corrected_korenmarkt
+  --rays 200000 --max-bounces 3 --seed 7 --tag city250_L3_korenmarkt
 ```
 
 That run takes minutes on a quiet machine and much longer on a busy one. To send
@@ -119,7 +119,11 @@ artifacts.
 
 The reconstruction stages are built and tested. The propagation estimator is
 built, validated against closed forms and run: eleven squares at a 250 m crop,
-80 standpoints each, at 15 GHz, tagged `city250_corrected_*`.
+80 standpoints each, at 15 GHz, three surface interactions, tagged
+`city250_L3_*`. Earlier tags for the same eleven squares are kept beside it and
+are not the headline. `city250_corrected_*` is the same sweep at four bounces on
+a ground datum that put the Krakow and Toulouse walks on a roof, and
+`AGGREGATE_REBUILD.md` audits the difference.
 
 Three things about those numbers should be read before the numbers themselves.
 
@@ -149,3 +153,10 @@ cell models is superseded. The old pair is kept as `ROOFTOP_FIXED_HEIGHT` and
 correction is site dependent, 1.06 dB at Krakow to 6.33 dB at Madrid on the
 rooftop median, so it cannot be undone with a constant offset and it reorders the
 squares.
+
+A second correction lands on 2026-08-03 and is independent of the first. The
+ground datum estimator took the median downward first hit at the crop centre,
+which at Krakow and Toulouse is a building, so those two walks ran 18.19 and
+13.94 m up on the Cloth Hall and the Capitole. `GROUND_DATUM.md` carries the
+replacement and `AGGREGATE_REBUILD.md` the requalified sweep. Anything quoting
+Krakow or Toulouse from before that date is a roof.

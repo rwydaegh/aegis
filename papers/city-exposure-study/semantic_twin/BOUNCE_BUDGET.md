@@ -275,7 +275,7 @@ roulette switched off. Negative is low, which truncation always is.
 | --- | --- | --- | --- | --- |
 | L = 3, roulette off, the new default | -0.0015 (worst 0.006) | -0.0023 (worst 0.016) | -0.0026 (worst 0.063) | 0 of 40 |
 | L = 3, roulette from bounce 3 | -0.0014 (worst 0.006) | -0.0023 (worst 0.021) | -0.0030 (worst 0.116) | 0 of 40 |
-| L = 4, the headline eleven city run | -0.0003 (worst 0.002) | -0.0006 (worst 0.017) | -0.0016 (worst 0.171) | 0 of 40 |
+| L = 4, the superseded eleven city run | -0.0003 (worst 0.002) | -0.0006 (worst 0.017) | -0.0016 (worst 0.171) | 0 of 40 |
 | L = 6, the evidence ladder | -0.0002 (worst 0.002) | -0.0002 (worst 0.017) | -0.0013 (worst 0.176) | 0 of 40 |
 
 Medians of the per standpoint dB difference, with the largest absolute

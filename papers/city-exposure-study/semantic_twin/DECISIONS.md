@@ -4,18 +4,27 @@ Running log of the calls made on the semantic twin, why, and what would reverse
 them. Newest section last. Questions asked and answered in chat are not recorded
 here unless they changed a decision.
 
+Two things to know before reading. Everything sits under one date heading,
+2026-08-01, but the entries at the end were written on 2026-08-02, so the heading
+is the start of the run and not the date of every call in it. And a decision log
+keeps the number the decision was made on, so superseded numbers are here on
+purpose. The illumination law was corrected on 2026-08-02 and it moved every
+rooftop and street small cell figure in the study. Entries computed under the old
+law carry a supersession note in place. If an entry has no such note and quotes a
+rooftop or street number, check its date before quoting it.
+
 ## 2026-08-01
 
 ### Observable: adjoint transfer tensor, not the monostatic loop
 
-**Decision.** The headline per-location quantity is `T_S(Omega, tau, f)`, the
-field at S produced by a unit plane wave arriving from direction Omega, built by
-recording every ray that escapes the neighbourhood after up to three
-interactions. The co-located monostatic response is retained as a derived
-diagnostic.
+**Decision.** The headline per-location quantity is `T_x(Omega, tau, f)`, the
+field at the observation point `x` produced by a unit plane wave arriving from
+direction Omega, built by recording every ray that escapes the neighbourhood
+after up to three interactions. The co-located monostatic response is retained as
+a derived diagnostic.
 
 **Why.** The monostatic response is one entry of the environment's transfer
-operator, the diagonal. Knowing `G(S,S)` does not determine `G(S,x)` for an
+operator, the diagonal. Knowing `G(x,x)` does not determine `G(x,x')` for an
 external transmitter, because the loop coefficient factorises into two one-way
 legs and reciprocity gives their product, not the factors. Concretely it ranks
 locations backwards: an open street with clear line of sight to a mast has high
@@ -28,11 +37,11 @@ materials. The only change is which rays are written down at the end. The curren
 formulation discards every ray that fails to close, which is nearly all of them.
 
 **What it buys.** Exposure factorises as an integral of
-`Tr[T_S Q_S T_S^H]` over the sphere, separating an expensive
+`Tr[T_x Q T_x^H]` over the sphere, separating an expensive
 deployment-independent per-location quantity from a cheap assumption-laden one.
 Transmitter hardware never appears, only an angular incident-power distribution,
 which sidesteps the unparameterisable 5G and 6G antenna zoo. A genuine worst case
-does exist in this framework: `chi_max(S)`, the largest singular value of `T_S`
+does exist in this framework: `chi_max(x)`, the largest singular value of `T_x`
 over arrival directions.
 
 **Reverses if.** The exit-surface definition proves untenable, specifically if
@@ -44,8 +53,10 @@ Full argument in `METHOD.tex`.
 
 ### Line of sight is the zero-bounce term, measured not modelled
 
-**Decision.** Line of sight enters as `T_0` in the same tensor rather than as a
-separately bolted-on Friis integral. Its angular support is the set of directions
+**Decision.** Line of sight enters as the zero-bounce term of `T_x` rather than as
+a separately bolted-on Friis integral. It was written `T_0` when this entry was
+first made, which now collides with the tissue transmission coefficient `T_0`, so
+it is spelled out instead. Its angular support is the set of directions
 where the mesh first-hit range exceeds the source range, which the depth buffer
 already provides. The sky mask is the special case of infinite first-hit range.
 
@@ -55,10 +66,10 @@ measured per location from street-level imagery rather than taken from the fitte
 a self-contained result needing segmentation only, no ray tracing.
 
 **On the maximum-distance cutoff.** Not optional. For uniform base-station
-density the line-of-sight integral goes as the integral of `1/d^2` against
-`2 pi d dd`, which diverges logarithmically. What regularises it is p_LOS
-decaying with distance, and since p_LOS is now measured, the cutoff is set by data
-rather than assumed.
+density the line-of-sight integral goes as the integral of `1/r^2` against
+`2 pi r dr` in horizontal range `r`, which diverges logarithmically. What
+regularises it is p_LOS decaying with range, and since p_LOS is now measured, the
+cutoff is set by data rather than assumed.
 
 ### Ray termination: admissible bound, per-class range law
 
@@ -113,7 +124,7 @@ not an aesthetic preference.
 ### Polarisation: carry the 3x3 from the start, report the scalar
 
 **Decision.** Data structures carry a polarisation-complete field amplitude even
-though the first paper reports the scalar `K_S`.
+though the first paper reports the scalar `K_x`.
 
 **Why.** Retrofitting polarisation means touching every path-accumulation site in
 the tracer, which is the one thing genuinely painful to change later, whereas
@@ -126,14 +137,14 @@ pseudo-Brewster angle.
 **What that means concretely.** A path carries a 2x2 Jones matrix in its own
 transverse basis, the observation point carries the 3x3 far-field matrix `A(u)`
 whose transpose is the transfer tensor, and the accumulator bins the 2x2
-coherency `<T T^H>`. The first paper reports only the scalar `K_S`, which is half
+coherency `<T T^H>`. The first paper reports only the scalar `K_x`, which is half
 the trace of the delay-integrated coherency, so the polarised state is stored and
 then deliberately not published. Reporting the scalar is a presentation choice,
 not a storage one, and it can be revisited without re-tracing anything.
 
 ### The hidden middle bounce is a ray cast, not an inference problem
 
-**Decision.** For the three-bounce path S -> A -> B -> C -> S where B is out of
+**Decision.** For the three-bounce path x -> A -> B -> C -> x where B is out of
 view, B is obtained by ray casting against the support mesh. No learned
 scene-completion model.
 
@@ -271,13 +282,14 @@ Acquisition radius must be sized as `sqrt(desired_horizontal^2 + h^2)`.
 pattern are all applied after the trace, as a re-weighting of an already stored
 path set. None of them is an input to the tracer.
 
-**Why it works.** The trace depends on the scene and on `S` and on nothing else.
+**Why it works.** The trace depends on the scene and on the observation point
+`x` and on nothing else.
 What it writes down for each escaping path is `(x_K, u_e, tau, J)`: last
 interaction point, exit direction, delay and Jones matrix. Every transmitter
-property enters through `Q_S(u_ext, f)`, the angular incident-power density at
-`S` in the absence of the local scene, and the exposure integral is
-`integral trace[T_S Q_S T_S^H] dOmega`. An array's geometry, element pattern,
-weights and sectorisation shape `Q_S` and only `Q_S`. Changing any of them
+property enters through `Q(u_ext, f)`, the angular incident-power density at
+`x` in the absence of the local scene, and the exposure integral is
+`integral trace[T_x Q T_x^H] dOmega`. An array's geometry, element pattern,
+weights and sectorisation shape `Q` and only `Q`. Changing any of them
 changes the weights in a quadrature over a stored angular grid, which costs
 milliseconds against hours for a trace.
 
@@ -293,7 +305,7 @@ deployment assumptions, which are the arguable part, stay separable from the
 per-location physics, which is the expensive part. A reviewer who disputes the
 sectorisation model re-runs a quadrature rather than the study.
 
-**Reverses if.** The array turns out to be close enough to `S` that its near
+**Reverses if.** The array turns out to be close enough to `x` that its near
 field, not merely its finite range, reaches the scene, at which point the
 plane-wave-per-direction decomposition fails and the source has to enter the
 trace itself.
@@ -326,7 +338,7 @@ exact regardless of what the scene reconstruction does.
 
 **Consequence.** The environment enters as the band-averaged and
 ensemble-averaged coherency matrix, which is the second moment and needs no
-phase, while the array side may be treated coherently in `Q_S`. This is also why
+phase, while the array side may be treated coherently in `Q`. This is also why
 the observable is defined as the second moment in the first place rather than as
 an amplitude.
 
@@ -440,10 +452,10 @@ by the `wood` row which is valid from 1 MHz.
 **Six materials a prompt can name have no P.2040 row at all**: ceramic, polymer,
 fabric, soil, water and vegetation_effective. Ground and water need
 Recommendation ITU-R P.527-6 and vegetation needs P.833-10, neither implemented
-in `materials.py`. Ceramic is the awkward one, because fired roof tile is a large
-fraction of a European roofscape and the table simply does not have it. All six
-are recorded in `material_grounding` with their status, so the exporter cannot
-mistake an unbound label for a tabulated dielectric.
+in `semantic_twin/materials.py`. Ceramic is the awkward one, because fired roof
+tile is a large fraction of a European roofscape and the table simply does not
+have it. All six are recorded in `material_grounding` with their status, so the
+exporter cannot mistake an unbound label for a tabulated dielectric.
 
 **What the imagery genuinely cannot discriminate.** These are priors in the
 catalogue and are labelled as such, not detections.
@@ -737,13 +749,14 @@ pedestal may have the right total diffuse power with the wrong angular shape.
 Untested, and worth testing, since measured bistatic data is conventionally fitted
 with a smooth lobe that would hide it.
 
-**Specular fraction of reflected power at 28 GHz**, computed through `mmwave.py`
-from the values above: float glass and polished stone 1.000 even after six months
-outdoors, honed stone 0.891, saw-cut stone 0.853, bush-hammered stone 0.679,
-brick masonry 0.000 at normal incidence and 0.100 at 75 degrees, render 0.000 at
-normal incidence on an inferred sand top size. That span, from 1.000 to 0.000
-across surfaces found on one street, is the quantitative case for the semantic
-layer. Weathering moves stone by 10 to 25 percent, so soiling is second order.
+**Specular fraction of reflected power at 28 GHz**, computed through
+`semantic_twin/mmwave.py` from the values above: float glass and polished stone
+1.000 even after six months outdoors, honed stone 0.891, saw-cut stone 0.853,
+bush-hammered stone 0.679, brick masonry 0.000 at normal incidence and 0.100 at
+75 degrees, render 0.000 at normal incidence on an inferred sand top size. That
+span, from 1.000 to 0.000 across surfaces found on one street, is the
+quantitative case for the semantic layer. Weathering moves stone by 10 to 25
+percent, so soiling is second order.
 
 **Known gaps, stated as gaps.** Render, stucco and plaster returned zero direct
 measurements, not weak ones. The brick metrology is extruded structural block,
@@ -802,7 +815,8 @@ Tiles streaming, and treats the imagery as decoration: a structural model with a
 visual overlay introduced as a texture, while the solver consumes triangles with
 separately assigned material properties. The incumbent has the photograph
 registered to the geometry and uses it as wallpaper. Transcript is in this repo
-at `spinoff/webinar_ansys/transcript.md`.
+at `spinoff/webinar_ansys/transcript.md`, a path from the repository root and not
+from this directory.
 
 **Reverses if.** mmSV turns out on reading to be a near-identical statement of the
 headline, which would force a further narrowing. Its full text is behind a
@@ -912,7 +926,10 @@ A side effect worth remembering when reading old numbers: camera-visible
 inverted-normal area at Korenmarkt fell from 5.81% to 1.00%. The likely
 mechanism is that seams no longer gap, so the camera stops seeing back faces
 through tile cracks. It is not isolated from the region-of-interest change,
-which pulled a different tile set.
+which pulled a different tile set. Neither endpoint has a source file. The mesh
+study later scored the same quantity on the same corrected mesh at 0.89%, over a
+different view set, so treat 1.00% as an early reading rather than the shipped
+one.
 
 The region of interest was a ball centred on the ellipsoid, so horizontal reach
 fell off as `sqrt(r^2 - h^2)` with site altitude. It is now a vertical cylinder
@@ -998,9 +1015,12 @@ built and the 86k clean mesh is within noise of it. BVH build time does scale,
 0.17 s to 5.1 s, but traversal does not.
 
 The problem remeshing solves is also smaller than the edge table implies.
-Measured from the camera rather than from topology, only 0.091% of first-hit rays
-land on a back face and 1.00% of visible area is inverted, two orders below what
-16.6% boundary edges suggests, because tiles overlap rather than gap. The targeted
+Measured from the camera rather than from topology, only 0.095% of first-hit rays
+land on a back face and 0.89% of visible area is inverted, two orders below what
+16.6% boundary edges suggests, because tiles overlap rather than gap. Those are
+the shipped values in `outputs/mesh_study_scores/as_built.json`. This entry
+first read 0.091% and 1.00%, which do not come from that file and have no other
+source in `outputs/`. The targeted
 fix stays what it was: orient per face from the camera's own first-hit votes and
 make the BSDF two-sided.
 
@@ -1092,6 +1112,16 @@ the last truncation step rather than asserted.
 
 ### The crop radius is set by how close to the horizon the sources sit
 
+> **Superseded law, 2026-08-02.** Every rooftop and street number in this entry
+> was computed under `ROOFTOP_FIXED_HEIGHT` and
+> `STREET_SMALL_CELL_FIXED_HEIGHT`, which is what `ROOFTOP` and
+> `STREET_SMALL_CELL` meant when the sweep ran. Under the corrected band law the
+> crop correction at Korenmarkt drops from 3.64 to 0.51 dB rooftop and from 10.08
+> to 6.94 dB street, measured on the same rays in the entry below dated the same
+> day. The isotropic column is unaffected, the ordering argument survives, and
+> the conclusion to acquire at 250 m survives. The absolute dB in the table do
+> not. The sweep has not been rerun under the corrected law.
+
 Measured at Korenmarkt over nine crops from 60 to 340 m, with the observers held
 fixed inside the smallest so every radius scores the same 32 pedestrian
 standpoints and only the surroundings change. 200,000 rays, four bounces. Error is
@@ -1107,21 +1137,25 @@ Error in dB against the 340 m crop, for the three illumination models:
 | **130 m** | 157,862 | +0.054 | **+3.236** | **+9.930** |
 | 160 m | 245,112 | +0.013 | +0.886 | +4.608 |
 | 200 m | 390,518 | +0.002 | +0.108 | +1.241 |
-| **250 m** | 632,406 | +0.000 | +0.018 | +0.186 |
-| 300 m | 909,832 | +0.000 | +0.008 | +0.043 |
-| 340 m | 1,153,486 | 0 | 0 | 0 |
+| **250 m** | 617,091 | +0.000 | +0.018 | +0.186 |
+| 300 m | 903,712 | +0.000 | +0.008 | +0.043 |
+| 340 m | 1,159,281 | 0 | 0 | 0 |
 
 **Isotropic susceptibility and sky fraction converge by 100 m at Korenmarkt.**
 Rooftop needs 250 m. Street small cells need 250 to 300 m.
 
-**The isotropic figure does not generalise across sites**, which the ten city
+**The isotropic figure does not generalise across sites**, which the cross city
 re-run at 250 m showed afterwards. Isotropic moves 0.14 dB at Korenmarkt but
 0.96 dB at Times Square and 0.60 at Tokyo, because tall cities have occluders
 that subtend meaningful solid angle from much further away. The convergence
 radius is a property of the site as well as of the illumination model, and the
 directional corrections vary even more strongly, from 0.05 to 4.80 dB rooftop
-and 0.16 to 11.39 dB street across nine cities. At the 130 m radius the study was
-acquired at, the errors are +0.05, **+3.24** and **+9.93 dB** respectively.
+and 0.16 to 11.39 dB street. That is across ten sites, not nine as first written
+here and not the eleven of the headline table: Milan has a 250 m run and no 130 m
+one, so it cannot enter a 130-against-250 comparison. Recomputed from the
+`city_*` and `city250_*` summaries under `outputs/exposure_korenmarkt/`, both
+tags being superseded-law runs. At the 130 m radius the study was acquired at,
+the Korenmarkt errors are +0.05, **+3.24** and **+9.93 dB** respectively.
 
 **A rule proposed here first, and refuted by the third column.** The rooftop model
 places its farthest macro site at 250 m and converges at 250 m, which looked like
@@ -1130,17 +1164,21 @@ reaches only 150 m, so on that rule it should have converged sooner. It does not
 It converges later than rooftop and is nearly 10 dB in error at 130 m. The
 coincidence at 250 m was a coincidence.
 
-What actually orders the three is **how close to the horizon the illumination model
-puts its weight**, and the geometry newly blocked by widening the crop is indeed
-grazing, at 0.13 to 6.4 degrees of elevation with a median of 3.4. Isotropic spreads over the full sphere, rooftop spans 3.1 to
-60 degrees of elevation, and street small cells span 0.95 to 33 degrees, which is
-also the order of how much crop each one needs. The mechanism is geometric: a ray
-leaving a standing observer near the horizon travels a long horizontal distance
-before it has risen far enough for any building of ordinary height to intercept
-it, so the more weight a model places at grazing elevations the further out the
-scene has to extend before the occluders that matter are present at all. The sign
-is the opposite of the intuitive worry throughout: a small crop is not missing
-scatterers that would add power, it is missing blockers that would remove it.
+What actually orders the three is **how close to the horizon the illumination
+model puts its weight**, and the geometry newly blocked by widening the crop is
+indeed grazing, at 0.13 to 6.4 degrees of elevation with a median of 3.4.
+Isotropic spreads over the full sphere, rooftop spans 3.1 to 60 degrees of
+elevation, and street small cells span 0.95 to 33 degrees, which is also the
+order of how much crop each one needs. The supports are almost unchanged by the
+2026-08-02 correction, 3.09 to 60.11 and 0.96 to 33.02 degrees, but the weight
+inside them is not, and it is the weight that this argument turns on. The
+mechanism is geometric: a ray leaving a standing observer near the horizon
+travels a long horizontal distance before it has risen far enough for any
+building of ordinary height to intercept it, so the more weight a model places
+at grazing elevations the further out the scene has to extend before the
+occluders that matter are present at all. The sign is the opposite of the
+intuitive worry throughout: a small crop is not missing scatterers that would
+add power, it is missing blockers that would remove it.
 
 The practical consequence is worse than the rooftop number alone suggested, and it
 lands on the case that matters most for dense urban deployment. **Street level
@@ -1156,6 +1194,14 @@ converged rooftop susceptibility is 0.043, so removing 0.023 from the 0.091 a
 130 m crop reports is 1.2 dB, not the 0.1 dB that reading it as a percentage
 gives.
 
+<!-- No source file. 0.091, 0.043, the 2.3 percent sliver and the 69 to 77
+percent decomposition below were not written to outputs/. The shipped sweep gives
+0.0859 at 130 m and 0.0408 at 340 m for the same quantity under the same
+superseded law, so the two susceptibilities quoted here are about 5 percent high
+and the arithmetic on them is illustrative rather than reproducible. Recompute or
+delete before any of it is quoted in the paper. -->
+
+
 Decomposed exactly, with susceptibility split into its zero bounce and multi
 bounce parts with no residual, **blocking accounts for 69 to 77 percent of the
 effect and redistribution of multi bounce throughput for the rest**. Both are
@@ -1166,7 +1212,7 @@ within 0.19 dB and at 300 m within 0.05.
 
 Two controls. The 60, 100 and 120 m meshes are single precision builds and the
 rest are double precision, which is why the 120 to 130 step reads as a small
-positive; every step from 130 upward is like for like. And the 250 m and wider
+positive. Every step from 130 upward is like for like. And the 250 m and wider
 crops come from a second, larger tile fetch, so a 200 m crop was rebuilt from that
 fetch as a control: it gives 390,518 triangles, identical to the 200 m crop from
 the original fetch, so the step at 200 to 250 m is physics rather than an
@@ -1197,11 +1243,23 @@ about 0.06 dB of bias.
 
 The geometry claim reverses outright. Rooftop-diffracted power reaches a head at
 1.7 m from the edge directly overhead, so it arrives at 35 to 86 degrees of
-elevation, and `1/sin^3(el)` at 60 degrees is 0.001 times its value at 5 degrees.
-Adding UTD would deposit power where the study's own weight suppresses it by
-three orders of magnitude. The old text conflated the link with the local tensor:
-over-rooftop multiscreen transport is upstream of `K_S` and factored out by
-construction, and what `K_S` must capture is only the last edge.
+elevation, and `1/sin^3(alpha)` at 60 degrees is 0.001 times its value at
+5 degrees. Adding UTD would deposit power where the study's own weight suppresses
+it by three orders of magnitude.
+
+**The 2026-08-02 correction weakens this argument and does not overturn it.**
+`1/sin^3(alpha)` alone is the superseded fixed-height law. The corrected rooftop
+weight carries only 9.4 percent of its measure below 5 degrees against 61.7
+percent before, so it puts far more weight in the 35 to 86 degree band where
+rooftop diffraction actually lands, and the suppression is no longer three orders
+of magnitude. The decision survives on the power-integral bound above, which is a
+statement about the edge coefficient and not about the elevation weight, but the
+elevation half of it should not be quoted as it stands. Recomputing the corrected
+weight over 35 to 86 degrees is a call to `measure_below` and has not been done.
+
+The old text conflated the link with the local tensor:
+over-rooftop multiscreen transport is upstream of `K_x` and factored out by
+construction, and what `K_x` must capture is only the last edge.
 
 Two exceptions survive and are recorded rather than dismissed. A transmitter
 sited behind a parapet is a hard failure, since Chizhik measures over 15 dB of
@@ -1223,12 +1281,13 @@ different crop questions had been running together.
    under 0.05 dB of error. Atmospheric absorption cannot be used to justify the
    truncation either: P.676-13 gives 0.026 dB over 260 m at 28 GHz.
 2. **Occlusion.** Not converged. Under the adjoint `R^0` law a distant blocker
-   changes `K_S(u)` at full per-direction strength, directions beyond 90 m carry
+   changes `K_x(u)` at full per-direction strength, directions beyond 90 m carry
    -28.4 dB of the isotropic weight, and that figure is still growing with radius
    against a 30 dB budget.
 3. **Source support.** Broken. The rooftop weight is supported on `Delta_h` in
-   [13.5, 43.5] m and `d` in [25, 250] m, the scene is cropped at 130 m, and the
-   fraction of the `cos/sin^3` measure needing a source outside the crop is 27.5%
+   [13.5, 43.5] m and horizontal range `r` in [25, 250] m, the scene is cropped
+   at 130 m, and the fraction of the `cos/sin^3` measure needing a source outside
+   the crop is 27.5%
    <!-- Superseded 2026-08-02: these percentages are computed under the
    uncorrected elevation law. See MONOSTATIC_SBR.md section 2.7.1. The
    conclusion that the 130 m crop is broken survives and is if anything
@@ -1439,9 +1498,9 @@ The fishnet class-fidelity coverage of about 99 percent recorded for these cases
 is not in conflict. It is a fraction of the pixels the cutter was asked to paint,
 so geometry that has disappeared never enters the denominator.
 
-## The illumination model is the law, not the bands
+### The illumination model is the law, not the bands
 
-`MONOSTATIC_SBR.md` section 2.7 gives both a `1/sin^3(el)` weight and a pair of
+`MONOSTATIC_SBR.md` section 2.7 gives both a `1/sin^3(alpha)` weight and a pair of
 height and range bands, and they are not the same network. The law is derived
 for a fixed height above head, the bands are used only to widen the support, and
 sampling the bands literally departs from the law by a factor of 22 across it.
@@ -1452,7 +1511,7 @@ bands indicative, on the grounds that redefining the models would change every
 directional number in the study to fix a statement in a document. That reasoning
 was backwards. The cost of a change is not evidence about which version is
 right, and the bands are the physical claim: a population of sites at stated
-heights and stated ranges is a deployment, while a `1/sin^3` weight stretched
+heights and stated ranges is a deployment, while a `1/sin^3(alpha)` weight stretched
 over a support no single height produces is not.
 
 The corrected law counts sites per steradian as `(r_far^3 - r_near^3)/3`, where
@@ -1464,10 +1523,12 @@ beside them. The uncorrected pair survives as `ROOFTOP_FIXED_HEIGHT` and
 `STREET_SMALL_CELL_FIXED_HEIGHT` so that everything published before
 2026-08-02 stays reproducible.
 
-**It is not a small correction.** The old rooftop model put 61.7 percent of its
-measure below 5 degrees of elevation and the corrected one puts 9.4 percent.
-Measured at Korenmarkt from the same rays at the same seed, so the difference
-between the laws carries no Monte Carlo noise at all:
+**It is not a small correction.** The old rooftop model put 61.74 percent of its
+measure below 5 degrees of elevation and the corrected one puts 9.41 percent,
+from `directions.measure_below`, which is library code with a test on it rather
+than a figure computed once. Measured at Korenmarkt from the same rays at the
+same seed, so the difference between the laws carries no Monte Carlo noise at
+all:
 
 | | 130 m crop | 250 m crop | crop correction |
 |---|---|---|---|
@@ -1477,6 +1538,12 @@ between the laws carries no Monte Carlo noise at all:
 | small cells, band | 0.05827 | 0.01179 | **-6.94 dB** |
 | isotropic, unaffected | 0.29123 | 0.28681 | -0.07 dB |
 
+Medians over 40 standpoints at 150,000 rays, from `run_law_comparison.py` and
+`outputs/law_comparison/korenmarkt_law_comparison.json`. The law shift at one
+crop is 2.54 dB rooftop and 0.84 dB street at 130 m, widening to 5.67 and 3.98 dB
+at 250 m, so the two corrections do not commute and neither can stand in for the
+other.
+
 **The crop radius finding is halved for the small cells and all but erased for
 the rooftop model.** That follows from the mechanism rather than contradicting
 it: the correction removes most of the illumination measure that sat within a
@@ -1485,15 +1552,79 @@ crop radius mattered. Re-acquiring at 250 m remains the right call, because a
 7 dB correction is still a correction, and because the isotropic and sky
 fraction results were never the reason for it.
 
-## Times Square is trace-only, not dropped
+### Times Square is trace-only, not dropped
 
 Its support mesh carries 200 m of spurious geometry below the street, so its
-skyline registration fails at 10.13 degrees against 0.33 to 2.87 elsewhere. That
-is fatal for aligning a photograph, because the objective pays for a wrong
-silhouette by sinking the camera, and there is no interior optimum.
+skyline registration fails at a 10.13 degree median residual over its fourteen
+poses, none of them under 7.58. The comparison first written here, 0.33 to 2.87
+degrees elsewhere, is stale: on the shipped
+`outputs/registration_sky_conflict.csv` the per site medians elsewhere run 0.40
+at Madrid to 6.19 at Tokyo, and Brussels has a single pose at 11.16 that is worse
+than any Times Square pose. What is specific to Times Square is that every one of
+its poses is bad rather than one of them. That is fatal for aligning a
+photograph, because the objective pays for a wrong silhouette by sinking the
+camera, and there is no interior optimum.
 
 It is not fatal for tracing. Culling every face wholly below the datum removes
 3.60 percent of the mesh and moves the median susceptibility by 0.0013 to 0.047
-dB, with no standpoint of forty moving as much as half a decibel. The site stays
-in the cross city comparison and its poses are treated as unregistered. A mesh
-can be too broken to align against and good enough to trace.
+dB, with no standpoint of forty moving as much as half a decibel, from
+`outputs/substreet_ablation/newyork_timessquare_substreet.json`. That ablation
+predates the illumination-law correction and its rooftop and street columns are
+superseded-law, but the quantity it bounds is a geometry effect and the isotropic
+column, which is law-independent, moves 0.0013 dB. The site stays in the cross
+city comparison and its poses are treated as unregistered. A mesh can be too
+broken to align against and good enough to trace.
+
+### The headline run is eleven squares at 250 m, and it carries no image evidence
+
+**Superseded 2026-08-03, on the run tag and on every number in this entry.** The
+headline is now `city250_L3_*`, the same eleven squares at three surface
+interactions on the ground datum measured per site by `measure_ground_datum`.
+`city250_corrected_*` put the Krakow and Toulouse standpoints on the roof of the
+Cloth Hall and of the Capitole. The spans below become 3.71 dB isotropic and
+4.93 dB rooftop, and Mexico City Zocalo rather than Krakow is the highest site.
+`AGGREGATE_REBUILD.md` carries the audit and `GROUND_DATUM.md` the datum fix. The
+entry is left as written because it is what was decided on 2 August.
+
+**Decision.** `city250_corrected_*` in `outputs/exposure_korenmarkt/` is the
+headline. Eleven squares, 250 m crop, 80 standpoints each, 200,000 rays, four
+bounces, seed 7, 15 GHz. Every earlier tag is kept and none of them is the
+headline. `city_*` is 130 m superseded law at ten of the eleven sites, Milan
+having no 130 m run. `city250_*` is 250 m superseded law. `bandlaw_*` is the
+corrected law at Korenmarkt only, at both crops and on the walk.
+`korenmarkt_geometric|semantic|walk_*` are 130 m superseded law at 120
+standpoints, and `clean_*` and `dirty_walk12` are their corrected-law
+counterparts.
+
+**What it measures.** Isotropic medians span 5.13 dB across the eleven, 0.5304 at
+Krakow Rynek down to 0.1629 at Times Square. Rooftop medians span 9.65 dB
+corrected, against 14.49 dB under the superseded law, and the isotropic to
+rooftop range narrows from 11.32 dB to 6.12 dB. An earlier draft carried 11.37 dB
+for the superseded half of that last pair, which does not reproduce from the
+shipped summaries. All of these are recomputed here from the per site
+`*_summary.json` files at quantile 0.5, not from the `cities250_*` aggregates.
+
+**The correction is not an offset.** Per site it runs 1.06 dB at Krakow to 6.33 dB
+at Madrid on the rooftop median, and the rank correlation between the superseded
+and corrected orderings is 0.78, so it reorders the squares. Korenmarkt moves
+5.27 dB rooftop and 4.27 dB street. Anything that quotes a rooftop or street
+number has to say which law it was computed under.
+
+**What it does not measure, and this is the load-bearing caveat.** All eleven
+manifests carry `semantic_binding.materials = "geometric"` with
+`covered_fraction_by_face` and `covered_fraction_by_area` both exactly 0.0. No
+panorama, no segmentation and no material posterior reaches this table. The
+surface class comes from `|n_z|` and the material from a prior. Every semantic
+result in this repository is a Korenmarkt-only ablation at the 130 m crop, and
+the crop entry above says 130 m has not converged for either directional model,
+so the ablation and the cross city table are not the same scene and cannot
+currently be made into one without re-cutting the fishnet at 250 m.
+
+Two further gaps in the same direction. SAM 3, which is the whole material axis,
+ran on 2 of the 96 panoramas that carry semantics. And 69 of the 83 skyline
+registrations in `outputs/registration_sky_conflict.csv` feed no result at all,
+being every pose at Brussels, Mexico, New York, Prague, Madrid and Tokyo.
+
+**Reverses if.** The fishnet and the semantic binding are rebuilt at 250 m at more
+than one site, at which point the headline should be the semantic run and the
+geometric one becomes the ablation rather than the result.

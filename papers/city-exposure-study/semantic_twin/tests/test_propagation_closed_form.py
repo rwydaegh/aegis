@@ -348,9 +348,10 @@ def test_the_two_branch_target_rejects_four_specific_implementation_errors() -> 
 def test_russian_roulette_from_the_first_bounce_does_not_move_the_closed_form() -> None:
     """Roulette has to be unbiased, and the only honest check is an exact target.
 
-    In production the roulette starts at bounce 3, which on a plane never fires,
-    so no test in the suite has ever exercised it against a known answer. Here
-    it is moved to bounce 1, where it kills between a third and a half of the
+    In production the roulette is off, pinned by
+    ``roulette_start = DEFAULT_MAX_BOUNCES + 1``, so it can never fire at the
+    shipped budget and no production run exercises it. Here it is moved to
+    bounce 1, where it kills between a third and a half of the
     rays before they can deposit and inflates the survivors by up to twenty
     times. The estimator has one job under that treatment: return the same
     number. If the division by the survival probability were dropped, or applied
