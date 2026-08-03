@@ -969,7 +969,20 @@ by-product: its mask, its quadrature and its ray budget are independent of the
 estimator, and integrating it over the visible directions instead of the
 shadowed ones reproduces the estimator's own direct term to within 0.34\,\%
 isotropic, 1.73\,\% rooftop and 7.3\,\% street. Only the direct term is covered
-by it. The reflected term has no independent check at the time of writing.
+by it.
+
+The reflected term is checked against an independent ray tracer, run on the same
+meshes with the same materials. Taking the median over the three illumination
+models, the two agree to within 0.25\,dB at the reference square and 0.16\,dB at
+a second square, against a Monte Carlo floor on the comparison itself of 0.24 to
+0.46\,dB. The right way to report that is that no disagreement is resolvable,
+rather than that the two agree to a sixth of a decibel. Two limits travel with
+it. The comparison cannot test the illumination law, because $Q$ is common to
+both legs and an error in it cancels exactly, so what is tested is the transport
+and not the weighting. And the two are matched on roughness rather than on
+model: this estimator forms a product of per bounce polarisation averages where
+the other forms an average of products, and the residual quoted above contains
+that difference rather than excluding it.
 
 \begin{thebibliography}{9}
 

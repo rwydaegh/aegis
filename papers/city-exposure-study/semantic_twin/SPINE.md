@@ -159,13 +159,25 @@ coverage is 0.479.**
 
 ### 4. Where the power is, which is what makes three bounces enough
 
-| depth | share of launched power |
+| depth | share of launched power incident at that depth |
 |---|---|
-| escapes untouched | 10.7 % |
-| 1 | 79 % |
-| 2 | 8.9 % |
+| 1 | 79.0 % |
+| 2 | 8.8 % |
 | 3 | 1.2 % |
-| 4 and beyond | 0.22 % |
+| 4 and beyond | 0.23 % |
+
+**These are not a partition and must not be written as one.** A ray that reaches
+depth 3 was already counted at depths 1 and 2, so the column does not sum to
+anything meaningful. The share of launched power that leaves without touching
+anything at all is $1 - 0.790 = 21.0$ %, which agrees independently with the
+measured sky fraction. An earlier version of this file gave 10.7 % for that,
+computed as one minus the sum of the column, which is the mistake this paragraph
+exists to prevent. `BOUNCE_BUDGET.md` gives 0.22 % for depth 4 and beyond because
+it truncated the sum at depth 5.
+
+One more label to get right, since it is easy to mislabel and one draft already
+did: `truncated_throughput_share` is normalised by **escaping** power, not by
+launched power.
 
 Against an eight interaction reference at fixed seeds over 40 standpoints,
 $L = 3$ costs a median 0.002 dB and never moves a standpoint by more than
@@ -289,6 +301,64 @@ against a theoretical edge coefficient near -42 dB, so the functional form wins
 while the physical mechanism is 40 dB short.
 
 *Source: `WHY_NOT.md` §8, `LIT_VERIFICATION.md`.*
+
+### 6. An independent solver agrees, and the promise of an external check is kept
+
+This was an open promise in the methods for most of the project. It is now a
+result. An independent ray tracer, run on the same meshes with the same
+materials, against the estimator:
+
+| median over the three illumination models | Korenmarkt | Brussels Grand Place |
+|---|---|---|
+| production configuration, the one that ships | within **0.25 dB** | within **0.16 dB** |
+| diffuse, roughness matched | within 0.11 dB | within 0.31 dB |
+| the comparison's own Monte Carlo floor | 0.24 to 0.46 dB | 0.27 to 0.46 dB |
+
+**The agreement is at the noise floor of the comparison**, so the honest
+statement is that no disagreement is resolvable, not that the two agree to
+0.16 dB. The estimator leg re-traces the published manifest to 0.001 dB
+isotropic, so these are the paper's own numbers rather than a re-derivation.
+
+**The scope limit that must survive into the paper**: this cannot validate the
+illumination law. $Q$ is shared by both legs, so an error in the law cancels
+exactly. It validates the transport, not the weighting.
+
+A second honesty item, self reported: the two modes are exact *roughness*
+matches, not exact model matches. The estimator forms a product of per bounce
+polarisation averages while the other forms an average of products. That
+approximation lives in all modes and the 0.1 to 0.3 dB residual **contains** it
+rather than excluding it, on meshes whose mean interaction count is 1.6.
+
+**A defect in the other solver, found on the way, worth its own paragraph.** Its
+image method specular branch manufactures energy on near coplanar geometry. A
+ground plane under an observer has the exact answer 0.6405 and jittering its
+vertices cannot change it, since energy is redirected rather than created. The
+solver returns 0.6320 at zero jitter, **452 at 0.2 mm**, and 0.654 again at
+20 mm, a peak factor of 706. Four things pin it as the solver's and not the
+harness's: the diffuse branch on the same triangles returns 0.6296 at every
+jitter, the kept path count rises from 2 to 3671 and back in step with the
+energy, and **the answer scales as the 0.44 power of the candidate search
+budget**, which a converged physical quantity cannot do. Near coplanar sub
+Fresnel facets each host their own stationary point, deduplication fails, and
+each is handed the infinite plane reflection coefficient. This is present on the
+real meshes: 22 % of adjacent facade pairs at both sites sit inside the
+pathological slope band. So the specular mode is reported as a diagnostic and the
+verdict rests on the other two.
+
+Two more things fell out. The acceptance rule the project set for itself gives a
+bounce answer of **$L = 1$ at Korenmarkt and $L = 2$ at Brussels**, against a
+shipped 3, and a dynamic range of 20 dB against an asserted 25. The shipped
+settings are conservative rather than wrong, and the older claim of "4 bounces at
+25 dB, measured" is unsupported in both halves. And diffraction, which the
+project only bounds, is measured here by the other solver's first order wedge at
+**+0.01 dB** on $\chi$, well inside the bound. First order only, and at eight
+open square standpoints where a wedge has least to add.
+
+*Source: `CROSS_VALIDATION.md`.*
+
+**`PAPER_METHODS.md` §8.1 and its §11 status row both still record external cross
+validation as absent. Both are now false, in the direction of understating what
+exists.**
 
 ---
 
