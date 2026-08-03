@@ -611,40 +611,48 @@ after $0.23/\tan\alpha$, which is 13 m at 1°, 2.6 m at 5°, 0.4 m at 30°.
 
 The prediction from that was that the street model would be hit nine times harder
 than the rooftop model, since they send 88 % and 9 % of their measure below 5°.
-**Measured: 1.4 dB against 1.0 dB at two people per square metre.** A ratio of
-1.4, not nine.
+**Measured: 1.40 dB against 1.07 dB at two people per square metre.** A ratio of
+1.3, not nine.
 
 The reason is the result. The *sent* measure is not the *arriving* measure. The
-arriving shares below 5° are 0.21 and 0.19, a ratio of 1.15, because the facades
+arriving shares below 5° are 0.212 and 0.185, a ratio of 1.15, because the facades
 have already redistributed the power before any crowd sees it. **A dense European
 square is its own near horizon blocker, and a crowd is a second edit to a
-distribution the buildings have already set.** Isotropic loses only 0.05 dB,
+distribution the buildings have already set.** Isotropic loses only 0.07 dB,
 because weighting all directions equally makes redistribution free and leaves
 only absorption to pay for.
 
 The absorber control is what turns that from a story into a measurement. Replace
 the bodies with index matched absorbers, so the geometry and the blockage are
 identical and only the reflected half is removed, and the isotropic loss goes
-from 0.049 to 0.708 dB while rooftop moves only 1.044 to 1.332 and street only
-1.391 to 1.607. **A crowd is nearly invisible to the isotropic model because it
+from 0.070 to 0.708 dB while rooftop moves only 1.069 to 1.332 and street only
+1.396 to 1.607. **A crowd is nearly invisible to the isotropic model because it
 reflects, not because it fails to block.**
 
 All of the above at 2.15 people per square metre, adult stature, 2867 bodies,
 paired median over 12 standpoints. Noise floor on the same design: 0.009 dB
-isotropic, 0.035 rooftop, 0.112 street median absolute, so the 1.0 and 1.4 dB
-shifts sit 30 and 12 times above it and the 0.049 dB isotropic shift does not
-clear it. Say that: the isotropic shift is consistent with zero.
+isotropic, 0.035 rooftop, 0.112 street median absolute, so the three shifts sit
+8, 30 and 12 times above it. **All three clear the floor, isotropic included.**
+The earlier reading of this section, that the isotropic shift was consistent
+with zero, does not survive arithmetic: 0.07 dB against a 0.009 dB floor is a
+small loss, not an absent one, and the honest statement is that isotropic is an
+order of magnitude under the two directional columns. What does straddle zero is
+the spread across standpoints, whose 5th and 95th percentiles are -0.59 and
++0.04 dB.
 
 *(Every number in this section recomputed in session from
 `outputs/bystander_study/korenmarkt_15ghz_summary.json`,
 `korenmarkt_absorber_15ghz_summary.json` and `korenmarkt_15ghz_noise_floor.json`.)*
 
-**One consistency caveat that has to travel with it.** This study ran at
-`max_bounces: 6` with roulette starting at bounce 3, which is the superseded
-configuration, not the `L = 3` roulette off budget the headline uses. It is a
-paired differential study, so the shift is far more robust than an absolute
-level would be, but it has not been rerun on the current budget and should not
-be presented as though it had.
+**The consistency caveat is closed.** The crowd arm has been retraced on the
+`L = 3` roulette off budget the headline uses, on the same mesh, the same
+measured datum and the same 12 standpoints, verified identical before anything
+was compared. The paired shift survives: isotropic -0.049 to -0.070 dB, rooftop
+-1.044 to -1.069, street -1.391 to -1.396, and the arriving shares below 5°
+move in the fourth decimal, 0.185 and 0.212 both ways. The absorber control and
+the noise floor needed no rerun, because both had already been traced at three
+interactions, and rerunning the absorber reproduces its summary byte for byte.
+The one thing the rerun changes is the isotropic reading above.
 
 *Source: `BYSTANDERS.md`.*
 

@@ -7,7 +7,10 @@ the cheap way of estimating it against the expensive one.
 
 Code is `semantic_twin/propagation/bystanders.py`. Tests are
 `tests/test_bystanders.py`. The run is
-`python -m semantic_twin.propagation.bystanders`, and its output is
+`python -m semantic_twin.propagation.bystanders --locations 12 --realisations 2
+--rays 120000`, the noise floor adds `--noise-floor` and the control adds
+`--body-absorber --locations 8 --realisations 1 --stature-modes adult --tag
+korenmarkt_absorber` at the top two densities. Output is
 `outputs/bystander_study/`. Nothing in `run_exposure.py` was touched: the
 bystander runner reads the illumination models from
 `semantic_twin/propagation/directions.py`, which is where they are defined, and
@@ -45,14 +48,15 @@ many decibels and the rooftop column very little, with isotropic in between.
 ## What was measured
 
 12 standpoints on the Korenmarkt walk, 2 crowd realisations each, 6 densities, 2
-stature modes, 120 000 rays and up to 6 bounces per trace, 300 traced rows in
+stature modes, 120 000 rays per trace and the study's own trace budget of three
+surface interactions with Russian roulette off, 300 traced rows in
 `outputs/bystander_study/korenmarkt_15ghz_rows.jsonl`. Each crowd trace is paired
 with a baseline trace of the same standpoint under the same ray seed, so the
 numbers below are medians of a paired per-standpoint dB shift and not a
 difference of two independently sampled populations.
 
-Baseline median `chi_S` on the empty square: isotropic 0.2847, rooftop 0.1560,
-street small cell 0.01329.
+Baseline median `chi_S` on the empty square: isotropic 0.2846, rooftop 0.1558,
+street small cell 0.01333.
 
 ### Traced crowd against Beer-Lambert, adult statures
 
@@ -61,23 +65,23 @@ density read on walkable area, BL-n with the density read on nominal disc area.
 
 | density (m-2) | bodies | iso traced | iso BL-w | iso BL-n | roof traced | roof BL-w | roof BL-n | street traced | street BL-w | street BL-n |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0.050 | 66 | +0.01 | -0.04 | -0.08 | -0.06 | -0.08 | -0.17 | -0.08 | -0.12 | -0.24 |
-| 0.150 | 200 | +0.01 | -0.10 | -0.18 | -0.17 | -0.22 | -0.40 | -0.33 | -0.33 | -0.57 |
-| 0.308 (A/B) | 410 | -0.01 | -0.18 | -0.29 | -0.32 | -0.37 | -0.65 | -0.49 | -0.58 | -0.95 |
-| 0.718 (C/D) | 956 | -0.02 | -0.31 | -0.46 | -0.48 | -0.66 | -1.09 | -0.76 | -1.01 | -1.58 |
-| 1.076 (D/E) | 1434 | -0.06 | -0.39 | -0.55 | -0.76 | -0.85 | -1.38 | -1.00 | -1.29 | -1.98 |
-| 2.153 (E/F) | 2867 | -0.05 | -0.54 | -0.71 | -1.04 | -1.32 | -2.08 | -1.39 | -1.95 | -2.82 |
+| 0.050 | 66 | +0.01 | -0.04 | -0.08 | -0.06 | -0.08 | -0.17 | -0.11 | -0.12 | -0.24 |
+| 0.150 | 200 | +0.00 | -0.10 | -0.18 | -0.17 | -0.22 | -0.40 | -0.32 | -0.33 | -0.58 |
+| 0.308 (A/B) | 410 | -0.02 | -0.18 | -0.29 | -0.33 | -0.37 | -0.65 | -0.50 | -0.59 | -0.96 |
+| 0.718 (C/D) | 956 | -0.03 | -0.31 | -0.46 | -0.48 | -0.66 | -1.10 | -0.79 | -1.01 | -1.60 |
+| 1.076 (D/E) | 1434 | -0.07 | -0.39 | -0.55 | -0.79 | -0.85 | -1.38 | -0.99 | -1.29 | -2.00 |
+| 2.153 (E/F) | 2867 | -0.07 | -0.53 | -0.70 | -1.07 | -1.32 | -2.08 | -1.40 | -1.93 | -2.84 |
 
 ### Traced crowd against Beer-Lambert, statures as reconstructed
 
 | density (m-2) | bodies | iso traced | iso BL-w | iso BL-n | roof traced | roof BL-w | roof BL-n | street traced | street BL-w | street BL-n |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0.050 | 66 | +0.01 | -0.03 | -0.07 | -0.04 | -0.06 | -0.12 | -0.02 | -0.08 | -0.16 |
-| 0.150 | 200 | +0.01 | -0.09 | -0.16 | -0.12 | -0.15 | -0.29 | -0.23 | -0.21 | -0.37 |
-| 0.308 (A/B) | 410 | -0.00 | -0.15 | -0.25 | -0.23 | -0.26 | -0.45 | -0.36 | -0.34 | -0.57 |
-| 0.718 (C/D) | 956 | +0.00 | -0.26 | -0.39 | -0.32 | -0.44 | -0.68 | -0.44 | -0.57 | -0.87 |
-| 1.076 (D/E) | 1434 | -0.02 | -0.33 | -0.47 | -0.56 | -0.54 | -0.79 | -0.71 | -0.71 | -1.04 |
-| 2.153 (E/F) | 2867 | -0.01 | -0.45 | -0.59 | -0.60 | -0.73 | -1.01 | -0.73 | -1.01 | -1.39 |
+| 0.050 | 66 | +0.00 | -0.03 | -0.07 | -0.04 | -0.06 | -0.12 | -0.08 | -0.08 | -0.16 |
+| 0.150 | 200 | +0.01 | -0.09 | -0.16 | -0.12 | -0.15 | -0.29 | -0.21 | -0.21 | -0.37 |
+| 0.308 (A/B) | 410 | -0.01 | -0.15 | -0.25 | -0.23 | -0.26 | -0.45 | -0.30 | -0.34 | -0.58 |
+| 0.718 (C/D) | 956 | -0.00 | -0.26 | -0.39 | -0.32 | -0.44 | -0.68 | -0.45 | -0.58 | -0.87 |
+| 1.076 (D/E) | 1434 | -0.04 | -0.33 | -0.47 | -0.58 | -0.54 | -0.79 | -0.70 | -0.72 | -1.06 |
+| 2.153 (E/F) | 2867 | -0.03 | -0.45 | -0.58 | -0.62 | -0.73 | -1.01 | -0.74 | -1.01 | -1.40 |
 
 The median walkable fraction inside the 30 m disc is 0.47, so a nominal density
 of `lambda` puts about `0.47 lambda` people per square metre of disc, and BL-n
@@ -97,21 +101,47 @@ ray seeds gives the estimator's own spread,
 
 This is a conservative bound, because the study uses common random numbers and
 the noise floor does not. Every entry in the two tables clears it, the tightest
-being the -0.06 dB rooftop entry at 0.05 m-2 against a 0.013 dB floor. The
+being the as reconstructed isotropic entry at 0.05 m-2, +0.004 dB against a
+0.003 dB floor, and the top of the isotropic column clearing by 23 times. The
 street small cell column carries by far the most sampling noise per row, which is
 expected: it draws `chi_S` from a 1 degree wide band of arrival directions, so it
 sees the fewest rays.
+
+### The trace budget, and the rerun that closed it
+
+The first crowd arm was traced at `max_bounces: 6` with roulette from bounce 3,
+which is the budget this study used before `BOUNCE_BUDGET.md` settled on three
+surface interactions with roulette off. The tables above are the retrace on the
+settled budget. It is the same mesh, the same measured datum of 50.837 m and the
+same 12 standpoints, which were rebuilt and checked index by index against the
+first run before anything was compared, because two of the eleven city reruns in
+this project turned out to be confounded by a datum change underneath them.
+
+Nothing of substance moved. At 2.153 m-2 with adult statures the paired median
+went from -0.049 to -0.070 dB isotropic, -1.044 to -1.069 rooftop and -1.391 to
+-1.396 street small cell, and the arriving shares below 5 degrees went from
+0.1850 to 0.1847 rooftop and 0.2123 to 0.2116 street, so the 1.15 ratio that
+refutes the geometric prediction is unchanged. The largest single move anywhere
+in the two ladder tables is 0.055 dB, in the as reconstructed street small cell
+column, which is the noisiest column in the study and the one whose per-row floor
+is 0.112 dB.
+
+The noise floor and the absorber control needed no retrace, because both had
+already been run at three interactions: the noise floor JSON reproduces byte for
+byte, and rerunning `--body-absorber` reproduces its summary byte for byte. So
+the absorber contrast is now measured on one budget throughout, which it was not
+before.
 
 ### The prediction was wrong, and interestingly so
 
 The prediction was that blockage would track the share of the illumination
 measure the model sends below 5 degrees: street small cell hit hard (0.879 sent
 below 5 deg), rooftop barely (0.094), isotropic in between (0.544). What was
-measured, at the top of the ladder with adult statures, is street -1.39 dB,
-rooftop -1.04 dB, isotropic -0.05 dB. The street to rooftop ratio is 1.3 to 2.0
+measured, at the top of the ladder with adult statures, is street -1.40 dB,
+rooftop -1.07 dB, isotropic -0.07 dB. The street to rooftop ratio is 1.3 to 1.9
 across the whole ladder, not the 9.3 the sent measure predicts, and isotropic,
 which sends more than half its measure into the band a crowd is opaque to, is
-the one column a crowd does not touch.
+the one column a crowd barely touches.
 
 Two separate things are going on.
 
@@ -132,9 +162,9 @@ puts both the sent and the arriving near-horizon share in its legend.
 That explanation carries the two directional models and then fails on the third.
 Deleting the entire arriving below-5-degree band, which is the most a perfectly
 absorbing crowd could ever do, would cost -0.77 dB isotropic, -0.89 dB rooftop
-and -1.04 dB street small cell. The traced crowd at 2.153 m-2 delivers -1.04 dB
-rooftop and -1.39 dB street, at or past that bound because it also eats into the
-5 to 15 degree band, and -0.05 dB isotropic, which is nowhere near it. So a
+and -1.03 dB street small cell. The traced crowd at 2.153 m-2 delivers -1.07 dB
+rooftop and -1.40 dB street, at or past that bound because it also eats into the
+5 to 15 degree band, and -0.07 dB isotropic, which is nowhere near it. So a
 second mechanism is needed, and only for isotropic.
 
 **Isotropic does not care where the power goes, only whether it is gone.**
@@ -144,12 +174,13 @@ anything. A bystander at 15 GHz reflects about half of what it intercepts and
 scatters it diffusely, and under isotropic weighting that scattered half is
 recovered somewhere else on the sphere. Under a directional model it lands
 outside the model's support and is lost. That is why the isotropic column sits at
--0.05 dB at 2.15 people per square metre while the Beer-Lambert arm, which by
-construction cannot recover a reflected photon, predicts -0.54 to -0.71 dB there.
+-0.07 dB at 2.15 people per square metre while the Beer-Lambert arm, which by
+construction cannot recover a reflected photon, predicts -0.53 to -0.70 dB there.
 The sign at the bottom of the ladder is the same story read forwards: isotropic
-`chi_S` comes out **+0.01 dB** at 0.05 and 0.15 m-2, a gain rather than a loss,
-about twice the 0.003 dB floor, which is what a sparse crowd standing close to
-the pedestrian does if it scatters slightly more power inwards than it removes.
+`chi_S` comes out **positive** at 0.05 and 0.15 m-2, +0.006 and +0.005 dB with
+adult statures, a gain rather than a loss at about twice the 0.003 dB floor,
+which is what a sparse crowd standing close to the pedestrian does if it scatters
+slightly more power inwards than it removes.
 
 ### The control run says the same thing directly
 
@@ -166,9 +197,9 @@ different standpoint subset and a different crowd:
 
 | model | skin traced / BL-w | absorbing traced / BL-w |
 | --- | --- | --- |
-| isotropic | 0.09 | 1.27 |
-| rooftop | 0.79 | 0.94 |
-| street small cell | 0.71 | 0.81 |
+| isotropic | 0.13 | 1.27 |
+| rooftop | 0.81 | 0.94 |
+| street small cell | 0.73 | 0.81 |
 
 (at 2.153 m-2, adult statures.)
 
@@ -176,10 +207,10 @@ An absorbing crowd puts isotropic on top of Beer-Lambert and slightly past it,
 which is the prediction, and the overshoot past 1.0 is the arm's other error
 showing through: Beer-Lambert extinguishes the final leg only, so once
 re-illumination is removed it under-predicts rather than over-predicts. The two
-directional columns move by a tenth of a ratio point, isotropic by fourteen
-times. In absolute terms, at 2.153 m-2 the isotropic shift goes from -0.05 dB
+directional columns move by about a tenth of a ratio point, isotropic by ten
+times. In absolute terms, at 2.153 m-2 the isotropic shift goes from -0.07 dB
 with skin bodies to -0.71 dB with absorbing ones, while rooftop moves only from
--1.04 to -1.33 dB and street small cell from -1.39 to -1.61 dB.
+-1.07 to -1.33 dB and street small cell from -1.40 to -1.61 dB.
 
 So the isotropic column is insensitive to a crowd **because the crowd reflects**,
 and this is now measured rather than argued.
@@ -192,14 +223,14 @@ arm always over-predicts blockage:
 
 | model | BL-n over traced | BL-w over traced |
 | --- | --- | --- |
-| isotropic | 14x | 11x |
-| rooftop | 2.0x | 1.3x |
+| isotropic | 10x | 7.6x |
+| rooftop | 1.9x | 1.2x |
 | street small cell | 2.0x | 1.4x |
 
 (ratio of dB shifts at 2.153 m-2, adult statures.)
 
 For the two directional models the walkable reading of the cheap arm is within
-30 to 40 % of the traced answer in dB and has the right shape against density,
+40 % of the traced answer in dB and has the right shape against density,
 which is enough to use it as a screening estimate as long as it is understood as
 an upper bound on the loss. The nominal reading is a factor of two out and should
 not be used. For isotropic illumination the cheap arm is wrong by an order of
@@ -212,8 +243,8 @@ crowd it actually assumes and it is accurate to 27 % on isotropic.
 
 Rerunning the same crowd with the reconstructions at their own statures (median
 1.55 m, only 0.05 m above the observation point) roughly halves the traced
-blockage at the top of the ladder: street -0.73 dB against -1.39, rooftop -0.60
-against -1.04. That is a bigger lever than a full level-of-service step on the
+blockage at the top of the ladder: street -0.74 dB against -1.40, rooftop -0.62
+against -1.07. That is a bigger lever than a full level-of-service step on the
 density ladder. Any bystander number quoted from this study has to quote the
 assumed stature with it.
 
@@ -224,16 +255,16 @@ empty square at 0.05 people per square metre to the Fruin E/F boundary at 2.15,
 with adult statures, a crowd removes:
 
 - **0.0 to 0.1 dB** under isotropic illumination,
-- **0.1 to 1.0 dB** under the rooftop model,
+- **0.1 to 1.1 dB** under the rooftop model,
 - **0.1 to 1.4 dB** under the street small cell model.
 
 At the densities a square actually spends its time in, level of service A and B,
 0.05 to 0.43 people per square metre, the whole effect is 0.5 dB or less in every
-column, the largest sampled value being -0.49 dB street small cell at the A/B
+column, the largest sampled value being -0.50 dB street small cell at the A/B
 boundary. Bystanders are a real, measurable, correctly signed effect on
 exposure at 15 GHz, and they are smaller than the spread between standpoints on
 the same square. The 5th to 95th percentile of the paired street small cell shift
-at the top density spans -3.85 to -0.83 dB, so the median understates what
+at the top density spans -3.90 to -0.84 dB, so the median understates what
 happens to individual pedestrians who end up boxed in.
 
 ## Method
@@ -419,8 +450,9 @@ The control uses 8 standpoints and 1 realisation at the top two densities, not
 12 and 2 across the whole ladder, because it exists to answer one question. Its
 standpoint subset is drawn by the same stratifier at a different count, so it is
 not the same 8 of the 12 and its median walkable fraction is 0.53 against 0.47.
-Cross-run absolute dB are therefore indicative. The ratio table above is
-within-run and is not affected.
+Cross-run absolute dB are therefore indicative, on the standpoint set if no
+longer on the trace budget, which is now three interactions in both runs. The
+ratio table above is within-run and is not affected by either.
 
 ### `aegis.geometry.inter_body` does not apply
 
