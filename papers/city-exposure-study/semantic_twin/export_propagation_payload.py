@@ -428,8 +428,15 @@ def posterior_entropy_bits(probability: np.ndarray) -> np.ndarray:
 
 
 def view_angles(stem: str) -> tuple[float, float]:
-    """Pitch and yaw in degrees, from a view stem such as ``h+00_270``."""
-    return float(stem[1:4]), float(stem[5:8])
+    """Pitch and yaw in degrees, from a view stem such as ``h+00_270``.
+
+    Read from the tail rather than from a fixed offset. Some sites write the
+    panorama id in front of the view, ``pano_07_CAoSFkNJSE0wb2dL_h+00_000``, and
+    slicing the front of that returns a plausible pair of numbers for the wrong
+    view rather than failing, which is the worst way for it to be wrong.
+    """
+    pitch, _, yaw = stem.rpartition("_")
+    return float(pitch.rpartition("_")[2][1:]), float(yaw)
 
 
 def evidence_pose(site: str, directories: dict[str, pathlib.Path]) -> dict[str, Any] | None:
@@ -683,7 +690,7 @@ def depth_cloud(
     decision_directory: pathlib.Path | None,
     extra: tuple[str, ...] = (),
     max_range_m: float = 150.0,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     """One point per surviving pixel of every crop, at the range the named array gives.
 
     Two different clouds come out of this. The mesh first hit is what the twin
@@ -695,7 +702,10 @@ def depth_cloud(
     points: list[np.ndarray] = []
     channels: dict[str, list[np.ndarray]] = {name: [] for name in ("decision", *extra)}
     views: list[np.ndarray] = []
-    for index, path in enumerate(sorted(directory.glob("h*.npz"))):
+    # Any name with a view in it, not just the ones that start with the view, so
+    # a site whose buffers carry a panorama id in front of the crop is read
+    # rather than silently skipped into an empty cloud.
+    for index, path in enumerate(sorted(path for path in directory.glob("*.npz") if "h+" in path.stem)):
         stem = path.stem
         data = np.load(path)
         if range_key not in data.files:
@@ -718,6 +728,8 @@ def depth_cloud(
                 channels[name].append(data[name].astype(np.float32).ravel()[keep])
             else:
                 channels[name].append(np.full(kept, np.nan, dtype=np.float32))
+    if not points:
+        return None
     layer = {
         "points": np.concatenate(points).astype(np.float32),
         "view": np.concatenate(views).astype(np.int8),
@@ -969,14 +981,18 @@ def attach_evidence(args: argparse.Namespace, bundle: dict[str, Any]) -> None:
             flush=True,
         )
 
-    if pose is not None and "mesh_depth" in directories:
-        cloud = depth_cloud(
+    cloud = (
+        depth_cloud(
             directories["mesh_depth"],
             "range_m",
             pose,
             stride=args.depth_stride,
             decision_directory=directories.get("depth_gated"),
         )
+        if pose is not None and "mesh_depth" in directories
+        else None
+    )
+    if cloud is not None:
         for name, value in cloud.items():
             payload[f"depth_mesh_{name}"] = value
         gated = directories.get("depth_gated")
@@ -988,8 +1004,8 @@ def attach_evidence(args: argparse.Namespace, bundle: dict[str, Any]) -> None:
         }
         print(f"[evidence] mesh first hit cloud: {cloud['points'].shape[0]} points", flush=True)
 
-    if pose is not None and "depth_ungated" in directories:
-        cloud = depth_cloud(
+    cloud = (
+        depth_cloud(
             directories["depth_ungated"],
             "unidepth_scaled_range_m",
             pose,
@@ -997,6 +1013,10 @@ def attach_evidence(args: argparse.Namespace, bundle: dict[str, Any]) -> None:
             decision_directory=directories["depth_ungated"],
             extra=("z_score", "mesh_range_m"),
         )
+        if pose is not None and "depth_ungated" in directories
+        else None
+    )
+    if cloud is not None:
         for name, value in cloud.items():
             payload[f"depth_monocular_{name}"] = value
         gated = directories.get("depth_gated")
