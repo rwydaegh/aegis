@@ -93,6 +93,15 @@ saying so.
   worse than a missing one.
 - **`aegis` is a self-citation with a placeholder DOI.** Worth minting a Zenodo
   DOI before submission.
+- **Two torn files under the abstract's dominant uncertainty.** The
+  `city250_corrected` run has 2 unparseable rows at New York (78 valid of 80) and
+  a stray extra line at Prague. That run is what the standpoint-sampling
+  comparison is computed against, so the abstract's 0.128, 0.061 and 0.188 dB and
+  the "roughly 25 times" claim rest on it. Worth re-running before submission.
+  **The published headline run is clean**: `city250_L3` parses to 880 rows across
+  eleven sites with nothing unparseable, so Table II, the abstract's spreads and
+  the ordering are unaffected. I re-derived the whole headline table from those
+  rows and every number reproduces exactly, including the 6, 8 and 4 of 11 counts.
 - **The Monte Carlo standard errors have no surviving source.** 0.0042, 0.0136
   and 0.0343 dB exist only in `CODE_AUDIT.md`. The raw output of the eight-seed
   retrace was discarded and no script reproduces it, yet the abstract's "roughly
