@@ -167,11 +167,36 @@ Against an eight interaction reference at fixed seeds over 40 standpoints,
 $L = 3$ costs a median 0.002 dB and never moves a standpoint by more than
 0.12 dB. Zero of 40 move half a decibel under any illumination model.
 
-**The joint of coverage with power is the closing argument, and it is the
-sentence to put in the abstract.** At a station, stopping at three bounces leaves
-10.5 % of launched power having touched material that was guessed rather than
-photographed. Tracing all the way to eight raises that to 10.6 %. Tracing further
-does not buy evidence, it only buys more guesses about less power.
+**The joint of coverage with power is the closing argument.** Track the share of
+launched power that has touched material which was guessed rather than
+photographed, cumulative over bounces, and compare stopping at three against
+tracing all the way to eight:
+
+| site and crop, at station positions | L = 3 | L = 8 |
+|---|---|---|
+| Korenmarkt 130 m | 0.1053 | 0.1064 |
+| Korenmarkt 250 m | 0.0049 | 0.0051 |
+| Brussels 250 m | 0.0073 | 0.0077 |
+| Madrid 250 m | 0.0115 | 0.0119 |
+| Mexico City 250 m | 0.0591 | 0.0597 |
+
+and pooled over all standpoints rather than at stations, where the absolute level
+is far higher, the same increment: Korenmarkt 250 m 0.3631 to 0.3639, Mexico City
+0.3857 to 0.3876, Madrid 0.1797 to 0.1805.
+
+*(Recomputed in session from `outputs/bounce_budget/*_bounce_evidence.json`.)*
+
+**The absolute level is not the result and varies by two orders of magnitude with
+where you stand. The increment is the result, and it is about a tenth of a
+percentage point everywhere.** Tracing five more bounces does not buy evidence,
+it only buys more guesses about less power. That is what makes three a budget
+rather than a preference: not that deeper bounces carry little energy, though
+they do, but that deeper bounces carry no more *warrant*.
+
+Care with this number in drafting. Earlier notes quote the pair 10.5 % against
+10.6 %, which is the Korenmarkt **130 m** crop and not the published 250 m one,
+where the same pair reads 0.49 % against 0.51 %. Quote the increment, or quote a
+level with its crop attached.
 
 Truncation biases $\chi$ low. The share of escaping power still in flight at the
 cut is 0.0038 median, 0.021 worst. Russian roulette cannot repair a hard cap and
