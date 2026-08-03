@@ -941,11 +941,32 @@ blocked near horizon paths, and the near horizon is where the illumination
 models put most of their measure. The converged radius is a property of the
 illumination model and not of the square, so it is reported per model.
 
+One radius converges and one does not, and they are easy to confuse. The crop
+radius above is the extent of the mesh. The outer radius $\rho_+$ of the
+deployment box in Section~\ref{sec:illum} is a different number, and sweeping it
+from 50 to 500\,m never reaches a plateau: $\chi$ falls about as
+$\rho_+^{-1.2}$, worth 7.4\,dB at the median square for the rooftop model. That
+is not a defect of the estimator, it is what a uniform site density over an
+unbounded plane does, since the lower edge of the elevation support keeps
+sliding toward the horizon. It means no absolute $\chi$ can be quoted without
+the radius it was computed at. What is far steadier is the contrast between
+squares, which moves 0.51\,dB against that 7.4\,dB, and that is the quantity the
+results lead with. The sweep costs no extra tracing, for the same reason the
+adjoint move works: $\chi$ is linear in the illumination density and every band
+law is uniform in azimuth, so one trace collapses to an elevation histogram and
+any choice of box is a dot product against it. Every radius is therefore scored
+on identical rays.
+
 Identities and closed forms constrain the implementation, not the formulation.
 A derivation error that is coded faithfully passes all of them, and one such
 error was in fact found by rederiving \eqref{eq:cone} rather than by any test
-failing. An independent solver is therefore used as an external check, and the
-comparison is reported with the results.
+failing. What guards against that class of error is a second calculation that
+shares no code with the first. The diffraction bound of A6 provides one as a
+by-product: its mask, its quadrature and its ray budget are independent of the
+estimator, and integrating it over the visible directions instead of the
+shadowed ones reproduces the estimator's own direct term to within 0.34\,\%
+isotropic, 1.73\,\% rooftop and 7.3\,\% street. Only the direct term is covered
+by it. The reflected term has no independent check at the time of writing.
 
 \begin{thebibliography}{9}
 
