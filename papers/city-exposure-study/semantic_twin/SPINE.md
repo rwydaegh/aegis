@@ -264,9 +264,11 @@ bounce budget 3, fixed ground datum. One writer, eleven sites, 880 standpoints,
 zero torn records. Run tag `_L3`.
 
 **Between city spread: 3.71 dB isotropic, 4.93 dB rooftop, 9.58 dB street small
-cell. Largest within city spread: 6.46 dB isotropic, at Madrid.** Within one
-square beats across eleven squares by 2.75 dB, which is the headline claim and
-it strengthened in the rebuild, up from a 1.02 dB margin.
+cell. Largest within city spread: 6.46 dB isotropic at Madrid, 12.89 dB rooftop
+and 19.01 dB street, both at Brussels.** See the table under "the one sentence"
+for the full within against between comparison, and quote it in that form rather
+than as a single margin, because the comparison goes the paper's way for two of
+the three illumination models and not for the third.
 
 Mexico City Zocalo is the most exposed square. Krakow's old reading as the dark
 red outlier is gone: those standpoints sat on the Cloth Hall roof and the ground
