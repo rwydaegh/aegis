@@ -545,10 +545,63 @@ the head, so the array suppresses it. Treating each site as one far point makes
 that offset vanish, which is why it *looks* invariant. The inequality is one
 sided: steered $\chi$ can only fall below the reported value.
 
-The element pattern never cancels under any policy: 0.26 dB at the rooftop
-median elevation of 9.5°, 10.2 dB at the 60° top of the band.
+**Measured, 20 Korenmarkt standpoints, retraced with a recorder.** Median change
+against the reported ratio:
 
-*Source: `BEAMFORMING.md` §3.*
+| aperture | rooftop | street |
+|---|---|---|
+| 2x2 | -0.05 | -0.47 |
+| 4x4 | -0.16 | -1.03 |
+| 8x8 | **-0.38** | **-1.64** |
+| 16x16 | -0.61 | -2.32 |
+| 32x32 | -0.93 | -2.85 |
+| direct path floor | -1.58 | -2.96 |
+
+The floor is the direct fraction, 0.6955 rooftop and 0.5054 street, so no beam
+aimed at the pedestrian can take more than that. 32x32 street reaches 96 % of it.
+
+**A codebook is the same axis, not a second one.** Nearest beam from a grid at
+least as fine as the aperture: -0.25 / -1.54 at 8 beams per axis, -0.37 / -1.61
+at 16, -0.37 / -1.66 at 32, converging on exact steering. Granularity is worth
+under 0.15 dB. Grids coarser than the aperture return +50 dB because the free
+space reference lands in a pattern null, and no scheduler picks a beam that nulls
+its own user, so they are outside the policy class. A coarse beam set in a real
+network means broadened beams, and a broadened beam is a smaller effective
+aperture, which is the table above read upward.
+
+**The one sided bracket must be stated carefully, because the loose version is
+false.** Exact steering is not a member of a finite codebook, so it is not
+ordered against best beam selection at all. What is ordered is nearest beam
+against best beam *on the same grid*: best beam maximises the sum nearest beam
+evaluates at one member, and in free space with one path both pick the same beam,
+so the references are equal and $\chi(\text{best}) \ge \chi(\text{nearest})$. The
+measured column is a **lower bound**, not an estimate. Best beam itself needs a
+finite site trace.
+
+**The element pattern, with the caveat that matters more than the number.** It
+cancels only if its own boresight tracks the pedestrian, which needs mechanical
+three axis pointing. Deployed macro panels are mechanically fixed and steer
+electronically, so under every policy a network actually runs it survives.
+0.256 dB at the rooftop median elevation of 9.5°, 10.225 dB at the 60° top.
+
+**But the taper is not the effect on $\chi$, and a reader will do the wrong
+arithmetic if the two sit near each other.** Averaged over the rooftop population
+under its own measure the element is 0.45 dB down, while its measured effect on
+$\chi$ is 0.62 dB at the median square and 1.07 dB at Madrid. It down weights
+steep arrivals, and steep is exactly where a square lets illumination through, so
+it costs two to four times what the median taper suggests.
+
+**Realistic antennas move the eleven square order.** Kendall against the reported
+ordering is 0.818 for a rooftop broadcast beam and 0.709 for a loaded street
+beam, reversing pairs up to 1.53 dB apart rooftop and 2.97 dB street on axes 5.6
+and 9.8 dB wide. Full digital MRT is the one policy that nearly preserves it, no
+street pair reversed and two rooftop pairs at 0.58 dB or less. **So the reported
+ordering is an ordering under the illumination law with no antenna, and it is not
+invariant to what the network points.** That has to be said next to R1.
+
+*Source: `BEAMFORMING.md` §3 and §6. Generator is
+`python -m semantic_twin.propagation.antenna --artefact`, which reproduces the
+table digit for digit.*
 
 ### R5. Bystanders, and a prediction that failed usefully
 
