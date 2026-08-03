@@ -345,9 +345,37 @@ measured.
 
 ### R3. Material discrimination does not move exposure
 
-+0.024, +0.029, +0.022 dB against between square spreads of 3.71, 4.93 and
-9.58 dB. Two VLM compositions that disagree strongly with each other give
-indistinguishable $\chi$.
+Change only the material of the facades the entity axis had resolved to brick,
+2950 m² of facade, 28.5 % of the entity brick area, including 1258 m² that goes
+from rough brick to specular glass. Over 120 standpoints:
+
+| illumination | entity median | facade material median | shift | over 0.5 dB | worst standpoint |
+|---|---|---|---|---|---|
+| isotropic | 0.3360 | 0.3379 | **+0.024 dB** | 0 of 120 | 0.110 dB |
+| rooftop, corrected | 0.2354 | 0.2369 | **+0.029 dB** | 0 of 120 | 0.193 dB |
+| street small cell | 0.0984 | 0.0989 | **+0.022 dB** | 1 of 120 | 0.929 dB |
+
+**Say what those are against, carefully, because it is easy to quote the wrong
+denominator.** They are against the 5th to 95th percentile spread *within
+Korenmarkt* of 3.9 dB isotropic, 8.4 dB rooftop and 16.7 dB street. Not against
+the between square spread. A fortieth of a decibel against 3.9 dB is the
+comparison that is actually being made. Repeating it on the nine station rung
+gives +0.023, +0.024, +0.014 dB, so the null does not depend on which walk set is
+used and the ninth station does not make the material axis matter more.
+
+Two VLM compositions that disagree strongly with each other give indistinguishable
+$\chi$.
+
+**The result that is not material discrimination, and it is the more interesting
+one.** Replace the *whole* material field rather than only the facades, so the
+ground changes too, and isotropic moves -0.218 dB with 15 of 120 standpoints past
+1 dB and a worst standpoint of 2.020 dB. Rooftop moves -0.156 dB, street
+-0.024 dB. That is roughly ten times the facade effect, in the opposite
+direction, and it says the surface underfoot governs the answer more than the
+walls around it do. The ordering is what one would expect from where the power
+goes, since the ground takes the largest share of first bounces, but it means
+material effort is better spent on the pavement than on the facades and that is
+the opposite of where the photographs are pointed.
 
 **This is not a negative result, it is the bound on the claim, and the bound is
 now measured rather than asserted.** Put one material on every facade in
