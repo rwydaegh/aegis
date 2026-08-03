@@ -136,9 +136,11 @@ the results can mean.
 
 \begin{enumerate}
   \item[A1] \emph{Far field.} Every source is far enough away that it
-  illuminates the square with a plane wave. The nearest site considered is
-  25\,m from the head, and the array apertures involved are under 0.3\,m, so
-  this holds throughout.
+  illuminates the square with a plane wave. The closest source position any
+  model admits is 10\,m from the head, at the near edge of the street level
+  band, and the array apertures involved are under 0.3\,m, whose far field
+  begins at $2D^2/\lambda = 9$\,m at 15\,GHz. The margin is thin only for the
+  very nearest street level sources and is wide everywhere else.
   \item[A2] \emph{Powers add, phases do not.} Contributions from different
   paths are summed in power. At 15\,GHz and a 100\,m range, the phase of a path
   turns by about $3.1 \times 10^{4}$\,rad per radian of change in the exit
@@ -149,14 +151,21 @@ the results can mean.
   in height and in range. Section~\ref{sec:illum} builds the model.
   \item[A4] \emph{Every site delivers the same power at the head.} Sites are
   counted rather than weighted by their range, so the angular distribution of
-  incident power follows the angular distribution of site count. A variant that
-  weights each site by its own free space spreading is reported alongside.
+  incident power follows the angular distribution of site count. The reason is
+  that each site is built to serve its own cell and sets its power to cover it,
+  so a nearer site is not a proportionally louder one. That is an assumption
+  about how a network is operated rather than about how waves travel, so the
+  variant that weights each site by its own free space spreading is carried
+  through and reported alongside. The choice is not cosmetic: the street level
+  model places 88\,\% of its measure below $5^\circ$ under counting and 42\,\%
+  under spreading, and elevation weighting is what separates one square from
+  another.
   \item[A5] \emph{Surfaces are locally flat.} Each triangle is treated as a
   smooth interface with a Gaussian height error of standard deviation
   $\sigma_h$ about its own plane.
   \item[A6] \emph{No diffraction.} Energy bending around building edges is
-  absent. The paragraph after this list gives the reason and the direction of
-  the resulting error.
+  absent. The three paragraphs after this list give the reason and the
+  direction of the resulting error.
   \item[A7] \emph{Unpolarised.} Reflection uses the average of the two
   principal polarisations rather than tracking a polarisation state.
 \end{enumerate}
@@ -205,6 +214,7 @@ afterwards. Radius 250\,m is not a free choice and Section~\ref{sec:valid}
 reports what sets it.
 
 \subsection{Surfaces and materials}
+\label{sec:materials}
 
 Every triangle is assigned one of a small set of classes. In the baseline run
 the class follows from geometry alone, splitting near horizontal faces at ground
@@ -226,8 +236,8 @@ regions, which is the axis the first model cannot resolve \cite{sam}. The
 registration and projection are described in the supplementary information.
 
 Imagery comes from two providers and the split matters when reading coverage.
-Sites represented by a single panorama use one provider's official captures,
-while the multi-station route at the reference site comes from a second,
+Squares represented by a single panorama use one provider's official captures,
+while the multi-station route at the reference square comes from a second,
 community sourced provider, which is the only set carrying the material axis.
 The comparison between the geometric and the image derived assignment is a
 result rather than part of the method, so it is reported separately.
@@ -243,11 +253,12 @@ family, and there the geometric default would be wrong rather than
 approximate, with nothing in the mesh itself to reveal it. So the image evidence
 licenses the geometric assignment instead of competing with it, and it is also
 what bounds the claim: the results below are stated for masonry squares because
-masonry is what was observed.
+masonry is what was observed. It is family membership, not permittivity, that
+Section~\ref{sec:budget} uses to set the bounce budget.
 
 \subsection{Standpoints}
 
-Exposure is not evaluated at one point. Each site contributes 80 standpoints and
+Exposure is not evaluated at one point. Each square contributes 80 standpoints and
 results are reported as a distribution over them rather than as a single value,
 because the spread within one square is comparable to the spread between
 squares, so a single point would hide most of the variation.
@@ -378,7 +389,10 @@ $\nu$ sites per unit volume of the slab, each radiating $P$, free space gives
   \label{eq:absolute}
 \end{equation}
 which is the cone integral of \eqref{eq:cone} again, now weighted by free space
-spreading instead of counting sites. Over a plausible range, 25 to 100 sites per
+spreading instead of counting sites. The $\rho_+ - \rho_-$ here is the same
+object as the spreading variant of A4, used deliberately: an absolute level is a
+question about how power adds, not about how a network shares it out. Over a
+plausible range, 25 to 100 sites per
 square kilometre radiating 55 to 75\,dBm, this puts $S_0$ between 0.0075 and
 3.0\,W/m$^2$ for the rooftop band and between 0.010 and 4.1\,W/m$^2$ for the
 street level band, against a general public reference level of 10\,W/m$^2$ at
@@ -491,6 +505,7 @@ Nothing about the sources survives except $Q$, so one outward trace answers
 $S_0$ never has to be computed, because $Q$ was normalised to make it 1.
 
 \subsection{Estimator}
+\label{sec:estimator}
 
 The sphere of launch directions is divided into $M$ cells of near equal solid
 angle using a Fibonacci grid. $N$ rays are launched in uniformly random
@@ -575,10 +590,26 @@ paths can only make $\chi$ too small, never too large.
 \label{sec:budget}
 
 $L = 3$, and the reason is where the material evidence stops rather than where
-the number stops moving. A convergence threshold would be the usual argument and
-it is the weaker one, because it says only that the tail is small, not that the
-tail is right. The panorama argument says something stronger about the part that
-is kept.
+the number stops moving. Two things have to be said straight away, because
+without them this reads as a contradiction of
+Section~\ref{sec:materials} and as a number chosen for cost.
+
+The evidence in question is not a permittivity value.
+Section~\ref{sec:materials} settled that those are interchangeable across
+masonry. It is evidence of which family a surface belongs to, masonry against
+glass or metal, which is the one material distinction that does move $\chi$ and
+the one the mesh cannot supply on its own. So the budget is set by where
+observed family membership stops, not by where a number stops being known to
+three decimals.
+
+And that reach is honest about its own limits. The guarantee is exact at a
+standpoint a camera occupied and decays away from one, and pooled over the
+published walk the first interaction lands on an observed triangle for 0.479 of
+the incident power. The measurements below give that statement its shape. A
+convergence threshold would be the usual argument in place of all this, and it
+is not weaker so much as insufficient by itself, since it shows the discarded
+tail is small without showing the kept part is right. Both legs are used here,
+and the convergence one comes last.
 
 The photograph is taken from the observation point, so the surfaces a ray can
 reach on its first interaction are exactly the surfaces that photograph sees.
@@ -605,7 +636,7 @@ interaction is worth.
 The guarantee and its reach are measured rather than asserted. At a standpoint a
 camera actually occupied, the share of incident power landing on a triangle some
 panorama saw is 0.978 to 0.999 at the first interaction, across seven of the
-eight registered stations at the reference site. That confirms the geometric
+eight registered stations at the reference square. That confirms the geometric
 argument to about two parts in a thousand. The eighth station returns 0.362, and
 since it stands eight metres from one scoring 0.999 it is a registration failure
 rather than a coverage one. It had passed the skyline residual gate, so first
@@ -619,8 +650,10 @@ spans 90\,m, first interaction coverage is 0.479, and every result that uses
 image derived material is reported with that number beside it.
 
 What makes three sufficient rather than merely defensible is where the power is.
-Of all launched power, 79\,\% interacts once, a further 8.9\,\% twice, 1.2\,\%
-three times, and 0.22\,\% ever again. Depths past the third can be justified
+Of all launched power, 10.7\,\% never touches a surface and escapes straight
+to the sky, which is the direct term of \eqref{eq:split}. A further 79\,\%
+interacts exactly once, 8.9\,\% twice, 1.2\,\% three times and 0.22\,\% ever
+again. Depths past the third can be justified
 neither by evidence nor by the power they carry. Traced against an eight
 interaction reference over 40 standpoints at fixed seeds, so that only the budget
 moves, $L = 3$ costs a median of 0.002\,dB and never moves a standpoint by more
@@ -631,7 +664,9 @@ One consequence has to be stated plainly. A fixed budget is a hard cut, so the
 estimator is truncated and therefore biased low, since truncation deletes power
 and never adds it. The share of escaping power still in flight when the budget
 runs out is 0.0038 at the median standpoint and 0.021 at the worst, and every
-value reported here is a lower bound in that sense. Russian roulette is the
+value reported here is a lower bound in that sense. That is not the same number
+as the 0.22\,\% above, because the denominators differ: one is a share of all
+launched power and the other a share of the power that actually escapes. Russian roulette is the
 standard way to end paths without introducing this bias \cite{arvokirk}, but it
 cannot repair a hard cap, and at a budget of three it would fire exactly once,
 one step before the cap, killing rays at a 0.05 survival floor and inflating the
@@ -705,7 +740,9 @@ $\Phi(\uloc)$ is passed in as a set of plane waves, one per angular cell, with
 the direction dictionary $\khat = -\uloc$ that reciprocity requires. Summing
 \eqref{eq:sab} over cells gives the absorbed power density map on the body, and
 integrating that map gives the absorbed power and the whole body specific
-absorption rate. Two things are left out of this step, and the first matters more than its size
+absorption rate.
+
+Two things are left out of this step, and the first matters more than its size
 suggests. The phantom stands alone. A bystander is not a small perturbation at
 15\,GHz: a person is roughly thirty wavelengths across and optically thick, so
 another body is opaque geometry rather than something a wave works around. What
@@ -720,7 +757,9 @@ that. Since the street level model places 88\,\% of its measure below $5^\circ$
 and the rooftop model 9\,\%, bystanders should cost the street column a great
 deal and the rooftop column almost nothing. That is a prediction from geometry,
 and a sensitivity study over crowd density is reported with the results to test
-it. The second omission is that the body is treated as convex, so one limb never
+it.
+
+The second omission is that the body is treated as convex, so one limb never
 shadows another, which matters most for arrivals that graze along it.
 
 \section{Validation}
@@ -750,22 +789,21 @@ Both are reproduced to the tolerance set by the ray count.
 
 \subsection{Convergence}
 
-Three parameters are measured rather than chosen. The number of surface
-interactions $L$ was raised to eight with the budget the only thing varying, and
-the threshold was that no standpoint move by 0.5\,dB. None did, at any budget
-from three upward, which is the measurement quoted in
-Section~\ref{sec:budget}. That comparison needs one remark, because the obvious way to read it is
+Two parameters are measured here, and a third is corroborated rather than
+chosen. The bounce budget $L$ is fixed by evidence in
+Section~\ref{sec:budget}, and the trace out to eight interactions reported
+there is what corroborates it. That comparison needs one remark, because the obvious way to read it is
 wrong. Two runs that differ only in $L$ and share a seed trace the same rays and
 agree exactly up to the shallower depth, so their difference is paired and is
-resolved far better than either value is on its own. Reading it against the
-single run error of the next paragraph would make a real and well measured
+resolved far better than either value is on its own. Reading it against the single run
+error of Section~\ref{sec:estimator} would make a real and well measured
 difference look like noise. The ray count $N$ is raised until the spread across
 independent seeds falls below the differences being interpreted. The crop radius is raised until
 $\chi$ stops moving, which is what fixes the 250\,m figure quoted in
 Section~II: at smaller radii the mesh is missing buildings that would have
 blocked near horizon paths, and the near horizon is where the illumination
 models put most of their measure. The converged radius is a property of the
-illumination model and not of the site, so it is reported per model.
+illumination model and not of the square, so it is reported per model.
 
 Identities and closed forms constrain the implementation, not the formulation.
 A derivation error that is coded faithfully passes all of them, and one such
