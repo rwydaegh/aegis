@@ -131,15 +131,15 @@ moved furthest scores 0.978. The observation survives, the mechanism does not.
   hours and is the one thing that would close this properly. I did not start it
   this close to the deadline, because a job that lands after everyone has stopped
   reading is how numbers go stale in the first place.
-- **The vision model result is drafted but not inserted.** Two paragraphs are in
-  my scratchpad. They answer the question you asked on 2026-08-01 about where an
-  LLM fits: it was built, blinded, and measured, its shift stays inside the
-  0.33 dB dielectric ceiling, and a control that feeds it the photogrammetric
-  texture instead of the photograph moves the answer by less than two draws of
-  either differ from each other. That is a good negative. It is held back only
-  because its numbers come from the 130 m twelve-bounce ablation in item 4 above,
-  and I would not insert a number before knowing which configuration it belongs
-  to.
+- ~~The vision model result is drafted but not inserted.~~ **Now in the paper**,
+  in the material subsection and again in the discussion. It answers the question
+  you asked on 2026-08-01 about where an LLM fits. It was built, blinded and
+  measured. Its shift stays inside the dielectric span, and a control that feeds
+  it the photogrammetric texture instead of the photograph returns the same
+  answer while the model calls 76 percent of those textures illegible. The
+  configuration question that was holding it back is resolved: it ran on the same
+  130 m, twelve interaction, 60k ray, 24 standpoint setting as the dielectric
+  bracket, and that row is now in the configuration table.
 
 ## Things you asked for that now exist
 
