@@ -164,13 +164,20 @@ the results can mean.
 A6 is the assumption a reader is most likely to challenge, so it is worth the
 space. Three things make it defensible at this frequency and for this quantity.
 
-The first is scale. The wavelength at 15\,GHz is 2\,cm, and the strength of a
-diffracted field relative to the field that produced it falls off as
-$1/\sqrt{ks}$ with distance $s$ from the edge. At 10\,m that ratio is about
-$1/56$ in amplitude, near 35\,dB down in power. Diffraction is a correction to a
-picture that reflection already describes, which is the opposite of its role at
-the metre wavelengths where street models were first built and where an edge is
-only a few wavelengths away from everything.
+The first is that it has been measured, at almost this frequency and in this
+kind of geometry. A street microcell campaign at 2.44, 14.8 and 58.68\,GHz, with
+matched antennas and bandwidth equalised across the three bands, found the
+excess loss behind a building corner growing at 3.0 to 3.5\,dB per decade of
+frequency against the 10\,dB per decade that corner diffraction predicts, and at
+the delay corresponding to the path around the corner it recorded no arrival
+above the noise floor at all \cite{ericsson, mmmagic}. What did arrive, well
+into the shadow, was specular. The mechanism is the ordinary one: a diffracted
+field falls off relative to the field that produced it as $1/\sqrt{ks}$ with
+distance $s$ from the edge, which at 15\,GHz and 10\,m is about $1/56$ in
+amplitude, near 35\,dB down in power. Diffraction is a correction to a picture
+that reflection already describes, which is the opposite of its role at the
+metre wavelengths where street models were first built and where an edge is only
+a few wavelengths away from everything.
 
 The second is where that correction would actually lead. Diffraction dominates
 only in deep shadow, at points no direct or reflected path reaches, and the
@@ -788,6 +795,14 @@ environments,'' software, 2026.
 \bibitem{sam}
 A.~Kirillov \emph{et al.}, ``Segment anything,'' in \emph{Proc. IEEE/CVF Int.
 Conf. Comput. Vis.}, 2023, pp. 4015--4026.
+
+\bibitem{ericsson}
+Ericsson, ``Street microcell channel measurements at 2.44, 14.8 and 58.68 GHz,''
+3GPP TSG-RAN WG1 \#84, doc. R1-160846, Malta, Feb. 2016.
+
+\bibitem{mmmagic}
+mmMAGIC, ``Measurement results and final mmMAGIC channel models,'' Deliverable
+H2020-ICT-671650-mmMAGIC/D2.2, 2017.
 
 \bibitem{icnirp}
 International Commission on Non-Ionizing Radiation Protection, ``Guidelines for
