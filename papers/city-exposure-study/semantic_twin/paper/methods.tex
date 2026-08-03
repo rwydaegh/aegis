@@ -173,7 +173,9 @@ the results can mean.
 \end{enumerate}
 
 A6 is the assumption a reader is most likely to challenge, so it gets the space
-here. Three things make it defensible at this frequency and for this quantity.
+here. Four things make it defensible at this frequency and for this quantity, and
+the last of them is a bound computed on the same geometry rather than an argument
+carried over from someone else's.
 
 The first is that it has been measured, at almost this frequency and in this
 kind of geometry. A street microcell campaign at 2.44, 14.8 and 58.68\,GHz, with
@@ -197,18 +199,73 @@ that reflection already describes, which is the opposite of its role at the
 metre wavelengths where street models were first built and where an edge is only
 a few wavelengths away from everything.
 
-The second is where that correction would actually lead. Diffraction dominates
-only in deep shadow, at points no direct or reflected path reaches, and the
-standpoints used here are required to have open sky above them. Points with no
-sky are discarded before any trace runs. No standpoint sits in the regime where
-the omitted term is the leading one.
+The second is where that correction would actually lead, and it applies to one of
+the two bands and not to both. Diffraction dominates only in deep shadow, at
+points no direct or reflected path reaches, and the standpoints used here are
+required to have open sky above them, with points that have no sky discarded
+before any trace runs. For the street cell band that closes the question, because
+those sites sit from 2.5 to 6.5\,m above the head, below the roofline, and every
+direction the model blocks is blocked by a facade. For the rooftop band it does
+not. Those sites sit 13.5 to 43.5\,m above the head, above a typical European
+roofline, and open sky above a standpoint is the precondition for a path over a
+roof rather than a defence against one. Measurements in Manhattan street canyons
+with a rooftop site some 20\,m above the surrounding buildings found the over the
+top mechanism beating street level scattering by 7\,dB in fit error
+\cite{adhikari}. For the rooftop band the argument therefore rests on the next
+two items and not on this one.
 
 The third is that the error has a known sign. A diffracted path can only deliver
 power the trace does not currently collect, never remove any, so leaving it out
-biases $\chi$ low. Every value reported here is a lower bound with respect to
-this term, and the shortfall grows with how narrow and how enclosed the street
+biases $\chi$ low. That holds because A2 adds powers rather than fields. Were the
+estimator coherent, a diffracted contribution could arrive out of phase and the
+sign argument would fail. Every value reported here is a lower bound with respect
+to this term, and the shortfall grows with how narrow and how enclosed the street
 is. That is the right direction for an omission to run in an exposure study, and
 it is stated rather than assumed away.
+
+The fourth is the size of it, measured here. A dense mask of 720 azimuths by 600
+elevation bands is cast at each standpoint on the same meshes and the same
+standpoint coordinates as the reported runs. Every shadowed direction is given a
+Fresnel-Kirchhoff parameter $\nu = \theta\sqrt{2d/\lambda}$ and its knife edge
+loss \cite{p526} is integrated against the same illumination measure the
+estimator uses. The
+mask first has to earn trust, and it does: integrated over the \emph{visible}
+directions instead, it reproduces the tracer's own direct term to within 0.34\,\%
+for the isotropic model, 1.73\,\% for rooftop and 7.3\,\% for street, by an
+independent code path with an independent quadrature. Over the 20 most enclosed
+standpoints of the 3 most enclosed squares, the resulting uplift on $\chi$ has a
+median of 0.06\,dB isotropic, 0.15\,dB rooftop and 0.44\,dB street. Every choice
+in that calculation errs upward, so it is a bound and not an estimate: a single
+absorbing half plane, a distant source, no re-blocking, a knife edge rather than
+a lossy wedge, and the diffracted term multiplied by each standpoint's own
+multipath gain so that paths which diffract and then reflect are covered. Against
+a spread of 8.1\,dB within a single square, 0.15\,dB changes nothing. Repeating
+the same calculation at 2\,GHz raises those medians to 0.18, 0.53 and 1.82\,dB, a
+factor of 3.1 to 5.0, which reproduces the frequency argument of the first item
+on this geometry rather than borrowing it.
+
+The street cell model is the exception and it is not a small one. That model puts
+87.9\,\% of its measure below 5\textdegree{} of elevation, its worst standpoint
+takes an uplift of 12.6\,dB, and at 4 of the 60 standpoints its entire elevation
+support is occluded, so the direct term is exactly zero and every watt in the
+answer has arrived by reflection. Those standpoints also carry the smallest
+absolute $\chi$ in the study. For that model in that geometry the omitted term is
+not a correction, and no argument here is offered that it is.
+
+Two limits on the borrowed half of this. There is a body of work in which a
+diffraction shaped model fits around a corner at 28\,GHz better than a scattering
+one does, which read alone points the other way. It does not survive reading the
+fitted constant: the corner loss that fits is about 2\,dB, against a theoretical
+edge coefficient near 40\,dB down at that frequency \cite{duchizhik}. The
+functional form wins and the mechanism it is named after is not what supplies the
+power. And all of the published decompositions of shadowed power into diffracted
+and reflected parts were measured in street canyons, which waveguide, rather than
+in open squares. A square presents fewer facades per unit solid angle, so the
+reflected budget that stands in for diffraction here is thinner than it is where
+the substitution was measured. No open square decomposition exists at any
+frequency to check that against. This is also where the largest untested weight
+sits, since ablating diffuse scattering rather than diffraction is what moves
+published prediction error the most at these frequencies \cite{vitucci}.
 
 A7 needs a word too, because the usual defence of it is not available at this
 frequency. That defence says the multiply reflected tail is depolarised, so
@@ -925,6 +982,24 @@ H2020-ICT-671650-mmMAGIC/D2.2, 2017.
 A.~Karttunen, J.~J\"arvel\"ainen, S.~L.~H.~Nguyen, and K.~Haneda, ``Modeling the
 multipath cross-polarization ratio for 5--80 GHz radio links,'' \emph{IEEE Trans.
 Wireless Commun.}, vol. 18, no. 10, pp. 4768--4778, 2019.
+
+\bibitem{p526}
+International Telecommunication Union, ``Propagation by diffraction,''
+Recommendation ITU-R P.526-16, 2024.
+
+\bibitem{adhikari}
+S.~Adhikari \emph{et al.}, ``Over-the-top propagation in urban millimetre wave
+networks,'' in \emph{Proc. IEEE INFOCOM}, 2025.
+
+\bibitem{duchizhik}
+J.~Du, D.~Chizhik, R.~A.~Valenzuela \emph{et al.}, ``Suburban and urban ducting
+and around-the-corner propagation at 28 GHz,'' \emph{IEEE Trans. Antennas
+Propag.}, vol. 69, no. 6, pp. 3459--3469, 2021.
+
+\bibitem{vitucci}
+E.~M.~Vitucci, V.~Degli-Esposti, F.~Fuschini \emph{et al.}, ``Ray tracing RF
+field prediction: an unforgiving validation,'' \emph{Radio Sci.}, vol. 54,
+no. 11, pp. 1112--1128, 2019.
 
 \bibitem{icnirp}
 International Commission on Non-Ionizing Radiation Protection, ``Guidelines for
