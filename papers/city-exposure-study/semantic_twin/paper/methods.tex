@@ -36,6 +36,7 @@ University / imec, 9052 Ghent, Belgium.}}
 \maketitle
 
 \section{Exposure ratio}
+\label{sec:ratio}
 
 A person standing in a city square receives radio power from many base stations
 at once. The buildings around them block part of that power and reflect part of
@@ -47,7 +48,7 @@ single antenna. This paper computes that dependence as one number,
 \end{equation}
 where $S$ is the power density arriving at the head in the real square and $S_0$
 is the power density the same network would deliver at the same point over open
-ground. We call $\chi$ the exposure ratio.
+ground. This ratio is called the exposure ratio.
 
 The ratio is the useful quantity because the network is unknown. An absolute
 exposure in W/m$^2$ needs the transmit power, the number of sites and their
@@ -63,8 +64,7 @@ base station could occupy and tracing rays from each one to the person. That is
 the expensive way round. Instead everything is computed at the one point where
 the person stands. Rays are launched from that point, followed until they leave
 the square, and weighted by how likely a base station is to sit in the direction
-each one left. \Cref{fig:adjoint} shows the idea. One trace per standpoint then
-answers the question for every base station position at once.
+each one left. \Cref{fig:adjoint} shows the idea.
 
 Putting the transmitter and the receiver at the same point is what makes the
 rest of the method possible, because a street level photograph taken from that
@@ -114,6 +114,7 @@ used in the equations.
     $\chi$ & exposure ratio, $1$ in free space & -- \\
     $w$ & power carried by one ray, $1$ at launch & -- \\
     $\Gamma$ & Fresnel reflection coefficient & -- \\
+    $\theta_i$ & angle of incidence at a surface & rad \\
     $\kappa$ & fraction of reflected power that stays specular & -- \\
     $\sigma_h$ & root mean square surface roughness & m \\
     $\varepsilon_r$ & complex relative permittivity & -- \\
@@ -121,6 +122,7 @@ used in the equations.
     $N$ & rays launched per standpoint & -- \\
     $M$ & cells in the launch grid & -- \\
     $L$ & largest number of surface interactions & -- \\
+    $S_{\mathrm{inc}}$ & power density incident on a body facet & W/m$^2$ \\
     $S_{ab}$ & absorbed power density on the body & W/m$^2$ \\
     $T_0$ & power transmitted into tissue at normal incidence & -- \\
     $\nhat$ & outward normal of a body facet & -- \\
@@ -154,9 +156,9 @@ the results can mean.
   incident power follows the angular distribution of site count. The reason is
   that each site is built to serve its own cell and sets its power to cover it,
   so a nearer site is not a proportionally louder one. That is an assumption
-  about how a network is operated rather than about how waves travel, so the
-  variant that weights each site by its own free space spreading is carried
-  through and reported alongside. The choice is not cosmetic: the street level
+  about how a network is operated rather than about how waves travel, and
+  Section~\ref{sec:illum} carries the alternative through as a sensitivity. The
+  choice is not cosmetic: the street level
   model places 88\,\% of its measure below $5^\circ$ under counting and 42\,\%
   under spreading, and elevation weighting is what separates one square from
   another.
@@ -205,6 +207,7 @@ The remaining sections describe the scene, the illumination model, the ray
 estimator, the body, and the checks that constrain them.
 
 \section{Configuration}
+\label{sec:config}
 
 The scene is a photogrammetric mesh of a real square, cut to a cylinder of
 radius 250\,m about the standpoint and reaching from the ground to the roofline.
@@ -267,11 +270,20 @@ Where a person can stand is decided from the mesh and not from a map. A grid of
 columns at 3\,m spacing is laid over the crop, a ray is dropped down each one,
 and the column is kept when it lands on a near horizontal face at the square's
 ground level with enough clearance that a head at that position is not inside a
-wall or a stall. Kept columns are then chained by nearest neighbour, which fixes
+wall or a stall. A second filter drops any candidate whose head sees less than
+1\,\% of the sky, which removes positions buried under an arcade or inside a
+passage. That filter matters again later, because it is why no standpoint sits
+in the deep shadow where the diffraction term left out by A6 would be the
+leading one. Kept columns are then chained by nearest neighbour, which fixes
 an order for plotting and for the step statistics but has no effect on any
 exposure value, since each standpoint is traced independently. No street
 centreline, footway polygon or other map layer is used, so the sampling does not
 inherit whatever a mapping provider decided a street is.
+
+The grid keeps far more candidates than are traced, so the chain is subsampled
+at even spacing along its length down to the 80 that are reported. Subsampling
+the chain rather than taking its first 80 links keeps the reported set spread
+over the whole square instead of piled up at whichever end the chain began.
 
 This set of standpoints is distinct from the route the photographs were captured
 along, and the two should not be confused. The capture route is wherever the
@@ -355,7 +367,8 @@ limits. Second, the near horizon carries most of the measure, and the near
 horizon is also where the buildings act: a distant site sits low in the sky, so
 its path grazes along the street and a single facade can intercept it. A site
 overhead has no facade in the way. This is why the shape of the square changes
-the answer at all, and it is also why the crop radius of Section~II has to be
+the answer at all, and it is also why the crop radius of
+Section~\ref{sec:config} has to be
 justified rather than chosen. \Cref{fig:box} shows the region in the height and
 range plane.
 
@@ -534,8 +547,9 @@ where the first term collects the untouched rays and the second collects the
 rest. This separates the only two things a square can do. It hides part of the
 sky, which removes direct power, and it reflects, which puts power back. The
 first term is the direct arrival reduced by exactly the sky the buildings cover,
-and under the isotropic model it equals the sky fraction, which is the identity
-checked in Section~\ref{sec:valid}. The second term is everything the
+and under the isotropic model it equals the sky fraction, meaning the share of
+directions from the head that reach open sky without meeting anything. That
+equality is one of the identities checked in Section~\ref{sec:valid}. The second term is everything the
 surroundings return. The split is a partition of the same rays, so it costs
 nothing, and both parts are reported because a $\chi$ near 1 can mean an open
 square or a closed one that reflects back what it blocked.
@@ -583,7 +597,8 @@ where that angle dependence enters.
 Rays still travelling after $L$ interactions are dropped, and the power they
 were carrying is reported as a share of the total, so the truncation is a
 measured quantity rather than an assumption. At the budget used here that share
-is the estimator's one known bias, and its sign is fixed: discarding surviving
+is the one bias the estimator itself adds, on top of the assumptions of
+Section~\ref{sec:ratio}, and its sign is fixed: discarding surviving
 paths can only make $\chi$ too small, never too large.
 
 \subsection{Bounce budget}
@@ -621,11 +636,11 @@ of the square the walk covered, not on any property of the geometry.
 
 The guarantee would extend to the second interaction only for a path that
 returns to where it started, since both ends of a closed loop are visible from
-the same viewpoint. That is the co-located picture of Section~I in its strictest
+the same viewpoint. That is the co-located picture of Section~\ref{sec:ratio} in its strictest
 form, and it is worth recording that the outward formulation buys its efficiency
 partly at the cost of half this guarantee. What replaces the lost half is
 measurement: the fraction of interactions at each depth that lands on a
-panorama-observed triangle is reported with the results, per depth, so the reader
+panorama observed triangle is reported with the results, per depth, so the reader
 can see where evidence gives way to prior rather than being asked to accept it.
 
 Three is then the smallest budget that lets that question be asked at all. One
@@ -655,8 +670,8 @@ to the sky, which is the direct term of \eqref{eq:split}. A further 79\,\%
 interacts exactly once, 8.9\,\% twice, 1.2\,\% three times and 0.22\,\% ever
 again. Depths past the third can be justified
 neither by evidence nor by the power they carry. Traced against an eight
-interaction reference over 40 standpoints at fixed seeds, so that only the budget
-moves, $L = 3$ costs a median of 0.002\,dB and never moves a standpoint by more
+interaction reference over 40 of these standpoints at fixed seeds, so that only
+the budget moves, $L = 3$ costs a median of 0.002\,dB and never moves a standpoint by more
 than 0.12\,dB. Not one standpoint of the 40 moves half a decibel under any of
 the three illumination models.
 
@@ -671,8 +686,10 @@ standard way to end paths without introducing this bias \cite{arvokirk}, but it
 cannot repair a hard cap, and at a budget of three it would fire exactly once,
 one step before the cap, killing rays at a 0.05 survival floor and inflating the
 few survivors twentyfold. Measured over the same standpoints that is a worse
-estimator at the same cost, so it is switched off. The only approximation left
-in the trace is a single one sided truncation whose size is quoted above.
+estimator at the same cost, so it is switched off. What the trace itself then
+approximates reduces to a single one sided truncation whose size is quoted
+above. The assumptions of Section~\ref{sec:ratio} sit underneath that and are
+not part of the claim.
 
 \begin{algorithm}[!t]
 \caption{Adjoint trace at one standpoint}
@@ -716,10 +733,9 @@ stored: the trace keeps angular histograms and scalar sums only.
 \subsection{Quantities that come for free}
 
 Two further quantities fall out of the same trace at no extra cost, on top of
-the split in \eqref{eq:split}. The sky fraction is the share of rays that escape
-without touching anything, which is the open solid angle above the standpoint
-and depends on the geometry alone rather than on any illumination model. The
-mean excess path length, taken over escaping rays weighted by their power, gives
+the split in \eqref{eq:split}. The sky fraction, already met above, is worth
+reporting on its own because it depends on the geometry alone and on no
+illumination model. The mean excess path length, taken over escaping rays weighted by their power, gives
 the delay spread the square would impose. Both are reported alongside $\chi$.
 
 \section{Body coupling}
@@ -737,7 +753,7 @@ travelling along $\khat$,
 where $T_0$ is the power transmitted into skin at normal incidence at 15\,GHz
 and the clamp removes facets that face away. The arriving distribution
 $\Phi(\uloc)$ is passed in as a set of plane waves, one per angular cell, with
-the direction dictionary $\khat = -\uloc$ that reciprocity requires. Summing
+with $\khat = -\uloc$, as reciprocity requires. Summing
 \eqref{eq:sab} over cells gives the absorbed power density map on the body, and
 integrating that map gives the absorbed power and the whole body specific
 absorption rate.
@@ -800,7 +816,8 @@ error of Section~\ref{sec:estimator} would make a real and well measured
 difference look like noise. The ray count $N$ is raised until the spread across
 independent seeds falls below the differences being interpreted. The crop radius is raised until
 $\chi$ stops moving, which is what fixes the 250\,m figure quoted in
-Section~II: at smaller radii the mesh is missing buildings that would have
+Section~\ref{sec:config}: at smaller radii the mesh is missing buildings that
+would have
 blocked near horizon paths, and the near horizon is where the illumination
 models put most of their measure. The converged radius is a property of the
 illumination model and not of the square, so it is reported per model.
