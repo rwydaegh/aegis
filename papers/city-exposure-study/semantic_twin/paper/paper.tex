@@ -37,21 +37,21 @@ University / imec, 9052 Ghent, Belgium.}}
 
 \begin{abstract}
 An absolute radio-frequency exposure level in a city square depends on base
-station powers, positions, and counts that are neither public nor properties of
-the square. This paper measures an exposure ratio: power density at a
+station powers, positions, and counts that are not public and are not properties
+of the square. This paper measures an exposure ratio: power density at a
 pedestrian's head in the square divided by that from the same network over open
 ground. Reciprocity places the computation at the pedestrian, so one outward
 trace represents every possible source position and co-located photographs
 cover the early interaction surfaces. The method was applied at 15\,GHz to 880
 standpoints in eleven photogrammetric squares. Between-square spreads were
 3.71, 4.93, and 9.58\,dB under isotropic, rooftop, and street-cell illumination.
-Median within-square spreads were 3.92, 5.46, and 8.43\,dB. They exceeded the
-between-square spread for the first two models but fell 1.15\,dB short for street
-cells. The paired illumination-law correction had residual root mean square
+Median within-square spreads were 3.92, 5.46, and 8.43\,dB. Those spreads
+exceeded the between-square spread for the first two models but fell 1.15\,dB
+short for street cells. The paired illumination-law correction had residual root mean square
 values of 1.39\,dB rooftop and 0.98\,dB street, with one city per model causing
 almost all rank change. Resampling the standpoints changed per-city medians by
-0.128, 0.061, and 0.188\,dB root mean square, roughly 25 times the Monte Carlo
-error in the isotropic case. Image-based facade materials shifted distribution
+0.128, 0.061, and 0.188\,dB root mean square, roughly 25 times the isotropic
+Monte Carlo error. Image-based facade materials shifted distribution
 medians by 0.024, 0.029, and 0.022\,dB. A geometry-specific diffraction bound
 added median uplifts of 0.06, 0.15, and 0.42\,dB. The ratio therefore measures
 the response of a square to a stated illumination law, with standpoint sampling
@@ -71,9 +71,9 @@ tracer receives a list of base stations, solves one transmitter-receiver problem
 for each link, and adds the fields or powers. This construction is appropriate
 when the deployment is known. It cannot separate the effect of the square from
 the effect of the operator's confidential site count, power, and placement.
-Those network variables put the open-ground power density over nearly three
-orders of magnitude, from 0.0075 to 3.0\,W/m$^2$ for rooftop sites and from
-0.010 to 4.1\,W/m$^2$ for street cells. The general-public reference level at
+Those network variables leave the open-ground power density anywhere from 0.0075
+to 3.0\,W/m$^2$ for rooftop sites and from 0.010 to 4.1\,W/m$^2$ for street
+cells, a span of nearly three orders of magnitude. The general-public reference level at
 15\,GHz is 10\,W/m$^2$~\cite{icnirp}. An absolute level therefore answers a
 network question before it answers a city question.
 
@@ -82,7 +82,7 @@ at the pedestrian's head in the real square. Its denominator is the power densit
 that the same network would give at the same point over open ground. Site power,
 site density, and the absolute level divide out. The remaining number is one in
 free space, less than one when buildings block more power than they return, and
-greater than one when reflection wins. The ratio asks how the square changes
+greater than one when they return more than they block. The ratio asks how the square changes
 exposure, which is the quantity that can be compared between cities.
 
 The location of the computation changes what can be measured. Conventional
@@ -120,14 +120,14 @@ The individual ingredients are older than this paper and are attributed as such
 in Section~\ref{sec:related}. Reciprocal sensor-side transport, stochastic
 deployment integration, image-derived materials, and multi-city exposure
 comparison are all established. What is offered here is their combination for a
-deployment-averaged ratio, and the image-coverage budget that combination makes
-possible.
+deployment-averaged ratio, and the image-coverage budget that is available only
+once the camera and the ray source share a point.
 
 The remainder of the paper is organized as follows. Section~\ref{sec:related}
 positions the estimator against per-pair tracing, deployment integration, image
 materials, and adjoint transport. Sections~\ref{sec:ratio}--\ref{sec:valid}
-define and check the method. Section~\ref{sec:results} reports the six result
-beats. Section~\ref{sec:discussion} interprets them and states every known bias
+define and check the method. Section~\ref{sec:results} reports six
+results. Section~\ref{sec:discussion} interprets them and states every known bias
 with its sign. Section~\ref{sec:conclusion} concludes the paper.
 
 \section{Related work}
@@ -160,8 +160,8 @@ radio-frequency fields across microenvironments in ten European countries
 \cite{veludo}. The earlier photogrammetric study by Wydaeghe \emph{et al.}
 computed absorbed power density for specified outdoor deployments in more than
 one city~\cite{wydaeghe2026}. The present contribution is therefore not the act
-of comparing cities. It compares the property left after the same network is
-divided out, and it does so at a frequency and angular resolution for which the
+of comparing cities. What it compares is the property left after the same
+network is divided out, at a frequency and angular resolution for which the
 unknown deployment would otherwise dominate the result.
 
 Image-derived radio materials are published as well. The mmSV pipeline segments
@@ -183,8 +183,8 @@ image-coverage budget and body coupling. The individual mathematical ingredients
 are prior art.
 
 One limit on this survey is worth stating rather than leaving for a reader to
-discover. It rests on title and abstract indexing across four databases plus
-direct reading of the sources cited above, and its coverage of 2023 to 2026
+discover. The survey rests on title and abstract indexing across four databases
+plus direct reading of the sources cited above, and its coverage of 2023 to 2026
 preprints is thinner than its coverage of the journal record. A recent paper
 building the same reciprocal construction for radio would not necessarily have
 surfaced. The claims above are therefore claims about what was found, not
@@ -211,13 +211,13 @@ positions, none of which is public at millimetre wave frequencies and none of
 which is a property of the square. Dividing by the free space answer removes all
 three. What is left is a pure number that is 1 when the square is empty, below 1
 where the buildings shadow more than they reflect, and above 1 where they
-reflect more than they shadow. It transfers between cities, which a power
+reflect more than they shadow. The ratio transfers between cities, which a power
 density does not.
 
 Computing $\chi$ directly would mean placing a transmitter at every position a
-base station could occupy and tracing rays from each one to the person. That is
-the expensive way round. Instead everything is computed at the one point where
-the person stands. Rays are launched from that point, followed until they leave
+base station could occupy and tracing rays from each one to the person, which is
+the expensive direction to work in. Instead everything is computed at the one
+point where the person stands. Rays are launched from that point, followed until they leave
 the square, and weighted by how likely a base station is to sit in the direction
 each one left. \Cref{fig:adjoint} shows the idea.
 
@@ -297,7 +297,7 @@ the results can mean.
   model admits is 10\,m from the head, at the near edge of the street level
   band, and the array apertures involved are under 0.3\,m, whose far field
   begins at $2D^2/\lambda = 9$\,m at 15\,GHz. The margin is thin only for the
-  very nearest street level sources and is wide everywhere else.
+  nearest street level sources and is wide everywhere else.
   \item[A2] \emph{Powers add, phases do not.} Contributions from different
   paths are summed in power. At 15\,GHz and a 100\,m range, the phase of a path
   turns by about $3.1 \times 10^{4}$\,rad per radian of change in the exit
@@ -344,15 +344,15 @@ arrived first there was attributed instead to scattering from rough surfaces
 near the corner, and the strongest arrival, 20\,dB above the rest of the
 profile, matched a path of four specular reflections off exterior walls. That
 last peak was not seen at most of the other shadowed locations, so the campaign
-carries the weaker claim rather than the stronger one: what reaches a shadowed
-receiver in a street is not diffracted power, whether it arrives specularly or
-by scattering. The mechanism is the ordinary one: a diffracted
+supports the weaker of the two readings: what reaches a shadowed receiver in a
+street is not diffracted power, whether it arrives specularly or by scattering.
+The mechanism is the ordinary one. A diffracted
 field falls off relative to the field that produced it as $1/\sqrt{ks}$ with
 distance $s$ from the edge, which at 15\,GHz and 10\,m is about $1/56$ in
-amplitude, near 35\,dB down in power. Diffraction is a correction to a picture
-that reflection already describes, which is the opposite of its role at the
-metre wavelengths where street models were first built and where an edge is only
-a few wavelengths away from everything.
+amplitude, near 35\,dB down in power. Diffraction is therefore a correction to a
+picture that reflection already describes. At the metre wavelengths where street
+models were first built an edge is only a few wavelengths away from everything,
+and the two roles are reversed.
 
 The second is where that correction would actually lead, and it applies to one of
 the two bands and not to both. Diffraction dominates only in deep shadow, at
@@ -364,8 +364,8 @@ direction the model blocks is blocked by a facade. For the rooftop band it does
 not. Those sites sit 13.5 to 43.5\,m above the head, above a typical European
 roofline, and open sky above a standpoint is the precondition for a path over a
 roof rather than a defence against one. Measurements in Manhattan street canyons
-with a rooftop site some 20\,m above the surrounding buildings found the over the
-top mechanism beating street level scattering by 7\,dB in fit error
+with a rooftop site some 20\,m above the surrounding buildings found the
+over-the-top mechanism better than street level scattering by 7\,dB in fit error
 \cite{adhikari}. For the rooftop band the argument therefore rests on the next
 two items and not on this one.
 
@@ -375,8 +375,8 @@ biases $\chi$ low. That holds because A2 adds powers rather than fields. Were th
 estimator coherent, a diffracted contribution could arrive out of phase and the
 sign argument would fail. Every value reported here is a lower bound with respect
 to this term, and the shortfall grows with how narrow and how enclosed the street
-is. That is the right direction for an omission to run in an exposure study, and
-it is stated rather than assumed away.
+is. A low bias is the right direction for an omission in an exposure study to
+run, and it is stated here rather than assumed away.
 
 The fourth is the size of it, measured here. A dense mask of 720 azimuths by 600
 elevation bands is cast at each standpoint on the same meshes and the same
@@ -406,17 +406,17 @@ takes an uplift of 12.64\,dB, and at 4 of the 60 standpoints its entire elevatio
 support is occluded, so the direct term is exactly zero and every watt in the
 answer has arrived by reflection. Those standpoints also carry the smallest
 absolute $\chi$ in the study. For that model in that geometry the omitted term is
-not a correction, and no argument here is offered that it is.
+not a correction, and no argument is offered here that it is.
 
-Two limits on the borrowed half of this. There is a body of work in which a
-diffraction shaped model fits around a corner at 28\,GHz better than a scattering
-one does, which read alone points the other way. It does not survive reading the
-fitted constant: the corner loss that fits is about 2\,dB, against a theoretical
-edge coefficient near 40\,dB down at that frequency \cite{duchizhik}. The
-functional form wins and the mechanism it is named after is not what supplies the
-power. And all of the published decompositions of shadowed power into diffracted
-and reflected parts were measured in street canyons, which waveguide, rather than
-in open squares. A square presents fewer facades per unit solid angle, so the
+Two limits apply to the part of this argument that is borrowed from the
+literature. One body of work fits a diffraction shaped model around a corner at
+28\,GHz better than a scattering one, and read alone it points the other way.
+That reading does not survive the fitted constant: the corner loss that fits is
+about 2\,dB, against a theoretical edge coefficient near 40\,dB down at that
+frequency \cite{duchizhik}. The functional form fits and the mechanism it is
+named after is not what supplies the power. All of the published decompositions
+of shadowed power into diffracted and reflected parts were measured in street
+canyons, which act as waveguides, rather than in open squares. A square presents fewer facades per unit solid angle, so the
 reflected budget that stands in for diffraction here is thinner than it is where
 the substitution was measured. No open square decomposition exists at any
 frequency to check that against. This is also where the largest untested weight
@@ -431,7 +431,7 @@ near 28\,dB, falling by about half a decibel for every decibel of excess loss
 \cite{karttunen}. An even split would need some 56\,dB of excess loss, and a
 path that far down carries nothing. The tail that matters is not depolarised.
 
-What the average costs can be bounded instead, and the bound has two sides. A
+The cost of the average can be bounded instead, and the bound has two sides. A
 vertical facade struck by a near horizontal ray presents a nearly horizontal
 plane of incidence, so a vertically polarised network field meets it in the
 transverse electric case, where the unpolarised mean is never wrong by more than
@@ -451,11 +451,11 @@ estimator, the body, and the checks that constrain them.
 
 The scene is a photogrammetric mesh of a real square, cut to a cylinder of
 radius 250\,m about the standpoint and reaching from the ground to the roofline.
-The mesh comes from aerial and street level imagery and carries no material
+The mesh is built from aerial and street level imagery and carries no material
 information of its own, so classes and electromagnetic parameters are assigned
-afterwards. Radius 250\,m is not a free choice and Section~\ref{sec:valid}
-reports what sets it. It should not be confused with the 250\,m that appears
-in \cref{tab:models} as the far edge of the rooftop range band. One says how
+afterwards. The 250\,m radius is not a free choice and Section~\ref{sec:valid}
+reports what sets it. That radius should not be confused with the 250\,m that
+appears in \cref{tab:models} as the far edge of the rooftop range band. One says how
 much geometry is kept around the standpoint, the other how far away a base
 station is allowed to be. They are fixed by different arguments and happen to
 agree.
@@ -482,23 +482,23 @@ promptable segmentation model is then asked for the material within those facade
 regions, which is the axis the first model cannot resolve \cite{sam}. The
 registration and projection are described in the supplementary information.
 
-Imagery comes from two providers and the split matters when reading coverage.
+Imagery is taken from two providers and the split matters when reading coverage.
 Squares represented by a single panorama use one provider's official captures,
-while the multi-station route at the reference square comes from a second,
+whereas the multi-station route at the reference square comes from a second,
 community sourced provider, which is the only set carrying the material axis.
 The comparison between the geometric and the image derived assignment is a
 result rather than part of the method, so it is reported separately. One thing
-belongs here rather than there, though. The cross city comparison is run with
+belongs here rather than there. The cross city comparison is run with
 geometric classes at every square and carries no image evidence at all. The
 photographs enter at the reference square, which is where the material path is
 demonstrated and where the coverage figures of Section~\ref{sec:budget} are
 measured. What limits the others is registration rather than imagery, and
-until that is fixed the image derived arm can claim one square.
+until that is fixed the image derived path can claim one square.
 
 What the photographs buy is worth stating plainly, because it is easy to expect
 the wrong thing of them. They are not a fine adjustment to the permittivity.
 Reflection at 15\,GHz varies little across the materials ordinary European
-squares are actually built from, so moving between brick, stone and rendered
+squares are built from, so moving between brick, stone and rendered
 masonry shifts $\chi$ by far less than any difference this paper reports. The
 job the photographs do is to establish which family of materials the square
 belongs to at all. A square faced in glass and metal would fall outside that
@@ -588,9 +588,9 @@ contributes equally, so
 wherever $\rho_+ > \rho_-$, and $Q = 0$ elsewhere. Only elevation appears,
 because a uniform density of sites on level ground has nothing to distinguish one
 compass bearing from another. Counting sites rather than weighting them by range
-is what makes $r_{\max}$ load bearing: the $\rho^2$ inside \eqref{eq:cone} says
+is what makes $r_{\max}$ matter: the $\rho^2$ inside \eqref{eq:cone} says
 far sites are the numerous ones, so where the range band ends decides how much of
-the answer they own. Weighting each site by its own free space spreading
+the answer they contribute. Weighting each site by its own free space spreading
 $1/\rho^2$ instead replaces the cubed bracket in \eqref{eq:Q} with
 $\rho_+ - \rho_-$, and that variant is carried through as a sensitivity.
 
@@ -659,8 +659,8 @@ plausible range, 25 to 100 sites per
 square kilometre radiating 55 to 75\,dBm, this puts $S_0$ between 0.0075 and
 3.0\,W/m$^2$ for the rooftop band and between 0.010 and 4.1\,W/m$^2$ for the
 street level band, against a general public reference level of 10\,W/m$^2$ at
-this frequency \cite{icnirp}. Nearly three orders of magnitude, set entirely by
-numbers that are not public. That spread is the reason this paper reports a
+this frequency \cite{icnirp}. That is nearly three orders of magnitude, set
+entirely by numbers that are not public. The spread is the reason this paper reports a
 ratio: the part that depends on the square is measurable and transfers between
 cities, and the part that depends on the network is neither.
 
@@ -706,7 +706,7 @@ plane wave from one direction, so aiming at the pedestrian means peak gain along
 $-\uext$ whatever the ray did on its way out of the square. The gain toward the
 head is then the same constant for every site, so it multiplies \eqref{eq:Q} and
 the normalisation divides it straight back out. $Q$ is not approximately
-unchanged, it is the same function, and the estimator of
+unchanged. It is the same function, and the estimator of
 Section~\ref{sec:estimator} reads $Q$ only when depositing an escaped ray and
 never inside a random draw, so the traced $\chi$ comes out bit identical.
 
@@ -722,15 +722,15 @@ because they are the ones real networks use. A site that steers at the
 pedestrian's coordinates aims at the direct path. A reflected path leaves that
 site toward its own last surface, which can be a hundred metres from the head,
 so it departs tens of degrees off the beam axis and the array puts it 20 to
-25\,dB down. Geometric steering therefore suppresses the very multipath this
-paper is measuring and pushes $\chi$ toward its no bounce value. Codebook beam
+25\,dB down. Geometric steering therefore suppresses the multipath this
+paper is measuring and moves $\chi$ toward its no bounce value. Codebook beam
 selection, which is what 5G beam management does, sits in between. Treating each
 site as a single far point makes that offset vanish and both policies then read
 as invariant, so the invariance there is an artefact of the far source picture
 rather than a property of the physics. The direction of the error is at least
 known: the numerator's gain is the peak times a sidelobe factor no greater than
-one while the denominator's is the peak itself, so steered $\chi$ can only fall
-below the value reported here.
+one, whereas the denominator's is the peak itself, so steered $\chi$ can only
+fall below the value reported here.
 
 One thing never cancels under any policy. The element pattern multiplies each
 path before the aperture combines anything, so it survives as a reweighting of
@@ -816,7 +816,7 @@ evaluated, and the reason is worth stating because it decides how many rays a
 result needs. The variance is set by the share of the ray budget that lands
 inside the support of $Q$. The isotropic model has support everywhere, so every
 ray contributes and the per standpoint error is a few thousandths of a decibel.
-The street model crowds its entire mass into the lowest tens of degrees of
+The street model puts its entire mass into the lowest tens of degrees of
 elevation, so most rays escape into directions where $Q$ is zero and contribute
 nothing, and the per standpoint error is some thirty times larger. Stratifying
 the launch directions does not help with this, because the launch direction is
@@ -867,12 +867,12 @@ the one the mesh cannot supply on its own. So the budget is set by where
 observed family membership stops, not by where a number stops being known to
 three decimals.
 
-The evidence leg is not unlimited either, and the measurements below say where
-it runs out rather than leaving that to a reader to wonder about. A convergence
-threshold would be the usual argument in place of all this, and it is not weaker
-so much as insufficient by itself, since it shows the discarded tail is small
-without showing the kept part is right. Both legs are used here, and the
-convergence one comes last.
+The evidence does not reach indefinitely either, and the measurements below say
+where it runs out rather than leaving that to a reader to wonder about. A
+convergence threshold would be the usual argument in place of all this, and it is
+not weaker so much as insufficient by itself, since it shows the discarded tail
+is small without showing the kept part is right. Both arguments are used here,
+and the convergence one comes last.
 
 Two different questions hide inside the phrase ``observed surface'', and they
 have to be separated or the numbers below look like they disagree. The first is
@@ -885,7 +885,7 @@ Take the geometric question first. A photograph taken from the observation point
 sees exactly the surfaces a ray can reach on its first interaction, so the first
 hit is covered by construction. For a path that returns to where it started the
 cover reaches the second interaction as well, since both ends of a closed loop
-are seen from the same viewpoint. That is the co-located picture of
+are seen from the same viewpoint. This is the co-located picture of
 Section~\ref{sec:ratio} in its strictest form, and it is not a hypothetical.
 Traced at 42 standpoints across four photogrammetric meshes on three continents,
 with the visible set built by first hit probing rather than assumed, the median
@@ -908,19 +908,19 @@ incident power landing on a triangle some panorama photographed is 0.978 to
 0.999 at the first interaction, across seven of the eight registered stations at
 the reference square, which confirms the geometric argument to about two parts
 in a thousand. The eighth returns 0.362, and since it stands eight metres from
-one scoring 0.999 that is a registration failure rather than a coverage one. It
-had passed the skyline residual gate, so first interaction coverage is the
-sharper test of a pose, and that station is excluded. Away from a camera the two
+one scoring 0.999 that is a registration failure rather than a coverage one. That
+station had passed the skyline residual gate, so first interaction coverage is
+the sharper test of a pose, and it is excluded. Away from a camera the two
 questions come apart, and the reach turns out to be a radius. Within 20\,m of a
 registered panorama the second interaction still lands on photographed material
-93 to 96\,\% of the time and the third about 89\,\%, while beyond 40\,m every
+93 to 96\,\% of the time and the third about 89\,\%, whereas beyond 40\,m every
 depth falls below 0.21. Pooled over the published walk, which spans 90\,m, first
 interaction coverage is 0.479. So the evidential claim is about a twenty metre
 neighbourhood of the instrument rather than about a square, and every result
 that uses image derived material carries that number beside it. These
 percentages and the geometric ones above come from different standpoint sets at
 different crop radii, so they answer the same question in different places and
-are not to be differenced.
+should not be subtracted from one another.
 
 Three is then the smallest budget that lets both questions be asked. One
 interaction would test nothing beyond the assured hit, two would show whether
@@ -932,27 +932,27 @@ Of all launched power, 21.0\,\% never touches a surface and escapes straight
 to the sky, which is the direct term of \eqref{eq:split}. The shares reaching
 the first, second, and third surfaces are 79\,\%, 8.8\,\%, and 1.2\,\%.
 Interactions past the third carry 0.23\,\% of launched power. Those depths can be justified
-neither by evidence nor by the power they carry. Traced against an eight
-interaction reference over 40 of these standpoints at fixed seeds, so that only
-the budget moves, $L = 3$ costs a median of 0.002\,dB and never moves a standpoint by more
-than 0.063\,dB. Not one standpoint of the 40 moves half a decibel under any of
+neither by evidence nor by the power they carry. $L = 3$ costs a median of
+0.002\,dB and never moves a standpoint by more than 0.063\,dB when it is traced
+against an eight interaction reference over 40 of these standpoints at fixed
+seeds, so that only the budget moves. Not one standpoint of the 40 moves half a decibel under any of
 the three illumination models.
 
 One consequence has to be stated plainly. A fixed budget is a hard cut, so the
 estimator is truncated and therefore biased low, since truncation deletes power
 and never adds it. The share of escaping power still in flight when the budget
 runs out is 0.0037 at the median standpoint and 0.0201 at the worst, and every
-value reported here is a lower bound in that sense. That is not the same number
+value reported here is a lower bound in that sense. This is not the same number
 as the 0.23\,\% above, because the denominators differ: one is a share of all
-launched power and the other a share of the power that actually escapes. Russian roulette is the
+launched power and the other a share of the power that escapes. Russian roulette is the
 standard way to end paths without introducing this bias \cite{arvokirk}, but it
 cannot repair a hard cap, and at a budget of three it would fire exactly once,
 one step before the cap, killing rays at a 0.05 survival floor and inflating the
 few survivors twentyfold. A repeated-seed test found the same relative spread to
 three significant figures with roulette on and off, and wall times of 101 and
 100\,s. It is switched off because it changes neither variance nor work at this
-budget. What the trace itself then approximates reduces to a single one sided
-truncation whose size is quoted above. The assumptions of
+budget. The only approximation left in the trace itself is a single one sided
+truncation, whose size is quoted above. The assumptions of
 Section~\ref{sec:ratio} sit underneath that and are not part of the claim.
 
 \begin{algorithm}[!t]
@@ -1084,8 +1084,8 @@ Both are reproduced to the tolerance set by the ray count.
 
 \subsection{Convergence}
 
-Two parameters are measured here, and a third is corroborated rather than
-chosen. The bounce budget $L$ is fixed by evidence in
+Two parameters are measured here, and a third, the bounce budget, is corroborated
+rather than chosen. The bounce budget $L$ is fixed by evidence in
 Section~\ref{sec:budget}, and the trace out to eight interactions reported
 there is what corroborates it. That comparison needs one remark, because the obvious way to read it is
 wrong. Two runs that differ only in $L$ and share a seed trace the same rays and
@@ -1171,9 +1171,9 @@ Six and eight of the eleven squares exceeded those between-square values. The
 street-cell model was the counter case. Its median within-square spread was
 8.43\,dB against 9.58\,dB between squares, and 4 of 11 squares exceeded the
 between-square value. A single number per square is therefore a poor summary of
-that square under most of the illumination models considered, rather than under
-all of them, and where a pedestrian stands matters more than which of these
-eleven squares they stand in.
+that square under most of the illumination models considered, though not under
+all of them. Where a pedestrian stands matters more than which of these eleven
+squares they stand in.
 
 \Cref{fig:eleven-exposure} gives the distributions for the corrected rooftop
 law, the sky fraction, and the corresponding body-side peak absorbed power
@@ -1223,10 +1223,10 @@ At the 250\,m Korenmarkt crop, the correction increased the rooftop ratio by
 4.93\,dB spread between all eleven squares. Since both laws used the same rays,
 their differential Monte Carlo noise was exactly zero.
 
-The eleven-city shifts were not common level changes. Rooftop shifts ran from
+The eleven-city shifts were not a common change of level. Rooftop shifts ran from
 $+1.05$ to $+6.33$\,dB about a mean of $+5.14$\,dB, with a residual root mean
 square of 1.39\,dB. Street shifts ran from $+1.45$ to $+4.41$\,dB about a mean
-of $+3.43$\,dB, with a residual root mean square of 0.98\,dB. The former and
+of $+3.43$\,dB, with a residual root mean square of 0.98\,dB. The earlier and
 corrected rankings had Spearman correlations of $+0.65$ rooftop and $+0.88$
 street. Nine sites changed rank rooftop and eight changed rank street, but one
 site per model caused almost all of the reordering. New York fell from first to
@@ -1234,11 +1234,12 @@ ninth rooftop, and Tokyo fell from fourth to eighth street. Removing that one
 site gave a Spearman correlation of $+0.98$ in both models, with no remaining
 site moving more than one place.
 
-The old law concentrated power immediately above its lower elevation limit.
-Across the eleven squares, the share of the old rooftop answer arriving below
+The earlier law concentrated power immediately above its lower elevation limit.
+Across the eleven squares, the share of the earlier rooftop answer arriving below
 $5^\circ$ predicted the residual about the mean correction with Pearson
 correlation $-0.97$. New York left narrow near-horizontal channels between its
-towers, which the old law rewarded. The corrected law is therefore close to a
+towers, which is where the earlier law put most of its weight. The corrected law
+is therefore close to a
 level shift for nine or ten squares, but it is not one at the top of the ranking.
 
 \subsection{Material discrimination bounds the claim}
@@ -1249,8 +1250,8 @@ prior with the image-derived material classes changes the distribution median by
 0.024\,dB under isotropic illumination, 0.029\,dB under rooftop illumination,
 and 0.022\,dB under street-cell illumination. The corresponding within-Korenmarkt
 spreads were 3.9, 8.4, and 16.7\,dB. The 0.024\,dB isotropic shift was 5.7 times
-the 0.0042\,dB standard error of the walk median, so the design resolved a shift
-that remained a small part of one decibel.
+the 0.0042\,dB standard error of the walk median, so the design resolved the
+shift rather than missing it, and the shift is a small part of one decibel.
 
 Changing the whole material field gave a larger result with the opposite sign.
 The isotropic median changed by $-0.218$\,dB, 15 of 120 standpoints exceeded
@@ -1306,18 +1307,59 @@ of $-2.53$ and $-1.09$\,dB.
     $8\times8$ & $-0.38$ & $-1.64$ \\
     $16\times16$ & $-0.61$ & $-2.32$ \\
     $32\times32$ & $-0.93$ & $-2.85$ \\
-    Direct-path floor & $-1.57$ & $-2.97$ \\
+    Direct-path floor & $-1.58$ & $-2.96$ \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The direct part fixed the lower bound. It was 0.696 of the rooftop ratio and
-0.505 of the street ratio, so no beam aimed at the pedestrian could reduce the
-two ratios by more than 1.57 and 2.97\,dB. The $32\times32$ street result reached
-96\% of that floor. A nearest-grid codebook sweep has no reported values, and
-best-beam selection cannot be recovered from the stored estimator because it
-does not retain the paths belonging to one site. Its reduction is bounded above
-by the geometric-steering reduction.
+The direct part fixed the lower bound. It was 0.6955 of the rooftop ratio and
+0.5054 of the street ratio, so no beam aimed at the pedestrian could reduce the
+two ratios by more than 1.58 and 2.96\,dB. The $32\times32$ street result reached
+96\% of that floor.
+
+A codebook is the same axis rather than a second one. Selecting the nearest beam
+from a grid at least as fine as the aperture changed the rooftop and street
+ratios by $-0.25$ and $-1.54$\,dB at 8 beams per axis, $-0.37$ and $-1.61$\,dB at
+16, and $-0.37$ and $-1.66$\,dB at 32, converging on the exact steering values of
+$-0.38$ and $-1.64$\,dB. Codebook granularity is therefore worth under 0.15\,dB
+and is not one of the parameters that sets the range. Grids coarser than the
+aperture were computed and excluded, because the nearest grid beam then sits more
+than a beamwidth from the target and the free-space reference lands in a pattern
+null, which returns $+50$\,dB. No scheduler picks a beam that nulls its own user.
+A real network with a coarse beam set broadens its beams instead, and a broadened
+beam is a smaller effective aperture, which is the aperture table read upward.
+
+The remaining gap is best-beam selection, and the inequality has to be stated
+carefully because the loose version is false. Exact steering is not a member of a
+finite codebook, so it is not ordered against best-beam selection at all. What is
+ordered is nearest-beam against best-beam on the \emph{same} grid. Best-beam
+maximises the sum that nearest-beam evaluates at one member, and in free space
+with a single path both pick the same beam, so the two references are equal and
+the best-beam ratio is at least the nearest-beam ratio. The measured column is
+therefore a lower bound on the best-beam ratio rather than an estimate of it.
+Where best-beam actually sits needs a finite-site trace, because the stored
+estimator does not retain which paths belong to one site.
+
+One caution about the element pattern, because the taper value invites the wrong
+arithmetic. Averaged over the rooftop population under its own measure the
+element is 0.45\,dB down, but its measured effect on the ratio is 0.62\,dB at the
+median square and 1.07\,dB at Madrid. The element down-weights steep arrivals,
+and steep is where a square lets illumination through, so it costs two to four
+times what the taper at the median elevation suggests. The 0.26\,dB figure above
+is a taper at one elevation and not a change in the ratio. The element cancels
+only if its own boresight tracks the pedestrian, which needs mechanical pointing
+in three axes. Deployed macro panels are mechanically fixed and steer
+electronically, so under every policy a network actually runs the element
+survives.
+
+Realistic antenna policies also move the eleven-square order, by more than
+adjacent swaps. Against the reported ordering, Kendall correlations are 0.818 for
+a rooftop broadcast beam and 0.709 for a loaded street beam, reversing pairs up
+to 1.53\,dB apart rooftop and 2.97\,dB street on axes 5.6 and 9.8\,dB wide. Full
+digital maximum ratio transmission is the one policy that nearly preserves the
+order, reversing no street pair and two rooftop pairs at 0.58\,dB or less. The
+ordering reported here is therefore an ordering under the stated illumination law
+with no antenna, and it is not invariant to what the network points.
 
 \subsection{Bystanders alter the arriving distribution}
 
@@ -1456,7 +1498,7 @@ the geometric facade default to a metal-clad square would change material family
 rather than refine a masonry value. The eleven-square comparison therefore
 applies to the observed masonry family.
 
-Diffraction is small for two models and fails that description for the third.
+Diffraction is small for two models and not for the third.
 \Cref{fig:diffraction-bound} gives medians of 0.06, 0.15, and 0.42\,dB, with
 90th percentiles of 0.13, 0.37, and 1.26\,dB. The street percentile uses the 56
 standpoints with a defined uplift. Four more had their entire street elevation
@@ -1524,8 +1566,7 @@ scattering is removed~\cite{vitucci}.
 
 Monte Carlo error is smaller than standpoint sampling. The standard errors of a
 walk median are 0.0042\,dB isotropic, 0.0136\,dB rooftop, and 0.0343\,dB street.
-An older street-cell evidence-ladder value of 0.079\,dB was the lowest of eight
-seed draws. The seed-averaged shift is $0.167 \pm 0.022$\,dB, or 7.6 standard
+An older street-cell value of 0.079\,dB was the lowest of eight seed draws. The seed-averaged shift is $0.167 \pm 0.022$\,dB, or 7.6 standard
 errors on the mean of eight and 2.7 on one run. The earlier 0.298\,dB headline
 used a superseded illumination law and was never measured under the corrected
 law. Neither superseded value is used as a result here.
@@ -1559,9 +1600,11 @@ below 0.58\,dB, whereas metal changed the rooftop median by 4.374\,dB. Geometry
 carries the comparison among masonry squares, and image evidence is needed to
 determine whether a new square belongs to that family.
 
-Future work must trace finite sites to measure best-beam codebook selection and
-fit diffuse scattering. The bystander study also needs repetition beyond one
-square on the current three-interaction configuration.
+Future work must trace finite sites to close the gap between nearest-beam and
+best-beam selection, and must fit diffuse scattering rather than model it, since
+that is the largest remaining physical uncertainty. A stable spatial sampling
+rule would remove the dominant numerical one, which more rays cannot. The
+bystander study also needs repetition beyond one square.
 
 \begin{thebibliography}{99}
 
