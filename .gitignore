@@ -110,6 +110,7 @@ pynguin-report/
 !papers/city-exposure-study/semantic_twin/FIGURES/19_deployment_box.png
 !papers/city-exposure-study/semantic_twin/FIGURES/20_adjoint_idea.png
 !papers/city-exposure-study/semantic_twin/FIGURES/21_one_ray.png
+!papers/city-exposure-study/semantic_twin/FIGURES/22_evidence_reach.png
 # Visual regression baselines — committed to git so drift is reviewable in PR diffs.
 !aegis-web/tests/e2e/__snapshots__/**/*.png
 

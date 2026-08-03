@@ -109,16 +109,31 @@ flatness improves in exact proportion to how much geometry the grid cannot hold.
 
 ## 11: eleven squares, one pipeline
 
-Every acquired city, framed by its own geometry so a 26 m square in Toulouse and a
-255 m canyon in New York are treated alike, with sky fraction and skyline height
-measured from the mesh rather than quoted from the screening.
+Every acquired city, framed by its own geometry so a 25 m skyline in Toulouse and a
+215 m one in New York are treated alike, with both numbers measured rather than
+quoted from the screening.
 
-Sky fraction runs from 18 percent at Times Square to 46 percent at Krakow, which is
-the geometric spread this study exists to turn into an exposure distribution.
+Sky fraction runs from 12 percent at Times Square to 33 percent at Trafalgar
+Square, which is the geometric spread this study exists to turn into an exposure
+distribution. It is the median over that square's own 80 standpoints in the
+eleven city run, so it is the same quantity the middle panel of figure 16 draws
+and the two cannot disagree.
 
-The two labelled failures are on the sheet deliberately. Istanbul's flat green
-plate is a more convincing argument for dropping it than its triangle count is, and
-Toulouse's 7 percent sky is what an anchor sitting on a roofline looks like.
+Istanbul is on the sheet deliberately, labelled. Its flat green plate is a more
+convincing argument for dropping it than its triangle count is.
+
+**Rebuilt on the fixed ground datum.** Both numbers used to be measured against a
+ground level read from one ray dropped at the centre of the crop, which is the
+estimator `GROUND_DATUM.md` retired. The centre of Rynek Glowny is the Sukiennice
+and the centre of Place du Capitole is the Capitole, so the sheet stood the
+observer on a monument at one site and inside one at the other, and it reported
+Krakow as the most open square of the eleven at 46 percent sky and Toulouse as by
+far the most enclosed at 7 percent. Measured over their walks they are 31 and 24
+percent, which is the middle of the set at both. Skyline height was a high vertex
+percentile minus a low one, and the low one is underground structure the tile
+provider leaves below the street, so every skyline was too tall, by 0.3 m at
+Toulouse and by 40 m at Times Square. It is now measured above the pavement the
+walk stands on.
 
 ## 12: when the foliage treatment matters
 
@@ -155,18 +170,29 @@ susceptibility relative to free space under three illumination models. Middle is
 the body side, absorbed power density through the AEGIS phantom. Right is where
 each location sits on the walk.
 
-The spatial panel is the one that makes the point: the open square runs 10 to
-15 dB hotter than the streets leaving it, and that is geometry rather than
-material. Position within one square is worth 3.5 dB under isotropic illumination
-and 8.2 dB under rooftop macro sites.
+The spatial panel is the one that makes the point. Standing in a different place
+in one square is worth 3.9 dB isotropic, 8.4 dB under macro rooftop sites and
+16.7 dB under street small cells, 5th to 95th percentile, and 17.3 dB peak to
+peak under the rooftop model. The material prior is uniform over the whole scene,
+so that is urban form and nothing else.
 
-**This asset is stale.** Its two directional curves are the superseded
-illumination law of `MONOSTATIC_SBR.md` section 2.7.1, which read 12.5 dB rooftop
-and 18.0 dB street where the corrected law reads 8.2 and 16.6. The isotropic
-curve and the spatial panel are unaffected. Rebuild from the `clean_semantic` run
-before submission.
+**Rebuilt from `korenmarkt_walk_L3_15ghz` by `make_walk_exposure_cdf.py`.** The
+shipped image was a hand copy of a pipeline plot from a run at six surface
+interactions, on the pre-fix ground datum, under the superseded illumination law
+of `MONOSTATIC_SBR.md` section 2.7.1. That law read 12.4 dB of rooftop spread and
+18.5 dB of street where the corrected one reads 8.4 and 16.7. The isotropic curve
+is unaffected at 3.9 dB either way, because the correction is to the elevation
+weighting and the isotropic model has none.
+
+**One caption claim did not survive the rebuild.** The old entry said the open
+square runs 10 to 15 dB hotter than the streets leaving it. On this run the
+standpoints within 30 m of the crop centre sit 2.7 dB **below** those beyond 60 m
+under the rooftop model, and 0.2 dB below under isotropic, so the pattern is not
+centre against edge. It is organised by place, which the panel shows, and naming
+which places would need the square's own footprint rather than a radius.
 
 Read the rooftop and street curves as upper bounds, for the reason in figure 15.
+This walk is traced on the 130 m crop and both directional models want 250 m.
 
 ## 15: has the crop radius converged
 
@@ -271,18 +297,26 @@ varying only how much of the scene carries material evidence from images: none a
 all, one registered panorama at 3.13 percent of area, and eight fused stations at
 10.57 percent.
 
-The answer is a clean negative. Zero to a tenth of the scene shifts the median by
-**0.29 dB** and moves exactly **one location out of 120** by more than a decibel.
-A single panorama is worth 0.008 dB.
+The answer is still a negative and it is no longer a clean one. Zero to a tenth of
+the scene moves the rooftop distribution median by **0.37 dB**, from 0.2163 to
+0.2353, and moves **8 of the 120 standpoints** by more than a decibel. Under
+isotropic illumination, where the negative is weakest, **16 of 120** move past a
+decibel and one moves by 1.98. A single panorama is worth 0.15 dB on the median
+and moves nothing past a decibel under any of the three models.
 
-**This asset is stale in two ways.** A fourth rung exists, at 11.02 percent of
-area, from gating on the sky conflict test rather than on the skyline residual,
-and it readmits one station rather than removing any. And the shipped curves are
-the superseded illumination law. Under the corrected law the same three rungs
-read 0.2165, 0.2239 and 0.2354 with a 0.36 dB shift, and the count of standpoints
-moving over a decibel rises from 1 to 8 of 120. The median result survives, the
-per standpoint one is weaker than the caption says, and it is weakest under
-isotropic illumination, where 17 of 120 move over a decibel.
+**Rebuilt from the three `_L3` rungs by `make_evidence_ladder.py`.** The shipped
+image was a hand copy of a pipeline plot from runs at six surface interactions on
+the pre-fix ground datum under the superseded illumination law, where the same
+ladder read a 0.29 dB shift and one standpoint past a decibel. The right panel is
+new: the distributions sit on top of each other, so the size of the effect is
+only readable as a paired per standpoint difference, and that is also where the
+honest half of the result lives.
+
+A fourth rung exists, at 11.02 percent of area, from gating on the sky conflict
+test rather than on the skyline residual, and it readmits one station rather than
+removing any. It is not on the figure because it has not been retraced at this
+operating point, and a figure assembled from two sweeps is how the provenance was
+lost the first time.
 
 That is worth more than a positive would have been. It says the geometry sets the
 exposure distribution, and the semantic layer has to justify itself on occlusion
