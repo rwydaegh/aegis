@@ -144,8 +144,20 @@ moved furthest scores 0.978. The observation survives, the mechanism does not.
 ## Things you asked for that now exist
 
 - **Blender files with everything in one scene**, which you asked for twice
-  thirty hours apart. Four squares were built yesterday, the remaining seven were
-  in flight when this was written. `propagation_blends.zip` and its README.
+  thirty hours apart. **All eleven squares**, each retraced from scratch at the
+  published 250 m crop and bounce budget, 151 rendered figures, about 50 minutes
+  on the rented box. `propagation_blends.zip`, now 189 MB, and
+  `PROPAGATION_BLENDS.md`. Nothing was carried over from yesterday's four: three
+  of those ran at a bounce budget of 4, and Krakow sat on the superseded Cloth
+  Hall datum, so its walk went from 163 candidate standpoints to 716 once its
+  standpoints came off the roof.
+
+  Three of the four original one-line reasons in that archive were **wrong** and
+  were rewritten. Krakow as "the most open square, highest under every model" was
+  the roof artefact. New York's "18 percent sky against Krakow's 46" quotes two
+  numbers that no longer exist. Korenmarkt as "the only site with registered
+  panorama semantics" is false now that five other squares carry a fishnet with
+  poses. If you quoted any of those anywhere, they need revisiting.
 - **A written reason for stopping at three bounces**, and for the material
   evidence being what sets it rather than a convergence tolerance. `WHY_NOT.md`
   section 5 and the bounce budget subsection.
@@ -189,6 +201,24 @@ open-sky filter ready, and are one command each once the Street View tile quota
 resets. Toulouse needs its crop anchor moved about 25 m before it is worth
 acquiring anything, and that anchor belongs to a mesh the eleven-square table
 already uses.
+
+## Two bugs nobody owns
+
+Both are in `export_propagation_payload.py`, found while building the scenes and
+deliberately not edited because that file belonged to another thread at the time.
+Neither affects any published number.
+
+- `outputs/tokyo_hachiko_fishnet_vistas/` is a stub with no `.npz`, so
+  `fishnet_layer` raises `ValueError: need at least one array to concatenate`.
+  This will break any Tokyo trace on this host, not just the scene build.
+- With that stub bypassed, Tokyo then loses its three registered poses to an
+  early return in `attach_evidence`.
+
+Also worth knowing before the next remote run: **`tools/blgpu.sh sync` does not
+push image evidence.** The first scene pass produced a Korenmarkt with empty
+depth clouds, panorama captures and bodies, and it looked like a successful run.
+It was caught, 255 MB of evidence and the 83 pose directories were pushed by
+hand, and the pass was redone. The sync path should learn about that directory.
 
 ## Where the open items are written down
 
