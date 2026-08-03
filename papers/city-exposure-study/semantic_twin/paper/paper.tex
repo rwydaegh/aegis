@@ -427,9 +427,10 @@ ratios by $-0.25$ and $-1.54$\,dB at 8 beams per axis, $-0.37$ and $-1.61$\,dB a
 16, and $-0.37$ and $-1.66$\,dB at 32, converging on the exact steering values of
 $-0.38$ and $-1.64$\,dB. Codebook granularity is therefore worth under 0.15\,dB
 and is not one of the parameters that sets the range. Grids coarser than the
-aperture were computed and excluded, because the nearest grid beam then sits more
-than a beamwidth from the target and the free-space reference lands in a pattern
-null, which returns $+50$\,dB. No scheduler picks a beam that nulls its own user.
+aperture were excluded by design rather than swept. The nearest grid beam would
+then sit more than a beamwidth from the target, so the free-space reference in
+the denominator would land in a pattern null and the ratio would report that null
+rather than the square. No scheduler picks a beam that nulls its own user.
 A real network with a coarse beam set broadens its beams instead, and a broadened
 beam is a smaller effective aperture, which is the aperture table read upward.
 
