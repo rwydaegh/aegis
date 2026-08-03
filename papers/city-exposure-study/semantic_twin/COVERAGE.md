@@ -181,6 +181,14 @@ re-registrations described below take the inside count from 26 to 14 and the adm
 6 of the 14 still pass the residual gate, so the disagreement between the two tests survives the fix
 rather than being an artefact of it.
 
+A third test arrived from the propagation side while this was being written and points the same way.
+Tracing the reference square and asking what fraction of first interaction incident power lands on a
+triangle some panorama photographed gives 0.978 to 0.999 at seven of its eight stations and 0.362 at
+the eighth, which stands eight metres from one scoring 0.999. Re-registering that camera takes it to
+1.000. It costs one trace, it needs nothing but a registered panorama, and it is sharper than the
+residual the registration itself minimises. See `paper/methods.tex` for the measurement. Three
+independent tests now agree that the skyline residual alone is not a sufficient gate.
+
 The rule reproduces the one published station set. Korenmarkt's `walk_semantic.json` names the eight
 Mapillary stations the shipped binding was built from, chosen by hand at the time. The two tests applied
 blind admit walk_00, 01, 02, 03, 05, 06, 08 and 10 and refuse the other four on residual, which is the
