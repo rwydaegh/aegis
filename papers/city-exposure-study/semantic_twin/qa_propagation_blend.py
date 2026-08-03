@@ -59,14 +59,26 @@ BUILDERS = (
 
 #: Collections the published renders draw from. Empty means a missing layer in
 #: a picture nobody checks, which is how a wrong figure gets into a paper.
+#:
+#: A name that is not in the blend at all is a worse fault than an empty one and
+#: is reported separately, because it usually means this list went stale rather
+#: than that the build broke. That happened on 3 August: the builder renamed
+#: "12 transmitter positions" to "11 sources on the facade tips", this list kept
+#: the old name, and the floating source check silently stopped running against
+#: anything while still reporting a pass.
 REQUIRED = (
     "01 city mesh",
     "08 walk standpoints",
     "09 ray paths by fate",
-    "11 arrival spectrum",
-    "12 transmitter positions",
-    "13 body exposure",
+    "11 sources on the facade tips",
+    "12 next event estimation",
+    "13 arrival spectrum",
+    "14 body exposure",
 )
+
+#: The collection the sources live in. Named once, because two checks need it
+#: and a rename that misses one of them is the fault above all over again.
+SOURCES = "11 sources on the facade tips"
 
 #: How far a thing that sits on a surface may sit off it before it is floating.
 GROUNDED_TOLERANCE_M = 1.5
@@ -90,6 +102,7 @@ for o in bpy.data.objects:
     v = (v @ w.T)[:, :3] if v.size else v.reshape(0, 3)
     out["objects"][o.name] = {
         "kind": "mesh",
+        "hidden": bool(o.hide_render and o.hide_viewport),
         "vertices": int(len(m.vertices)),
         "faces": int(len(m.polygons)),
         "finite": bool(np.isfinite(v).all()) if v.size else True,
@@ -139,7 +152,14 @@ def check_stale(blend: pathlib.Path, newest: int) -> list[str]:
 
 
 def check_populated(summary: dict) -> list[str]:
-    return [f"empty collection: {name}" for name in REQUIRED if not summary["collections"].get(name)]
+    """Every collection the renders draw from is present, and holds something."""
+    problems = []
+    for name in REQUIRED:
+        if name not in summary["collections"]:
+            problems.append(f"no such collection: {name}, so every check that reads it did nothing")
+        elif not summary["collections"][name]:
+            problems.append(f"empty collection: {name}")
+    return problems
 
 
 def check_finite(summary: dict) -> list[str]:
@@ -174,9 +194,9 @@ def check_grounded(summary: dict, city: str) -> list[str]:
     if mesh is None or mesh.get("max") is None:
         return ["grounded: no city mesh to measure against"]
     problems = []
-    for name in summary["collections"].get("12 transmitter positions") or []:
+    for name in summary["collections"].get(SOURCES) or []:
         o = summary["objects"][name]
-        if o.get("min") is None:
+        if o.get("min") is None or o.get("hidden"):
             continue
         # A source set that sits on the rooflines spans the roof heights. One
         # that floats sits entirely above the tallest thing in the scene.
@@ -199,6 +219,11 @@ def check_inside(summary: dict, city: str) -> list[str]:
 
     Flagging both at one metre made ten complaints of which one mattered, and a
     check that has to be read past is a check that stops being read.
+
+    An object hidden in both the render and the viewport is skipped. The blend
+    keeps the superseded 400 marker source set on purpose, hidden, because the
+    numbers in the same payload integrated it. Nobody sees it, so it cannot be
+    drawn over nothing.
     """
     mesh = summary["objects"].get(city)
     if mesh is None or mesh.get("max") is None:
@@ -206,7 +231,7 @@ def check_inside(summary: dict, city: str) -> list[str]:
     reach = max(abs(v) for v in (mesh["min"][0], mesh["max"][0], mesh["min"][1], mesh["max"][1]))
     problems = []
     for name, o in summary["objects"].items():
-        if name == city or o.get("max") is None:
+        if name == city or o.get("max") is None or o.get("hidden"):
             continue
         out = max(abs(v) for v in (o["min"][0], o["max"][0], o["min"][1], o["max"][1]))
         if out > OUTSIDE_RATIO * reach:
@@ -215,6 +240,24 @@ def check_inside(summary: dict, city: str) -> list[str]:
                 f"{out / reach:.1f} times the drawn mesh's {reach:.0f} m"
             )
     return problems
+
+
+def check_walk_builder(manifest: pathlib.Path) -> list[str]:
+    """The standpoints came from the capture route, not from the disc of grid squares.
+
+    The grid builder is still there and still reproduces the published numbers,
+    so a blend built from it is not wrong, it is just answering an older
+    question. What is wrong is not being able to tell which one you are looking
+    at, which is the state every blend was in until the manifest started saying.
+    """
+    if not manifest.exists():
+        return ["walk: no manifest, so how the standpoints were chosen is unrecorded"]
+    provenance = json.loads(manifest.read_text()).get("walk_provenance")
+    if not provenance:
+        return ["walk: the manifest does not say how the standpoints were chosen"]
+    if provenance.get("builder") != "panorama route":
+        return [f"walk: built by {provenance.get('builder')!r}, not by the capture route"]
+    return []
 
 
 def audit(site: str, scratch: pathlib.Path) -> list[str]:
@@ -227,6 +270,7 @@ def audit(site: str, scratch: pathlib.Path) -> list[str]:
     problems += check_populated(summary)
     problems += check_finite(summary)
     problems += check_standpoints(summary, VIZ / f"{site}_payload.npz")
+    problems += check_walk_builder(VIZ / f"{site}_manifest.json")
     if city:
         problems += check_grounded(summary, city)
         problems += check_inside(summary, city)

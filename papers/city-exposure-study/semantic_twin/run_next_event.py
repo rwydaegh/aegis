@@ -110,10 +110,21 @@ def main() -> None:
                 seed=args.seed,
             )
         points = np.asarray(walk.points)
+        # The capture route is as long as the street the camera drove, and at
+        # Korenmarkt that is 49 m. Asking it for 144 standpoints would either
+        # fail or quietly space them 0.3 m apart and call them independent.
+        # Neither is honest, so the split shrinks with the route and says so.
+        held_out = args.held_out
+        if points.shape[0] < args.held_out + args.builders:
+            held_out = max(2, round(points.shape[0] * args.held_out / (args.held_out + args.builders)))
+            print(
+                f"{site:24s} {points.shape[0]} standpoints is short of the "
+                f"{args.held_out + args.builders} asked for, holding out {held_out}"
+            )
         rng = np.random.default_rng(args.seed)
         order = rng.permutation(points.shape[0])
-        evaluate = points[order[: args.held_out]]
-        pool = points[order[args.held_out :]]
+        evaluate = points[order[:held_out]]
+        pool = points[order[held_out:]]
         index = np.linspace(0, pool.shape[0] - 1, min(args.builders, pool.shape[0])).round().astype(int)
 
         sources = build_source_set(

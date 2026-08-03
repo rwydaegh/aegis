@@ -350,6 +350,7 @@ class InhouseTilesDownloader:
         self._active_tilesets: set[str] = set()
         self._tileset_cache: dict[str, dict[str, Any]] = {}
         self._downloaded_payloads: set[str] = set()
+        self._attributions: set[str] = set()
         self._on_disk = self._read_prior_manifest()
         self._claimed = {entry["file"] for entry in self._on_disk.values()}
         self._spent_keys: set[str] = set()
@@ -429,7 +430,26 @@ class InhouseTilesDownloader:
         cache_key = sanitized_uri(request_url)
         if cache_key not in self._tileset_cache:
             self._tileset_cache[cache_key] = self.http.get_json(request_url)
+        self._collect_attribution(self._tileset_cache[cache_key])
         return self._tileset_cache[cache_key], request_url
+
+    def _collect_attribution(self, tileset: dict[str, Any]) -> None:
+        """Remember who owns the imagery this tileset serves.
+
+        Google publishes the data providers in ``asset.copyright`` of every
+        tileset JSON, semicolon separated, and the terms of the 3D Tiles API
+        require them to be shown wherever the imagery is. Which providers appear
+        depends on where you looked, so this has to be harvested during the
+        traversal rather than written down once. A site whose imagery came from
+        Airbus and one whose imagery came from Maxar do not carry the same
+        notice, and a paper that prints the wrong one is not complying.
+        """
+        asset = tileset.get("asset")
+        if not isinstance(asset, dict):
+            return
+        for name in str(asset.get("copyright", "")).split(";"):
+            if name.strip():
+                self._attributions.add(name.strip())
 
     def _walk_external_tileset(self, uri: str, base_url: str, parent_transform: np.ndarray) -> None:
         tileset, request_url = self._load_tileset(uri, base_url)
@@ -539,13 +559,30 @@ class InhouseTilesDownloader:
             "center_ecef": self.center_ecef.tolist(),
             "limits": {"max_requests": self.max_requests, "max_bytes": self.max_bytes},
             "tiles": self.tiles,
+            "attributions": sorted(self._attributions),
             "reused_from_disk": len(self._spent_keys),
             "requests": self.http.request_count,
             "total_bytes": self.http.total_bytes,
         }
         manifest_path = self.out_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        self._write_attribution_file()
         return manifest
+
+    def _write_attribution_file(self) -> None:
+        """The notice, beside the tiles, in the form a figure caption can copy."""
+        names = sorted(self._attributions)
+        if not names:
+            return
+        line = ", ".join(names)
+        (self.out_dir / "ATTRIBUTION.txt").write_text(
+            "The 3D imagery in this directory came from the Google Photorealistic 3D Tiles API.\n"
+            "The API terms require these providers to be shown wherever the imagery is:\n\n"
+            f"    {line}\n\n"
+            "For a figure, the caption reads:\n\n"
+            f"    Imagery: {line}\n",
+            encoding="utf-8",
+        )
 
 
 def positive_int(value: str) -> int:

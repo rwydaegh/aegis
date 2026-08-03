@@ -483,6 +483,9 @@ def trace_site(args: argparse.Namespace) -> dict[str, Any]:
         "terminations": list(TERMINATIONS),
         "locations": int(picks.size),
         "walk_candidates": len(walk),
+        # How the standpoints were chosen, written down so a blend can be told
+        # apart from one built by the grid without opening it.
+        "walk_provenance": {k: v for k, v in walk.provenance.items() if not isinstance(v, np.ndarray)},
         "trace_config": config.as_dict(),
         "surface_binding": binding.as_dict(),
         "hero": {

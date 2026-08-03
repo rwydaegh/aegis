@@ -357,3 +357,19 @@ def test_http_client_checks_request_cap_before_opening() -> None:
     with pytest.raises(DownloadLimitExceeded, match="request cap"):
         client.get_json("https://tile.googleapis.com/second.json")
     assert opened == 1
+
+
+def test_the_provider_names_are_harvested_from_every_tileset(tmp_path: pathlib.Path) -> None:
+    """Google requires the data providers to be shown with the imagery."""
+    downloader = tile_downloader(tmp_path, FakeHttp({}))
+    downloader._collect_attribution({"asset": {"copyright": "Google;Airbus;Maxar Technologies"}})
+    downloader._collect_attribution({"asset": {"copyright": "Google; Airbus"}})
+    assert sorted(downloader._attributions) == ["Airbus", "Google", "Maxar Technologies"]
+
+
+def test_a_tileset_with_no_copyright_adds_nothing(tmp_path: pathlib.Path) -> None:
+    downloader = tile_downloader(tmp_path, FakeHttp({}))
+    downloader._collect_attribution({"asset": {"version": "1.0"}})
+    downloader._collect_attribution({"asset": {"copyright": "  ;  "}})
+    downloader._collect_attribution({})
+    assert downloader._attributions == set()
