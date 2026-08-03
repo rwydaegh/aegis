@@ -44,8 +44,9 @@ you can come back to a job hours later from a different session.
 
 | Command | What it does |
 | --- | --- |
-| `sync` | rsync code, config, tests and the float64 meshes to the box |
-| `sync --all-meshes` | also push the older float32 PLYs |
+| `sync` | rsync code, config, tests, meshes and the fused semantics to the box |
+| `sync --all-meshes` | also push the six meshes the tracer refuses |
+| `push PATH...` | push a heavier input the default sync leaves behind |
 | `setup` | build the Python 3.12 venv and install both packages, idempotent |
 | `doctor` | print the remote host, load, GPU and package versions |
 | `run "CMD"` | start CMD detached, print the job id |
@@ -69,18 +70,34 @@ agents and the box only ever holds the subset it produced itself.
 | `data/duke.stl`, `data/itis_v5.db`, `data/phantoms.yaml` | 9.5 MB | the phantom and the IT'IS tissue database the body coupler opens |
 | `theory/scripts/` | 1 MB | the shared matplotlib style the figure scripts import |
 | the study's code, config and tests | 5 MB | |
-| `data/geometry/**/*_f64.ply` and every `.json` | 296 MB | the meshes the tracer opens |
+| every mesh whose manifest declares `format_version >= 3`, and every mesh `.json` | 505 MB | the meshes `run_exposure.site_mesh` will accept |
+| `data/panoramas/**/*.json` and `**/*.npz` | 309 MB | the fused semantics the material binding reads |
+| `outputs/{walk_korenmarkt,site_semantics,material_vlm,cross_validation,antenna}`, data files only | 6 MB | inputs to the propagation stage that happen to live under `outputs/` |
 
 | Skipped | Size | Why |
 | --- | --- | --- |
-| `outputs/` | 1.8 GB | the box produces these, it does not consume them |
-| `data/panoramas/` | 3.0 GB | only the segmentation stage reads them and that stage already ran |
+| the rest of `outputs/` | 1.8 GB | the box produces these, it does not consume them |
+| the rest of `data/panoramas/` | 2.7 GB | per view label rasters and source imagery, read only by the segmentation stage, which already ran |
 | `data/tiles/`, `data/tiles250/` | 648 MB | Blender mesh building input, not propagation input |
-| `data/geometry/**/*.ply` without `_f64` | 242 MB | the older float32 build, nothing in the propagation path opens it |
+| six meshes with `format_version < 3` | 34 MB | the tracer refuses them by manifest |
 | `*.blend`, `*.png`, `*.pdf`, `*.zip`, `lit/` | ~250 MB | Blender scratch, renders and the literature stash |
 | the rest of `/home/user/aegis/data` | 77 GB | unrelated studies |
 
-`sync --all-meshes` lifts the float32 exclusion if a mesh building script ever needs to run there.
+The geometry filter deserves a note, because the obvious version of it is wrong. Filtering on the
+`_f64` suffix looks like it selects the double precision meshes and it does not: New York and
+Toulouse only ever got an unsuffixed build, and for every site except Korenmarkt and Milan that
+unsuffixed build is already the good one. An `_f64` filter silently drops New York, and
+`--all-sites` then reports `[skip] newyork_timessquare: no 250 m mesh` on the box but not locally.
+`sync` therefore applies the same rule `site_mesh` does and reads `format_version` out of each
+manifest. Six older Korenmarkt and Milan crops are all that is left behind, and those are exactly
+the ones the tracer would refuse to open.
+
+For heavier inputs that the default sync leaves behind, such as `outputs/bystander_study` at
+24 MB or `outputs/substreet_ablation` at 47 MB, use `push`:
+
+```bash
+tools/blgpu.sh push outputs/bystander_study
+```
 
 ## The environment
 
@@ -145,6 +162,13 @@ output sets compared field by field:
 - **All four arrays** in the spectra `.npz`, including the 24 by 512 `rho_rooftop` block,
   sha256 identical.
 - **All 316 leaf values** of `summary.json` identical.
+
+That sweep used `--materials geometric`, which does not touch the semantic binding, so the
+`--materials walk` path was checked separately at 4 locations: **156 float64 comparisons, zero
+mismatches**, and the `surface_binding`, `semantic_binding`, `class_area_fractions` and
+`ground_datum` blocks of the manifest hash identically. That is the end to end check that the
+synced panorama semantics are byte for byte the local ones and that the binding reads them the
+same way.
 
 So the box can be used for published numbers, not just for exploration.
 

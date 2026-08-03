@@ -7,6 +7,7 @@
 #
 #   tools/blgpu.sh sync              push code, config and the f64 meshes
 #   tools/blgpu.sh sync --all-meshes push the float32 meshes as well
+#   tools/blgpu.sh push PATH...      push a heavier input the default sync leaves behind
 #   tools/blgpu.sh setup             build the python 3.12 venv and install both packages
 #   tools/blgpu.sh doctor            print what the remote environment actually is
 #   tools/blgpu.sh run "CMD"         start CMD detached, print the job id
@@ -96,19 +97,76 @@ cmd_sync() {
     --exclude 'data/geometry/' \
     "$LOCAL_STUDY/" "$HOST:$REMOTE_STUDY/"
 
-  # 3. geometry. The tracer reads the float64 PLYs; the float32 ones are the
-  #    older build and are 242 MB that nothing in the propagation path opens.
+  # 3. geometry, filtered by the rule run_exposure.site_mesh actually applies:
+  #    a mesh is usable if its manifest declares format_version 3 or above.
+  #    Filtering on the _f64 suffix instead looks equivalent and is not, because
+  #    New York and Toulouse only ever got an unsuffixed build and that build is
+  #    already double precision. Six older Korenmarkt and Milan crops, 34 MB,
+  #    are the only PLYs the tracer would refuse, and they are the only ones
+  #    left behind.
   echo "blgpu: sync geometry"
   if (( all_meshes )); then
     rsync -a -e "ssh ${SSH_OPTS[*]}" \
       "$LOCAL_STUDY/data/geometry/" "$HOST:$REMOTE_STUDY/data/geometry/"
   else
-    rsync -a -e "ssh ${SSH_OPTS[*]}" \
-      --include '*/' --include '*_f64.ply' --include '*.json' --include '*.md' \
-      --exclude '*' \
+    local list; list="$(mktemp)"
+    "$LOCAL_REPO/.venv/bin/python" - "$LOCAL_STUDY/data/geometry" > "$list" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+for path in sorted(root.rglob("*")):
+    if path.is_dir():
+        continue
+    if path.suffix == ".ply":
+        manifest = path.with_suffix(".json")
+        if not manifest.exists():
+            continue
+        try:
+            if int(json.loads(manifest.read_text()).get("format_version", 0)) < 3:
+                continue
+        except (ValueError, OSError):
+            continue
+    print(path.relative_to(root))
+PY
+    rsync -a -e "ssh ${SSH_OPTS[*]}" --files-from="$list" \
       "$LOCAL_STUDY/data/geometry/" "$HOST:$REMOTE_STUDY/data/geometry/"
+    rm -f "$list"
   fi
+  # 4. the fused panorama semantics. data/panoramas is 3.0 GB, but the part the
+  #    propagation stage reads is the fused semantics.json plus
+  #    panorama_semantics.npz per site, 309 MB. The per view label rasters and
+  #    the source imagery stay behind because only the segmentation stage, which
+  #    has already run, touches them.
+  echo "blgpu: sync panorama semantics"
+  rsync -a -e "ssh ${SSH_OPTS[*]}" \
+    --include '*/' --include '*.json' --include '*.npz' --exclude '*' \
+    "$LOCAL_STUDY/data/panoramas/" "$HOST:$REMOTE_STUDY/data/panoramas/"
+
+  # 5. the few things under outputs/ that are inputs to the propagation stage
+  #    rather than products of it. run_exposure.py reads walk_semantic.npz for
+  #    --materials walk, and the site semantics and VLM tables for the material
+  #    modes. All small. Anything heavier is pushed explicitly with `push`.
+  echo "blgpu: sync propagation inputs"
+  for sub in walk_korenmarkt site_semantics material_vlm cross_validation antenna; do
+    [[ -d "$LOCAL_STUDY/outputs/$sub" ]] || continue
+    rsync -a -e "ssh ${SSH_OPTS[*]}" \
+      --include '*/' --include '*.npz' --include '*.json' --include '*.jsonl' --include '*.csv' \
+      --exclude '*' \
+      "$LOCAL_STUDY/outputs/$sub" "$HOST:$REMOTE_STUDY/outputs/"
+  done
   echo "blgpu: sync done"
+}
+
+# Push any local path under the study to the box, for the heavier inputs the
+# default sync leaves behind, such as outputs/bystander_study.
+cmd_push() {
+  [[ $# -ge 1 ]] || die "push needs at least one path relative to the study directory"
+  for sub in "$@"; do
+    sub="${sub%/}"
+    echo "blgpu: push $sub"
+    rsh "mkdir -p $(printf '%q' "$REMOTE_STUDY/$(dirname "$sub")")"
+    rsync -a --info=stats1 -e "ssh ${SSH_OPTS[*]}" \
+      "$LOCAL_STUDY/$sub" "$HOST:$REMOTE_STUDY/$(dirname "$sub")/"
+  done
 }
 
 # --------------------------------------------------------------------------- setup
@@ -186,7 +244,10 @@ REMOTE
 
 # --------------------------------------------------------------------------- jobs
 
-new_job_id() { date -u +%Y%m%dT%H%M%S; }
+# Second resolution alone collides when two jobs are launched back to back, and
+# a collision silently overwrites the first job's records, so a short random
+# suffix is appended. Sorting is still chronological.
+new_job_id() { printf '%s-%04x\n' "$(date -u +%Y%m%dT%H%M%S)" $((RANDOM % 65536)); }
 
 cmd_run() {
   [[ $# -ge 1 ]] || die "run needs a command"
@@ -350,6 +411,7 @@ cmd_sh() {
 sub="${1:-help}"; shift || true
 case "$sub" in
   sync)   cmd_sync "$@" ;;
+  push)   cmd_push "$@" ;;
   setup)  cmd_setup ;;
   doctor) cmd_doctor ;;
   run)    cmd_run "$@" ;;
