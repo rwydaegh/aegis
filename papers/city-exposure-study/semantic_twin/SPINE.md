@@ -232,6 +232,14 @@ half believable.
 | macro rooftop | 0.15 | 0.37 | 1.20 | 0.53 |
 | street small cell | 0.42 | 1.26 | 12.64 | 1.78 |
 
+*(Street medians and percentiles re-read from
+`outputs/diffraction_bound/*_diffraction_bound.json` while figure 24 was built.
+`WHY_NOT.md` §2.6 tabulates the street 90th as 1.84 dB and that value does not
+reproduce: it is 1.26 over the 56 standpoints with a defined uplift, or 4.80 if
+the four undefined ones are ranked at the top, and the sorted sample has no value
+at 1.84 at all. Every other entry in that table reproduces to the last digit, so
+it reads as a transcription slip. Use 1.26 and say which 56.)*
+
 Every assumption errs upward: a single absorbing half plane, a distant source, no
 re-blocking, a knife edge rather than a lossy wedge, P.526's angle form used past
 its 12° validity, and the diffracted term multiplied by each standpoint's own
@@ -587,7 +595,8 @@ Everything a referee would find, found first and stated with its size and sign.
 
 | what | size | direction |
 |---|---|---|
-| no diffraction | 0.06 / 0.15 / 0.44 dB median, isotropic / rooftop / street | biases $\chi$ **low** |
+| no diffraction | 0.06 / 0.15 / 0.42 dB median, isotropic / rooftop / street | biases $\chi$ **low** |
+| **standpoint sampling** | **0.13 dB rms and 0.24 dB worst on a per city median**, roughly 25 times the Monte Carlo error, and the study has never quoted it | unknown sign, and it is the dominant error term |
 | unpolarised average, facades | ≤ 3.0 dB | biases low |
 | unpolarised average, ground near 24° elevation | up to tens of dB, over 7.8 % of rooftop measure and 0.4 % of street | biases high |
 | truncation at $L=3$ | 0.0038 of escaping power median | biases low |
@@ -599,13 +608,36 @@ Everything a referee would find, found first and stated with its size and sign.
 
 Two things that must not be quoted as measured:
 
-- **The street small cell shift of 0.079 dB is 2.3 standard errors.** Not
-  resolved. *(`CODE_AUDIT.md` §4.2.)*
+- **The 0.079 dB street small cell shift is the lowest of eight seed draws, not
+  the shift.** The seed averaged value is 0.167 ± 0.022 dB, which is 7.6 standard
+  errors on the mean of eight and 2.7 on a single run. Quote 0.167 ± 0.022 or
+  quote nothing. *(`CODE_AUDIT.md` §4.2. An earlier version of this file said
+  "0.079 dB is 2.3 standard errors", which divided the wrong numerator by the
+  wrong denominator.)*
 - The 0.298 dB headline figure in older notes came from a superseded law and was
   never measured under the corrected one.
 
 Monte Carlo standard errors, walk median over 8 seeds: 0.0042 dB isotropic,
 0.0136 rooftop, 0.0343 street small cell. Per standpoint: 0.004, 0.024, 0.118.
+
+**But Monte Carlo is not the dominant error and the paper should say so.** The
+standpoints themselves are a sample. A ground datum shift of 0.2 m adds or drops
+a few columns out of about a thousand, the greedy chain that orders them
+reorders, and `stratified_subset` picks by index, so at the nine sites the datum
+fix barely moved, **only 4 to 24 of 80 standpoints survived**. Their medians
+shifted by 0.128 / 0.061 / 0.188 dB rms and up to 0.242 dB, against a walk median
+floor rescaled to 80 standpoints of 0.0051 / 0.0167 / 0.0420 dB. That is 47 times
+the floor at worst. Korenmarkt is the control: its standpoints did not change and
+its medians sit below the floor.
+
+**So a per city median carries about 0.13 dB rms of standpoint sampling
+uncertainty, roughly 25 times the Monte Carlo one, set by how many standpoints
+are drawn rather than how many rays each shoots.** Nothing in the study has
+quoted this. It does not threaten the headline, which is a 3.71 dB between city
+spread, but it does threaten any claim that two adjacent cities differ, and every
+per site number should carry it.
+
+*Source: `GROUND_DATUM.md`.*
 
 **The material null is a resolved measurement, not a failure to detect.** The
 +0.024 dB isotropic shift sits at about 5.7 times the 0.0042 dB walk median
