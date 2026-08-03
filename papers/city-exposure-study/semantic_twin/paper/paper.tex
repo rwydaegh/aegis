@@ -53,8 +53,8 @@ exceeded the between-square spread for the first two models but fell 1.15\,dB
 short for street cells. The paired illumination-law correction had residual root mean square
 values of 1.39\,dB rooftop and 0.98\,dB street, with one city per model causing
 almost all rank change. Resampling the standpoints changed per-city medians by
-0.128, 0.061, and 0.188\,dB root mean square, roughly 25 times the isotropic
-Monte Carlo error. At the one square with registered panoramas, image-based
+0.128, 0.061, and 0.188\,dB root mean square, at least 25 times the isotropic
+Monte Carlo error under every floor measured for it. At the one square with registered panoramas, image-based
 facade materials shifted distribution medians by 0.024, 0.029, and 0.022\,dB,
 which bounds what image evidence can be worth on that axis. The other ten
 squares carry no image evidence and use a geometric material assignment. A
@@ -352,9 +352,9 @@ and 0.022\,dB under street-cell illumination. The within-Korenmarkt
 spreads of that 120-standpoint population were 3.9, 8.4, and 16.7\,dB, which are
 not the 2.85, 6.39, and 8.43\,dB of the Korenmarkt row of
 \cref{tab:result-summary} and are a different population rather than a
-disagreement. The 0.024\,dB isotropic shift was 5.7 times
-the 0.0042\,dB standard error of the walk median, so the design resolved the
-shift rather than missing it, and the shift is a small part of one decibel.
+disagreement. The 0.024\,dB isotropic shift was 8.6 times the 0.0028\,dB
+standard error of the walk median, so the design resolved the shift rather than
+missing it, and the shift is a small part of one decibel.
 
 Changing the whole material field gave a larger result with the opposite sign.
 The isotropic median changed by $-0.218$\,dB, 15 of 120 standpoints exceeded
@@ -578,10 +578,20 @@ medians changed by 0.128, 0.061, and 0.188\,dB root mean square under isotropic,
 rooftop, and street illumination, as recorded when the datum was changed. Two of
 the eleven pre-change row files are torn on disk, leaving 78 valid rows at
 Times Square and 80 at Prague from a file carrying one unparseable extra line,
-so these three figures rest on 878 of the 880 pre-change standpoints and
-recomputing from what remains gives 0.125, 0.066, and 0.181\,dB. The reported
-run itself parses end to end at 880 rows. The largest changes were
-0.242, 0.116, and 0.326\,dB. These values are 7 to 47 times their Monte Carlo floors. The
+so these three figures rested on 878 of the 880 pre-change standpoints. Both
+files have since been repaired from the run that wrote them, and recomputing
+from the full 880 reproduces every surviving row and gives 0.128, 0.061, and
+0.188\,dB. The reported run itself parses end to end at 880 rows. The largest
+changes were 0.242, 0.116, and 0.326\,dB.
+
+How those compare with Monte Carlo noise depends strongly on the model, and a
+single range across the three would hide that. Measured at the configuration the
+changes come from, over 32 disjoint streams, the floors are 0.0031\,dB
+isotropic, 0.0258\,dB rooftop, and 0.0392\,dB street. Against them the isotropic
+figure is 41 times its floor and the largest isotropic change 78 times, and the
+street-cell figure is 4.8 and 8.3 times. The rooftop pair is the weak one at 2.4
+and 4.5 times, so standpoint sampling and Monte Carlo noise are within a factor
+of a few there and the rooftop column of this comparison resolves least. The
 3.71--9.58\,dB headline spreads remain resolved, but differences between adjacent
 city medians of a few tenths of a decibel do not.
 
@@ -730,16 +740,30 @@ scattering is removed~\cite{vitucci}.
   \end{tabular}
 \end{table}
 
-Monte Carlo error is smaller than standpoint sampling. Measured over eight
-disjoint seed streams, the standard errors of a
-walk median are 0.0042\,dB isotropic, 0.0136\,dB rooftop, and 0.0343\,dB street.
-The per-seed medians behind those three figures were not retained, so the
-standard errors are quoted from the record of that measurement rather than
-recomputed from stored output.
-An older street-cell value of 0.079\,dB was the lowest of eight seed draws. The seed-averaged shift is $0.167 \pm 0.022$\,dB, or 7.6 standard
-errors on the mean of eight and 2.7 on one run. The earlier 0.298\,dB headline
-used a superseded illumination law and was never measured under the corrected
-law. Neither superseded value is used as a result here.
+Monte Carlo error is smaller than standpoint sampling. Measured over 32 disjoint
+seed streams at 120 standpoints, the standard errors of a walk median are
+0.0028\,dB isotropic, 0.0162\,dB rooftop, and 0.0594\,dB street. An earlier
+eight-stream measurement gave 0.0042, 0.0136, and 0.0343\,dB, and the isotropic
+and street figures do not survive the larger sample. The per-seed medians are
+retained this time, in
+\texttt{outputs/mc\_error/clean\_geometric\_15ghz\_replicas.jsonl}.
+
+These floors are fragile and the reason is worth stating, because it bounds how
+hard any ratio built on them can be pushed. A median over 120 standpoints does
+not average the per-standpoint noise down as the square root of 120. With the
+standpoints well separated the median is close to the value of whichever
+standpoint sits in the middle, and it moves in steps as ranks swap, so its
+sampling distribution is not normal. The eight-stream isotropic interval,
+0.0010 to 0.0029\,dB, contains the 32-stream answer only at its edge. Each floor
+is also specific to the configuration it was measured at: moving between the
+130\,m and 250\,m crops changes the same quantity by up to a factor of two, and
+not in the direction a change of standpoint count would predict.
+
+An older street-cell value of 0.079\,dB was the second lowest of 32 seed draws.
+The seed-averaged shift is $0.1505 \pm 0.0092$\,dB, which is 16.4 standard errors
+on the mean of 32 and 2.9 on one run. The earlier 0.298\,dB headline used a
+superseded illumination law and was never measured under the corrected law.
+Neither superseded value is used as a result here.
 
 The bystander experiment adds a separate scope limit. It uses one masonry square
 at one carrier with static upright people. It has been repeated at the reported

@@ -714,7 +714,7 @@ variance estimate. Three such measurements exist and they are consistent with
 one another.
 
 The largest is the study behind the numbers the paper quotes. The 120 published
-Korenmarkt standpoints of the geometric rung were retraced over eight seed
+Korenmarkt standpoints of the geometric rung were retraced over 32 disjoint seed
 streams at 200\,000 rays, 512 cells, six surface interactions and the 130\,m
 crop. \cref{tab:si-noise} gives the resulting standard deviations. The first
 three columns are per standpoint and the last is the standard deviation of the
@@ -722,8 +722,10 @@ median over the 120 standpoints, which is the unit the paper actually reports.
 
 \begin{table}[t]
   \centering
-  \caption{Monte Carlo standard deviation from eight seed streams over 120
-  Korenmarkt standpoints at 200\,000 rays. All entries in dB.}
+  \caption{Monte Carlo standard deviation from 32 disjoint seed streams over 120
+  Korenmarkt standpoints at 200\,000 rays. All entries in dB. An earlier
+  eight-stream measurement gave walk medians of 0.0042, 0.0136, and 0.0343\,dB.
+  The rooftop figure survives the larger sample and the other two do not.}
   \label{tab:si-noise}
   \begin{tabular}{lrrrr}
     \toprule
@@ -731,12 +733,23 @@ median over the 120 standpoints, which is the unit the paper actually reports.
     \cmidrule(lr){2-4}
     Illumination & median & p90 & worst & median \\
     \midrule
-    Isotropic          & 0.004 & 0.006 & 0.015 & 0.0042 \\
-    Rooftop macro      & 0.024 & 0.040 & 0.066 & 0.0136 \\
-    Street small cell  & 0.118 & 0.224 & 0.954 & 0.0343 \\
+    Isotropic          & 0.0042 & 0.0059 & 0.0125 & 0.0028 \\
+    Rooftop macro      & 0.0263 & 0.0381 & 0.0583 & 0.0162 \\
+    Street small cell  & 0.1302 & 0.2170 & 0.5791 & 0.0594 \\
     \bottomrule
   \end{tabular}
 \end{table}
+
+The walk median column should be read as indicative rather than as a tolerance.
+A median over 120 standpoints does not average the per-standpoint noise down as
+the square root of 120, because with the standpoints well separated the median
+sits close to whichever standpoint is in the middle and moves in steps as ranks
+swap. Its sampling distribution is therefore not normal, and the eight-stream
+isotropic interval of 0.0010 to 0.0029\,dB contains the 32-stream answer only at
+its edge. The column is also specific to the 130\,m crop: measured at the 250\,m
+crop over 32 streams the street figure falls to 0.0392\,dB while the rooftop
+figure rises to 0.0258\,dB, so neither moves as a change of standpoint count
+alone would predict.
 
 The factor of about thirty between the isotropic and street rows is the reason
 given in the body. The street law puts its whole mass into the lowest tens of
@@ -789,13 +802,13 @@ and is not resolved at this ray count. The sub-street ablation changes the mesh
 in the same way and inherits the same floor.
 
 One number in the paper is reported as a seed average for this reason. The
-street-cell shift across the evidence ladder ran from 0.079 to 0.269\,dB over
-the eight streams, a factor of 3.4, and the single seed that had been quoted was
-the lowest of the eight. The seed-averaged value is $0.167 \pm 0.022$\,dB, the
-uncertainty being the standard error on a mean of eight. The isotropic and
-rooftop shifts over the same eight streams are $0.347 \pm 0.001$ and
-$0.383 \pm 0.006$\,dB, which are 105 and 22 standard errors from zero and were
-not sensitive to the choice of seed.
+street-cell shift across the evidence ladder is $0.1505 \pm 0.0092$\,dB over 32
+disjoint streams, the uncertainty being the standard error on a mean of 32. That
+is 16.4 standard errors from zero on the mean and 2.9 on a single run, and the
+0.079\,dB value once quoted as a result is the second lowest of the 32. The
+isotropic and rooftop shifts over the same 32 streams are $0.3473 \pm 0.0007$
+and $0.3855 \pm 0.0036$\,dB, which sit far enough from zero that the choice of
+seed does not reach them.
 
 \subsection{What the seed study does not cover}
 
