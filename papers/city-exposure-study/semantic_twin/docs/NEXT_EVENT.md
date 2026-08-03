@@ -1,0 +1,125 @@
+# Next event estimation, and what it changed
+
+This records the second estimator: what it measures, what it says, and the two
+checks that were run against it. It supersedes nothing in `SPINE.md`; it is the
+answer to a question `SPINE.md` raises and does not settle, which is how much of
+the reported multipath is real and how much is an artefact of how the sources
+were counted.
+
+## The two estimators
+
+Both answer the same question. A pedestrian sees some rooftops directly. How
+much more do they get once the walls and the ground are allowed to bounce? Both
+report it as a ratio,
+
+    surplus = (direct + bounced) / direct
+
+so the direct term is 1 by construction and every constant the study would
+otherwise have to defend cancels: how many antennas there are, what they
+transmit, and the `4 pi` in front of both terms. All of them sit in front of the
+two terms identically.
+
+**The escape estimator.** Rays leave the head, bounce, and are credited the
+moment they leave the crop. The credit is the assumed angular density of base
+stations evaluated at the direction the ray left in. That density is a model: a
+uniform areal density of sites in a band 13.5 to 43.5 m above the head, at
+horizontal ranges 25 to 250 m. No individual source exists anywhere in the
+calculation.
+
+**Next event estimation.** The sources are explicit points, sampled off the
+square's own measured roofline. Every path vertex connects to a sampled point,
+the connection is tested for blockage, and the contribution is divided by the
+range between them. The direct term is computed exactly over the whole source
+set rather than sampled.
+
+## What they say
+
+Over eleven squares, all at the 250 m crop and 15 GHz:
+
+| | next event | escape |
+|---|---|---|
+| multipath surplus | +0.30 to +0.57 dB | +1.10 to +2.63 dB |
+| share from one bounce | 94 to 96 % | |
+
+The next event answer is small and the escape answer is three to five times
+larger for the same ratio at the same squares.
+
+On the pilot pair, with the walk changed to the capture route (see `WALK.md` and
+the note below), six seeds each:
+
+| | median surplus | seed spread |
+|---|---|---|
+| Korenmarkt | +0.588 dB | sd 0.008, +0.576 to +0.597 |
+| Brussels Grand-Place | +0.541 dB | sd 0.006, +0.536 to +0.551 |
+
+The gap between the squares is 0.047 dB and the worst seed spread is 0.008, six
+times smaller. So the ordering between the two squares is not Monte Carlo noise.
+`measure_surplus_spread.py` produces this, and it holds the walk and the source
+set fixed so that only the estimator moves between seeds.
+
+These sit above the eleven-square range because the walk is now the capture
+route rather than the 90 m disc. Mean distance from a standpoint to the nearest
+camera falls from 44.3 m to 2.8 m at Korenmarkt and from 25.6 m to 8.9 m at
+Brussels, so the newer number is measured where the panoramas can speak for the
+geometry and the older one partly was not.
+
+## Why they disagree, and what turned out not to be the reason
+
+The obvious explanation was a missing term. Next event divides by the range from
+a path vertex to the rooftop point it connected to. The escape estimator has no
+range anywhere, so a bounced ray that travelled 120 m to reach the sky counts
+exactly as much as a direct ray that travelled 30 m, and the bounced term is
+never discounted.
+
+**That is not the reason.** `measure_escape_range_term.py` charges each escaping
+ray for the distance it travelled, head to source shell, and reruns the same
+standpoints:
+
+| | escape | charged for range | moved |
+|---|---|---|---|
+| Korenmarkt | +1.79 dB | +1.65 dB | -0.13 |
+| Brussels Grand-Place | +1.79 dB | +1.44 dB | -0.35 |
+
+Against a gap of about 1.3 dB that is a quarter at most, and at Korenmarkt
+nearer a tenth. The charge is off by default in `TraceConfig`, so no published
+number moved, and that script is its only caller.
+
+A second candidate was also tested and also failed. If the assumed source
+density credited directions that carry no roofline, the escape estimator would
+be paying for sources that are not there. It is not: at both pilot squares
+**100 % of azimuths carry a roofline**, measured over ten standpoints each at
+720 azimuths.
+
+What is left is what the two estimators take the sources to be. The escape
+estimator's band fills whatever sky is visible from wherever you ask. The next
+event source set is the square's own roofline, which is a thin rim at a roughly
+fixed elevation, 37.9 degrees median at Korenmarkt and 34.8 at Brussels. A ray
+that bounced up a wall escapes from higher up and sees more sky, so the assumed
+population rewards it and the measured rim barely does.
+
+The correlations already reported agree. Pooled within site with site means
+removed, the escape surplus moves **-6.04 dB per unit sky fraction** and next
+event **-0.70** (r = -0.707 and -0.545). The escape answer was largely restating
+how open the square is.
+
+## What this does not settle
+
+The next event source set is built from the silhouette, so it inherits whatever
+the silhouette contains. Until `--drop-clutter` it contained trees, hoardings
+and banners, which hold no radio. That mask now exists and is measured
+(`semantic_binding.clutter_triangles`): 378 triangles at Korenmarkt, 7.7 % of
+what the panoramas saw, and 541 at Brussels, 3.4 %. Whether removing them moves
+the surplus has not been run across the eleven.
+
+Diffraction is absent from both estimators, deliberately and as the largest
+known hole. Neither number should be read as an exposure level; both are ratios.
+
+## Reproducing
+
+From the `semantic_twin` directory, with `../../../.venv/bin/python`:
+
+    python run_next_event.py --sites korenmarkt brussels_grandplace
+    python run_next_event.py --sites korenmarkt --drop-clutter
+    python measure_escape_range_term.py --locations 10
+    python measure_surplus_spread.py --seeds 6
+    python FIGURES/make_multipath_surplus.py

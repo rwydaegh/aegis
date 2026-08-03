@@ -687,3 +687,54 @@ while sounding like an independent result.
 - Agreement is measured on the modal non-transient class per face, which is a
   hard assignment. A distributional comparison would be better and the tally is
   already stored in `walk_semantic.npz` to support one.
+
+## The walk the runners use now: the street the cameras drove
+
+Added 2026-08-03. Everything above describes the grid builder, which is still
+there and still reproduces every published number. It is no longer the default.
+
+`build_walk` lays a three metre lattice over a disc, keeps the squares whose
+ground is walkable, and joins the survivors nearest neighbour first. That is a
+flood fill of the open ground and it gives an ordering, not a route. The
+standpoints land wherever the grid fell, and most of them are far from any
+camera, which matters because the guarantee behind the method is that a
+photograph taken at a point sees the surfaces that scatter energy into that
+point. `BOUNCE_BUDGET.md` measures how far that guarantee travels: the first
+interaction lands on photographed surface with probability 0.999 at a panorama
+position, 0.99 within ten metres, and about 0.1 past forty.
+
+`route.site_walk` stands where the cameras stood instead. It loads the site's
+admitted stations and the provider's own link graph, orders them by the shortest
+route through that graph, and puts a head above the ground measured **under the
+camera** rather than probed from the sky. That probe change is not cosmetic: the
+sky probe lands on arcade roofs and doorsteps, and it disagreed with the camera
+probe at 7 of 51 admitted stations.
+
+A route gives one standpoint per camera, which is honest and thin: five at
+Korenmarkt. So `stride_m` lays extra standpoints along the road polyline between
+cameras, 6 m apart by default. Those still stand on the captured street.
+
+Measured on the pilot pair at the 250 m crop:
+
+| | cameras | street | standpoints | mean distance to a camera |
+|---|---|---|---|---|
+| Korenmarkt, route | 5 | 49 m | 14 | 2.8 m |
+| Korenmarkt, grid | | | 799 | 44.3 m |
+| Brussels, route | 8 | 284 m | 56 | 8.9 m |
+| Brussels, grid | | | 1071 | 25.6 m |
+
+`FIGURES/make_walk_route.py` draws both over the building plan.
+
+**What this costs.** The capture route is only as long as the street the camera
+drove. Korenmarkt's 49 m cannot carry the 144 standpoints the next event study
+asks for, so `run_next_event.py` shrinks its held-out split and says so rather
+than spacing heads 0.3 m apart and calling them independent. Six of eleven sites
+can chain at all: Prague 12 cameras, Mexico 11, Brussels 8, Madrid 6, Korenmarkt
+5, Tokyo 3. Krakow and Toulouse have no panorama directory, London has one
+unregistered panorama, and all 14 Times Square poses fail the residual gate.
+Those five sites can only be walked on the grid.
+
+Both runners take `--walk {route,grid}`. The default is `route`, and the choice
+is written into the payload manifest as `walk_provenance`, so a blend can be
+told apart from a grid blend without opening it. `qa_propagation_blend.py`
+asserts it.
