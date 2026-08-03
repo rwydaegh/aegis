@@ -451,12 +451,14 @@ ask what beamforming does to all of this. It depends only on whether the beam
 follows the person, and the case that sounds hardest is the one that changes
 nothing at all.
 
-Suppose every site puts its peak on the pedestrian. The gain toward the head is
-then the same constant for every site, so it multiplies \eqref{eq:Q} and the
-normalisation divides it straight back out. $Q$ is not approximately unchanged,
-it is the same function, and since the estimator reads $Q$ only when depositing
-an escaped ray and never inside a random draw, the traced $\chi$ comes out bit
-identical.
+Suppose every site puts its peak on the pedestrian. Under A1 each source is a
+plane wave from one direction, so aiming at the pedestrian means peak gain along
+$-\uext$ whatever the ray did on its way out of the square. The gain toward the
+head is then the same constant for every site, so it multiplies \eqref{eq:Q} and
+the normalisation divides it straight back out. $Q$ is not approximately
+unchanged, it is the same function, and the estimator of
+Section~\ref{sec:estimator} reads $Q$ only when depositing an escaped ray and
+never inside a random draw, so the traced $\chi$ comes out bit identical.
 
 For one policy this is exact and needs nothing else. Under full digital maximum
 ratio transmission the site transmits along its own channel to the head, and a
@@ -596,10 +598,8 @@ where that angle dependence enters.
 
 Rays still travelling after $L$ interactions are dropped, and the power they
 were carrying is reported as a share of the total, so the truncation is a
-measured quantity rather than an assumption. At the budget used here that share
-is the one bias the estimator itself adds, on top of the assumptions of
-Section~\ref{sec:ratio}, and its sign is fixed: discarding surviving
-paths can only make $\chi$ too small, never too large.
+measured quantity rather than an assumption. Section~\ref{sec:budget} gives that
+share and what follows from it.
 
 \subsection{Bounce budget}
 \label{sec:budget}
