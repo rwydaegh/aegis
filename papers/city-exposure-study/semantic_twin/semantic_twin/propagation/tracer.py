@@ -299,7 +299,18 @@ class SbrTracer:
         ground_z_m: float = 0.0,
         seed: int | None = None,
         recorder: PathRecorder | None = None,
+        gather: Any = None,
     ) -> PointResult:
+        """Shoot ``rays`` from ``origin`` and reduce them to a :class:`PointResult`.
+
+        ``gather``, when given, is any object exposing ``begin(origin, count)``
+        and ``vertex(index, position, incoming, normal, throughput, share,
+        order, path_length, face)``. It is called once per surface interaction,
+        and it is how :mod:`semantic_twin.propagation.monostatic` reads the
+        co-located return off the same rays that produce the adjoint transfer.
+        Like ``recorder`` it draws no random number and touches no accumulator,
+        so a traced result is bit identical with one attached and without it.
+        """
         cfg = self.config
         started = time.perf_counter()
         rng = np.random.default_rng(cfg.seed if seed is None else seed)
@@ -336,6 +347,7 @@ class SbrTracer:
                 exit_power,
                 totals,
                 recorder,
+                gather,
             )
 
         counts = np.maximum(cell_counts, 1.0)
@@ -388,6 +400,7 @@ class SbrTracer:
         exit_power: np.ndarray,
         totals: dict[str, float],
         recorder: PathRecorder | None = None,
+        gather: Any = None,
     ) -> None:
         cfg = self.config
         direction = sample_sphere(count, rng)
@@ -395,6 +408,8 @@ class SbrTracer:
         np.add.at(cell_counts, cell, 1.0)
         if recorder is not None:
             recorder.begin(origin, count)
+        if gather is not None:
+            gather.begin(origin, count)
 
         position = np.tile(np.asarray(origin, dtype=np.float64), (count, 1))
         throughput = np.ones(count)
@@ -467,6 +482,18 @@ class SbrTracer:
             throughput[alive] *= reflectance
             if recorder is not None:
                 recorder.advance(alive, position[alive], throughput[alive], klass)
+            if gather is not None:
+                gather.vertex(
+                    alive,
+                    position[alive],
+                    incoming,
+                    normal,
+                    throughput[alive],
+                    share,
+                    bounces[alive],
+                    path_length[alive],
+                    face,
+                )
             take_specular = rng.random(alive.size) < share
             mirror = incoming - 2.0 * np.einsum("ij,ij->i", incoming, normal)[:, None] * normal
             diffuse = _cosine_hemisphere(normal, rng)
