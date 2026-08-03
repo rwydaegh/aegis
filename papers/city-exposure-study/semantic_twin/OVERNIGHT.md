@@ -6,7 +6,7 @@ finishing when this was written and their own commits land after it, so check
 
 ## What exists now that did not last night
 
-- **`paper/paper.tex`**, a complete journal draft. IEEEtran, 19 pages, builds
+- **`paper/paper.tex`**, a complete journal draft. IEEEtran, 20 pages, builds
   clean. Abstract, introduction, related work, the full methods body, six
   results subsections, discussion with an honesty table, conclusion, and a
   bibliography of 24 entries that have each been checked against the actual
@@ -160,6 +160,25 @@ moved furthest scores 0.978. The observation survives, the mechanism does not.
   says that rather than shipping a configuration that provably changes nothing.
 - **Bystanders**, retraced on the settled bounce budget.
 
+## Where the open items are written down
+
+`paper/RECONCILE.md` ends with six items that were found and deliberately not
+applied, each with the reason. `paper/SI_NOTES.md` lists nine quantities that
+could not be sourced. `paper/PROVENANCE.md` has an unsettled section saying what
+each unresolved item would take to settle. Those three lists are the honest state
+of the paper, and none of them is hidden inside a longer document.
+
+One of the four drifted numbers is worth ten seconds of your attention rather
+than being taken as a fix. The street diffraction median is 0.44 dB under one
+convention and 0.42 under another, and both are correct: four of the 60
+standpoints have a street direct term of exactly zero, so their uplift is 0/0.
+Ranking those four at the top and taking the median over 60 gives 0.4350, and
+taking the median over the 56 with a defined uplift gives 0.4218. The 56
+convention was chosen because it is what the shipped figure plots, and because
+the same paragraph quotes a percentage that is already 56-based. This also
+explains the 1.84 dB street percentile that would not reproduce earlier in the
+week: it is the 60-standpoint convention.
+
 ## Build
 
 ```
@@ -167,5 +186,15 @@ cd paper
 pdflatex -interaction=nonstopmode paper.tex && pdflatex -interaction=nonstopmode paper.tex
 ```
 
-Tests and lint at the time of writing: **980 passed, 2 skipped, 0 failed**,
-`ruff check` and `ruff format --check` both clean.
+Same two passes for `methods.tex` and `si.tex`. All three read the shared
+`body.tex`, so a change to the methods lands in the paper and the standalone at
+once.
+
+| document | pages | undefined refs | undefined citations |
+|---|---|---|---|
+| `paper.pdf` | 20 | 0 | 0 |
+| `methods.pdf` | 11 | 0 | 0 |
+| `si.pdf` | 11 | 0 | 0 |
+
+Tests and lint: **980 passed, 2 skipped, 0 failed**, `ruff check` clean and 166
+files already formatted.
