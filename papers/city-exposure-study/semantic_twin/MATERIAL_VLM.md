@@ -19,18 +19,18 @@ answers whether it earns its place.
 **The short version.** A vision model reads Korenmarkt facades well, is stable
 where it is confident, and is honestly under confident rather than over confident,
 which is the good failure mode. Its composition genuinely disagrees with the fixed
-prior. Traced through the tracer it moves chi by **+0.19 dB isotropic and
+prior. Traced through the tracer it moves chi by **+0.18 dB isotropic and
 +0.38 dB rooftop**, with 0 of 24 standpoints moving as much as a decibel.
 
 It does not earn its place, and the reason is a ceiling rather than a failure of
 the model. Putting a single dielectric on every facade in the square, the softest
 in the vocabulary against the hardest, spans **-0.104 to +0.239 dB**. **No facade
-material evidence of any kind can move chi more than 0.34 dB here.** Half of what
-the model does deliver is the argmax fix, which needs no model. And an image the
+material evidence of any kind can move chi more than 0.34 dB here.** More than
+half of what the model does deliver is the argmax fix, which needs no model. And an image the
 model itself calls illegible on 76 percent of crops, the Google 3D Tiles texture,
-produces the same shift to within 0.03 dB, which is inside one variant's own seed
-to seed spread. If the answer does not depend on whether the model could see the
-building, the model is not what is producing the answer.
+produces the same shift to within 0.04 dB, about one seed's worth of noise. If the
+answer does not depend on whether the model could see the building, the model is
+not what is producing the answer.
 
 The one material decision with real leverage is dielectric against conductor.
 Every facade metal is +2.50 dB isotropic and +4.37 dB rooftop and moves all 24
@@ -358,20 +358,21 @@ That is the behaviour a calibration harness exists to check for, and it passed.
 
 ## Through the tracer
 
-Everything above is per bounce. The tracer reports a mean bounce count near one on
-this walk, so a per bounce decibel is an upper bound on what reaches the exposure
-distribution. What follows is the same walk, the same locations, the same ray
-seeds, the same body and the same carrier, with only the facade material model
-changing. Because the seeds are shared, the per location ratio is a paired
-comparison whose Monte Carlo error largely cancels, and the paired median is the
-number to read rather than the difference of the two medians.
+Everything above is per bounce. The tracer reports a mean bounce count of 0.98 on
+this walk, so a per bounce decibel is close to an upper bound on what reaches the
+exposure distribution.
 
 Twenty four standpoints on the Korenmarkt walk, 60 thousand rays each, 12 bounces
-with roulette from 3, 15 GHz, the same body. Every facade in the scene, 40.9
-percent of surface area, is rebound per variant. The pure variants put a single
-material on every facade and are not proposals, they are the bracket. Seed `m0`
-and `m1` differ only in the per face draw from the posterior, so the distance
-between them is the material ignorance error bar.
+with roulette from 3, 15 GHz, the same body, the same ray seeds. Only the facade
+material model changes, and every facade in the scene, 40.9 percent of surface
+area, is rebound per variant. Because the ray seeds are shared, the per location
+ratio is a paired comparison whose Monte Carlo error largely cancels, and the
+paired median is the number to read rather than the difference of two medians.
+The pure variants put a single material on every facade. They are not proposals,
+they are the bracket, and their two seeds are identical because a point mass has
+nothing to draw. Seed `m0` and `m1` of the other variants differ only in the per
+face draw from the posterior, so the distance between them is the material
+ignorance error bar the argmax cannot produce at all.
 
 | facade material model | chi iso | paired iso | p10 to p90 | paired roof | paired street | >1 dB |
 |---|---|---|---|---|---|---|
@@ -422,16 +423,17 @@ facade area on 120 standpoints, so it is the largest single term anyone has foun
 on this axis. It is also 30 percent of the dielectric bracket, which is the right
 way to see how little room the axis has.
 
-**The two VLM compositions are indistinguishable from each other and from stone.**
-The street capture reads Korenmarkt as brick and concrete. The tile texture reads
-it as 38 percent unknown. Their compositions differ by a total variation of 0.30.
-They trace to +0.192 and +0.217 dB isotropic, a difference of 0.025 dB, which is
-inside the 0.030 dB seed to seed spread of a single variant. **A vision model that
-can see the wall and a vision model that admits it cannot produce the same
-exposure distribution.** Both land next to the every facade stone bracket, and
-they land there for the same reason the fixed prior does: what carries a
-posterior mean is the small mass on metal and marble, not the identity of the
-dominant material.
+**The two VLM compositions are barely distinguishable from each other, and both
+sit next to the every facade stone bracket.** The street capture reads Korenmarkt
+as brick and concrete. The tile texture reads it as 38 percent unknown. Their
+compositions differ by a total variation of 0.30. Seed averaged, they trace to
++0.177 and +0.220 dB isotropic and +0.378 and +0.423 dB rooftop, a separation of
+0.043 and 0.044 dB against a seed to seed spread inside the street capture
+variant alone of 0.029 and 0.058 dB. **A vision model that can see the wall and a
+vision model that says it cannot produce exposure distributions about one seed's
+worth of noise apart.** Both land next to every facade stone, and they land there
+for the same reason the fixed prior does: what carries a posterior mean is the
+small mass on metal and marble, not the identity of the dominant material.
 
 That last point is the sharpest negative result in the study. If the answer does
 not depend on whether the model could see the building, the model is not what is
@@ -518,7 +520,7 @@ written table that is identical for Ghent, Tokyo and Mexico City, and it is
 honestly under confident. But grounded is not the same as verified, and there is
 no verification here and will not be.
 
-**By how many decibels does it move chi?** **+0.19 dB isotropic and +0.38 dB
+**By how many decibels does it move chi?** **+0.18 dB isotropic and +0.38 dB
 rooftop**, averaged over two draws, with 0 of 24 standpoints moving as much as a
 decibel. Of that, +0.10 and +0.21 dB is the argmax fix, which needs no model. The
 model's own marginal contribution is **+0.08 dB isotropic and +0.17 dB rooftop**,
