@@ -630,11 +630,23 @@ $\Phi(\uloc)$ is passed in as a set of plane waves, one per angular cell, with
 the direction dictionary $\khat = -\uloc$ that reciprocity requires. Summing
 \eqref{eq:sab} over cells gives the absorbed power density map on the body, and
 integrating that map gives the absorbed power and the whole body specific
-absorption rate. Two things are left out of this step. The phantom stands alone,
-so other people nearby, who would block part of the near horizon at the same
-height as the head, are absent. The body is also treated as convex, so one limb
-never shadows another, which matters most for arrivals that graze along the
-body.
+absorption rate. Two things are left out of this step, and the first matters more than its size
+suggests. The phantom stands alone. A bystander is not a small perturbation at
+15\,GHz: a person is roughly thirty wavelengths across and optically thick, so
+another body is opaque geometry rather than something a wave works around. What
+makes a crowd different from a building is that it stands at the head's own
+height. A standing adult reaches about 1.73\,m against an observation height of
+1.5\,m, so a bystander adds only some 0.23\,m above the head, and a ray leaving
+at elevation $\alpha$ clears the crowd after a horizontal distance
+$0.23\,\mathrm{m} / \tan\alpha$. That is 13\,m at $1^\circ$, 2.6\,m at
+$5^\circ$ and 0.4\,m at $30^\circ$. A crowd is therefore opaque along the
+horizon and transparent above roughly $10^\circ$, and no crowd density changes
+that. Since the street level model places 88\,\% of its measure below $5^\circ$
+and the rooftop model 9\,\%, bystanders should cost the street column a great
+deal and the rooftop column almost nothing. That is a prediction from geometry,
+and a sensitivity study over crowd density is reported with the results to test
+it. The second omission is that the body is treated as convex, so one limb never
+shadows another, which matters most for arrivals that graze along it.
 
 \section{Validation}
 \label{sec:valid}
