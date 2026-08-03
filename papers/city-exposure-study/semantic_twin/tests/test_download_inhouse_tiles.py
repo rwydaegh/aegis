@@ -208,6 +208,129 @@ def test_zero_cutoff_descends_through_zero_error_parent_and_external_tileset(tmp
     assert urllib.parse.parse_qs(urllib.parse.urlsplit(http.urls[-1]).query)["session"] == ["session-secret"]
 
 
+def leaf_scene(center: np.ndarray, leaves: list[str]) -> dict:
+    """A root that refines straight into one child per named payload.
+
+    Each child is given its own box, because real sibling tiles cover different
+    ground and the cache key says which ground. Keyed by name rather than by
+    position, so adding a leaf does not silently move another one's key.
+    """
+    return {
+        "root": {
+            "boundingVolume": {"box": world_box(center)},
+            "geometricError": 0,
+            "children": [
+                {
+                    "boundingVolume": {
+                        "box": world_box(center + float(sum(map(ord, leaf)) % 40) * np.array([1.0, 0.0, 0.0]), 10.0)
+                    },
+                    "geometricError": 0,
+                    "content": {"uri": leaf},
+                }
+                for leaf in leaves
+            ],
+        }
+    }
+
+
+def tile_downloader(tmp_path: pathlib.Path, http: FakeHttp) -> InhouseTilesDownloader:
+    return InhouseTilesDownloader(
+        "real-api-key",
+        lat=51.055,
+        lon=3.722,
+        radius_m=100.0,
+        geometric_error_cutoff_m=0.0,
+        out_dir=tmp_path,
+        http=http,  # type: ignore[arg-type]
+    )
+
+
+def test_a_second_run_over_the_same_output_buys_no_tile_twice(tmp_path: pathlib.Path) -> None:
+    """The whole point of writing the manifest is that it is also the cache.
+
+    Every site's tiles are paid for once against a daily cap, and the two caches
+    on the downloader only ever stopped it buying the same tile twice inside one
+    run. Re-running a site used to pay for the site again from nothing, which is
+    155 to 1,178 requests depending on the site.
+    """
+    center = llh_to_ecef(51.055, 3.722)
+    payloads = {
+        "/v1/3dtiles/root.json": leaf_scene(center, ["/one.glb", "/two.glb"]),
+        "/one.glb": b"one-glb",
+        "/two.glb": b"two-glb",
+    }
+
+    first = FakeHttp(dict(payloads))
+    tile_downloader(tmp_path, first).run()
+    downloads = [url for url in first.urls if ".glb" in url]
+    assert len(downloads) == 2
+
+    second = FakeHttp(dict(payloads))
+    manifest = tile_downloader(tmp_path, second).run()
+
+    assert [url for url in second.urls if ".glb" in url] == []
+    assert manifest["reused_from_disk"] == 2
+    assert {tile["file"] for tile in manifest["tiles"]} == {"tile_0000.glb", "tile_0001.glb"}
+    assert (tmp_path / "tile_0000.glb").read_bytes() == b"one-glb"
+
+
+def test_a_new_tile_does_not_overwrite_a_kept_one(tmp_path: pathlib.Path) -> None:
+    """Names count up from the traversal position, kept files keep their own.
+
+    Those two schemes collide the moment the hierarchy changes: a tile new to
+    this run takes position zero, the file kept from last run is already called
+    tile_0000.glb, and the fresh bytes land on top of the kept ones.
+    """
+    center = llh_to_ecef(51.055, 3.722)
+    first = FakeHttp(
+        {
+            "/v1/3dtiles/root.json": leaf_scene(center, ["/old.glb"]),
+            "/old.glb": b"old-glb",
+        }
+    )
+    tile_downloader(tmp_path, first).run()
+
+    second = FakeHttp(
+        {
+            "/v1/3dtiles/root.json": leaf_scene(center, ["/new.glb", "/old.glb"]),
+            "/new.glb": b"new-glb",
+            "/old.glb": b"old-glb",
+        }
+    )
+    manifest = tile_downloader(tmp_path, second).run()
+
+    assert manifest["reused_from_disk"] == 1
+    assert [url for url in second.urls if ".glb" in url] == [url for url in second.urls if "new.glb" in url]
+    kept = next(tile for tile in manifest["tiles"] if tile["tile_key"] and tile["uri"].endswith("/old.glb"))
+    assert (tmp_path / kept["file"]).read_bytes() == b"old-glb"
+    fresh = next(tile for tile in manifest["tiles"] if tile["tile_key"] and tile["uri"].endswith("/new.glb"))
+    assert fresh["file"] != kept["file"]
+    assert (tmp_path / fresh["file"]).read_bytes() == b"new-glb"
+
+
+def test_a_changed_payload_is_fetched_again(tmp_path: pathlib.Path) -> None:
+    """The size on disk has to match what the manifest says it should be.
+
+    A truncated download, a half written file or an edited tile all show up as a
+    size that disagrees, and reusing any of them would put corrupt geometry into
+    every mesh built afterwards without a single error.
+    """
+    center = llh_to_ecef(51.055, 3.722)
+    payloads = {
+        "/v1/3dtiles/root.json": leaf_scene(center, ["/one.glb"]),
+        "/one.glb": b"one-glb",
+    }
+    tile_downloader(tmp_path, FakeHttp(dict(payloads))).run()
+    (tmp_path / "tile_0000.glb").write_bytes(b"truncated")
+
+    http = FakeHttp(dict(payloads))
+    manifest = tile_downloader(tmp_path, http).run()
+
+    assert manifest["reused_from_disk"] == 0
+    assert len([url for url in http.urls if ".glb" in url]) == 1
+    assert (tmp_path / "tile_0000.glb").read_bytes() == b"one-glb"
+
+
 def test_http_client_stops_stream_at_byte_cap(tmp_path: pathlib.Path) -> None:
     response = FakeResponse(b"123456")
     client = BoundedHttpClient(2, 5, opener=lambda request, timeout: response)

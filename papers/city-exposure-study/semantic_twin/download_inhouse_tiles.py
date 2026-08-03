@@ -26,6 +26,7 @@ cutoffs stop at a tile whose geometric error is at or below the requested value.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -164,6 +165,42 @@ def sanitized_uri(uri: str) -> str:
     """Remove every query value and fragment before persisting a tile URI."""
     parsed = urllib.parse.urlsplit(uri)
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+
+
+def placed_key(tile: dict[str, Any], transform: np.ndarray, geometric_error_m: float, order: int) -> str:
+    """A name for a tile that survives the address it was served at.
+
+    The obvious cache key is the URL a tile came from, and it does not work.
+    Google serves 3D Tiles payloads at per-session paths: re-running Krakow gave
+    91 files whose bytes hash identically to the 91 already on disk, under 91
+    different URLs. A URL keyed cache misses every single time.
+
+    What does not move is where the tile sits and how coarse it is. This keys on
+    the bounding volume placed into world coordinates, plus the geometric error,
+    plus the payload's position in the tile when a tile carries several. That
+    says "this piece of the city at this level of detail", which is a property
+    of the data rather than of the delivery.
+
+    Coordinates are ECEF metres rounded to a millimetre, so the key is stable
+    against the last bits of the transform product without ever merging two
+    distinct tiles: the smallest leaves here are metres across.
+
+    The one thing it cannot see is Google republishing the same tile with new
+    imagery at the same box and error. That is what ``--refresh`` is for.
+    """
+    volume = tile.get("boundingVolume")
+    payload: list[float] = []
+    if isinstance(volume, dict):
+        for name in ("box", "sphere", "region"):
+            value = volume.get(name)
+            if isinstance(value, list):
+                payload = [float(v) for v in value]
+                break
+    digest = hashlib.sha256()
+    digest.update(json.dumps([round(v, 3) for v in payload], sort_keys=True).encode())
+    digest.update(np.round(np.asarray(transform, dtype=np.float64), 3).tobytes())
+    digest.update(f"{geometric_error_m:.6f}|{order}".encode())
+    return digest.hexdigest()[:32]
 
 
 def _content_uris(tile: dict[str, Any]) -> list[str]:
@@ -313,6 +350,57 @@ class InhouseTilesDownloader:
         self._active_tilesets: set[str] = set()
         self._tileset_cache: dict[str, dict[str, Any]] = {}
         self._downloaded_payloads: set[str] = set()
+        self._on_disk = self._read_prior_manifest()
+        self._claimed = {entry["file"] for entry in self._on_disk.values()}
+        self._spent_keys: set[str] = set()
+
+    def _read_prior_manifest(self) -> dict[str, dict[str, Any]]:
+        """What a previous run of this same site already put in the output.
+
+        Both caches above live on the instance, so they only stop a run from
+        buying the same tile twice inside itself. Across runs there was nothing:
+        the payload set started empty, the file was named by its position in the
+        traversal rather than by what it is, and nothing looked to see whether
+        the bytes were already there. Re-running a site therefore paid for the
+        whole site again, 155 to 1,178 requests depending on the site.
+
+        So the manifest becomes the cache. A tile is reused when its
+        ``tile_key`` matches, which is where it sits and how coarse it is rather
+        than the address it arrived at, and when the file is on disk at the
+        recorded size. See `placed_key` for why the address is useless here.
+
+        Manifests written before the key existed match nothing, so those sites
+        pay once more and then carry it.
+        """
+        path = self.out_dir / "manifest.json"
+        if not path.exists():
+            return {}
+        try:
+            prior = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        found: dict[str, dict[str, Any]] = {}
+        for entry in prior.get("tiles", []):
+            source = entry.get("tile_key")
+            name = entry.get("file")
+            if not isinstance(source, str) or not isinstance(name, str):
+                continue
+            payload = self.out_dir / name
+            if payload.exists() and payload.stat().st_size == entry.get("size"):
+                found[source] = entry
+        return found
+
+    def _free_filename(self) -> str:
+        """A tile name no reused file has already taken.
+
+        Names count up from the traversal position, and a reused tile keeps the
+        name it was written under. Without this the two schemes collide and a
+        fresh download overwrites a reused file.
+        """
+        index = len(self.tiles)
+        while f"tile_{index:04d}.glb" in self._claimed:
+            index += 1
+        return f"tile_{index:04d}.glb"
 
     def _remember_session(self, uri: str) -> None:
         for name, value in urllib.parse.parse_qsl(urllib.parse.urlsplit(uri).query, keep_blank_values=True):
@@ -357,23 +445,36 @@ class InhouseTilesDownloader:
         finally:
             self._active_tilesets.remove(identity)
 
-    def _download_glb(self, uri: str, base_url: str, geometric_error_m: float) -> None:
+    def _download_glb(self, uri: str, base_url: str, geometric_error_m: float, tile_key: str) -> None:
         request_url = self._request_url(uri, base_url)
         identity = sanitized_uri(request_url)
         if identity in self._downloaded_payloads:
             return
-        filename = f"tile_{len(self.tiles):04d}.glb"
-        size = self.http.download(request_url, self.out_dir / filename)
+        # Two tiles sharing a box, an error and a payload position would share a
+        # key. Nothing in the hierarchy forbids it, so a cached entry is spent
+        # once and the second claimant pays, rather than both pointing at one
+        # file and one of them being wrong.
+        reused = self._on_disk.pop(tile_key, None)
+        if reused is not None:
+            self._spent_keys.add(tile_key)
+            filename = str(reused["file"])
+            size = int(reused["size"])
+            print(f"[kept] {filename} ge={geometric_error_m:.3f} m, {size / 1e6:.2f} MB", flush=True)
+        else:
+            filename = self._free_filename()
+            self._claimed.add(filename)
+            size = self.http.download(request_url, self.out_dir / filename)
+            print(f"[tile] {filename} ge={geometric_error_m:.3f} m, {size / 1e6:.2f} MB", flush=True)
         self._downloaded_payloads.add(identity)
         self.tiles.append(
             {
                 "file": filename,
                 "uri": sanitized_uri(uri),
+                "tile_key": tile_key,
                 "geometric_error": geometric_error_m,
                 "size": size,
             }
         )
-        print(f"[tile] {filename} ge={geometric_error_m:.3f} m, {size / 1e6:.2f} MB", flush=True)
 
     def _walk_tile(self, tile: dict[str, Any], base_url: str, parent_transform: np.ndarray) -> None:
         transform = parent_transform @ matrix_from_3d_tiles(tile.get("transform"))
@@ -405,8 +506,8 @@ class InhouseTilesDownloader:
                 self._walk_tile(child, base_url, transform)
             return
 
-        for uri in glb_uris:
-            self._download_glb(uri, base_url, geometric_error_m)
+        for order, uri in enumerate(glb_uris):
+            self._download_glb(uri, base_url, geometric_error_m, placed_key(tile, transform, geometric_error_m, order))
 
         # Unknown or absent payload formats should not prevent reaching known
         # GLBs lower in the hierarchy.
@@ -438,6 +539,7 @@ class InhouseTilesDownloader:
             "center_ecef": self.center_ecef.tolist(),
             "limits": {"max_requests": self.max_requests, "max_bytes": self.max_bytes},
             "tiles": self.tiles,
+            "reused_from_disk": len(self._spent_keys),
             "requests": self.http.request_count,
             "total_bytes": self.http.total_bytes,
         }
@@ -533,8 +635,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        f"[done] {len(manifest['tiles'])} tiles, {manifest['requests']} requests, "
-        f"{manifest['total_bytes'] / 1e6:.1f} MB -> {args.out / 'manifest.json'}",
+        f"[done] {len(manifest['tiles'])} tiles, {manifest['reused_from_disk']} kept from a previous run, "
+        f"{manifest['requests']} requests, {manifest['total_bytes'] / 1e6:.1f} MB "
+        f"-> {args.out / 'manifest.json'}",
         flush=True,
     )
     return 0
