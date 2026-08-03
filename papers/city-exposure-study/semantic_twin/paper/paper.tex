@@ -231,6 +231,7 @@ converged crop even where the overview image shows a smaller visual crop.
     Bounce budget & 130 & 8 & 200k & 8 stations \\
     Material null & 130 & 6 & 200k & 120 \\
     Dielectric bracket & 130 & 12 & 60k & 24 \\
+    Vision model materials & 130 & 12 & 60k & 24 \\
     Range cap sweep & 250 & 4 & 200k & 40 per square \\
     Standpoint sampling & 250 & 4 & 200k & 80 per square \\
     Cross validation & 250 & 4 & 200k & 8 \\
@@ -370,6 +371,30 @@ that bracket reached $+1.56$\,dB rooftop, $+2.48$\,dB street and $-2.67$\,dB
 street. Metal changed the same medians by
 $+2.502$ and $+4.374$\,dB, with all 24 standpoints above 1\,dB. The measured
 bracket separates uncertainty within masonry from a change of material family.
+
+A vision language model was applied on the same axis and the same configuration
+as that bracket, because the natural objection to a null is that a better
+material inference would remove it. Nineteen facade crops from the reference
+square, covering 12 patches on 8 walls and 1048 triangles at ranges of 6.6 to
+32.5\,m and incidences of 20 to 74\textdegree{}, were read for a layered stack
+with thicknesses, a surface roughness, and a distribution over the nine
+traceable materials. Over two draws from the resulting posterior the isotropic
+median moved by 0.19 and 0.21\,dB and the rooftop median by 0.40 and 0.29\,dB,
+and none of the 24 standpoints moved as much as a decibel. That is larger than
+the class substitution above and still inside the dielectric span, which is the
+ceiling any facade material evidence works under at this square.
+
+A control indicates that the model is not what produced that shift. The same
+rays were sampled from the photogrammetric texture atlas, which gives a second
+image of each wall at the same viewpoint, field of view and pixel grid, matched
+to the mesh at a median residual of 1.2\,\textmu m over 99.97\% of faces. Both
+images of every pair were renamed to a keyed digest and shown in shuffled
+batches, so nothing in the input identified its source. The model called 76\% of
+the texture crops illegible. Those crops moved the isotropic median by 0.22 and
+0.21\,dB and the rooftop median by 0.37 and 0.38\,dB, which differs from the
+panorama result by less than the two draws of either differ from each other. An
+answer that does not depend on whether the model could read the building is not
+an answer read off the building.
 
 The null result licenses the geometric assignment only within the observed
 material family. The photographs show that the reference square is masonry.
