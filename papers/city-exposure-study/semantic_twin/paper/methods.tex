@@ -448,6 +448,22 @@ horizon. In free space every ray escapes unobstructed with $w = 1$ and
 $\uext_j = \uloc_j$, so \eqref{eq:estimator} reduces to a quadrature of $Q$ over
 the sphere and returns 1, as it must.
 
+Every ray either escapes without touching anything or reflects at least once, so
+the sum in \eqref{eq:estimator} splits in two with nothing left over,
+\begin{equation}
+  \chi = \chi_{\mathrm{dir}} + \chi_{\mathrm{ref}} ,
+  \label{eq:split}
+\end{equation}
+where the first term collects the untouched rays and the second collects the
+rest. This separates the only two things a square can do. It hides part of the
+sky, which removes direct power, and it reflects, which puts power back. The
+first term is the direct arrival reduced by exactly the sky the buildings cover,
+and under the isotropic model it equals the sky fraction, which is the identity
+checked in Section~\ref{sec:valid}. The second term is everything the
+surroundings return. The split is a partition of the same rays, so it costs
+nothing, and both parts are reported because a $\chi$ near 1 can mean an open
+square or a closed one that reflects back what it blocked.
+
 The estimator is stochastic, so every reported value carries a Monte Carlo
 standard error, obtained by retracing the same standpoints over disjoint seed
 streams rather than estimated from within a single run. Seeds and ray counts are
@@ -576,13 +592,12 @@ stored: the trace keeps angular histograms and scalar sums only.
 
 \subsection{Quantities that come for free}
 
-Three diagnostics fall out of the same trace at no extra cost. The sky fraction
-is the share of rays that escape without touching anything, which is the solid
-angle of open sky above the standpoint. The direct exposure ratio uses only
-those same rays, so the ratio of $\chi$ to it measures how much the surroundings
-add by reflection. The mean excess path length, taken over escaping rays
-weighted by their power, gives the delay spread the square would impose. All
-three are reported alongside $\chi$.
+Two further quantities fall out of the same trace at no extra cost, on top of
+the split in \eqref{eq:split}. The sky fraction is the share of rays that escape
+without touching anything, which is the open solid angle above the standpoint
+and depends on the geometry alone rather than on any illumination model. The
+mean excess path length, taken over escaping rays weighted by their power, gives
+the delay spread the square would impose. Both are reported alongside $\chi$.
 
 \section{Body coupling}
 
