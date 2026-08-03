@@ -160,6 +160,36 @@ moved furthest scores 0.978. The observation survives, the mechanism does not.
   says that rather than shipping a configuration that provably changes nothing.
 - **Bystanders**, retraced on the settled bounce budget.
 
+## The one experiment still running, and why it matters
+
+`COVERAGE.md` established something the paper does not yet use: a materially
+bound run is now possible at **seven** of the eleven squares at the published
+250 m crop, not one. Prague at 9.9 percent of triangle area from twelve stations,
+Tokyo 8.1 from three, Mexico City 7.0 from twelve, Madrid 5.1 from six, Brussels
+4.6 from eight, Milan 4.0 from one, Korenmarkt 3.2 from nine. Six of the seven
+can also run at 130 m, where the fractions are two to three times larger.
+
+So the material null, currently a result from one square, can become a result
+about whether that null travels. That is running on the rented box now and will
+land in `COVERAGE_LADDER.md`. If the null holds at seven squares it is a much
+stronger negative than the paper currently claims. If it fails at one square,
+that square is the most interesting thing in the study.
+
+Two cautions carried into that run, both from `COVERAGE.md`. The bound area
+fraction must be reported beside every shift and never instead of it, because a
+4.6 percent bound run is one where 4.6 percent of the area has evidence and the
+rest still falls back to the geometric rule. And the bound fraction is a property
+of where a camera could stand, not of segmentation quality: admitted cameras sit
+within 29 to 62 m of their own centroid against a crop reaching 250 m, so most of
+that crop is roofs and rear elevations no photograph has ever seen. Milan
+reaching 4.0 percent from a single camera is geometry, not quality.
+
+Still blocked and needing you: London and Krakow have configs, walk dates and the
+open-sky filter ready, and are one command each once the Street View tile quota
+resets. Toulouse needs its crop anchor moved about 25 m before it is worth
+acquiring anything, and that anchor belongs to a mesh the eleven-square table
+already uses.
+
 ## Where the open items are written down
 
 `paper/RECONCILE.md` ends with six items that were found and deliberately not
