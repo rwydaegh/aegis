@@ -363,6 +363,23 @@ grid cells cannot resolve that. The two elevations at which \eqref{eq:caps}
 changes branch are inserted into the quadrature abscissae so that no interval
 straddles a kink.
 
+The normalisation hides the absolute level on purpose, which makes it easy to
+forget to ask what $\chi$ multiplies. The same site density answers that. With
+$\nu$ sites per unit volume of the slab, each radiating $P$, free space gives
+\begin{equation}
+  S_0 = \frac{P \nu}{4\pi} \oint \left( \rho_+ - \rho_- \right) \dOmega ,
+  \label{eq:absolute}
+\end{equation}
+which is the cone integral of \eqref{eq:cone} again, now weighted by free space
+spreading instead of counting sites. Over a plausible range, 25 to 100 sites per
+square kilometre radiating 55 to 75\,dBm, this puts $S_0$ between 0.0075 and
+3.0\,W/m$^2$ for the rooftop band and between 0.010 and 4.1\,W/m$^2$ for the
+street level band, against a general public reference level of 10\,W/m$^2$ at
+this frequency \cite{icnirp}. Nearly three orders of magnitude, set entirely by
+numbers that are not public. That spread is the reason this paper reports a
+ratio: the part that depends on the square is measurable and transfers between
+cities, and the part that depends on the network is neither.
+
 \subsection{Models used}
 
 Three illumination models are carried through every run. Their parameters are in
@@ -718,6 +735,11 @@ environments,'' software, 2026.
 \bibitem{sam}
 A.~Kirillov \emph{et al.}, ``Segment anything,'' in \emph{Proc. IEEE/CVF Int.
 Conf. Comput. Vis.}, 2023, pp. 4015--4026.
+
+\bibitem{icnirp}
+International Commission on Non-Ionizing Radiation Protection, ``Guidelines for
+limiting exposure to electromagnetic fields (100 kHz to 300 GHz),'' \emph{Health
+Phys.}, vol. 118, no. 5, pp. 483--524, 2020.
 
 \bibitem{itis}
 P.~A.~Hasgall \emph{et al.}, ``IT'IS database for thermal and electromagnetic
