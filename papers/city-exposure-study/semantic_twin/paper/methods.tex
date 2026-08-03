@@ -376,14 +376,14 @@ Section~\ref{sec:config} has to be
 justified rather than chosen. \Cref{fig:box} shows the region in the height and
 range plane.
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
   \centering
-  \includegraphics[width=\columnwidth]{19_deployment_box.pdf}
+  \includegraphics[width=\textwidth]{19_deployment_box.pdf}
   \caption{The region a site may occupy, in height above the head against
   horizontal range. Lines of constant elevation are straight through the origin,
   so the corners of the box set the elevation limits of \eqref{eq:support}.}
   \label{fig:box}
-\end{figure}
+\end{figure*}
 
 \subsection{Normalisation}
 
@@ -734,15 +734,15 @@ The cost is $O(N L \log T)$ for $T$ scene triangles, the logarithm coming from
 the bounding volume hierarchy. Memory is $O(M)$ per standpoint, since no path is
 stored: the trace keeps angular histograms and scalar sums only.
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
   \centering
-  \includegraphics[width=\columnwidth]{21_one_ray.pdf}
+  \includegraphics[width=\textwidth]{21_one_ray.pdf}
   \caption{One ray leaving the head, reflecting twice off facades and escaping
   to the sky. Line thickness is the surviving power $w$. The ray deposits
   $w\,Q(\uext)$ into the angular cell it was launched into, not the one it
   escaped through.}
   \label{fig:oneray}
-\end{figure}
+\end{figure*}
 
 \subsection{Quantities that come for free}
 
