@@ -215,11 +215,36 @@ def build_one(job: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def site_mesh(site: str, requested: str) -> pathlib.Path:
+    """The requested crop for a site, picked by precision rather than by name.
+
+    Asking for an exact filename says the wrong thing. Only Korenmarkt ever had
+    two builds of the same crop: a `format_version: 2` one whose tile placement
+    went through Blender in single precision and carries up to a metre of
+    seaming, and an `_f64` rebuild that does not. Every other site was built
+    after that fix, so its unsuffixed file is already the good one, and ten of
+    them happen to carry an `_f64` copy as well.
+
+    Requiring the suffix therefore stopped the 250 m build at Times Square,
+    which has one mesh, at `format_version: 3`, and is fine. It also took
+    Prague down with it, since the run stopped there. What matters is the
+    format version in the manifest, so that is what is read.
+    """
+    directory = ROOT / "data" / "geometry" / site
+    stem = requested[: -len("_f64.ply")] if requested.endswith("_f64.ply") else requested.removesuffix(".ply")
+    for candidate in (f"{stem}_f64.ply", f"{stem}.ply"):
+        path = directory / candidate
+        manifest = path.with_suffix(".json")
+        if not path.exists() or not manifest.exists():
+            continue
+        if int(json.loads(manifest.read_text()).get("format_version", 0)) >= 3:
+            return path
+    raise SystemExit(f"{site} has no double precision {stem} mesh")
+
+
 def site_jobs(site: str, args: argparse.Namespace) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    mesh = ROOT / "data" / "geometry" / site / args.mesh
-    if not mesh.exists():
-        raise SystemExit(f"{site} has no {args.mesh}")
-    out_root = ROOT / "outputs" / f"{site}_fishnet_vistas"
+    mesh = site_mesh(site, args.mesh)
+    out_root = ROOT / "outputs" / f"{site}_fishnet_vistas{args.out_suffix}"
     jobs: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     for directory in sorted((ROOT / "data" / "panoramas" / site).glob("pano_*")):
@@ -254,6 +279,15 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--site", action="append", choices=SITES)
     parser.add_argument("--all-sites", action="store_true")
     parser.add_argument("--mesh", default="inhouse_leaf_130m.ply")
+    parser.add_argument(
+        "--out-suffix",
+        default="",
+        help=(
+            "appended to outputs/<site>_fishnet_vistas. A build against a different mesh "
+            "belongs beside the old one and not on top of it, since the two are only "
+            "comparable if both survive"
+        ),
+    )
     parser.add_argument("--size", type=int, default=1536)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--max-sky-hit-fraction", type=float, default=0.5)
@@ -274,7 +308,7 @@ def main() -> None:
         raise SystemExit("name a site with --site or run --all-sites")
     for site in sites:
         jobs, skipped = site_jobs(site, args)
-        out_root = ROOT / "outputs" / f"{site}_fishnet_vistas"
+        out_root = ROOT / "outputs" / f"{site}_fishnet_vistas{args.out_suffix}"
         out_root.mkdir(parents=True, exist_ok=True)
         print(f"[site] {site}: {len(jobs)} panoramas admitted, {len(skipped)} skipped", flush=True)
         results: list[dict[str, Any]] = []
