@@ -980,6 +980,14 @@ def attach_evidence(args: argparse.Namespace, bundle: dict[str, Any]) -> None:
         directory = directories.get(key)
         if directory is None or taxonomies[kind] is None or not taxonomies[kind].exists():
             continue
+        if not any(directory.glob("*_fishnet.npz")):
+            # A fishnet directory can hold a manifest and no surfaces, because
+            # the manifest is written whether or not the build succeeded. Tokyo
+            # is the case on disk: four panoramas present, zero built. That is a
+            # recorded failure rather than a programming error, so it is skipped
+            # and named instead of reaching np.concatenate with nothing.
+            print(f"no fishnet surfaces under {directory.name}, skipping the {kind} layer")
+            continue
         names = read_taxonomy(taxonomies[kind])
         count = max(names) + 1
         layer = fishnet_layer(directory, count)
