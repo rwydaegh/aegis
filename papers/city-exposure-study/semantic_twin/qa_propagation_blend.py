@@ -13,8 +13,11 @@ the assertions can be read and tested without Blender in the way.
 
 The checks, and the failure each one is aimed at:
 
-- **stale**: the blend is older than the last commit that touched the scripts
-  that write it. This is the one that would have caught the octahedra.
+- **stale**: the blend carries a hash over the scripts that write it, and that
+  hash is not today's. This is the one that would have caught the octahedra.
+- **walk**: the manifest says the standpoints came from the capture route rather
+  than from the disc of grid squares, so the two can be told apart without
+  opening the file.
 - **standpoints**: the standpoints in the file are the ones today's walk builder
   produces, to the metre. Catches a blend built before a walk change, and
   catches a blend built from a different radius or seed than its manifest says.
@@ -37,6 +40,7 @@ Run from the ``semantic_twin`` directory::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import subprocess
@@ -48,8 +52,9 @@ ROOT = pathlib.Path(__file__).resolve().parent
 BLENDER = pathlib.Path.home() / "blender-4.5" / "blender"
 VIZ = ROOT / "outputs" / "propagation_viz"
 
-#: Scripts whose last commit decides whether a blend is stale. A blend written
-#: before any of these changed was built by different code.
+#: Scripts whose last commit decides whether a blend is stale, used only when a
+#: blend predates the fingerprint stamp. A blend written before any of these
+#: changed was built by different code.
 BUILDERS = (
     "propagation_blender.py",
     "build_propagation_blends.py",
@@ -89,7 +94,10 @@ OUTSIDE_RATIO = 1.35
 
 DUMP = r"""
 import bpy, json, sys, numpy as np
-out = {"objects": {}, "collections": {}}
+out = {"objects": {}, "collections": {}, "scene": {}}
+for key in bpy.context.scene.keys():
+    value = bpy.context.scene[key]
+    out["scene"][key] = value if isinstance(value, (str, int, float, bool)) else str(value)
 for c in bpy.data.collections:
     out["collections"][c.name] = [o.name for o in c.objects]
 for o in bpy.data.objects:
@@ -144,11 +152,44 @@ def last_builder_commit() -> int:
     return max(stamps) if stamps else 0
 
 
-def check_stale(blend: pathlib.Path, newest: int) -> list[str]:
+def check_stale(blend: pathlib.Path, summary: dict, newest: int) -> list[str]:
+    """The blend was written by the code that is on disk right now.
+
+    The blend carries a hash over its builder sources, so this compares hashes
+    and is exact. The timestamp path below is the fallback for a blend written
+    before the stamp existed, and it is only an approximation: committing an
+    unchanged file moves its commit time forward and makes a current blend look
+    stale. That false alarm is why the stamp exists.
+    """
+    stamped = summary.get("scene", {}).get("builder_fingerprint")
+    if stamped:
+        current = builder_fingerprint()
+        if stamped != current:
+            return [f"stale: built by code fingerprinted {stamped}, the tree now fingerprints {current}"]
+        return []
     if newest and blend.stat().st_mtime < newest:
         age_h = (newest - blend.stat().st_mtime) / 3600.0
-        return [f"stale: written {age_h:.1f} h before the last change to the scripts that write it"]
-    return []
+        return [f"stale: written {age_h:.1f} h before the last change to the scripts that write it, no fingerprint"]
+    return ["stale: no builder fingerprint, so this blend predates the stamp"]
+
+
+def builder_fingerprint() -> str:
+    """The same hash ``propagation_blender.py`` stamps, computed here."""
+    digest = hashlib.sha256()
+    for name in BUILDER_SOURCES:
+        path = ROOT / name
+        digest.update(path.read_bytes() if path.exists() else b"")
+    return digest.hexdigest()[:16]
+
+
+#: Kept identical to ``propagation_blender.BUILDER_SOURCES``. Importing it would
+#: mean importing ``bpy``, which is not available outside Blender.
+BUILDER_SOURCES = (
+    "propagation_blender.py",
+    "export_propagation_payload.py",
+    "semantic_twin/propagation/walk.py",
+    "semantic_twin/propagation/route.py",
+)
 
 
 def check_populated(summary: dict) -> list[str]:
@@ -266,7 +307,7 @@ def audit(site: str, scratch: pathlib.Path) -> list[str]:
         return [f"no blend at {blend.relative_to(ROOT)}"]
     summary = dump_blend(blend, scratch / f"{site}.json")
     city = (summary["collections"].get("01 city mesh") or [None])[0]
-    problems = check_stale(blend, last_builder_commit())
+    problems = check_stale(blend, summary, last_builder_commit())
     problems += check_populated(summary)
     problems += check_finite(summary)
     problems += check_standpoints(summary, VIZ / f"{site}_payload.npz")

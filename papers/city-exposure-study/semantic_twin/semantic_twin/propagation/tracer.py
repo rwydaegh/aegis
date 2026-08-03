@@ -285,6 +285,22 @@ class TraceConfig:
     roulette_start: int = DEFAULT_MAX_BOUNCES + 1
     roulette_floor: float = 0.05
     ray_epsilon_m: float = 1.0e-3
+    #: Charge each escaping ray for the distance it travelled, ``1 / l_K^2``.
+    #:
+    #: Off, which is how every published escape-weighted number was produced,
+    #: an escaping ray is credited the moment it leaves the crop and no range
+    #: appears anywhere. A bounced ray that travelled 120 m to reach the sky
+    #: then counts exactly as much as a direct ray that travelled 30 m. Next
+    #: event estimation has no such gap, because it divides by the range from
+    #: the connection vertex to the rooftop point it connected to.
+    #:
+    #: This is the switch that tests whether that gap is the whole difference
+    #: between the two answers. Everything the study reports is a ratio, so the
+    #: constant in front of ``1 / l_K^2`` cancels and only the spread of path
+    #: lengths matters. It is a diagnostic and not a third estimator: the source
+    #: population is still at infinity, so the weight is a proxy for range and
+    #: not a measurement of one.
+    range_weighted_escape: bool = False
     seed: int = 0
     batch: int = 400_000
 
@@ -426,6 +442,15 @@ class SbrTracer:
         self.wavelength_m = 299_792_458.0 / config.frequency_hz
         self.local_grid = fibonacci_sphere(config.local_cells)
         self.exit_sin_edges = np.linspace(-1.0, 1.0, config.exit_bands + 1)
+        #: Where the far-field source population sits, used only by the range
+        #: charge diagnostic. The mesh's own bounding radius, so it is the crop
+        #: radius by construction and needs no second parameter to agree with.
+        vertices = getattr(geometry, "vertices", None)
+        self.source_shell_radius_m = (
+            float(np.linalg.norm(np.asarray(vertices, dtype=np.float64), axis=1).max())
+            if vertices is not None and len(vertices)
+            else 250.0
+        )
 
     def trace(
         self,
@@ -678,6 +703,35 @@ class SbrTracer:
                     )
                 alive = alive[survive]
 
+    def _range_to_the_source_shell(
+        self,
+        last_vertex: np.ndarray,
+        exit_direction: np.ndarray,
+        path_length: np.ndarray,
+    ) -> np.ndarray:
+        """How far an escaping ray travelled to reach the sources, end to end.
+
+        This cannot be the in-scene path length alone. A direct ray hits nothing
+        by definition, so its recorded path length is zero, and dividing by it
+        made every surplus come out at exactly 0.00 dB the first time this was
+        run. What the ray actually travelled is the distance inside the crop
+        plus the distance from where it left to where the sources are, and the
+        sources are the far field, so they sit on a shell around the scene.
+
+        The shell radius is the mesh's own bounding radius, so a direct ray from
+        the head is charged roughly the crop radius and a ray that bounced twice
+        across the square is charged that plus its detour. That difference is
+        the whole point: it is what a range term prices and the escape estimator
+        does not.
+        """
+        radius = self.source_shell_radius_m
+        # Where the exit ray crosses the shell: solve |p + t u| = R for t > 0.
+        along = np.einsum("ij,ij->i", last_vertex, exit_direction)
+        square = np.einsum("ij,ij->i", last_vertex, last_vertex)
+        inside = np.maximum(along**2 - square + radius**2, 0.0)
+        out = np.maximum(-along + np.sqrt(inside), 0.0)
+        return np.maximum(path_length + out, self.config.ray_epsilon_m)
+
     def _deposit(
         self,
         index: np.ndarray,
@@ -696,8 +750,11 @@ class SbrTracer:
         totals: dict[str, float],
     ) -> None:
         zero_bounce = bounces == 0
+        weight = throughput
+        if self.config.range_weighted_escape:
+            weight = throughput / self._range_to_the_source_shell(last_vertex, exit_direction, path_length) ** 2
         for name, model in models.items():
-            contribution = throughput * model.density(exit_direction, normalisations[name])
+            contribution = weight * model.density(exit_direction, normalisations[name])
             np.add.at(rho[name], cell, contribution)
             if np.any(zero_bounce):
                 np.add.at(rho_direct[name], cell[zero_bounce], contribution[zero_bounce])

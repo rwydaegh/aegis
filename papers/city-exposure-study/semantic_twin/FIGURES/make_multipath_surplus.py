@@ -8,13 +8,24 @@ explicit rooftop points and divides by range. The direct term is 1 by
 construction, so the bar is the whole story and no transmit power or antenna
 count appears anywhere. Beside it, the same ratio from the escape estimator the
 study used before, which credits a ray for reaching the source population the
-moment it leaves the scene and has no range term at all.
+moment it leaves the scene.
 
 Right: why they differ. Each held out standpoint is one dot, its own site mean
 removed from both axes, so what is left is how each estimator responds to how
 much sky is overhead. The escape answer is dominated by it. The next event
 answer is nearly flat. That is the evidence that the older number was largely
 restating openness rather than measuring multipath.
+
+The reason is what the two estimators take the sources to be, and it is not the
+missing range term. ``measure_escape_range_term.py`` charges every escaping ray
+for the distance it travelled and the escape answer moves 0.13 dB at Korenmarkt
+and 0.35 dB at Brussels, against a gap of about 1.3 dB, so range is a quarter of
+it at most. What is left is the source population. The escape estimator assumes
+sites of uniform density filling a band 13.5 to 43.5 m above the head out to
+250 m, which fills whatever sky is visible; next event uses the square's own
+measured roofline, which is a thin rim. A bounce point up a wall sees more sky
+than the head does, so the assumed population rewards it and the measured rim
+barely does. That is exactly the slope in this panel.
 
 Run from the ``semantic_twin`` directory::
 

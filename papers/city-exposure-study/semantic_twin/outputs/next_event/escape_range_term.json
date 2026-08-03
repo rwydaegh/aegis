@@ -1,0 +1,289 @@
+{
+  "rows": [
+    {
+      "site": "korenmarkt",
+      "standpoints": 10,
+      "walk": {
+        "rule": "one standpoint per admitted panorama, ordered by the shortest route through the provider's own link graph, head placed above the ground measured under the camera",
+        "head_height_m": 1.5,
+        "stations": 5,
+        "ordering": "shortest route through the link graph, proved by Held-Karp",
+        "road_length_m": 49.13658180700937,
+        "straight_length_m": 49.19961087381035,
+        "road_step_m": [
+          0.0,
+          11.25746016606789,
+          20.095468956129032,
+          9.61413594335366,
+          8.169516741458784
+        ],
+        "fragment": 0,
+        "fragment_sizes": [
+          5,
+          2,
+          1,
+          1
+        ],
+        "dropped": [
+          {
+            "station": "korenmarkt",
+            "because": "the camera sits on a separate fragment of the link graph, 4 fragments of sizes [5, 2, 1, 1]"
+          },
+          {
+            "station": "walk_00_986493819697753",
+            "because": "the camera sits on a separate fragment of the link graph, 4 fragments of sizes [5, 2, 1, 1]"
+          },
+          {
+            "station": "walk_01_1304023184185511",
+            "because": "the camera sits on a separate fragment of the link graph, 4 fragments of sizes [5, 2, 1, 1]"
+          },
+          {
+            "station": "walk_10_3367014310197013",
+            "because": "the camera sits on a separate fragment of the link graph, 4 fragments of sizes [5, 2, 1, 1]"
+          }
+        ],
+        "probe_from": "camera",
+        "ground_datum_m": null,
+        "datum_tolerance_m": 2.5,
+        "standpoints_off_the_ground_datum": [],
+        "camera_above_measured_ground_m": [
+          1.7005986452102633,
+          1.5904667854309054,
+          1.0389304637908907,
+          1.0044648528099032,
+          0.885177242755887
+        ],
+        "clearance_samples": 96,
+        "min_clearance_m": null,
+        "min_sky_fraction": null,
+        "clearance_m": [
+          22.285791397094727,
+          18.903706550598145,
+          11.462894439697266,
+          7.815809011459351,
+          7.635615110397339
+        ],
+        "sky_fraction": [
+          0.23958333333333334,
+          0.2604166666666667,
+          0.3541666666666667,
+          0.1875,
+          0.15625
+        ],
+        "link_graph": {
+          "merged_from": [
+            "street view links, outputs/city_screening/screening.json",
+            "mapillary sequence order"
+          ],
+          "nodes": 153,
+          "links_dropped_without_a_position": 0,
+          "parts": [
+            {
+              "source": "street view links, outputs/city_screening/screening.json",
+              "site": "korenmarkt",
+              "screen_radius_m": 60.0,
+              "nodes": 66,
+              "edges": 60,
+              "walk_date": "2025-06",
+              "traversal_truncated": false
+            },
+            {
+              "source": "mapillary sequence order",
+              "rule": "consecutive frames of one sequence in capture order",
+              "nodes": 87,
+              "edges": 84,
+              "sequences": [
+                "Lt9hWdGB0kc2JiNEu75H4U",
+                "guoRLMyTaphkSP407YCEGQ",
+                "u5WIQvkTXO7SbeL1l8UN6a"
+              ],
+              "bridge_m": 0.0,
+              "cross_sequence_links_added": 0,
+              "caveat": "a leg is measured over the frames present, so where a sequence is on disk only in part its legs are chords of the drive rather than its arc"
+            }
+          ]
+        },
+        "seed": 0,
+        "builder": "panorama route",
+        "stride_m": 6.0,
+        "standpoints": 14,
+        "added_along_the_road": 9
+      },
+      "escape_surplus_db_median": 1.785678075728959,
+      "escape_surplus_db_p5": 1.5416519787611989,
+      "escape_surplus_db_p95": 2.1095719508866213,
+      "range_charged_surplus_db_median": 1.6540605532143258,
+      "range_charged_surplus_db_p5": 1.3663179965079426,
+      "range_charged_surplus_db_p95": 1.986364533867837,
+      "per_point": [
+        {
+          "escape_db": 1.5939019265325878,
+          "range_charged_db": 1.421028230057331
+        },
+        {
+          "escape_db": 1.6523745182242475,
+          "range_charged_db": 1.494015874794694
+        },
+        {
+          "escape_db": 2.1083698706669955,
+          "range_charged_db": 1.997513539493778
+        },
+        {
+          "escape_db": 2.110555471066315,
+          "range_charged_db": 1.96376019751155
+        },
+        {
+          "escape_db": 1.498902021493699,
+          "range_charged_db": 1.3215550781493521
+        },
+        {
+          "escape_db": 1.6168379661051393,
+          "range_charged_db": 1.4568714704519565
+        },
+        {
+          "escape_db": 1.7936145203466525,
+          "range_charged_db": 1.6539108477426891
+        },
+        {
+          "escape_db": 1.7777416311112653,
+          "range_charged_db": 1.6542102586859622
+        },
+        {
+          "escape_db": 2.075809430979256,
+          "range_charged_db": 1.9727379714361317
+        },
+        {
+          "escape_db": 2.0791295924366966,
+          "range_charged_db": 1.9695857700875539
+        }
+      ]
+    },
+    {
+      "site": "brussels_grandplace",
+      "standpoints": 10,
+      "walk": {
+        "rule": "one standpoint per admitted panorama, ordered by the shortest route through the provider's own link graph, head placed above the ground measured under the camera",
+        "head_height_m": 1.5,
+        "stations": 8,
+        "ordering": "shortest route through the link graph, proved by Held-Karp",
+        "road_length_m": 284.2762150953761,
+        "straight_length_m": 222.90925607655163,
+        "road_step_m": [
+          0.0,
+          50.151599500271494,
+          40.36186230329338,
+          30.401745615516663,
+          71.3163695582793,
+          20.067974335313032,
+          49.81879120102157,
+          22.15787258168067
+        ],
+        "fragment": 0,
+        "fragment_sizes": [
+          8
+        ],
+        "dropped": [],
+        "probe_from": "camera",
+        "ground_datum_m": null,
+        "datum_tolerance_m": 2.5,
+        "standpoints_off_the_ground_datum": [],
+        "camera_above_measured_ground_m": [
+          0.3473139882087679,
+          1.1234931230545016,
+          1.632269072532651,
+          1.4228708028793307,
+          1.7611158370971651,
+          1.5562574148178072,
+          1.3449602603912325,
+          0.5350279390811892
+        ],
+        "clearance_samples": 96,
+        "min_clearance_m": null,
+        "min_sky_fraction": null,
+        "clearance_m": [
+          9.404302597045898,
+          30.779452323913574,
+          15.015660285949707,
+          11.694762229919434,
+          10.677074432373047,
+          12.002992630004883,
+          12.578685760498047,
+          13.994652271270752
+        ],
+        "sky_fraction": [
+          0.16666666666666666,
+          0.19791666666666666,
+          0.16666666666666666,
+          0.2916666666666667,
+          0.2916666666666667,
+          0.19791666666666666,
+          0.16666666666666666,
+          0.2604166666666667
+        ],
+        "link_graph": {
+          "source": "street view links, outputs/city_screening/screening.json",
+          "site": "brussels_grandplace",
+          "screen_radius_m": 60.0,
+          "nodes": 110,
+          "edges": 103,
+          "walk_date": "2024-07",
+          "traversal_truncated": false
+        },
+        "seed": 0,
+        "builder": "panorama route",
+        "stride_m": 6.0,
+        "standpoints": 56,
+        "added_along_the_road": 48
+      },
+      "escape_surplus_db_median": 1.7911225389313077,
+      "escape_surplus_db_p5": 1.5899849589412158,
+      "escape_surplus_db_p95": 2.505062108241773,
+      "range_charged_surplus_db_median": 1.4409763854001265,
+      "range_charged_surplus_db_p5": 1.298826367875562,
+      "range_charged_surplus_db_p95": 2.18911360376811,
+      "per_point": [
+        {
+          "escape_db": 2.859871292792934,
+          "range_charged_db": 2.441766947982118
+        },
+        {
+          "escape_db": 1.8111367620885297,
+          "range_charged_db": 1.542254046684361
+        },
+        {
+          "escape_db": 1.6249323477141988,
+          "range_charged_db": 1.3904403900024254
+        },
+        {
+          "escape_db": 1.8829481029072581,
+          "range_charged_db": 1.4618086135179742
+        },
+        {
+          "escape_db": 1.6491501965549873,
+          "range_charged_db": 1.3187689971416114
+        },
+        {
+          "escape_db": 1.634404591440918,
+          "range_charged_db": 1.3753443021702263
+        },
+        {
+          "escape_db": 1.8030136464650905,
+          "range_charged_db": 1.420144157282279
+        },
+        {
+          "escape_db": 1.5613916408542297,
+          "range_charged_db": 1.28250967120334
+        },
+        {
+          "escape_db": 2.0714064382348,
+          "range_charged_db": 1.88031507195099
+        },
+        {
+          "escape_db": 1.779231431397525,
+          "range_charged_db": 1.6033586626250373
+        }
+      ]
+    }
+  ],
+  "seconds": 23.823330790968612
+}

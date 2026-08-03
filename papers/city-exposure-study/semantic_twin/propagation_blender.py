@@ -51,6 +51,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import hashlib
 import pathlib
 import sys
 
@@ -1973,6 +1974,33 @@ def arguments() -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+#: The sources a blend is built from. A blend whose fingerprint over these does
+#: not match today's is a build artefact from different code, exactly the way a
+#: compiled binary is, and on 3 August every blend in the tree was one.
+BUILDER_SOURCES = (
+    "propagation_blender.py",
+    "export_propagation_payload.py",
+    "semantic_twin/propagation/walk.py",
+    "semantic_twin/propagation/route.py",
+)
+
+
+def builder_fingerprint() -> str:
+    """A hash over the code that writes a blend, stamped into the blend.
+
+    A timestamp cannot answer "was this built by today's code". Committing an
+    unchanged file moves its commit time forward and makes a perfectly current
+    blend look stale, which is what happened the first time this was checked.
+    Hashing the bytes answers it exactly and says nothing about when.
+    """
+    root = pathlib.Path(__file__).resolve().parent
+    digest = hashlib.sha256()
+    for name in BUILDER_SOURCES:
+        path = root / name
+        digest.update(path.read_bytes() if path.exists() else b"")
+    return digest.hexdigest()[:16]
+
+
 def main() -> int:
     args = arguments()
     payload = np.load(args.payload)
@@ -2039,6 +2067,7 @@ def main() -> int:
 
     scene = bpy.context.scene
     scene["site"] = manifest["site"]
+    scene["builder_fingerprint"] = builder_fingerprint()
     scene["frequency_ghz"] = manifest["frequency_hz"] / 1.0e9
     scene["traced_crop_radius_m"] = manifest["traced_crop_radius_m"]
     scene["drawn_radius_m"] = manifest["drawn_radius_m"]
