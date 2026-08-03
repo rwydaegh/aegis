@@ -43,6 +43,7 @@ from semantic_twin.propagation.geometry import MitsubaGeometry
 from semantic_twin.propagation.scene import classify_faces, load_bindings
 from semantic_twin.propagation.skyline import silhouette
 from semantic_twin.propagation.sources import SITE_LIFT_M, NextEventGather, build_source_set
+from semantic_twin.propagation.route import site_walk
 from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
 from semantic_twin.propagation.walk import build_walk, measure_ground_datum
 
@@ -73,6 +74,8 @@ def main() -> None:
     ap.add_argument("--max-bounces", type=int, default=3)
     ap.add_argument("--walk-radius-m", type=float, default=90.0)
     ap.add_argument("--head-height-m", type=float, default=1.5)
+    ap.add_argument("--walk", choices=["route", "grid"], default="route")
+    ap.add_argument("--walk-stride-m", type=float, default=6.0)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--variant", default="llvm_ad_rgb")
     ap.add_argument("--tag", default="next_event")
@@ -92,13 +95,20 @@ def main() -> None:
         started = time.perf_counter()
         geometry = MitsubaGeometry(mesh, variant=args.variant)
         datum = measure_ground_datum(geometry, radius_m=args.walk_radius_m)
-        walk = build_walk(
-            geometry,
-            ground_datum_m=datum.z_m,
-            radius_m=args.walk_radius_m,
-            head_height_m=args.head_height_m,
-            seed=args.seed,
-        )
+        if args.walk == "route":
+            walk, provenance = site_walk(geometry, site, stride_m=args.walk_stride_m, head_height_m=args.head_height_m)
+            print(
+                f"{site:24s} capture route, {provenance['stations']} cameras, "
+                f"{provenance['standpoints']} standpoints over {provenance['road_length_m']:.0f} m"
+            )
+        else:
+            walk = build_walk(
+                geometry,
+                ground_datum_m=datum.z_m,
+                radius_m=args.walk_radius_m,
+                head_height_m=args.head_height_m,
+                seed=args.seed,
+            )
         points = np.asarray(walk.points)
         rng = np.random.default_rng(args.seed)
         order = rng.permutation(points.shape[0])

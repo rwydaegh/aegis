@@ -818,3 +818,103 @@ def load_link_graph(
     for other in parts[1:]:
         graph = graph.merge(other)
     return bridge_components(graph, bridge_m)
+
+
+# --- the walk a runner actually asks for --------------------------------------
+
+
+def densify(polylines: Sequence[np.ndarray], stride_m: float) -> np.ndarray:
+    """Points every ``stride_m`` along a chain of road legs, ends included.
+
+    A route puts one standpoint at each camera, which is honest and thin: five
+    at Korenmarkt against sixty on the grid. But a pedestrian is not only where
+    the camera stopped, they are anywhere along the street the camera drove, and
+    the leg polylines are that street. Walking them at a fixed stride keeps every
+    standpoint on the captured road while giving the sample back its density.
+
+    Returns an empty (0, 2) array when there is no road, which happens at a site
+    with a single admitted station and is not an error.
+    """
+    chain = [p for p in polylines if p is not None and len(p) >= 2]
+    if not chain:
+        return np.zeros((0, 2))
+    line = np.concatenate([np.asarray(p, dtype=float)[:, :2] for p in chain], axis=0)
+    keep = np.concatenate([[True], np.linalg.norm(np.diff(line, axis=0), axis=1) > 1.0e-9])
+    line = line[keep]
+    if line.shape[0] < 2:
+        return line
+    step = np.linalg.norm(np.diff(line, axis=0), axis=1)
+    travelled = np.concatenate([[0.0], np.cumsum(step)])
+    wanted = np.arange(0.0, travelled[-1] + 0.5 * stride_m, stride_m)
+    wanted = wanted[wanted <= travelled[-1]]
+    return np.column_stack([np.interp(wanted, travelled, line[:, axis]) for axis in (0, 1)])
+
+
+def site_walk(
+    geometry: Any,
+    site: str,
+    *,
+    stride_m: float = 0.0,
+    head_height_m: float = HEAD_HEIGHT_M,
+    root: pathlib.Path | None = None,
+    bridge_m: float = 0.0,
+    **kwargs: Any,
+) -> tuple[Walk, dict[str, Any]]:
+    """The walk for one site, taken from its capture rather than from a grid.
+
+    This is the entry point a runner should call. ``build_walk`` scatters heads
+    over a disc on a three metre lattice and joins them nearest neighbour first,
+    which is a flood fill of the open ground and not a route anyone took. This
+    stands where the cameras stood, in the order the street connects them.
+
+    ``stride_m`` above zero adds standpoints along the road between cameras, so
+    the sample is dense without leaving the captured street. Their ground is
+    probed from just under an interpolated camera height, the same rule
+    :func:`ground_under_camera` uses, which is what keeps a head off the arcade
+    roofs and doorsteps that a probe from the sky lands on.
+
+    Returns the walk and a provenance record. It raises rather than quietly
+    falling back to the grid: a run that silently changed what a standpoint means
+    is how a stale walk survives, and the caller should decide.
+    """
+    stations = load_admitted_stations(site, root=root)
+    graph = load_link_graph(site, root=root, bridge_m=bridge_m)
+    route = build_panorama_route(geometry, stations, graph, head_height_m=head_height_m, **kwargs)
+    walk = route.walk
+    provenance: dict[str, Any] = {
+        **route.provenance,
+        "builder": "panorama route",
+        "stations": len(route),
+        "road_length_m": float(np.sum(route.road_length_m)),
+        "stride_m": stride_m,
+    }
+    if stride_m <= 0.0:
+        provenance["standpoints"] = len(walk)
+        return walk, provenance
+
+    extra = densify(route.road_polyline, stride_m)
+    if extra.shape[0] == 0:
+        provenance["standpoints"] = len(walk)
+        provenance["note"] = "no road between stations, so the stride added nothing"
+        return walk, provenance
+
+    # Camera height along the road, so the downward probe starts under the
+    # camera exactly as it does at a station.
+    at = walk.points[:, :2]
+    order = np.argsort(np.linalg.norm(at - at[0], axis=1))
+    camera_z = np.interp(
+        np.linalg.norm(extra - at[0], axis=1),
+        np.linalg.norm(at[order] - at[0], axis=1),
+        walk.points[order, 2],
+    )
+    z, _ = ground_under_camera(geometry, extra, camera_z)
+    good = np.isfinite(z)
+    points = np.concatenate([walk.points, np.column_stack([extra[good], z[good] + head_height_m])], axis=0)
+    ground = np.concatenate([walk.ground_z_m, z[good]])
+    seen = np.round(points[:, :2], 2)
+    _, unique = np.unique(seen, axis=0, return_index=True)
+    points, ground = points[np.sort(unique)], ground[np.sort(unique)]
+    step = np.concatenate([[0.0], np.linalg.norm(np.diff(points[:, :2], axis=0), axis=1)])
+    provenance["standpoints"] = int(points.shape[0])
+    provenance["added_along_the_road"] = int(points.shape[0] - len(walk))
+    return Walk(points=points, ground_z_m=ground, step_m=step, provenance=provenance), provenance

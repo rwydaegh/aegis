@@ -24,6 +24,7 @@ from semantic_twin.propagation.route import (
     bridge_components,
     build_panorama_route,
     fragments,
+    densify,
     ground_under_camera,
     link_graph_from_screening,
     link_graph_from_sequences,
@@ -615,3 +616,31 @@ def test_the_route_is_reproducible():
     assert [s.name for s in first.stations] == [s.name for s in second.stations]
     assert first.walk.points == pytest.approx(second.walk.points)
     assert isinstance(first, PanoramaRoute)
+
+
+# --- the stride along the road -----------------------------------------------
+
+
+def test_the_stride_puts_points_along_the_road_and_keeps_both_ends():
+    leg = np.array([[0.0, 0.0], [10.0, 0.0]])
+    dense = densify([leg], stride_m=2.5)
+    assert dense == pytest.approx(np.array([[0.0, 0.0], [2.5, 0.0], [5.0, 0.0], [7.5, 0.0], [10.0, 0.0]]))
+
+
+def test_the_stride_follows_a_corner_rather_than_cutting_it():
+    corner = np.array([[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]])
+    dense = densify([corner], stride_m=5.0)
+    assert len(dense) == 5
+    assert dense[3] == pytest.approx([10.0, 5.0])
+
+
+def test_the_stride_gives_nothing_back_when_there_is_no_road():
+    assert densify([], stride_m=3.0).shape == (0, 2)
+    assert densify([np.array([[1.0, 2.0]])], stride_m=3.0).shape == (0, 2)
+
+
+def test_a_stride_joins_legs_end_to_end():
+    legs = [np.array([[0.0, 0.0], [6.0, 0.0]]), np.array([[6.0, 0.0], [6.0, 6.0]])]
+    dense = densify(legs, stride_m=3.0)
+    assert len(dense) == 5
+    assert dense[-1] == pytest.approx([6.0, 6.0])

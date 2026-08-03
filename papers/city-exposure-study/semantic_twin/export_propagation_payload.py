@@ -69,6 +69,7 @@ from semantic_twin.propagation import (  # noqa: E402
 )
 from semantic_twin.propagation.exposure import BodyCoupler  # noqa: E402
 from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings  # noqa: E402
+from semantic_twin.propagation.route import site_walk  # noqa: E402
 from semantic_twin.propagation.walk import build_walk, stratified_subset  # noqa: E402
 
 from measure_skyline import skyline  # noqa: E402
@@ -378,7 +379,15 @@ def trace_site(args: argparse.Namespace) -> dict[str, Any]:
     )
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
 
-    walk = build_walk(geometry, ground_datum_m=datum, radius_m=args.walk_radius_m, spacing_m=3.0, seed=args.seed)
+    if args.walk == "route":
+        walk, provenance = site_walk(geometry, args.site, stride_m=args.walk_stride_m)
+        print(
+            f"walk: capture route, {provenance['stations']} cameras over "
+            f"{provenance['road_length_m']:.0f} m of street, {provenance['standpoints']} standpoints",
+            flush=True,
+        )
+    else:
+        walk = build_walk(geometry, ground_datum_m=datum, radius_m=args.walk_radius_m, spacing_m=3.0, seed=args.seed)
     picks = stratified_subset(walk, args.locations)
     points, datums = walk.points[picks], walk.ground_z_m[picks]
     print(f"walk: {len(walk)} candidates, tracing {picks.size}", flush=True)
@@ -1353,6 +1362,18 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--draw-radius-m", type=float, default=DEFAULT_DRAW_RADIUS_M)
     parser.add_argument("--locations", type=int, default=60)
     parser.add_argument("--walk-radius-m", type=float, default=60.0)
+    parser.add_argument(
+        "--walk",
+        choices=["route", "grid"],
+        default="route",
+        help="route stands where the cameras stood, grid scatters heads over a disc",
+    )
+    parser.add_argument(
+        "--walk-stride-m",
+        type=float,
+        default=6.0,
+        help="extra standpoints this far apart along the street between cameras, 0 for cameras only",
+    )
     parser.add_argument("--paths", type=int, default=1200, help="Ray polylines kept at the hero location")
     parser.add_argument("--sources", type=int, default=400, help="Illumination source markers per model")
     parser.add_argument(
