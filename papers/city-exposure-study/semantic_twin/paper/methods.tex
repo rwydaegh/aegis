@@ -802,11 +802,21 @@ at elevation $\alpha$ clears the crowd after a horizontal distance
 $0.23\,\mathrm{m} / \tan\alpha$. That is 13\,m at $1^\circ$, 2.6\,m at
 $5^\circ$ and 0.4\,m at $30^\circ$. A crowd is therefore opaque along the
 horizon and transparent above roughly $10^\circ$, and no crowd density changes
-that. Since the street level model places 88\,\% of its measure below $5^\circ$
-and the rooftop model 9\,\%, bystanders should cost the street column a great
-deal and the rooftop column almost nothing. That is a prediction from geometry,
-and a sensitivity study over crowd density is reported with the results to test
-it.
+that.
+
+The obvious next step is to predict each model's sensitivity from how much of
+its measure sits near the horizon, and it is instructive that this fails. The
+street level model sends 88\,\% of its measure below $5^\circ$ and the rooftop
+model 9\,\%, a ratio of nine. The shares that actually arrive at the head are
+0.21 and 0.19, a ratio of 1.15. The facades have already redistributed the power
+before any crowd sees it, so a dense European square is its own near horizon
+blocker and a crowd is a second edit to a distribution the buildings have
+already set. Measured at twelve standpoints against paired empty square
+baselines, two people per square metre cost a median 1.4\,dB under the street
+model and 1.0\,dB under the rooftop model, and an ordinary busy 0.3 per square
+metre costs 0.5 and 0.3\,dB. The isotropic control loses 0.05\,dB, because
+weighting every direction equally makes redistribution free and leaves only
+absorption to pay for.
 
 The second omission is that the body is treated as convex, so one limb never
 shadows another, which matters most for arrivals that graze along it.
