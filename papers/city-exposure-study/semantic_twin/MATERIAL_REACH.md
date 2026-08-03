@@ -13,7 +13,7 @@ Numbers at `outputs/station_calibration/material_reach_250m.json`.
 
 ## Why this needed measuring
 
-`STATION_CALIBRATION` ran the exposure at the spots where the panoramas were taken. The
+`STATION_CALIBRATION.md` ran the exposure at the spots where the panoramas were taken. The
 material change came out much bigger there than over the whole walk: +1.101 dB against
 +0.115 dB at Korenmarkt, nine times larger. Two things could cause that, and they lead
 to opposite sentences in the paper.

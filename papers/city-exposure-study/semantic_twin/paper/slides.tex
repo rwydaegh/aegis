@@ -1,0 +1,262 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme{default}
+\usecolortheme{dove}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamerfont{frametitle}{size=\large}
+\setbeamertemplate{itemize item}{\textbullet}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+
+\newcommand{\uloc}{\hat{u}}
+\newcommand{\uext}{\hat{v}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\dOmega}{\,\mathrm{d}\Omega}
+
+\title{Pedestrian exposure in a city square}
+\subtitle{The method in five equations}
+\author{Robin Wydaeghe}
+\date{}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{The quantity}
+  A pedestrian in a city square receives power from many base stations at once.
+  The buildings block part of it and reflect part of it back. That is one number:
+  \begin{equation*}
+    \boxed{\;\chi = \frac{S}{S_0}\;}
+  \end{equation*}
+  \begin{itemize}
+    \item $S$ is the power density arriving at the head in the real square, in W/m$^2$.
+    \item $S_0$ is what the same network delivers at the same point over open ground.
+    \item $\chi$ is dimensionless. It is $1$ in free space, below $1$ where the
+      square shadows more than it reflects, above $1$ where it reflects more than
+      it shadows.
+  \end{itemize}
+  \vspace{0.4em}
+  A ratio rather than an absolute level, because the transmit power, the site
+  count and the site positions are not public at millimetre wave and are not
+  properties of the square. Dividing removes all three.
+\end{frame}
+
+\begin{frame}{Notation}
+  Unit vectors carry a hat. Elevation $\alpha$ is measured up from the horizon,
+  so $\alpha = 0$ is level with the head.
+  \begin{center}
+    \begin{tabular}{lll}
+      \toprule
+      Symbol & Meaning & Unit \\
+      \midrule
+      $\x$        & observation point, the head          & m \\
+      $\uloc$     & direction a ray {\itshape leaves} $\x$   & -- \\
+      $\uext$     & direction a ray {\itshape escapes} the scene & -- \\
+      $w$         & power carried by one ray, $1$ at launch & -- \\
+      $Q(\uext)$  & share of incident power per steradian of sky & sr$^{-1}$ \\
+      $\Phi(\uloc)$ & power arriving per steradian, in units of $S_0$ & sr$^{-1}$ \\
+      $\alpha$    & elevation above the horizon          & rad \\
+      $\rho$      & slant range from $\x$ to a site      & m \\
+      $\nu$       & sites per unit volume                & m$^{-3}$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{0.3em}
+  Two directions do all the work. $\uloc$ is where a ray starts, $\uext$ is
+  where it ends up. They are equal only when nothing was hit.
+\end{frame}
+
+\begin{frame}{The move: trace outward, not inward}
+  Computing $\chi$ directly means putting a transmitter at every position a base
+  station could occupy. Instead everything is computed at the one point where the
+  person stands.
+
+  \vspace{0.6em}
+  Launch rays from $\x$, follow them until they leave the square, weight each by
+  how likely a base station is to sit where it went. Reciprocity licenses this:
+  \begin{center}
+    a ray leaving along $\uloc$ and escaping along $\uext$ with attenuation $w$
+    \\[0.2em]
+    $\Longleftrightarrow$
+    \\[0.2em]
+    a wave from a source at $\uext$ reaching $\x$ from $\uloc$, attenuated by the same $w$.
+  \end{center}
+
+  \vspace{0.6em}
+  \textbf{One outward trace answers every source position at once.}
+
+  \vspace{0.4em}
+  It also buys the rest of the method. Transmitter and receiver sit at the same
+  point, so a street level photograph taken from that point sees the surfaces the
+  early bounces hit. Facade material is measured, not assumed.
+\end{frame}
+
+\begin{frame}{Where the sources are: $Q(\uext)$}
+  Base station positions are unknown, so they are a density rather than a list:
+  $\nu$ sites per unit volume in a slab, heights $h_{\min}$ to $h_{\max}$ above
+  the head, horizontal ranges $r_{\min}$ to $r_{\max}$.
+
+  Count the sites in a narrow cone at elevation $\alpha$:
+  \begin{equation*}
+    \mathrm{d}N = \nu \dOmega \int_{\rho_-(\alpha)}^{\rho_+(\alpha)} \rho^2 \, \mathrm{d}\rho
+    = \frac{\nu}{3}\left[\rho_+^3(\alpha) - \rho_-^3(\alpha)\right] \dOmega ,
+  \end{equation*}
+  \begin{equation*}
+    \rho_-(\alpha) = \max\!\left(\frac{h_{\min}}{\sin\alpha}, \frac{r_{\min}}{\cos\alpha}\right),
+    \qquad
+    \rho_+(\alpha) = \min\!\left(\frac{h_{\max}}{\sin\alpha}, \frac{r_{\max}}{\cos\alpha}\right).
+  \end{equation*}
+  Every site is assumed to deliver the same power at the head, because each one
+  sets its power to cover its own cell. So the power share follows the count:
+  \begin{equation*}
+    \boxed{\;Q(\uext) \;\propto\; \rho_+^3(\alpha) - \rho_-^3(\alpha)\;}
+    \qquad \text{and} \qquad \oint Q(\uext) \dOmega = 1 .
+  \end{equation*}
+  Only elevation appears. A uniform density on level ground has nothing to
+  distinguish one compass bearing from another.
+\end{frame}
+
+\begin{frame}{Two consequences of $Q$}
+  \textbf{The support is not a free parameter.} A direction can hold a site only
+  where $\rho_- \le \rho_+$, so the height band and the range band already fix
+  the elevation limits:
+  \begin{equation*}
+    \arctan\frac{h_{\min}}{r_{\max}} \;\le\; \alpha \;\le\; \arctan\frac{h_{\max}}{r_{\min}} .
+  \end{equation*}
+
+  \vspace{0.5em}
+  \textbf{The near horizon carries most of the measure}, and the near horizon is
+  where the buildings act. A distant site sits low in the sky, so its path grazes
+  along the street and a single facade can intercept it. A site overhead has no
+  facade in the way.
+
+  \vspace{0.5em}
+  That is why the shape of the square changes the answer at all.
+
+  \vspace{0.5em}
+  Normalising $Q$ to unit integral is what makes $\chi$ dimensionless and equal
+  to $1$ in free space. The free space denominator $S_0$ is therefore never
+  computed.
+\end{frame}
+
+\begin{frame}{The estimate}
+  A ray launched into $\uloc$ and escaping into $\uext$ collects from the sources
+  lying in $\uext$, which carry a share $Q(\uext)$, and delivers a fraction $w$
+  of it. Average over the rays launched into $\uloc$, then integrate:
+  \begin{equation*}
+    \Phi(\uloc) = \big\langle\, w \, Q(\uext) \,\big\rangle_{\uloc} ,
+    \qquad
+    \boxed{\;\chi = \oint \Phi(\uloc) \dOmega\;}
+  \end{equation*}
+  In practice the sphere of launch directions is split into $M$ cells of near
+  equal solid angle, $N$ rays are launched uniformly at random, $n_c$ of them
+  land in cell $c$, and each escaping ray deposits into the cell it was
+  \emph{launched} into:
+  \begin{equation*}
+    \hat{\chi} = \frac{4\pi}{M} \sum_{c=1}^{M} \frac{1}{n_c}
+    \sum_{j\,:\,c(j)=c} w_j \, Q(\uext_j) .
+  \end{equation*}
+  Stratifying by launch cell matters because $Q$ varies by orders of magnitude
+  across the sphere. In free space every ray escapes with $w = 1$ and $\uext_j =
+  \uloc_j$, so this reduces to a quadrature of $Q$ and returns $1$, as it must.
+\end{frame}
+
+\begin{frame}{The split that makes it readable}
+  Every ray either escapes untouched or reflects at least once, so the sum
+  partitions with nothing left over:
+  \begin{equation*}
+    \boxed{\;\chi = \chi_{\mathrm{dir}} + \chi_{\mathrm{ref}}\;}
+  \end{equation*}
+  \begin{itemize}
+    \item $\chi_{\mathrm{dir}}$ collects the untouched rays. Under the isotropic
+      model it equals the \emph{sky fraction}, the share of directions from the
+      head reaching open sky. This is checked as an identity, and it holds to
+      $0.0004$\,dB.
+    \item $\chi_{\mathrm{ref}}$ is everything the surroundings return, and it is
+      strictly positive.
+  \end{itemize}
+  \vspace{0.5em}
+  This separates the only two things a square can do: hide sky, and reflect.
+  Both are reported, because a $\chi$ near $1$ can mean an open square or a
+  closed one that reflects back what it blocked.
+\end{frame}
+
+\begin{frame}{Inside the bounce loop}
+  Roughness splits the reflection rather than blurring it. At each interaction
+  the fraction of reflected power surviving as a mirror reflection is the
+  Rayleigh factor
+  \begin{equation*}
+    \kappa = \exp\!\left[-\left(\frac{4\pi \sigma_h \cos\theta_i}{\lambda}\right)^{\!2}\right] .
+  \end{equation*}
+  The outgoing direction is drawn as a mirror reflection with probability
+  $\kappa$, and from a cosine weighted lobe about the normal otherwise. Choosing
+  one lobe with a probability equal to its share of the energy needs no
+  compensating weight, because the two cancel.
+
+  \vspace{0.5em}
+  Note the $\cos\theta_i$: a surface that scatters at normal incidence behaves as
+  a mirror at grazing incidence. This is the only place that angle dependence
+  enters.
+
+  \vspace{0.5em}
+  Rays still travelling after $L$ interactions are dropped, and the power they
+  carried is reported as a share of the total. The truncation is measured rather
+  than assumed.
+\end{frame}
+
+\begin{frame}{What the method assumes}
+  Three that bound everything else.
+
+  \vspace{0.6em}
+  \textbf{Far field.} Every source illuminates the square with a plane wave. The
+  closest position any model admits is 10\,m from the head, and $2D^2/\lambda =
+  9$\,m at 15\,GHz for the 0.3\,m apertures involved.
+
+  \vspace{0.5em}
+  \textbf{Powers add, phases do not.} At 15\,GHz and 100\,m the phase of a path
+  turns by about $3.1\times10^{4}$\,rad per radian of exit angle. Resolving it
+  would need on the order of $10^{10}$ angular cells against the 512 used here.
+  Any phase this method could carry would be noise.
+
+  \vspace{0.5em}
+  \textbf{Sites are a density, not a list.} Positions are unknown and are modelled
+  as uniform over a slab, bounded in height and range.
+
+  \vspace{0.6em}
+  Diffraction is absent by construction. That is the largest known hole and it is
+  stated rather than hidden.
+\end{frame}
+
+\begin{frame}{The method in one line}
+  \begin{center}
+    \Large
+    Launch rays from the head, weight each by $Q$ where it escapes,
+    \\[0.3em]
+    and the ratio to free space falls out of one trace.
+  \end{center}
+  \vspace{1.2em}
+  \begin{center}
+    \begin{tabular}{ll}
+      \toprule
+      $\chi = S/S_0$ & the quantity, $1$ in free space \\
+      $Q(\uext) \propto \rho_+^3 - \rho_-^3$ & where the sources are \\
+      $\Phi(\uloc) = \langle w\,Q(\uext)\rangle_{\uloc}$ & what arrives per steradian \\
+      $\chi = \oint \Phi \dOmega$ & the estimate \\
+      $\chi = \chi_{\mathrm{dir}} + \chi_{\mathrm{ref}}$ & sky hidden, power returned \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{1.0em}
+  \begin{center}
+    Co-located transmitter and receiver is what lets a photograph
+    \\
+    from the standpoint measure the material the first bounce hits.
+  \end{center}
+\end{frame}
+
+\end{document}
