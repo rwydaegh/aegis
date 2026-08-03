@@ -226,5 +226,17 @@ once.
 | `methods.pdf` | 11 | 0 | 0 |
 | `si.pdf` | 11 | 0 | 0 |
 
-Tests and lint: **980 passed, 2 skipped, 0 failed**, `ruff check` clean and 166
-files already formatted.
+Tests and lint: **1008 passed, 2 skipped, 0 failed**, `ruff check` clean and 166
+files already formatted. The count rose from 980 during the night because the
+coverage ladder work brought its own tests.
+
+## What was still running when this was written
+
+Two detached jobs on the rented box, both launched through `tools/blgpu.sh` so
+they survive a dropped connection, and both of which commit their own work:
+
+- the Blender scenes for the remaining seven squares, `PROPAGATION_BLENDS.md`
+- the seven-square material ladder, `COVERAGE_LADDER.md`
+
+If either report is absent, check `tools/blgpu.sh status` and the job directories
+under `/home/user/aegis/.blgpu_jobs/` on the box. Nothing else is outstanding.
