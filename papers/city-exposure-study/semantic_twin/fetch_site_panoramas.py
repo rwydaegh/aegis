@@ -18,14 +18,30 @@ sees one ring of facades many times over.
 Only panoramas from the walk's own capture date are eligible, so the set is
 temporally coherent and does not mix a 2014 scaffold with a 2024 facade.
 
-The screener picks that date by largest connected component, and at one site in
-ten that rule picks the wrong thing. At Hachiko the 2018-05 component is 105
-panoramas of the Shibuchika underground arcade and the Shibuya station concourse,
-which beat every outdoor drive on count and produced thirteen panoramas with a
-measured sky fraction of 0.000. An indoor panorama cannot be skyline-registered
-at all, so ``--walk-date`` overrides the screener and names the capture date to
-walk. Prefer it over relaxing the alignment: the failure is in the imagery, not
-in the objective.
+The screener picks that date by largest connected component, and at three sites
+in eleven that rule picks the wrong thing. At Hachiko the 2018-05 component is
+105 panoramas of the Shibuchika underground arcade and the Shibuya station
+concourse, which beat every outdoor drive on count and produced thirteen
+panoramas with a measured sky fraction of 0.000. At Rynek Glowny the 2024-11
+component is 162 panoramas of the inside of the Cloth Hall, and at Place du
+Capitole the 2018-12 component is 118 panoramas of the inside of the Capitole.
+Both are third party virtual tours, both beat every outdoor capture on count,
+and neither has a single station with open sky above it. An indoor panorama
+cannot be skyline-registered at all, so ``--walk-date`` overrides the screener
+and names the capture date to walk. Prefer it over relaxing the alignment: the
+failure is in the imagery, not in the objective.
+
+``--open-sky-m`` catches the rest of the same failure without a manual
+override, and it is on by default. A candidate is dropped when the topmost tile
+surface above its easting and northing sits more than that far above the
+scene datum, which is what an arcade, a station concourse or a cathedral nave
+looks like from above. It is a screen on the geometry rather than on the image,
+so it costs no request and it runs before any tile is paid for. It is not a
+substitute for the sky fraction measured on the segmented panorama, which is
+the thing that finally decides whether a station registers, only a way of not
+spending 400 requests to find that out. Where a walk mixes indoor and outdoor
+stations, as the 2020-04 walk of the Rynek does at 55 of 118, the filter turns
+an unusable set into a usable one.
 
 Run from the ``semantic_twin`` directory::
 
@@ -84,6 +100,35 @@ def spread_subset(positions: np.ndarray, count: int) -> list[int]:
     return chosen
 
 
+def topmost_surface(
+    support_mesh: tuple[np.ndarray, np.ndarray],
+    positions: np.ndarray,
+) -> np.ndarray:
+    """Height of the highest tile surface above each easting and northing.
+
+    NaN where the crop holds nothing above the point, which happens at the rim
+    of a mesh and is treated as unknown rather than as open sky.
+    """
+    try:
+        import trimesh
+        from trimesh.ray.ray_pyembree import RayMeshIntersector
+    except ImportError as exc:  # pragma: no cover - exercised only without the extra
+        raise SystemExit(
+            "the open sky filter needs the raycast extra: pip install trimesh embreex, "
+            "or pass --open-sky-m 0 to select on count alone"
+        ) from exc
+    vertices, faces = support_mesh
+    mesh = trimesh.Trimesh(vertices=np.asarray(vertices, np.float64), faces=np.asarray(faces), process=False)
+    ceiling = float(mesh.vertices[:, 2].max()) + 50.0
+    origins = np.column_stack([positions, np.full(len(positions), ceiling)])
+    directions = np.tile(np.array([0.0, 0.0, -1.0]), (len(positions), 1))
+    locations, index_ray, _ = RayMeshIntersector(mesh).intersects_location(origins, directions, multiple_hits=False)
+    height = np.full(len(positions), np.nan)
+    if len(index_ray):
+        height[index_ray] = locations[:, 2]
+    return height
+
+
 def site_row(screening: pathlib.Path, name: str) -> dict[str, Any]:
     rows = json.loads(screening.read_text())["rows"]
     for row in rows:
@@ -96,6 +141,10 @@ def select(
     row: dict[str, Any],
     count: int,
     walk_date: str | None = None,
+    *,
+    support_mesh: tuple[np.ndarray, np.ndarray] | None = None,
+    ground_z_m: float | None = None,
+    open_sky_m: float = 2.5,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Choose the spread subset of the site's walk, with its own provenance."""
     date = walk_date or row["walk_date"]
@@ -104,6 +153,21 @@ def select(
         dates = sorted({p["date"] for p in row["panoramas"] if p["links"]})
         raise SystemExit(f"{row['key']}: no linked panoramas dated {date}, available: {', '.join(dates)}")
     positions = np.array([[p["east_m"], p["north_m"]] for p in walk], dtype=np.float64)
+
+    roofed = 0
+    if open_sky_m > 0.0 and support_mesh is not None and ground_z_m is not None:
+        above = topmost_surface(support_mesh, positions)
+        outdoor = ~(above > ground_z_m + open_sky_m)
+        roofed = int((~outdoor).sum())
+        if not outdoor.any():
+            raise SystemExit(
+                f"{row['key']}: every one of the {len(walk)} panoramas dated {date} has tile surface more "
+                f"than {open_sky_m} m above it, so the whole capture is indoors. Name another capture "
+                f"date with --walk-date."
+            )
+        walk = [p for p, keep in zip(walk, outdoor, strict=True) if keep]
+        positions = positions[outdoor]
+
     order = spread_subset(positions, count)
     picked = [walk[i] for i in order]
     taken = positions[order] if order else np.zeros((0, 2))
@@ -116,6 +180,15 @@ def select(
         "screened_walk_date": row["walk_date"],
         "walk_date_overridden": walk_date is not None and walk_date != row["walk_date"],
         "walk_panoramas": len(walk),
+        "walk_panoramas_dropped_as_roofed": roofed,
+        "open_sky_m": open_sky_m if open_sky_m > 0.0 else None,
+        "open_sky_rule": (
+            "a candidate is dropped when the topmost tile surface above it is more than open_sky_m "
+            "above the scene ground datum, which is what an arcade or a concourse looks like from "
+            "above. It screens the geometry, not the image, so it costs no request."
+        )
+        if open_sky_m > 0.0
+        else None,
         "selected": len(picked),
         "minimum_separation_m": round(min(separations), 2) if separations else None,
         "median_separation_m": round(float(np.median(separations)), 2) if separations else None,
@@ -139,17 +212,26 @@ def fetch(
     workers: int,
     out_root: pathlib.Path | None = None,
     walk_date: str | None = None,
+    open_sky_m: float = 2.5,
 ) -> dict[str, Any]:
     scene = load_scene(scene_path)
     name = str(scene["name"])
     row = site_row(screening, name)
-    picked, provenance = select(row, count, walk_date)
-    out_dir = out_root or (SCRIPT_DIR / "data" / "panoramas" / name)
-    out_dir.mkdir(parents=True, exist_ok=True)
 
     support_mesh = load_support_mesh(scene, root=SCRIPT_DIR)
     if support_mesh is None:
         raise SystemExit(f"{name}: source_mesh is missing, so no camera altitude can be measured")
+
+    picked, provenance = select(
+        row,
+        count,
+        walk_date,
+        support_mesh=support_mesh,
+        ground_z_m=float(scene["camera_ground_z_m"]),
+        open_sky_m=open_sky_m,
+    )
+    out_dir = out_root or (SCRIPT_DIR / "data" / "panoramas" / name)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     client = StreetViewTiles(inhouse_api_key())
     session = client.create_session()
@@ -217,6 +299,15 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         "--walk-date",
         help="capture date to walk, as YYYY-MM, overriding the screener's largest-component choice",
     )
+    parser.add_argument(
+        "--open-sky-m",
+        type=float,
+        default=2.5,
+        help=(
+            "drop a candidate whose topmost tile surface sits more than this far above the scene "
+            "ground datum, which is what an arcade or a concourse looks like from above. 0 disables it."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -230,11 +321,13 @@ def main(argv: list[str] | None = None) -> int:
         workers=args.workers,
         out_root=args.out,
         walk_date=args.walk_date,
+        open_sky_m=args.open_sky_m,
     )
     selection = manifest["selection"]
     print(
         f"[done] {manifest['site']}: {len(manifest['panorama_dirs'])} panoramas, "
         f"minimum separation {selection['minimum_separation_m']} m, "
+        f"{selection['walk_panoramas_dropped_as_roofed']} candidates dropped as roofed, "
         f"about {manifest['approximate_requests']} requests"
     )
     return 0

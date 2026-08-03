@@ -1,0 +1,134 @@
+from __future__ import annotations
+
+import json
+
+import numpy as np
+import pytest
+
+import run_exposure
+
+
+def test_a_site_with_a_binding_at_that_crop_resolves(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_exposure, "SITE_SEMANTICS", tmp_path)
+    site = tmp_path / "prague_staromestske"
+    site.mkdir()
+    (site / "walk_semantic_250m.npz").write_bytes(b"")
+    assert run_exposure.site_walk_semantics("prague_staromestske", 250) is not None
+
+
+def test_the_same_site_at_another_crop_does_not(tmp_path, monkeypatch):
+    # A binding is indexed by triangle with no join key, so the crop radius is
+    # part of its identity and a 250 m file must not answer for a 130 m run.
+    monkeypatch.setattr(run_exposure, "SITE_SEMANTICS", tmp_path)
+    site = tmp_path / "prague_staromestske"
+    site.mkdir()
+    (site / "walk_semantic_250m.npz").write_bytes(b"")
+    assert run_exposure.site_walk_semantics("prague_staromestske", 130) is None
+
+
+def test_korenmarkt_keeps_its_published_mapillary_binding_at_130_m(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_exposure, "SITE_SEMANTICS", tmp_path)
+    legacy = tmp_path / "legacy.npz"
+    legacy.write_bytes(b"")
+    monkeypatch.setattr(run_exposure, "WALK_SEMANTIC", legacy)
+    assert run_exposure.site_walk_semantics("korenmarkt", 130) == legacy
+
+
+def test_korenmarkt_falls_through_to_its_own_binding_at_another_crop(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_exposure, "SITE_SEMANTICS", tmp_path)
+    legacy = tmp_path / "legacy.npz"
+    legacy.write_bytes(b"")
+    monkeypatch.setattr(run_exposure, "WALK_SEMANTIC", legacy)
+    site = tmp_path / "korenmarkt"
+    site.mkdir()
+    (site / "walk_semantic_250m.npz").write_bytes(b"")
+    assert run_exposure.site_walk_semantics("korenmarkt", 250) == site / "walk_semantic_250m.npz"
+
+
+def test_a_site_with_no_binding_resolves_to_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_exposure, "SITE_SEMANTICS", tmp_path)
+    assert run_exposure.site_walk_semantics("krakow_rynek", 250) is None
+
+
+def fishnet_at(root, site, *, mesh="data/geometry/{site}/inhouse_leaf_130m.ply", manifest="fishnet_manifest.json"):
+    directory = root / "outputs" / f"{site}_fishnet_vistas"
+    directory.mkdir(parents=True, exist_ok=True)
+    np.savez(directory / "h+00_000_fishnet.npz", face_class=np.zeros(1))
+    (directory / manifest).write_text(json.dumps({"site": site, "mesh": mesh.format(site=site)}))
+    return directory
+
+
+def test_the_fishnet_resolver_needs_a_surface_set_and_the_mesh_it_was_cut_against(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_exposure, "ROOT", tmp_path)
+    directory = tmp_path / "outputs" / "milan_duomo_fishnet_vistas"
+    directory.mkdir(parents=True)
+    assert run_exposure.site_fishnet("milan_duomo") is None, "an empty directory is not a fishnet"
+
+    fishnet_at(tmp_path, "milan_duomo")
+    assert run_exposure.site_fishnet("milan_duomo") is None, "and neither is one without its mesh"
+
+    mesh = tmp_path / "data" / "geometry" / "milan_duomo"
+    mesh.mkdir(parents=True)
+    (mesh / "inhouse_leaf_130m.ply").write_bytes(b"")
+    resolved = run_exposure.site_fishnet("milan_duomo")
+    assert resolved is not None
+    assert resolved[0] == directory
+    assert resolved[1] == mesh / "inhouse_leaf_130m.ply"
+
+
+def test_the_mesh_comes_from_the_manifest_and_not_from_the_crop_being_run(tmp_path, monkeypatch):
+    # Every fishnet in this repository was cut against the 130 m mesh. Pairing
+    # it with the 250 m mesh because the run is 250 m would hand bind() two
+    # different triangle numberings and it would join them without complaining.
+    monkeypatch.setattr(run_exposure, "ROOT", tmp_path)
+    fishnet_at(tmp_path, "newyork_timessquare")
+    geometry = tmp_path / "data" / "geometry" / "newyork_timessquare"
+    geometry.mkdir(parents=True)
+    for crop in (130, 250):
+        (geometry / f"inhouse_leaf_{crop}m.ply").write_bytes(b"")
+    assert run_exposure.site_fishnet("newyork_timessquare")[1] == geometry / "inhouse_leaf_130m.ply"
+
+
+def test_a_manifest_naming_a_bare_file_resolves_against_the_site_geometry(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_exposure, "ROOT", tmp_path)
+    fishnet_at(tmp_path, "prague_staromestske", mesh="inhouse_leaf_130m.ply", manifest="site_fishnet_manifest.json")
+    geometry = tmp_path / "data" / "geometry" / "prague_staromestske"
+    geometry.mkdir(parents=True)
+    (geometry / "inhouse_leaf_130m.ply").write_bytes(b"")
+    assert run_exposure.site_fishnet("prague_staromestske")[1] == geometry / "inhouse_leaf_130m.ply"
+
+
+def test_a_fishnet_with_no_manifest_at_all_does_not_resolve(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_exposure, "ROOT", tmp_path)
+    directory = tmp_path / "outputs" / "madrid_plazamayor_fishnet_vistas"
+    directory.mkdir(parents=True)
+    np.savez(directory / "h+00_000_fishnet.npz", face_class=np.zeros(1))
+    geometry = tmp_path / "data" / "geometry" / "madrid_plazamayor"
+    geometry.mkdir(parents=True)
+    (geometry / "inhouse_leaf_130m.ply").write_bytes(b"")
+    assert run_exposure.site_fishnet("madrid_plazamayor") is None
+
+
+def test_a_fishnet_written_one_level_down_is_named_rather_than_silently_missed(tmp_path, monkeypatch):
+    # bind() globs the top of the directory and does not recurse, so surfaces in
+    # a folder per panorama are built but unreachable. Returning None would read
+    # as "not built yet" and send someone to rebuild what is already there.
+    monkeypatch.setattr(run_exposure, "ROOT", tmp_path)
+    nested = tmp_path / "outputs" / "newyork_timessquare_fishnet_vistas" / "pano_07_CAoSFkNJSE0wb2dL"
+    nested.mkdir(parents=True)
+    np.savez(nested / "h+00_000_fishnet.npz", face_class=np.zeros(1))
+    with pytest.raises(ValueError, match="one level down"):
+        run_exposure.site_fishnet("newyork_timessquare")
+
+
+def test_a_flat_fishnet_beside_a_nested_one_still_resolves(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_exposure, "ROOT", tmp_path)
+    directory = tmp_path / "outputs" / "newyork_timessquare_fishnet_vistas"
+    (directory / "pano_07_CAoSFkNJSE0wb2dL").mkdir(parents=True)
+    np.savez(directory / "pano_07_CAoSFkNJSE0wb2dL" / "h+00_000_fishnet.npz", face_class=np.zeros(1))
+    np.savez(directory / "pano_07_CAoSFkNJSE0wb2dL_h+00_000_fishnet.npz", face_class=np.zeros(1))
+    (directory / "site_fishnet_manifest.json").write_text(json.dumps({"mesh": "inhouse_leaf_130m.ply"}))
+    mesh = tmp_path / "data" / "geometry" / "newyork_timessquare"
+    mesh.mkdir(parents=True)
+    (mesh / "inhouse_leaf_130m.ply").write_bytes(b"")
+    assert run_exposure.site_fishnet("newyork_timessquare") == (directory, mesh / "inhouse_leaf_130m.ply")
