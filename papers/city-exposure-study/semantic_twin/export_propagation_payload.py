@@ -394,6 +394,24 @@ def read_taxonomy(path: pathlib.Path) -> dict[int, str]:
     return {int(key): value for key, value in json.loads(path.read_text())["entity_id2label"].items()}
 
 
+def taxonomy_file(site: str) -> pathlib.Path | None:
+    """The Vistas id to name table for a site, wherever that site keeps it.
+
+    Korenmarkt has one panorama and writes the table once at the site root. The
+    sites the six site run added have several, and each capture keeps its own
+    copy. It is the same 66 class table either way, so the first one found is
+    the right one, and the alternative is a site whose fishnet exists on disk and
+    silently never reaches the blend because the file it needs sits one
+    directory deeper. That is what happened to New York.
+    """
+    root = SCRIPT_DIR / "data" / "panoramas" / site
+    direct = root / "semantics" / "semantics.json"
+    if direct.exists():
+        return direct
+    found = sorted(root.glob("*/semantics/semantics.json"))
+    return found[0] if found else None
+
+
 def class_palette(count: int) -> np.ndarray:
     """One tint per class id, deterministic and separated on neighbouring ids.
 
@@ -561,10 +579,29 @@ FISHNET_FACE_COLUMNS: dict[str, Any] = {
 }
 
 
-def support_mesh_of(directory: pathlib.Path) -> pathlib.Path:
-    """The support mesh a fishnet run was cut against, read from its own manifest."""
-    manifest = json.loads((directory / "fishnet_manifest.json").read_text())
-    return SCRIPT_DIR / manifest["mesh"]
+def support_mesh_of(directory: pathlib.Path) -> pathlib.Path | None:
+    """The support mesh a fishnet run was cut against, read from its own manifest.
+
+    A one panorama site writes one manifest beside its surfaces. A several
+    panorama site writes a site level one and a per capture one under each, and
+    the site level one names the mesh by basename rather than by path. Both
+    shapes are read, and the basename is resolved against the per capture
+    manifest that does carry a path, because guessing which city a bare
+    ``inhouse_leaf_130m.ply`` belongs to is how you cut one square's semantics
+    against another square's geometry.
+    """
+    for name in ("fishnet_manifest.json", "site_fishnet_manifest.json"):
+        path = directory / name
+        if not path.exists():
+            continue
+        stated = SCRIPT_DIR / json.loads(path.read_text())["mesh"]
+        if stated.exists():
+            return stated
+    for path in sorted(directory.glob("*/fishnet_manifest.json")):
+        stated = SCRIPT_DIR / json.loads(path.read_text())["mesh"]
+        if stated.exists():
+            return stated
+    return None
 
 
 def triangle_soup(vertices: np.ndarray, faces: np.ndarray, indices: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -573,7 +610,7 @@ def triangle_soup(vertices: np.ndarray, faces: np.ndarray, indices: np.ndarray) 
     return corners, np.arange(corners.shape[0], dtype=np.int32).reshape(-1, 3)
 
 
-def support_evidence_layer(directory: pathlib.Path, class_count: int) -> dict[str, Any]:
+def support_evidence_layer(directory: pathlib.Path, class_count: int) -> dict[str, Any] | None:
     """Every support triangle any view considered, with what the pixels said about it.
 
     This is the layer that answers what the segmenter saw on a given wall and how
@@ -587,7 +624,10 @@ def support_evidence_layer(directory: pathlib.Path, class_count: int) -> dict[st
 
     from semantic_twin.fishnet import REJECTION_REASONS
 
-    mesh = trimesh.load(support_mesh_of(directory), process=False, force="mesh")
+    support = support_mesh_of(directory)
+    if support is None:
+        return None
+    mesh = trimesh.load(support, process=False, force="mesh")
     count = int(mesh.faces.shape[0])
     clean = np.zeros(count)
     confidence = np.zeros(count)
@@ -628,7 +668,7 @@ def support_evidence_layer(directory: pathlib.Path, class_count: int) -> dict[st
     return layer
 
 
-def rejected_layer(directory: pathlib.Path) -> dict[str, Any]:
+def rejected_layer(directory: pathlib.Path) -> dict[str, Any] | None:
     """The candidate surface the cutter refused, as geometry, with the reason.
 
     Deduplicated on the pair of source triangle and reason, because one triangle
@@ -640,7 +680,10 @@ def rejected_layer(directory: pathlib.Path) -> dict[str, Any]:
 
     import trimesh
 
-    mesh = trimesh.load(support_mesh_of(directory), process=False, force="mesh")
+    support = support_mesh_of(directory)
+    if support is None:
+        return None
+    mesh = trimesh.load(support, process=False, force="mesh")
     pairs: dict[tuple[int, int], float] = {}
     for path in sorted(directory.glob("*_fishnet.npz")):
         surface = np.load(path)
@@ -814,6 +857,19 @@ def registration_layer(site: str) -> dict[str, Any] | None:
 
 
 #: Verdict order, so the blend can colour a marker without parsing a string.
+#: Every array name the evidence half writes starts with one of these, so a
+#: reopened payload can be stripped back to the traced half exactly.
+EVIDENCE_PREFIXES = (
+    "fishnet_",
+    "support_evidence_",
+    "rejected_",
+    "depth_mesh_",
+    "depth_monocular_",
+    "pano_",
+    "body_layer_",
+    "evidence_camera",
+)
+
 VERDICT_CODES = {"usable": 0, "suspect": 1, "camera inside the geometry": 2}
 
 
@@ -917,12 +973,12 @@ def attach_evidence(args: argparse.Namespace, bundle: dict[str, Any]) -> None:
         payload["evidence_camera"] = pose["position"].astype(np.float32)
 
     taxonomies = {
-        "vistas": SCRIPT_DIR / "data" / "panoramas" / args.site / "semantics" / "semantics.json",
+        "vistas": taxonomy_file(args.site),
         "sam3": OUTPUTS / f"{args.site}_sam3_projection_inputs" / "semantics.json",
     }
     for kind, key in (("vistas", "fishnet_vistas"), ("sam3", "fishnet_sam3")):
         directory = directories.get(key)
-        if directory is None or not taxonomies[kind].exists():
+        if directory is None or taxonomies[kind] is None or not taxonomies[kind].exists():
             continue
         names = read_taxonomy(taxonomies[kind])
         count = max(names) + 1
@@ -947,14 +1003,16 @@ def attach_evidence(args: argparse.Namespace, bundle: dict[str, Any]) -> None:
         )
 
     vistas = directories.get("fishnet_vistas")
-    if vistas is not None and taxonomies["vistas"].exists():
-        count = max(read_taxonomy(taxonomies["vistas"])) + 1
-        support = support_evidence_layer(vistas, count)
+    taxonomy = taxonomies["vistas"]
+    support = None
+    if vistas is not None and taxonomy is not None and taxonomy.exists():
+        support = support_evidence_layer(vistas, max(read_taxonomy(taxonomy)) + 1)
+    if support is not None:
         for name, value in support.items():
             if isinstance(value, np.ndarray):
                 payload[f"support_evidence_{name}"] = value
         refused = rejected_layer(vistas)
-        for name, value in refused.items():
+        for name, value in (refused or {}).items():
             if isinstance(value, np.ndarray):
                 payload[f"rejected_{name}"] = value
         report["rejected"] = {
@@ -1085,6 +1143,11 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="Skip the image side layers and export the traced ones alone",
     )
     parser.add_argument(
+        "--evidence-only",
+        action="store_true",
+        help="Reuse the traced half of an existing payload and rebuild only the image side layers",
+    )
+    parser.add_argument(
         "--depth-stride",
         type=int,
         default=4,
@@ -1093,10 +1156,27 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def reopen(args: argparse.Namespace) -> dict[str, Any]:
+    """Load a payload that was already traced, so the evidence can be rebuilt alone.
+
+    Tracing Times Square is two hours on this machine and gathering its evidence
+    is seconds. When only the second half changes, and it changed twice tonight,
+    retracing to pick the change up is the wrong shape of loop.
+    """
+    payload_path = args.out / f"{args.site}_payload.npz"
+    manifest_path = args.out / f"{args.site}_manifest.json"
+    stored = np.load(payload_path)
+    manifest = json.loads(manifest_path.read_text())
+    manifest.pop("evidence", None)
+    payload = {name: stored[name] for name in stored.files if not name.startswith(EVIDENCE_PREFIXES)}
+    print(f"[reopen] {payload_path.name}, {len(payload)} traced arrays kept", flush=True)
+    return {"payload": payload, "manifest": manifest}
+
+
 def main(argv: list[str] | None = None) -> int:
     args = arguments(argv)
     args.out.mkdir(parents=True, exist_ok=True)
-    bundle = trace_site(args)
+    bundle = reopen(args) if args.evidence_only else trace_site(args)
     if args.evidence:
         attach_evidence(args, bundle)
     payload_path = args.out / f"{args.site}_payload.npz"

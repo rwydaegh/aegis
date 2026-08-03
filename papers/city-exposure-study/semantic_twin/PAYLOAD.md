@@ -21,6 +21,7 @@ directory each one came from.
 python export_propagation_payload.py --site korenmarkt
 python export_propagation_payload.py --site krakow_rynek --no-evidence
 python export_propagation_payload.py --site korenmarkt --depth-stride 8
+python export_propagation_payload.py --site newyork_timessquare --evidence-only
 
 ~/blender-4.5/blender --background --python propagation_blender.py -- \
     --payload outputs/propagation_viz/korenmarkt_payload.npz \
@@ -37,10 +38,55 @@ flag is the difference between iterating on a figure and not.
 usual way to regenerate everything is to run that and the figures land beside the
 seven that were there before.
 
+`--evidence-only` reuses the traced half of a payload that already exists and
+rebuilds the image side alone. Tracing Times Square is two hours on this machine
+and gathering its evidence is seconds, so when only the second half changed the
+first half is not worth doing again.
+
 Evidence is discovered by directory name under `outputs`, so a site that has no
-panorama exports the traced layers alone and the blend opens with the collections
-it had before. Korenmarkt is the only site with the full set. Milan has a fishnet
+panorama exports the traced layers alone and the blend opens with those
+collections empty. Korenmarkt is the only site with the full set. New York has a
+Vistas fishnet over two admitted panoramas and nothing else. Milan has a fishnet
 and a mesh depth buffer and no body layer.
+
+## One file, fourteen collections
+
+There is one blend per site and it holds everything, in numbered collections
+named for a reader rather than for this script:
+
+| Collection | On at open | Source |
+| --- | --- | --- |
+| `01 city mesh` | yes | the traced half |
+| `02 semantic surface` | no | `<site>_fishnet_vistas_fused`, `<site>_fishnet_sam3` |
+| `03 image coverage` | no | the same fishnet run, accepted against rejected |
+| `04 refused faces` | no | the fishnet's rejected table |
+| `05 depth clouds` | no | `<site>_mesh_depth`, `<site>_depth_consistency_two_models` |
+| `06 panorama captures` | no | `registration_sky_conflict.json` and the pose files |
+| `07 bystander bodies` | no | `<site>_dynamic_bodies` |
+| `08 walk standpoints` | yes | the traced half |
+| `09 ray paths by fate` | yes | the traced half |
+| `10 ray paths by bounce` | no | the same paths, cut at their reflections |
+| `11 arrival spectrum` | yes | the traced half |
+| `12 transmitter positions` | yes | the illumination model |
+| `13 body exposure` | yes | the traced half |
+| `14 cameras` | yes | the figure cameras and one per registered pose |
+
+Every collection is created at every site whether or not the data for it
+exists, so an empty `05 depth clouds` says this site has no depth buffers rather
+than leaving you to notice a missing row. The seven that start off are off
+because they are heavy or because they duplicate a layer that is already on, not
+because they are secondary.
+
+Everything is in one frame. The payload is written in scene ENU metres with the
+hero standpoint at the origin, and every evidence layer is placed by the same
+transform the tracer used, which is why the semantic surface lands a median 6 cm
+from the drawn mesh rather than somewhere else entirely. That number is measured
+per site and is in the manifest.
+
+The blend also saves a viewport. A file built headlessly otherwise opens at the
+factory view, two metres from the origin with a hundred metre clip, which inside
+a 220 m square is a grey wall. The saved view sits over the standpoint at a
+three quarter angle with the clip opened past the far edge, in every workspace.
 
 ## The traced half
 
@@ -55,16 +101,24 @@ and a mesh depth buffer and no body layer.
 | `body_vertices`, `body_faces`, `body_sab_w_m2` | per phantom triangle | absorbed power density |
 | `network_*` | per source | where the illumination model's sources sit |
 
-The recorded paths are drawn twice, from the same arrays. The `rays` collection
-splits them by what happened at the end, five exclusive bundles. The `bounces`
-collection cuts the same polylines at their reflections and groups the segments
+The recorded paths are drawn twice, from the same arrays. `09 ray paths by fate`
+splits them by what happened at the end, five exclusive bundles. `10 ray paths
+by bounce` cuts the same polylines at their reflections and groups the segments
 by leg index, so leg zero is what left the standpoint, leg one is what carried
 on after the first surface, and so on. The second reading is the one the bounce
 budget is about: the panoramas measure the material for the first two
 reflections and nothing measures it after that. At Korenmarkt the four legs hold
 1200, 886, 437 and 245 segments, so switching the last object off shows how much
-of the fan lives past the evidence. `bounces` starts hidden because drawing it
-next to `rays` draws every path twice.
+of the fan lives past the evidence. The bounce split starts hidden because
+drawing it next to the fate split draws every path twice.
+
+The rays are `Curves` rather than legacy Blender curves, which is the only curve
+type that takes named attributes. Power is therefore on them three times: as the
+point radius, which is the cube root of throughput so a fourth bounce stays
+visible; as `value_throughput`, the exact number, in the spreadsheet; and as
+`power_db`, a colour over the decades the fan spans. The default shading layer
+is `fate`, the constant colour of the bundle, so the two readings are a click
+apart and neither has to be chosen at build time.
 
 ## The evidence half
 

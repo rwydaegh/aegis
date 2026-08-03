@@ -158,9 +158,46 @@ def use_gpu() -> str:
     raise RuntimeError("--gpu asked for, and Cycles found no OPTIX, CUDA, HIP, METAL or ONEAPI device")
 
 
-def collection(name: str) -> bpy.types.Collection:
-    made = bpy.data.collections.new(name)
+#: Internal key -> the name a person reads in the outliner. The keys stay short
+#: because the figure table and the build code index on them. The names are
+#: written for someone who opens the file having never read this script, which
+#: is the only audience the outliner has. Order is the order they are created
+#: in, and that is the order they appear in.
+COLLECTION_NAMES: dict[str, str] = {
+    "twin": "01 city mesh",
+    "semantics": "02 semantic surface",
+    "evidence": "03 image coverage",
+    "refused": "04 refused faces",
+    "depth": "05 depth clouds",
+    "panoramas": "06 panorama captures",
+    "bodies": "07 bystander bodies",
+    "walk": "08 walk standpoints",
+    "rays": "09 ray paths by fate",
+    "bounces": "10 ray paths by bounce",
+    "arrival": "11 arrival spectrum",
+    "network": "12 transmitter positions",
+    "body": "13 body exposure",
+    "cameras": "14 cameras",
+}
+
+#: key -> the collection, so the rest of the build and the figure table can keep
+#: using short keys while the file shows sentences.
+BUILT: dict[str, bpy.types.Collection] = {}
+
+
+def collection(key: str) -> bpy.types.Collection:
+    """The collection for a key, created on first use and numbered for reading.
+
+    Every key gets a collection whether or not anything goes in it. An empty one
+    is the honest answer to a site that has no panorama: the structure is the
+    same everywhere, and a layer that is missing is missing visibly rather than
+    by not being there to notice.
+    """
+    if key in BUILT:
+        return BUILT[key]
+    made = bpy.data.collections.new(COLLECTION_NAMES.get(key, key))
     bpy.context.scene.collection.children.link(made)
+    BUILT[key] = made
     return made
 
 
@@ -192,15 +229,22 @@ def attach_face_colour(obj: bpy.types.Object, name: str, rgba: np.ndarray) -> No
     attribute.data.foreach_set("color", corner.ravel())
 
 
-def attach_point_colour(obj: bpy.types.Object, name: str, rgba: np.ndarray) -> None:
-    """One colour per vertex, byte encoded.
+def attach_point_colour(obj: bpy.types.Object, name: str, rgba: np.ndarray, *, byte: bool = True) -> None:
+    """One colour per vertex, byte encoded unless asked otherwise.
 
     Byte rather than float because a cloud is a quarter of a million points and
     four bytes against sixteen decides whether the file is worth downloading.
     Eight bits per channel is more than a shaded scalar carries anyway, and the
     exact value is on the float attribute next to it.
+
+    Byte colours are stored non linearly, so a constant tint written this way
+    comes back out of the shader at a visibly different colour. That does not
+    matter for a ramp, where the reader is comparing one point against another
+    and both moved the same way, and it does matter for a fixed key colour, so
+    those pass ``byte=False``.
     """
-    attribute = obj.data.color_attributes.new(name=name, type="BYTE_COLOR", domain="POINT")
+    kind = "BYTE_COLOR" if byte else "FLOAT_COLOR"
+    attribute = obj.data.color_attributes.new(name=name, type=kind, domain="POINT")
     attribute.data.foreach_set("color", np.ascontiguousarray(rgba, dtype=np.float32).ravel())
 
 
@@ -258,13 +302,16 @@ def show_layer(obj: bpy.types.Object, channel: str) -> None:
     the attribute node, and solid shading with the colour source set to attribute
     uses whichever colour attribute is active. Setting one and not the other
     gives a viewport and a render that disagree, which is worse than either.
+
+    A curves datablock holds colour attributes and has no active one to set, so
+    only the shader half applies there.
     """
     for material in obj.data.materials:
         node = material.node_tree.nodes.get(LAYER_NODE) if material.use_nodes else None
         if node is not None:
             node.attribute_name = channel
     colours = obj.data.color_attributes
-    if channel in colours.keys():
+    if channel in colours.keys() and hasattr(colours, "active_color_index"):
         colours.active_color_index = colours.keys().index(channel)
 
 
@@ -405,38 +452,75 @@ def ray_bundles(payload, terminations: list[str]) -> dict[str, np.ndarray]:
     }
 
 
+def build_curves(
+    name: str,
+    points: np.ndarray,
+    lengths: np.ndarray,
+    radius: np.ndarray,
+    into: bpy.types.Collection,
+) -> bpy.types.Object:
+    """A hair curves object, which is the only curve type that carries attributes.
+
+    A legacy Blender curve has a per point radius and nothing else, so the power
+    a ray carries could be drawn and could not be read. A ``Curves`` datablock
+    takes named attributes on its points, so the same number is both the
+    thickness and a column in the spreadsheet, which is the convention the rest
+    of this file uses everywhere else.
+    """
+    curves = bpy.data.hair_curves.new(name)
+    curves.add_curves([int(value) for value in lengths])
+    curves.attributes["position"].data.foreach_set("vector", points.astype(np.float32).ravel())
+    if "radius" not in curves.attributes:
+        curves.attributes.new("radius", "FLOAT", "POINT")
+    curves.attributes["radius"].data.foreach_set("value", radius.astype(np.float32))
+    obj = bpy.data.objects.new(name, curves)
+    into.objects.link(obj)
+    return obj
+
+
 def build_rays(payload, terminations: list[str], into: bpy.types.Collection, *, base_radius: float) -> dict[str, int]:
-    """One poly curve object per bundle, with point radius carrying throughput.
+    """One curves object per bundle, carrying throughput as thickness and as a layer.
 
     Throughput spans several decades along a multi bounce path, so the radius is
     the cube root of it. That keeps a fourth bounce visible instead of
-    vanishing, and it is monotone, so thicker still means more power.
+    vanishing, and it is monotone, so thicker still means more power. The same
+    number is on the points twice more, as an exact ``value_throughput`` and as
+    a ``power_db`` colour over the decades it actually spans, so the fan can be
+    shaded by power rather than only thickened by it. The default layer is
+    ``fate``, the constant colour of the bundle, so nothing about the existing
+    reading changes until it is asked to.
     """
     vertices = payload["path_vertices"]
-    offsets = payload["path_offsets"]
-    throughput = payload["path_throughput"]
+    offsets = payload["path_offsets"].astype(np.int64)
+    throughput = np.clip(payload["path_throughput"].astype(np.float64), 1.0e-9, None)
+    decibels = 10.0 * np.log10(throughput)
+    span = (float(np.quantile(decibels, 0.02)), float(decibels.max()))
     counts: dict[str, int] = {}
     for name, mask in ray_bundles(payload, terminations).items():
         indices = np.flatnonzero(mask)
         counts[name] = int(indices.size)
-        curve = bpy.data.curves.new(name, type="CURVE")
-        curve.dimensions = "3D"
-        curve.bevel_depth = base_radius
-        curve.bevel_resolution = 1
-        curve.use_fill_caps = True
-        for i in indices:
-            start, stop = int(offsets[i]), int(offsets[i + 1])
-            points = vertices[start:stop]
-            spline = curve.splines.new("POLY")
-            spline.points.add(points.shape[0] - 1)
-            homogeneous = np.column_stack([points, np.ones(points.shape[0])]).astype(np.float32)
-            spline.points.foreach_set("co", homogeneous.ravel())
-            radius = np.cbrt(np.clip(throughput[start:stop], 1.0e-6, None)).astype(np.float32)
-            spline.points.foreach_set("radius", radius)
-        obj = bpy.data.objects.new(name, curve)
-        into.objects.link(obj)
+        keep = (
+            np.concatenate([np.arange(offsets[i], offsets[i + 1]) for i in indices])
+            if indices.size
+            else np.zeros(0, dtype=np.int64)
+        )
+        lengths = offsets[indices + 1] - offsets[indices]
+        obj = build_curves(
+            name,
+            vertices[keep],
+            lengths,
+            base_radius * np.cbrt(throughput[keep]),
+            into,
+        )
         colour, visible = RAY_STYLE[name]
-        assign(obj, emissive_material(f"ray_{name}", None, colour))
+        attach_point_colour(obj, "fate", np.tile((*colour, 1.0), (keep.size, 1)), byte=False)
+        attach_point_colour(obj, "power_db", colour_ramp(decibels[keep], *span))
+        attach_values(obj, "value_throughput", throughput[keep], "POINT")
+        obj["colour_layers"] = ["fate", "power_db"]
+        obj["power_db_range"] = list(span)
+        obj["reading"] = "thickness is the cube root of throughput, and power_db is the same number as a colour"
+        assign(obj, emissive_material(f"ray_{name}", "fate"))
+        show_layer(obj, "fate")
         obj.hide_render = not visible
     return counts
 
@@ -1117,6 +1201,47 @@ def build_evidence_cameras(
         print(f"[camera] cam_bystanders {reach:.1f} m out, crowd spread {spread:.1f} m", flush=True)
 
 
+def frame_the_viewport(twin: bpy.types.Object, hero: np.ndarray) -> None:
+    """Save a view that opens on the square, in every workspace the file ships with.
+
+    A blend built headlessly keeps the factory viewport, which looks at the
+    origin from two metres away with a one hundred metre clip. The square is
+    220 m across and its origin is the standpoint, so opening the file shows a
+    grey wall of one facade seen from inside it, and the first thing anyone does
+    is fight the navigation. Setting the pivot, the distance, the rotation and
+    the far clip once here is the difference between a file that opens on the
+    subject and a file that opens on nothing.
+
+    Every workspace is set rather than only the layout one, because whichever
+    tab the reader lands on is the one that has to be right.
+    """
+    heights = np.empty(len(twin.data.vertices) * 3)
+    twin.data.vertices.foreach_get("co", heights)
+    points = heights.reshape(-1, 3)
+    span = float(np.linalg.norm(points[:, :2] - hero[:2], axis=1).max())
+    pivot = np.array([hero[0], hero[1], float(np.quantile(points[:, 2], 0.5))])
+    # Looking down the negative Y axis from thirty degrees up, which is the
+    # three quarter view the figures use and the one a square reads best from.
+    rotation = mathutils.Euler((math.radians(60.0), 0.0, 0.0), "XYZ").to_quaternion()
+    saved = 0
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            space = area.spaces.active
+            space.clip_start = 0.5
+            space.clip_end = max(4.0 * span, 2000.0)
+            space.shading.type = "MATERIAL"
+            space.overlay.show_relationship_lines = False
+            view = space.region_3d
+            view.view_perspective = "PERSP"
+            view.view_location = tuple(float(value) for value in pivot)
+            view.view_distance = 1.7 * span
+            view.view_rotation = rotation
+            saved += 1
+    print(f"[viewport] {saved} views saved at {1.7 * span:.0f} m over the standpoint", flush=True)
+
+
 def build_lighting(hero: np.ndarray) -> None:
     world = bpy.data.worlds.new("world")
     world.use_nodes = True
@@ -1207,6 +1332,16 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
     {"name": "17_the_bystanders", "camera": "cam_bystanders", "show": ("twin", "bodies")},
     {"name": "18_how_deep_the_bounces_go", "camera": "cam_rays", "show": ("twin", "bounces")},
     {
+        # The same fan as figure four, shaded by the power each segment carries
+        # rather than by what became of it. Thickness says the same thing, so
+        # the two readings agree and the colour is the one you can put a number
+        # against.
+        "name": "20_how_much_power_each_ray_carries",
+        "camera": "cam_rays",
+        "show": ("twin", "rays"),
+        "layers": dict.fromkeys(RAY_STYLE, "power_db"),
+    },
+    {
         "name": "19_everything_at_once",
         # Not from outside and not from overhead. The ray fan is a thousand
         # polylines through one point, so any camera aimed at that point turns
@@ -1249,29 +1384,30 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
 EVIDENCE_COLLECTIONS = ("bounces", "semantics", "evidence", "refused", "depth", "panoramas", "bodies")
 
 
-def hide_empty_and_heavy_collections() -> None:
-    """Start with the evidence switched off, and drop the collections that stayed empty.
+def hide_heavy_collections() -> None:
+    """Start the heavy layers switched off, and leave the empty ones in place.
 
-    Two separate things. An empty collection is a site that has no panorama and
-    it should not appear at all, because an outliner full of empty groups reads
-    as a broken build. A full one is worth having and is not worth waiting for:
-    the depth clouds alone are half a million points, so they are hidden in the
-    viewport and in the render until asked for.
+    Every collection in :data:`COLLECTION_NAMES` exists in every blend whether
+    or not the site had the data for it. A site with no panorama then shows an
+    empty ``06 panorama captures`` rather than no such row, so what is missing is
+    visible instead of being something you have to already know to look for.
+
+    Hiding is a separate question from existing. A quarter of a million depth
+    points and eighteen SMPL-X bodies are worth having and are not worth waiting
+    for on every open, so the evidence layers and the bounce split start off in
+    the viewport and in the render.
     """
     view_layer = bpy.context.view_layer
-    for name in EVIDENCE_COLLECTIONS:
-        group = bpy.data.collections.get(name)
-        if group is None:
-            continue
-        if not group.objects:
-            bpy.context.scene.collection.children.unlink(group)
-            bpy.data.collections.remove(group)
-            continue
-        group.hide_render = True
-        layer = view_layer.layer_collection.children.get(name)
-        if layer is not None:
-            layer.hide_viewport = True
-        print(f"[collection] {name}: {len(group.objects)} objects, hidden by default", flush=True)
+    for key in COLLECTION_NAMES:
+        group = collection(key)
+        if key in EVIDENCE_COLLECTIONS:
+            group.hide_render = True
+            layer = view_layer.layer_collection.children.get(group.name)
+            if layer is not None:
+                layer.hide_viewport = True
+        state = "empty" if not group.objects else f"{len(group.objects)} objects"
+        switched = "off" if key in EVIDENCE_COLLECTIONS else "on"
+        print(f"[collection] {group.name}: {state}, {switched} by default", flush=True)
 
 
 def render_every_figure(args: argparse.Namespace) -> None:
@@ -1295,16 +1431,17 @@ def render_every_figure(args: argparse.Namespace) -> None:
         shown = tuple(figure["show"])
         if args.figures is not None and not any(name.startswith(wanted) for wanted in args.figures):
             continue
-        if camera not in bpy.data.objects or not any(group in bpy.data.collections for group in shown):
-            print(f"[render] skipped {name}, the scene has no {camera}", flush=True)
+        lit = {COLLECTION_NAMES.get(key, key) for key in shown}
+        if camera not in bpy.data.objects or not any(BUILT[key].objects for key in shown if key in BUILT):
+            print(f"[render] skipped {name}, the scene has nothing to put in it", flush=True)
             continue
         wanted = figure.get("objects")
         dropped = set(figure.get("hide", ()))
         for group in bpy.data.collections:
-            group.hide_render = group.name not in shown
+            group.hide_render = group.name not in lit
             for obj in group.objects:
                 obj.hide_render = (
-                    group.name not in shown or obj.name in dropped or (wanted is not None and obj.name not in wanted)
+                    group.name not in lit or obj.name in dropped or (wanted is not None and obj.name not in wanted)
                 )
         for obj_name, channel in dict(figure.get("layers", {})).items():
             if obj_name in bpy.data.objects:
@@ -1391,7 +1528,8 @@ def main() -> int:
     build_cameras(twin, hero, ground_z, cameras)
     build_evidence_cameras(twin, payload, hero, ground_z, cameras)
     build_lighting(hero)
-    hide_empty_and_heavy_collections()
+    hide_heavy_collections()
+    frame_the_viewport(twin, hero)
 
     scene = bpy.context.scene
     scene["site"] = manifest["site"]
