@@ -148,9 +148,9 @@ this comparison **measures** it rather than eliminating it. The measurement is t
   built to do, and the distinction should survive into the paper.
 - **Shared material constants.** The permittivities come from the same binding
   file. A wrong permittivity moves both.
-- **Shared physics that neither tool has.** Diffraction is off in both for the
-  primary comparison, so the omission cancels rather than showing up. Section 7.3
-  turns it on in the oracle alone and measures it.
+- **Shared omissions.** Diffraction is off in both for the primary comparison, so
+  the omission cancels rather than showing up. Section 7.3 turns it on in the
+  oracle alone and measures what it is worth, which is about 0.01 dB.
 
 ## 4. Harness validation, on closed forms, before any city
 
@@ -598,6 +598,34 @@ more than the criterion needs. Nothing here argues for reducing either, since bo
 are already paid for and the cost of being deeper than necessary is compute rather
 than credibility. It does argue against citing 4 and 25 dB as measured minima.
 
+### 7.3 Diffraction, the one mechanism the estimator does not have
+
+The estimator has no diffraction at all. `PAPER_METHODS.md` section 9.3 bounds
+the omission rather than measuring it, and the oracle can measure it directly,
+because turning Sionna's first order wedge diffraction on changes only that.
+
+Same eight Korenmarkt standpoints, same 3000 sky directions, `diffuse` mode so
+that the specular contamination of section 5 is not in the way, everything else
+identical. `outputs/cross_validation/korenmarkt_250m_15ghz_diffraction.json`.
+
+| model | median on total `chi` | worst standpoint | median on the multipath term |
+|---|---|---|---|
+| isotropic | +0.008 dB | +0.018 dB | +0.035 dB |
+| rooftop | +0.013 dB | +0.043 dB | +0.059 dB |
+| street small cell | +0.011 dB | +0.033 dB | +0.029 dB |
+
+**First order diffraction is worth about a hundredth of a decibel of
+susceptibility at these standpoints**, and the agreement with the estimator is
+unchanged to within the Monte Carlo floor when it is switched on. That is a
+measurement of the omission rather than a bound on it, and it is two orders of
+magnitude below the residual the comparison itself carries.
+
+Two limits on how far that number travels. It is first order only, so a second
+order shadowed path is not in it. And these eight standpoints are in an open
+square with a wide sky view, where the direct term dominates and there is little
+for a wedge to add. A standpoint in a closed courtyard with no sky is the case
+where diffraction should matter and it is not sampled here.
+
 ## 8. What the paper may claim, and what it may not
 
 The validation section can now make the claim, with the scope stated. Three
@@ -658,6 +686,8 @@ python -m semantic_twin.propagation.sionna_check tessellation
 python -m semantic_twin.propagation.sionna_check tessellation --jitters-mm 0.001,0.01,0.05,0.2,0.5,2 --tag _lowend
 python -m semantic_twin.propagation.sionna_check site --site korenmarkt --locations 8 --sky-samples 3000
 python -m semantic_twin.propagation.sionna_check site --site brussels_grandplace --locations 8 --sky-samples 3000
+python -m semantic_twin.propagation.sionna_check site --site korenmarkt --locations 8 --sky-samples 3000 --modes diffuse --diffraction
+python -m semantic_twin.propagation.sionna_check sampling
 python -m semantic_twin.propagation.sionna_check convergence --site korenmarkt --locations 12
 python -m semantic_twin.propagation.sionna_check convergence --site brussels_grandplace --locations 12
 SIONNA_ORACLE_TESTS=1 python -m pytest tests/test_sionna_check.py -n 0
