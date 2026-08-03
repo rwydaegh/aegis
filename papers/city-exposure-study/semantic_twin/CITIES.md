@@ -1,9 +1,11 @@
 # City screening, site selection and acquisition
 
 Phase 6 of `ROADMAP.md`, done on 2026-08-01. Twenty-four candidate squares were screened on Street View
-metadata alone before any tile was paid for, ten sites were chosen, and tiles and support meshes were
-acquired for all of them at a 130 m radius. The two sites that already exist end to end, Korenmarkt and
-Piazza del Duomo, were screened with the rest as the only way to know what the numbers mean.
+metadata alone before any tile was paid for, and ten sites were chosen. Ten pulls followed, at a 130 m
+radius each, which is a different ten: the eight new sites plus Sultanahmet and Place du Capitole, both
+of which were dropped afterwards on their geometry. The two sites that already exist end to end,
+Korenmarkt and Piazza del Duomo, were screened with the rest as the only way to know what the numbers
+mean, and they keep the meshes they already had at 130 m and 170 m.
 
 **Provider.** The official Map Tiles Street View metadata endpoint,
 `tile.googleapis.com/v1/streetview/metadata`, and the Map Tiles 3D Tiles endpoint for geometry. Nothing
@@ -13,7 +15,9 @@ overstatement of cross-capture agreement that follows from it. This screening ne
 starts from one panorama and walks the `links` list outwards, which is the same shape as the
 sequence-enumeration pattern that fixed the Mapillary path.
 
-**Cost.** Screening: 4091 metadata requests over 24 sites, 79 seconds. Acquisition: 1575 leaf tiles,
+**Cost.** Screening: 4091 metadata requests over 24 sites, 109 seconds of wall clock, which is the sum
+of the per-site `seconds` in `screening.json` because the sites are screened one after another and only
+the metadata calls inside a site run concurrently. Acquisition: 1575 leaf tiles,
 3216 tile requests, 156.2 MB over 10 sites, about 3 minutes of wall clock with the ten downloads run
 concurrently. Per-site request counts are in the acquisition table and in each site's
 `manifest.json`.
@@ -111,22 +115,22 @@ Eight new, plus the two that already exist.
 | Rynek Glowny, Krakow | 162 | 2.1 m | 88 m | 81% | 2024-11 | Very large medieval square with a free-standing hall | The densest recent capture in the set. The Cloth Hall standing in the middle puts a facade on both sides of the observer, which nothing else here does |
 | Staromestske namesti, Prague | 147 | 2.7 m | 117 m | 100% | 2014-06 | Irregular medieval, gothic towers, plaster and stone | Dense, full azimuth spread, and a facade mix no other chosen site has. Carries a 2025-04 walk of 23 panoramas as a current-epoch cross-check |
 | Trafalgar Square, London | 144 | 5.5 m | 112 m | 100% | 2012-08 | Open terraced square, Portland stone, traffic on one side | Full azimuth spread and full probe coverage, live traffic on one edge, and Portland stone against brick, render and marble elsewhere |
-| Times Square, New York | 45 | 3.3 m | 84 m | 44% | 2023-11 | Deep glass and LED canyon, 428 m of vertical extent | Promoted from reserve after Place du Capitole failed the anchor check. The most extreme aspect ratio acquired, a recent capture, and a mesh that passes every consistency check |
-| Hachiko square, Shibuya | 105 | 2.8 m | 118 m | 62% | 2018-05 | Dense glass canyon, scramble crossing, heavy signage | The only glass and signage canyon of the ten, the highest facade-to-width ratio, and the longest span. Metal-backed signage is a specular class the masonry sites do not exercise at all |
+| Times Square, New York | 45 | 3.3 m | 84 m | 44% | 2023-11 | Deep glass and LED canyon, 226 m of tower above the street | Promoted from reserve after Place du Capitole failed the anchor check. The most extreme aspect ratio acquired and a recent capture. The mesh passed the checks run at acquisition time and failed a later one, see below |
+| Hachiko square, Shibuya | 105 | 2.8 m | 118 m | 62% | 2018-05 | Dense glass canyon, scramble crossing, heavy signage | The only glass and signage canyon of the ten, the highest facade-to-width ratio, and the second longest span behind Milan's 119 m. Metal-backed signage is a specular class the masonry sites do not exercise at all |
 | Plaza Mayor, Madrid | 56 | 9.0 m | 112 m | 100% | 2025-05 | Closed arcaded rectangle, painted render, four gated entries | The most nearly closed geometry in the set, the extreme case for multiple-bounce enclosure, and the newest capture of the ten |
 | Grand-Place, Brussels | 45 | 10.0 m | 111 m | 100% | 2024-07 | Fully enclosed guildhall square, gilded stone | Highest enclosure ratio, ornate and deeply modulated facades, full azimuth spread on a recent capture |
 
 Built forms across the ten: medieval brick, monumental marble, open volcanic-stone plaza, medieval
 square with a free-standing central block, gothic plaster and stone, Portland stone with traffic, fired
 brick, glass and signage canyon, closed painted arcade, ornate gilded guildhall. Latitudes from 19.4 N
-to 52.4 N. That is a spread of enclosure ratio, facade modulation depth and material class, which is
-what an exposure distribution needs.
+at the Zocalo to 51.5 N at Trafalgar. That is a spread of enclosure ratio, facade modulation depth and
+material class, which is what an exposure distribution needs.
 
 Three picks went against the raw ranking and all three are argued rather than assumed.
 
 **Hachiko square is in although it fails the gate**, on epoch fragmentation: its 2018-05 capture is
 split into linked runs and the largest holds 105 of them rather than nine tenths of the date. It clears
-the azimuth threshold at 62 percent, it has the longest span of the ten at 118 m, and its 105-panorama
+the azimuth threshold at 62 percent, its 118 m span is the second longest of the ten, and its 105-panorama
 walk is larger than that of any of Madrid, Brussels or Placa Reial, which all pass. Against a per-site
 budget of 12 to 16 panoramas the fragmentation costs nothing that matters, and it is the only glass
 canyon available.
@@ -140,7 +144,7 @@ replace Toulouse. Both rejects keep their tiles and both are recoverable.
 
 Sultanahmet screens well: 146-panorama walk at 2.7 m spacing over a 119 m span, second only to Milan on
 span. Its tiles are worthless. At 130 m the Sultanahmet pull returned 80 leaf tiles holding **11,864
-triangles**, against 130k to 470k at every other site, with a median leaf of 14 kB against 52 to 278 kB
+triangles**, against 251k to 471k at every other site, with a median leaf of 14 kB against 28 to 278 kB
 elsewhere. Every leaf still reports the same 2.006 m geometric error, so the tile scheme claims the
 same LOD and does not deliver it: this is a textured coarse base mesh with no photogrammetric detail
 over Istanbul, not a deep leaf set.
@@ -159,12 +163,19 @@ standing observer sees in a large open square. The same test at every other site
 consistent to about a metre across all five points and sky between 0.35 and 0.92 at the anchor, so the
 test is discriminating rather than noisy. Toulouse is the only site that fails it.
 
+The cast was run by hand and no script for it ships, so only half of that block is reproducible from
+this repository. Re-reading the topmost surface of `inhouse_leaf_130m.ply` at the same five points gives
+191.1, 211.1, 210.7, 190.9 and 210.8 m, so four of the five ground values reproduce exactly and the
+fifth does not, which makes the step larger rather than smaller. The sky row has no on-disk source at
+all and is quoted here as it was measured.
+
 It is recoverable and worth recovering, since it is the largest mesh acquired at 470,673 source
 triangles and it is the only site that would have contributed fired brick as a bulk facade material.
 The fix is to move the anchor into the open square and re-pull, which costs about 350 requests.
 
 **Krakow is anchor-suspect for a related and more interesting reason.** Its anchor reads a ground of
-269.6 m with 92 percent sky, against a Rynek pavement that should sit near 261 m ellipsoidal, and the
+269.6 m, which does reproduce from the shipped mesh, with 92 percent sky, which does not have a source
+file, against a Rynek pavement that should sit near 261 m ellipsoidal, and the
 Cloth Hall stands in the middle of the Rynek. The anchor is very probably on the Cloth Hall roof. This
 is not a screening error: the centroid of the square genuinely is the building, and that is precisely
 the built form Krakow was chosen for. Krakow ships without a config for this reason and its anchor needs
@@ -207,11 +218,10 @@ follow-up job, ahead of adding an eleventh site.
 
 ## Capture age, and what will go wrong
 
-The chosen ten span 2012-08 to 2025-06 with a median of 2017. Five are nine years old or older:
-Trafalgar Square 2012-08, Staromestske namesti 2014-06, Piazza del Duomo 2014-09, Plaza de la
-Constitucion 2016-10, and Korenmarkt's own 2025-06 capture is the exception rather than the rule.
-Hachiko square 2018-05 and Place du Capitole 2018-12 sit in the middle. Krakow 2024-11, Brussels
-2024-07 and Madrid 2025-05 are current.
+The chosen ten span 2012-08 to 2025-06 with a median capture year of 2020. Four are nine years old or
+older: Trafalgar Square 2012-08, Staromestske namesti 2014-06, Piazza del Duomo 2014-09 and Plaza de la
+Constitucion 2016-10. Hachiko square 2018-05 sits in the middle. Times Square 2023-11, Brussels 2024-07,
+Krakow 2024-11, Madrid 2025-05 and Korenmarkt 2025-06 are current.
 
 What goes wrong is specific. Semantic labels are read off the panorama and projected onto the mesh, so
 where the city changed between the two, a label lands on geometry that is not what the label describes.
@@ -222,8 +232,10 @@ are the same defect in smaller pieces.
 
 Registration will not report it. The skyline objective is fitted against rooflines, and rooflines are
 the part of a city that changes least, which is why Milan's twelve-year-old panorama still registers at
-1.05 degrees, better than Korenmarkt's current one. A good residual is not evidence that the foreground
-matches.
+0.74 degrees, better than Korenmarkt's current one at 1.31. A good residual is not evidence that the
+foreground matches. Both figures are the `skyline_score_mean_deg` of the shipped
+`alignment/pose_aligned.json` at each site, and they supersede the 1.05 and 2.83 quoted in an earlier
+draft, which no pose file on disk carries.
 
 The detector that does report it is already being computed. The fishnet produces a per-view sky versus
 mesh conflict metric, and a demolished or added building is exactly its signature: segmentation saying
@@ -237,11 +249,12 @@ Milan has no recent walk at all inside 60 m, so there the conflict metric is the
 
 ## Panorama budget
 
-Coverage of directly observed surface saturates between 12 and 16 panoramas per site: 12 reach 77
-percent of achievable coverage and 15 reach 82 percent, while 26 are needed for 90 percent and 33 for
-95 percent. The second panorama adds 3,938 faces and the last five add 182 each. Eight of the ten sites
-have a single-epoch walk of 45 panoramas or more, so the walk is not the binding constraint anywhere
-except Korenmarkt, whose 14 is the known weak case.
+Coverage of directly observed surface saturates between 12 and 16 panoramas per site. Measured on area,
+which is the stable axis, 12 panoramas reach 77 percent of achievable coverage and 15 reach 82 percent,
+while 24 are needed for 90 percent and 32 for 95 percent. On face count, which moves with ray density,
+the same targets need 15, 18, 26 and 33. The second panorama adds 3,938 faces and the last five add 182
+each. Nine of the ten sites have a single-epoch walk of 45 panoramas or more, so the walk is not the
+binding constraint anywhere except Korenmarkt, whose 14 is the known weak case.
 
 Two consequences for how the panoramas should be picked, neither of which is a screening decision but
 both of which the screening records make possible.
@@ -250,10 +263,12 @@ First, take a spatially spread subset of 12 to 16 rather than the 12 to 16 neare
 binds harder than count, and `screening.json` carries the east and north offset of every panorama, so
 the spread subset can be chosen without another request.
 
-Second, which single panorama comes first matters enormously: the first capture alone delivers between
-1.59 and 6.29 percent of scene area depending on which one it is, a fourfold lottery. So a thin site is
-riskier than its headline count suggests, and any per-site coverage figure quoted from one panorama
-should be resampled before it is believed.
+Second, which single panorama comes first matters enormously. Across the 60 random acquisition orders
+the first capture alone delivers between 1.59 and 6.29 percent of faces, and those are the tenth and
+ninetieth percentiles rather than the range. Over all 41 candidate panoramas the first capture is worth
+anywhere from 0.59 to 6.77 percent of faces, or 0.84 to 11.56 percent of area, which is a fourteenfold
+lottery by area rather than a fourfold one. So a thin site is riskier than its headline count suggests,
+and any per-site coverage figure quoted from one panorama should be resampled before it is believed.
 
 ## Acquisition
 
@@ -301,8 +316,8 @@ That measurement is trustworthy only when the patch it lands on is flat. Applied
 control it returns 55.43 m against the shipped 50.837 m, with a patch spread of 2.19 m and a
 peak-to-peak of 7.13 m, because a ray starting above the scene hits the first thing it meets and near
 buildings that is an awning or a cornice rather than the pavement. The spread is a working guard on
-exactly that failure: it is 2.19 m where the answer is wrong and 0.014 to 0.065 m at the six sites
-whose configs are shipped.
+exactly that failure: it is 2.19 m where the answer is wrong and 0.015 to 0.065 m at the six sites
+whose configs are shipped, each of which records its own spread in `camera_ground_z_note`.
 
 Krakow at 0.96 m spread, Trafalgar at 0.17 m and Place du Capitole at 6.89 m are not shipped with a
 ground height, because the patch under their centre panorama straddles the Cloth Hall, the plinth of
@@ -320,7 +335,9 @@ cannot be trusted.
 ## Panoramas: three sites taken to semantic completeness
 
 Fetched, segmented and registered on 2026-08-02. Ghent and Milan already had one panorama each, so
-this brings the study to five sites with semantics and thirty-nine registered poses in total.
+this brings the study to five sites with semantics and forty registered poses in total, counting the
+tenth Madrid pose that landed after the summary in `outputs/city_screening/panorama_registration.json`
+was written.
 
 Which twelve to sixteen cameras decides how much of the scene is ever observed, so they are chosen by
 farthest-point sampling over the walk: start at the panorama nearest the site centre, then repeatedly
@@ -332,7 +349,7 @@ centre, would be a cluster that sees one ring of facades many times over.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Staromestske namesti | 14 of 147 | 2014-06 | 21.5 m | 38.4 m | -59.4 to 55.6 m | -57.1 to 57.3 m |
 | Plaza de la Constitucion | 14 of 260 | 2016-10 | 19.2 m | 29.0 m | -59.2 to 31.1 m | -29.3 to 54.7 m |
-| Plaza Mayor | 9 of 56 | 2025-05 | 30.5 m | 45.7 m | -50.3 to 58.9 m | -41.5 to 36.8 m |
+| Plaza Mayor | 10 of 56 | 2025-05 | 30.2 m | 45.4 m | -50.3 to 58.9 m | -41.5 to 36.8 m |
 
 Selection worked: against screening medians of 2.7, 1.9 and 9.0 m between adjacent panoramas, the
 chosen sets sit 19 to 30 m apart and span the full screening disc in both axes.
@@ -353,19 +370,24 @@ distribution over a site rather than any single residual.
 
 | Site | Panoramas | Registered | Median residual | Best | Worst | Poses at altitude bound |
 | --- | --- | --- | --- | --- | --- | --- |
-| Plaza Mayor | 10 | 9 | 0.33 deg | 0.18 deg | 2.92 deg | 4 |
+| Plaza Mayor | 10 | 10 | 0.40 deg | 0.18 deg | 2.92 deg | 5 |
 | Staromestske namesti | 14 | 14 | 0.82 deg | 0.48 deg | 9.33 deg | 2 |
 | Plaza de la Constitucion | 14 | 14 | 2.76 deg | 1.86 deg | 4.59 deg | 4 |
 
-References: 1.05 deg for Milan's single panorama and 2.83 deg for Korenmarkt's. Madrid and Prague are
+Read off the shipped `pose_aligned.json` files. `panorama_registration.json` still reports Madrid as 9
+of 10 at a 0.33 deg median with 4 at the bound, because it was written before the tenth pose converged,
+and the table above is the current state of the poses on disk.
+
+References: 0.74 deg for Milan's single panorama and 1.31 deg for Korenmarkt's. Madrid and Prague are
 better than either, which is what a 2025 capture and a high-contrast gothic silhouette should give.
 
 Two things in that table are worth more than the medians.
 
-**Ten of thirty-seven poses landed on their altitude search bound, and twenty-seven did not.** A pose at
-its bound is not a measurement, it is the bound, and every panorama previously shipped in this
-repository had that defect. Having a majority free of it is new. The ten that are pinned should not be
-trusted for altitude and are listed in `outputs/city_screening/panorama_registration.json`.
+**Eleven of thirty-eight poses landed on their altitude search bound, and twenty-seven did not.** A pose
+at its bound is not a measurement, it is the bound, and every panorama previously shipped in this
+repository had that defect. Having a majority free of it is new. The pinned poses should not be trusted
+for altitude. Ten of them are listed in `outputs/city_screening/panorama_registration.json` and the
+eleventh is the later Madrid pose, which `outputs/registration_sky_conflict.csv` does carry.
 
 **The Zocalo is the outlier site, and its outliers are not scattered.** Six of its fourteen exceed
 3 deg and every one of them stands in the northern half of the plaza looking south. The Zocalo is
@@ -382,9 +404,10 @@ pano_00   130 m: 2.07 deg    250 m: 1.31 deg
 pano_01   130 m: 2.03 deg    250 m: 1.56 deg
 ```
 
-A 30 percent reduction from geometry alone. The full re-registration of all three sites against the
-250 m shells was still running when this was written and its results land in `alignment250/` beside
-each `alignment/`. The conclusion to draw now is narrow and firm: **the skyline objective should be
+A 30 percent reduction from geometry alone. Those four numbers were read off a console and no
+`alignment250/` directory exists anywhere in the repository, so nothing on disk reproduces them: the
+full re-registration of all three sites against the 250 m shells was still running when this was
+written and never landed. The conclusion to draw now is narrow and firm: **the skyline objective should be
 fitted against the widest available geometry, not against the crop the scattering mesh uses.** The
 skyline is by definition the far silhouette, so truncating the mesh at the scattering radius removes
 exactly the geometry the objective needs. Milan's 170 m crop was chosen for the same underlying reason
@@ -393,12 +416,13 @@ and the sweep has now put a number on it.
 ### What is complete and what is not
 
 Prague and the Zocalo are complete end to end at 14 panoramas each: fetched, segmented at 1536, and
-registered. Madrid is 9 of 14 and stopped on a quota wall, not on anything about the site.
+registered. Madrid is 10 of 14 and stopped on a quota wall, not on anything about the site.
 
-Because farthest-point sampling is prefix-optimal, the nine Madrid panoramas that exist are the most
-spread nine of the fourteen rather than an arbitrary nine. Their extent is identical to the full set's,
--50.3 to 58.9 m east and -41.5 to 36.8 m north, and only the minimum separation differs, 30.5 m against
-21.7 m. Madrid lost density, not reach.
+Because farthest-point sampling is prefix-optimal, the ten Madrid panoramas that exist are the most
+spread ten of the fourteen rather than an arbitrary ten. Their extent is identical to the full set's,
+-50.3 to 58.9 m east and -41.5 to 36.8 m north, and only the minimum separation differs, 30.2 m against
+21.7 m. Madrid lost density, not reach. Both separations are reproducible: rerunning the sampling on
+the 56 walk panoramas in `screening.json` gives 30.22 m at ten and 21.74 m at fourteen.
 
 ### The quota, measured
 
@@ -406,16 +430,21 @@ Acquisition stopped at HTTP 429, `RATE_LIMIT_EXCEEDED` on quota metric
 `tile.googleapis.com/streetviewtiles`, limit 15,000. It did not recover after several minutes of
 cooldown at two concurrent workers, so it is a daily cap rather than a per-minute one.
 
-Measured spend: **14,367 Street View tile requests** on disk across the three sites, plus about forty
-metadata and session calls. One zoom-5 panorama is exactly **338 tiles**, a 26 by 13 grid.
+Measured spend: **14,584 Street View tile files** on disk across the three sites, 14 by 338 at Prague
+and the Zocalo and 10 by 512 at Madrid, plus about forty metadata and session calls. That is the count
+after the tenth Madrid panorama, and it says why the wall fell where it did: the eleventh Madrid
+panorama would have taken the total to 15,096. One zoom-5 panorama of a 13312-wide capture is exactly
+**338 tiles**, a 26 by 13 grid.
 
 That gives the number the remaining sites should be sized against:
 
 - **44 panoramas per day** at zoom 5 against a 15,000 per day cap, which is three sites at 14.
 - The remaining five sites therefore need **two more days** at zoom 5, or one day if the quota is
   raised in the console.
-- Zoom 4 costs 85 tiles rather than 338, which is 176 panoramas per day, at 18.5 pixels per degree
-  instead of 37. That is the lever if breadth matters more than angular resolution.
+- Zoom 4 on the same capture costs 91 tiles rather than 338, a 13 by 7 grid over 6656 by 3328 pixels,
+  which is 164 panoramas per day at 18.5 pixels per degree instead of 37. That is the lever if breadth
+  matters more than angular resolution. An earlier draft said 85 tiles and 176 panoramas, which does not
+  follow from the tile arithmetic in `semantic_twin.panorama.zoom_dimensions`.
 
 A second, smaller lesson: `StreetViewTiles._read` retries on 5xx but raises immediately on any 4xx,
 and 429 is a 4xx. A rate limit is the one 4xx that is worth backing off and retrying rather than
@@ -449,8 +478,9 @@ measured on. Tile count follows the capture's own pixel dimensions, and those va
 | 16384 | 32 x 16 | 512 | Madrid, Grand-Place |
 
 So a day's quota buys between 29 and 117 panoramas depending on which sites are in it, not a flat 44.
-Sizing a day's work against 338 would have overrun the cap by 40 percent on Grand-Place alone. Read
-`imageWidth` from the metadata before committing a day, which costs one request per site.
+Sizing a day's work against 338 would have overrun the cap by half on Grand-Place alone, since 512
+against 338 is 51 percent more per panorama and 44 of them would have cost 22,528. Read `imageWidth`
+from the metadata before committing a day, which costs one request per site.
 
 Measured spend for these three: 7,183 requests for Grand-Place, 4,408 for Shibuya and 1,807 for Times
 Square, plus twelve probe calls and about 130 lost to the failure below. **13,540 of 15,000**, and all
@@ -508,9 +538,9 @@ sibling `views/cache_settings.json` before quoting one as a benchmark.
 | Hachiko square | 13 | **0** | n/a | n/a | n/a | n/a |
 | Times Square | 14 | 14 | **10.13 deg** | 7.58 deg | 12.00 deg | 6 |
 
-Against the existing references, Madrid 0.33, Prague 0.82, Milan 1.05, the Zocalo 2.76 and Korenmarkt
-2.83, **Grand-Place lands with the Zocalo and Korenmarkt** and is usable. The other two are not, and
-they fail for two different and separately interesting reasons.
+Against the existing references, Madrid 0.40, Milan 0.74, Prague 0.82, Korenmarkt 1.31 and the Zocalo
+2.76, **Grand-Place sits just past the Zocalo at the far end of the usable range** and is usable. The
+other two are not, and they fail for two different and separately interesting reasons.
 
 **Hachiko square was never above ground.** All thirteen panoramas return zero structurally supported
 skyline samples, because all thirteen see between 0.00 and 0.03 percent sky. They are inside Shibuya
@@ -527,7 +557,8 @@ of those thirteen poses was placed at street level plus 2.5 m while the camera w
 below ground.
 
 The cheap detector is the one that caught it: **sky fraction of the segmented panorama**. Above ground
-sits at 13 to 33 percent across every other site here. Anything near zero is indoors. That check costs
+it runs from 7 to 44 percent per panorama across every other site here, with per-site medians of 21 to
+44 percent, and the 7 percent is a camera under the Plaza Mayor arcade. Anything near zero is indoors. That check costs
 nothing once semantics exist and should gate a walk before its panoramas are fetched, not after. The
 screening already stores per-panorama elevation, so an even cheaper pre-fetch form is available.
 
@@ -544,10 +575,14 @@ mesh, did not:
 | Median observed skyline elevation | 14.8 deg, against 15.3 at Grand-Place and 15.7 at Madrid | not a high-elevation canyon regime |
 | Widen the altitude bound to +-8 then +-25 m | 10.22, 9.52, 7.45 deg, camera sinking to 20 m below ground | no interior optimum exists |
 
-The third is the diagnosis. `align_skyline` documents the degeneracy directly: a modelled roofline too
-low by `d` metres and a camera too high by `d` metres produce the same angular error, so when the mesh
-silhouette is wrong the optimiser buys residual by sinking the camera. Here it sinks it 20 m and still
-does not converge, and six of fourteen poses hit the shipped +-3 m bound.
+Only the first entry of the third row is on disk. The shipped `pano_00` pose carries the 10.22 deg fit
+pinned at -3.0 m and `alignment/align.log` shows it, while the reopened +-8 m and +-25 m fits and the
+250 m shell run in the first row were console results that were never written out.
+
+The third row is the diagnosis. `align_skyline` documents the degeneracy directly: a modelled roofline
+too low by some height and a camera too high by that same height produce the same angular error, so when
+the mesh silhouette is wrong the optimiser buys residual by sinking the camera. Here it sinks it 20 m and
+still does not converge, and six of fourteen poses hit the shipped +-3 m bound.
 
 The mesh itself says why. Its vertices span **-220.3 to 207.2 m** with the camera at -19.0, so
 **2.9 percent of its vertices sit more than 30 m below the camera**. Grand-Place spans 45.5 to 158.8 m
@@ -577,33 +612,38 @@ are good and stay on disk. The poses in `alignment/` should be treated as unregi
    and Brussels are registered. Krakow and Trafalgar are untouched and need their configs first.
    Shibuya needs its 2023-09 walk instead of the underground 2018-05 one. Size the day against each
    capture's own `imageWidth` rather than a flat 338 tiles, for the reason measured above. Madrid is
-   still 9 of 14 and its five missing panoramas cost 2,560 requests.
-9. **Gate a walk on sky fraction before spending a day's quota on it.** Shibuya cost 4,408 requests
+   still 10 of 14 and its four missing panoramas cost 2,048 requests.
+3. **Gate a walk on sky fraction before spending a day's quota on it.** Shibuya cost 4,408 requests
    for thirteen panoramas of a subway platform, and one panorama would have shown it. Fetch one, segment
    it, and reject the walk if sky is below a few percent. Better still, screen on the per-panorama
    elevation the screening already stores, which costs nothing at all.
-10. **Do not trust a photogrammetry mesh over mirror glass.** Times Square's reconstruction carries
+4. **Do not trust a photogrammetry mesh over mirror glass.** Times Square's reconstruction carries
    200 m of spurious geometry below the street and cannot support a skyline objective at any crop
    radius or altitude bound. Check the vertex z range against the camera before registering a new
    site: a healthy site has essentially nothing more than 30 m below the camera.
-3. **Re-screen the chosen sites at 80 m rather than 60 m.** Extent is now the binding criterion and the
+5. **Re-screen the chosen sites at 80 m rather than 60 m.** Extent is now the binding criterion and the
    whole table was measured inside 60 m, so the walks are being judged on a disc smaller than the one
    the study wants to use. This costs about 4000 metadata requests and would change which panoramas get
    picked, though it is unlikely to change which sites were chosen.
-4. **Check triangle count per leaf set before committing any further site**, after Sultanahmet.
-5. **Nothing further on the crop radius.** The sweep has run and 130 m is settled as too small: at
-   Korenmarkt the error against a 340 m reference is +0.05 dB isotropic, +3.24 dB rooftop and
-   +9.93 dB for street-level small cells, converging at 250 m. All eight new sites have therefore been
-   re-pulled at 250 m into `data/tiles250/<site>/` and built into `inhouse_leaf_250m.ply` occlusion
-   shells beside the 130 m meshes, which stay as the scattering and semantics geometry. That is
-   4032 tiles, 8128 requests and 397 MB, in about two minutes concurrently, plus seven minutes of
+6. **Check triangle count per leaf set before committing any further site**, after Sultanahmet.
+7. **Nothing further on the crop radius.** The sweep has run and 130 m is settled as too small. Under
+   the superseded illumination law the error against a 340 m reference at Korenmarkt is +0.05 dB
+   isotropic, +3.24 dB rooftop and +9.93 dB for street-level small cells, converging at 250 m, and that
+   is what `outputs/crop_convergence/korenmarkt_crop_convergence.json` holds, since it was run before
+   the law was corrected on 2026-08-02. Correcting the law does not rescue the 130 m crop: on the same
+   rays at both radii, `outputs/law_comparison/korenmarkt_law_comparison.json` puts the 130 m against
+   250 m difference at +0.51 dB rooftop and +6.94 dB street under the corrected law, so rooftop relaxes
+   and street does not, and 250 m now stands on the street model alone. All eight new sites have
+   therefore been re-pulled at 250 m into `data/tiles250/<site>/` and built into `inhouse_leaf_250m.ply`
+   occlusion shells beside the 130 m meshes, which stay as the scattering and semantics geometry. That
+   is 4032 tiles, 8128 requests and 397 MB, in about two minutes concurrently, plus seven minutes of
    Blender. Note that the downloader has no cross-run cache, so the 250 m pull re-fetched the inner
    130 m rather than reusing it: the cost above is a full pull, not an annulus.
-6. **Read the sky versus mesh conflict metric** on every site whose walk predates 2020, before its
+8. **Read the sky versus mesh conflict metric** on every site whose walk predates 2020, before its
    semantics are trusted. That is now Prague at 2014-06 and the Zocalo at 2016-10 among the sites with
    semantics, and both have a recent walk available for cross-checking, Prague 2025-04 with 23
    panoramas and the Zocalo 2021-03 with 42.
-7. **Register against the 250 m shells, not the 130 m meshes.** Measured on the Zocalo, where the
-   residual falls about 30 percent. The scattering mesh and the registration mesh do not have to be the
-   same mesh and should not be.
-8. **Back off and retry on HTTP 429** in `StreetViewTiles._read`, which currently raises on any 4xx.
+9. **Register against the 250 m shells, not the 130 m meshes.** Measured on the Zocalo, where the
+   residual falls about 30 percent, on a run that left nothing on disk. The scattering mesh and the
+   registration mesh do not have to be the same mesh and should not be.
+10. **Back off and retry on HTTP 429** in `StreetViewTiles._read`, which currently raises on any 4xx.

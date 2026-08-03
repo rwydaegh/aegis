@@ -132,7 +132,9 @@ Degli-Esposti and co-workers introduced a scattering coefficient `S`, the ratio
 of the diffuse field to the incident field, fitted to measured data. Sionna
 implements their directive lobe. This strand supplies most of the numbers that
 propagation engineers actually use, and it is the strand most often mistaken for
-a roughness measurement.
+a roughness measurement. `S` in this document is always that coefficient and
+never a power density, which elsewhere in the project carries the same letter
+with a subscript.
 
 `S` is not a surface property. Four independent lines of evidence, all from
 inside the strand:
@@ -286,8 +288,8 @@ lobe. Counting the propagating orders at normal incidence:
 | corrugated metal | 50 mm | 9 | 14.7 deg | 21 |
 | roller shutter slat | 80 mm | 15 | 9.9 deg | 33 |
 | ceramic tile | 200 mm | 37 | 4.1 deg | 81 |
-| roof tile course | 320 mm | 59 | 2.6 deg | 121 |
-| paving slab | 400 mm | 75 | 2.2 deg | 121 |
+| roof tile course | 320 mm | 59 | 2.6 deg | 129 |
+| paving slab | 400 mm | 75 | 2.2 deg | 161 |
 
 Two consequences for the propagation stage. The energy that a Gaussian model
 would spread smoothly over the hemisphere actually arrives in a comb, so a
@@ -405,7 +407,7 @@ definition used here.
 
 ## The result that reframes everything
 
-Pascual-Garcia and co-workers, IEEE Access 4:690-701, 2016,
+Pascual-Garcia and co-workers, IEEE Access 4:688-701, 2016,
 doi:10.1109/ACCESS.2016.2526600, measured five materials with a Talysurf CLI
 optical profiler under ISO 4287 and, in the same paper on the same samples, fitted
 the effective-roughness scattering coefficient to 60 GHz measurements. That makes
@@ -416,9 +418,9 @@ which is the most favourable case:
 
 | material | `Ra` (um) | `Rq` (um) | `S` from roughness | `S` fitted at 60 GHz | ratio in amplitude | ratio in diffuse power |
 |---|---|---|---|---|---|---|
-| wall plasterboard | 2.31 | 2.89 | 0.007 | 0.05 to 0.10 | 7 to 14 | 47 to 189 |
+| wall plasterboard | 2.31 | 2.90 | 0.007 | 0.05 to 0.10 | 7 to 14 | 47 to 189 |
 | chipboard | 2.70 | 3.38 | 0.009 | 0.10 to 0.20 | 12 to 24 | 139 to 554 |
-| cardboard | 3.25 | 4.08 | 0.010 | 0.10 to 0.20 | 10 to 20 | 95 to 381 |
+| cardboard | 3.25 | 4.07 | 0.010 | 0.10 to 0.20 | 10 to 20 | 95 to 381 |
 | ceiling plasterboard | 11.85 | 14.85 | 0.037 | 0.20 to 0.40 | 5 to 11 | 29 to 115 |
 | brick | 14.68 | 18.40 | 0.046 | 0.30 to 0.50 | 7 to 11 | 42 to 117 |
 
@@ -553,16 +555,18 @@ The classes where the number decides the answer are render, textured concrete,
 dressed sedimentary stone, asphalt and paving. Of those, asphalt is the best
 evidenced thing in this file and render has no exterior metrology at all.
 
-### Two: `METHOD.tex` currently asserts the opposite of what the evidence says
+### Two: the millimetre of roughness `METHOD.tex` used to assume
 
-`METHOD.tex` states that "at 28 GHz with realistic surface roughness most of the
-reflected power is diffuse, so the specular search covers a minority of the
-physics", and supports it with a worked example putting 1 mm of RMS height on
-brick, which retains 25 percent specular at normal incidence.
+An earlier draft of `METHOD.tex` stated that at 28 GHz with realistic surface
+roughness most of the reflected power is diffuse, so the specular search covers a
+minority of the physics, and supported it with a worked example putting 1 mm of
+RMS height on brick, which retains 25 percent specular at normal incidence.
 
 Every measurement located here says a brick face is 0.024 to 0.095 mm, not 1 mm.
 At 0.03 mm a brick face retains 99.9 percent of its specular power at 28 GHz. The
-1 mm figure is not supported by any metrology for that material.
+1 mm figure is not supported by any metrology for that material. `METHOD.tex` now
+carries that table labelled as an assumption and states the correction alongside
+it, so the two documents agree.
 
 That does not make the conclusion wrong, because the diffuse power is real and
 measured. Charbonnier et al. found diffuse scattering carrying 20 percent of total
@@ -592,11 +596,11 @@ return is a comb whose spacing matches `lam / d` for the visible course pitch, i
 is structure. If it is a smooth lobe, it is roughness.
 
 The requirement can now be stated quantitatively rather than as an aspiration.
-The computed comb sits 13 to 16 dB above its own local trend through a 3 to 5
+The computed comb sits 11 to 16 dB above its own local trend through a 3 to 5
 degree beam at 10 GHz and 3.5 to 8.7 dB at 28 GHz, against an instrumental floor
 near 2 dB in the one comparable published scan. So at FR2 the measurement needs a
 beam of 3 degrees or narrower and must be published unsmoothed, while at FR3 an
-ordinary 10 degree horn would still see 9 dB of it. The cheapest version of this
+ordinary 10 degree horn would still see 8 to 9 dB of it. The cheapest version of this
 experiment is therefore at 10 GHz, not at 28. It also turns out that such a scan already exists: Pascual-Garcia and
 co-workers swept a real brick wall at 57 to 66 GHz with a 3.5 degree lens beam at
 0.6 degree steps and published it through an eleven-point boxcar spanning 5
@@ -645,12 +649,14 @@ fitted stand-in for structure you chose not to model.** What each costs:
   45 degrees, where a correct `cos^2` inside the exponent would hold it constant,
   and breaks entirely at 60 degrees where the measured return exceeds the
   smooth-surface Fresnel bound. Reading the full thesis for `MASONRY.md` settled
-  why. Its table 4.2 shows four repeats at each angle spanning a factor of 3.3 to
-  8.4 in amplitude with standard deviations at or above the means, the brick and
+  why. Its table 4.2 shows four repeats at each angle spanning a factor of 4.3 to
+  8.4 in amplitude on the brick wall at 5 to 30 degrees, with sample standard
+  deviations 61 to 101 percent of the means at those four angles, the brick and
   limestone clouds overlap completely below 60 degrees, and the absolute
   calibration rests entirely on a sidelobe gain estimate that was independently
-  checked at two angles and was out by factors of 0.6 and 2.0 in amplitude at
-  one of them. This dataset fixes an order of magnitude and a trend with
+  checked at three angles on an aluminium reflector of known area and was out by
+  factors of 0.6 and 2.0 in amplitude at two of them. This dataset fixes an order
+  of magnitude and a trend with
   incidence angle. It does not discriminate materials or surface finish.
 - **Wet surfaces were not resolved.** No source located quantifies the effect of a
   water film on radio roughness. A film fills the texture and should raise the
@@ -704,3 +710,24 @@ asphalt figures were verified directly against the open-access PDF after one
 strand reported the same value it had earlier fabricated and retracted, and they
 are genuine. Where a strand declined to confirm a chain it had not read, that
 refusal was honoured and nothing is attributed to it.
+
+A separate audit of the numbers themselves, against files in this repository,
+splits them into two piles. The pile with a stored artefact behind it is the
+Ament and scattering-coefficient arithmetic, which recomputes from
+`semantic_twin/mmwave.py` and `config/surface_roughness.json`, the periodic-order
+counts, the Dillard and Landron chains, which come from
+`outputs/masonry_grating/dillard_thesis.json` and `validation.json`, the
+Pascual-Garcia bistatic entries in `bistatic_validation.json`, and the NYURay
+inversion, whose 12.8 and 18.9 dB inputs are table X of `lit/2410.03104v1.pdf`.
+
+The other pile is quoted from literature that is not in `lit/` and has no
+artefact in `outputs/`, so it is only as good as the reading that produced it and
+cannot be re-derived here. That pile is Koivumaki's `S` span of 0.39 to 0.82,
+Charbonnier's `S` of 0.35 rising to 0.6 with vehicles at 1.0 and exponent 3, the
+Wang et al. Sensors 22:6908 table 7 roughnesses, the NYU table 4 profilometry
+(concrete 264 to 269 um, red brick 321 to 325 um), the Ju et al. ICC 2019 table I
+entries, the npj Wireless Technology 2026 set (marble 1.0 to 1.1 mm, brick 6.5 to
+8 mm, smooth wall 4.1 mm), the Kim and Hanpinitsak figures, Jansen, D'Orazio, the
+Beckmann-Kirchhoff marble fit that moves `S` from 0.140 to 0.015 while the
+exponent goes 5.22 to 10.50, the 5.67 and 11.33 kernel pair, and the 0.6 factor
+used to convert a mean profile depth to an RMS height.

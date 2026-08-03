@@ -28,18 +28,18 @@ can reproduce. Expanded to second order it yields an effective RMS height of
 allows, so a 1996 field measurement and a masonry standard agree without either
 being fitted to the other. The mechanism is the recess and not the dielectric
 contrast: measured against the power a flat brick wall would reflect, a 5 mm
-recess at 10 GHz leaves 55 percent in the specular direction, puts 20 percent
-into diffraction orders and couples the remaining 25 percent into the wall, while
+recess at 10 GHz leaves 57 percent in the specular direction, puts 15 percent
+into diffraction orders and couples the remaining 27 percent into the wall, while
 giving mortar a permittivity of 7 against brick's 3.91, far beyond any measured
-contrast, moves under one percent. The non-specular return is a comb of
-between 61 and 1889 propagating orders depending on band, carrying 11 to 30
-percent of the diffuse power, sitting on a smooth pedestal whose angular width is
+contrast, puts under one percent into the orders. The non-specular return is a
+comb of between 61 and 1889 propagating orders depending on band, carrying 11 to
+53 percent of the diffuse power, sitting on a smooth pedestal whose angular width is
 set by the brick dimensions and is neither Lambertian nor a directive lobe, while
 the rigorous envelope of the comb itself is flat to 1.2 dB across the whole
 hemisphere at 10 GHz and 5 dB at 28 GHz, carrying half or more of its power
 backwards, which is the Lambertian behaviour real facade fits keep reporting and
 attributing to street furniture.
-The comb survives realistic manufacturing tolerance and stays 13 to 16 dB above its
+The comb survives realistic manufacturing tolerance and stays 11 to 16 dB above its
 own local trend through a 3 to 5 degree beam at 10 GHz and 3.5 to 8.7 dB at
 28 GHz, which is why nobody has seen it: the campaigns that would have found it
 use beams as wide as the structure they are looking for. **The cheap solver that
@@ -92,20 +92,24 @@ The decision is to use all three tiers and say what each buys.
 
 `semantic_twin/rcwa.py` is verified against the Fresnel coefficients of a
 half space for both polarisations, lossy and lossless, from normal to 85 degrees,
-to 2.4e-13, and against the analytic two-interface slab response to 1e-9, with
-reflected plus transmitted power summing to one for a lossless patterned grating.
-Those are tests, not spot checks.
+and against the analytic two-interface slab response to 1e-9, with reflected plus
+transmitted power summing to one to 2e-3 for a lossless patterned grating. Those
+are tests, not spot checks. The half-space test asserts 1e-10 and the worst
+residual observed on a run was 2.4e-13, a run value rather than an asserted
+bound.
 
 ### Where the method breaks
 
 Stated in the code and repeated here.
 
 - **Grazing incidence.** The phase-screen power budget, the sum of the coherent
-  comb and the incoherent pedestal against the flat-wall reflectance, holds
-  within a few percent to 60 degrees, drifts to between 0.82 and 1.02 at 75
-  degrees, and reaches 1.37 at 85 degrees. A number above one is unphysical, so
-  the 85 degree column of every sweep is reported and must not be used. This
-  matters, because street geometry is grazing.
+  comb and the incoherent pedestal against the flat-wall reflectance, stays
+  between 0.76 and 0.96 out to 60 degrees, which is below one everywhere and is
+  physics rather than error for the reason given at the end of the validation
+  ladder. It then drifts to between 0.82 and 1.02 at 75 degrees and reaches 1.37
+  at 85 degrees. A number above one is unphysical, so the 85 degree column of
+  every sweep is reported and must not be used. This matters, because street
+  geometry is grazing.
 - **Fourier truncation.** Reported per solve. The retained harmonics must cover
   every propagating order, which at incidence `theta` on a cell `L` across needs
   `m_max >= (1 + sin theta) L / lambda`. Truncating below that silently deletes
@@ -182,7 +186,9 @@ of the two, so the share of the flat-wall specular power a brick wall keeps is
 eta_spec / eta_flat = | (1 - f) exp(-psi^2 sigma^2 / 2) + f exp(-i psi d) |^2
 ```
 
-with `psi = 2 k0 cos(theta)`. This is the zero order of the Kirchhoff solve
+with `eta_spec` the specular diffraction efficiency of the wall, `eta_flat` the
+efficiency a flat wall of the same brick would have, `psi = 2 k0 cos(theta)` and
+`k0` the free space wavenumber. This is the zero order of the Kirchhoff solve
 rather than an approximation to it, and it is verified against the full solve to
 one part in 1e9 over 160 combinations of band, incidence, recess and tolerance in
 `tests/test_kirchhoff.py`.
@@ -205,7 +211,9 @@ class. Nothing is fitted and nothing is measured by radio.
 ### The effective RMS height, derived
 
 **Computed.** Expanding the specular law to second order in `psi d` and first
-order in `psi sigma` and matching it to `exp(-g^2)` gives
+order in `psi sigma` and matching it to the Ament factor `exp(-g^2)`, with `g`
+the Rayleigh roughness parameter `4 pi s cos(theta) / lambda` of `ROUGHNESS.md`,
+gives
 
 ```
 s^2 = f (1 - f) d^2 + (1 - f) sigma^2
@@ -216,7 +224,7 @@ falls out of the joint recess weighted by the mortar area fraction plus the unit
 scatter weighted by the brick area fraction. Confirmed numerically to three
 digits: inverting the computed specular loss at 10 GHz over all incidences
 returns 1.78 to 1.89 mm for a flush wall with the R1 tolerance against a
-predicted 1.79, and 1.77 to 1.80 mm for a 5 mm recess with no tolerance at all
+predicted 1.80, and 1.77 to 1.80 mm for a 5 mm recess with no tolerance at all
 against a predicted 1.89, and 2.60 to 2.71 mm for both together against a
 predicted 2.60.
 
@@ -279,6 +287,13 @@ the rigorous ladder puts the phase screen's checked envelope:
 | 2 mm recess, mortar = brick | 0.906 | 0.036 |
 | 5 mm recess, mortar = brick | 0.573 | 0.270 |
 
+The flush rows are the `mortar_contrast` block of
+`outputs/masonry_grating/kirchhoff.json` and the 5 mm row is its `disorder`
+block at zero piston. The 2 mm row is the one entry in the table with no stored
+record, because the `recess` sweep was run only with the R1 tolerance applied.
+It is reproduced from `kirchhoff.py` directly, and its specular column is also
+the closed-form law evaluated by hand at `psi d = 0.838 rad`.
+
 Even a mortar permittivity of 7 against brick's 3.91, which is far outside
 anything measured, puts 0.7 percent of the specular power into the comb. A 5 mm
 recess puts 27 percent, thirty-seven times more, and a 2 mm recess still puts five
@@ -333,8 +348,9 @@ area fraction. So the bond is worth carrying if the angular pattern matters and
 is not worth carrying if only the specular and diffuse split does.
 
 **Lateral disorder attacks the comb from the outside in.** A unit displaced
-sideways changes the phase of order `m` by `dk_x eps`, which is proportional to
-the order index, so the specular order is exactly untouched, low orders are
+sideways changes the phase of order `m` by its displacement times the order's
+transverse wavenumber offset, which is proportional to the order index, so the
+specular order is exactly untouched, low orders are
 barely touched and high orders die first. A 2 mm lateral jitter removes about 15
 percent of the comb power at 28 GHz and moves it to the pedestal. Piston
 disorder does the opposite: it attenuates every order including the specular one,
@@ -346,7 +362,8 @@ which is the Ament mechanism.
 uniformly. It reappears with the angular shape of a single brick face, because
 that is the object whose position and height were randomised, and a brick face is
 a rectangle of known size. Its transform is a two-dimensional sinc centred on the
-specular direction with widths `lambda / L` and `lambda / H`:
+specular direction with widths `lambda / L` and `lambda / H`, where `L` and `H`
+are the brick's face length and height, 215 and 65 mm for the UK unit:
 
 | band | width along the wall | width up it |
 |---|---|---|
@@ -421,10 +438,11 @@ the patch. Effective resolutions per case are recorded in
 | GHz | incidence | piston sigma | order spacing | patch limit | 1 deg | 3 deg | 5 deg | 10 deg |
 |---|---|---|---|---|---|---|---|---|
 | 10 | 30 | 0 | 8.5 deg | 70.4 | 70.8 | 20.0 | 15.0 | 9.0 |
-| 10 | 30 | 1.97 mm | 8.5 deg | 28.2 | 22.5 | 16.4 | 13.3 | 8.9 |
-| 10 | 30 | 5.00 mm | 8.5 deg | 27.1 | 20.7 | 15.6 | 12.5 | 9.0 |
+| 10 | 30 | 1.97 mm | 8.5 deg | 28.2 | 22.5 | 16.3 | 13.3 | 8.9 |
+| 10 | 30 | 5.00 mm | 8.5 deg | 27.1 | 20.7 | 15.5 | 12.5 | 9.0 |
 | 10 | 60 | 1.97 mm | 8.5 deg | 27.0 | 21.4 | 14.8 | 12.1 | 9.4 |
-| 28 | 30 | 0 | 3.1 deg | 61.3 | 21.9 | 10.2 | 6.2 | 2.5 |
+| 10 | 60 | 5.00 mm | 8.5 deg | 26.0 | 19.2 | 13.0 | 10.7 | 8.3 |
+| 28 | 30 | 0 | 3.1 deg | 61.2 | 21.9 | 10.2 | 6.2 | 2.5 |
 | 28 | 30 | 1.97 mm | 3.1 deg | 25.9 | 14.0 | 8.7 | 5.6 | 2.3 |
 | 28 | 60 | 1.97 mm | 3.1 deg | 26.0 | 12.3 | 5.0 | 3.5 | 2.0 |
 
@@ -446,9 +464,10 @@ empty and the ratio is limited by the grid, but the fall to 28 dB and the platea
 after it are.
 
 **The band decides how hard the measurement is, and FR3 is easy.** At 10 GHz the
-comb carries 13 to 16 dB of structure through a 3 to 5 degree beam and still 9 dB
-through a 10 degree beam, which is an ordinary horn. At 28 GHz the same beams
-leave 3.5 to 8.7 dB and 2.0 to 2.3 dB. For scale, the one genuinely
+comb carries 11 to 16 dB of structure through a 3 to 5 degree beam and still 8 to
+9 dB through a 10 degree beam, which is an ordinary horn. At 28 GHz the same beams
+leave 3.5 to 8.7 dB and 2.0 to 2.3 dB. Both ranges are over the disordered rows
+only, since the zero-tolerance rows are grid-limited. For scale, the one genuinely
 angle-resolved bistatic dataset available, Yoshino's 1 degree scan at 100 and
 300 GHz, shows about 2 dB rms of wing ripple on a smooth aluminium control, so
 2 dB is the instrumental floor of that class of measurement (**read**, digitised
@@ -463,7 +482,12 @@ masonry at all.
 
 ### The literature is consistent with this and nobody has looked
 
-Assembled by the validation leg, all **read**.
+Assembled by the validation leg, all **read**, with one exception marked below.
+`outputs/masonry_grating/bistatic_validation.json` records which entries were
+read in the full PDF and which came back from a search leg: the six local PDFs,
+Li et al., the Dillard thesis and both NIST and Bologna preprints were read
+directly, while the Pascual-Garcia entry is second-hand because IEEE Xplore
+refuses automated fetches.
 
 - **Savov and Herben, IEEE Trans. Antennas Propag. 51(9), 2003**, predicted
   Floquet mode scattering from a periodic brick wall and closed by saying
@@ -495,7 +519,8 @@ Assembled by the validation leg, all **read**.
   filtered using a fixed angular window". It then averages it away as speckle.
   A ripple whose rate is locked to off-specular angle is a grating signature, not
   zero-mean noise.
-- **Pascual-Garcia et al., IEEE Access 4:688-701, 2016**, swept a real brick wall
+- **Pascual-Garcia et al., IEEE Access 4:688-701, 2016** (**second-hand**, the
+  one entry here not read in the full PDF), swept a real brick wall
   at 57 to 66 GHz with a 3.5 degree lens beam at about 0.6 degree raw steps, then
   published the result through an eleven-point boxcar spanning 5 degrees. The
   course pitch comb at those frequencies is spaced about 4 degrees. The smoothing
@@ -509,7 +534,10 @@ exist. None has been published unsmoothed.
 ## Figures
 
 Drawn by `plot_masonry_grating.py` into `outputs/masonry_grating/figures`, in the
-repository's monograph style, IEEE two column width.
+repository's monograph style, IEEE two column width. Three of the four are also
+collected into `FIGURES/` for the report, as `08_brickwork_bistatic`,
+`09_brickwork_specular_law` and `13_brickwork_convergence`.
+`masonry_comb_vs_resolution` is not, and lives only under `outputs/`.
 
 - **`masonry_bistatic_spectrum`**. The object of the whole exercise: the
   efficiency of every propagating in-plane order at 10 and 28 GHz, rigorous
@@ -520,12 +548,15 @@ repository's monograph style, IEEE two column width.
 - **`masonry_convergence`**. What the rigorous answer does as the Fourier
   truncation grows, with the wall clock of each level beside it. The truncation
   is the only free parameter of a rigorous solve, so this is the figure that says
-  whether the numbers above are converged rather than merely expensive. All four
-  specular curves settle inside a 5 percent band above about 500 retained orders,
-  and the 10 mm groove is visibly the slowest to converge, which is the same
-  physics that makes the phase screen fail there. Only the 28 GHz 30 degree
-  series had the machine to itself, so it is the one to read on the cost panel.
-  The other three ran against other people's work and one of them runs backwards.
+  whether the numbers above are converged rather than merely expensive. Three of
+  the four specular curves sit inside the 5 percent band from about 250 retained
+  orders upwards, and the 28 GHz 60 degree series is the exception, still 6
+  percent low at 937 orders and only settling above about 1700. The 10 mm groove
+  is the slowest on the diffuse channel, 43 percent low at reach 1.0 against its
+  own converged value, which is the same physics that makes the phase screen fail
+  there. Only the 28 GHz 30 degree series had the machine to itself, so it is the
+  one to read on the cost panel. The other three ran against other people's work
+  and two of them run backwards.
 - **`masonry_comb_vs_resolution`**. A cut through the bistatic response at three
   receiver resolutions. This is the comb-or-lobe answer in one picture: sharp
   comb, partly resolved comb, featureless lobe, from the same wall.
@@ -544,8 +575,8 @@ repository's monograph style, IEEE two column width.
 - A flat wall with no relief and no dielectric contrast returns the Fresnel
   coefficient exactly and puts nothing in any other order, in both polarisations,
   in both solvers.
-- RCWA reproduces the half-space Fresnel coefficient to 2.4e-13 and the
-  two-interface slab to 1e-9, and conserves energy to 2e-3 on a lossless
+- RCWA reproduces the half-space Fresnel coefficient to an asserted 1e-10 and
+  the two-interface slab to 1e-9, and conserves energy to 2e-3 on a lossless
   patterned grating.
 - The grating equation is reproduced by both solvers and by the closed form in
   `floquet.py`, which agree on order directions to 1e-12.
@@ -581,7 +612,7 @@ convergence is entirely in the evanescent tail. That is the check that the
 economy below is an economy and not a silent approximation.
 
 **The specular order is converged and the diffuse total is converged to about six
-percent.** From reach 1.0 upwards the specular sits at 0.1098 within 0.6 percent.
+percent.** From reach 1.0 upwards the specular sits at 0.1098 within 0.7 percent.
 The diffuse oscillates between 0.0162 and 0.0178 with no monotone trend, which is
 the expected behaviour of a Fourier method on a permittivity with a step
 discontinuity, so it should be quoted with a six percent bar rather than to three
@@ -620,9 +651,11 @@ diffuse is inside its six percent bar.
 All joints are 10 mm wide, so the recess column is also the groove aspect ratio.
 Lossless brick at 3.91, TE unless stated. The four hero rows carry a full
 convergence curve and their rigorous values are the finest level of it. The rest
-are at reach 1.0, where the specular is inside one to two percent of converged
-but the diffuse is 10 to 43 percent low, so **their diffuse ratios overstate the
-phase screen's error and are marked rather than corrected.**
+are at reach 1.0. Measured on the four hero cases, reach 1.0 puts the specular
+within 0.7 to 1.7 percent of converged at aspect one half and 8.3 percent high at
+aspect one, and puts the diffuse anywhere from 4.1 percent high to 42.9 percent
+low, so **their diffuse ratios are unreliable in both directions and are marked
+rather than corrected.**
 
 | GHz | incidence | recess | aspect | rigorous specular | phase screen | error | rigorous diffuse | phase screen | ratio | truncation |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -643,7 +676,7 @@ phase screen's error and are marked rather than corrected.**
 
 The one aspect-one row that is converged shows the size of that effect. At reach
 1.0 its rigorous diffuse reads 0.00920 against a converged 0.01611, so the phase
-screen looked 2.1 times high when it is in fact 1.8 times high. Applying the same
+screen looked 3.1 times high when it is in fact 1.8 times high. Applying the same
 correction to the two remaining aspect-one rows would bring their 2.77 and 4.69
 down to roughly 1.6 and 2.7. **Read the bold rows.**
 
@@ -664,7 +697,7 @@ presents.
 - **Failure two, grazing incidence at FR2.** At 28 GHz and 60 degrees, aspect one
   half, the specular is 34 percent low and the diffuse 2.4 times high, worse than
   a deep groove on the diffuse and as bad on the specular. That case was run through its own truncation ladder to rule out
-  a numerical cause: 0.2317, 0.1959, 0.2108 and 0.2091 at 435, 937, 1745 and 2653
+  a numerical cause: 0.2317, 0.1959, 0.2108 and 0.2091 at 435, 937, 1745 and 2817
   retained orders, so the rigorous specular settles near 0.210 and the phase
   screen's 0.1375 is not a convergence artefact. At 10 GHz and 60 degrees the identical geometry is fine to 7
   percent. The difference is shadowing: at 60 degrees the groove floor is
@@ -677,8 +710,9 @@ half AND incidence at or below about 45 degrees at FR2**, where the specular
 agrees within 11 percent and the diffuse within a factor of 1.6. Outside it the
 specular error reaches 35 percent with a consistent sign, too little specular,
 and the diffuse is too high by a factor of 1.8 to 2.4. `phase_screen_recess_limit_m`
-returns the aspect half of that envelope. The incidence half is not encoded in
-the library and has to be carried by the caller, which is a gap worth closing.
+returns the aspect half of that envelope and `phase_screen_incidence_limit_deg`
+the incidence half, and `tests/test_kirchhoff.py` checks that the two answer
+different questions.
 
 The consequence for this document is bounded and specific. The sweep's grazing
 columns at FR2, which are the street canyon case, over-count diffuse power by
@@ -730,8 +764,9 @@ brickwork alone produces it**, with no street furniture anywhere in the model.
 **The phase screen must not be used for the monostatic branch of this study.**
 This is a design constraint on another part of the project, so it is stated with
 numbers. At 28 GHz and 30 degrees incidence the rigorous backscattered orders sit
-on a floor near -41.5 dB, essentially flat from -30 to -78 degrees, while the
-phase screen falls away steeply behind the normal:
+on a floor near -42 dB, flat within 1.3 dB from -30 to -68 degrees and falling
+only to -44.2 dB by -77, while the phase screen falls away steeply behind the
+normal:
 
 | scattered angle | rigorous | phase screen | gap |
 |---|---|---|---|
@@ -751,10 +786,12 @@ contains both.
 The monostatic estimator depends on exactly this quantity. **A Kirchhoff or
 phase-screen surface model will under-predict the monostatic return from
 brickwork by 13 to 27 dB at FR2**, which is not a correctable bias because it
-varies by 13 dB across a 14 degree span. Forward and specular directions are fine
-to 2 dB and FR3 is fine to 3 dB in both directions, so the restriction is
-specific: rigorous solves, or a lookup table built from them, for anything
-monostatic at FR2.
+varies by 13 dB across a 14 degree span. At 28 GHz and 30 degrees the forward
+orders are fine to 2.1 dB, and FR3 is fine to 3.3 dB in both directions, so the
+restriction is specific: rigorous solves, or a lookup table built from them, for
+anything monostatic at FR2. Forward scatter is not fine everywhere, though. At
+28 GHz and 60 degrees the phase screen over-counts it by 9.6 dB, which is the
+grazing failure mode rather than the backscatter one.
 
 The same table puts a direction on every diffuse number in the Kirchhoff sweep:
 forward scatter is over-counted by about 2 dB at 28 GHz and 10 dB at grazing,
@@ -776,7 +813,7 @@ decibels, prediction against measurement, from
 | | flush plus R1 scatter | +0.68 | 2.13 | +4.87 |
 | | 5 mm recess plus R1 scatter | +0.28 | 2.01 | +4.65 |
 | | 10 mm recess plus R1 scatter | -0.68 | 1.90 | +4.00 |
-| Dillard 2003, brick, 28 GHz, TE, 6 points, repeat scatter 10 to 18 dB | flat wall | +7.93 | 7.76 | +10.63 |
+| Dillard 2003, brick, 28 GHz, TE, 6 points, repeat scatter 13 to 19 dB at 5 to 30 deg | flat wall | +7.93 | 7.76 | +10.63 |
 | | flush plus R1 scatter | -3.75 | 4.52 | -7.26 |
 | | 5 mm recess plus R1 scatter | -4.81 | 8.15 | -13.40 |
 | | 10 mm recess plus R1 scatter | -4.20 | 8.03 | -13.14 |
@@ -798,10 +835,12 @@ summarises, holds four repeats per angle, and a literature leg read the
 open-access thesis and recovered their ranges (**read**, in
 `outputs/masonry_grating/dillard_thesis.json`). The brick wall spans a factor of
 7.4 in amplitude at 5 degrees, 4.4 at 10, 8.4 at 15 and 4.3 at 30, with sample
-standard deviations at or above the means and no error bar published anywhere.
-**A residual computed against Table 5.1 is therefore meaningless below about 6 to
-9 dB at every angle up to 30 degrees**, which is most of the 8.15 dB it was being
-asked to judge.
+standard deviations 61 to 101 percent of the means at those four angles and no
+error bar published anywhere. The spread collapses to a factor of 1.4 at 45
+degrees and 1.3 at 60, which is a separate warning about those two rows rather
+than a reassurance. **A residual computed against Table 5.1 is therefore
+meaningless below about 6 to 9 dB at every angle up to 30 degrees**, which is
+most of the 8.15 dB it was being asked to judge.
 
 **Step two: against the raw spread instead, the parameter-free prediction is
 inside the data at the shallow angles.** Predicted reflection magnitude against
@@ -852,8 +891,8 @@ unsound.** Four independent problems, all **read** from the thesis.
 all.** The brick and limestone point clouds overlap completely at 5, 10, 15, 30
 and 45 degrees, and at 5 and 10 degrees the entire limestone range sits inside
 the brick range. Landron measured those two wall types at 0.5 cm and 2.5 cm RMS
-height, and any surface model puts their 28 GHz specular retention 10 to 280
-orders of magnitude apart:
+height, and any surface model separates their 28 GHz specular retention by 90
+orders of magnitude at 60 degrees and by 270 at 30:
 
 | angle | brick, 0.5 cm | limestone, 2.5 cm |
 |---|---|---|
@@ -882,8 +921,9 @@ model. That gap is the principal limitation of the work**, and it is the same ga
 
 **Result: the rigorous solve moves the model towards the measurement at exactly
 the angles where the residual survives.** RCWA gives a specular efficiency
-1.82 dB above the phase screen at 28 GHz and 60 degrees, and 0.22 dB below it at
-30 degrees. So roughly two decibels of the grazing residual is the cheap solver
+1.82 dB above the phase screen at 28 GHz and 60 degrees, and 0.24 dB below it at
+30 degrees, both at the converged truncation. So roughly two decibels of the
+grazing residual is the cheap solver
 rather than the wall, which is consistent with the phase screen's grazing failure
 mode above and is not enough on its own to close the gap.
 
@@ -893,8 +933,9 @@ rms only from 8.15 to 4.52 dB and does not move the 45 and 60 degree points
 inside the data. At 28 GHz the dominant term in the default is the unit scatter,
 not the recess, because a 5 mm recess is close to a whole-wave round trip at
 normal incidence and nearly invisible. Removing the scatter as well over-corrects
-to +10.5 dB. Neither single change reconciles the data, which is why the
-two-parameter inversion was needed.
+the other way, to a +7.93 dB median and +10.4 to +10.6 dB at 5 to 15 degrees,
+which is the flat-wall row of the table above. Neither single change reconciles
+the data, which is why the two-parameter inversion was needed.
 
 The Landron parallel-polarisation series is a separate failure with a separate
 cause: every variant, including the flat wall, sits 5.4 dB rms away, because the

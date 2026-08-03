@@ -46,8 +46,12 @@ impossible when the data for it exists.
 each named sequence through `/image_ids?sequence_id=` and fetch metadata by
 explicit identifier. The identifier-based endpoints are complete in every case
 checked here. Around Korenmarkt this turns 112 panorama seeds into 11 named
-sequences, which expand to **1798 linked images**, of which **41 are spherical
-captures inside the 60 m site radius** and 87 within 80 m.
+sequences, which expand to **1359 linked images**, of which **41 are spherical
+captures inside the 60 m site radius** and 87 within 80 m. Those counts are the
+`traversal` block of `outputs/walk_korenmarkt_saturation/walk_selection.json`. The
+narrower 60 m run in `outputs/walk_korenmarkt/walk_selection.json` names 10
+sequences and expands to 1344. The single-query counts above it, 43 images and 135
+frames of one sequence, came from the live API and are not persisted anywhere.
 
 Implemented in `semantic_twin/walk.py` as `seed_sequences` (names only) followed
 by `traverse` (expands), with the docstring stating why the two counts are not
@@ -66,8 +70,9 @@ Those 105 panoramas are the Shibuchika underground shopping arcade and the
 Shibuya station concourse. The premise fields in their metadata say so, their
 frames are 13312 by 6656 rather than the 16384 by 8192 of a car capture, and the
 decisive measurement is that **all thirteen selected panoramas segment to a sky
-fraction of 0.000.** Skyline registration on them returns `only 0 structurally
-supported skyline samples` and exits, thirteen times.
+fraction of 0.000**, ten of them exactly zero and the other three at most 0.03
+percent. Skyline registration on them returns `only 0 structurally supported
+skyline samples` and exits, thirteen times.
 
 The rule is not wrong so much as blind to one axis. Indoor tours are linked, are
 dense, are recent enough, and are exactly the kind of component that wins a
@@ -142,7 +147,9 @@ while barely moving the area fraction. An independent recount at a different ray
 density and with a different caster agreed to **1.2 % relative on single-capture
 area and 2.8 % on fused area**, but differed by **8.8 % and 7.6 % on the
 corresponding face counts**. That is the right way round and is a property of the
-metric, not a disagreement about the geometry.
+metric, not a disagreement about the geometry. Only one side of that comparison
+survives on disk, in `walk_coverage.json`, so the four percentages cannot be
+recomputed here.
 
 So the area fraction is the headline here, and the face count is reported beside
 it as the density-dependent one. A reader re-running at a different ray count
@@ -150,10 +157,13 @@ should expect the counts to move and the areas not to.
 
 **Mesh matters too.** All numbers below trace against
 `inhouse_leaf_130m_f64.ply`, the double-precision tile placement the rest of the
-study uses. The single-precision `inhouse_leaf_130m.ply` displaces whole tiles by
-up to 0.61 m and reports a fused area fraction about **4.6 % relative higher**,
-so the mesh choice is a real bias in the optimistic direction. `build_walk_twin.py`
-defaults to the f64 mesh rather than to the scene's declared `source_mesh`.
+study uses, and its 157,862 triangles are what
+`data/geometry/korenmarkt/inhouse_leaf_130m_f64.json` records. The
+single-precision `inhouse_leaf_130m.ply` displaces whole tiles by up to 0.61 m and
+reports a fused area fraction about **4.6 % relative higher**, on a run that was
+not kept, so the mesh choice is a real bias in the optimistic direction.
+`build_walk_twin.py` defaults to the f64 mesh rather than to the scene's declared
+`source_mesh`.
 
 ### On camera altitude, which can fail silently in both directions
 
@@ -196,9 +206,10 @@ a slow linear climb rather than a turnover. That reading was wrong, and the
 41-station run below shows why: twelve captures is too few to reach the knee, so
 the tail of a twelve-point curve cannot distinguish a plateau from a line.
 
-Note the per-station coverage is nearly flat with range: the station at 2.7 m
-sees 4.64 % and the one at 35.1 m sees 7.25 %. A panorama near the middle of an
-open square is boxed in by the near facades; one further out sees more surface,
+Note the per-station coverage is nearly flat with range. The station at 2.7 m sees
+4.32 % of faces and 6.87 % of area, and the one at 35.1 m sees 6.77 % and 11.56 %,
+which are the two ends of the `per_station` block. A panorama near the middle of an
+open square is boxed in by the near facades, and one further out sees more surface,
 worse. That is why the gain is close to linear rather than front-loaded.
 
 ### Coverage is not accuracy, so here is the geometry of the gain
@@ -289,14 +300,19 @@ the tile texture layer is not optional.
 
 ### The budget number for a per-site acquisition
 
-Reading the 60 m arm, which is the geometry a city site actually has:
+Reading the 60 m arm, which is the geometry a city site actually has. The two
+denominators disagree by two to six panoramas, so both are given rather than
+mixed:
 
-| target | panoramas |
-|---|---|
-| 77 % of achievable coverage | 12 |
-| 82 % | 15 |
-| **90 %** | **26** |
-| 95 % | 33 |
+| target share of the 60 m ceiling | panoramas by area | by face count |
+|---|---|---|
+| 77 % | 13 | 15 |
+| 82 % | 15 | 18 |
+| **90 %** | **24** | **26** |
+| 95 % | 32 | 33 |
+
+Twelve panoramas reach 76.9 % of the area ceiling and 72.0 % of the face ceiling.
+The 26 and 33 of the shipped `interpretation` block are the face-count column.
 
 The marginal area gain per panorama falls below 0.5 points at about **n = 15** and
 below 0.25 points at about **n = 20**. Against a cost of roughly 55 s of GPU
@@ -305,11 +321,13 @@ site is the efficient budget**, and anything above 25 is buying the last tenth a
 three times the price. If the choice is between 25 panoramas in a tight radius
 and 15 spread over twice the extent, take the extent.
 
-**A single capture is a lottery.** Across random orders the first panorama alone
-delivers anywhere from 1.59 % to 6.29 % of faces, a four-fold spread depending on
-which capture you happen to get. That spread is the strongest argument in this
-document against single-capture twins, and it is invisible unless you resample the
-order.
+**A single capture is a lottery.** Across the 60 random orders the first panorama
+alone delivers between 1.59 % and 6.29 % of faces, and those two numbers are the
+tenth and ninetieth percentiles of the shipped curve rather than its range. Scored
+over all 41 candidates directly, the first capture is worth 0.59 % to 6.77 % of
+faces and 0.84 % to 11.56 % of area, so the spread is fourteen-fold on the axis
+this section says to quote. That spread is the strongest argument in this document
+against single-capture twins, and it is invisible unless you resample the order.
 
 ### What that 55 seconds actually is, cold and warm
 
@@ -327,9 +345,13 @@ three consecutive runs into a directory that started empty:
 | warm, same output width | 4096 | 10.6 s | 12.1 s | none |
 | warm, different output width | 2048 | 7.9 s | 9.3 s | none |
 
+Those three runs wrote into a scratch directory and were not kept, so the table is
+the record of them. Everything after this paragraph reads off shipped
+`semantics.json` files.
+
 So **a cold panorama is about 58 s and a warm re-run is 8 to 11 s**. The cohort
 runs agree: fourteen Brussels panoramas cold in thirteen minutes, fourteen at
-Times Square at 48.3 to 49.7 s each, three at Hachiko at 57.2, 57.3 and 57.9 s,
+Times Square at 47.8 to 49.7 s each, three at Hachiko at 57.2, 57.3 and 57.9 s,
 one at Plaza Mayor at 58.4 s. The widest cold spread yet seen over one pass of
 37 panoramas is 56.5 to 118.9 s. Nothing in this pipeline costs 20 minutes a
 panorama, and any claim that it does is a warm run being read as a cold one, or
@@ -373,8 +395,14 @@ would be wrong.**
 | | best | median | worst |
 |---|---|---|---|
 | skyline residual | 1.08 deg | 3.07 deg | 8.10 deg |
-| yaw standard deviation | 0.088 deg | 0.36 deg | 3.89 deg |
-| horizontal position sd | 0.018 m | 0.15 m | 0.92 m |
+| yaw standard deviation | 0.088 deg | 0.38 deg | 3.89 deg |
+| horizontal position sd | 0.060 m | 0.19 m | 0.94 m |
+
+The two spread rows are the seed-ensemble covariance in each `pose_aligned.json`,
+yaw as the square root of its own variance and position as the square root of the
+east and north variances added. An earlier draft read 0.36, and 0.018 to 0.92 m
+for position, which is the smaller of the two horizontal components rather than
+the pair combined.
 
 For comparison the single Street View capture registers at 1.31 deg. Only two of
 the twelve walk panoramas beat it. Two plausible reasons, not yet separated: the
@@ -384,9 +412,10 @@ the observed skyline is coarser; and the outer stations sit near the edge of the
 by the buildings. The residual does correlate with range from the site centre,
 which is consistent with the second, but three stations is not a test.
 
-**Five of twelve pushed the altitude search to its bound**, meaning the fit wanted
-to move the camera more than 1.5 m vertically. That is flagged in each pose as
-`skyline_dz_at_bound` rather than silently accepted.
+**Six of twelve pushed the altitude search to its bound**, meaning the fit wanted
+to move the camera more than the 1.5 m the search allows. That is flagged in each
+pose as `skyline_dz_at_bound` rather than silently accepted, and all six sit
+within 34 mm of -1.5 m.
 
 ### The bound is not an edge case, and the residual cannot see it
 
@@ -469,11 +498,14 @@ over as solid, blocks every other direction. That pose is not accurate to
 almost nothing.
 
 **Widening the bound does not find a better optimum, it just runs further.** At
-Times Square pano_00, the shipped 3 m bound pins at -3.0 m. Reopened at 8 m the
-fit lands at **-7.81 m** with residual 9.52, and reopened at 25 m it lands at
-**-22.60 m** with residual 7.45. The residual falls monotonically as the camera
-is buried deeper. That is the signature of a nuisance parameter absorbing a
-systematic bias, not of a search converging on a pose, and it is consistent with
+Times Square pano_00, the shipped 3 m bound pins at -3.0 m for a residual of
+10.22 deg, which its `alignment/align.log` records. Reopened at 8 m the fit lands
+at **-7.81 m** with residual 9.52, and reopened at 25 m it lands at **-22.60 m**
+with residual 7.45. Those two reopened fits were not written out, so the shipped
+pose is the only one of the three that can be re-read. The residual falls
+monotonically as the camera is buried deeper. That is the signature of a nuisance
+parameter absorbing a systematic bias, not of a search converging on a pose, and
+it is consistent with
 what `mesh_skyline` already warns about: an azimuthal percentile filter on a
 roofline that is convex upward removes peaks, biases the predicted skyline low,
 and lowering the camera is the cheapest way for the fit to raise it again.
@@ -557,9 +589,10 @@ pixels against projected support area in one rectilinear crop at yaw 0. The
 numbers above are over the full sphere, which includes sky and paving and so
 dilutes the denominator, and they are per face rather than per pixel. The
 per-view transient *pixel* fraction over the full sphere for these eight stations
-has a median of **5.5 %** and a maximum of **28.9 %**, and that spread is the real
-point: occupancy at this site varies by a factor of five between captures, so any
-single capture is a lottery ticket on how busy the square happened to be.
+runs from **3.8 % to 28.9 %** with a median of **5.5 %**, and that spread is the
+real point: occupancy at this site varies by nearly a factor of eight between
+captures, so any single capture is a lottery ticket on how busy the square
+happened to be.
 
 ## Cross-capture agreement, which is the first real validation here
 
@@ -587,7 +620,7 @@ the segmentation is deterministic, which it is.
 Roughly three faces in ten get a different entity class from an independent
 capture. Where that comes from is not yet separated, and the three candidates are
 not equally benign: genuine segmentation error, pose error smearing labels across
-facade boundaries (the retained stations still span 1.08 to 3.07 deg of skyline
+facade boundaries (the retained stations still span 1.08 to 3.67 deg of skyline
 residual), and real change over three years on a commercial square where shopfronts
 turn over. The 2022 sequence sits entirely north of the square, so cross-date and
 cross-viewpoint are partly confounded in this walk and a clean separation needs

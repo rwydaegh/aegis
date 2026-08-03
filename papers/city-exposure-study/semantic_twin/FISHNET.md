@@ -188,6 +188,11 @@ pixel count the run refused to paint relative to the last row.
 
 Rates are pooled over the four crops, 2,724,852 paintable pixels in the last
 row. *Withheld* counts pixels the run refused to paint that the last row paints.
+Two of the five rows are shipped, the first as `outputs/korenmarkt_fishnet_vistas`
+and the degraded one as `outputs/korenmarkt_fishnet_vistas_fused`, and their
+2,613,301 and 2,723,502 paintable pixels give the 111,551 and 1,350 withheld
+directly. The gate-overridden row and the no-evidence row were run and discarded,
+so their rates and their 145,471 withheld pixels have no output directory.
 
 - Splitting `mesh_or_pose_conflict` out of `clutter_in_front` changes no number.
   Both reasons withhold the pixel and the round trip is identical to the pixel.
@@ -265,12 +270,14 @@ centre, where a 90 degree crop has its coarsest angular pixel pitch.
 The count falls steeply up to about 1.5 px and then flattens, because past that
 point the geometry is dominated by the support triangulation rather than by the
 boundary description. Raising the minimum island from 64 to 256 px nearly doubles
-the class change while saving 2% of the triangles, so 64 is the default.
+the class change while saving 2% of the triangles, so 64 is the default. Only the
+shipped row, 1.5 px at 64 px, survives as an output directory. The other five were
+swept in one session and overwritten, so the table is their only record.
 
 The default tolerance of 1.5 px is 0.168 degrees, which is 29 mm at 10 m range.
-At 28 GHz that is about 2.7 wavelengths, so the boundary description is fine
-enough for material assignment but not for coherent phase on a boundary-hugging
-path.
+That is 1.5 wavelengths at the 15 GHz this study runs at and about 2.7 at 28 GHz,
+so the boundary description is fine enough for material assignment but not for
+coherent phase on a boundary-hugging path.
 
 ### Second taxonomy
 
@@ -301,9 +308,15 @@ placed 3.2 to 15.0 m from the capture point.
 
 ### Cost
 
+Timings in this section were read off the console of the runs that produced the
+directories below and are not recorded in any manifest, so they are quotable as
+orders of magnitude rather than as measurements anybody can re-read. The file
+sizes are on disk.
+
 Per 1024 x 1024 view on one core: 2.3 s for the cut and 2.7 s end to end, with
-1.2 MB of NPZ per view of which most is the pixel provenance. Turn provenance off
-with `record_provenance=False` if that matters at city scale.
+1.0 to 1.5 MB of NPZ per view, 1.2 MB on average, of which most is the pixel
+provenance. Turn provenance off with `record_provenance=False` if that matters at
+city scale.
 
 The mesh first-hit buffer that feeds it now costs 1.15 s per view rather than a
 per-pixel Python loop through a Blender BVH: `raycast_mesh_depth.py` casts the

@@ -10,7 +10,27 @@ and measures at what canopy fraction the choice starts to change the answer.
 
 Code is `semantic_twin/foliage.py`. Study is `run_foliage_study.py`. Parameter
 provenance is `config/vegetation_p833.json`. Tests are `tests/test_foliage.py`,
-32 of them, all passing.
+27 test functions that collect as 32 cases once the three parametrised ones
+expand, all passing.
+
+Two symbols are used throughout and are fixed here. `tau` is the optical depth
+of a canopy, the extinction coefficient times the path length through it, and
+`chi` is the susceptibility the estimator reports, the share of incident power
+the observation point receives relative to free space.
+
+**One convention warning, because it scales every decibel below.**
+`FoliageMedium.specific_attenuation_db_per_m` converts P.833's `sigma_tau` to
+decibels at 8.686 dB per neper, which is the field convention, while the same
+class transports power as `exp(-tau)` in `slab_transmission` and in the Monte
+Carlo free flight, which is the power convention and converts at 4.343. The two
+cannot both be right. Every decibel figure below that came through a `sigma_tau`
+is quoted as the code computes it, at 8.686, and halves if the power convention
+is the intended one. The optical depths themselves, and therefore every crossing
+fraction in part 3, are unaffected, because the sweep sets `tau` directly rather
+than through the conversion. What would move is the reference optical depth: the
+Figure 2 curve is a power specific attenuation in dB/m, so under the power
+convention it implies `tau` of 4.2 over a 6 m canopy rather than the 2.1 the
+study uses. This is a code question and is flagged rather than resolved here.
 
 ## Part 1. The standard, and what it does not cover
 
@@ -114,10 +134,15 @@ years ago. Do not use it.
 
 **The recommendation disagrees with itself.** Table 8 gives London plane in
 leaf at 11 GHz a combined absorption and scatter coefficient of 0.750 per
-metre, which is **6.5 dB/m**. Figure 2, in the same document, gives about
-**2.2 dB/m** at 11 GHz. Neither is wrong against the other because they were
-never reconciled. That factor of three, plus the factor of 7.3 spread across
-species within Table 8 itself at 11 to 12.5 GHz, is why this study sweeps
+metre, which `foliage.py` reports as **6.5 dB/m**. Figure 2, in the same
+document, gives about **2.2 dB/m** at 11 GHz, from the `0.19 f_GHz^1.02` fit to
+the printed curve. Neither is wrong against the other because they were never
+reconciled. Read the convention warning above before quoting the factor of
+three: it is a factor of three at 8.686 dB per neper and a factor of 1.5 at
+4.343, and the recommendation prints no unit for `sigma_tau` to settle it. What
+does not depend on the convention is the factor of 7.3 spread across species
+within Table 8 itself at 11 to 12.5 GHz, from 0.124 per metre for horse
+chestnut to 0.900 for Himalayan cedar, and that is why this study sweeps
 optical depth instead of quoting one. There is a test for it.
 
 ### The two neighbouring recommendations add nothing
@@ -152,11 +177,13 @@ Gamma_slab = r (1 - e^{-2 j delta}) / (1 - r^2 e^{-2 j delta}),
 delta = 2 pi d sqrt(eps - sin^2 theta) / lambda
 ```
 
-and as `delta` goes to zero the two interfaces cancel and the reflectance goes
-with it. With P.833 Table 10 wood permittivity, which is a *lower* bound on a
-leaf since leaves hold more water than 40% moisture timber, the electrical
-thickness of a leaf is 0.073 rad at 7 GHz, 0.153 rad at 15 GHz and 0.277 rad at
-28 GHz. Nowhere near the half space limit.
+with `r` the single interface Fresnel amplitude reflection coefficient, `d` the
+slab thickness, `eps` its relative permittivity and `delta` its one way
+electrical thickness. As `delta` goes to zero the two interfaces cancel and the
+reflectance goes with it. With P.833 Table 10 wood permittivity, which is a
+*lower* bound on a leaf since leaves hold more water than 40% moisture timber,
+the electrical thickness of a leaf is 0.073 rad at 7 GHz, 0.153 rad at 15 GHz
+and 0.277 rad at 28 GHz. Nowhere near the half space limit.
 
 `outputs/foliage_study/foliage_leaf_slab.pdf`, and the numbers:
 
@@ -190,12 +217,19 @@ London plane, LAI 1.930, over a 6 m canopy:
 f_v = 1.930 * 0.0002 / 6.0 = 6.43e-5
 ```
 
-Maxwell Garnett in the dilute limit, `eps_eff = 1 + 3 f_v (eps_l - 1)/(eps_l + 2)`,
-gives an effective canopy permittivity of `1 + 1.5e-4` and a normal incidence
-power reflectance of **1.9e-9**.
+Maxwell Garnett in the dilute limit, `eps_eff = 1 + 3 f_v (eps_l - 1)/(eps_l + 2)`
+with `eps_l` the leaf permittivity, gives an effective canopy permittivity of
+`1 + 1.7e-4` and a normal incidence power reflectance of **1.9e-9**
+(`leaf.json`, `canopy_boundary_reflectance.london_plane`).
 
-The P.2040-4 `wood` row that `propagation/semantic_binding.py` substitutes for
-`vegetation_effective` today gives **0.029**, which is **71.8 dB higher**.
+The P.2040-4 `wood` row gives **0.029**, which is **71.8 dB higher**. That
+substitution is what `propagation/semantic_binding.py` used to make for
+`vegetation_effective`, and it is what the surface treatments in part 3 stand
+in for. It has since been changed: `MATERIAL_BINDING` now routes
+`vegetation_effective` to the P.2040 `vacuum_air` row, which removes the
+71.8 dB of invented reflection but leaves the canopy hull as a perfect
+absorber, so the shipped pipeline now sits between the surface treatment and
+the cut rather than on either.
 
 There is no interface. Putting a Fresnel surface on a canopy hull invents a
 reflection that the medium does not have. That is a structural error, not a
@@ -211,11 +245,12 @@ something more useful and slightly different.
 
 At the optical depths P.833 itself supports, the surface treatment is not
 merely wrong, it is **pinned at the opaque limit**. Its susceptibility sits
-below the medium's at an optical depth of 16 at every canopy fraction measured,
-so the pipeline's current vegetation model behaves like a canopy of optical
-depth **above 16 over 6 m, that is above 139 dB of one way attenuation**,
-against the recommendation's own 6.5 to 47 dB from Tables 5 to 8 and 18 dB from
-Figure 2. Cutting vegetation out is pinned at the transparent limit.
+below the medium's at an optical depth of 16 at every one of the twelve canopy
+fractions swept, so a wood row surface behaves like a canopy of optical depth
+**above 16 over 6 m, that is above 139 dB of one way attenuation**, against the
+recommendation's own 6.5 to 47 dB from Tables 5 to 8 and 18 dB from Figure 2.
+Halve the two Table 5 to 8 figures if the power convention of the warning above
+is the intended one. Cutting vegetation out is pinned at the transparent limit.
 
 The medium is the only treatment that lives between them, and it is the only
 one that carries the uncertainty. That matters more than being right at any one
@@ -227,15 +262,25 @@ down in this band to better than a factor of 7.3 across species.
 `outputs/foliage_study/foliage_sensitivity.pdf`. Data in `sensitivity.json`,
 thresholds in `crossings.json`.
 
-Scene: an 18 m street canyon, 18 m facades, concrete and asphalt at 15 GHz from
-`config/itu_p2040_4.json`, observer at 1.5 m, canopy box from 4 to 10 m with a
-dialable half width. 400,000 rays per point, 120 sweep points. Reported metric
-is the isotropic susceptibility, chosen because it is the only one of the three
-illumination models whose estimator standard error is below 0.3% at this ray
-count. The two site models put most of their weight within a few degrees of the
-horizon, where a canyon passes almost nothing, so a handful of grazing escapes
-carry the whole estimate and their standard error sits near 2%. Fine for a 5 dB
-effect, not fine for a 0.5 dB threshold. Both are in the JSON.
+Scene: an 18 m street canyon, 18 m facades, ground and facade permittivities
+held fixed at 3.66 - 0.09i and 3.91 - 0.14i, observer at 1.5 m, canopy box from
+4 to 10 m with a dialable half width. 400,000 rays per point, 120 sweep points.
+`run_foliage_study.py` labels those two permittivities concrete and asphalt from
+`config/itu_p2040_4.json`, and they are neither: that file gives concrete
+5.24 - 0.46i and asphalt 4.83 - 0.57i at 15 GHz. The label is wrong and the
+numbers have no traced source. Nothing in this part turns on it, because both
+surfaces are identical across all four treatments, but the absolute
+susceptibility level does.
+
+Reported metric is the isotropic susceptibility, chosen because it is the only
+one of the three illumination models whose estimator standard error is below
+0.3% at this ray count. The two site models put most of their weight within a
+few degrees of the horizon, where a canyon passes almost nothing, so a handful
+of grazing escapes carry the whole estimate and their standard error sits near
+2%. Fine for a 5 dB effect, not fine for a 0.5 dB threshold. All three
+susceptibilities are in the JSON. The 0.3% and 2% are asserted in the header of
+`run_foliage_study.py` and are not recomputed into `sensitivity.json`, so they
+are the one pair of numbers in this part with no output file behind them.
 
 The canopy fraction on the x axis is measured the same way the site numbers
 were: share of directions from the observation point that look into vegetation.
@@ -249,13 +294,16 @@ of 2 which is what P.833 Figure 2 implies at 15 GHz over a 6 m canopy:
 
 | comparison | 0.5 dB | 1 dB |
 | --- | --- | --- |
-| surface (either roughness) vs cut | **2.1%** | 4.2% |
+| surface, specular roughness, vs cut | **2.1%** | 4.2% |
+| surface, diffuse roughness, vs cut | **2.0%** | 4.1% |
 | surface vs medium | **2.9%** | 5.7% |
 | medium vs cut | **6.0%** | 10.6% |
 
-Across the full P.833 optical depth envelope, the medium against cut crosses
-0.5 dB anywhere from 26% (at tau 0.25) down to 3.1% (at tau 16), and within the
-table envelope of tau 0.74 to 5.4 it crosses between about 4.6% and 10%.
+Across the full swept range of optical depth, the medium against cut crosses
+0.5 dB anywhere from 26% (at tau 0.25) down to 3.1% (at tau 16). That range is
+wider than the recommendation supports. Within the table envelope of tau 0.74
+to 5.4 the crossing runs from about 11% to about 4.2%, interpolated between the
+sweep points at tau 1 (8.9%) and tau 4 (4.6%).
 
 ### What this tells the ten city acquisition
 
@@ -267,17 +315,21 @@ table envelope of tau 0.74 to 5.4 it crosses between about 4.6% and 10%.
 2. **Between 2% and about 6%, the surface treatment is the outlier.** Cut and
    medium still agree with each other while the surface is already 0.5 to 1 dB
    away from both. That regime is the dangerous one, because it is the regime
-   where doing nothing is *better* than what the pipeline currently does.
+   where doing nothing beats putting a wood row surface on the hull, which is
+   what the pipeline did before the vacuum row landed.
 3. **Above about 6%, and certainly on a tree lined boulevard, the answer is a
-   band and not a number.** At 32% canopy the medium spans a factor of five in
-   susceptibility across the P.833 table envelope alone, 0.196 at tau 0.25 down
-   to 0.022 at tau 16. Quoting a single foliage corrected exposure at such a
-   site without the band would be the kind of false precision this project
-   spends the rest of its documents avoiding.
+   band and not a number.** At 32% canopy the medium spans a factor of 2.8 in
+   susceptibility across the P.833 table envelope alone, about 0.16 at tau 0.74
+   down to about 0.056 at tau 5.4, interpolated between the sweep points at
+   tau 1 (0.146) and tau 4 (0.072). Across the full swept range it spans a
+   factor of 8.9, 0.196 at tau 0.25 down to 0.022 at tau 16. Quoting a single
+   foliage corrected exposure at such a site without the band would be the kind
+   of false precision this project spends the rest of its documents avoiding.
 4. **The roughness of the surface treatment barely matters.** Smooth wood and
-   metre scale lumpy wood differ by less than 0.4 dB everywhere below 25%
-   canopy. Whether the blob is a mirror or a diffuser is not the problem. That
-   it is a surface at all is the problem.
+   metre scale lumpy wood differ by 0.19 dB or less at every swept fraction up
+   to 18% canopy, and by 0.46 dB at the next one, 26%. Whether the blob is a
+   mirror or a diffuser is not the problem. That it is a surface at all is the
+   problem.
 
 ## Part 4. Validation, since there are no measurements
 
@@ -305,11 +357,13 @@ within 1%. This is the test that catches a wrong chord, a wrong boundary
 crossing or a wrong free flight, none of which a normal incidence Beer-Lambert
 check would notice.
 
-**The phase function.** The recommendation exposes `alpha` and `beta` and
+**The phase function.** The recommendation exposes `alpha`, the forward
+scattered share of scattered power, and `beta`, the forward lobe beamwidth, and
 **never writes the functional form of the phase function down**, so any
 renderer has to interpolate it, and this one uses a Gaussian forward lobe. The
-consequence is bounded by the recommendation's own algebra. Equations (13) and
-(14) define `tau_hat = tau (1 - alpha W)` and `W_hat = (1 - alpha) W / (1 - alpha W)`,
+consequence is bounded by the recommendation's own algebra. With `W` the single
+scattering albedo, equations (13) and (14) define `tau_hat = tau (1 - alpha W)`
+and `W_hat = (1 - alpha) W / (1 - alpha W)`,
 which is the standard delta-M scaling. If the escaping power is invariant under
 the scaling P.833 itself applies, the lobe shape does not matter. It is,
 to 3%, at forward lobe beamwidths of 2 and 8 degrees. The recommendation has
@@ -371,8 +425,10 @@ reference implementation of exactly that control flow, and
 `test_estimator_agrees_with_the_shared_sbr_tracer` is the equivalence the
 merged version has to keep passing.
 
-Second, smaller change, in `propagation/semantic_binding.py`:
-`MATERIAL_SUBSTITUTION` currently maps `vegetation_effective` to `wood` with
-the comment "P.833 territory, out of scope". It is no longer out of scope, and
-part 3 shows that substitution is the worst of the three treatments in the 2 to
-6% canopy regime. It should route to `foliage.FoliageMedium.from_p833` instead.
+Second, smaller change, in `propagation/semantic_binding.py`. The wood row
+substitution that part 3 measures as the worst of the three treatments in the 2
+to 6% canopy regime has already been retired: `MATERIAL_BINDING` now sends
+`vegetation_effective` to `vacuum_air`, which kills the invented reflection but
+keeps a perfectly absorbing hull. That is a half fix, and the file says so in
+its own comment. The remaining step is to route the class to
+`foliage.FoliageMedium.from_p833` once the hook above exists.

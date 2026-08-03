@@ -137,7 +137,7 @@ rather than a height and correlation length into a Rayleigh split, materials
 attached to patches of existing surfaces rather than to re-meshed image-space
 semantic islands, no attribute vector, 60 GHz only, no clutter recovery, no
 exposure. **Critically it needs real channel measurements to close the loop**,
-which kills its ten-city scalability. That is this study's best differentiator
+which kills its eleven-city scalability. That is this study's best differentiator
 against it.
 
 **Cazzella, Linsalata, Badini (Huawei Technologies Italia), Matteucci, Magarini,
@@ -463,7 +463,7 @@ end with primary sources.
    about p's normal"), the glossy transfer is a **non-square two-directional
    matrix** (for example 25x9) mapping external incident-lighting coefficients to
    local transferred radiance, and sections 7 and 8 store transfer matrices at
-   **free-space grid points**, not only on surfaces. That is `T_S(u_loc, u_ext)`
+   **free-space grid points**, not only on surfaces. That is `T_x(u_loc, u_ext)`
    minus delay, frequency and polarisation. It is unambiguously a **first
    moment**, a linear operator on radiance, with colour as three independent
    scalar dot products. No covariance anywhere in the PRT line.
@@ -551,15 +551,17 @@ Loss Modeling for Urban Satellite Links via Calibrated Ray-Tracing Simulations a
 a physical-statistical lineage back to `10.1049/IP-MAP:19990144` (1999). A
 per-location, angular, source-position-agnostic environment descriptor obtained by
 ray tracing a 3D urban model, later combined with an actual constellation
-geometry. It is a scalar version of `K_S(u_ext)` with the same factorisation
+geometry. It is a scalar version of `K_x(u_ext)` with the same factorisation
 logic.
 
 **GNSS shadow matching and 3D-mapping-aided GNSS** compute, per candidate
 position, predicted sky visibility and reception as a function of satellite
 direction independent of which satellite, then combine with the live
 constellation. Groves 2013, `10.1002/NAVI.38`, 149 citations. Skymask matching
-from fisheye cameras, `10.3390/s20174728`. **The zero-bounce term `T_0` and the
-"measured p_LOS" result in `DECISIONS.md` are, structurally, GNSS skymasks.** Note
+from fisheye cameras, `10.3390/s20174728`. **The zero-bounce term of `T_x` and
+the "measured p_LOS" result in `DECISIONS.md` are, structurally, GNSS skymasks.**
+An earlier revision wrote that term as `T_0`, which now collides with the tissue
+power transmission coefficient in the paper's symbol table. Note
 also that LOS probability from 3D building data is itself a crowded area
 (`10.1109/TAP.2024.3513540`, `10.1109/TWC.2021.3075099`), so "measured p_LOS
 against the 3GPP curve" is a thinner result than `DECISIONS.md` assumes. What is
@@ -598,7 +600,7 @@ ingredients, in print, same first author.
 
 What remains: it is a forward pipeline where a specific deployment is an input,
 and absorption comes from brute-force FDTD per scenario, which is precisely what a
-stored `D(k_hat)` and a source-independent `T_S` replace. No deployment
+stored `D(k_hat)` and a source-independent `T_x` replace. No deployment
 distribution, two cities not ten, no population weighting, no FR3, no street-view
 panoramas. **Cite it prominently in the introduction and argue the delta there.**
 
@@ -879,26 +881,37 @@ and 28 GHz.
 power arrives from the edge directly above the near facade, so at a head at 1.7 m
 the arrival elevation is 35 to 86 degrees depending on eaves height and standoff.
 That is the top of the 3 to 60 degree band or above it entirely. The
-`1/sin^3(el)` weight at 60 degrees is 0.001 times its value at 5 degrees. **Adding
+`1/sin^3(alpha)` weight at 60 degrees is 0.001 times its value at 5 degrees. **Adding
 UTD would deposit power exactly where the study's own weight suppresses it by
 three orders of magnitude.** Section 9.3 conflates the link with the local tensor:
-the over-rooftop multiscreen transport a macrocell link needs is upstream of `K_S`
-and factored out by construction. What `K_S` must capture is only the last edge.
+the over-rooftop multiscreen transport a macrocell link needs is upstream of `K_x`
+and factored out by construction. What `K_x` must capture is only the last edge.
 
 **And the power-integral error is unmeasurable.** With blocked directions carrying
 -45 dB, the error from omitting diffraction is 0.000 dB at open-azimuth fraction
 0.30, 0.003 dB at 0.05, 0.014 dB at 0.01 and 0.135 dB at 0.001. Reaching 1 dB
 needs an open fraction below 0.012 percent of azimuth. Korenmarkt's measured sky
-fraction is 0.2271. The UTD transition region, the one place geometrical optics is
+fraction is 0.2271, the `sky_fraction_mean` over 32 fixed observers in
+`outputs/crop_convergence/korenmarkt_crop_convergence.json` at 120 m and 200 m.
+The 80 and 120 standpoint exposure runs give 0.229 to 0.247 for the same site, so
+the argument holds on any of them. The UTD transition region, the one place
+geometrical optics is
 genuinely discontinuous, has half-width sqrt(lambda*s/2) = 28 cm at 28 GHz for
 s = 15 m against 106 cm at 2 GHz, roughly 1.9 percent of directions at a
 worst-case 6 dB, so about 0.06 dB of bias on `K_iso`.
 
 **Recommendation, now carried out.** Section 9.3's qualitative worry has been
 replaced with this quantitative bound, and the recommendation to publish
-`f_open`, the low-elevation open-azimuth fraction, per location as the validity
-flag went in with it. Nothing computes `f_open` yet. That converts a confessed
-hole into a scoped and defended decision, and it is a stronger paper for it.
+`f_open(alpha)`, the low-elevation open-azimuth fraction, per location as the
+validity flag went in with it. That converts a confessed hole into a scoped and
+defended decision, and it is a stronger paper for it.
+
+**Still open, and it now blocks two documents rather than one.** Nothing in this
+repository computes `f_open`. `DEPLOYMENT_GEOMETRY.md` section 6 carries a
+per-site `f_open` table and sections 7.3 and 7.5 build the whole range-cap
+leverage argument on it, all computed once by hand with no script behind them.
+Until `f_open` is library code with a test on it, neither the validity flag here
+nor the sensitivity band there can be regenerated.
 
 **The genuine exceptions, stated plainly.** The parapet case is unambiguous:
 Chizhik measures that moving the base station 5 m back from the roof edge costs
@@ -957,18 +970,27 @@ good accuracy." The outputs here are condensed parameters.
 
 ## 4.2 The real largest hole is the crop radius
 
-Section 2.7 supports the rooftop weight on `Delta_h` in [13.5, 43.5] m and `d` in
-[25, 250] m. The scene is cropped at 130 m. The fraction of the `cos/sin^3`
-measure lying at elevations that require sources outside the crop is 27.5 percent
-<!-- Superseded 2026-08-02: computed under the uncorrected elevation law, see
-MONOSTATIC_SBR.md section 2.7.1. The argument that the 130 m crop cannot hold
-the model's own source support is unaffected. -->
+Section 2.7 supports the rooftop weight on `h` in [13.5, 43.5] m above head and
+`r` in [25, 250] m. The scene is cropped at 130 m. The fraction of the
+`cos/sin^3` measure lying at elevations that require sources outside the crop is
+27.5 percent for `h` = 8 m, 79.4 percent at 15 m, 88.5 percent at 20 m and
+94.9 percent at 30 m.
 
-for `Delta_h` = 8 m, 79.4 percent at 15 m, 88.5 percent at 20 m and 94.9 percent
-at 30 m. Sixty-four percent of the pure geometric weight sits below 5 degrees and
-89 percent below 9 degrees. **The weight's stated support and the crop radius
-contradict each other**, and section 7.5 already measured that the crop has not
-converged.
+⚠️ **Those four are superseded.** They were computed under the uncorrected
+elevation law, `MONOSTATIC_SBR.md` section 2.7.1, and have not been remeasured.
+The argument that the 130 m crop cannot hold the model's own source support is
+unaffected by the correction, since the corrected law puts *less* weight at low
+elevation, not more.
+
+An earlier revision added that "sixty-four percent of the pure geometric weight
+sits below 5 degrees and 89 percent below 9 degrees". **Neither figure is
+reproducible from the support the code ever ran.** The superseded law on
+[3.1, 60.1] deg gives **61.74 percent below 5 degrees and 88.39 percent below
+9 degrees**; 64.18 percent needs a 3.0 degree lower edge that no version used.
+Under the shipping corrected law the same two figures are 9.41 percent and
+45.19 percent, which is the whole point of the correction. **The weight's stated
+support and the crop radius contradict each other** either way, and
+`MONOSTATIC_SBR.md` section 7.5 already measured that the crop has not converged.
 
 This is about source placement, not scatterers. Scatterer truncation beyond 130 m
 is worth only -19 to -41 dB, under 0.05 dB of error, from ITU-R P.1411-13 Table 11
@@ -983,8 +1005,9 @@ section 9.4 carrying this argument, and its decision table and weakness list ran
 the crop first. Writing it up surfaced that three different crop questions were
 being run together, and only two of them are covered above. Scattered power is
 bounded small, as this section says. Source support is broken, as this section
-says. But section 7.5's own measurement is about neither: it is about
-**occlusion**, and under the adjoint `R^0` law a distant blocker changes `K_S(u)`
+says. But `MONOSTATIC_SBR.md` section 7.5's own measurement is about neither: it
+is about
+**occlusion**, and under the adjoint `R^0` law a distant blocker changes `K_x(u)`
 in that direction at full per-direction strength, which is why directions beyond
 90 m carry -28.4 dB of the isotropic weight and that figure is still growing with
 radius against a 30 dB budget. The delay-spread bound above does not retire that
@@ -1042,14 +1065,19 @@ split as a *complete* answer.
 
 ## 4.4 The 27 percent unseen material figure is not fatal, but it is stated wrongly
 
-Fresnel reflectivity spread computed from ITU-R P.2040-4 at 28 GHz,
-cosine-weighted over incidence: concrete -7.50, brick -8.70, glass -6.86, marble
--6.49, plasterboard -10.48, chipboard -10.78, wood -12.52, **metal -0.01 dB**.
-Masonry plus stone plus glass, which is a European medieval core, spans **2.21 dB
-in total**. Concrete-prior against glass-truth is -0.64 dB, so the confusion
-everyone worries about is the smallest one in the table. Every P.2040 building
-material has b = 0, so the real part is frequency-flat and **FR3 inherits the
-identical bound** to within 0.03 dB at 10 GHz. That is a clean one-line claim.
+Fresnel reflectivity spread computed from `config/itu_p2040_4.json` at 28 GHz,
+unpolarised, averaged over incidence with weight `cos(theta) dtheta`: concrete
+-7.50, brick -8.70, glass -6.86, marble -6.49, plasterboard -10.48, chipboard
+-10.78, wood -12.52, **metal -0.01 dB**. Masonry plus stone plus glass, which is
+a European medieval core, spans **2.21 dB in total**. Concrete-prior against
+glass-truth is -0.64 dB, so the confusion everyone worries about is the smallest
+one in the table. Every P.2040 building material has b = 0, so the real part is
+frequency-flat and **FR3 inherits the identical bound**: the same four materials
+span 2.206 dB at 10 GHz against 2.207 dB at 28 GHz. That is a clean one-line
+claim. Recomputed and confirmed 2026-08-02, all eight to the stated precision.
+Quote the weight when quoting the numbers: a `cos(theta) sin(theta)` weight,
+which is the other natural reading of "cosine-weighted", moves every entry by up
+to 1.5 dB and shrinks the span to 1.82 dB.
 
 Monte Carlo over a European-core truth distribution with a concrete prior,
 4x10^5 draws, at the stated 27 percent unknown fraction: +0.08 ± 0.96 dB at order
@@ -1441,7 +1469,7 @@ In descending order of safety.
    operator published as a reusable per-location deliverable, for RF exposure.**
    Not found in graphics, acoustics or radio. The narrowest claim and the only one
    that survived a deliberate attempt to break it.
-3. **Third-party photogrammetric tiles at ten-city scale with no per-scene
+3. **Third-party photogrammetric tiles at eleven-city scale with no per-scene
    reconstruction and no channel measurements.** Everything in question 1 is one
    site, or two or three scenes, and VisRFTwin, HoRAMA, RadioTwin and RFCanvas all
    need measurements or their own capture.
