@@ -50,6 +50,7 @@ you can come back to a job hours later from a different session.
 | `setup` | build the Python 3.12 venv and install both packages, idempotent |
 | `doctor` | print the remote host, load, GPU and package versions |
 | `run "CMD"` | start CMD detached, print the job id |
+| `run --sync "CMD"` | sync first, then start it |
 | `status [JOB]` | `running pid=N` or `finished rc=N`, defaults to the newest job |
 | `log [JOB]` | tail the log, `BLGPU_TAIL=500` for more |
 | `follow [JOB]` | stream the log until the job ends |
@@ -171,6 +172,19 @@ synced panorama semantics are byte for byte the local ones and that the binding 
 same way.
 
 So the box can be used for published numbers, not just for exploration.
+
+`python -m pytest tests/test_propagation.py -q` passes on the box, 41 of 41.
+
+One warning about how a false disagreement shows up. That suite first came back with one failure
+on the box and a pass locally, which looks exactly like the machine difference this whole exercise
+exists to rule out. It was not. Ten agents are editing this tree at once and
+`tests/test_propagation.py` had been rewritten locally after the last `sync`, so the box was
+running a newer tracer against an older test. Anything that looks like a machine disagreement is a
+stale sync until proven otherwise: check `md5sum` on both sides before believing it.
+`run --sync` exists so the question does not come up.
+
+For the same reason `sync` forgives rsync exit 24, files vanishing between the scan and the
+transfer. In a tree this busy that is normal traffic, not an error.
 
 ## Speedup, measured
 

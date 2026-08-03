@@ -5,12 +5,13 @@
 # hard coded /home/user/aegis/... path in this study resolves identically on
 # both machines and a command is copy pasteable between them.
 #
-#   tools/blgpu.sh sync              push code, config and the f64 meshes
-#   tools/blgpu.sh sync --all-meshes push the float32 meshes as well
+#   tools/blgpu.sh sync              push code, config, meshes and fused semantics
+#   tools/blgpu.sh sync --all-meshes push the meshes the tracer refuses too
 #   tools/blgpu.sh push PATH...      push a heavier input the default sync leaves behind
 #   tools/blgpu.sh setup             build the python 3.12 venv and install both packages
 #   tools/blgpu.sh doctor            print what the remote environment actually is
 #   tools/blgpu.sh run "CMD"         start CMD detached, print the job id
+#   tools/blgpu.sh run --sync "CMD"  sync first, then start it
 #   tools/blgpu.sh status [JOB]      running, or exit code if finished
 #   tools/blgpu.sh log [JOB]         tail the log
 #   tools/blgpu.sh follow [JOB]      stream the log until the job ends
@@ -44,6 +45,19 @@ SSH_OPTS=(-o ControlMaster=auto -o "ControlPath=$SSH_CTL_DIR/%r@%h:%p" -o Contro
 
 rsh() { ssh "${SSH_OPTS[@]}" "$HOST" "$@"; }
 die() { echo "blgpu: $*" >&2; exit 1; }
+
+# About ten agents write into this tree at once, so a file disappearing between
+# rsync's scan and its transfer is routine rather than a failure. That is exit
+# 24, and only that one is forgiven.
+rs() {
+  local rc=0
+  rsync -a -e "ssh ${SSH_OPTS[*]}" "$@" || rc=$?
+  if (( rc == 24 )); then
+    echo "blgpu: some source files vanished mid transfer, which is expected in a shared tree" >&2
+    return 0
+  fi
+  return "$rc"
+}
 
 # --------------------------------------------------------------------------- sync
 
@@ -79,21 +93,21 @@ cmd_sync() {
   # 1. the AEGIS package itself plus the three data files its tissue and mesh
   #    code opens. The rest of aegis/data is 77 GB of unrelated study output.
   echo "blgpu: sync aegis package"
-  rsync -a --delete -e "ssh ${SSH_OPTS[*]}" \
+  rs --delete \
     --exclude '__pycache__/' --exclude '_version.py' \
     "$LOCAL_REPO/src/" "$HOST:$REMOTE_REPO/src/"
-  rsync -a -e "ssh ${SSH_OPTS[*]}" \
+  rs \
     "$LOCAL_REPO/pyproject.toml" "$LOCAL_REPO/README.md" "$HOST:$REMOTE_REPO/"
-  rsync -a -e "ssh ${SSH_OPTS[*]}" \
+  rs \
     "$LOCAL_REPO/data/duke.stl" "$LOCAL_REPO/data/itis_v5.db" "$LOCAL_REPO/data/phantoms.yaml" \
     "$HOST:$REMOTE_REPO/data/"
   # theory/scripts carries the shared matplotlib style the figure scripts import
-  rsync -a -e "ssh ${SSH_OPTS[*]}" --exclude '__pycache__/' \
+  rs --exclude '__pycache__/' \
     "$LOCAL_REPO/theory/scripts/" "$HOST:$REMOTE_REPO/theory/scripts/"
 
   # 2. the study, code and config and tests, without the heavy artefacts
   echo "blgpu: sync study"
-  rsync -a -e "ssh ${SSH_OPTS[*]}" "${sync_excludes[@]}" \
+  rs "${sync_excludes[@]}" \
     --exclude 'data/geometry/' \
     "$LOCAL_STUDY/" "$HOST:$REMOTE_STUDY/"
 
@@ -106,7 +120,7 @@ cmd_sync() {
   #    left behind.
   echo "blgpu: sync geometry"
   if (( all_meshes )); then
-    rsync -a -e "ssh ${SSH_OPTS[*]}" \
+    rs \
       "$LOCAL_STUDY/data/geometry/" "$HOST:$REMOTE_STUDY/data/geometry/"
   else
     local list; list="$(mktemp)"
@@ -127,7 +141,7 @@ for path in sorted(root.rglob("*")):
             continue
     print(path.relative_to(root))
 PY
-    rsync -a -e "ssh ${SSH_OPTS[*]}" --files-from="$list" \
+    rs --files-from="$list" \
       "$LOCAL_STUDY/data/geometry/" "$HOST:$REMOTE_STUDY/data/geometry/"
     rm -f "$list"
   fi
@@ -137,7 +151,7 @@ PY
   #    the source imagery stay behind because only the segmentation stage, which
   #    has already run, touches them.
   echo "blgpu: sync panorama semantics"
-  rsync -a -e "ssh ${SSH_OPTS[*]}" \
+  rs \
     --include '*/' --include '*.json' --include '*.npz' --exclude '*' \
     "$LOCAL_STUDY/data/panoramas/" "$HOST:$REMOTE_STUDY/data/panoramas/"
 
@@ -148,7 +162,7 @@ PY
   echo "blgpu: sync propagation inputs"
   for sub in walk_korenmarkt site_semantics material_vlm cross_validation antenna; do
     [[ -d "$LOCAL_STUDY/outputs/$sub" ]] || continue
-    rsync -a -e "ssh ${SSH_OPTS[*]}" \
+    rs \
       --include '*/' --include '*.npz' --include '*.json' --include '*.jsonl' --include '*.csv' \
       --exclude '*' \
       "$LOCAL_STUDY/outputs/$sub" "$HOST:$REMOTE_STUDY/outputs/"
@@ -164,7 +178,7 @@ cmd_push() {
     sub="${sub%/}"
     echo "blgpu: push $sub"
     rsh "mkdir -p $(printf '%q' "$REMOTE_STUDY/$(dirname "$sub")")"
-    rsync -a --info=stats1 -e "ssh ${SSH_OPTS[*]}" \
+    rs --info=stats1 \
       "$LOCAL_STUDY/$sub" "$HOST:$REMOTE_STUDY/$(dirname "$sub")/"
   done
 }
@@ -250,6 +264,10 @@ REMOTE
 new_job_id() { printf '%s-%04x\n' "$(date -u +%Y%m%dT%H%M%S)" $((RANDOM % 65536)); }
 
 cmd_run() {
+  # A stale remote tree does not look stale. It looks like the box disagreeing
+  # with the local machine, which is the one thing this setup exists to rule
+  # out, so `run --sync` is the cheap way to never have to wonder.
+  if [[ "${1:-}" == "--sync" ]]; then shift; cmd_sync >&2; fi
   [[ $# -ge 1 ]] || die "run needs a command"
   local user_cmd="$1"
   local job="${2:-$(new_job_id)}"
@@ -321,7 +339,7 @@ cmd_jobs() {
 jd="$1"
 for d in $(ls -1 "$jd" 2>/dev/null | sort -r); do
   if [ -f "$jd/$d/rc" ]; then s="rc=$(cat "$jd/$d/rc")"; else s="running"; fi
-  printf '%-18s %-10s %s\n' "$d" "$s" "$(head -c 90 "$jd/$d/cmd")"
+  printf '%-22s %-10s %s\n' "$d" "$s" "$(head -c 90 "$jd/$d/cmd")"
 done
 REMOTE
 }
@@ -352,8 +370,10 @@ cmd_wait() {
 }
 
 cmd_fetch() {
+  # A leading argument is a job id only if it looks like one. Matching on "no
+  # slash" instead would swallow a bare subpath such as `outputs`.
   local job=""
-  if [[ "${1:-}" != */* && -n "${1:-}" ]]; then job="$1"; shift; fi
+  if [[ "${1:-}" =~ ^[0-9]{8}T[0-9]{6}(-[0-9a-f]{4})?$ ]]; then job="$1"; shift; fi
   local subs=("$@")
   [[ ${#subs[@]} -gt 0 ]] || subs=("outputs/")
   for sub in "${subs[@]}"; do
@@ -365,7 +385,7 @@ cmd_fetch() {
     mkdir -p "$LOCAL_STUDY/$parent"
     # No --delete. The local outputs/ tree is shared with other work and the
     # box only ever holds the subset it produced.
-    rsync -a --info=stats1 -e "ssh ${SSH_OPTS[*]}" \
+    rs --info=stats1 \
       "$HOST:$REMOTE_STUDY/$sub" "$LOCAL_STUDY/$parent/"
   done
   if [[ -n "$job" ]]; then
