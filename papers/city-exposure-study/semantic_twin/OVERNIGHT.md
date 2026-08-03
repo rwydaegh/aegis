@@ -1,0 +1,122 @@
+# Overnight run, 2026-08-02 into 2026-08-03
+
+Written for you to read first. State as of 05:20 UTC. A few agents were still
+finishing when this was written and their own commits land after it, so check
+`git log` for anything below marked in flight.
+
+## What exists now that did not last night
+
+- **`paper/paper.tex`**, a complete journal draft. IEEEtran, 19 pages, builds
+  clean. Abstract, introduction, related work, the full methods body, six
+  results subsections, discussion with an honesty table, conclusion, and a
+  bibliography of 24 entries that have each been checked against the actual
+  work.
+- **`paper/methods.tex`**, the standalone methods document, 11 pages.
+- **`paper/si.tex`**, supplementary information, because the body deferred to one
+  twice and there was none. In flight.
+- **`SPINE.md`**, the drafting source of truth. `PAPER_METHODS.md` is now marked
+  superseded in its own header and kept for the derivations and the history.
+- **`paper/CITATIONS.md`**, `paper/PROVENANCE.md`, `FLOW_REVIEW.md`,
+  `COVERAGE.md` and the rest of the agent reports.
+
+## The five things that were actually wrong
+
+These are the ones worth your attention, because each survived compilation,
+linting and at least one read-through, and only recomputation caught them.
+
+**1. The isotropic identity offered as a validation check is false.** Both files
+claimed that under isotropic illumination the exposure ratio must equal the sky
+fraction, and offered that as an independent check on the estimator. Over the 880
+published standpoints the median of `10 log10(chi_iso / sky)` is **+0.987 dB** and
+the worst is 2.941 dB. It cannot be true, because chi is the sum of a direct and
+a reflected term and the reflected term is positive. What is true is the
+statement the estimator subsection already makes correctly: the **direct** term
+equals the sky fraction, and it does so to **0.0004 dB**. I verified both numbers
+myself rather than taking the audit's word. The fix scopes the claim to the
+direct term rather than deleting it, since scoped correctly it is a good check.
+
+**2. Three bibliography entries had invented titles sitting on correct DOIs,
+volumes and pages.** The dangerous one is `vitucci`: the title that had been
+written is a *real paper*, by overlapping authors, in a different journal, four
+years earlier, and it does not contain the result the text cites. A spot check on
+the title alone would have found something plausible and stopped. All three
+claims those entries support turned out to be correct to the printed digit. What
+was wrong was purely bibliographic.
+
+**3. A percentage computed from shares that are not a partition.** The bounce
+budget said 10.7 percent of launched power never touches a surface, from
+`100 - (79 + 8.9 + 1.2 + 0.22)`. Those shares are per-depth arriving throughput,
+so a ray that reaches depth three was already counted at depths one and two, and
+their sum means nothing. The right answer is `1 - 0.790 = 21.0` percent, which
+agrees with the independently measured sky fraction to six decimals.
+
+**4. Numbers computed at one configuration, reported under another.** The
+material discrimination subsection ran at a 130 m crop with twelve interactions
+and roulette on, under a preamble that declares 250 m and three. The bounce
+budget shares came from 130 m and eight station positions. The deployment cap
+swing is quoted over 50 to 500 m and was computed over 100 to 400 m. Being fixed
+by naming the configuration, not by restating the range.
+
+**5. One site's column presented as the overall result.** The diffraction cross
+check claimed agreement "to within 0.34, 1.73 and 7.3 percent". Those three are
+the Times Square column of a three-site table, the worst site, with nothing
+saying so.
+
+## What is open, and what needs you
+
+- **The title.** It reads *"City-square geometry sets the distribution of relative
+  pedestrian exposure at 15 GHz"*, but the first result is that variation *inside*
+  a square exceeds variation *between* squares for two of the three illumination
+  models. The title can be read as "which square you are in sets your exposure",
+  which is the opposite. Defensible as written, since "distribution" carries the
+  breadth. The unambiguous alternative, which also absorbs the street-cell
+  counter case, is *"Relative pedestrian exposure varies as much within a city
+  square as between squares at 15 GHz"*. One line to change. I left it rather
+  than thrash it overnight.
+- **The SAM 3 citation.** The bibliography cites the 2023 Segment Anything paper,
+  but `sam3_concepts.py` sets `MODEL = "facebook/sam3"`, so SAM 3 is what
+  produced the material masks. The text now cites the 2023 paper for the
+  promptable-segmentation idea and names SAM 3 separately, with a visible
+  `\todo{}`. **I did not add a SAM 3 entry**: the session's web search budget was
+  spent at 200 calls, so I could not verify one, and an unverifiable citation is
+  worse than a missing one.
+- **`aegis` is a self-citation with a placeholder DOI.** Worth minting a Zenodo
+  DOI before submission.
+- **The vision model result is drafted but not inserted.** Two paragraphs are in
+  my scratchpad. They answer the question you asked on 2026-08-01 about where an
+  LLM fits: it was built, blinded, and measured, its shift stays inside the
+  0.33 dB dielectric ceiling, and a control that feeds it the photogrammetric
+  texture instead of the photograph moves the answer by less than two draws of
+  either differ from each other. That is a good negative. It is held back only
+  because its numbers come from the 130 m twelve-bounce ablation in item 4 above,
+  and I would not insert a number before knowing which configuration it belongs
+  to.
+
+## Things you asked for that now exist
+
+- **Blender files with everything in one scene**, which you asked for twice
+  thirty hours apart. Four squares were built yesterday, the remaining seven were
+  in flight when this was written. `propagation_blends.zip` and its README.
+- **A written reason for stopping at three bounces**, and for the material
+  evidence being what sets it rather than a convergence tolerance. `WHY_NOT.md`
+  section 5 and the bounce budget subsection.
+- **A written reason for no diffraction.** `WHY_NOT.md` section 2, four arguments,
+  one of which is a measured bound rather than an appeal to the literature.
+- **The Russian roulette answer.** It is off. `roulette_start` sits one above the
+  bounce budget, and the measurement says it changed neither seed spread nor run
+  time at this budget.
+- **Beamforming**, which you chased. There is a results subsection. The honest
+  part is that the literal reading of beamforming to yourself cancels exactly out
+  of a normalised density, so it is invisible to this observable, and the paper
+  says that rather than shipping a configuration that provably changes nothing.
+- **Bystanders**, retraced on the settled bounce budget.
+
+## Build
+
+```
+cd paper
+pdflatex -interaction=nonstopmode paper.tex && pdflatex -interaction=nonstopmode paper.tex
+```
+
+Tests and lint at the time of writing: **980 passed, 2 skipped, 0 failed**,
+`ruff check` and `ruff format --check` both clean.
