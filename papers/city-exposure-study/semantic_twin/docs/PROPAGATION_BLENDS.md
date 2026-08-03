@@ -241,6 +241,31 @@ These are one standpoint each, the hero of that square's blend, so they are not
 the medians `outputs/skyline/skyline_250m.json` reports over 24 standpoints and
 they should not be read against them.
 
+### What the rim showed that a table did not
+
+At Korenmarkt the brightest thing in the frame is not a roofline. It is a knot of
+markers standing in the middle of the square, on tips 1.6 to 2.3 m from the head.
+A facade tip cannot be 1.6 m from a pedestrian standing in an open square, so what
+the silhouette found along those azimuths is something else: a tree, an awning, a
+pole, or a lump of photogrammetry. Because the direct term divides by `d`, those
+azimuths carry far more than their count.
+
+| square | direct term | azimuths with a tip under 5 m | share of the direct term | direct term without them |
+|---|---|---|---|---|
+| `korenmarkt` | 0.05817 | 120 of 720 | 0.67 | 0.01894 |
+| `krakow_rynek` | 0.03346 | 224 | 0.59 | 0.01385 |
+| `mexico_zocalo` | 0.02817 | 230 | 0.43 | 0.01616 |
+| `milan_duomo` | 0.01307 | 121 | 0.26 | 0.00964 |
+| the other seven | | 0 | 0.00 | unchanged |
+
+Korenmarkt is first of eleven on the direct term at 0.05817 and would be middling
+at 0.01894. Krakow is second and would be last. This is one standpoint per square,
+the hero of that blend, not the median over the walk, so it is not a statement
+about the published numbers. It is a statement about the standpoint the pictures
+are drawn at, and it says the law is sensitive to whatever stands within a few
+metres of the pedestrian. `measure_skyline.py` is where that would be dealt with
+and it was not touched here.
+
 ### Strip or markers
 
 Both, from the one measured curve, because they answer different questions and
@@ -303,8 +328,8 @@ shades each clear line by the flux of the site it reached instead.
 Every connection is cast against the same mesh the trace ran on. The connections
 from the head come back clear at every site at all eleven squares, which is a check
 on the geometry rather than a result: the tip is the silhouette from the head, so
-the head can always see it. Off the head, 0.14 to 0.36 of the connections are
-blocked depending on the square.
+the head can always see it. Off the head, 0.21 to 0.57 of the connections cast are
+blocked depending on the square, lowest at Brussels and highest at Krakow.
 
 Sixteen paths rather than the nine hundred in `09 ray paths by fate`. The question
 here is how the method works and a dense fan hides it.

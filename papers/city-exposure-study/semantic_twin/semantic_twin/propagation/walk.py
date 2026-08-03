@@ -256,8 +256,17 @@ def build_walk(
     max_step_m: float = 8.0,
     clearance_samples: int = 96,
     seed: int = 0,
+    probe_z_m: float = SKY_PROBE,
 ) -> Walk:
-    """Greedy nearest neighbour chain through walkable candidates."""
+    """Greedy nearest neighbour chain through walkable candidates.
+
+    ``probe_z_m`` is the height the downward casts start from and it is
+    exposed for one reason: every run published before 3 August started them at
+    the ground datum plus 200 m, and a rerun that has to extend or repair one of
+    those runs has to select the same standpoints it did. The value is recorded
+    in the provenance, so which rule a walk was built under is readable off the
+    manifest rather than inferred from a timestamp. New work wants the default.
+    """
     rng = np.random.default_rng(seed)
     axis = np.arange(-radius_m, radius_m + spacing_m, spacing_m)
     grid_x, grid_y = np.meshgrid(axis + centre_xy[0], axis + centre_xy[1])
@@ -265,7 +274,7 @@ def build_walk(
     inside = np.linalg.norm(xy - np.asarray(centre_xy), axis=1) <= radius_m
     xy = xy[inside]
 
-    z, up = ground_height(geometry, xy)
+    z, up = ground_height(geometry, xy, probe_z_m)
     walkable = np.isfinite(z) & (np.abs(z - ground_datum_m) <= datum_tolerance_m) & (up >= min_up_cosine)
     xy = xy[walkable]
     z = z[walkable]
@@ -307,7 +316,7 @@ def build_walk(
             "min_clearance_m": min_clearance_m,
             "head_height_m": head_height_m,
             "clearance_samples": clearance_samples,
-            "probe_z_m": SKY_PROBE,
+            "probe_z_m": probe_z_m,
             "candidates_before_clearance": int(walkable.sum()),
             "min_sky_fraction": min_sky_fraction,
             "candidates_rejected_as_enclosed": enclosed,

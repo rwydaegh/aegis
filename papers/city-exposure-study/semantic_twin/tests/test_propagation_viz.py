@@ -14,10 +14,13 @@ from export_propagation_payload import (
     HEIGHT_BAND_M,
     RANGE_BAND_M,
     crop_for_drawing,
+    facade_tip_rim,
     network_markers,
+    next_event_connections,
     sphere_triangulation,
 )
 from semantic_twin.propagation.directions import MODELS, elevation_band_measure, fibonacci_sphere
+from semantic_twin.propagation.geometry import INFINITY
 
 #: Integrated per band, never sampled at the midpoint. The reason lives in the
 #: docstring of the library function, which this file used to carry its own copy
@@ -143,6 +146,159 @@ def test_an_isotropic_model_has_no_source_geometry_to_draw() -> None:
     had, which is the one thing this whole module is trying not to do.
     """
     assert network_markers("isotropic", 100, np.random.default_rng(0))["positions"].shape == (0, 3)
+
+
+class WallGeometry:
+    """A wall of azimuth dependent radius and one height, seen from its own axis.
+
+    A ray leaving the axis along azimuth ``phi`` and elevation ``el`` meets the
+    wall at horizontal range ``radius(phi)`` and rises ``radius(phi) tan(el)``
+    doing it, so the silhouette is at ``arctan(height / radius(phi))`` and at
+    horizontal distance ``radius(phi)``, both known in closed form. That is what
+    makes it a test of the extraction rather than a second copy of it.
+
+    Only valid for rays that start on the axis, which is every ray
+    ``measure_skyline.skyline`` casts.
+    """
+
+    def __init__(self, base_m: float = 30.0, swing_m: float = 10.0, height_m: float = 20.0) -> None:
+        self.base = base_m
+        self.swing = swing_m
+        self.height = height_m
+
+    def radius(self, azimuth: np.ndarray) -> np.ndarray:
+        return self.base + self.swing * np.cos(azimuth)
+
+    def intersect(self, origins, directions):
+        origins = np.asarray(origins, dtype=np.float64)
+        directions = np.asarray(directions, dtype=np.float64)
+        azimuth = np.arctan2(directions[:, 1], directions[:, 0])
+        horizontal = np.linalg.norm(directions[:, :2], axis=1)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            slant = self.radius(azimuth) / horizontal
+        rise = slant * directions[:, 2]
+        hit = np.isfinite(slant) & (slant > 0.0) & (rise <= self.height)
+        distance = np.where(hit, slant, INFINITY)
+        normal = np.zeros_like(directions)
+        return hit, distance, normal, np.zeros(origins.shape[0], dtype=np.int64)
+
+
+class NothingGeometry:
+    """Empty space. Every ray misses."""
+
+    def intersect(self, origins, directions):
+        count = np.asarray(origins).shape[0]
+        return (
+            np.zeros(count, dtype=bool),
+            np.full(count, INFINITY),
+            np.zeros((count, 3)),
+            np.zeros(count, dtype=np.int64),
+        )
+
+
+class NearWallGeometry:
+    """A wall a metre off every ray's shoulder, so every connection is blocked."""
+
+    def intersect(self, origins, directions):
+        count = np.asarray(origins).shape[0]
+        return (
+            np.ones(count, dtype=bool),
+            np.ones(count),
+            np.zeros((count, 3)),
+            np.zeros(count, dtype=np.int64),
+        )
+
+
+def test_the_rim_sits_on_the_silhouette_at_the_azimuth_it_claims() -> None:
+    """The extracted tip must land on the wall, at the azimuth it is indexed by.
+
+    Horizontal distance is the sharp half of this. The elevation the fan finds
+    is one of its grid values and is therefore short of the true silhouette by
+    up to a grid step, but the horizontal distance is the slant range times the
+    cosine of that same elevation, and on this wall the two errors cancel
+    exactly. So the distance is a closed form answer and is asserted as one.
+
+    A convention drift of half a cell in azimuth would rotate the whole rim off
+    the rooflines, and nothing else in the pipeline would say so. Here it moves
+    the distance off ``radius(phi)`` and this fails.
+    """
+    wall = WallGeometry()
+    rim = facade_tip_rim(NothingGeometry(), np.zeros(3), azimuths=90, elevations=200)
+    assert not rim["found"].any(), "empty space has no skyline and must not invent one"
+
+    rim = facade_tip_rim(wall, np.zeros(3), azimuths=90, elevations=200)
+    assert rim["found"].all()
+    expected = wall.radius(rim["azimuth_rad"])
+    assert np.allclose(rim["distance_m"], expected, rtol=1.0e-9)
+
+    # The elevation is the largest grid value that still hits, so it sits under
+    # the true silhouette by less than one step of a 200 point logarithmic grid.
+    truth = np.arctan2(wall.height, expected)
+    step = (np.log(85.0) - np.log(0.05)) / 199.0
+    assert np.all(rim["alpha_rad"] <= truth + 1.0e-12)
+    assert np.all(rim["alpha_rad"] > truth * np.exp(-step))
+
+    # The drawn offset must be the same point again, in Cartesian.
+    offset = rim["offset"]
+    assert np.allclose(np.linalg.norm(offset[:, :2], axis=1), expected)
+    assert np.allclose(offset[:, 2], expected * np.tan(rim["alpha_rad"]))
+    assert np.allclose(np.arctan2(offset[:, 1], offset[:, 0]) % (2.0 * np.pi), rim["azimuth_rad"])
+
+    weight = np.cos(rim["alpha_rad"]) ** 2 / expected
+    assert rim["summary"]["direct_term"] == pytest.approx(float(weight.mean()))
+    assert rim["summary"]["open_azimuth_fraction"] == 0.0
+
+
+def straight_paths(count: int, reach_m: float = 400.0) -> tuple[np.ndarray, np.ndarray]:
+    """``count`` recorded paths that left the head and never bounced.
+
+    Two vertices each, the head and where it left the scene, which is the layout
+    ``PathRecorder`` writes. Only the first of the two is a scattering vertex,
+    so each of these paths owes exactly one connection.
+    """
+    direction = fibonacci_sphere(count)
+    vertices = np.zeros((2 * count, 3))
+    vertices[1::2] = reach_m * direction
+    return vertices, np.arange(count + 1) * 2
+
+
+def test_a_connection_leaves_every_vertex_except_the_one_that_left_the_scene() -> None:
+    wall = WallGeometry()
+    rim = facade_tip_rim(wall, np.zeros(3), azimuths=90, elevations=200)
+    vertices, offsets = straight_paths(12)
+    drawn = next_event_connections(wall, vertices, offsets, rim, np.zeros(3), paths=12, seed=0)
+
+    assert drawn["summary"]["paths_drawn"] == 12
+    assert drawn["summary"]["connections"] == 12
+    assert np.array_equal(drawn["vertex_index"], np.zeros(12, dtype=np.int32))
+    assert np.allclose(drawn["origin"], 0.0), "the connection starts at the vertex, not near it"
+    # Every site is one of the tips, and the weight travels with it.
+    assert np.allclose(drawn["site"], rim["offset"][drawn["azimuth_index"]])
+    assert np.allclose(drawn["weight"], rim["weight"][drawn["azimuth_index"]])
+
+
+def test_nothing_blocks_a_connection_from_the_standpoint_the_rim_was_measured_at() -> None:
+    """The tip is the silhouette from the head, so the head can always see it.
+
+    This is a check on the geometry rather than a result. If it ever fails, the
+    rim and the shadow rays are not being cast against the same surface.
+    """
+    wall = WallGeometry()
+    rim = facade_tip_rim(wall, np.zeros(3), azimuths=180, elevations=300)
+    vertices, offsets = straight_paths(40)
+    drawn = next_event_connections(wall, vertices, offsets, rim, np.zeros(3), paths=40, seed=3)
+    assert not drawn["blocked"].any()
+    assert drawn["summary"]["blocked_fraction_from_the_head"] == 0.0
+
+
+def test_a_surface_across_the_connection_blocks_it_and_empty_space_does_not() -> None:
+    wall = WallGeometry()
+    rim = facade_tip_rim(wall, np.zeros(3), azimuths=90, elevations=200)
+    vertices, offsets = straight_paths(8)
+    for geometry, expected in ((NearWallGeometry(), True), (NothingGeometry(), False)):
+        drawn = next_event_connections(geometry, vertices, offsets, rim, np.zeros(3), paths=8, seed=1)
+        assert bool(drawn["blocked"].all()) is expected
+        assert drawn["summary"]["blocked_fraction"] == float(expected)
 
 
 def test_sphere_triangulation_closes_the_grid_and_faces_outward() -> None:

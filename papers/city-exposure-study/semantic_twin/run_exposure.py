@@ -344,7 +344,32 @@ def run(
     crop_m: int = 130,
     walk_npz: pathlib.Path | None = None,
     workers: int | None = None,
+    roulette_start: int | None = None,
+    ground_datum_m: float | None = None,
+    walk_probe_z_m: float | None = None,
 ) -> pathlib.Path:
+    """Trace one site's walk and stream it to disk.
+
+    Three of these arguments exist only so that a published run can be repaired
+    rather than replaced, and all three default to the current rule.
+
+    ``roulette_start`` is here because ``TraceConfig`` derives its default from
+    ``DEFAULT_MAX_BOUNCES``, and that constant changed on 3 August. Every run
+    published before then recorded ``roulette_start: 3`` in its manifest and
+    nothing on the command line could ask for it again, so a rerun meant to
+    extend a published sweep would have traced a different chain.
+
+    ``ground_datum_m`` and ``walk_probe_z_m`` are here for the same reason and
+    matter more, because they change which standpoints get traced rather than
+    how each one is traced. The datum rule became the lowest major walkable
+    level and the downward probe moved from the datum plus 200 m to the sky
+    probe height, both after the ``city250_corrected`` sweep. Left to the
+    current defaults, a rerun of one of those sites draws a different walk and
+    cannot be compared against the sites beside it.
+
+    In every case the published manifest is the authority. Read the value out
+    of it and pass it back in, rather than reconstructing the rule.
+    """
     OUTPUT.mkdir(parents=True, exist_ok=True)
     stem = f"{tag}_{frequency_hz / 1e9:g}ghz"
     rows_path = OUTPUT / f"{stem}_locations.jsonl"
@@ -355,10 +380,16 @@ def run(
     mesh = site_mesh(site, crop_m)
     geometry = MitsubaGeometry(mesh, variant=variant)
     measured = measure_ground_datum(geometry, radius_m=walk_radius_m)
-    datum = measured.z_m
+    datum = measured.z_m if ground_datum_m is None else float(ground_datum_m)
     registered = registered_ground_z(site)
     datum_provenance: dict[str, Any] = dict(measured.provenance)
     datum_provenance["registered_camera_ground_z_m"] = registered
+    if ground_datum_m is not None:
+        datum_provenance["measured_z_m"] = measured.z_m
+        datum_provenance["rule"] = (
+            f"forced to {datum} m by the caller, overriding the measured "
+            f"{measured.z_m} m. The measurement is kept above for comparison"
+        )
     if registered is not None:
         offset = datum - registered
         datum_provenance["measured_minus_registered_m"] = offset
@@ -510,6 +541,7 @@ def run(
         radius_m=walk_radius_m,
         spacing_m=walk_spacing_m,
         seed=seed,
+        **({} if walk_probe_z_m is None else {"probe_z_m": walk_probe_z_m}),
     )
     picks = stratified_subset(walk, locations)
     print(f"walk: {len(walk)} candidates, tracing {picks.size}", flush=True)
@@ -520,6 +552,7 @@ def run(
         local_cells=local_cells,
         max_bounces=max_bounces,
         seed=seed,
+        **({} if roulette_start is None else {"roulette_start": roulette_start}),
     )
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
     if coupler is None:

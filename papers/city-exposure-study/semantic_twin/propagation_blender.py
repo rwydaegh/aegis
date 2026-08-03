@@ -23,7 +23,8 @@ Collections, and what each one answers:
 ``twin``       the geometry, tinted by the surface class that set its material
 ``rays``       five exclusive bundles of the recorded paths, thickness by throughput
 ``arrival``    the angular power spectrum at the hero standpoint, one lobe per model
-``network``    where the illumination model's sources sit, at true range and height
+``network``    the sources, on the facade tips, brightest where the flux comes from
+``nee``        a few dozen rays with the connection each of them makes to a site
 ``walk``       every traced standpoint, coloured by its susceptibility
 ``body``       the phantom at the hero standpoint, coloured by absorbed power density
 ``semantics``  the fishnet surface sets, one per taxonomy, with their evidence
@@ -173,10 +174,11 @@ COLLECTION_NAMES: dict[str, str] = {
     "walk": "08 walk standpoints",
     "rays": "09 ray paths by fate",
     "bounces": "10 ray paths by bounce",
-    "arrival": "11 arrival spectrum",
-    "network": "12 transmitter positions",
-    "body": "13 body exposure",
-    "cameras": "14 cameras",
+    "network": "11 sources on the facade tips",
+    "nee": "12 next event estimation",
+    "arrival": "13 arrival spectrum",
+    "body": "14 body exposure",
+    "cameras": "15 cameras",
 }
 
 #: key -> the collection, so the rest of the build and the figure table can keep
@@ -261,20 +263,32 @@ def attach_values(obj: bpy.types.Object, name: str, values: np.ndarray, domain: 
     attribute.data.foreach_set("value", values.astype(np.int32 if kind == "INT" else np.float32).ravel())
 
 
-def emissive_material(name: str, channel: str | None, colour: tuple[float, float, float] = (1.0, 1.0, 1.0)):
+def emissive_material(
+    name: str,
+    channel: str | None,
+    colour: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    *,
+    strength: float = 1.0,
+):
     """A pure emitter, either at a fixed colour or at a colour attribute.
 
     Emission rather than a lit BSDF because these layers encode a measured
     number. A lit surface multiplies that number by whatever the lighting does,
     and two values that differ only in hue stop being distinguishable exactly
     where the reader is counting on them.
+
+    Strength above one is a display gain and nothing else. It multiplies every
+    value on the layer by the same factor, so it moves no ordering and no
+    ratio, and it exists because the sunlit mesh is brighter than an emitter at
+    one and a thin line drawn over it stops looking like light. The layers that
+    use it say so on the object.
     """
     material = bpy.data.materials.new(name)
     material.use_nodes = True
     tree = material.node_tree
     tree.nodes.clear()
     emission = tree.nodes.new("ShaderNodeEmission")
-    emission.inputs["Strength"].default_value = 1.0
+    emission.inputs["Strength"].default_value = float(strength)
     output = tree.nodes.new("ShaderNodeOutputMaterial")
     if channel is None:
         emission.inputs["Color"].default_value = (*colour, 1.0)
@@ -634,9 +648,262 @@ def build_arrival(
     return peaks
 
 
-def build_network(payload, hero: np.ndarray, into: bpy.types.Collection) -> dict[str, int]:
-    """Source markers at true horizontal range and true height above the head."""
-    counts: dict[str, int] = {}
+#: Where the rim polyline is cut. Two azimuths half a degree apart whose tips
+#: are further apart than this fraction of their own range are not one roofline:
+#: the silhouette has stepped across a street opening onto a facade behind it,
+#: and joining them draws a wire across the square. A flat wall seen at 85
+#: degrees of grazing moves 0.10 of its range per half degree, so 0.15 cuts at
+#: the openings and never along a facade.
+RIM_BREAK_FRACTION = 0.15
+
+#: Inferno starts at black. A rim shaded from its black end loses the rooflines
+#: that carry least power rather than merely dimming them, so the ramp is
+#: entered at this fraction of its length and the dimmest azimuth is still a
+#: visible line.
+RIM_RAMP_FLOOR = 0.18
+
+#: Display gain on the rim, its sites and the connections that land on it. The
+#: mesh is sunlit and an emitter at one is dimmer than the roof it is drawn
+#: over, which stops a rim of light looking like light. It multiplies every
+#: value on the layer alike, so no ordering and no ratio moves.
+RIM_EMISSION_STRENGTH = 2.0
+
+#: The rim is drawn this many tube radii above the tip. A tip is the top of the
+#: silhouette and on a photogrammetric roof it is often a ridge behind the
+#: facade, so a tube centred on it sits half inside the roof and disappears.
+#: Lifting it puts the whole tube in the sky the tip borders on. Nothing else
+#: moves: the height is the only coordinate touched and it is recorded.
+RIM_LIFT_RADII = 2.0
+
+#: Marker radius, in tube radii. Five is about two metres at a roofline thirty
+#: metres off, which is what it takes to read a site from an overview of a
+#: square rather than only from the pavement.
+RIM_SITE_RADII = 5.0
+
+
+def rim_tube(slant: np.ndarray, width_scale: float) -> tuple[np.ndarray, np.ndarray]:
+    """Drawn radius of the rim at a slant range, and how far above the tip it goes.
+
+    The radius rises as the square root of the range, which is between constant
+    world size and constant angular size, so the far rim neither swells nor
+    vanishes. It carries no flux, so there is no second reading of that number
+    to reconcile with the colour.
+    """
+    radius = width_scale * np.sqrt(np.maximum(np.asarray(slant, dtype=np.float64), 1.0e-6))
+    return radius, RIM_LIFT_RADII * radius
+
+
+def rim_shading(weight: np.ndarray, found: np.ndarray):
+    """The flux ramp, and the two logarithms it spans. Shared, so nothing drifts.
+
+    The rim and the connections that land on it are shaded by the same call, or
+    a bright line could arrive at a dark roofline and the reader would have no
+    way to know which of the two was lying.
+
+    The ramp spans the middle eight tenths of the azimuths rather than the whole
+    range, so a tenth of the rim saturates at each end. A single tip a metre and
+    a half away carries eighty times the median at Korenmarkt, and shading to it
+    leaves every other roofline in one dark colour. Most rooflines deliver
+    within a factor of three of each other, so what is left after the tails are
+    cut is 1.07 decades at Korenmarkt rather than 1.58. The true range and the
+    span shaded are both on the object.
+    """
+    live = np.asarray(weight)[np.asarray(found, dtype=bool)]
+    low, high = (float(np.log10(value)) for value in np.percentile(live, [10, 90]))
+
+    def shade(values: np.ndarray) -> np.ndarray:
+        scaled = np.log10(np.maximum(np.asarray(values, dtype=np.float64), 1.0e-12))
+        step = np.clip((scaled - low) / max(high - low, 1.0e-9), 0.0, 1.0)
+        return colour_ramp(RIM_RAMP_FLOOR + (1.0 - RIM_RAMP_FLOOR) * step, 0.0, 1.0)
+
+    return shade, low, high
+
+
+def contiguous_runs(mask: np.ndarray) -> list[np.ndarray]:
+    """Runs of consecutive true indices, joined across the wrap at azimuth zero.
+
+    The rim closes on itself, so a run ending at the last azimuth and one
+    starting at the first are one run through the seam rather than two.
+    """
+    index = np.flatnonzero(mask)
+    if index.size == 0:
+        return []
+    runs = np.split(index, np.flatnonzero(np.diff(index) > 1) + 1)
+    if len(runs) > 1 and runs[0][0] == 0 and runs[-1][-1] == mask.size - 1:
+        runs = [np.concatenate([runs[-1], runs[0]])] + runs[1:-1]
+    return runs
+
+
+def rim_polylines(found: np.ndarray, offset: np.ndarray, *, break_fraction: float) -> list[np.ndarray]:
+    """The rim as drawable polylines: index runs with a tip, cut where it steps.
+
+    Two cuts, and they are different questions. An azimuth with no tip is open
+    to the horizon and carries no source, so the rim has a hole there. An
+    azimuth whose tip jumps is a corner: the silhouette has moved onto a facade
+    behind the one it was on, and the two tips are both real and are not joined
+    by a roofline.
+    """
+    pieces: list[np.ndarray] = []
+    for run in contiguous_runs(found):
+        if run.size == found.size:
+            run = np.append(run, run[0])
+        reach = np.linalg.norm(offset[run], axis=1)
+        step = np.linalg.norm(np.diff(offset[run], axis=0), axis=1)
+        cut = np.flatnonzero(step > break_fraction * np.minimum(reach[:-1], reach[1:])) + 1
+        pieces += [piece for piece in np.split(run, cut) if piece.size >= 2]
+    return pieces
+
+
+def build_rim(
+    payload,
+    hero: np.ndarray,
+    into: bpy.types.Collection,
+    *,
+    drawn_radius_m: float,
+    width_scale: float,
+    site_step: int,
+) -> dict[str, object]:
+    """The skyline as a lit rim, and the sites sitting on it.
+
+    Both are the same measured curve, so they cannot disagree. The rim is the
+    continuum the law integrates, a mean over azimuth, and it shows where the
+    silhouette breaks. The markers say the deployment is still a set of sites
+    on that tip, and they stay readable from a long way off and under solid
+    shading where a thin tube does not.
+
+    Colour is `cos^2(alpha) / d`, the direct flux that azimuth carries, over the
+    base ten logarithm because the near tips carry two orders of magnitude more
+    than the far ones. Thickness is not that number. Thickness rises as the
+    square root of the slant range, which is between constant world size and
+    constant angular size, so the far rim neither swells nor vanishes and no
+    reader can mistake it for a second reading of the flux.
+    """
+    offset = payload["rim_offset_m"].astype(np.float64)
+    weight = payload["rim_weight"].astype(np.float64)
+    alpha_deg = np.degrees(payload["rim_alpha_rad"].astype(np.float64))
+    distance = payload["rim_distance_m"].astype(np.float64)
+    found = payload["rim_found"].astype(bool)
+    slant = np.linalg.norm(offset, axis=1)
+    if not found.any():
+        return {"azimuths": int(found.size), "polylines": 0, "sites": 0}
+
+    live = weight[found]
+    shade, low, high = rim_shading(weight, found)
+    rgba = shade(weight)
+    radius, lift = rim_tube(slant, width_scale)
+    tip = hero + offset + np.column_stack([np.zeros_like(lift), np.zeros_like(lift), lift])
+
+    # A tip beyond the drawn crop is a real measurement with no building under
+    # it in this file, so on its own it reads as debris hanging in the air. It
+    # goes into a second object that starts hidden rather than being dropped.
+    inside = np.linalg.norm(tip[:, :2], axis=1) <= drawn_radius_m
+    beyond = int(np.count_nonzero(found & ~inside))
+    if not (found & inside).any():
+        inside = np.ones_like(found)
+    azimuth_deg = np.degrees(payload["rim_azimuth_rad"].astype(np.float64))
+
+    def rim_object(name: str, keep: np.ndarray) -> tuple[object, list[np.ndarray]]:
+        runs = rim_polylines(found & keep, offset, break_fraction=RIM_BREAK_FRACTION)
+        if not runs:
+            return None, runs
+        order = np.concatenate(runs)
+        drawn = build_curves(name, tip[order], np.array([run.size for run in runs]), radius[order], into)
+        attach_point_colour(drawn, "direct_flux", rgba[order])
+        attach_point_colour(drawn, "distance_m", colour_ramp(distance[order], distance[found].min(), distance.max()))
+        attach_point_colour(drawn, "alpha_deg", colour_ramp(alpha_deg[order], alpha_deg[found].min(), alpha_deg.max()))
+        attach_values(drawn, "value_direct_flux", weight[order], "POINT")
+        attach_values(drawn, "value_distance_m", distance[order], "POINT")
+        attach_values(drawn, "value_alpha_deg", alpha_deg[order], "POINT")
+        attach_values(drawn, "value_azimuth_deg", azimuth_deg[order], "POINT")
+        assign(drawn, emissive_material("skyline_rim", "direct_flux", strength=RIM_EMISSION_STRENGTH))
+        layered(drawn, ("direct_flux", "distance_m", "alpha_deg"), "direct_flux")
+        return drawn, runs
+
+    obj, runs = rim_object("skyline_rim", inside)
+    far, far_runs = rim_object("skyline_rim_beyond_the_drawn_mesh", ~inside)
+    if far is not None:
+        far.hide_render = True
+        far.hide_viewport = True
+        far["why_it_is_hidden"] = (
+            "these tips are further out than the mesh this file draws, so nothing holds them up "
+            "here. They are measured the same way and they count the same in the law."
+        )
+        far["polylines"] = len(far_runs)
+        far["azimuths"] = beyond
+
+    # Uniform in azimuth rather than in arc length, because the law is a mean
+    # over azimuth and one azimuth is one site. Spacing them along the rim
+    # instead would crowd the far facades, which are the ones carrying least.
+    pick = np.arange(0, found.size, max(site_step, 1))
+    pick = pick[found[pick] & inside[pick]]
+    vertices, faces = octahedra(tip[pick], RIM_SITE_RADII * radius[pick])
+    sites = build_mesh("skyline_sites", vertices, faces, into)
+    attach_face_colour(sites, "direct_flux", np.repeat(rgba[pick], 8, axis=0))
+    attach_values(sites, "value_direct_flux", np.repeat(weight[pick], 8), "FACE")
+    assign(sites, emissive_material("skyline_sites", "direct_flux", strength=RIM_EMISSION_STRENGTH))
+
+    law = "a site stands on the facade tip, one per azimuth, at the elevation and range of the tip"
+    for drawn in (obj, far, sites):
+        if drawn is None:
+            continue
+        drawn["law"] = law
+        drawn["direct_flux_is"] = "cos squared of the tip elevation over its horizontal distance, per azimuth"
+        drawn["direct_flux_range"] = [float(live.min()), float(live.max())]
+        drawn["shaded_over_log10"] = [low, high]
+        drawn["ramp_entered_at"] = RIM_RAMP_FLOOR
+        drawn["emission_strength"] = RIM_EMISSION_STRENGTH
+        drawn["azimuths"] = int(found.size)
+        drawn["azimuths_with_no_tip"] = int(np.count_nonzero(~found))
+        drawn["tips_outside_the_drawn_mesh"] = beyond
+        drawn["measured_from"] = "the hero standpoint, so it is the skyline that pedestrian sees"
+    if obj is not None:
+        obj["polylines"] = len(runs)
+        obj["cut_where_the_tip_steps_by"] = RIM_BREAK_FRACTION
+        obj["radius_m_is"] = f"{width_scale:g} times the square root of the slant range, not the flux"
+        obj["drawn_metres_above_the_tip"] = [float(lift.min()), float(lift.max())]
+        obj["why_it_is_lifted"] = (
+            "a tip is often a roof ridge behind the facade, and a tube centred on it sits half "
+            "inside the roof. Only the height moves, by two tube radii."
+        )
+    sites["azimuth_step_deg"] = 360.0 * site_step / found.size
+    sites["radius_m_is"] = f"{RIM_SITE_RADII:g} times the rim radius, so size carries range and colour carries flux"
+    return {
+        "azimuths": int(found.size),
+        "azimuths_with_no_tip": int(np.count_nonzero(~found)),
+        "polylines": len(runs),
+        "polylines_beyond_the_drawn_mesh": len(far_runs),
+        "sites": int(pick.size),
+        "tips_outside_the_drawn_mesh": beyond,
+        "direct_flux_range": [float(live.min()), float(live.max())],
+    }
+
+
+def build_network(
+    payload, hero: np.ndarray, manifest: dict, into: bpy.types.Collection, *, width_scale: float, site_step: int
+) -> dict[str, object]:
+    """Where the sources are, on the facade tips they stand on.
+
+    A site sits on the tip of a facade, the top edge where the wall meets the
+    sky, and there is no mast under it. One azimuth therefore carries one
+    source, at the elevation and the range of the tip visible along it, and what
+    that draws is a rim of light along the rooflines.
+
+    The band population is still built and starts hidden. A height band and a
+    range band draw a shell of points floating in the air, which is not where a
+    base station is, and it is the geometry the trace in this same payload
+    integrated, so dropping it would leave the picture and the numbers with
+    nothing connecting them. Each cloud says on itself which of the two it is.
+    """
+    counts: dict[str, object] = {}
+    if "rim_offset_m" in payload.files:
+        counts["facade_tip_rim"] = build_rim(
+            payload,
+            hero,
+            into,
+            drawn_radius_m=float(manifest["drawn_radius_m"]),
+            width_scale=width_scale,
+            site_step=site_step,
+        )
     for name in MODEL_NAMES:
         positions = payload[f"network_{name}"]
         counts[name] = int(positions.shape[0])
@@ -646,8 +913,151 @@ def build_network(payload, hero: np.ndarray, into: bpy.types.Collection) -> dict
         obj = build_mesh(f"sources_{name}", vertices, faces, into)
         assign(obj, emissive_material(f"sources_{name}", None, (0.95, 0.85, 0.25)))
         obj["model"] = name
-        obj.hide_render = name != "rooftop"
+        obj["drawn_from"] = "a height band and a range band, uniform in azimuth"
+        obj["superseded_by"] = "skyline_rim, which puts the sources on the facade tips instead"
+        obj.hide_render = True
+        obj.hide_viewport = True
     return counts
+
+
+#: The connection colours. Clear is bright and blocked is dark, and that is the
+#: whole of the default reading, because the visibility term is the one thing a
+#: connection carries that the rim it lands on does not. How much the site
+#: delivers is on the rim, and is a colour layer away on the connection too.
+NEE_CLEAR_COLOUR = (1.0, 0.96, 0.86)
+NEE_BLOCKED_COLOUR = (0.24, 0.05, 0.09)
+NEE_RAY_COLOUR = (0.62, 0.44, 0.22)
+
+
+def shorten_sky_legs(points: np.ndarray, lengths: np.ndarray, *, reach: float) -> np.ndarray:
+    """Pull the last vertex of each polyline back to ``reach`` metres.
+
+    Only the last one, and only along its own direction. A recorded path that
+    escaped ends on a sky sphere 176 m out, which in a close view runs off the
+    frame and takes the connections with it. A path that stopped in the scene
+    has its last vertex sitting on the previous one and is left alone.
+    """
+    moved = np.array(points, dtype=np.float64, copy=True)
+    end = np.cumsum(lengths) - 1
+    span = moved[end] - moved[end - 1]
+    distance = np.linalg.norm(span, axis=1)
+    live = distance > 1.0e-9
+    moved[end[live]] = moved[end[live] - 1] + reach * span[live] / distance[live, None]
+    return moved
+
+
+def build_next_event(
+    payload,
+    into: bpy.types.Collection,
+    *,
+    drawn_radius_m: float,
+    ray_radius: float,
+    line_radius: float,
+    sky_leg_m: float,
+) -> dict[str, object]:
+    """A few dozen rays, and the connection every scattering vertex of them makes.
+
+    This is the estimator in one picture. A ray leaves the head, bounces off the
+    buildings up to three times, and at the head and at every bounce it is
+    connected by one straight line to a site sampled on the facade tip. The
+    connection is the contribution, so the fan of thin lines is the estimator
+    and the spray of thick ones is only how it got there.
+
+    A few dozen paths rather than the nine hundred in ``09 ray paths by fate``,
+    because the answer here is how the method works and a dense fan hides it.
+
+    A clear connection is bright and a blocked one is dark red and thinner.
+    Blender's curve strands have no dash pattern, so the difference is carried
+    by colour and thickness, and it is also on the points as ``value_blocked``
+    to be read exactly. Switching to the ``contribution`` layer shades each
+    clear connection by the flux of the site it reached instead, which is the
+    same number the rim is shaded by.
+    """
+    origin = payload["nee_origin_m"].astype(np.float64)
+    site = payload["nee_site_m"].astype(np.float64)
+    blocked = payload["nee_blocked"].astype(bool)
+    weight = payload["nee_weight"].astype(np.float64)
+    depth = payload["nee_vertex_index"].astype(np.int64)
+    picked = payload["nee_paths"].astype(np.int64)
+
+    # A connection is drawn only when the site it lands on is drawn. The tips
+    # beyond the crop this file holds are hidden, and a line running out to one
+    # of them ends in empty air, which is the one thing this picture must not
+    # show. The connection was still cast and still counted. The crop is a disc
+    # about the scene origin rather than about the head, which is the same test
+    # ``crop_for_drawing`` ran on the mesh, so the two cannot disagree.
+    on_the_drawn_mesh = np.linalg.norm(site[:, :2], axis=1) <= drawn_radius_m
+    left_out = int(np.count_nonzero(~on_the_drawn_mesh))
+    if on_the_drawn_mesh.any():
+        origin = origin[on_the_drawn_mesh]
+        site = site[on_the_drawn_mesh]
+        blocked = blocked[on_the_drawn_mesh]
+        weight = weight[on_the_drawn_mesh]
+        depth = depth[on_the_drawn_mesh]
+
+    vertices = payload["path_vertices"].astype(np.float64)
+    offsets = payload["path_offsets"].astype(np.int64)
+    keep = np.concatenate([np.arange(offsets[i], offsets[i + 1]) for i in picked])
+    drawn = shorten_sky_legs(vertices[keep], offsets[picked + 1] - offsets[picked], reach=sky_leg_m)
+    rays = build_curves(
+        "estimator_rays",
+        drawn,
+        offsets[picked + 1] - offsets[picked],
+        np.full(keep.size, ray_radius),
+        into,
+    )
+    attach_point_colour(rays, "ray", np.tile((*NEE_RAY_COLOUR, 1.0), (keep.size, 1)), byte=False)
+    assign(rays, emissive_material("estimator_rays", "ray"))
+    rays["paths_drawn"] = int(picked.size)
+    rays["reading"] = "the same recorded paths as 09, thinned to a readable few dozen"
+    rays["last_leg_shortened_to_m"] = sky_leg_m
+    rays["what_that_changes"] = (
+        "only the drawn length of the leg that left the scene. In 09 it runs to the sky sphere "
+        "176 m out, which here would push every ray past the frame and hide the connections. "
+        "Its direction is untouched and no other vertex moves."
+    )
+
+    # Two points per connection, so one curves object holds them all and each
+    # end can carry its own colour.
+    ends = np.empty((origin.shape[0] * 2, 3))
+    ends[0::2], ends[1::2] = origin, site
+    shade, _, _ = rim_shading(payload["rim_weight"], payload["rim_found"])
+    contribution = np.repeat(shade(weight), 2, axis=0)
+    dark = np.repeat(blocked, 2)
+    contribution[dark] = (*NEE_BLOCKED_COLOUR, 1.0)
+    visibility = np.where(dark[:, None], np.array([*NEE_BLOCKED_COLOUR, 1.0]), np.array([*NEE_CLEAR_COLOUR, 1.0]))
+    lines = build_curves(
+        "estimator_connections",
+        ends,
+        np.full(origin.shape[0], 2),
+        np.repeat(np.where(blocked, 0.75 * line_radius, line_radius), 2),
+        into,
+    )
+    attach_point_colour(lines, "visibility", visibility, byte=False)
+    attach_point_colour(lines, "contribution", contribution, byte=False)
+    attach_values(lines, "value_direct_flux", np.repeat(weight, 2), "POINT")
+    attach_values(lines, "value_blocked", np.repeat(blocked.astype(np.int32), 2), "POINT")
+    attach_values(lines, "value_bounce_index", np.repeat(depth, 2), "POINT")
+    assign(lines, emissive_material("estimator_connections", "visibility", strength=RIM_EMISSION_STRENGTH))
+    layered(lines, ("visibility", "contribution"), "visibility")
+    lines["connections"] = int(origin.shape[0])
+    lines["blocked"] = int(np.count_nonzero(blocked))
+    lines["from_the_head"] = int(np.count_nonzero(depth == 0))
+    lines["blocked_from_the_head"] = int(np.count_nonzero(blocked & (depth == 0)))
+    lines["sites_sampled"] = "uniformly in azimuth on the facade tip, one per scattering vertex"
+    lines["reading"] = "one straight line per contribution. Dark red carries nothing, something is in the way"
+    lines["connections_left_out"] = left_out
+    lines["why_they_are_left_out"] = (
+        "the site they reached is further out than the mesh this file draws, so the line would "
+        "end in empty air. They were cast and counted the same as the rest."
+    )
+    return {
+        "paths": int(picked.size),
+        "connections": int(origin.shape[0]),
+        "blocked": int(np.count_nonzero(blocked)),
+        "blocked_from_the_head": int(np.count_nonzero(blocked & (depth == 0))),
+        "left_out_beyond_the_drawn_mesh": left_out,
+    }
 
 
 def build_walk(payload, into: bpy.types.Collection, model: str) -> tuple[float, float]:
@@ -1275,7 +1685,17 @@ def build_lighting(hero: np.ndarray) -> None:
 #: and nothing else.
 FIGURE_VIEWS: tuple[dict[str, object], ...] = (
     {"name": "01_the_square", "camera": "cam_overview", "show": ("twin",)},
-    {"name": "02_where_the_sources_are", "camera": "cam_overview", "show": ("twin", "network")},
+    {
+        # The band clouds are in this collection and are left out of every
+        # figure that shows it. They are a shell of points in the air, they are
+        # not where a base station is, and a picture captioned where the sources
+        # are would be saying that they are.
+        "name": "02_where_the_sources_are",
+        "camera": "cam_overview",
+        "show": ("twin", "network"),
+        "hide": ("skyline_rim_beyond_the_drawn_mesh", *(f"sources_{name}" for name in MODEL_NAMES)),
+        "layers": {"skyline_rim": "direct_flux"},
+    },
     {"name": "03_exposure_along_the_walk", "camera": "cam_overview", "show": ("twin", "walk")},
     {"name": "04_the_rays_from_one_standpoint", "camera": "cam_rays", "show": ("twin", "rays")},
     {"name": "05_standing_in_the_ray_fan", "camera": "cam_pedestrian", "show": ("twin", "rays")},
@@ -1340,6 +1760,29 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
     {"name": "17_the_bystanders", "camera": "cam_bystanders", "show": ("twin", "bodies")},
     {"name": "18_how_deep_the_bounces_go", "camera": "cam_rays", "show": ("twin", "bounces")},
     {
+        # The method itself. A few dozen rays leave the head and bounce, and
+        # every vertex of them, the head included, throws one thin line at a
+        # site sampled on the facade tip. The lines are the estimate. The rim is
+        # shown with them because a connection has to be seen landing on
+        # something, and the band clouds are hidden for the same reason as in
+        # figure two.
+        "name": "21_next_event_estimation",
+        "camera": "cam_rays",
+        "show": ("twin", "network", "nee", "body"),
+        "hide": ("skyline_sites", "skyline_rim_beyond_the_drawn_mesh", *(f"sources_{name}" for name in MODEL_NAMES)),
+        "layers": {"estimator_connections": "visibility", "skyline_rim": "direct_flux"},
+    },
+    {
+        # The same rim from where it matters. The overview shows that the sources
+        # ring the standpoint, and this shows what the person under them sees:
+        # the skyline, lit along the part of it that delivers.
+        "name": "22_the_skyline_from_the_standpoint",
+        "camera": "cam_pedestrian",
+        "show": ("twin", "network"),
+        "hide": ("skyline_rim_beyond_the_drawn_mesh", *(f"sources_{name}" for name in MODEL_NAMES)),
+        "layers": {"skyline_rim": "direct_flux"},
+    },
+    {
         # The same fan as figure four, shaded by the power each segment carries
         # rather than by what became of it. Thickness says the same thing, so
         # the two readings agree and the colour is the one you can put a number
@@ -1378,7 +1821,12 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
         # picture captioned everything would say the twin uses it. ``bounces``
         # is the ray fan a second time, and the two taxonomies cover the same
         # walls as each other, so Vistas is shown and SAM 3 has figure 11.
-        "hide": ("depth_monocular", "fishnet_sam3"),
+        "hide": (
+            "depth_monocular",
+            "fishnet_sam3",
+            "skyline_rim_beyond_the_drawn_mesh",
+            *(f"sources_{name}" for name in MODEL_NAMES),
+        ),
         "layers": {"fishnet_vistas": "class", "depth_mesh": "decision"},
     },
 )
@@ -1389,7 +1837,7 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
 #: every open. ``bounces`` is always built and is off for a different reason: it
 #: is the same paths as ``rays`` cut differently, so drawing both at once draws
 #: every ray twice.
-EVIDENCE_COLLECTIONS = ("bounces", "semantics", "evidence", "refused", "depth", "panoramas", "bodies")
+EVIDENCE_COLLECTIONS = ("bounces", "nee", "semantics", "evidence", "refused", "depth", "panoramas", "bodies")
 
 
 def hide_heavy_collections() -> None:
@@ -1483,6 +1931,26 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--lobe-offset-m", type=float, default=13.0)
     parser.add_argument("--lobe-floor", type=float, default=0.14)
     parser.add_argument("--ray-radius-m", type=float, default=0.11)
+    parser.add_argument(
+        "--rim-width-scale",
+        type=float,
+        default=0.04,
+        help="Rim radius in metres per square root metre of slant range",
+    )
+    parser.add_argument(
+        "--rim-site-step",
+        type=int,
+        default=10,
+        help="One drawn site every this many azimuths. Ten of 720 is every five degrees",
+    )
+    parser.add_argument("--nee-ray-radius-m", type=float, default=0.09)
+    parser.add_argument("--nee-line-radius-m", type=float, default=0.05)
+    parser.add_argument(
+        "--nee-sky-leg-m",
+        type=float,
+        default=30.0,
+        help="Drawn length of the leg that left the scene, which in 09 runs to the sky sphere",
+    )
     parser.add_argument("--point-radius-m", type=float, default=0.09, help="Drawn size of one depth cloud point")
     parser.add_argument(
         "--pose-sigma-scale",
@@ -1518,6 +1986,16 @@ def main() -> int:
     twin = build_twin(payload, manifest["class_names"], collection("twin"))
     rays = build_rays(payload, manifest["terminations"], collection("rays"), base_radius=args.ray_radius_m)
     legs = build_ray_depth(payload, collection("bounces"), base_radius=args.ray_radius_m)
+    connections: dict[str, object] = {}
+    if "nee_origin_m" in payload.files:
+        connections = build_next_event(
+            payload,
+            collection("nee"),
+            drawn_radius_m=float(manifest["drawn_radius_m"]),
+            ray_radius=args.nee_ray_radius_m,
+            line_radius=args.nee_line_radius_m,
+            sky_leg_m=args.nee_sky_leg_m,
+        )
     peaks = build_arrival(
         payload,
         hero,
@@ -1526,7 +2004,14 @@ def main() -> int:
         offset_m=args.lobe_offset_m,
         floor=args.lobe_floor,
     )
-    sources = build_network(payload, hero, collection("network"))
+    sources = build_network(
+        payload,
+        hero,
+        manifest,
+        collection("network"),
+        width_scale=args.rim_width_scale,
+        site_step=args.rim_site_step,
+    )
     walk_range = build_walk(payload, collection("walk"), args.walk_model)
     sab_range = build_body(payload, hero, ground_z, collection("body"))
 
@@ -1561,6 +2046,7 @@ def main() -> int:
     scene["hero_susceptibility"] = json.dumps(manifest["hero"]["susceptibility"])
     scene["ray_bundle_counts"] = json.dumps(rays)
     scene["ray_leg_counts"] = json.dumps(legs)
+    scene["next_event_counts"] = json.dumps(connections)
     scene["evidence_layers"] = json.dumps(evidence, default=str)
     scene["reading_note"] = (
         "Every object here is measured. Ray thickness is the cube root of throughput. "
@@ -1588,7 +2074,8 @@ def main() -> int:
     print(f"[rays] {rays}", flush=True)
     print(f"[bounces] {legs}", flush=True)
     print(f"[arrival] peak rho per sr { {k: round(v, 5) for k, v in peaks.items()} }", flush=True)
-    print(f"[network] {sources} source markers", flush=True)
+    print(f"[network] {json.dumps(sources)}", flush=True)
+    print(f"[nee] {json.dumps(connections)}", flush=True)
     print(f"[walk] chi range {walk_range[0]:.2f} to {walk_range[1]:.2f} dB", flush=True)
     print(f"[body] Sab {sab_range[0]:.4g} to {sab_range[1]:.4g} W/m2", flush=True)
     print(f"[evidence] {json.dumps(evidence, default=str)}", flush=True)

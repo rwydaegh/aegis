@@ -27,6 +27,7 @@ Run from the ``semantic_twin`` directory::
     python export_propagation_payload.py --site korenmarkt
     python export_propagation_payload.py --site newyork_timessquare --locations 60
     python export_propagation_payload.py --site krakow_rynek --no-evidence
+    python export_propagation_payload.py --site tokyo_hachiko --rim-only
 
 Then hand the payload to Blender::
 
@@ -69,6 +70,8 @@ from semantic_twin.propagation import (  # noqa: E402
 from semantic_twin.propagation.exposure import BodyCoupler  # noqa: E402
 from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings  # noqa: E402
 from semantic_twin.propagation.walk import build_walk, stratified_subset  # noqa: E402
+
+from measure_skyline import skyline  # noqa: E402
 
 CONFIG = SCRIPT_DIR / "config"
 OUTPUT = SCRIPT_DIR / "outputs" / "propagation_viz"
@@ -135,6 +138,195 @@ def network_markers(name: str, count: int, rng: np.random.Generator) -> dict[str
         "height_band_m": np.array([low_h, high_h]),
         "range_m": np.array([near, far]),
     }
+
+
+#: The silhouette fan the rim is read off. 720 azimuths is half a degree, which
+#: is 2 m of arc at 250 m, and 400 elevations is the grid ``measure_skyline.py``
+#: checked at all eleven squares against an independently cast sky fraction,
+#: agreeing to 0.037 at the worst square.
+RIM_AZIMUTHS = 720
+RIM_ELEVATIONS = 400
+
+
+def facade_tip_rim(
+    geometry: Any,
+    standpoint: np.ndarray,
+    *,
+    azimuths: int = RIM_AZIMUTHS,
+    elevations: int = RIM_ELEVATIONS,
+) -> dict[str, Any]:
+    """The skyline at one standpoint, and the direct flux each azimuth of it carries.
+
+    A site sits on a facade tip, the top edge where a wall meets the sky, and
+    there is no mast under it. So the source geometry is the skyline the
+    pedestrian actually sees: one site per azimuth, at the elevation and the
+    horizontal distance of the tip visible along that azimuth. The direct term
+    is a mean over azimuth of ``cos^2(alpha) / d``, with no height band and no
+    range band in it, because each azimuth holds one source distance rather than
+    a distribution over one.
+
+    The extraction is ``measure_skyline.skyline`` itself and not a copy of it,
+    so what the blend draws is the silhouette the law was measured on.
+
+    Offsets are relative to the standpoint, the way :func:`network_markers`
+    returns them, so the caller adds it.
+    """
+    alpha, distance, found = skyline(geometry, standpoint, azimuths=azimuths, elevations=elevations)
+    # Cell centres, matching the fan `skyline` casts. Half a cell of drift here
+    # rotates the whole rim off the rooflines and nothing else in the pipeline
+    # would say so, which is why ``tests/test_propagation_viz.py`` checks the two
+    # against a silhouette whose answer is known in closed form.
+    azimuth = (np.arange(azimuths) + 0.5) * (2.0 * np.pi / azimuths)
+
+    good = found & np.isfinite(distance) & (distance > 0.0)
+    reach = np.where(good, distance, 0.0)
+    weight = np.zeros_like(alpha)
+    weight[good] = np.cos(alpha[good]) ** 2 / distance[good]
+    offset = np.column_stack(
+        [reach * np.cos(azimuth), reach * np.sin(azimuth), reach * np.tan(np.where(good, alpha, 0.0))]
+    )
+    summary = {
+        "law": "direct term proportional to the mean over azimuth of cos^2(alpha) / d",
+        "azimuths": int(azimuths),
+        "elevations": int(elevations),
+        "direct_term": float(weight.mean()),
+        "open_azimuth_fraction": float(1.0 - good.mean()),
+        # The same sky the tracer measures by random casting, arrived at from the
+        # silhouette instead. The two sit next to each other in the manifest and
+        # disagreeing is the signal that the fan found a ceiling and not a tip.
+        "sky_fraction_implied": float(np.mean((1.0 - np.sin(alpha)) / 2.0)),
+        "alpha_deg_median": float(np.degrees(np.median(alpha[good]))) if good.any() else float("nan"),
+        "distance_m_median": float(np.median(distance[good])) if good.any() else float("nan"),
+        "distance_m_p95": float(np.percentile(distance[good], 95)) if good.any() else float("nan"),
+        "weight_p05": float(np.percentile(weight[good], 5)) if good.any() else float("nan"),
+        "weight_max": float(weight.max()),
+    }
+    return {
+        "offset": offset,
+        "azimuth_rad": azimuth,
+        "alpha_rad": np.where(good, alpha, 0.0),
+        "distance_m": reach,
+        "weight": weight,
+        "found": good,
+        "summary": summary,
+    }
+
+
+def next_event_connections(
+    geometry: Any,
+    path_vertices: np.ndarray,
+    path_offsets: np.ndarray,
+    rim: dict[str, Any],
+    standpoint: np.ndarray,
+    *,
+    paths: int,
+    seed: int,
+) -> dict[str, Any]:
+    """One shadow ray per scattering vertex, from the vertex to a sampled site.
+
+    This is the step the estimator takes and the one a picture of a ray fan
+    never shows. A ray leaves the head and bounces off the buildings, and at the
+    head and again at every bounce it is connected to one site sampled on the
+    facade tip. The connection is the contribution, and whether anything stands
+    in the way of it is the whole of the visibility term.
+
+    Measured, not drawn: every connection is cast against the same mesh the
+    trace ran on. The head's connections come back clear by construction,
+    because the tip is the silhouette from the head, and that is a check on the
+    geometry rather than a result.
+
+    Sites are sampled uniformly in azimuth, which is the source density the law
+    assumes: one site per azimuth, no azimuth preferred. An estimator that
+    importance samples the flux instead would draw the same picture with the
+    lines crowded onto the near rooflines.
+
+    The last vertex of a recorded path is where it left the scene rather than a
+    surface it scattered off, so it gets no connection.
+    """
+    offsets = np.asarray(path_offsets, dtype=np.int64)
+    vertices = np.asarray(path_vertices, dtype=np.float64)
+    lengths = np.diff(offsets)
+    # Paths that bounced at least once, so the picture shows the connections a
+    # ray makes after it has left the head and not only the fan from the head.
+    pool = np.flatnonzero(lengths >= 3)
+    if pool.size < paths:
+        pool = np.arange(lengths.size)
+    pick = np.unique(pool[np.linspace(0, pool.size - 1, min(paths, pool.size)).round().astype(int)])
+
+    tip = standpoint + rim["offset"]
+    available = np.flatnonzero(rim["found"])
+    rng = np.random.default_rng(seed)
+
+    path_index, vertex_index, origin, azimuth = [], [], [], []
+    for index in pick:
+        start, stop = int(offsets[index]), int(offsets[index + 1])
+        for step, point in enumerate(vertices[start : stop - 1]):
+            path_index.append(int(index))
+            vertex_index.append(step)
+            origin.append(point)
+            azimuth.append(int(rng.choice(available)))
+    origin = np.asarray(origin, dtype=np.float64).reshape(-1, 3)
+    azimuth = np.asarray(azimuth, dtype=np.int64)
+    site = tip[azimuth]
+
+    span = site - origin
+    length = np.linalg.norm(span, axis=1)
+    unit = span / np.maximum(length, 1.0e-12)[:, None]
+    # Leave the surface before testing, or every connection from a bounce point
+    # is blocked by the wall it bounced off. The far end has the same problem in
+    # reverse: the tip is on the mesh, so the shadow ray hits it at its own
+    # range and a bare hit flag would call every connection blocked.
+    hit, distance, _, _ = geometry.intersect(origin + 0.02 * unit, unit)
+    clearance = np.maximum(0.25, 0.01 * length)
+    blocked = hit & (distance < length - clearance)
+    return {
+        "path_index": np.asarray(path_index, dtype=np.int32),
+        "vertex_index": np.asarray(vertex_index, dtype=np.int32),
+        "origin": origin,
+        "site": site,
+        "azimuth_index": azimuth,
+        "weight": rim["weight"][azimuth],
+        "blocked": blocked,
+        "paths": pick.astype(np.int32),
+        "summary": {
+            "what_it_is": (
+                "one shadow ray per scattering vertex, from the vertex to a site sampled "
+                "uniformly in azimuth on the facade tip. Cast against the traced mesh."
+            ),
+            "paths_drawn": int(pick.size),
+            "connections": int(length.size),
+            "blocked_fraction": float(blocked.mean()) if length.size else float("nan"),
+            "blocked_fraction_from_the_head": (
+                float(blocked[np.asarray(vertex_index) == 0].mean()) if length.size else float("nan")
+            ),
+            "median_length_m": float(np.median(length)) if length.size else float("nan"),
+            "surface_standoff_m": 0.02,
+        },
+    }
+
+
+def store_rim(bundle: dict[str, Any], rim: dict[str, Any]) -> None:
+    """Put the rim into a bundle, as six arrays and one block in the manifest."""
+    bundle["payload"]["rim_offset_m"] = rim["offset"].astype(np.float32)
+    bundle["payload"]["rim_azimuth_rad"] = rim["azimuth_rad"].astype(np.float32)
+    bundle["payload"]["rim_alpha_rad"] = rim["alpha_rad"].astype(np.float32)
+    bundle["payload"]["rim_distance_m"] = rim["distance_m"].astype(np.float32)
+    bundle["payload"]["rim_weight"] = rim["weight"].astype(np.float32)
+    bundle["payload"]["rim_found"] = rim["found"]
+    bundle["manifest"]["hero"]["facade_tip_rim"] = rim["summary"]
+
+
+def store_connections(bundle: dict[str, Any], connections: dict[str, Any]) -> None:
+    """Put the next event connections into a bundle, as seven arrays and a block."""
+    bundle["payload"]["nee_path_index"] = connections["path_index"]
+    bundle["payload"]["nee_vertex_index"] = connections["vertex_index"]
+    bundle["payload"]["nee_origin_m"] = connections["origin"].astype(np.float32)
+    bundle["payload"]["nee_site_m"] = connections["site"].astype(np.float32)
+    bundle["payload"]["nee_azimuth_index"] = connections["azimuth_index"].astype(np.int32)
+    bundle["payload"]["nee_weight"] = connections["weight"].astype(np.float32)
+    bundle["payload"]["nee_blocked"] = connections["blocked"]
+    bundle["payload"]["nee_paths"] = connections["paths"]
+    bundle["manifest"]["hero"]["next_event_estimation"] = connections["summary"]
 
 
 def sphere_triangulation(grid: np.ndarray) -> np.ndarray:
@@ -229,6 +421,14 @@ def trace_site(args: argparse.Namespace) -> dict[str, Any]:
 
     rng = np.random.default_rng(args.seed)
     network = {name: network_markers(name, args.sources, rng) for name in MODELS}
+    rim = facade_tip_rim(geometry, points[hero])
+    print(
+        f"rim: direct term {rim['summary']['direct_term']:.5f}, "
+        f"tip {rim['summary']['alpha_deg_median']:.1f} deg up at "
+        f"{rim['summary']['distance_m_median']:.1f} m, sky implied "
+        f"{rim['summary']['sky_fraction_implied']:.4f} against {hero_result.sky_fraction:.4f} cast",
+        flush=True,
+    )
 
     vertices, faces, kept = crop_for_drawing(geometry.vertices, geometry.faces, args.draw_radius_m)
     print(f"drawing {faces.shape[0]} of {geometry.face_count} triangles inside {args.draw_radius_m:g} m", flush=True)
@@ -302,7 +502,25 @@ def trace_site(args: argparse.Namespace) -> dict[str, Any]:
             "every traced number bit identical."
         ),
     }
-    return {"payload": payload, "manifest": manifest}
+    bundle = {"payload": payload, "manifest": manifest}
+    store_rim(bundle, rim)
+    connections = next_event_connections(
+        geometry,
+        record.vertices,
+        record.offsets,
+        rim,
+        points[hero],
+        paths=args.nee_paths,
+        seed=args.seed,
+    )
+    store_connections(bundle, connections)
+    print(
+        f"connections: {connections['summary']['connections']} from "
+        f"{connections['summary']['paths_drawn']} paths, "
+        f"{connections['summary']['blocked_fraction']:.2f} blocked",
+        flush=True,
+    )
+    return bundle
 
 
 def body_field(coupler: BodyCoupler, result: Any, model: str) -> dict[str, np.ndarray]:
@@ -1137,6 +1355,12 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--walk-radius-m", type=float, default=60.0)
     parser.add_argument("--paths", type=int, default=1200, help="Ray polylines kept at the hero location")
     parser.add_argument("--sources", type=int, default=400, help="Illumination source markers per model")
+    parser.add_argument(
+        "--nee-paths",
+        type=int,
+        default=16,
+        help="Recorded paths drawn with their next event connections. A few dozen stays readable",
+    )
     parser.add_argument("--rays", type=int, default=200_000)
     parser.add_argument("--local-cells", type=int, default=512)
     parser.add_argument("--max-bounces", type=int, default=DEFAULT_MAX_BOUNCES)
@@ -1154,6 +1378,11 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         "--evidence-only",
         action="store_true",
         help="Reuse the traced half of an existing payload and rebuild only the image side layers",
+    )
+    parser.add_argument(
+        "--rim-only",
+        action="store_true",
+        help="Keep an existing payload whole and measure the facade tip rim into it",
     )
     parser.add_argument(
         "--depth-stride",
@@ -1181,12 +1410,63 @@ def reopen(args: argparse.Namespace) -> dict[str, Any]:
     return {"payload": payload, "manifest": manifest}
 
 
+def measure_rim(args: argparse.Namespace) -> dict[str, Any]:
+    """Measure the facade tip rim into a payload that was already traced.
+
+    The rim is one ray fan and takes a fifth of a second. Retracing Times Square
+    to pick one up is two hours, and the trace is unchanged by it, so this
+    reopens the payload whole, keeps every array in it including the evidence,
+    and adds the six the rim needs.
+    """
+    payload_path = args.out / f"{args.site}_payload.npz"
+    manifest_path = args.out / f"{args.site}_manifest.json"
+    stored = np.load(payload_path)
+    manifest = json.loads(manifest_path.read_text())
+    bundle: dict[str, Any] = {
+        "payload": {name: stored[name] for name in stored.files},
+        "manifest": manifest,
+    }
+    geometry = MitsubaGeometry(SCRIPT_DIR / manifest["mesh"], variant=args.variant)
+    hero = bundle["payload"]["hero_point"].astype(np.float64)
+    rim = facade_tip_rim(geometry, hero)
+    store_rim(bundle, rim)
+    connections = next_event_connections(
+        geometry,
+        bundle["payload"]["path_vertices"],
+        bundle["payload"]["path_offsets"],
+        rim,
+        hero,
+        paths=args.nee_paths,
+        seed=args.seed,
+    )
+    store_connections(bundle, connections)
+    print(
+        f"[rim] {args.site}: direct term {rim['summary']['direct_term']:.5f}, "
+        f"tip {rim['summary']['alpha_deg_median']:.1f} deg up at "
+        f"{rim['summary']['distance_m_median']:.1f} m, sky implied "
+        f"{rim['summary']['sky_fraction_implied']:.4f} against "
+        f"{manifest['hero']['sky_fraction']:.4f} cast",
+        flush=True,
+    )
+    print(
+        f"[nee] {connections['summary']['connections']} connections from "
+        f"{connections['summary']['paths_drawn']} paths, "
+        f"{connections['summary']['blocked_fraction']:.2f} blocked, "
+        f"{connections['summary']['blocked_fraction_from_the_head']:.2f} of those from the head",
+        flush=True,
+    )
+    return bundle
+
+
 def main(argv: list[str] | None = None) -> int:
     args = arguments(argv)
     args.out.mkdir(parents=True, exist_ok=True)
-    bundle = reopen(args) if args.evidence_only else trace_site(args)
-    if args.evidence:
-        attach_evidence(args, bundle)
+    if args.rim_only:
+        bundle = measure_rim(args)
+    else:
+        bundle = reopen(args) if args.evidence_only else trace_site(args)
+        if args.evidence:
+            attach_evidence(args, bundle)
     payload_path = args.out / f"{args.site}_payload.npz"
     np.savez_compressed(payload_path, **bundle["payload"])
     manifest_path = args.out / f"{args.site}_manifest.json"

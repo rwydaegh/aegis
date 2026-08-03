@@ -177,6 +177,29 @@ def test_the_downward_probe_starts_above_the_tallest_tower() -> None:
     assert SKY_PROBE > 343.0
 
 
+def test_the_old_probe_height_can_still_be_asked_for_and_is_recorded() -> None:
+    """Repairing a published run means selecting the standpoints it selected.
+
+    Every run written before the probe moved cast from the ground datum plus
+    200 m, which sits inside a 343 m tower and reports a wall of its shell as if
+    it were pavement. Those runs are on disk and two of them had to be repaired,
+    so the old rule has to remain reachable, and a walk has to say which rule
+    built it rather than leaving it to be inferred from a timestamp.
+    """
+    layout = Slabs([(0.0, WIDE), (343.0, (-30.0, 30.0, -30.0, 30.0))])
+    datum = ground_datum(layout, radius_m=90.0)
+    old = build_walk(layout, ground_datum_m=datum, radius_m=90.0, spacing_m=6.0, probe_z_m=datum + 200.0)
+    new = build_walk(layout, ground_datum_m=datum, radius_m=90.0, spacing_m=6.0)
+
+    assert old.provenance["probe_z_m"] == pytest.approx(datum + 200.0)
+    assert new.provenance["probe_z_m"] == SKY_PROBE
+    # The tower footprint is walkable under the old probe and is not under the
+    # new one, which is the whole difference between the two standpoint sets.
+    under_the_tower = (np.abs(old.points[:, 0]) <= 30.0) & (np.abs(old.points[:, 1]) <= 30.0)
+    assert np.any(under_the_tower)
+    assert not np.any((np.abs(new.points[:, 0]) <= 30.0) & (np.abs(new.points[:, 1]) <= 30.0))
+
+
 def test_the_walk_stays_off_the_roof_the_old_datum_put_it_on() -> None:
     layout = Slabs([(0.0, WIDE), (18.5, (-55.0, 55.0, -18.0, 18.0))])
     walk = build_walk(layout, ground_datum_m=ground_datum(layout, radius_m=90.0), radius_m=90.0, spacing_m=6.0)
