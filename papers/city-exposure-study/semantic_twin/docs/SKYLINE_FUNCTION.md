@@ -99,6 +99,44 @@ the 130 m crop using four views of one camera. Matched against the 250 m
 silhouette it covers 0.1 percent of it, 5 hits in 4320. A rebuild at 250 m across
 the admitted cameras is what would make it usable.
 
+## How much rests on things standing next to the pedestrian
+
+The law divides by distance, so a tip a few metres away counts for a lot. That is
+right for a facade and wrong for a lamp post. `measure_near_clutter.py` measures
+the size of it over 16 standpoints of the walk at each square, dropping every
+azimuth whose tip is nearer than a floor.
+
+| site | direct term | share from within 5 m | azimuths within 5 m | term above 5 m |
+|---|---|---|---|---|
+| newyork_timessquare | 0.00968 | 0.45 | 0.049 | 0.00530 |
+| tokyo_hachiko | 0.01897 | 0.40 | 0.224 | 0.01133 |
+| korenmarkt | 0.03080 | 0.35 | 0.260 | 0.02001 |
+| toulouse_capitole | 0.02132 | 0.19 | 0.044 | 0.01732 |
+| prague_staromestske | 0.01641 | 0.15 | 0.000 | 0.01399 |
+| krakow_rynek | 0.02288 | 0.12 | 0.000 | 0.02013 |
+| brussels_grandplace | 0.01986 | 0.11 | 0.023 | 0.01775 |
+| mexico_zocalo | 0.02147 | 0.06 | 0.000 | 0.02028 |
+| london_trafalgar | 0.01967 | 0.05 | 0.011 | 0.01860 |
+| madrid_plazamayor | 0.01870 | 0.05 | 0.000 | 0.01768 |
+| milan_duomo | 0.01306 | 0.00 | 0.000 | 0.01306 |
+
+Worth 2.61 dB at New York, 2.24 at Tokyo, 1.87 at Korenmarkt, and nothing at all
+at Milan. It moves the ordering at the top: Korenmarkt is first of eleven with the
+near tips in and third without them, and Tokyo goes seventh to tenth.
+
+The blend render found the same thing at one standpoint per square and much
+larger, 0.67 at Korenmarkt against 0.35 here. That is the difference between a
+hero frame and the median over a walk, and the walk median is the one to quote.
+
+**The 5 m cut is a bound, not a fix.** Someone standing in a narrow street can be
+within 5 m of a real facade, so the cut removes some genuine roofline too. Two
+things say that is the smaller part. The floor still bites at 8 and 12 m even at
+Milan, which is the cut eating real facades and is why it should not be pushed
+further. And a tall facade seen from 3 m sits at about 81 degrees, where
+`cos^2(alpha)` is 0.024, so it contributes little whatever the distance does. What
+dominates the near term is **low** objects close by, which is exactly what a pole
+or an awning is.
+
 ## Reproducing
 
 ```bash
