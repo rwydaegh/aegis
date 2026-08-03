@@ -155,11 +155,35 @@ the results can mean.
   smooth interface with a Gaussian height error of standard deviation
   $\sigma_h$ about its own plane.
   \item[A6] \emph{No diffraction.} Energy bending around building edges is
-  absent. This is the largest known omission and it biases $\chi$ low in deep
-  streets.
+  absent. The paragraph after this list gives the reason and the direction of
+  the resulting error.
   \item[A7] \emph{Unpolarised.} Reflection uses the average of the two
   principal polarisations rather than tracking a polarisation state.
 \end{enumerate}
+
+A6 is the assumption a reader is most likely to challenge, so it is worth the
+space. Three things make it defensible at this frequency and for this quantity.
+
+The first is scale. The wavelength at 15\,GHz is 2\,cm, and the strength of a
+diffracted field relative to the field that produced it falls off as
+$1/\sqrt{ks}$ with distance $s$ from the edge. At 10\,m that ratio is about
+$1/56$ in amplitude, near 35\,dB down in power. Diffraction is a correction to a
+picture that reflection already describes, which is the opposite of its role at
+the metre wavelengths where street models were first built and where an edge is
+only a few wavelengths away from everything.
+
+The second is where that correction would actually lead. Diffraction dominates
+only in deep shadow, at points no direct or reflected path reaches, and the
+standpoints used here are required to have open sky above them. Points with no
+sky are discarded before any trace runs. No standpoint sits in the regime where
+the omitted term is the leading one.
+
+The third is that the error has a known sign. A diffracted path can only deliver
+power the trace does not currently collect, never remove any, so leaving it out
+biases $\chi$ low. Every value reported here is a lower bound with respect to
+this term, and the shortfall grows with how narrow and how enclosed the street
+is. That is the right direction for an omission to run in an exposure study, and
+it is stated rather than assumed away.
 
 The remaining sections describe the scene, the illumination model, the ray
 estimator, the body, and the checks that constrain them.
@@ -425,8 +449,23 @@ $\uext_j = \uloc_j$, so \eqref{eq:estimator} reduces to a quadrature of $Q$ over
 the sphere and returns 1, as it must.
 
 The estimator is stochastic, so every reported value carries a Monte Carlo
-standard error obtained by repeating the trace with independent seeds. Seeds,
-ray counts and standard errors are given in the supplementary information.
+standard error, obtained by retracing the same standpoints over disjoint seed
+streams rather than estimated from within a single run. Seeds and ray counts are
+in the supplementary information.
+
+How large that error is depends strongly on which illumination model is being
+evaluated, and the reason is worth stating because it decides how many rays a
+result needs. The variance is set by the share of the ray budget that lands
+inside the support of $Q$. The isotropic model has support everywhere, so every
+ray contributes and the per standpoint error is a few thousandths of a decibel.
+The street model crowds its entire mass into the lowest tens of degrees of
+elevation, so most rays escape into directions where $Q$ is zero and contribute
+nothing, and the per standpoint error is some thirty times larger. Stratifying
+the launch directions does not help with this, because the launch direction is
+not the escape direction and only the latter is weighted. Reporting a median over
+many standpoints does help, by roughly the square root of their number, which is
+why a distribution over standpoints is the right unit for a claim and a single
+standpoint often is not.
 
 \subsection{Bounce loop}
 
@@ -598,8 +637,13 @@ Both are reproduced to the tolerance set by the ray count.
 
 Three parameters are measured rather than chosen. The number of surface
 interactions $L$ is raised until the median change in $\chi$ falls below
-0.5\,dB. The ray count $N$ is raised until the spread across independent seeds
-falls below the differences being interpreted. The crop radius is raised until
+0.5\,dB. That comparison needs one remark, because the obvious way to read it is
+wrong. Two runs that differ only in $L$ and share a seed trace the same rays and
+agree exactly up to the shallower depth, so their difference is paired and is
+resolved far better than either value is on its own. Reading it against the
+single run error of the next paragraph would make a real and well measured
+difference look like noise. The ray count $N$ is raised until the spread across
+independent seeds falls below the differences being interpreted. The crop radius is raised until
 $\chi$ stops moving, which is what fixes the 250\,m figure quoted in
 Section~II: at smaller radii the mesh is missing buildings that would have
 blocked near horizon paths, and the near horizon is where the illumination
