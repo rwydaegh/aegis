@@ -428,6 +428,30 @@ distribution the buildings have already set.** Isotropic loses only 0.05 dB,
 because weighting all directions equally makes redistribution free and leaves
 only absorption to pay for.
 
+The absorber control is what turns that from a story into a measurement. Replace
+the bodies with index matched absorbers, so the geometry and the blockage are
+identical and only the reflected half is removed, and the isotropic loss goes
+from 0.049 to 0.708 dB while rooftop moves only 1.044 to 1.332 and street only
+1.391 to 1.607. **A crowd is nearly invisible to the isotropic model because it
+reflects, not because it fails to block.**
+
+All of the above at 2.15 people per square metre, adult stature, 2867 bodies,
+paired median over 12 standpoints. Noise floor on the same design: 0.009 dB
+isotropic, 0.035 rooftop, 0.112 street median absolute, so the 1.0 and 1.4 dB
+shifts sit 30 and 12 times above it and the 0.049 dB isotropic shift does not
+clear it. Say that: the isotropic shift is consistent with zero.
+
+*(Every number in this section recomputed in session from
+`outputs/bystander_study/korenmarkt_15ghz_summary.json`,
+`korenmarkt_absorber_15ghz_summary.json` and `korenmarkt_15ghz_noise_floor.json`.)*
+
+**One consistency caveat that has to travel with it.** This study ran at
+`max_bounces: 6` with roulette starting at bounce 3, which is the superseded
+configuration, not the `L = 3` roulette off budget the headline uses. It is a
+paired differential study, so the shift is far more robust than an absolute
+level would be, but it has not been rerun on the current budget and should not
+be presented as though it had.
+
 *Source: `BYSTANDERS.md`.*
 
 ### R6. Convergence, reported as measurement not as choice, and one place it does not converge
