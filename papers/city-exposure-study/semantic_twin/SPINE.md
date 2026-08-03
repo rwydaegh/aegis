@@ -336,12 +336,43 @@ corrected law is the one under which the crop converges, so the correctness of
 the law and the convergence of the geometry are the same question rather than two
 independent ones.
 
-**What is not yet supported**: whether the corrected law reorders the eleven
-cities. This comparison is Korenmarkt only. Earlier notes assert a reordering.
-Either run the eleven under both laws or drop the claim. Do not write it as
-measured.
+**It does reorder the eleven cities, and it does so through one city rather than
+through all of them.** Now measured, not asserted. Both laws are azimuth uniform,
+so the sensitivity harvest evaluates them on the same rays at every standpoint of
+all eleven sites, 40 per site at the published 250 m crop, and the difference
+carries no Monte Carlo noise at all. The shift is not a common level: it runs
++1.05 to +6.33 dB rooftop about a mean of +5.14, and +1.45 to +4.41 dB street
+about a mean of +3.43, with a residual rms about that mean of 1.39 and 0.98 dB.
+Rank correlation between the two orderings is Spearman +0.65 and Kendall +0.64
+rooftop, Spearman +0.88 and Kendall +0.78 street.
 
-*Source: `run_law_comparison.py`.*
+**Name the mover rather than quoting the correlation.** Nine of eleven sites
+change rank rooftop and eight of eleven street, but only one site per model moves
+more than two places: New York falls from 1st to 9th rooftop and Tokyo from 4th
+to 8th street. Drop that one site and Spearman is +0.98 in both models with
+nothing moving more than a single place. So the honest statement is that the law
+is close to a level shift for nine or ten of the eleven squares and is not one at
+the top of the table, which is where the reordering costs the most.
+
+The mechanism is measured rather than argued. The old law is `1/sin^3` and puts
+its mass just above its own support floor, so what it returned at a square was
+set by how much power that square let in near the horizon. The share of the old
+rooftop answer arriving below 5° runs from 0.046 at Madrid to 0.529 at New York
+and predicts the per site residual at Pearson -0.97. New York's towers leave only
+narrow near horizontal channels, which the old law rewarded and the corrected one
+does not.
+
+None of this is a noise artefact. The two laws share rays, so the differential
+noise is exactly zero, and the unpaired floor of `CODE_AUDIT.md` §4.1 scaled to
+40 standpoints is 0.024 dB rooftop and 0.059 dB street, against a 4.09 dB New
+York residual. The harvested old law reproduces the old law production run
+`cities250` to 0.24 dB at worst across the six sites free of the later ground
+datum change, and the 0.04° elevation binning is worth at most 0.035 dB rooftop
+and 0.105 dB street on any site's shift.
+
+*Source: `run_law_comparison.py` for the Korenmarkt crop pair,
+`run_law_ordering.py` and `outputs/law_comparison/eleven_city_law_ordering.json`
+for the eleven.*
 
 ### R3. Material discrimination does not move exposure
 
@@ -560,7 +591,14 @@ Two things that must not be quoted as measured:
 
 Monte Carlo standard errors, walk median over 8 seeds: 0.0042 dB isotropic,
 0.0136 rooftop, 0.0343 street small cell. Per standpoint: 0.004, 0.024, 0.118.
-The evidence ladder negative survives at 83× and 27× the noise.
+
+**The material null is a resolved measurement, not a failure to detect.** The
++0.024 dB isotropic shift sits at about 5.7 times the 0.0042 dB walk median
+standard error, so the design does see it. It is simply negligible. Write it that
+way. "The shift is resolved and it is a fortieth of a decibel" is a much stronger
+sentence than "no effect was found", and it is the true one. Do not quote the
+older claim that the ladder negative survives at 83 and 27 times the noise, which
+does not reconcile with either the shift sizes or the standard errors above.
 
 The defence that the multiply reflected tail is depolarised **is not available**
 at this frequency and has been retracted: measured cross polarisation ratio is
