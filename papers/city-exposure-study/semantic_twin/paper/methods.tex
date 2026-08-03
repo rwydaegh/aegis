@@ -569,15 +569,44 @@ can see where evidence gives way to prior rather than being asked to accept it.
 Three is then the smallest budget that lets that question be asked at all. One
 interaction would test nothing beyond the guaranteed hit, two would show whether
 the walk covers the square, and three shows what the first clearly unobserved
-interaction is worth. A fourth would compound prior on prior with nothing new to
-learn.
+interaction is worth.
 
-One consequence has to be stated plainly. Russian roulette exists to remove the
-bias a hard cut introduces \cite{arvokirk}, and it only begins to act from the
-third interaction, so at $L = 3$ it can no longer do that job. The estimator
-here is therefore genuinely truncated, and the truncated power share above is
-the error term rather than a diagnostic. That is the price of the simpler
-budget, and it is paid in a direction that is known and reported.
+The guarantee and its reach are measured rather than asserted. At a standpoint a
+camera actually occupied, the share of incident power landing on a triangle some
+panorama saw is 0.978 to 0.999 at the first interaction, across seven of the
+eight registered stations at the reference site. That confirms the geometric
+argument to about two parts in a thousand. The eighth station returns 0.362, and
+since it stands eight metres from one scoring 0.999 it is a registration failure
+rather than a coverage one. It had passed the skyline residual gate, so first
+interaction coverage is the sharper test of a pose, and that station is
+excluded. The reach of the guarantee turns out to be a radius. Within 20\,m of a
+registered panorama the second interaction still lands on measured material 93
+to 96\,\% of the time and the third about 89\,\%, while beyond 40\,m all depths
+fall below 0.21. So this is a statement about a twenty metre neighbourhood of
+the instrument and not about a square. Pooled over the published walk, which
+spans 90\,m, first interaction coverage is 0.479, and every result that uses
+image derived material is reported with that number beside it.
+
+What makes three sufficient rather than merely defensible is where the power is.
+Of all launched power, 79\,\% interacts once, a further 8.9\,\% twice, 1.2\,\%
+three times, and 0.22\,\% ever again. Depths past the third can be justified
+neither by evidence nor by the power they carry. Traced against an eight
+interaction reference over 40 standpoints at fixed seeds, so that only the budget
+moves, $L = 3$ costs a median of 0.002\,dB and never moves a standpoint by more
+than 0.12\,dB. Not one standpoint of the 40 moves half a decibel under any of
+the three illumination models.
+
+One consequence has to be stated plainly. A fixed budget is a hard cut, so the
+estimator is truncated and therefore biased low, since truncation deletes power
+and never adds it. The share of escaping power still in flight when the budget
+runs out is 0.0038 at the median standpoint and 0.021 at the worst, and every
+value reported here is a lower bound in that sense. Russian roulette is the
+standard way to end paths without introducing this bias \cite{arvokirk}, but it
+cannot repair a hard cap, and at a budget of three it would fire exactly once,
+one step before the cap, killing rays at a 0.05 survival floor and inflating the
+few survivors twentyfold. Measured over the same standpoints that is a worse
+estimator at the same cost, so it is switched off. The only approximation left
+in the trace is a single one sided truncation whose size is quoted above.
 
 \begin{algorithm}[!t]
 \caption{Adjoint trace at one standpoint}
@@ -596,11 +625,9 @@ budget, and it is paid in a direction that is known and reported.
     \State $w \gets w \, |\Gamma(\theta_i, \varepsilon_r)|^2$
     \State with probability $\kappa$ set $\uext$ to the mirror direction,
     \Statex \hspace{\algorithmicindent} otherwise draw it cosine weighted about $\nhat$
-    \If{$b + 1 \ge 3$}
-      \State $p \gets \mathrm{clip}(w, p_{\min}, 1)$
-      \State kill the ray with probability $1 - p$, else $w \gets w / p$
-    \EndIf
   \EndFor
+  \State \Comment{the loop ends at $b = L$ and whatever is still
+  \Statex \hspace{\algorithmicindent} in flight is discarded}
 \EndFor
 \State \Return $\hat{\chi}$ from \eqref{eq:estimator}
 \end{algorithmic}
@@ -693,8 +720,10 @@ Both are reproduced to the tolerance set by the ray count.
 \subsection{Convergence}
 
 Three parameters are measured rather than chosen. The number of surface
-interactions $L$ is raised until the median change in $\chi$ falls below
-0.5\,dB. That comparison needs one remark, because the obvious way to read it is
+interactions $L$ was raised to eight with the budget the only thing varying, and
+the threshold was that no standpoint move by 0.5\,dB. None did, at any budget
+from three upward, which is the measurement quoted in
+Section~\ref{sec:budget}. That comparison needs one remark, because the obvious way to read it is
 wrong. Two runs that differ only in $L$ and share a seed trace the same rays and
 agree exactly up to the shallower depth, so their difference is paired and is
 resolved far better than either value is on its own. Reading it against the
