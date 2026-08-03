@@ -2,15 +2,19 @@
 
 Drives ``export_propagation_payload.py`` then ``propagation_blender.py`` per
 site, renders the contact sheet, and packages the blends with their manifests
-and a written index into one archive that is small enough to move around.
+and a written index into one archive. Eleven squares come to about 190 MB. The
+four squares with no image evidence weigh under 9 MB each and the seven that
+carry some weigh 10 to 37 MB, so most of the archive is the evidence layers.
 
-    python build_propagation_blends.py                       # the default four sites
+    python build_propagation_blends.py                       # all eleven squares
     python build_propagation_blends.py --sites korenmarkt    # just one
     python build_propagation_blends.py --skip-render         # blends only, much faster
 
-The sites are chosen to span the range the study measured rather than to be
-representative, because four sites cannot be representative of eleven and
-pretending otherwise would be the worse choice.
+Every square the study built is in the set. The archive used to hold four, and
+said so, because four cannot be representative of eleven and spanning the range
+was the honest thing a subset could do. That caveat is spent: the set is now the
+whole population the study measured, so nothing here is standing in for anything
+else and no site was chosen over another.
 """
 
 from __future__ import annotations
@@ -29,22 +33,95 @@ BLENDER = pathlib.Path.home() / "blender-4.5" / "blender"
 
 #: site -> why it is in the set. Written into the index so the archive explains
 #: its own contents to whoever opens it a month from now.
+#:
+#: Every number quoted below is a median or a spread over the 80 standpoints of
+#: the ``city250_L3_*`` sweep, the single writer eleven site run at the 250 m
+#: crop on the fixed ground datum, tabulated in ``AGGREGATE_REBUILD.md`` and
+#: drawn by ``FIGURES/make_eleven_cities_exposure.py``. Within square spreads are
+#: p95 over p05 in decibels. Nothing here comes from the superseded
+#: ``city250_corrected_*`` run, whose Krakow and Toulouse standpoints stood on a
+#: roof.
 SITES: dict[str, str] = {
     "korenmarkt": (
         "The reference site. Everything else in this study was built and checked here "
-        "first, and it is the only site with registered panorama semantics."
+        "first, and it is the only square carrying every evidence layer: two semantic "
+        "surfaces where the others have at most one, both depth clouds, and the 18 "
+        "reconstructed bodies that exist nowhere else. Five of the other ten carry the "
+        "Vistas fishnet and their registered poses, Milan adds a depth cloud to that, "
+        "and Krakow, London, Tokyo and Toulouse carry no image evidence at all. On "
+        "exposure it is unremarkable, eighth of eleven on isotropic median at 0.2916 "
+        "and seventh on rooftop at 0.1626."
     ),
     "krakow_rynek": (
-        "The most open square in the set, and the highest susceptibility under every "
-        "illumination model. The upper end of what a European core does."
+        "The square the ground datum fix moved furthest. The published run stood its "
+        "walk 18.19 m up on the roof of the Cloth Hall, and coming down to the pavement "
+        "cost 5.26 dB of rooftop susceptibility. At street level the Rynek is open but "
+        "not the outlier it was drawn as: sky median 0.3138, third of the eleven behind "
+        "London at 0.3304 and Mexico City at 0.3240. Its rooftop susceptibility spans "
+        "2.86 dB across its own standpoints, the second narrowest of the eleven."
     ),
     "newyork_timessquare": (
-        "The canyon. 18 percent sky against Krakow's 46, and the lowest isotropic "
-        "susceptibility of the eleven. The lower end."
+        "The canyon. A sky median of 0.1210 against London's 0.3304, and the lowest "
+        "isotropic susceptibility of the eleven at 0.1694. It is also the one square the "
+        "street small cell model favours, at 0.0604, more than half again the next "
+        "square, because a source down at street level is the one thing its towers do "
+        "not block. Its rays bounce most, 1.48 per ray at the median against 0.91 at "
+        "London, and arrive latest, 21.50 ns of excess delay."
     ),
     "brussels_grandplace": (
-        "The widest spread inside one square, 12.7 dB rooftop between its own "
-        "standpoints. Where you stand matters most here."
+        "The widest spread inside one square. 12.89 dB of rooftop susceptibility and "
+        "19.01 dB of street small cell between its own standpoints, both the largest of "
+        "the eleven, because a walk here leaves an enclosed square for the narrow streets "
+        "feeding it. Where you stand matters most here."
+    ),
+    "london_trafalgar": (
+        "The most open square of the eleven, sky median 0.3304, and second on rooftop "
+        "susceptibility at 0.2884. The openness is evenly shared: its rooftop spread "
+        "across standpoints is 4.55 dB, third narrowest of the eleven, so Trafalgar is "
+        "open almost everywhere rather than open in one place."
+    ),
+    "madrid_plazamayor": (
+        "The square that carries the study's headline result on its own. Isotropic "
+        "susceptibility spans 6.46 dB between Madrid's own standpoints, the largest "
+        "within square spread of the eleven, against 3.71 dB spanned by the eleven "
+        "square medians across three continents. Where a person stands in this one "
+        "square matters more than which of the eleven squares they are standing in."
+    ),
+    "mexico_zocalo": (
+        "The most exposed square of the eleven, and the top of both common rankings: "
+        "isotropic median 0.3977 and rooftop median 0.3070. It also loses the most "
+        "energy to the sky, an escaped fraction of 0.898, which is what a wide square "
+        "under a low horizon does."
+    ),
+    "milan_duomo": (
+        "The most uniform square in the set. Rooftop susceptibility spans 2.55 dB across "
+        "its standpoints against Brussels' 12.89, the narrowest of the eleven. It is "
+        "also the one square whose crop had to be widened past the standard, to 170 m "
+        "from an acquisition ball of 320 m, because the cathedral's 109 m spire sits "
+        "above what a 200 m ball reaches at this site's ellipsoidal height."
+    ),
+    "prague_staromestske": (
+        "Nothing about Staromestske is extreme, which is the reason to keep it in view. "
+        "Fourth of eleven on sky at 0.2882, fourth on isotropic median susceptibility at "
+        "0.3584 and fifth on rooftop at 0.2377, at neither end of any panel of the eleven "
+        "square figure. A set assembled only from its endpoints would not show that the "
+        "middle is populated."
+    ),
+    "tokyo_hachiko": (
+        "The second canyon, and a different one from Times Square. Median excess delay "
+        "17.11 ns, second longest of the eleven behind Times Square's 21.50, so the "
+        "energy that reaches a pedestrian here has also gone a long way round. But its "
+        "sky median of 0.1739 is third from the bottom rather than last, and its street "
+        "small cell susceptibility of 0.0161 is ordinary where Times Square's is the "
+        "highest in the set. Deep is not one shape."
+    ),
+    "toulouse_capitole": (
+        "The eleventh square, and the one that had no scene config until this build. Its "
+        "published ground datum sat 13.94 m up on the roof of the Capitole, and coming "
+        "down to the pavement cost 1.29 dB isotropic and 1.83 dB rooftop and moved it "
+        "from second of eleven to seventh on isotropic median. What is left is a square "
+        "of two halves: 11.40 dB of rooftop spread across its standpoints, second only "
+        "to Brussels, under a single monumental facade with low arcades everywhere else."
     ),
 }
 
@@ -170,6 +247,19 @@ def write_index(built: dict[str, dict[str, pathlib.Path]], path: pathlib.Path) -
         "recorded as custom properties on the object.",
         "",
         "## The sites",
+        "",
+        "All eleven squares the study built are here, so this archive is the measured set",
+        "and not a sample of it. An earlier version of this archive held four and said in",
+        "its own header that four cannot be representative of eleven. That caveat is spent.",
+        "",
+        "The numbers under each square are of two kinds and should not be read as one. The",
+        "medians and spreads in the prose are the `city250_L3_*` sweep, 80 standpoints per",
+        "square at the 250 m crop on the fixed ground datum, which is the run the paper",
+        "quotes. The bulleted numbers under them are this blend's own trace, a separate and",
+        "smaller run at 60 standpoints kept in step with the file you are looking at, so a",
+        "susceptibility read off the standpoints in the viewport is that trace and not the",
+        "sweep. They are the same estimator at the same crop radius and frequency, and they",
+        "should agree to the sampling noise of 60 standpoints against 80 rather than exactly.",
         "",
     ]
     for site, reason in SITES.items():

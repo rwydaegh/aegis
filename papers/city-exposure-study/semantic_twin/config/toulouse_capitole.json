@@ -1,0 +1,61 @@
+{
+  "name": "toulouse_capitole",
+  "location": {
+    "lat": 43.60447,
+    "lon": 1.44422,
+    "radius_m": 50.0
+  },
+  "enu_origin": {
+    "lat": 43.60447,
+    "lon": 1.44422,
+    "ellipsoid_height_m": 0.0
+  },
+  "camera_ground_z_m": 191.1866745335331,
+  "camera_ground_z_note": "Measured by build_site_config.py as the dominant open ground surface of the crop, not as the surface under the anchor. dominant mode of the topmost tile surface over a 80 m disc, 20000 downward rays, 0.5 m bins, mode searched below the midpoint of the relief, datum is the median of hits within 1 m of the modal bin. The modal band holds 0.479 of the disc with a spread of 0.347 m, against a relief of 190.3 to 216.2 m, and the topmost surface under the anchor itself is 191.10 m. The estimator reproduces the two independently measured constants in this repository to under 0.1 m: korenmarkt 50.911 against 50.837 and brussels_grandplace 65.361 against 65.270. It is one scene-wide constant and carries the same weakness as every other config here, but camera_altitude only uses it to set the ceiling a per camera downward ray starts from, so a metre of error costs nothing and twenty metres costs everything.",
+  "camera_height_m": 2.5,
+  "frequencies_hz": [
+    28000000000.0,
+    39000000000.0
+  ],
+  "extrapolated_frequencies_hz": [
+    60000000000.0
+  ],
+  "frequency_note": "Same split as korenmarkt.json and milan_duomo.json. 28 and 39 GHz sit inside the ITU-R P.2040-4 validity band. 60 GHz does not for every material a masonry scene needs, since brick and asphalt_concrete are tabulated only to 40 GHz and PowerLawMaterial.evaluate raises rather than extrapolate silently, so it is listed separately as an explicit opt-in requiring allow_extrapolation=True, applicability indicative_extrapolation and an uncertainty multiplier of 1.585 from the 0.585 octaves between 40 and 60 GHz. The material inventory for this site has not been built yet, so the note states the constraint rather than which materials trip it here.",
+  "source_mesh": "data/geometry/toulouse_capitole/inhouse_leaf_130m.ply",
+  "source_mesh_manifest": "data/geometry/toulouse_capitole/inhouse_leaf_130m.json",
+  "geometry_selection": {
+    "provider": "Inhouse Photorealistic 3D Tiles",
+    "selection": "deepest available leaf tiles",
+    "observed_geometric_error_m": 2.006368774808128,
+    "acquisition_radius_m": 130.0,
+    "crop_radius_m": 130.0,
+    "leaf_tile_count": 171,
+    "triangle_count": 259263,
+    "tile_requests": 353,
+    "tile_bytes": 20298301,
+    "coverage_acceptance": "Not established for this site. Korenmarkt and Milan chose their crop by keeping at least 99% of the 200 m projection in four validation views, and that sweep has not been run here."
+  },
+  "geometry_note": "Standalone ENU support mesh. Inhouse triangulation supplies first-hit depth only. Semantic boundary resolution comes from the source image pixels.",
+  "walk_selection": {
+    "walk_date": "2018-12",
+    "screened_walk_date": "2018-12",
+    "walk_date_overridden": false,
+    "providers": [
+      "Visitez Sans Bouger - Oc\u00e9ane FURET"
+    ],
+    "walk_panoramas": 118,
+    "median_spacing_m": 2.353633438137107,
+    "span_m": 62.60651145098739,
+    "azimuth_spread": 0.8125
+  },
+  "screening_provenance": {
+    "screen_radius_m": 60.0,
+    "panoramas_within_60m": 219,
+    "distinct_capture_dates": 10,
+    "table": "outputs/city_screening/screening.json"
+  },
+  "mesh_defects": [
+    "camera_ground_z_m is one constant for the whole site.",
+    "The anchor is not the centre of the open square at every site. build_site_config.py records the topmost surface under the anchor beside the datum so the offset is visible rather than inferred."
+  ]
+}
