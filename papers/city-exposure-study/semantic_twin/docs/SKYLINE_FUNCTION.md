@@ -106,6 +106,13 @@ right for a facade and wrong for a lamp post. `measure_near_clutter.py` measures
 the size of it over 16 standpoints of the walk at each square, dropping every
 azimuth whose tip is nearer than a floor.
 
+The distance here is **horizontal**, measured on the ground, which is what the
+closed form `cos^2(theta)/d` divides by. It is not the slant range from the head
+to the tip. A tip 2 m away on the ground at 82 degrees up is 14 m away in slant.
+The two are far apart for exactly the near clutter this table is about, so the
+distinction matters when reading this against the range bands in
+`measure_source_near_share.py`, which are slant.
+
 | site | direct term | share from within 5 m | azimuths within 5 m | term above 5 m |
 |---|---|---|---|---|
 | newyork_timessquare | 0.00968 | 0.45 | 0.049 | 0.00530 |

@@ -70,6 +70,7 @@ def silhouette_cloud(
     *,
     azimuths: int,
     elevations: int,
+    floor_m: float = 0.0,
 ) -> np.ndarray:
     """Where the visible skyline actually is, found by casting and nothing else.
 
@@ -77,14 +78,20 @@ def silhouette_cloud(
     silhouette. This reads no site set and no threshold, which is what lets it
     judge one: a construction that misses much of this cloud is missing roofline
     that a pedestrian can see.
+
+    ``floor_m`` drops hits nearer than that from the standpoint that found them.
+    It is meant for clutter, and it works on clutter for a reason worth stating: a
+    lamp post only ever reaches the silhouette from close by, because from any
+    distance a five metre post sits well under a twenty metre roofline and
+    something taller is hit first. So a near cut removes the post from the cloud
+    without removing the roofline behind it, which some other standpoint sees at a
+    respectable distance anyway.
     """
     out = []
     azimuth = (np.arange(azimuths) + 0.5) * (2.0 * np.pi / azimuths)
     for origin in origins:
-        alpha, horizontal, found = silhouette(
-            geometry, origin, azimuths=azimuths, elevations=elevations
-        )
-        good = found & np.isfinite(horizontal) & (horizontal > 0.0)
+        alpha, horizontal, found = silhouette(geometry, origin, azimuths=azimuths, elevations=elevations)
+        good = found & np.isfinite(horizontal) & (horizontal > floor_m)
         if not good.any():
             continue
         slant = horizontal[good] / np.maximum(np.cos(alpha[good]), 1.0e-9)

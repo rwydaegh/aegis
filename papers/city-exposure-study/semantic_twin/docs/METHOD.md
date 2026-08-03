@@ -168,13 +168,23 @@ At every point along a traced path, including the head itself:
 3. if nothing is in the way, add its contribution.
 
 This is next event estimation, standard in rendering, and it fixes both faults at
-once. There is no cell size and therefore no parameter. The visibility question is
-answered from the point where it is asked, so the position dependence is exact.
-And the same call at the start of a path is the direct term, so the line of sight
-part and the bounced part are one estimator rather than two.
+once. The visibility question is answered from the point where it is asked, so
+the position dependence is exact. And the same call at the start of a path is the
+direct term, so the line of sight part and the bounced part are one estimator
+rather than two.
 
-Cost is one extra ray per bounce, against the 600,000 rays a standpoint already
-casts. It roughly doubles the work, which is nothing.
+Step 1 is where the honesty has to go, because "pick a point" hides a choice.
+The point is drawn from the source set, and the draw has to be divided out again
+by the chance of drawing it, which is what makes the estimator unbiased however
+the draw is made. So the distribution changes only the noise, not the answer.
+What it does not remove is **which surfaces are in the set at all**. That is a
+modelling question, it is settled in section 5.1, and it is not settled by next
+event estimation. The earlier claim here that this construction has no parameter
+was too strong: it removes the sky cell, not the definition of the roofline.
+
+Cost is one extra ray per path vertex. A standpoint launches 200,000 rays and
+they average 0.95 bounces, so about 390,000 intersection calls, and connecting at
+each vertex adds roughly 190,000. That is **49 percent more work, not double**.
 
 **Why not trace from the rooftops instead**, which is the obvious alternative:
 there are many sources and only one receiver, so tracing from the sources is far
@@ -194,25 +204,95 @@ source has no chance of being a valid mirror path. That is what image sources ar
 for. The specular share on rough masonry at 15 GHz is small enough that this is a
 correction rather than the main path.
 
-### Open: how thick is the source
+### 5.1 Which surfaces are in the set
 
-A zero thickness source cannot be reliably extracted from a photogrammetric mesh,
-because the mesh is lumpy at the half metre scale. Requiring that nothing sits
-higher within two metres throws away genuine top edges whenever reconstruction
-noise puts a bump beside them. Measured at Korenmarkt, only 38 percent of the
-silhouette has an extracted tip within 2 m, and raising the sample count from
-800,000 to 4,000,000 moved that only from 33 to 38 percent, so it saturates and is
-structural rather than a density problem.
+Next event estimation needs a set to draw from. Three ways of building one were
+measured, and two are ruled out.
 
-The likely fix is to give the source a thickness: the site sits in the top few
-metres of the facade rather than on a line of zero width. That is what a facade
-mounted antenna physically is, it is robust to mesh noise, and it converges to the
-curve as the thickness goes to zero. It is not a mast, since nothing is lifted
-above the roof.
+**A band of given thickness fails.** The idea was to let a site sit in the top few
+metres of a facade rather than on a line of zero width, because a zero thickness
+edge cannot be pulled reliably off a photogrammetric mesh: the mesh is lumpy at
+the half metre scale, and requiring that nothing sits higher within two metres
+throws away genuine top edges wherever reconstruction noise put a bump beside
+them. At Korenmarkt only 38 percent of the silhouette has an extracted tip within
+2 m, and going from 800,000 to 4,000,000 samples moved that from 33 to 38, so it
+saturates and is structural.
 
-**Not yet decided.** The sensitivity of the answer to that thickness has to be
-measured first. If it is weak, it is a numerical choice and gets reported with its
-sensitivity. If it is strong, it is a modelling choice and belongs to Robin.
+The band repairs that and fails for a different reason. `measure_source_thickness.py`
+sweeps it: the thickness is worth 3.6 to 6.1 dB and it **reorders the squares**.
+A thickness has no limit. Shrink it and the answer does not settle on anything, so
+no value of it is more right than another, and a number that changes the ranking
+cannot be a numerical detail.
+
+**Voting on surface samples fails too.** `measure_source_construction.py` counts
+footprint cells rather than wall area, which is better, but it still carries four
+thresholds, and its coverage of the visible skyline stops rising at about 0.57
+however small the cells get. It is asking the mesh where its roof edges are, and
+the mesh does not know.
+
+**The silhouette itself works.** `measure_source_silhouette.py` never asks that
+question. It sends a ray fan up from each standpoint of the walk, takes the
+topmost hit in each azimuth, and takes the union along the walk. That set is by
+definition the surface a pedestrian sees against sky, which is a fair description
+of where an operator can put a site and have it serve the street. It is also the
+same object the rest of the study runs on: the sky boundary of the panorama, put
+back on the geometry. The standpoints that build the set and the standpoints the
+answer is read at are kept disjoint, so nothing is scored against a set it wrote.
+
+### 5.2 What the resolutions do
+
+The set has no threshold in it. What it has instead are resolutions, and those
+were swept at 250 m over Korenmarkt and Brussels with 48 held out standpoints.
+
+- **Standpoints converge.** 64 to 128 to 256 builders moves the answer by 0.02 and
+  0.29 dB at Korenmarkt, 0.00 and 0.09 at Brussels. Coverage of what a held out
+  standpoint sees saturates at 0.99 and 0.88. **128 is enough.**
+- **The cell does not converge in the range measured.** It drifts up 0.2 to 0.5 dB
+  per halving from 4 m down to 0.5 m, at both squares, whether the cells are flat
+  or solid. Refining keeps resolving skyline that a coarser cell had merged, which
+  shows as the visible fraction climbing about 40 percent over that range.
+- **The drift moves both squares together.** Korenmarkt stands 0.63 to 0.83 dB
+  above Brussels on solid cells and 0.65 to 1.10 on flat ones, across a factor of
+  eight in cell size. The comparison between cities is what gets reported, and it
+  holds to about 0.2 dB.
+
+So the cell is a weaker thing than a convergent resolution and a much stronger
+thing than the band. It leaves a slow drift in each city's absolute number and
+cancels in the difference between cities. That is stated rather than hidden.
+
+Solid cells are the default. On flat cells a vertical wall occupies a line and
+gains sites as `1/cell`, while a flat roof occupies a patch and gains as
+`1/cell^2`, so shrinking a flat cell keeps shifting weight onto horizontal
+surface and has no useful limit. Solid cells count both per unit of area. In
+practice the occupied count grows about 2.15 times per halving at both squares,
+not four, which says the cloud is a union of curves rather than a filled surface,
+and the solid grid is measuring length along the roofline.
+
+### 5.3 One reading that was wrong
+
+At 8 held out standpoints Korenmarkt appeared not to converge in cell size while
+Brussels did. Two explanations were built on that and both were checked and
+failed.
+
+The first was a pole standing near the pedestrian. A floor that drops tips found
+close to the standpoint that found them changed the answer by 0.04 dB. It also
+asked at the wrong end: the floor cuts by distance from the standpoint that built
+the set, and the term is read somewhere else.
+
+The second was the flat grid. Solid cells did appear to fix Brussels and not
+Korenmarkt at 8 standpoints.
+
+At 48 held out standpoints the difference is not there at all. Both squares drift
+by the same 0.2 to 0.5 dB per halving. **It was noise in a median over 8 numbers.**
+The argument for solid cells above stands on its own and does not rest on this.
+
+One fact worth keeping from the failed hunt. Splitting the direct term by range
+shows that **nothing within 10 m contributes at either square.** A standpoint
+1.5 m up looking at a roofline 20 m up is at least 18 m from it whatever the
+building does, so the range is set by building height, not by how close you
+stand. Korenmarkt does carry 4 to 7 percent of its term between 5 and 10 m where
+Brussels carries none, which is a low object near the pedestrian, and that is
+real but small.
 
 ## 6. What is assumed about the network, and what is reported
 
