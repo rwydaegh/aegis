@@ -220,6 +220,30 @@ depth clouds, panorama captures and bodies, and it looked like a successful run.
 It was caught, 255 MB of evidence and the 83 pose directories were pushed by
 hand, and the pass was redone. The sync path should learn about that directory.
 
+## Closed after the deadline, when the clock stopped mattering
+
+Four of the open items were closed rather than left, and one bug was fixed.
+
+- **The vision model result went into the paper**, results and discussion, with
+  its configuration named in the table.
+- **"Grids coarser than the aperture were computed and excluded" was false.** The
+  swept codebooks are 8, 16 and 32 beams per axis, all finer than the aperture,
+  so those grids were excluded by reasoning and never run, and the $+50$\,dB
+  attached to them was never measured either. The argument survives without both.
+- **The beamforming axis widths were a different population.** 5.6 and 9.8 dB are
+  the 32-standpoint run, while 4.93 and 9.58 dB are the 80-standpoint headline,
+  and both were called the eleven-square spread about 200 lines apart. Named, and
+  the antenna row added to the configuration table.
+- **The element effect's worst square depends on the reduction.** 0.62 dB at the
+  median square is stable either way. Madrid at 1.07 dB is the paired
+  per-standpoint convention. The ratio of per-square medians gives 1.22 dB and
+  makes Brussels the worst. Both now stated.
+- **The Tokyo fishnet crash is fixed.** A fishnet directory can hold a manifest
+  and no surfaces, because the manifest is written whether or not the build
+  succeeded, and that reached `np.concatenate` with an empty list. The guard also
+  fixed the second bug: Tokyo now exports and keeps its three registered poses.
+  Verified by running the export end to end.
+
 ## Where the open items are written down
 
 `paper/RECONCILE.md` ends with six items that were found and deliberately not
