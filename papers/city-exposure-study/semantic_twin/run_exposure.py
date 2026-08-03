@@ -40,6 +40,7 @@ from semantic_twin.propagation import (
     SbrTracer,
     TraceConfig,
     ground_plane_susceptibility,
+    trace_standpoints,
 )
 from semantic_twin.propagation.exposure import BodyCoupler, describe
 from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings
@@ -341,6 +342,7 @@ def run(
     coupler: Any = None,
     crop_m: int = 130,
     walk_npz: pathlib.Path | None = None,
+    workers: int | None = None,
 ) -> pathlib.Path:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     stem = f"{tag}_{frequency_hz / 1e9:g}ghz"
@@ -562,10 +564,13 @@ def run(
     manifest_path.write_text(json.dumps(manifest, indent=2))
 
     spectra = np.zeros((picks.size, local_cells))
+    standpoints = [
+        (walk.points[i], float(walk.ground_z_m[i]), seed + 1000 * int(i)) for i in picks
+    ]
     with rows_path.open("w") as handle:
-        for row_index, index in enumerate(picks):
+        for row_index, result in trace_standpoints(tracer, standpoints, MODELS, workers=workers):
+            index = picks[row_index]
             point = walk.points[index]
-            result = tracer.trace(point, MODELS, ground_z_m=float(walk.ground_z_m[index]), seed=seed + 1000 * index)
             row = {
                 "index": int(index),
                 "x": float(point[0]),
@@ -951,6 +956,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--local-cells", type=int, default=512)
     parser.add_argument("--variant", default="llvm_ad_rgb")
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="trace standpoints in a process pool. Results are bit identical to the serial sweep. "
+        "One, or fewer than about four standpoints per worker, is not worth the pool startup.",
+    )
     parser.add_argument("--tag", default="korenmarkt")
     parser.add_argument("--walk-radius-m", type=float, default=90.0)
     parser.add_argument("--walk-spacing-m", type=float, default=3.0)
@@ -989,6 +1001,7 @@ def main(argv: list[str] | None = None) -> int:
             max_bounces=args.max_bounces,
             crop_m=args.crop_m,
             tag_suffix=args.tag_suffix,
+            workers=args.workers,
         )
         return 0
 
@@ -1020,6 +1033,7 @@ def main(argv: list[str] | None = None) -> int:
         site=args.site,
         crop_m=args.crop_m,
         walk_npz=pathlib.Path(args.walk_npz) if args.walk_npz else None,
+        workers=args.workers,
     )
     return 0
 
