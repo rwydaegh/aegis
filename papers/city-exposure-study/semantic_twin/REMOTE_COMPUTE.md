@@ -194,6 +194,14 @@ run got 50 % of a single CPU across five minutes, so it was effectively running 
 The speedup is therefore a property of tonight's local load and will shrink when the box is quiet,
 but tonight's local load is the condition that matters.
 
+It cuts both ways, and by 00:10 it already had. A second agent started an 80 location eleven site
+sweep on the box out of its own tree, the box went from load 0.0 to load 29, and per location
+trace time went from 0.8 s to between 3.6 and 4.7 s. Check `doctor` before assuming the box is
+free. Eight cores are still eight cores, but they are not eight cores each.
+
+An eleven site sweep at 6 locations per site and a 250 m crop took 9 minutes end to end, including
+loading and ground datum measurement for every site mesh.
+
 The link between the two machines carries about 120 MB/s, so a full `sync` of 350 MB is roughly
 three seconds and fetching a sweep's results back is instant. There is no reason to batch work to
 avoid transfers.
@@ -206,6 +214,10 @@ caches, all inventoried in `BLGPU_INVENTORY.md`. None of it was touched. This wo
 - `/home/user` and everything under it, a new tree
 - `/home/user/aegis/.venv`, a new venv
 - `/home/user/aegis/.blgpu_jobs/`, the job records
+
+There is now also a `~/bounce3` tree with its own venv, built independently by another agent for
+the same study. Two checkouts of the same code on one box is wasteful but harmless, and neither
+should touch the other. Anything reached through `blgpu.sh` lives under `/home/user/aegis`.
 
 Disk is 157 GB free, so there is room. If the GPU is busy with segmentation that does not matter
 here, since the tracer is CPU only, but do check `tools/blgpu.sh doctor` for load before starting
