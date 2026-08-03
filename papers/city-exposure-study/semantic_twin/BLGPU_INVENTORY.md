@@ -3,7 +3,8 @@
 Audit of the rented GPU box (`ssh blgpu`, host `GPUcompute`, RTX A6000, Ubuntu 22.04) taken 2026-08-02.
 Nothing was deleted or stopped. The box was read only.
 
-Backup landed in `../blgpu_backup/` (sibling of this directory, outside the repo tree).
+Backup landed in `../archive/blgpu_backup/`. It sits inside the study directory but is
+never committed, so it does not enter git history.
 Total copied: **6,264,047,794 bytes (5.9 GiB) in 3,292 files**.
 Local free space went from 26 GB to 20 GB, well clear of the 8 GB floor.
 
@@ -137,7 +138,7 @@ and is not recorded anywhere. No other credential or `.env` file was found.
 
 ## Backup layout
 
-| Directory in `../blgpu_backup/` | Size | Source |
+| Directory in `../archive/blgpu_backup/` | Size | Source |
 | --- | --- | --- |
 | `semantic_twin_box/` | 2.0 G | `~/semantic_twin` |
 | `remeshqa/` | 991 M | `~/remeshqa` minus bundled Blender |
@@ -163,7 +164,7 @@ file type. All ten matched.
 If the box is destroyed today, and only the backup survives, here is what is actually lost.
 
 Nothing that carries a result. Every fused semantic map, depth field, mesh, metric table, figure and
-log now exists either in this repo or in `../blgpu_backup/`. The environment is reconstructible
+log now exists either in this repo or in `../archive/blgpu_backup/`. The environment is reconstructible
 from pinned commits, pinned model revisions and per-venv package lists, and none of the four venvs,
 three clones, two Blender installs or 23 GB of caches hold anything that is not re-downloadable.
 

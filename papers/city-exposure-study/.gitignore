@@ -5,3 +5,13 @@ figures/
 *.log
 *.out
 *.pdf
+
+# Archived working material: a mirror of a rented GPU box, preview renders, two
+# large zips and some loose screenshots. Kept on disk, never committed.
+# See archive/README.md.
+archive/blgpu_backup/
+archive/propagation_previews/
+archive/loose_images/
+archive/semantic_twin_loose/
+archive/third_party/
+archive/*.zip

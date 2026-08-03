@@ -99,7 +99,7 @@ fix is already applied in `paper.tex`.
 | `wiame` | verified | `10.1109/TVT.2023.3307226` | *IEEE Trans. Veh. Technol.* 73(1):894-908, 2024. Note the DOI carries a 2023 stem because of early access. The issue is January 2024, so the year is right. |
 | `varsier` | verified | `10.1002/bem.21928` | *Bioelectromagnetics* 36(6):451-463, 2015. All eight authors match in order. |
 | `veludo` | verified | `10.1016/j.envint.2025.109540` | *Environ. Int.* vol. 200, art. no. 109540, 2025. First author is Adriana Fernandes Veludo, so "A. F. Veludo" is right. |
-| `mmsv` | verified | `10.1145/3570361.3613291` | MobiCom '23, pp. 1-16. Kamari, Chae, Pathak. A copy sits at the repository root as `3570361.3613291.pdf`. |
+| `mmsv` | verified | `10.1145/3570361.3613291` | MobiCom '23, pp. 1-16. Kamari, Chae, Pathak. A copy sits with the other downloaded papers as `lit/3570361.3613291.pdf`. |
 | `veach` | verified | none | Read from `lit/veach_1997_thesis.pdf`. Stanford PhD dissertation, December 1997, title exact. Copyright page reads 1998, which is normal for a December filing and does not change the citation year. |
 | `tregenza` | verified | `10.1177/096032718301500201` | *Lighting Res. Technol.* 15(2):65-71, 1983. |
 | `sloan` | verified | `10.1145/566570.566612` | SIGGRAPH 2002 proceedings, pp. 527-536. The same paper also has a *ACM Trans. Graph.* 21(3) record at `10.1145/566654.566612` with identical pagination, so either form is citable and the proceedings form as written is correct. |

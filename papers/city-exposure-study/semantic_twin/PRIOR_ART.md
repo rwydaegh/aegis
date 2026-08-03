@@ -59,8 +59,8 @@ referee reads this paper as that paper with more cities.
 ## The decisive item, now fully resolved
 
 **mmSV, Kamari, Chae, Pathak (George Mason), ACM MobiCom 2023,
-`10.1145/3570361.3613291`. Full PDF read**, from `3570361.3613291.pdf` already
-sitting in this directory. It was flagged as the highest-value unreachable item
+`10.1145/3570361.3613291`. Full PDF read**, from `lit/3570361.3613291.pdf` already
+sitting on disk. It was flagged as the highest-value unreachable item
 in this review and it turned out to be on disk. It occupies more of section 1
 than any summary suggests, so here is what it actually does:
 
