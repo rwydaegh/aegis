@@ -294,7 +294,7 @@ nor derived from one another.
 \section{Illumination model}
 \label{sec:illum}
 
-We do not know where the base stations are, so we integrate over where they
+Where the base stations are is unknown, so the model integrates over where they
 could be. Operators do not place millimetre wave sites at arbitrary heights and
 ranges: a site sits either on a roof or on street furniture, and beyond some
 range its contribution stops mattering. Those two facts bound the region a site
@@ -624,51 +624,55 @@ so much as insufficient by itself, since it shows the discarded tail is small
 without showing the kept part is right. Both legs are used here, and the
 convergence one comes last.
 
-The photograph is taken from the observation point, so the surfaces a ray can
-reach on its first interaction are exactly the surfaces that photograph sees.
-That first hit carries measured material by construction, and the guarantee is
-exact rather than probable. Nothing beyond the first hit is guaranteed. A ray
-that leaves the first facade travels away from the camera that saw it, and
-whether its second interaction lands on an observed surface depends on how much
-of the square the walk covered, not on any property of the geometry.
+Two different questions hide inside the phrase ``observed surface'', and they
+have to be separated or the numbers below look like they disagree. The first is
+geometric: can the observation point see this surface at all? The second is
+evidential: of the surfaces it can see, which did a camera actually photograph?
+The first is a property of the formulation and holds in any square. The second
+is a property of this particular set of panoramas.
 
-The guarantee does extend to the second interaction for a path that returns to
-where it started, since both ends of a closed loop are visible from the same
-viewpoint. That is the co-located picture of Section~\ref{sec:ratio} in its
-strictest form, and it is not a hypothetical. Traced on the photogrammetric mesh
-at twelve standpoints, the share of returning power whose whole chain lies on
-visible surfaces is 1.000000 at the first order and 0.999991 at the second. It
-falls to 0.984 at the third, because the guarantee covers the two ends of a loop
-and not its middle.
+Take the geometric question first. A photograph taken from the observation point
+sees exactly the surfaces a ray can reach on its first interaction, so the first
+hit is covered by construction. For a path that returns to where it started the
+cover reaches the second interaction as well, since both ends of a closed loop
+are seen from the same viewpoint. That is the co-located picture of
+Section~\ref{sec:ratio} in its strictest form, and it is not a hypothetical.
+Traced on the photogrammetric mesh at twelve standpoints, the share of returning
+power whose whole chain lies on visible surfaces is 1.000000 at the first order
+and 0.999991 at the second. It falls to 0.984 at the third, because the cover is
+over the two ends of a loop and not over its middle.
 
-The outward formulation buys its efficiency at exactly that price. On the same
-geometry an outward path holds 0.999 at the first interaction, 0.916 at the
-second and 0.736 at the third, so by the second interaction the estimator is
-already carrying 8\,\% of its power over surfaces the standpoint cannot see, and
-by the third 26\,\%. What replaces the lost guarantee is measurement. Those
-fractions are reported per depth with the results, so a reader can see where
-evidence gives way to prior instead of being asked to accept it.
+An outward path gives up half of that, and this is what the adjoint move costs.
+A ray leaving the first facade travels away from the viewpoint that saw it, so
+only its first hit is assured. On the same geometry an outward path holds 0.999
+at the first interaction, 0.916 at the second and 0.736 at the third, so by the
+second interaction the estimator is already carrying 8\,\% of its power over
+surfaces the standpoint cannot see, and by the third 26\,\%.
 
-Three is then the smallest budget that lets that question be asked at all. One
-interaction would test nothing beyond the guaranteed hit, two would show whether
+The evidential question is the stricter one, because a camera has to have stood
+somewhere and looked. Where one did, the two questions coincide: the share of
+incident power landing on a triangle some panorama photographed is 0.978 to
+0.999 at the first interaction, across seven of the eight registered stations at
+the reference square, which confirms the geometric argument to about two parts
+in a thousand. The eighth returns 0.362, and since it stands eight metres from
+one scoring 0.999 that is a registration failure rather than a coverage one. It
+had passed the skyline residual gate, so first interaction coverage is the
+sharper test of a pose, and that station is excluded. Away from a camera the two
+questions come apart, and the reach turns out to be a radius. Within 20\,m of a
+registered panorama the second interaction still lands on photographed material
+93 to 96\,\% of the time and the third about 89\,\%, while beyond 40\,m every
+depth falls below 0.21. Pooled over the published walk, which spans 90\,m, first
+interaction coverage is 0.479. So the evidential claim is about a twenty metre
+neighbourhood of the instrument rather than about a square, and every result
+that uses image derived material carries that number beside it. These
+percentages and the geometric ones above come from different standpoint sets at
+different crop radii, so they answer the same question in different places and
+are not to be differenced.
+
+Three is then the smallest budget that lets both questions be asked. One
+interaction would test nothing beyond the assured hit, two would show whether
 the walk covers the square, and three shows what the first clearly unobserved
 interaction is worth.
-
-The guarantee and its reach are measured rather than asserted. At a standpoint a
-camera actually occupied, the share of incident power landing on a triangle some
-panorama saw is 0.978 to 0.999 at the first interaction, across seven of the
-eight registered stations at the reference square. That confirms the geometric
-argument to about two parts in a thousand. The eighth station returns 0.362, and
-since it stands eight metres from one scoring 0.999 it is a registration failure
-rather than a coverage one. It had passed the skyline residual gate, so first
-interaction coverage is the sharper test of a pose, and that station is
-excluded. The reach of the guarantee turns out to be a radius. Within 20\,m of a
-registered panorama the second interaction still lands on measured material 93
-to 96\,\% of the time and the third about 89\,\%, while beyond 40\,m all depths
-fall below 0.21. So this is a statement about a twenty metre neighbourhood of
-the instrument and not about a square. Pooled over the published walk, which
-spans 90\,m, first interaction coverage is 0.479, and every result that uses
-image derived material is reported with that number beside it.
 
 What makes three sufficient rather than merely defensible is where the power is.
 Of all launched power, 10.7\,\% never touches a surface and escapes straight
@@ -758,8 +762,7 @@ travelling along $\khat$,
 \end{equation}
 where $T_0$ is the power transmitted into skin at normal incidence at 15\,GHz
 and the clamp removes facets that face away. The arriving distribution
-$\Phi(\uloc)$ is passed in as a set of plane waves, one per angular cell, with
-with $\khat = -\uloc$, as reciprocity requires. Summing
+$\Phi(\uloc)$ is passed in as a set of plane waves, one per angular cell, with $\khat = -\uloc$, as reciprocity requires. Summing
 \eqref{eq:sab} over cells gives the absorbed power density map on the body, and
 integrating that map gives the absorbed power and the whole body specific
 absorption rate.
