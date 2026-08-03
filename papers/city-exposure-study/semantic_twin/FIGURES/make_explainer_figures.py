@@ -406,8 +406,8 @@ def one_ray() -> None:
 
     ax.annotate(
         "bounce 1. Multiply the throughput by the Fresnel\n"
-        "power reflectance $R(\\theta)$, then draw specular or\n"
-        "diffuse with probability $\\exp(-g^2)$",
+        "power reflectance $|\\Gamma|^2$, then go specular with\n"
+        "probability $\\kappa$ and diffuse otherwise",
         xy=tuple(p1),
         xytext=(60, 40),
         fontsize=7.4,
