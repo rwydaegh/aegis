@@ -1,8 +1,8 @@
 # Archive
 
 Nothing here was deleted. This is where things went that are finished, or that
-nothing in the study reads any more. Everything is on disk exactly as it was;
-only the directory names changed.
+nothing in the study reads any more. Everything is on disk exactly as it was.
+Only the directory names changed.
 
 If you are looking for the map of the whole study directory, read
 `../INVENTORY.md`.
@@ -16,7 +16,7 @@ deleted to make it.
 The full record of what was copied, what was skipped, and how to rebuild the
 skipped parts is `../semantic_twin/docs/BLGPU_INVENTORY.md`. In short: raw
 inference output, benchmark runs, remesh QA and the segmentation ablation were
-copied; package caches, model checkpoints, virtual environments and Blender
+copied. Package caches, model checkpoints, virtual environments and Blender
 itself were not, because each has a one-line recipe to fetch again.
 
 No script or document reads a path inside this directory. It is a safety copy.

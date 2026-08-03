@@ -41,7 +41,7 @@ quoting either.
 | --- | --- |
 | `MONOSTATIC_SBR.md` | The foundational design document for the adjoint SBR estimator, and the largest file here. |
 | `MONOSTATIC.md` | Builds the one module `MONOSTATIC_SBR.md` designed and declined to write, and answers its open question. |
-| `DEPLOYMENT_GEOMETRY.md` | How the illumination models place sources. Its headline number is superseded twice inside the file; only the last value is good. |
+| `DEPLOYMENT_GEOMETRY.md` | How the illumination models place sources. Its headline number is superseded twice inside the file, and only the last value is good. |
 | `FISHNET.md` | The standpoint sampling scheme. |
 | `MASONRY.md` | Brickwork as a periodic scatterer. |
 | `ROUGHNESS.md` | Surface roughness, and what the literature actually supports. |
