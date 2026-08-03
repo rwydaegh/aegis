@@ -62,12 +62,114 @@ def fibonacci_sphere(count: int) -> np.ndarray:
     return np.stack([radius * np.cos(theta), radius * np.sin(theta), z], axis=1)
 
 
-def nearest_cell(directions: np.ndarray, grid: np.ndarray, *, block: int = 65536) -> np.ndarray:
-    """Index of the nearest grid direction for each row of ``directions``."""
+def _brute_nearest_cell(directions: np.ndarray, grid: np.ndarray, block: int) -> np.ndarray:
+    """Dense ``argmax`` of every dot product. The definition, and the fallback."""
     out = np.empty(directions.shape[0], dtype=np.int64)
     for start in range(0, directions.shape[0], block):
         stop = min(start + block, directions.shape[0])
         out[start:stop] = np.argmax(directions[start:stop] @ grid.T, axis=1)
+    return out
+
+
+#: Half width of the elevation band searched by :func:`nearest_cell`, as a
+#: multiple of ``sqrt(cells)``. The covering radius of a Fibonacci lattice goes
+#: as ``1/sqrt(cells)`` in angle and the cell spacing in ``z`` goes as
+#: ``1/cells``, so the number of cells that can hold the answer goes as
+#: ``sqrt(cells)``. The constant is set from the measured miss rate rather than
+#: from that argument: 1.5 leaves no misses at all from 2e6 directions on every
+#: grid between 64 and 4096 cells. It is a speed knob and nothing else, because
+#: a miss is caught and answered exactly.
+_BAND_CONSTANT = 1.5
+
+
+def nearest_cell(directions: np.ndarray, grid: np.ndarray, *, block: int = 65536) -> np.ndarray:
+    """Index of the nearest grid direction for each row of ``directions``.
+
+    The dense form of this is one ``(rays, cells)`` matrix of dot products, and
+    at the sizes this study runs, 400k rays against 512 cells for every trace,
+    it was a quarter of the trace and 1.6 GB of writes. It was also the one
+    part of the estimator whose speed turned on how many BLAS threads a process
+    happened to get: 0.35 s on eight, 2.05 s on one, which is the number that
+    matters once standpoints run in a pool. Whether it also turned on the
+    answer was checked rather than assumed, and it did not, over 2e6 directions
+    at seven block sizes and two thread counts.
+
+    The band search removes both. For a grid whose ``z`` column is sorted, the
+    dot product of a query ``u`` with any cell at height ``z`` is at most
+    ``cos(el_u - el_z)``, so once a candidate with dot product ``b`` is in
+    hand, only cells within ``arccos(b)`` in elevation can beat it. That is a
+    contiguous run of cells, a few tens wide rather than the whole grid.
+
+    The band is searched first and the bound is then checked, not assumed. Any
+    ray whose bound reaches outside the band it was given is answered by the
+    dense form, so the result is the dense result for every input, including
+    exact ties, where both forms return the lowest index that attains the
+    maximum. Grids that are not sorted in ``z``, and grids too small for a band
+    to save anything, take the dense path whole.
+    """
+    directions = np.asarray(directions, dtype=np.float64)
+    grid = np.asarray(grid, dtype=np.float64)
+    rays = directions.shape[0]
+    cells = grid.shape[0]
+    half = max(4, int(math.ceil(_BAND_CONSTANT * math.sqrt(cells))))
+    width = 2 * half + 1
+    height = grid[:, 2]
+    if rays == 0 or cells < width + 2 or not np.all(height[1:] <= height[:-1]):
+        return _brute_nearest_cell(directions, grid, block)
+
+    out = np.empty(rays, dtype=np.int64)
+    best = np.empty(rays)
+    query = directions[:, 2]
+    # A Fibonacci grid is evenly spaced in height by construction, so the cell
+    # at a given height is one multiply rather than a binary search. Three
+    # binary searches over 400k rays cost more than the dot products do. The
+    # even spacing is measured, not assumed, and a grid that fails the check
+    # gets ``searchsorted`` instead.
+    step = (height[0] - height[-1]) / (cells - 1)
+    even = step > 0.0 and bool(np.max(np.abs(height - (height[0] - step * np.arange(cells)))) < 0.25 * step)
+    if even:
+        scale = 1.0 / step
+        centre = np.clip(np.rint((height[0] - query) * scale).astype(np.int64), 0, cells - 1)
+    else:
+        # ``ascending`` is the same heights the other way round, which is what
+        # ``searchsorted`` needs. Cell ``j`` is entry ``cells - 1 - j``.
+        ascending = np.ascontiguousarray(height[::-1])
+        centre = cells - 1 - np.clip(np.searchsorted(ascending, query), 0, cells - 1)
+    first = np.clip(centre - half, 0, cells - width)
+
+    # One band per distinct starting cell, so every dot product below is a
+    # contiguous ``(rays_in_band, width)`` block that stays in cache.
+    order = np.argsort(first, kind="stable")
+    starts = first[order]
+    unique, opens = np.unique(starts, return_index=True)
+    opens = np.append(opens, rays)
+    for i in range(unique.size):
+        rows = order[opens[i] : opens[i + 1]]
+        start = int(unique[i])
+        dots = directions[rows] @ grid[start : start + width].T
+        local = np.argmax(dots, axis=1)
+        out[rows] = start + local
+        best[rows] = dots[np.arange(local.size), local]
+
+    # Which cells could still beat what the band found. ``arccos`` of the best
+    # dot product is the elevation reach, and the epsilons only ever widen it,
+    # so a rounding error here costs a dense fallback and never an answer.
+    reach = np.arccos(np.clip(best, -1.0, 1.0)) + 1.0e-12
+    elevation = np.arcsin(np.clip(query, -1.0, 1.0))
+    top = np.sin(np.clip(elevation + reach, -0.5 * np.pi, 0.5 * np.pi)) + 1.0e-12
+    bottom = np.sin(np.clip(elevation - reach, -0.5 * np.pi, 0.5 * np.pi)) - 1.0e-12
+    if even:
+        # One cell of slack each way, which covers the quarter cell the even
+        # spacing check allows the grid to wander by. Slack widens the range
+        # that has to fall inside the band, so it can only cost a fallback.
+        lowest = np.maximum(np.ceil((height[0] - top) * scale).astype(np.int64) - 1, 0)
+        highest = np.minimum(np.floor((height[0] - bottom) * scale).astype(np.int64) + 1, cells - 1)
+    else:
+        lowest = cells - np.searchsorted(ascending, top, side="right")
+        highest = cells - 1 - np.searchsorted(ascending, bottom, side="left")
+    missed = (lowest < first) | (highest >= first + width)
+    if np.any(missed):
+        out[missed] = _brute_nearest_cell(directions[missed], grid, block)
     return out
 
 
@@ -164,7 +266,22 @@ class IlluminationModel:
         The band laws are only piecewise smooth. Their two interior knots, where
         a range cap takes over from a height cap, are inserted into the
         abscissae so the trapezoid never straddles a kink.
+
+        The value depends on the model and on the quadrature and on nothing
+        else, so it is computed once per pair and kept. A 200001 point
+        trapezoid is a fifth of a second across the three models, which was
+        being spent again at every observation point of every sweep. The memo
+        lives outside the dataclass fields, so it changes neither equality nor
+        the hash, and the cached value is the value the quadrature returns.
         """
+        cached = self.__dict__.get("_normalisation_memo")
+        if cached is not None and cached[0] == quadrature:
+            return cached[1]
+        value = self._normalisation(quadrature)
+        object.__setattr__(self, "_normalisation_memo", (quadrature, value))
+        return value
+
+    def _normalisation(self, quadrature: int) -> float:
         low = np.radians(self.elevation_min_deg)
         high = np.radians(self.elevation_max_deg)
         elevation = np.linspace(low, high, quadrature)

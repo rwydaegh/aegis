@@ -21,7 +21,14 @@ INFINITY = 1.0e30
 
 
 class MitsubaGeometry:
-    """Support mesh loaded into Mitsuba 3, queried with ``ray_intersect``."""
+    """Support mesh loaded into Mitsuba 3, queried with ``ray_intersect``.
+
+    Pickles as its own recipe. The Mitsuba scene and its acceleration structure
+    are native objects with no serialisation, so what crosses a process boundary
+    is the mesh path and the variant, and the receiving process loads the mesh
+    itself. That is what lets a sweep hand a tracer to a pool of workers, and it
+    costs one mesh load per worker rather than one per observation point.
+    """
 
     def __init__(self, ply_path: str | pathlib.Path, *, variant: str = "llvm_ad_rgb") -> None:
         import mitsuba as mi
@@ -29,6 +36,7 @@ class MitsubaGeometry:
         if mi.variant() != variant:
             mi.set_variant(variant)
         self._mi = mi
+        self.variant = variant
         self.path = pathlib.Path(ply_path)
         self.scene = mi.load_dict(
             {
@@ -39,6 +47,9 @@ class MitsubaGeometry:
         shape = self.scene.shapes()[0]
         self.vertices = np.array(shape.vertex_positions_buffer()).reshape(-1, 3).astype(np.float64)
         self.faces = np.array(shape.faces_buffer()).reshape(-1, 3).astype(np.int64)
+
+    def __reduce__(self) -> tuple[Any, tuple[Any, ...]]:
+        return (_load_mitsuba_geometry, (str(self.path), self.variant))
 
     @property
     def face_count(self) -> int:
@@ -68,6 +79,11 @@ class MitsubaGeometry:
         face = np.array(si.prim_index, dtype=np.int64)
         distance = np.where(hit, distance, INFINITY)
         return hit, distance, normal, face
+
+
+def _load_mitsuba_geometry(ply_path: str, variant: str) -> MitsubaGeometry:
+    """Module level so :meth:`MitsubaGeometry.__reduce__` has something to name."""
+    return MitsubaGeometry(ply_path, variant=variant)
 
 
 class PlaneGeometry:
