@@ -1,8 +1,9 @@
 # Semantic twin
 
 A scene reconstruction for millimetre-wave exposure assessment, built from street
-level panoramas and aerial photogrammetry. It feeds the ten-cities exposure study
-in the parent directory.
+level panoramas and aerial photogrammetry, plus the adjoint SBR estimator that
+consumes it. It feeds the city exposure study in the parent directory, which is
+now eleven squares rather than the ten the older documents name.
 
 The premise is that a panorama already carries, at centimetre scale, most of what
 a ray tracer needs and a building footprint does not: which surface is brick and
@@ -20,7 +21,10 @@ provenance record pointing back at the pixels that decided it. Alongside them, a
 parallel table of rejected regions that keeps permanent clutter separate from
 transient objects, and a body layer placing pedestrians as SMPL-X meshes.
 
-Two sites are built: Korenmarkt in Ghent and Piazza del Duomo in Milan.
+Two sites carry the full material stack: Korenmarkt in Ghent and Piazza del Duomo
+in Milan. Six further squares carry panoramas with dense entity segmentation and
+no material axis, and three carry no panoramas at all. See the status section for
+what that means for the published numbers.
 
 ## The stages
 
@@ -31,10 +35,10 @@ precision straight from the glTF node matrices, never through Blender's float32
 object transforms, which quantise at half a metre out at Earth radius.
 
 Registration follows. `download_mapillary_panoramas.py` selects and fetches
-panoramas, and `align_skyline.py` fits the camera pose against the mesh skyline.
-Every pose ships with a covariance from an independent seed study, not a single
-residual, and camera altitude is measured against the mesh under that specific
-camera rather than assumed from a scene constant.
+panoramas, and `semantic_twin/align_skyline.py` fits the camera pose against the
+mesh skyline. Every pose ships with a covariance from an independent seed study,
+not a single residual, and camera altitude is measured against the mesh under
+that specific camera rather than assumed from a scene constant.
 
 Semantics run at native resolution. `project_semantics.py` and the concept
 machinery in `semantic_twin/semantics.py` resolve dense classes and open
@@ -49,10 +53,24 @@ clutter standing in front of it, a transient object, or a registration conflict.
 panorama sees, from the aerial tile textures, capped so it can never overturn a
 panorama observation.
 
+Propagation is last. `semantic_twin/propagation/` holds the adjoint shoot and
+bounce estimator: rays leave the standpoint, bounce until they escape the crop,
+and deposit throughput into a bin indexed by departure direction, which
+reciprocity makes the local arrival direction. `run_exposure.py` drives it and
+writes a summary, a CDF and a manifest per run under
+`outputs/exposure_korenmarkt/`. The illumination laws that weight the exit
+directions live in `semantic_twin/propagation/directions.py`, and the corrected
+band law of 2026-08-02 is the one the current results use.
+
 ## Reading order
 
+- `PAPER_METHODS.md` is the method and results writeup, and it is where the
+  eleven site table and its caveats live. Start here if you want the numbers.
 - `DECISIONS.md` is the running record of every call and the measurement behind
-  it. Start here.
+  it. Start here if you want to know why anything is the way it is. It is a log,
+  so it carries superseded numbers on purpose, labelled where they are
+  superseded.
+- `ROADMAP.md` is the phase plan with current status against it.
 - `DESIGN.md` covers the pipeline architecture.
 - `FISHNET.md` covers the geometry cutter that replaced the quadtree.
 - `MONOSTATIC_SBR.md` is the propagation formulation the surface elements feed.
@@ -62,6 +80,8 @@ panorama observation.
 - `PRIOR_ART.md` is a hostile review of what the published work already owns.
 - `METHOD.tex` is the explanatory writeup of the co-located transmitter argument
   and where it stops applying.
+- `FIGURES/README.md` says what each numbered figure shows and which script
+  regenerates it.
 
 ## Running it
 
@@ -72,10 +92,60 @@ python -m pytest tests/ -q
 python -m ruff check .
 ```
 
+One exposure run, which is what every published number is made of:
+
+```bash
+python run_exposure.py --site korenmarkt --crop-m 250 --locations 80 \
+  --rays 200000 --max-bounces 4 --seed 7 --tag city250_corrected_korenmarkt
+```
+
+That run takes minutes on a quiet machine and much longer on a busy one. To send
+it to the rented 8 core box instead, see `REMOTE_COMPUTE.md`:
+
+```bash
+JOB=$(tools/blgpu.sh run --sync "python run_exposure.py --all-sites --locations 80")
+tools/blgpu.sh wait $JOB && tools/blgpu.sh fetch $JOB outputs/exposure_korenmarkt
+```
+
+The tracer reproduces bit for bit there, checked to full float64 precision
+rather than to a tolerance, so results from the box are publishable.
+
 Tile downloads need a Google Maps Platform key in the environment. Panorama
-selection needs a Mapillary token. Neither is committed.
+selection needs a Mapillary token. Neither is committed. `outputs/` and
+`data/panoramas/` are not tracked, so a fresh clone has the code and none of the
+artifacts.
 
 ## Status
 
-The reconstruction stages are built and tested. The propagation engine designed
-in `MONOSTATIC_SBR.md` is not, and no exposure number has been computed yet.
+The reconstruction stages are built and tested. The propagation estimator is
+built, validated against closed forms and run: eleven squares at a 250 m crop,
+80 standpoints each, at 15 GHz, tagged `city250_corrected_*`.
+
+Three things about those numbers should be read before the numbers themselves.
+
+**The eleven site result uses no image evidence.** Every one of the eleven
+manifests carries `semantic_binding.materials = "geometric"`, with
+`covered_fraction_by_face` and `covered_fraction_by_area` both exactly 0.0. The
+surface class is decided by the face normal and the material comes from a prior,
+so nothing in this README's first three stages reaches the headline table. The
+semantic ablation is a separate Korenmarkt-only run at the 130 m crop, which the
+crop study says is not converged for either directional model.
+
+**The material axis ran at two sites.** SAM 3 produced concepts for 2 of the 96
+panoramas that carry semantics. The other 94 have the dense Vistas entity
+partition and no material posterior.
+
+**Most registrations feed nothing.** Of the 83 poses in
+`outputs/registration_sky_conflict.csv`, 14 are consumed downstream. The
+remaining 69, every pose at Brussels, Mexico, New York, Prague, Madrid and Tokyo,
+exist and are used by no result.
+
+One correction dominates how older numbers read. On 2026-08-02 the directional
+illumination law was replaced, because the `1/sin^3(alpha)` weight was derived
+for sources at one fixed height and was then being used over the support of a
+height band. Anything computed before that date under the rooftop or street small
+cell models is superseded. The old pair is kept as `ROOFTOP_FIXED_HEIGHT` and
+`STREET_SMALL_CELL_FIXED_HEIGHT` so those numbers stay reproducible. The
+correction is site dependent, 1.06 dB at Krakow to 6.33 dB at Madrid on the
+rooftop median, so it cannot be undone with a constant offset and it reorders the
+squares.
