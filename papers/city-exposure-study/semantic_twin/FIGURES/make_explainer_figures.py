@@ -159,7 +159,7 @@ def elevation_geometry() -> None:
     ax.set_ylim(-9, 70)
     ax.set_xlabel("horizontal distance from the pedestrian (m)")
     ax.set_ylabel("height (m)")
-    ax.set_title("A steep arrival means a near source, not a high one", fontsize=10)
+    # Caption carries the message, see the note in the one ray figure.
     ax.set_aspect("equal", adjustable="box")
     ax.grid(False)
     for side in ("top", "right", "left"):
@@ -378,7 +378,7 @@ def one_ray() -> None:
     ax.add_patch(Rectangle((-40, 0), 22, 40, facecolor="#cfd4da", edgecolor=INK, lw=0.7, zorder=2))
     ax.plot([0, 0], [0, 1.5], color=INK, lw=2.0, zorder=5)
     ax.plot([0], [1.9], marker="o", ms=4.5, color=INK, zorder=5)
-    ax.text(0, -2.0, "$S$", ha="center", va="top", fontsize=10, color=INK)
+    ax.text(0, -2.0, "$\\mathbf{x}$", ha="center", va="top", fontsize=10, color=INK)
 
     slope = np.tan(np.radians(20.0))
     p0 = np.array([0.0, 1.5])
@@ -427,8 +427,8 @@ def one_ray() -> None:
         arrowprops=dict(arrowstyle="->", lw=0.7, color=WARM, shrinkB=5),
     )
     ax.annotate(
-        "escapes at $\\hat u_{ext}$. Deposit $w$ into the bin for the\n"
-        "direction it LEFT $S$ in, weighted by $Q_S(\\hat u_{ext})$",
+        "escapes at $\\hat v$. Deposit $w$ into the bin for the\n"
+        "direction it left $\\mathbf{x}$ in, weighted by $Q(\\hat v)$",
         xy=tuple(p3),
         xytext=(36, 60),
         fontsize=7.4,
@@ -438,7 +438,7 @@ def one_ray() -> None:
         arrowprops=dict(arrowstyle="->", lw=0.7, color=SKY, shrinkB=5),
     )
     ax.annotate(
-        "launch at $\\hat u_{loc}$ with $w = 1$",
+        "launch at $\\hat u$ with $w = 1$",
         xy=(13, 1.5 + 13 * slope),
         xytext=(-45, -10),
         fontsize=7.4,
@@ -451,7 +451,8 @@ def one_ray() -> None:
     ax.set_xlim(-46, 116)
     ax.set_ylim(-15, 70)
     ax.set_aspect("equal", adjustable="box")
-    ax.set_title("One ray, from launch to deposit. Line thickness is throughput", fontsize=10)
+    # No figure level title: the caption carries it, and a title inside the
+    # artwork duplicates the caption when the same PDF is placed in the paper.
     ax.grid(False)
     ax.set_xticks([])
     ax.set_yticks([])
