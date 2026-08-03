@@ -203,6 +203,26 @@ this term, and the shortfall grows with how narrow and how enclosed the street
 is. That is the right direction for an omission to run in an exposure study, and
 it is stated rather than assumed away.
 
+A7 needs a word too, because the usual defence of it is not available at this
+frequency. That defence says the multiply reflected tail is depolarised, so
+averaging the two polarisations is exact for it. Measured cross polarisation
+ratios say otherwise: pooled over many campaigns a path with no excess loss sits
+near 28\,dB, falling by about half a decibel for every decibel of excess loss
+\cite{karttunen}. An even split would need some 56\,dB of excess loss, and a
+path that far down carries nothing. The tail that matters is not depolarised.
+
+What the average costs can be bounded instead, and the bound has two sides. A
+vertical facade struck by a near horizontal ray presents a nearly horizontal
+plane of incidence, so a vertically polarised network field meets it in the
+transverse electric case, where the unpolarised mean is never wrong by more than
+3.0\,dB and errs low. The transverse magnetic case has a deep minimum near
+$66^\circ$ of incidence for concrete, where the mean can err high by tens of
+decibels on one bounce. That geometry arises on the ground rather than on a
+facade, and only for arrivals within a few degrees of $24^\circ$ elevation, a
+band holding 7.8\,\% of the rooftop model's measure and 0.4\,\% of the street
+model's. So the approximation is bounded and biased low on facades, and
+unbounded but rare on the ground.
+
 The remaining sections describe the scene, the illumination model, the ray
 estimator, the body, and the checks that constrain them.
 
@@ -871,6 +891,11 @@ Ericsson, ``Street microcell channel measurements at 2.44, 14.8 and 58.68 GHz,''
 \bibitem{mmmagic}
 mmMAGIC, ``Measurement results and final mmMAGIC channel models,'' Deliverable
 H2020-ICT-671650-mmMAGIC/D2.2, 2017.
+
+\bibitem{karttunen}
+A.~Karttunen, J.~J\"arvel\"ainen, S.~L.~H.~Nguyen, and K.~Haneda, ``Modeling the
+multipath cross-polarization ratio for 5--80 GHz radio links,'' \emph{IEEE Trans.
+Wireless Commun.}, vol. 18, no. 10, pp. 4768--4778, 2019.
 
 \bibitem{icnirp}
 International Commission on Non-Ionizing Radiation Protection, ``Guidelines for
