@@ -76,6 +76,7 @@ from scipy.spatial import cKDTree
 
 from semantic_twin.propagation.geometry import MitsubaGeometry
 from semantic_twin.propagation.skyline import silhouette
+from semantic_twin.propagation.sources import thin
 from semantic_twin.propagation.walk import build_walk, measure_ground_datum
 
 from source_support import direct_from_sites, silhouette_cloud
@@ -85,48 +86,9 @@ ROOT = pathlib.Path(__file__).resolve().parent
 COVERAGE_RADIUS_M = 2.0
 
 
-def thin(
-    points: np.ndarray,
-    cell_m: float,
-    rng: np.random.Generator | None = None,
-    *,
-    dims: int = 2,
-) -> np.ndarray:
-    """One point per occupied cell, on a grid of ``dims`` dimensions.
-
-    Cells rather than a fixed count, so the surviving density is uniform per unit
-    of whatever the grid measures, however unevenly the fan sampled it.
-
-    ``dims`` decides what that unit is, and it is the whole question. On a flat
-    grid, ``dims=2``, a vertical wall occupies a line of cells and so gains sites
-    as ``1/cell``, while a flat roof occupies a patch of them and gains as
-    ``1/cell**2``. Shrinking the cell then keeps moving weight onto horizontal
-    surface and never stops, so a flat grid has no useful limit. On a solid grid,
-    ``dims=3``, both gain as ``1/cell**2``, and the set converges to sites spread
-    evenly over the area of the surface that is skyline.
-
-    Which point in a cell survives matters less but is not nothing. Keeping the
-    highest one, the default, sounds right for a roofline and is not: the highest
-    point in a cell is its least typical member. Pass a generator to keep a
-    uniformly drawn member instead.
-    """
-    if points.shape[0] == 0:
-        return points
-    key = np.floor(points[:, :dims] / cell_m).astype(np.int64)
-    key -= key.min(axis=0)
-    flat = key[:, 0]
-    for axis in range(1, dims):
-        flat = flat * (int(key[:, axis].max()) + 1) + key[:, axis]
-    if rng is None:
-        order = np.lexsort((-points[:, 2], flat))
-    else:
-        # A single key lexsort is stable, so shuffling first and then grouping
-        # makes the survivor of each cell a uniform draw from that cell.
-        shuffle = rng.permutation(points.shape[0])
-        order = shuffle[np.argsort(flat[shuffle], kind="stable")]
-    flat_sorted = flat[order]
-    first = np.concatenate(([True], flat_sorted[1:] != flat_sorted[:-1]))
-    return points[order][first]
+# `thin` lives in the package, because the tracer builds source sets with it too.
+# It is re-exported here so this script and its tests read the way they did.
+__all__ = ["thin", "coverage", "main"]
 
 
 def coverage(sites: np.ndarray, cloud: np.ndarray) -> float:
