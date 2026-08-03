@@ -230,7 +230,9 @@ def connected_components(panoramas: Sequence[Panorama]) -> list[set[str]]:
     return sorted(components, key=len, reverse=True)
 
 
-def probe_offsets(radius_m: float, rings: Iterable[float] = DEFAULT_RINGS, per_ring: int = DEFAULT_PER_RING) -> np.ndarray:
+def probe_offsets(
+    radius_m: float, rings: Iterable[float] = DEFAULT_RINGS, per_ring: int = DEFAULT_PER_RING
+) -> np.ndarray:
     """Centre plus evenly spaced points on each ring, as local east and north metres."""
     offsets = [(0.0, 0.0)]
     for fraction in rings:
@@ -259,7 +261,9 @@ def probe_points(
     ]
 
 
-def azimuth_spread(walk_positions: np.ndarray, *, bins: int = AZIMUTH_BINS, min_radius_m: float = AZIMUTH_MIN_RADIUS_M) -> float:
+def azimuth_spread(
+    walk_positions: np.ndarray, *, bins: int = AZIMUTH_BINS, min_radius_m: float = AZIMUTH_MIN_RADIUS_M
+) -> float:
     """Fraction of the azimuth sectors about the site centre that the walk enters.
 
     This is the measure that a straight line cannot cheat. A dense line of
@@ -489,7 +493,9 @@ def epochs(panoramas: Sequence[Panorama], positions: np.ndarray, radius_m: float
         components = connected_components(members)
         largest = components[0] if components else set()
         walk = [panorama for panorama in members if panorama.pano_id in largest]
-        walk_positions = np.array([positions[index[panorama.pano_id]] for panorama in walk]) if walk else np.zeros((0, 2))
+        walk_positions = (
+            np.array([positions[index[panorama.pano_id]] for panorama in walk]) if walk else np.zeros((0, 2))
+        )
         spacings = nearest_neighbour_distances(walk_positions)
         summaries.append(
             {

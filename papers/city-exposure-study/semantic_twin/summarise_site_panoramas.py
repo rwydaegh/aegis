@@ -70,9 +70,7 @@ def summarise(site_dir: pathlib.Path) -> dict[str, Any]:
     rows = panorama_rows(site_dir)
     done = [r for r in rows if r["registered"]]
     residuals = [r["residual_deg"] for r in done if r["residual_deg"] is not None]
-    offsets = [
-        r["ground_minus_scene_constant_m"] for r in done if r.get("ground_minus_scene_constant_m") is not None
-    ]
+    offsets = [r["ground_minus_scene_constant_m"] for r in done if r.get("ground_minus_scene_constant_m") is not None]
     moved = []
     for r in done:
         if r["position_enu_m"] and r["initial_enu_m"]:

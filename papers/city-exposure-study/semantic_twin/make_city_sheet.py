@@ -42,13 +42,23 @@ FONTS = [
 ]
 COLUMNS = 3
 TILE_WIDTH = 620
-TITLE = "Eleven squares, one pipeline, nothing hand placed"
+#: The sheet is placed at \textwidth in a two column IEEE float, so 1928 px of
+#: canvas prints at about 269 ppi and a point size is a pixel size divided by
+#: 3.74. Everything drawn on the sheet is set from that.
+PX_PER_PT = 3.74
+#: The headline and the four line standfirst that used to sit here said what the
+#: LaTeX caption says, at 4.5 pt, which no printed page carries. Only the key to
+#: the two numbers under each tile is kept, and it is set to be read.
 SUB = [
-    "Photorealistic 3D Tiles assembled in double precision, at a 130 m radius everywhere except Milan, which",
-    "predates the set at 200 m. Framing is derived from each city's own geometry, so a 25 m skyline in Toulouse",
-    "and a 215 m one in New York are framed alike. Sky fraction is the median over that square's 80 pedestrian",
-    "standpoints in the eleven city run, and skyline height is measured above the pavement the walk stands on.",
+    "Assembled at a 130 m radius everywhere except Milan, which predates the set at 200 m.",
+    "Sky fraction is the median over that square's 80 standpoints. Skyline height is measured above the pavement.",
 ]
+#: Light sheet, because every other figure in the paper is on white and a page
+#: of solid black is a poor neighbour to them in print.
+PAPER = (255, 255, 255)
+INK = (26, 27, 30)
+GREY = (96, 99, 105)
+FLAG = (168, 62, 40)
 
 
 def font(size: int, bold: bool = False) -> ImageFont.ImageFont:
@@ -56,6 +66,20 @@ def font(size: int, bold: bool = False) -> ImageFont.ImageFont:
         return ImageFont.truetype(FONTS[0 if bold else 1], size)
     except OSError:
         return ImageFont.load_default()
+
+
+def fitted(draw, text: str, size: int, limit: int, bold: bool = False) -> ImageFont.ImageFont:
+    """The largest font at or under ``size`` whose ``text`` fits inside ``limit``.
+
+    A tile label that runs into its neighbour is not a small blemish on a contact
+    sheet, it reads as though the neighbour is mislabelled. Mexico City's name
+    and the Istanbul rejection note are both wider than a tile at full size.
+    """
+    for candidate in range(size, 8, -1):
+        chosen = font(candidate, bold)
+        if draw.textlength(text, font=chosen) <= limit:
+            return chosen
+    return font(9, bold)
 
 
 def metrics() -> dict[str, dict[str, float]]:
@@ -80,31 +104,41 @@ def main() -> None:
         tiles.append(image.resize((TILE_WIDTH, int(image.height * scale)), Image.LANCZOS))
 
     tile_height = tiles[0].height
-    caption, gap, pad = 62, 12, 22
-    # The header has to hold the whole subtitle. It was a constant, and the
-    # fourth line of SUB ran under the first row of tiles.
-    head = 64 + 24 * len(SUB) + 14
+    # Point sizes first, pixels second, so the sheet is set the way the rest of
+    # the figures are.
+    name_px = round(8.5 * PX_PER_PT)
+    detail_px = round(7.2 * PX_PER_PT)
+    sub_px = round(7.2 * PX_PER_PT)
+    line = round(1.45 * sub_px)
+
+    caption, gap, pad = name_px + detail_px + 26, 12, 22
+    head = line * len(SUB) + 16
     rows = (len(tiles) + COLUMNS - 1) // COLUMNS
     width = pad * 2 + COLUMNS * TILE_WIDTH + (COLUMNS - 1) * gap
     height = head + rows * (tile_height + caption) + (rows - 1) * gap + pad
-    canvas = Image.new("RGB", (width, height), (20, 21, 24))
+    canvas = Image.new("RGB", (width, height), PAPER)
     draw = ImageDraw.Draw(canvas)
-    draw.text((pad, 20), TITLE, font=font(34, True), fill=(243, 243, 245))
-    for index, line in enumerate(SUB):
-        draw.text((pad, 64 + 24 * index), line, font=font(17), fill=(150, 152, 158))
+    for index, sentence in enumerate(SUB):
+        draw.text((pad, 2 + line * index), sentence, font=font(sub_px), fill=GREY)
 
     for index, (site, tile) in enumerate(zip(sites, tiles)):
         column, row = index % COLUMNS, index // COLUMNS
         x = pad + column * (TILE_WIDTH + gap)
         y = head + row * (tile_height + caption + gap)
         canvas.paste(tile, (x, y))
-        draw.text((x, y + tile_height + 6), TITLES[site], font=font(19, True), fill=(238, 238, 242))
+        name = TITLES[site]
+        draw.text((x, y + tile_height + 8), name, font=fitted(draw, name, name_px, TILE_WIDTH, True), fill=INK)
         detail = NOTES.get(site, "")
         if site in stats:
             numbers = f"{stats[site]['sky_median']:.0%} sky   {stats[site]['skyline_m']:.0f} m skyline"
             detail = f"{numbers}   {detail}" if detail else numbers
-        colour = (206, 138, 120) if site in NOTES else (150, 152, 158)
-        draw.text((x, y + tile_height + 32), detail, font=font(16), fill=colour)
+        colour = FLAG if site in NOTES else GREY
+        draw.text(
+            (x, y + tile_height + 14 + name_px),
+            detail,
+            font=fitted(draw, detail, detail_px, TILE_WIDTH),
+            fill=colour,
+        )
 
     out = ROOT / "FIGURES/11_eleven_cities.png"
     out.parent.mkdir(parents=True, exist_ok=True)

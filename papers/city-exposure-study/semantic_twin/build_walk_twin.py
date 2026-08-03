@@ -501,7 +501,7 @@ def _station_semantics(job: tuple) -> dict:
 
     from semantic_twin.pano_geometry import equirectangular_directions, panorama_to_world_matrix
 
-    mesh_path, pose, semantics_path, transient_ids, grid_height, image_id = job
+    mesh_path, pose, semantics_path, transient_ids, grid_height, image_id, material_count = job
     mesh = trimesh.load(mesh_path, process=False)
     height, width = grid_height, 2 * grid_height
     rotation = panorama_to_world_matrix(
@@ -514,8 +514,16 @@ def _station_semantics(job: tuple) -> dict:
     origins = np.broadcast_to(camera, directions.shape)
     _, index_ray, index_tri = mesh.ray.intersects_location(origins, directions, multiple_hits=False)
 
+    rf_material = None
+    material_source = None
     with np.load(semantics_path) as document:
         entity = document["entity"]
+        # Present only for panoramas segmented with ``--backend hybrid``. The
+        # dense pass alone cannot fill it: Mapillary Vistas has one ``Building``
+        # class and no material axis at all.
+        if "rf_material" in document.files:
+            rf_material = document["rf_material"]
+            material_source = document["material_source"]
     rows = np.repeat(np.arange(height) * entity.shape[0] // height, width)
     columns = np.tile(np.arange(width) * entity.shape[1] // width, height)
     labels = entity[rows, columns]
@@ -531,7 +539,7 @@ def _station_semantics(job: tuple) -> dict:
     classes = int(labels.max()) + 1
     tally = np.zeros((face_count, classes), dtype=np.int32)
     np.add.at(tally, (index_tri[clean], hit_labels[clean]), 1)
-    return {
+    record = {
         "image_id": image_id,
         "rays": total.astype(np.int32),
         "transient_rays": blocked.astype(np.int32),
@@ -541,6 +549,23 @@ def _station_semantics(job: tuple) -> dict:
         "view_transient_pixels": int(transient.sum()),
         "view_mesh_rays": int(len(index_ray)),
     }
+    if rf_material is None:
+        return record
+    # Same rays, same transient mask, same modal reduction. The only thing that
+    # differs from the entity axis above is which raster is read, which is what
+    # makes the two bindings comparable.
+    hit_material = rf_material[rows, columns][index_ray]
+    material_tally = np.zeros((face_count, material_count), dtype=np.int32)
+    np.add.at(material_tally, (index_tri[clean], hit_material[clean]), 1)
+    concept = material_source[rows, columns][index_ray]
+    record["modal_material"] = np.where(material_tally.sum(axis=1) > 0, material_tally.argmax(axis=1), -1).astype(
+        np.int16
+    )
+    record["material_counts"] = material_tally
+    record["concept_rays"] = np.bincount(index_tri[clean], weights=concept[clean], minlength=face_count).astype(
+        np.int32
+    )
+    return record
 
 
 def stage_semantic(args: argparse.Namespace) -> None:
@@ -555,7 +580,8 @@ def stage_semantic(args: argparse.Namespace) -> None:
     mesh_path = _mesh_path(args, scene)
     area = np.asarray(trimesh.load(mesh_path, process=False).area_faces, dtype=float)
 
-    jobs, kept, skipped = [], [], []
+    jobs, kept, skipped, backends = [], [], [], []
+    material_names: list[str] | None = None
     for index, record in enumerate(download["stations"]):
         folder = pathlib.Path(record["folder"])
         aligned = folder / "alignment/pose_aligned.json"
@@ -572,7 +598,24 @@ def stage_semantic(args: argparse.Namespace) -> None:
             continue
         meta = json.loads((folder / "semantics/semantics.json").read_text())
         transient = {int(k) for k, v in meta["entity_id2label"].items() if v in TRANSIENT_CLASSES}
-        jobs.append((mesh_path, pose, str(semantics), transient, args.grid_height, record["image_id"]))
+        vocabulary = meta.get("rf_material_id2label")
+        if vocabulary is not None:
+            names = [vocabulary[str(index)] for index in range(len(vocabulary))]
+            if material_names is not None and names != material_names:
+                raise SystemExit("stations disagree on the RF material vocabulary, refusing to fuse them")
+            material_names = names
+        backends.append(meta.get("backend", "mask2former"))
+        jobs.append(
+            (
+                mesh_path,
+                pose,
+                str(semantics),
+                transient,
+                args.grid_height,
+                record["image_id"],
+                0 if vocabulary is None else len(vocabulary),
+            )
+        )
         kept.append(
             {
                 "image_id": record["image_id"],
@@ -630,19 +673,65 @@ def stage_semantic(args: argparse.Namespace) -> None:
         },
         "agreement": _agreement(modal, clean_seen, kept, area, args),
     }
-    np.savez_compressed(
-        out / "walk_semantic.npz",
-        image_ids=np.asarray([record["image_id"] for record in kept]),
-        rays=rays,
-        transient_rays=blocked,
-        modal_class=modal,
-        clean_rays=clean,
-    )
+    arrays = {
+        "image_ids": np.asarray([record["image_id"] for record in kept]),
+        "rays": rays,
+        "transient_rays": blocked,
+        "modal_class": modal,
+        "clean_rays": clean,
+    }
+    if material_names is not None and all("modal_material" in result for result in results):
+        modal_material = np.stack([result["modal_material"] for result in results])
+        concept_rays = np.stack([result["concept_rays"] for result in results])
+        material_counts = np.sum([result["material_counts"] for result in results], axis=0)
+        arrays.update(
+            modal_material=modal_material,
+            material_counts=material_counts.astype(np.int32),
+            concept_rays=concept_rays,
+            material_names=np.asarray(material_names),
+        )
+        bound = clean_seen.any(axis=0)
+        report["material"] = {
+            "backend_per_station": backends,
+            "vocabulary": material_names,
+            "note": (
+                "modal_material is the modal RF material over the same non-transient rays "
+                "that produced modal_class, so the entity and material bindings differ only "
+                "in which raster they read."
+            ),
+            "concept_backed_ray_fraction": float(concept_rays.sum() / max(clean.sum(), 1)),
+            "cleanly_seen_faces": int(bound.sum()),
+            "material_share_over_cleanly_seen_faces": {
+                material_names[index]: float(share)
+                for index, share in enumerate(material_counts[bound].sum(axis=0) / max(material_counts[bound].sum(), 1))
+                if share > 0.0
+            },
+            "agreement": _agreement(
+                modal_material,
+                clean_seen,
+                kept,
+                area,
+                args,
+                axis="modal non-transient SAM 3 RF material per face",
+                caveat=(
+                    "Material agreement between independent captures. Lower than entity agreement "
+                    "is expected and is not a defect on its own: the material vocabulary is finer "
+                    "and an open-vocabulary detector has no coverage guarantee, so a face can fall "
+                    "back to the dense class prior in one capture and be concept-backed in another."
+                ),
+            ),
+        }
+    elif material_names is not None:
+        report["material"] = {
+            "backend_per_station": backends,
+            "status": "mixed backends, refusing to emit a material axis only some stations carry",
+        }
+    np.savez_compressed(out / "walk_semantic.npz", **arrays)
     (out / "walk_semantic.json").write_text(json.dumps(report, indent=2))
     print(json.dumps({"occlusion": report["occlusion"], "agreement": report["agreement"]}, indent=2)[:3000], flush=True)
 
 
-def _agreement(modal, clean_seen, kept, area, args) -> dict:
+def _agreement(modal, clean_seen, kept, area, args, *, axis: str = "", caveat: str = "") -> dict:
     """Do independent captures assign the same class where they overlap.
 
     Split by whether the two stations belong to the same Mapillary sequence,
@@ -686,11 +775,12 @@ def _agreement(modal, clean_seen, kept, area, args) -> dict:
     return {
         "summary": summary,
         "pairs": pairs,
-        "axis": "modal non-transient Mapillary Vistas entity class per face",
-        "caveat": (
+        "axis": axis or "modal non-transient Mapillary Vistas entity class per face",
+        "caveat": caveat
+        or (
             "This is entity agreement, not material agreement. The material axis needs the SAM 3 "
-            "concept pass, which has not been run for this walk, and without it material would be a "
-            "deterministic function of entity and would only restate this number."
+            "concept pass, and without it material is a deterministic function of entity and would "
+            "only restate this number."
         ),
     }
 

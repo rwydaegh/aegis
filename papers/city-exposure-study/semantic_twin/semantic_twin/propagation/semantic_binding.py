@@ -293,6 +293,163 @@ def bind_from_walk(
     )
 
 
+def bind_from_walk_material(
+    areas: np.ndarray,
+    geometric_class: np.ndarray,
+    *,
+    walk_npz: pathlib.Path,
+    semantics_path: pathlib.Path | None = None,
+    min_rays: int = 1,
+    mixture: bool = False,
+    over_entity: bool = False,
+    facade_only: bool = False,
+) -> SemanticBinding:
+    """Bind materials from the SAM 3 material axis of the same fused walk.
+
+    :func:`bind_from_walk` reads the Mapillary Vistas entity raster and pushes it
+    through a fixed ``p(material | entity)`` table, so every ``Building`` pixel
+    resolves to one material whatever the photograph shows. This reads the
+    ``rf_material`` raster instead, which SAM 3 resolved inside the ``Building``
+    class. Everything else is held identical: the same stations, the same rays,
+    the same transient mask, the same ray count weighting and the same argmax, so
+    a difference between the two runs is a difference in material discrimination
+    and nothing else.
+
+    ``mixture`` votes with the full per-face material histogram rather than each
+    station's modal material. It is a sensitivity check on the modal reduction,
+    not the primary path, because the entity binding it is compared against is
+    modal.
+
+    ``over_entity`` lays the material axis on top of the entity binding instead
+    of on top of the geometric rule, which makes the covered set identical to
+    :func:`bind_from_walk`'s. Without it the two differ in coverage as well as in
+    material, because ``Ego Vehicle``, the capture car filling the nadir, is not
+    a transient class: the entity prior spends its non vehicle mass on metal and
+    binds those faces, while the material axis resolves them to
+    ``vehicle_composite``, which has no ITU row and is not substituted. That is a
+    real difference between the two bindings, but it is not a difference in
+    material discrimination, so the isolating comparison sets this flag and the
+    coverage difference is measured separately.
+
+    ``facade_only`` narrows that further to the faces the entity binding resolved
+    to ``brick``, which is where and only where the entity axis is degenerate:
+    ``Building`` and ``Wall`` are the two Vistas classes whose prior peaks on
+    brick, so those faces carry one material by construction whatever the
+    photograph shows. Everywhere else the entity already names the material, and
+    changing those faces measures the modal reduction rather than material
+    discrimination. This is the flag that answers the question the ladder could
+    not: does resolving brick against glass on the same facade move exposure.
+    """
+    data = np.load(walk_npz, allow_pickle=True)
+    if "modal_material" not in data.files:
+        raise SystemExit(
+            f"{walk_npz} carries no material axis. Re-run the panoramas with "
+            "`semantic_twin.semantics --backend hybrid` and rebuild the walk semantics."
+        )
+    names = [str(name) for name in data["material_names"]]
+    rays = data["clean_rays"].astype(np.float64)
+    materials = sorted(MATERIAL_BINDING)
+
+    # RF vocabulary index -> bound material index, or -1 for the labels that name
+    # no surface a tracer can bind: ``unknown`` is the deliberate residual,
+    # ``air`` is an aperture, and human tissue and vehicles are transients rather
+    # than scene. A face whose modal material is one of those is left to the
+    # geometric rule instead of being pushed onto a nearest neighbour.
+    route = np.full(len(names), -1, dtype=np.int64)
+    for index, name in enumerate(names):
+        target = MATERIAL_SUBSTITUTION.get(name, name)
+        if target in MATERIAL_BINDING:
+            route[index] = materials.index(target)
+
+    votes = np.zeros((areas.size, len(materials)))
+    if mixture:
+        counts = data["material_counts"].astype(np.float64)
+        if counts.shape[0] != areas.size:
+            raise ValueError(f"walk semantics cover {counts.shape[0]} faces, the tracer mesh has {areas.size}")
+        for index in range(len(names)):
+            if route[index] >= 0:
+                votes[:, route[index]] += counts[:, index]
+    else:
+        modal = data["modal_material"].astype(np.int64)
+        if modal.shape[1] != areas.size:
+            raise ValueError(f"walk semantics cover {modal.shape[1]} faces, the tracer mesh has {areas.size}")
+        for station in range(modal.shape[0]):
+            seen = (rays[station] >= min_rays) & (modal[station] >= 0)
+            bound = route[modal[station][seen]]
+            face = np.nonzero(seen)[0][bound >= 0]
+            np.add.at(votes, (face, bound[bound >= 0]), rays[station][face])
+
+    covered = votes.sum(axis=1) > 0.0
+    material_index = np.argmax(votes, axis=1)
+
+    class_names = tuple(CLASS_NAMES) + tuple(f"semantic_{m}" for m in materials)
+    class_binding = dict(CLASS_BINDING)
+    for material in materials:
+        class_binding[f"semantic_{material}"] = MATERIAL_BINDING[material]
+
+    if over_entity or facade_only:
+        if semantics_path is None:
+            raise ValueError("this mode needs semantics_path, because the entity binding is the base")
+        base = bind_from_walk(
+            areas, geometric_class, walk_npz=walk_npz, semantics_path=semantics_path, min_rays=min_rays
+        )
+        base_class = base.face_class
+        base_note = "entity binding of bind_from_walk, itself falling back to the geometric orientation rule"
+    else:
+        base_class = np.asarray(geometric_class, dtype=np.int64)
+        base_note = "geometric orientation rule"
+
+    material_set = covered
+    if facade_only:
+        brick_class = len(CLASS_NAMES) + materials.index("brick")
+        material_set = material_set & (base_class == brick_class)
+    face_class = np.asarray(base_class, dtype=np.int64).copy()
+    face_class[material_set] = len(CLASS_NAMES) + material_index[material_set]
+    if over_entity or facade_only:
+        covered = material_set | (base_class >= len(CLASS_NAMES))
+
+    unroutable = [name for index, name in enumerate(names) if route[index] < 0]
+    return SemanticBinding(
+        face_class=face_class,
+        class_names=class_names,
+        class_binding=class_binding,
+        covered_fraction_by_face=float(covered.mean()),
+        covered_fraction_by_area=float(areas[covered].sum() / areas.sum()),
+        provenance={
+            "walk_npz": str(walk_npz),
+            "stations": int(rays.shape[0]),
+            "axis": "SAM 3 rf_material, the open-vocabulary material layer of the hybrid backend",
+            "join": "modal_material is already indexed on the tracer mesh, no centroid match",
+            "weight": "transient free ray count per station",
+            "vote": "per face material histogram" if mixture else "per station modal material",
+            "base": base_note,
+            "restricted_to": (
+                "faces the entity binding resolved to brick, which is Building and Wall"
+                if facade_only
+                else "every face a routable material was bound on"
+            ),
+            "min_rays": min_rays,
+            "concept_backed_ray_fraction": float(
+                data["concept_rays"].sum() / max(data["clean_rays"].sum(), 1) if "concept_rays" in data.files else 0.0
+            ),
+            "unroutable_materials": unroutable,
+            "unroutable_rule": (
+                "left to the entity binding rather than substituted"
+                if over_entity
+                else "left to the geometric orientation rule rather than substituted"
+            ),
+            "substitutions": MATERIAL_SUBSTITUTION,
+            "vegetation_note": VEGETATION_NOTE,
+            "chosen_material_triangle_counts": {
+                f"semantic_{materials[i]}": int(np.count_nonzero(material_index[material_set] == i))
+                for i in range(len(materials))
+            },
+            "faces_the_material_axis_set": int(material_set.sum()),
+            "fallback": base_note,
+        },
+    )
+
+
 def _material_weight(prior: dict[str, Any], entity: str | None, material: str) -> float:
     """Posterior mass a Vistas entity puts on one RF material, after substitution."""
     if entity is None:

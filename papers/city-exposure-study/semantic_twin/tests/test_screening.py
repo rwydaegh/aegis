@@ -94,8 +94,14 @@ def grid(spacing_m: float, reach_m: float, prefix: str = "g", date: str = "2023-
     present = {cell for cell in cells if math.hypot(cell[0] * spacing_m, cell[1] * spacing_m) <= reach_m}
     panoramas = {}
     for i, j in sorted(present):
-        neighbours = [f"{prefix}_{i + di}_{j + dj}" for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)) if (i + di, j + dj) in present]
-        panoramas[f"{prefix}_{i}_{j}"] = make_metadata(f"{prefix}_{i}_{j}", i * spacing_m, j * spacing_m, neighbours, date=date)
+        neighbours = [
+            f"{prefix}_{i + di}_{j + dj}"
+            for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1))
+            if (i + di, j + dj) in present
+        ]
+        panoramas[f"{prefix}_{i}_{j}"] = make_metadata(
+            f"{prefix}_{i}_{j}", i * spacing_m, j * spacing_m, neighbours, date=date
+        )
     return panoramas
 
 
@@ -127,7 +133,9 @@ def test_links_without_a_pano_id_are_dropped():
 
 
 def test_a_level_camera_with_no_pose_solution_is_flagged():
-    degenerate = panorama_from_metadata({"panoId": "a", "lat": CENTRE_LAT, "lng": CENTRE_LON, "tilt": 90.0, "roll": 0.0})
+    degenerate = panorama_from_metadata(
+        {"panoId": "a", "lat": CENTRE_LAT, "lng": CENTRE_LON, "tilt": 90.0, "roll": 0.0}
+    )
     measured = panorama_from_metadata({"panoId": "b", "lat": CENTRE_LAT, "lng": CENTRE_LON, "tilt": 102.3, "roll": 4.2})
     absent = panorama_from_metadata({"panoId": "c", "lat": CENTRE_LAT, "lng": CENTRE_LON})
     assert degenerate is not None and not degenerate.has_orientation
@@ -182,7 +190,11 @@ def test_traversal_expands_the_interior_and_stops_at_the_boundary():
     # Eleven panoramas 20 m apart, so five of them sit outside the 60 m disc.
     source = FakeSource(chain(11, 20.0))
     traversal = traverse(source, CANDIDATE, radius_m=60.0, workers=2)
-    inside = {pano_id for pano_id, metadata in source.panoramas.items() if abs(offsets_m(CENTRE_LAT, CENTRE_LON, [panorama_from_metadata(metadata)])[0][0]) <= 60.0}
+    inside = {
+        pano_id
+        for pano_id, metadata in source.panoramas.items()
+        if abs(offsets_m(CENTRE_LAT, CENTRE_LON, [panorama_from_metadata(metadata)])[0][0]) <= 60.0
+    }
     assert inside <= set(traversal.panoramas)
     # The walk reaches one ring beyond the disc to learn where the disc ends and
     # then stops, so it never leaks down the street network.
