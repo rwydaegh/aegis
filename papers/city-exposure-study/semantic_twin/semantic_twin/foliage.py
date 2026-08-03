@@ -242,9 +242,10 @@ class RetParameters:
         return {
             "recommendation": "ITU-R P.833-10 (09/2021), section 3.2.1.4, Tables 5 to 8",
             "species": self.species,
-            "species_set": {"uk": "Rogers et al. 2002, QINETIQ/KI/COM/CR020196/1.0", "kr": "P.833-6 (2007) contribution"}[
-                self.species_set
-            ],
+            "species_set": {
+                "uk": "Rogers et al. 2002, QINETIQ/KI/COM/CR020196/1.0",
+                "kr": "P.833-6 (2007) contribution",
+            }[self.species_set],
             "leaf_state": self.leaf_state,
             "tabulated_frequency_ghz": self.tabulated_frequency_ghz,
             "requested_frequency_ghz": self.requested_frequency_ghz,
@@ -457,7 +458,9 @@ def sample_phase_function(
     return out / np.linalg.norm(out, axis=1, keepdims=True)
 
 
-def canopy_volume_fraction(leaf_area_index: float, canopy_depth_m: float, leaf_thickness_m: float = LEAF_THICKNESS_M) -> float:
+def canopy_volume_fraction(
+    leaf_area_index: float, canopy_depth_m: float, leaf_thickness_m: float = LEAF_THICKNESS_M
+) -> float:
     """Leaf material volume per unit canopy volume, from LAI and leaf thickness.
 
     Leaf area index is one sided leaf area per unit ground area, so the leaf
@@ -541,8 +544,20 @@ def leaf_reflectance_ratio_db(
     quantitative reason not to replace the blob with procedural leaves.
     """
     if permittivity is None:
-        eps_real = float(np.interp(frequency_hz / 1.0e9, [row[0] for row in WOOD_DIELECTRIC_P833_TABLE10], [row[1] for row in WOOD_DIELECTRIC_P833_TABLE10]))
-        tan_delta = float(np.interp(frequency_hz / 1.0e9, [row[0] for row in WOOD_DIELECTRIC_P833_TABLE10], [row[2] for row in WOOD_DIELECTRIC_P833_TABLE10]))
+        eps_real = float(
+            np.interp(
+                frequency_hz / 1.0e9,
+                [row[0] for row in WOOD_DIELECTRIC_P833_TABLE10],
+                [row[1] for row in WOOD_DIELECTRIC_P833_TABLE10],
+            )
+        )
+        tan_delta = float(
+            np.interp(
+                frequency_hz / 1.0e9,
+                [row[0] for row in WOOD_DIELECTRIC_P833_TABLE10],
+                [row[2] for row in WOOD_DIELECTRIC_P833_TABLE10],
+            )
+        )
         permittivity = complex(eps_real, -eps_real * tan_delta)
     wavelength = SPEED_OF_LIGHT / float(frequency_hz)
     cos_i = np.cos(np.radians(np.asarray(incidence_deg, dtype=np.float64)))
@@ -559,7 +574,9 @@ def leaf_reflectance_ratio_db(
         "half_space_reflectance": np.asarray(half_space, dtype=np.float64),
         "slab_reflectance": np.asarray(slab, dtype=np.float64),
         "excess_db": np.asarray(10.0 * np.log10(half_space / np.maximum(slab, 1.0e-300)), dtype=np.float64),
-        "electrical_thickness_rad": np.asarray(np.real(2.0 * np.pi * thickness_m * root / wavelength), dtype=np.float64),
+        "electrical_thickness_rad": np.asarray(
+            np.real(2.0 * np.pi * thickness_m * root / wavelength), dtype=np.float64
+        ),
         "permittivity": permittivity,
     }
 
@@ -599,7 +616,9 @@ class CanopyCanyonGeometry:
     def canopy_face(self) -> int:
         return 3
 
-    def _box_hit(self, origins: np.ndarray, directions: np.ndarray, low: np.ndarray, high: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _box_hit(
+        self, origins: np.ndarray, directions: np.ndarray, low: np.ndarray, high: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         with np.errstate(divide="ignore", invalid="ignore"):
             inv = 1.0 / directions
             t0 = (low - origins) * inv
@@ -619,7 +638,9 @@ class CanopyCanyonGeometry:
         normal[rows, axis_out] = -np.sign(directions[rows, axis_out])
         return hit, distance, normal
 
-    def intersect(self, origins: np.ndarray, directions: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def intersect(
+        self, origins: np.ndarray, directions: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         count = origins.shape[0]
         infinity = 1.0e30
         best_t = np.full(count, infinity)
@@ -640,10 +661,7 @@ class CanopyCanyonGeometry:
             t_ground = -origins[:, 2] / directions[:, 2]
         point = origins + np.where(np.isfinite(t_ground), t_ground, 0.0)[:, None] * directions
         ground_hit = (
-            np.isfinite(t_ground)
-            & (t_ground > 0.0)
-            & (np.abs(point[:, 0]) <= half)
-            & (np.abs(point[:, 1]) <= length)
+            np.isfinite(t_ground) & (t_ground > 0.0) & (np.abs(point[:, 0]) <= half) & (np.abs(point[:, 1]) <= length)
         )
         ground_normal = np.tile(np.array([0.0, 0.0, 1.0]), (count, 1))
         offer(ground_hit, np.where(np.isfinite(t_ground), t_ground, infinity), ground_normal, 0)
@@ -665,9 +683,7 @@ class CanopyCanyonGeometry:
 
         if self.has_canopy:
             low = np.array([-self.canopy_half_width_m, -length, self.canopy_base_m])
-            high = np.array(
-                [self.canopy_half_width_m, length, self.canopy_base_m + self.canopy_depth_m]
-            )
+            high = np.array([self.canopy_half_width_m, length, self.canopy_base_m + self.canopy_depth_m])
             box_hit, box_t, box_normal = self._box_hit(origins, directions, low[None, :], high[None, :])
             offer(box_hit, np.where(box_hit, box_t, infinity), box_normal, self.canopy_face)
 

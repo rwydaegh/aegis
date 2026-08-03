@@ -126,7 +126,15 @@ def _arrays(canopy_permittivity: complex, canopy_rms_m: float) -> tuple[np.ndarr
     return permittivity, rms
 
 
-def _trace(geometry: CanopyCanyonGeometry, *, medium: FoliageMedium | None, canopy_permittivity: complex, canopy_rms_m: float, rays: int, seed: int) -> dict:
+def _trace(
+    geometry: CanopyCanyonGeometry,
+    *,
+    medium: FoliageMedium | None,
+    canopy_permittivity: complex,
+    canopy_rms_m: float,
+    rays: int,
+    seed: int,
+) -> dict:
     permittivity, rms = _arrays(canopy_permittivity, canopy_rms_m)
     tracer = FoliageTracer(
         geometry,
@@ -174,7 +182,15 @@ def stage_sweep(rays: int, seed: int) -> None:
         )
         fraction = probe["canopy_solid_angle_fraction"]
 
-        records.append({"treatment": "cut", "canopy_half_width_m": half_width, "canopy_fraction": fraction, "optical_depth": None, **cut})
+        records.append(
+            {
+                "treatment": "cut",
+                "canopy_half_width_m": half_width,
+                "canopy_fraction": fraction,
+                "optical_depth": None,
+                **cut,
+            }
+        )
 
         for label, rms_m in (("surface_specular", WOOD_RMS_M), ("surface_diffuse", BLOB_RMS_M)):
             surface = _trace(
@@ -185,7 +201,15 @@ def stage_sweep(rays: int, seed: int) -> None:
                 rays=rays,
                 seed=seed + index,
             )
-            records.append({"treatment": label, "canopy_half_width_m": half_width, "canopy_fraction": fraction, "optical_depth": None, **surface})
+            records.append(
+                {
+                    "treatment": label,
+                    "canopy_half_width_m": half_width,
+                    "canopy_fraction": fraction,
+                    "optical_depth": None,
+                    **surface,
+                }
+            )
 
         for tau in OPTICAL_DEPTHS:
             medium = FoliageMedium(
@@ -203,7 +227,15 @@ def stage_sweep(rays: int, seed: int) -> None:
                 rays=rays,
                 seed=seed + index,
             )
-            records.append({"treatment": "medium", "canopy_half_width_m": half_width, "canopy_fraction": fraction, "optical_depth": tau, **traced})
+            records.append(
+                {
+                    "treatment": "medium",
+                    "canopy_half_width_m": half_width,
+                    "canopy_fraction": fraction,
+                    "optical_depth": tau,
+                    **traced,
+                }
+            )
         print(f"half width {half_width:5.2f} m -> canopy fraction {fraction:.4f}", flush=True)
 
     gamma = float(figure2_specific_attenuation_db_per_m(FREQUENCY_HZ))
@@ -255,9 +287,7 @@ def stage_leaf() -> None:
             "electrical_thickness_rad": r["electrical_thickness_rad"].tolist(),
             "permittivity": [float(np.real(r["permittivity"])), float(np.imag(r["permittivity"]))],
         }
-    boundary = {
-        species: canopy_boundary_reflectance(lai, CANOPY_DEPTH_M) for species, lai in LEAF_AREA_INDEX.items()
-    }
+    boundary = {species: canopy_boundary_reflectance(lai, CANOPY_DEPTH_M) for species, lai in LEAF_AREA_INDEX.items()}
     document = {
         "leaf_thickness_m": 2.0e-4,
         "leaf_thickness_source": "ITU-R P.833-10 Table 9, Boxtel oak, leaves 0.02 cm thick",
@@ -281,7 +311,12 @@ def _divergence(records: list[dict], model: str, tau: float) -> dict:
     out: dict[str, list[float]] = {"canopy_fraction": fractions}
     for treatment in ("cut", "surface_specular", "surface_diffuse", "medium"):
         out[treatment] = [by_fraction[f].get(treatment, float("nan")) for f in fractions]
-    for pair in (("medium", "cut"), ("surface_specular", "cut"), ("surface_diffuse", "cut"), ("surface_specular", "medium")):
+    for pair in (
+        ("medium", "cut"),
+        ("surface_specular", "cut"),
+        ("surface_diffuse", "cut"),
+        ("surface_specular", "medium"),
+    ):
         a, b = pair
         out[f"{a}_vs_{b}_db"] = [
             float(10.0 * np.log10(x / y)) if (x > 0 and y > 0) else float("nan")
@@ -411,7 +446,15 @@ def stage_figure() -> None:
     taus = [r["optical_depth"] for r in dense if r["treatment"] == "medium"]
     chis = [r["susceptibility"][model] for r in dense if r["treatment"] == "medium"]
     order = np.argsort(taus)
-    ax.semilogx(np.asarray(taus)[order], np.asarray(chis)[order], color=colours["medium"], marker="o", ms=2.6, lw=1.3, label="medium")
+    ax.semilogx(
+        np.asarray(taus)[order],
+        np.asarray(chis)[order],
+        color=colours["medium"],
+        marker="o",
+        ms=2.6,
+        lw=1.3,
+        label="medium",
+    )
     for treatment in ("cut", "surface_specular", "surface_diffuse"):
         value = next(r["susceptibility"][model] for r in dense if r["treatment"] == treatment)
         ax.axhline(value, color=colours[treatment], ls="--", lw=1.0, label=labels[treatment])
@@ -461,7 +504,12 @@ def stage_figure() -> None:
                 "1.0_dB": _threshold_crossing(f, c[f"{pair}_db"], 1.0),
                 "max_db": float(np.nanmax(np.abs(c[f"{pair}_db"]))),
             }
-            for pair in ("medium_vs_cut", "surface_specular_vs_cut", "surface_diffuse_vs_cut", "surface_specular_vs_medium")
+            for pair in (
+                "medium_vs_cut",
+                "surface_specular_vs_cut",
+                "surface_diffuse_vs_cut",
+                "surface_specular_vs_medium",
+            )
         }
     (OUTPUT / "crossings.json").write_text(json.dumps(summary, indent=1))
     print(f"wrote {OUTPUT / 'crossings.json'}")

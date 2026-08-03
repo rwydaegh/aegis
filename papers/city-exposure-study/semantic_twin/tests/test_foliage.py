@@ -163,7 +163,13 @@ def test_monte_carlo_obeys_the_delta_m_identity(beamwidth):
     origin = np.array([0.0, 0.0, 1.5])
 
     full = FoliageTracer(
-        geometry, permittivity=permittivity, rms_height_m=rms, frequency_hz=FIFTEEN_GHZ, medium=medium, rays=120_000, seed=5
+        geometry,
+        permittivity=permittivity,
+        rms_height_m=rms,
+        frequency_hz=FIFTEEN_GHZ,
+        medium=medium,
+        rays=120_000,
+        seed=5,
     ).trace(origin, models)
     scaled = FoliageTracer(
         geometry,
@@ -199,15 +205,19 @@ def _slab_scene(canopy_depth_m: float) -> CanopyCanyonGeometry:
 
 
 def _slab_susceptibility(medium: FoliageMedium | None, depth_m: float, *, rays: int = 400_000, seed: int = 2) -> float:
-    return FoliageTracer(
-        _slab_scene(depth_m),
-        permittivity=np.array([PEC_PERMITTIVITY] * 4),
-        rms_height_m=np.zeros(4),
-        frequency_hz=FIFTEEN_GHZ,
-        medium=medium,
-        rays=rays,
-        seed=seed,
-    ).trace(np.array([0.0, 0.0, 1.5]), {"isotropic": MODELS["isotropic"]}).susceptibility["isotropic"]
+    return (
+        FoliageTracer(
+            _slab_scene(depth_m),
+            permittivity=np.array([PEC_PERMITTIVITY] * 4),
+            rms_height_m=np.zeros(4),
+            frequency_hz=FIFTEEN_GHZ,
+            medium=medium,
+            rays=rays,
+            seed=seed,
+        )
+        .trace(np.array([0.0, 0.0, 1.5]), {"isotropic": MODELS["isotropic"]})
+        .susceptibility["isotropic"]
+    )
 
 
 @pytest.mark.parametrize("tau", [0.25, 1.0, 3.0])
@@ -262,7 +272,9 @@ def test_black_canopy_removes_exactly_the_solid_angle_it_covers():
     rms = np.zeros(4)
     models = {"isotropic": MODELS["isotropic"]}
     origin = np.array([0.0, 0.0, 1.5])
-    empty = CanopyCanyonGeometry(street_width_m=1.0e-6, street_length_m=1.0e3, facade_height_m=0.0, canopy_half_width_m=0.0)
+    empty = CanopyCanyonGeometry(
+        street_width_m=1.0e-6, street_length_m=1.0e3, facade_height_m=0.0, canopy_half_width_m=0.0
+    )
     shaded_scene = CanopyCanyonGeometry(
         street_width_m=1.0e-6,
         street_length_m=1.0e3,
@@ -276,7 +288,13 @@ def test_black_canopy_removes_exactly_the_solid_angle_it_covers():
         empty, permittivity=permittivity, rms_height_m=rms, frequency_hz=FIFTEEN_GHZ, rays=200_000, seed=3
     ).trace(origin, models)
     shaded = FoliageTracer(
-        shaded_scene, permittivity=permittivity, rms_height_m=rms, frequency_hz=FIFTEEN_GHZ, medium=black, rays=200_000, seed=3
+        shaded_scene,
+        permittivity=permittivity,
+        rms_height_m=rms,
+        frequency_hz=FIFTEEN_GHZ,
+        medium=black,
+        rays=200_000,
+        seed=3,
     ).trace(origin, models)
     assert reference.susceptibility["isotropic"] == pytest.approx(1.0, rel=1e-6)
     lost = reference.susceptibility["isotropic"] - shaded.susceptibility["isotropic"]
@@ -290,7 +308,9 @@ def test_estimator_reproduces_the_ground_plane_closed_form():
     estimator rather than editing the shared tracer, so the shared tracer's
     validation has to be re-earned here rather than assumed.
     """
-    geometry = CanopyCanyonGeometry(street_width_m=1.0e7, street_length_m=1.0e7, facade_height_m=0.0, canopy_half_width_m=0.0)
+    geometry = CanopyCanyonGeometry(
+        street_width_m=1.0e7, street_length_m=1.0e7, facade_height_m=0.0, canopy_half_width_m=0.0
+    )
     result = FoliageTracer(
         geometry,
         permittivity=np.array([PEC_PERMITTIVITY] * 4),
@@ -305,7 +325,9 @@ def test_estimator_reproduces_the_ground_plane_closed_form():
 def test_estimator_agrees_with_the_shared_sbr_tracer():
     """Two independent estimators, one dielectric ground plane, same number."""
     permittivity = complex(5.24, -0.30)
-    geometry = CanopyCanyonGeometry(street_width_m=1.0e7, street_length_m=1.0e7, facade_height_m=0.0, canopy_half_width_m=0.0)
+    geometry = CanopyCanyonGeometry(
+        street_width_m=1.0e7, street_length_m=1.0e7, facade_height_m=0.0, canopy_half_width_m=0.0
+    )
     mine = FoliageTracer(
         geometry,
         permittivity=np.array([permittivity] * 4),
@@ -325,7 +347,9 @@ def test_estimator_agrees_with_the_shared_sbr_tracer():
 
 
 def test_free_space_susceptibility_is_one():
-    geometry = CanopyCanyonGeometry(street_width_m=1.0e6, street_length_m=1.0e-6, facade_height_m=0.0, canopy_half_width_m=0.0)
+    geometry = CanopyCanyonGeometry(
+        street_width_m=1.0e6, street_length_m=1.0e-6, facade_height_m=0.0, canopy_half_width_m=0.0
+    )
     result = FoliageTracer(
         geometry,
         permittivity=np.array([PEC_PERMITTIVITY] * 4),
