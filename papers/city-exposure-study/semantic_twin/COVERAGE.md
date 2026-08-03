@@ -9,9 +9,10 @@ Korenmarkt.
 
 This is the coverage ledger. It says, per site, what was acquired, what registered, how much of that
 registration is trustworthy, and whether a materially bound run is now possible. The last column is the
-one the study needs. It was true at one site at one crop radius and it is now true at six.
+one the study needs. It was true at one site at one crop radius and it is now true at seven, by two
+independent routes at five of those.
 
-Three things changed to make that so, and one thing did not change and is blocking.
+Four things changed to make that so, and one thing did not change and is blocking.
 
 ## The guard is now a question about the data
 
@@ -186,9 +187,9 @@ nothing and the agreement is carried entirely by the first. That is the useful s
 gate is not stricter than the study has been, it is stricter than the study has been at the sites where
 the study never looked.
 
-Two sites lose everything, Times Square with 12 of 14 poses inside the geometry and Hachiko with 3 of 3.
-The next section is about why, because the two turned out to have different diseases and only one of
-them is the site's fault.
+Two sites lost everything under those two tests, Times Square with 12 of 14 poses inside the geometry
+and Hachiko with 3 of 3. The next two sections are about why, because the two turned out to have
+different diseases, only one of them was the site's fault, and that one is now fixed.
 
 ## Why a camera ends up under its own pavement
 
@@ -210,16 +211,18 @@ other radius, 23640 at Grand-Place, 38138 at Plaza Mayor, 36782 at the Zocalo, 4
 38304 at Times Square and 27371 at Hachiko. A 130 m crop is the whole skyline of a low rise square and
 a fraction of the skyline of a high rise canyon.
 
-Scoring the untouched initial pose on both crops separates the two cases cleanly.
+Scoring the untouched initial pose on both crops separates the two cases cleanly. Each row is the median
+over that site's first three stations, and the pose is held fixed so the only thing changing is how much
+of the city the model is allowed to see.
 
 | Site | Robust residual at 130 m | At 250 m | What the extra crop is worth |
 | --- | --- | --- | --- |
-| Grand-Place | 9.86 deg | 9.87 deg | -0.02 deg, nothing |
-| Plaza Mayor | 3.34 deg | 3.33 deg | +0.00 deg, nothing |
 | Old Town Square | 1.29 deg | 1.30 deg | -0.00 deg, nothing |
+| Plaza Mayor | 3.34 deg | 3.33 deg | +0.00 deg, nothing |
+| Grand-Place | 9.86 deg | 9.87 deg | -0.02 deg, nothing |
 | Zocalo | 6.23 deg | 6.04 deg | +0.48 deg, marginal |
-| Times Square | 12.02 deg | 11.25 deg | +0.76 deg, not the problem |
-| Hachiko | 9.42 deg | 2.59 deg | +6.83 deg, the whole problem |
+| Times Square | 14.32 deg | 12.95 deg | +1.37 deg, not the problem |
+| Hachiko | 9.42 deg | 4.42 deg | +5.60 deg, the whole problem |
 
 So the shipped crop was adequate at four sites out of six, immaterial at a fifth, and wrong at exactly
 one. At Hachiko the fit had been paying three metres of altitude to buy back geometry the crop had
@@ -237,18 +240,45 @@ optimiser. Setting it to `-1.5 3.0` keeps the optical centre at least a metre ab
 under that camera, which excludes no pose that was ever any good, since the admitted median dive is
 0.58 m.
 
+Hachiko re-registered at 250 m with that clamp goes from zero usable stations to all three.
+
+| Station | Residual before | After | Sky conflict before | After | Camera height above ground |
+| --- | --- | --- | --- | --- | --- |
+| `pano_00` | 6.53 deg | 1.42 deg | 1.00 at 0.5 m | 0.02 at 108.1 m | -0.6 m to +2.2 m |
+| `pano_01` | 4.80 deg | 3.70 deg | 1.00 at 0.3 m | 0.07 at 20.6 m | -0.4 m to +1.0 m |
+| `pano_02` | 6.19 deg | 3.08 deg | 1.00 at 0.1 m | 0.01 at 33.9 m | -0.0 m to +2.0 m |
+
+The two changes do different work and it is worth keeping them apart. The wider crop is what moves the
+residual, from a median of 6.19 degrees to 3.08. The clamp is what moves the sky conflict, and it is
+close to free: run at 250 m without it, `pano_01` scored 3.36 degrees and `pano_02` scored 3.09, so
+clamping cost 0.34 degrees at one station and nothing at the other while taking both cameras out of the
+pavement. Three metres of altitude had been buying 0.34 degrees of residual and a pose that could not
+be used.
+
+Hachiko then binds 8.05 percent of the 250 m crop from three stations, second only to Old Town Square
+and from a quarter as many cameras, because the stations sit tight around the crossing and the
+frontages there are close and tall. A site that read as a total loss is now one of the better rows in
+the table, and nothing about its imagery changed.
+
+The other four registered sites are left on their 130 m fits on purpose. The table above measures what
+re-registering them would buy, which is between -0.02 and +0.48 degrees, so it would churn every pose
+in the study and several fishnets built on top of them to change nothing. Where the crop is immaterial
+it is better to say so than to redo the work.
+
 ## Times Square is a different problem and the crop does not fix it
 
 Times Square keeps a residual near 11 degrees on the wider crop, and the reason is not height, it is
 that the objective carries almost no information there. Scanning yaw over the entire circle at the
-initial pose moves the robust residual by under two degrees at every one of the 14 stations, and three
-of them score their minimum more than 120 degrees away from the metadata heading, one of them at 178
-degrees. The camera cannot tell front from back.
+initial pose moves the robust residual by under two degrees at every one of the 14 stations, and four of
+them score their minimum more than 120 degrees away from the metadata heading, one at 178 degrees. The
+camera cannot tell front from back.
 
 The control says this is a property of the site and not of the method. The same scan at Old Town Square
-puts 13 of 14 stations within 2 degrees of the metadata heading with residuals from 0.83 to 6.13
+puts 13 of 14 stations within 2 degrees of the metadata heading, with residuals there from 0.83 to 6.36
 degrees, and at Hachiko all three minimise within 2 degrees. A sharp, correctly placed minimum is what
-a working registration looks like, and Times Square does not have one.
+a working registration looks like, and Times Square does not have one. Old Town Square's one exception,
+`pano_03`, prefers a heading 102 degrees away and scores 17 degrees even there, which is what a single
+bad station looks like beside thirteen good ones.
 
 The geometry explains it. The modelled skyline at Times Square sits at a median elevation of 55 to 62
 degrees in every direction, with a sky fraction of 0.15 to 0.33. A skyline that is uniformly high is a
@@ -259,25 +289,66 @@ That is a real limit on the method rather than a defect to be fixed, and it is w
 paper in those terms. The panoramas at Times Square are fine. The mesh is fine. The two cannot be
 brought into correspondence by matching where the sky ends.
 
+## Four sites had their image evidence built and unreachable
+
+The fishnet path and the fused station path are different bindings, not two names for one. The fused
+station path casts a ray grid from each admitted camera and tallies an entity class per tracer
+triangle. The fishnet path cuts a surface per view, carrying a class and a confidence per cell, and
+joins it back through `face_source_triangle`. They can disagree, which is the point of having both.
+
+At four sites the fishnet path was unavailable for a reason with no physics in it at all. `bind`
+collects its views with `glob("*_fishnet.npz")` over the directory it is handed, which does not recurse,
+and Brussels, Madrid, Mexico City and Prague had every view written into a folder per panorama one
+level down. The surfaces existed, 171,532 faces at Grand-Place through to 383,044 at Old Town Square,
+and nothing could read them. Times Square had been flattened by hand and Korenmarkt and Milan were flat
+already, each being a single panorama, so the layout split the corpus without anyone choosing it.
+
+`flatten_fishnet_outputs.py` publishes each nested view at the top of its directory under a name that
+keeps the panorama it came from, `pano_00_4Cxfyuve.../h+00_090_fishnet.npz` becoming
+`pano_00_4Cxfyuve..._h+00_090_fishnet.npz`, which is the convention Times Square was flattened to. The
+published entries are relative symlinks rather than copies, so the per panorama layout stays
+authoritative and a rebuilt view is picked up without republishing. Nothing is recomputed and no
+fishnet changes.
+
+What that returns is substantial, and it is measured rather than asserted. Binding each site's views
+onto the mesh they were cut against covers 33.0 percent of the area at Old Town Square from 52 views,
+23.4 at the Zocalo from 56, 18.7 at Plaza Mayor from 24 and 11.2 at Grand-Place from 32.
+
+The two routes land close to each other without being the same number, which is the useful part. At
+130 m the fused station path reads 31.1, 26.2, 20.2 and 13.3 percent at those four sites against the
+fishnet's 33.0, 23.4, 18.7 and 11.2, so the fishnet is the larger of the two at Old Town Square and the
+smaller at the other three, by between one and three points of area. Two bindings built from the same
+photographs by different machinery, agreeing to a few points and disagreeing in a direction that varies
+by site, is a cross check the study did not previously have anywhere except Ghent. Which of them is
+nearer the truth is not settled here and should not be asserted from the fractions alone.
+
+The one site where this changes nothing is the one that most looks like it should. Times Square's 8
+views cover 6.5 percent of the area and were cut from two cameras, neither of which is admitted, both
+of which the sky conflict test places inside the buildings they are pointed at. The matrix reports the
+coverage and refuses the route, and the fishnet column carries the count of admitted poses behind every
+site's surfaces so that this stays visible rather than being an argument made once in prose.
+
 ## The coverage matrix
 
 Regenerate with `summarise_evidence_coverage.py`, which reads it all off disk and also writes
-`outputs/evidence_coverage.json`.
+`outputs/evidence_coverage.json`. The fishnet bound area column is cached beside each fishnet and
+refreshed with `--measure-semantic`, which loads a support mesh per site and takes minutes rather than
+seconds.
 
 <!-- COVERAGE_TABLE -->
 
 | Site | Panoramas | Registered | Median residual | Worst residual | Median pose sigma | At altitude bound | Inside the geometry | Admitted | SAM 3 material axis | Fishnet faces | Bound area at 130 m | Bound area at 250 m | Materially bound run |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| brussels_grandplace | 14 | 14 | 2.87 deg | 11.16 deg | 0.47 m | 6 | 6 | 8 | 0 of 14 | none | none | 4.6% (8 stations) | 250 m |
-| korenmarkt | 13 | 13 | 3.06 deg | 8.10 deg | 0.17 m | 7 | 0 | 9 | 11 of 13 | 10534 | 8 stations, area not recorded | 3.2% (9 stations) | 130 m, 250 m |
+| brussels_grandplace | 14 | 14 | 2.87 deg | 11.16 deg | 0.47 m | 6 | 6 | 8 | 0 of 14 | 171532 nested | 13.3% (8 stations) | 4.6% (8 stations) | 130 m, 250 m |
+| korenmarkt | 13 | 13 | 3.06 deg | 8.10 deg | 0.17 m | 7 | 0 | 9 | 11 of 13 | 10534 | 11.2% (9 stations) | 3.2% (9 stations) | 130 m, 250 m |
 | krakow_rynek | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | none | none | no |
 | london_trafalgar | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | none | none | no |
-| madrid_plazamayor | 10 | 10 | 0.40 deg | 2.92 deg | 0.26 m | 5 | 4 | 6 | 0 of 10 | none | none | 5.1% (6 stations) | 250 m |
-| mexico_zocalo | 14 | 14 | 2.76 deg | 4.59 deg | 1.86 m | 4 | 0 | 12 | 0 of 14 | none | none | 7.0% (12 stations) | 250 m |
-| newyork_timessquare | 14 | 14 | 10.13 deg | 12.00 deg | 1.37 m | 6 | 12 | 0 | 0 of 14 | 40057 | none | none | no |
-| prague_staromestske | 14 | 14 | 0.82 deg | 9.33 deg | 0.25 m | 2 | 1 | 12 | 0 of 14 | 229640 nested | none | 9.9% (12 stations) | 250 m |
+| madrid_plazamayor | 10 | 10 | 0.40 deg | 2.92 deg | 0.26 m | 5 | 4 | 6 | 0 of 10 | 157946 nested | 20.2% (6 stations) | 5.1% (6 stations) | 130 m, 250 m |
+| mexico_zocalo | 14 | 14 | 2.76 deg | 4.59 deg | 1.86 m | 4 | 0 | 12 | 0 of 14 | 269675 nested | 26.2% (12 stations) | 7.0% (12 stations) | 130 m, 250 m |
+| newyork_timessquare | 14 | 14 | 10.17 deg | 12.00 deg | 1.65 m | 5 | 11 | 0 | 0 of 14 | 40057 | none | none | no |
+| prague_staromestske | 14 | 14 | 0.82 deg | 9.33 deg | 0.25 m | 2 | 1 | 12 | 0 of 14 | 383044 nested | 31.1% (12 stations) | 9.9% (12 stations) | 130 m, 250 m |
 | milan_duomo | 1 | 1 | 0.74 deg | 0.74 deg | 0.26 m | 1 | 0 | 1 | 1 of 1 | 33753 | none | 4.0% (1 stations) | 250 m |
-| tokyo_hachiko | 3 | 3 | 6.19 deg | 6.53 deg | 0.59 m | 1 | 3 | 0 | 0 of 3 | none | none | none | no |
+| tokyo_hachiko | 3 | 3 | 3.08 deg | 3.70 deg | 0.48 m | 1 | 0 | 3 | 0 of 3 | none | 15.9% (3 stations) | 8.1% (3 stations) | 130 m, 250 m |
 | toulouse_capitole | 0 | 0 | n/a | n/a | n/a | 0 | 0 | 0 | none | none | none | none | no |
 
 <!-- END_COVERAGE_TABLE -->
@@ -293,13 +364,12 @@ fractions: a run reports the area that was seen and whose class carries prior ma
 vocabulary, and a triangle whose only observation is sky or an unmapped class falls out between the
 two. At Grand-Place over 250 m that is 4.58 percent seen against 4.47 percent bound.
 
-Fishnet faces counts the cut surfaces, and says `nested` where they exist but sit one level down in a
-folder per panorama. That is how a multi panorama site is naturally written and it is not where `bind`
-looks, since it globs `*_fishnet.npz` at the top of the directory it is handed and does not recurse.
-Korenmarkt and Milan are flat because each is a single panorama. `site_fishnet` raises and names the
-layout rather than returning `None`, because the two states need opposite fixes, one being to build the
-surfaces and the other to move the ones already built. It also reads the mesh a fishnet was cut against
-out of that fishnet's own manifest instead of deriving it from the crop radius of the run. `bind` joins
+Fishnet faces counts the cut surfaces. Fishnet bound area is what those surfaces actually bind when
+they are aggregated onto the mesh they were cut against, followed by how many of the panoramas behind
+them hold a pose that passed admission. That second figure is there because a fishnet inherits the
+error of the camera that cut it, and a site can have surfaces without having evidence. `site_fishnet`
+also reads the mesh a fishnet was cut against out of that fishnet's own manifest instead of deriving it
+from the crop radius of the run. `bind` joins
 each fishnet face back to a source triangle index, so handing it the mesh of the run rather than the
 mesh of the cut would join two different triangle numberings and would do it without complaining. That
 is not hypothetical. Korenmarkt and Times Square were cut against `inhouse_leaf_130m.ply` and Milan
@@ -308,22 +378,26 @@ them. A 130 m cut inside a 250 m run is supported. It just has to be declared.
 
 ## What is now possible, and what is not
 
-A materially bound cross city run is possible at six of the eleven sites, all of them at the 250 m crop
-the headline table runs at: Old Town Square at 9.9 percent of area from twelve stations, the Zocalo at
-7.0 from twelve, Plaza Mayor at 5.1 from six, Grand-Place at 4.6 from eight, the Duomo at 4.0 from one
-and Korenmarkt at 3.2 from nine. Before this it was one site at one crop radius. That is the
-deliverable, and it is the first time the phrase means anything at more than one site.
+A materially bound cross city run is possible at seven of the eleven sites, all seven at the 250 m crop
+the headline table runs at: Old Town Square at 9.9 percent of area from twelve stations, Hachiko at 8.1
+from three, the Zocalo at 7.0 from twelve, Plaza Mayor at 5.1 from six, Grand-Place at 4.6 from eight,
+the Duomo at 4.0 from one and Korenmarkt at 3.2 from nine. Six of the seven can also run at 130 m,
+where the fractions are two to three times larger because the crop is smaller and the cameras are in
+the same place. Five of them have a second, independent route through the fishnet path. Before this it
+was one site at one crop radius by one route. That is the deliverable, and it is the first time the
+phrase means anything at more than one site.
 
-The spread across those six is threefold and it is not a quality signal. Bound area rises with the
+The spread across those seven is threefold and it is not a quality signal. Bound area rises with the
 number of admitted stations and falls with the size of the crop relative to the square, so Prague leads
 on twelve stations in a tight square and the Duomo reaches 4.0 percent from a single camera because
-the facade it faces is enormous and close. Reading the column as "how well did the segmentation do"
-would be reading it backwards.
+the facade it faces is enormous and close. Hachiko reaches 8.1 percent from three stations for the same
+reason in reverse, a small crossing tightly enclosed. Reading the column as "how well did the
+segmentation do" would be reading it backwards.
 
 The experiment this unlocks already exists in outline. `run_exposure.py --coverage-report` walks a site
 through geometric, one panorama and fused station materials and reports how far the exposure
 distribution moves as the bound fraction grows. Its `COVERAGE_LADDER` names Korenmarkt run stems
-because Korenmarkt was the only site that could supply them. The inputs for five more sites now exist,
+because Korenmarkt was the only site that could supply them. The inputs for six more sites now exist,
 so generalising that tuple to the requested site is the piece of work that turns a single site ladder
 into a question about whether the answer travels. It is left alone here because `run_exposure.py` is
 under concurrent edit and this report's one change to it is the materials guard.
@@ -336,14 +410,11 @@ in this study has ever seen, and it falls back to the geometric orientation rule
 bound fraction is therefore a property of where a car can drive, not of how good the segmentation is,
 and the right way to report a bound run is beside its covered area fraction rather than instead of it.
 
-The 130 m column is empty outside Korenmarkt because that pass had not run when this was written, not
-because it cannot. It is the same command with `--crop-m 130`, it is queued site by site behind the
-fishnet batch, and re-running `summarise_evidence_coverage.py` picks it up wherever it has got to. It
-was deprioritised because this machine was carrying eight other jobs at a load average above thirty
-with swap full, which is also why the 250 m batch was killed after seven of eleven sites and had to be
-finished one site at a time. Milan is not in that queue: its crop is 170 m and it has no 130 m mesh, so
-the only radius it can answer at is the one it already has. Filling the 130 m column is a compute
-decision rather than an evidence one.
+Milan answers at one radius only. Its crop is 170 m and it has no 130 m mesh, so the column it is
+missing is not a gap in its evidence. Everything else that could be filled has been. The 250 m batch
+had to be run one site at a time rather than as a batch, because this machine was carrying eight other
+jobs at a load average above thirty with swap full and the first attempt was killed after seven of
+eleven sites.
 
 Two things are outstanding and neither is a judgement call.
 

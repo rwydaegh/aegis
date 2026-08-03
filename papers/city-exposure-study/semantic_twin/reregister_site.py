@@ -13,11 +13,13 @@ until it hits the vertical search bound, and the camera ends up under the
 pavement. Every sky direction then returns a mesh first hit at sub metre range,
 the sky conflict test reads 1.0, and the station is refused.
 
-At Hachiko the chain is measured end to end. On the 130 m mesh the robust
-residual at the untouched initial pose is 9.42 degrees and the fit lands at 6.53
-with the camera 2.96 m down against a 3.0 m bound. On the 250 m mesh the same
-untouched initial pose scores 2.59 degrees, so the fit had been paying three
-metres of altitude to buy back geometry the crop had removed.
+At Hachiko the chain is measured end to end. Taking `pano_00`, on the 130 m mesh
+the robust residual at the untouched initial pose is 9.42 degrees and the fit
+lands at 6.53 with the camera 2.96 m down against a 3.0 m bound. On the 250 m
+mesh that same untouched pose already scores 2.59 degrees, so the fit had been
+paying three metres of altitude to buy back geometry the crop had removed. Over
+the site's three stations the median residual at the initial pose falls from 9.42
+degrees to 4.42.
 
 Times Square is a different diagnosis and this script does not rescue it. There
 the 250 m crop scores 11.25 degrees at the initial pose against 11.91 at 130 m,

@@ -87,6 +87,82 @@ def fishnet(site: str) -> dict[str, Any]:
     return {"views": len(files), "faces": faces, "surface_area_m2": area, "layout": layout}
 
 
+#: Cached beside the fishnet it describes, because measuring it loads the
+#: support mesh and binds every view, which is far too slow to do on every
+#: report. Refreshed with `--measure-semantic`.
+SEMANTIC_COVERAGE = "semantic_coverage.json"
+
+
+def semantic_coverage(site: str) -> dict[str, Any] | None:
+    """What fraction of the mesh the fishnet views cover, if it has been measured."""
+    path = SCRIPT_DIR / "outputs" / f"{site}_fishnet_vistas" / SEMANTIC_COVERAGE
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def measure_semantic_coverage(site: str, *, variant: str = "llvm_ad_rgb") -> dict[str, Any] | None:
+    """Bind a site's fishnet onto the mesh it was cut against and cache the answer.
+
+    This is the `--materials semantic` path exactly as `run_exposure.py` runs
+    it, against the fishnet's own source mesh, so the number it caches is the
+    coverage that run would report rather than an estimate of it.
+    """
+    # Mitsuba is slow to import and is not needed to read the cache, so the
+    # dependency is taken only when a measurement is actually asked for.
+    import run_exposure
+    from semantic_twin.propagation import MitsubaGeometry
+    from semantic_twin.propagation.semantic_binding import bind
+
+    resolved = run_exposure.site_fishnet(site)
+    if resolved is None:
+        return None
+    directory, mesh = resolved
+    geometry = MitsubaGeometry(mesh, variant=variant)
+    areas = geometry.face_areas()
+    # The geometric classes are the fallback `bind` fills in around the covered
+    # triangles. They do not affect the covered fraction, so the datum they are
+    # cut at does not either.
+    classes = run_exposure.classify_faces(geometry.vertices, geometry.faces, 0.0)
+    bound = bind(
+        geometry.vertices,
+        geometry.faces,
+        areas,
+        classes,
+        fishnet_dir=directory,
+        semantics_path=run_exposure.SEMANTICS,
+        source_ply_vertices=geometry.vertices,
+        source_ply_faces=geometry.faces,
+    )
+    measured = {
+        "mesh": mesh.name,
+        "views": len(bound.provenance["views"]),
+        "covered_fraction_by_face": bound.covered_fraction_by_face,
+        "covered_fraction_by_area": bound.covered_fraction_by_area,
+    }
+    (directory / SEMANTIC_COVERAGE).write_text(json.dumps(measured, indent=2))
+    return measured
+
+
+def fishnet_panoramas(site: str) -> list[str] | None:
+    """Which panoramas the fishnet views were cut from, when the names say so.
+
+    Views built per panorama carry the panorama in the file name or in the
+    folder holding them. The two single panorama sites carry neither, because
+    there was only ever one camera to attribute them to, and inventing an
+    attribution for those is worse than returning None.
+    """
+    directory = SCRIPT_DIR / "outputs" / f"{site}_fishnet_vistas"
+    if not directory.is_dir():
+        return None
+    names = {folder.name for folder in panorama_dirs(site)}
+    attributed = set()
+    for path in sorted(directory.glob("*_fishnet.npz")) + sorted(directory.glob("*/*_fishnet.npz")):
+        stem = path.parent.name if path.parent != directory else path.name
+        match = [name for name in names if stem.startswith(name)]
+        if match:
+            attributed.add(max(match, key=len))
+    return sorted(attributed) or None
+
+
 def binding(site: str, crop_m: int) -> dict[str, Any] | None:
     path = SCRIPT_DIR / "outputs" / "site_semantics" / site / f"walk_semantic_{crop_m}m.json"
     if path.exists():
@@ -134,6 +210,7 @@ def row(site: str, crops: tuple[int, ...], **gate: float) -> dict[str, Any]:
     sigmas = [p["position_sigma_m"] for p in poses if p["position_sigma_m"] is not None]
     admitted = [p for p in poses if p["admitted"]]
     inside = [p for p in poses if p["sky_conflict_state"] == "inside the geometry"]
+    sources = fishnet_panoramas(site)
     return {
         "site": site,
         "panoramas": len(folders),
@@ -156,6 +233,14 @@ def row(site: str, crops: tuple[int, ...], **gate: float) -> dict[str, Any]:
         "sam3_material_axis": "hybrid" in backends,
         "panoramas_with_sam3_material_axis": material_axis,
         "fishnet": fishnet(site),
+        "semantic_coverage": semantic_coverage(site),
+        "fishnet_panoramas": sources,
+        # A fishnet cut from a camera that sits inside a wall inherits that
+        # camera's error, so a semantic run is only materially bound if the
+        # views behind it came from poses that passed both admission tests.
+        "fishnet_panoramas_admitted": (
+            None if sources is None else sorted(set(sources) & {p["station"] for p in admitted})
+        ),
         "bindings": {f"{crop}m": binding(site, crop) for crop in crops},
         "materially_bound_run_possible": {f"{crop}m": binding(site, crop) is not None for crop in crops},
     }
@@ -169,14 +254,54 @@ def fishnet_cell(entry: dict[str, Any]) -> str:
     return str(entry["faces"])
 
 
+def semantic_cell(r: dict[str, Any]) -> str:
+    """Coverage, and how much of it rests on a pose that passed admission."""
+    entry = r["semantic_coverage"]
+    if entry is None:
+        return "not measured"
+    cell = f"{100 * entry['covered_fraction_by_area']:.1f}% ({entry['views']} views)"
+    sources = r["fishnet_panoramas"]
+    if sources is None:
+        return f"{cell}, poses unattributed"
+    return f"{cell} from {len(r['fishnet_panoramas_admitted'])} of {len(sources)} admitted poses"
+
+
+def semantic_is_bound(r: dict[str, Any]) -> bool:
+    """Whether a semantic run at this site would rest on any admitted pose.
+
+    Times Square has fishnets and no admitted pose, so it has surfaces cut from
+    cameras the sky conflict test places inside the buildings they are looking
+    at. Calling that materially bound would be the same overclaim this table
+    was written to expose.
+    """
+    entry = r["semantic_coverage"]
+    if entry is None or entry["covered_fraction_by_area"] <= 0.0:
+        return False
+    return bool(r["fishnet_panoramas_admitted"]) or r["fishnet_panoramas"] is None
+
+
+def bound_run_cell(r: dict[str, Any], crops: tuple[int, ...]) -> str:
+    """The routes to a materially bound run, which are not the same route.
+
+    The walk binding fuses whole stations onto the tracer triangles and is
+    reported per crop radius. The fishnet binding aggregates per view surfaces
+    onto the mesh they were cut against, so it is reported at that mesh.
+    """
+    routes = [f"walk at {crop} m" for crop in crops if r["materially_bound_run_possible"][f"{crop}m"]]
+    if semantic_is_bound(r):
+        routes.append(f"semantic at {r['semantic_coverage']['mesh'].split('_')[-1].removesuffix('.ply')}")
+    return ", ".join(routes) if routes else "no"
+
+
 def markdown(rows: list[dict[str, Any]], crops: tuple[int, ...]) -> str:
     header = (
         "| Site | Panoramas | Registered | Median residual | Worst residual | Median pose sigma | "
         "At altitude bound | Inside the geometry | Admitted | SAM 3 material axis | Fishnet faces | "
-        + " | ".join(f"Bound area at {crop} m" for crop in crops)
+        "Fishnet bound area | "
+        + " | ".join(f"Walk bound area at {crop} m" for crop in crops)
         + " | Materially bound run |\n"
     )
-    header += "| --- " * (12 + len(crops)) + "|\n"
+    header += "| --- " * (13 + len(crops)) + "|\n"
     lines = []
     for r in rows:
         cells = [
@@ -191,6 +316,7 @@ def markdown(rows: list[dict[str, Any]], crops: tuple[int, ...]) -> str:
             str(r["poses_admitted"]),
             f"{r['panoramas_with_sam3_material_axis']} of {r['panoramas']}" if r["panoramas"] else "none",
             fishnet_cell(r["fishnet"]),
+            semantic_cell(r),
         ]
         for crop in crops:
             bound = r["bindings"][f"{crop}m"]
@@ -200,8 +326,7 @@ def markdown(rows: list[dict[str, Any]], crops: tuple[int, ...]) -> str:
                 cells.append(f"{bound['stations']} stations, area not recorded")
             else:
                 cells.append(f"{100 * bound['covered_fraction_by_area']:.1f}% ({bound['stations']} stations)")
-        possible = [f"{crop} m" for crop in crops if r["materially_bound_run_possible"][f"{crop}m"]]
-        cells.append(", ".join(possible) if possible else "no")
+        cells.append(bound_run_cell(r, crops))
         lines.append("| " + " | ".join(cells) + " |")
     return header + "\n".join(lines) + "\n"
 
@@ -220,6 +345,14 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="markdown file whose COVERAGE_TABLE marker holds the generated table",
     )
     parser.add_argument("--no-write", action="store_true", help="print the table and touch nothing")
+    parser.add_argument(
+        "--measure-semantic",
+        action="store_true",
+        help=(
+            "bind each site's fishnet before reporting, refreshing the cached coverage. "
+            "Loads a support mesh per site, so it takes minutes rather than seconds"
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -239,6 +372,15 @@ def splice(document: str, table: str) -> str:
 def main(argv: list[str] | None = None) -> int:
     args = arguments(argv)
     crops = tuple(args.crop_m)
+    if args.measure_semantic:
+        for site in SITES:
+            measured = measure_semantic_coverage(site)
+            if measured is not None:
+                print(
+                    f"[semantic] {site}: {measured['views']} views on {measured['mesh']}, "
+                    f"{100 * measured['covered_fraction_by_area']:.1f}% of area",
+                    flush=True,
+                )
     rows = [
         row(
             site,

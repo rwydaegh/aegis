@@ -75,8 +75,24 @@ ROW = {
     "sam3_material_axis": False,
     "panoramas_with_sam3_material_axis": 0,
     "fishnet": {"views": 0, "faces": 0, "surface_area_m2": 0.0, "layout": "none"},
+    "semantic_coverage": None,
+    "fishnet_panoramas": None,
+    "fishnet_panoramas_admitted": None,
     "bindings": {"130m": None, "250m": {"stations": 6, "covered_fraction_by_area": 0.0512}},
     "materially_bound_run_possible": {"130m": False, "250m": True},
+}
+
+#: A site whose fishnet was cut per panorama, so each view can be traced back to
+#: the pose behind it.
+BOUND_FISHNET = {
+    "semantic_coverage": {
+        "mesh": "inhouse_leaf_130m.ply",
+        "views": 24,
+        "covered_fraction_by_face": 0.1131,
+        "covered_fraction_by_area": 0.1865,
+    },
+    "fishnet_panoramas": ["pano_00_a", "pano_01_b", "pano_02_c"],
+    "fishnet_panoramas_admitted": ["pano_00_a", "pano_02_c"],
 }
 
 
@@ -90,8 +106,44 @@ def test_the_table_says_no_when_no_crop_radius_has_a_binding():
 
 def test_the_table_names_the_crop_radii_a_bound_run_is_possible_at():
     body = markdown([ROW], (130, 250)).strip().splitlines()[-1]
-    assert body.endswith("| 250 m |")
+    assert body.endswith("| walk at 250 m |")
     assert "5.1% (6 stations)" in body
+
+
+def test_a_fishnet_is_a_second_route_to_a_bound_run_and_is_named_as_one():
+    # The walk binding and the fishnet binding are different evidence with
+    # different failure modes, so the cell says which one is available.
+    body = markdown([ROW | BOUND_FISHNET], (130, 250)).strip().splitlines()[-1]
+    assert body.endswith("| walk at 250 m, semantic at 130m |")
+
+
+def test_the_fishnet_column_says_how_much_of_it_rests_on_an_admitted_pose():
+    body = markdown([ROW | BOUND_FISHNET], (250,))
+    assert "18.6% (24 views) from 2 of 3 admitted poses" in body
+
+
+def test_a_fishnet_cut_entirely_from_refused_poses_is_not_a_bound_run():
+    # Times Square has 8 views covering 6.5 % of the area, cut from two cameras
+    # the sky conflict test places inside the buildings they are looking at.
+    row = ROW | BOUND_FISHNET | {"fishnet_panoramas_admitted": []}
+    body = markdown([row], (130, 250)).strip().splitlines()[-1]
+    assert "semantic" not in body
+    assert "from 0 of 3 admitted poses" in body
+
+
+def test_a_single_panorama_site_says_its_poses_are_unattributed():
+    # Korenmarkt and Milan wrote their views with no panorama in the name, so
+    # the table declines to guess which camera they came from.
+    row = ROW | BOUND_FISHNET | {"fishnet_panoramas": None, "fishnet_panoramas_admitted": None}
+    body = markdown([row], (130, 250)).strip().splitlines()[-1]
+    assert "poses unattributed" in body
+    assert body.endswith("| walk at 250 m, semantic at 130m |")
+
+
+def test_a_fishnet_covering_nothing_is_not_a_route():
+    coverage = BOUND_FISHNET["semantic_coverage"] | {"covered_fraction_by_area": 0.0}
+    row = ROW | BOUND_FISHNET | {"semantic_coverage": coverage}
+    assert markdown([row], (130, 250)).strip().endswith("| walk at 250 m |")
 
 
 def test_a_binding_without_a_recorded_area_is_not_reported_as_zero():
