@@ -1,5 +1,13 @@
 # Methods and results, end to end
 
+> **Superseded as the drafting source.** `SPINE.md` is now the source of truth
+> for what is claimed and at what strength, and `paper/methods.tex` and
+> `paper/paper.tex` are the submission drafts. This file is kept because it
+> records the derivations and the reproduction commands in more detail than the
+> paper has room for, and because its status table below is the honest history of
+> what was broken and when. Several rows of that table were true when written and
+> are false now, and the ones known to have flipped are marked inline.
+
 Draft spine for an IEEE Access submission. Content first, prose later. Every
 number here traces to a script in this repository, and the reproduction commands
 are in the last section.
@@ -1590,9 +1598,9 @@ correction of section 4.2 was derived, implemented and measured.
 | Section 9.4, per site crop correction | **superseded law, ten sites not eleven.** The 0.05 to 4.80 dB rooftop and 0.16 to 11.39 dB street ranges are `city_*` against `city250_*`, both the old law, and Milan has no 130 m mesh so it cannot enter. The isotropic range is $-0.17$ to 0.96 dB, not 0.03 to 0.96: Brussels moves the other way |
 | Section 4.3, deployment caps | **assumptions with a measured sensitivity, not citations.** No deployed FR3 exists to calibrate against, section 4.3.1 |
 | Section 9.2, material coverage | **the eleven city table carries no image evidence.** `materials: geometric`, covered area 0.0 at every site. Only Korenmarkt has a binding, and three of the eleven cities have no panoramas at all. 69 of 83 registrations feed no result |
-| Monte Carlo error bars | **absent everywhere.** No result in this document carries one. The only variance measurement in the study is the ray count row of section 8.3, at one standpoint. Fixed seeds make runs reproducible, which is not the same as converged |
+| Monte Carlo error bars | **no longer absent, done 2026-08-02.** Every value reported in the paper drafts now carries one, obtained by retracing the same standpoints over disjoint seed streams rather than estimated from within a single run. The results in this file predate that and still carry none. A larger error term than the Monte Carlo one has since been found: standpoint sampling, about 0.13 dB rms and 0.24 dB worst on a per square median, roughly 25 times the Monte Carlo error |
 | Bounce depth provenance | **the stated operating point is not uniform.** $L=4$ for the corrected eleven cities, the crop sweep, the sub street ablation and the law comparison. $L=6$ for the evidence ladder, the 120 standpoint Korenmarkt runs and the superseded eleven cities. Class default 12, CLI default 6. Worth 0.0004 dB, so the numbers stand and the prose should not claim a single operating point |
-| Section 8, external cross validation | **absent.** The tracer is checked against closed forms it was built to satisfy, plus internal invariants. There is no independent solver in the loop, so a shared conceptual error would survive every test in section 8 |
+| Section 8, external cross validation | **no longer absent, done 2026-08-02.** An independent solver is now in the loop. Production agrees with Sionna to 0.25 dB at Korenmarkt and 0.16 dB at Brussels, against a Monte Carlo floor of 0.24 to 0.46 dB, so the comparison is at the noise. Two limits stand: the two tracers share the same susceptibility $Q$, so the check covers transport and not the illumination model, and the comparison is a product of averages against an average of products. `CROSS_VALIDATION.md`. The row's original worry, that a shared conceptual error would survive, is narrowed rather than removed |
 | Section 3.2.1, registration | **stable, but the poses it validates are mostly unused.** 83 poses, diagnostic persisted and independently reproducible |
 | Section 9.2, Krakow and Toulouse rows | **fixed, and the requalified run has landed.** The table above is `city250_L3_*` on the measured datum, so both rows are now street level. The old `ground_datum()` took the median first hit from above within 15 m of the anchor, so an anchor standing on a building returned that building's roof. Krakow's datum was 18.19 m above the surrounding pavement and Toulouse's 13.94 m, which put their standpoints on the Sukiennice and the Capitole. `GROUND_DATUM.md` carries the replacement, a lowest major level over the walk disc, which agrees with the registered camera ground height to 0.30 m at the eight sites carrying one and with an independently written second estimator to 0.19 m. Nine of the eleven datums move by less than a quarter of a metre and Madrid, previously flagged as suspect at 5 m, is not one of them |
 | The eleven city figure asset | **regenerated on 2026-08-03.** It is drawn from `city250_L3_*` by `FIGURES/make_eleven_cities_exposure.py`, which refuses to draw a ragged or torn aggregate and names the offending sites. The committed PNG before that date had been copied from an aggregate a concurrent run was still writing, so it showed Brussels at 3 standpoints under the superseded rooftop law. The axis still carries the pre-overhaul symbol $\chi_S$, which is the one defect left |
