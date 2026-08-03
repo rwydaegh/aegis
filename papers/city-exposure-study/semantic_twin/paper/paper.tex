@@ -645,6 +645,14 @@ the geometric facade default to a metal-clad square would change material family
 rather than refine a masonry value. The eleven-square comparison therefore
 applies to the observed masonry family.
 
+That bound is what limits image-based material inference, rather than the quality
+of the inference. A vision language model reading the facades moved the ratio by
+about 0.2\,dB isotropic and 0.3 to 0.4\,dB rooftop, inside the dielectric span,
+and the same model reading a photogrammetric texture it called illegible on 76\%
+of crops returned the same shift. The useful material question at this frequency
+is which family a square belongs to, not which masonry it is, and that question
+is answered by a photograph without needing a model to resolve it.
+
 Diffraction is small for two models and not for the third.
 \Cref{fig:diffraction-bound} gives medians of 0.06, 0.15, and 0.42\,dB, with
 90th percentiles of 0.13, 0.37, and 1.26\,dB. The street percentile uses the 56
