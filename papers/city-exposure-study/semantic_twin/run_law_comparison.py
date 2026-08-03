@@ -36,7 +36,13 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from run_exposure import GROUND_DATUM_M, ground_datum, site_mesh  # noqa: E402
-from semantic_twin.propagation import VARIANTS, MitsubaGeometry, SbrTracer, TraceConfig  # noqa: E402
+from semantic_twin.propagation import (  # noqa: E402
+    DEFAULT_MAX_BOUNCES,
+    VARIANTS,
+    MitsubaGeometry,
+    SbrTracer,
+    TraceConfig,
+)
 from semantic_twin.propagation.scene import classify_faces, load_bindings  # noqa: E402
 from semantic_twin.propagation.walk import build_walk, stratified_subset  # noqa: E402
 
@@ -62,7 +68,11 @@ def trace_site(site: str, crop_m: int, args: argparse.Namespace) -> dict[str, np
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
     binding = load_bindings(CONFIG, args.frequency_hz)
     config = TraceConfig(
-        frequency_hz=args.frequency_hz, rays=args.rays, local_cells=512, max_bounces=4, seed=args.seed
+        frequency_hz=args.frequency_hz,
+        rays=args.rays,
+        local_cells=512,
+        max_bounces=DEFAULT_MAX_BOUNCES,
+        seed=args.seed,
     )
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
 

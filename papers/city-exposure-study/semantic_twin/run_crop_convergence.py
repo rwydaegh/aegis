@@ -30,8 +30,7 @@ import numpy as np
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-# The registered ground datum at Korenmarkt, the same constant run_exposure.py uses.
-GROUND_DATUM_M = 50.83747424667166
+from semantic_twin.propagation import DEFAULT_MAX_BOUNCES  # noqa: E402
 
 
 def arguments() -> argparse.Namespace:
@@ -40,7 +39,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--out", type=pathlib.Path, default=SCRIPT_DIR / "outputs/crop_convergence")
     parser.add_argument("--locations", type=int, default=24)
     parser.add_argument("--rays", type=int, default=200_000)
-    parser.add_argument("--max-bounces", type=int, default=4)
+    parser.add_argument("--max-bounces", type=int, default=DEFAULT_MAX_BOUNCES)
     parser.add_argument("--observer-radius-m", type=float, default=40.0)
     parser.add_argument("--frequency-hz", type=float, default=15.0e9)
     parser.add_argument("--seed", type=int, default=11)
@@ -92,7 +91,7 @@ def main() -> None:
     from semantic_twin.propagation.geometry import MitsubaGeometry
     from semantic_twin.propagation.scene import classify_faces, load_bindings
     from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
-    from semantic_twin.propagation.walk import build_walk, stratified_subset
+    from semantic_twin.propagation.walk import build_walk, ground_datum, stratified_subset
 
     meshes = candidate_meshes(args.site)
     if len(meshes) < 3:
@@ -103,7 +102,9 @@ def main() -> None:
     # so they are the same kind of standpoint the exposure runs use, and every
     # radius is scored on an identical set while only the surroundings change.
     smallest = MitsubaGeometry(meshes[0])
-    ground = GROUND_DATUM_M
+    # Measured on the smallest crop, the same estimator the exposure runs use.
+    # It used to be the Korenmarkt registered constant regardless of --site.
+    ground = ground_datum(smallest, radius_m=args.observer_radius_m)
     walk = build_walk(smallest, ground_datum_m=ground, radius_m=args.observer_radius_m, spacing_m=3.0, seed=args.seed)
     picks = stratified_subset(walk, args.locations)
     points = walk.points[picks]

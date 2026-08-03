@@ -53,17 +53,37 @@ the whole paper hangs on and it should be visible from the first page.
 
 For a path that returns to where it started, both ends are visible from the same
 viewpoint, so the first two interactions land on surfaces the photograph saw.
-Traced on the 617k triangle Korenmarkt mesh at twelve standpoints:
+Traced at 42 standpoints across four meshes on three continents, Korenmarkt,
+Brussels Grand Place, Milan Duomo and Tokyo Hachiko, with the visible set built
+by 2e6 ray first hit probing from each standpoint:
 
-| chain fully on visible surfaces | order 1 | order 2 | order 3 |
+| chain fully on visible surfaces, median | order 1 | order 2 | order 3 |
 |---|---|---|---|
-| closed loop | 1.000000 | 0.999991 | 0.984 |
-| outward path | 0.999 | 0.916 | 0.736 |
+| closed loop | 1.000000 | 0.999972 | 0.980 |
+| outward path | 0.999103 | 0.912004 | 0.714182 |
 
-The theorem is the sign, the gap is a property of the scene. The third order
-falls because the cover is over the two ends of a loop and not over its middle.
+The spread across the four cities is a few percent. The theorem is the sign, the
+gap is a property of the scene. The third order falls because the cover is over
+the two ends of a loop and not over its middle.
+
+Cross checked against `BOUNCE_BUDGET.md`, which used a different mask, an
+equirectangular panorama cast rather than a ray probe, and a different
+definition, per depth last surface rather than whole chain: 0.996 / 0.959 /
+0.899 there against 1.0000 / 0.9638 / 0.8748 here on the fused walk.
 
 *Source: `MONOSTATIC.md` §5.1, `run_monostatic.py --visibility`.*
+
+The co-located return itself does not predict the susceptibility and that
+question is closed. Over 440 standpoints the return is 98.6 % first order at a
+4.05 m two way range, median -70.81 dB against a closed form rough half space at
+-70.99 dB: an isotropic co-located pair in a square is looking at its own
+pavement. Pooled Spearman against $\chi$ is -0.526 but the partial correlation
+holding sky fraction fixed is -0.010, and sky fraction alone correlates at
++0.961. Across eleven site medians $\chi$ moves 3.91 dB and the return moves
+0.71 dB. The second order component does survive, partial correlation -0.345
+against the reflected part and negative at all eleven sites, but it is 0.37 % of
+received power and 24 dB under the pavement clutter, so it is retired on dynamic
+range rather than on physics. *(`MONOSTATIC.md` §7.)*
 
 This vindicates the claim made at the start of the project and later called an
 over-claim. It was not an over-claim, it was a claim about the monostatic branch
@@ -113,14 +133,107 @@ halves.
 
 *Source: `BOUNCE_BUDGET.md` §"Result 3", §"What the budget costs", §"Roulette".*
 
+### 5. Diffraction is bounded on this geometry, not argued away from the literature
+
+A dense sky mask at each standpoint, 720 azimuths by 600 log spaced elevation
+bands, 432k cells, on the same 250 m meshes and the same standpoint coordinates
+as the eleven city run. Every shadowed direction gets a Fresnel-Kirchhoff
+parameter $\nu = \theta\sqrt{2d/\lambda}$ from ITU-R P.526-16 eq. (27), and the
+knife edge loss of eq. (31) is integrated against the illumination measure. Ran
+on the 20 most enclosed standpoints of the 3 most enclosed squares, 60 total.
+
+**The validation comes first and it is the first external check any part of this
+tracer has had.** The same mask integrated over the *visible* directions
+reproduces the production tracer's $\chi_\mathrm{dir}$ to 0.10 to 0.34 %
+isotropic, 0.84 to 1.73 % rooftop, 2.3 to 7.3 % street. Independent code path,
+independent quadrature, independent ray budget. That is what makes the blocked
+half believable.
+
+| uplift on $\chi$, dB | median | 90th | max | median at 2 GHz |
+|---|---|---|---|---|
+| isotropic | 0.06 | 0.13 | 0.19 | 0.18 |
+| macro rooftop | 0.15 | 0.37 | 1.20 | 0.53 |
+| street small cell | 0.44 | 1.84 | 12.64 | 1.82 |
+
+Every assumption errs upward: a single absorbing half plane, a distant source, no
+re-blocking, a knife edge rather than a lossy wedge, P.526's angle form used past
+its 12° validity, and the diffracted term multiplied by each standpoint's own
+multipath gain so that diffract-then-reflect paths are covered. 93 to 98 % of the
+bound sits inside the 12° validity for isotropic and rooftop. The 2 versus 15 GHz
+ratio of 3.1 to 5.0 times reproduces the frequency argument on this geometry
+rather than borrowing it.
+
+Against a within square spread of 8.1 dB, 0.15 dB touches nothing.
+
+**The concession not argued away**: under the street small cell model the bound
+is not small. 87.9 % of that model's measure sits below 5° elevation, and at 4 of
+the 60 standpoints the entire elevation support is occluded, so
+$\chi_\mathrm{dir}$ is exactly zero and every watt arrives by reflection. Those
+standpoints also carry the smallest absolute $\chi$ in the study, of order 1e-5.
+
+Grid convergence is honest but not tight: the ladder at the deepest Korenmarkt
+standpoint runs 0.000689 / 0.000650 / 0.000734 / 0.000737 from 108k to 3.46M
+cells, not monotone, with the production grid 13 % below converged because the
+integrand varies on $\theta \sim \sqrt{\lambda/2d} \approx 1.3°$ for a 20 m edge,
+close to the azimuth cell width. Worth 0.02 dB on a 0.15 dB uplift, so the
+tabulated numbers are low by about that.
+
+*Source: `WHY_NOT.md` §2.6, `bound_diffraction.py`.*
+
+Three limits on the literature half of this argument, all found by red teaming
+the draft and none to be quietly dropped:
+
+- The mmMAGIC "no arrival above the noise floor" observation is **one location at
+  58.68 GHz reached by a manual trace**, not a campaign wide result and not at
+  14.8 GHz. There is no equivalent statement at 14.8 GHz in D2.2 or R1-160846.
+- **Open sky above the head is the precondition for over rooftop diffraction, not
+  a defence against it.** The argument holds cleanly for the street cell band,
+  which sits below the roofline. For the rooftop band the sign argument has to
+  carry it, because for a site shadowed by an intervening building the omitted
+  term may be the leading one in those directions. Adhikari et al., INFOCOM 2025,
+  is the direct counter example: over top beat street clutter scattering by 7 dB.
+- **There is no published open square diffraction decomposition at any
+  frequency.** All of it is street canyon, a waveguiding geometry. A square has
+  fewer facades per unit solid angle, so the specular budget substituting for
+  diffraction is thinner there. State it as a limitation.
+
+The one counter citation to dispose of in text rather than be caught by: Du,
+Chizhik and Valenzuela, TAP 2021, where a diffraction inspired model gives the
+best around a corner fit at 28 GHz. Their own fitted corner loss is 2.2 dB
+against a theoretical edge coefficient near -42 dB, so the functional form wins
+while the physical mechanism is 40 dB short.
+
+*Source: `WHY_NOT.md` §8, `LIT_VERIFICATION.md`.*
+
 ---
 
 ## Results, and the arc they make
 
 ### R1. Eleven squares
 
-The headline. Geometric materials at every square, converged 250 m radius.
-`FIGURES/16_eleven_cities_exposure.png`, `FIGURES/11_eleven_cities.png`.
+The headline. Geometric materials at every square, converged 250 m radius,
+bounce budget 3, fixed ground datum. One writer, eleven sites, 880 standpoints,
+zero torn records. Run tag `_L3`.
+
+**Between city spread: 3.71 dB isotropic, 4.93 dB rooftop, 9.58 dB street small
+cell. Largest within city spread: 6.46 dB isotropic, at Madrid.** Within one
+square beats across eleven squares by 2.75 dB, which is the headline claim and
+it strengthened in the rebuild, up from a 1.02 dB margin.
+
+Mexico City Zocalo is the most exposed square. Krakow's old reading as the dark
+red outlier is gone: those standpoints sat on the Cloth Hall roof and the ground
+datum fix moved Krakow by -1.40 dB isotropic and -12.97 dB street, Toulouse off
+the Capitole roof by -1.29 and -2.61 dB. Every other site moves under 0.25 dB
+isotropic, which is the datum estimator and not the bounce budget, since
+`BOUNCE_BUDGET.md` puts 4 to 3 at about 0.002 dB median.
+
+Spearman rooftop against isotropic +0.936, street against isotropic +0.345.
+
+*Source: `AGGREGATE_REBUILD.md`. Figures `FIGURES/16_eleven_cities_exposure.png`,
+`FIGURES/11_eleven_cities.png`.*
+
+**Do not quote the older `_corrected` table.** `PAPER_METHODS.md` §9.2 and
+`REPORT.md` still carry it and their Krakow and Toulouse rows are the roof.
 
 ### R2. The illumination law reorders the cities
 
@@ -130,18 +243,52 @@ modelling choice in the study and it deserves its own beat, not a footnote.
 
 ### R3. Material discrimination does not move exposure
 
-+0.024, +0.029, +0.022 dB against between-square spreads of 3.9, 8.4 and 16.7 dB.
-Two VLM compositions that disagree strongly with each other give indistinguishable
-$\chi$.
++0.024, +0.029, +0.022 dB against between square spreads of 3.71, 4.93 and
+9.58 dB. Two VLM compositions that disagree strongly with each other give
+indistinguishable $\chi$.
 
-**This is not a negative result, it is the bound on the claim.** The photographs
-do not tune a permittivity. They establish which family a square belongs to,
-masonry against glass and metal, which is the one material distinction that does
-move $\chi$ and the one the mesh cannot supply. So the geometric assignment is
-licensed rather than merely convenient, and the results hold for masonry squares
-because masonry is what was observed.
+**This is not a negative result, it is the bound on the claim, and the bound is
+now measured rather than asserted.** Put one material on every facade in
+Korenmarkt, 24 standpoints, shared ray seeds, paired:
 
-*Source: `SAM3_LADDER.md`, `MATERIAL_VLM.md`.*
+| every facade is | isotropic | rooftop | standpoints over 1 dB |
+|---|---|---|---|
+| render, the softest dielectric | -0.104 dB | -0.164 dB | 0 of 24 |
+| stone, the hardest dielectric | +0.239 dB | +0.414 dB | 0 of 24 |
+| **metal** | **+2.502 dB** | **+4.374 dB** | **24 of 24** |
+
+The whole dielectric axis spans **0.34 dB isotropic and 0.58 dB rooftop**,
+against a 3.3 dB isotropic spread of $\chi$ across standpoints in that one
+square. **No facade material evidence of any kind can move $\chi$ further than
+that.** Metal is the only escape, and it is a family call rather than a member
+call.
+
+So the photographs do not tune a permittivity. They establish which family a
+square belongs to, masonry against glass and metal, which is the one material
+distinction that does move $\chi$ and the one the mesh cannot supply. The
+geometric assignment is licensed rather than merely convenient, and the results
+hold for masonry squares because masonry is what was observed.
+
+A vision model reading the facades lands inside that bracket and does not earn a
+place on the material axis: street capture +0.177 / +0.378 dB, tile texture
++0.220 / +0.423 dB, against +0.102 / +0.213 dB for simply *drawing* from the
+fixed prior instead of taking its argmax. More than half of what the model
+delivers needs no model. The control, brick through the posterior path, is
++0.000 dB exact at every standpoint, so the experiment's noise floor is zero. The
+tile texture variant is illegible on 76 % of crops and answers unknown on 33 of
+38, yet produces the same shift to within 0.043 dB.
+
+Two narrower findings do earn a place, and neither was the original proposal.
+Mixing must happen in **power, not in labels**: the argmax discards the 3 % prior
+mass on metal that carries 20 % of the mean reflected power, and drawing per face
+is the only route to an error bar on $\chi$ from material ignorance. And
+**glazing is a stack, not a label**: an insulating glass unit sits 1.8 to 3.2 dB
+above a glass half space, which is the one place where what a vision model can
+name is a different object from what the vocabulary contains.
+
+*Source: `SAM3_LADDER.md`, `MATERIAL_VLM.md`. The bracket is 24 standpoints
+rather than the ladder's 120, because the machine was carrying six other tracing
+jobs.*
 
 ### R4. Beamforming that tracks the user cancels, and the version real networks use does not
 
@@ -181,11 +328,56 @@ only absorption to pay for.
 
 *Source: `BYSTANDERS.md`.*
 
-### R6. Convergence, reported as measurement not as choice
+### R6. Convergence, reported as measurement not as choice, and one place it does not converge
 
-Crop radius raised until $\chi$ stops moving, which is what fixes 250 m. The
-converged radius is a property of the illumination model, not of the square, so
-it is reported per model. `FIGURES/15_crop_convergence.png`.
+Two different radii, and they must not be confused. The **mesh crop radius** is
+raised until $\chi$ stops moving, which is what fixes 250 m. The converged radius
+is a property of the illumination model, not of the square, so it is reported per
+model. `FIGURES/15_crop_convergence.png`.
+
+The **deployment box range cap** $\rho_+$ is a different parameter and it does
+**not** converge. Swept continuously from 50 to 500 m it never saturates:
+$\chi \propto d_\mathrm{max}^{-1.2}$ averaged over 100 to 400 m, worth 7.40 dB at
+the median site rooftop and 9.24 dB street, from 2.67 dB at New York to 9.91 dB
+at Madrid. The mechanism is the lower support edge, which moves from 7.7° to
+1.9°. That is not a bug, it is what an unbounded uniform site density does, but
+it means **no single absolute $\chi$ can be quoted without its cap**.
+
+The sweep is free rather than expensive, and the reason is worth a sentence
+because it is the same trick as the adjoint move: $\chi$ is linear in the
+illumination density and every band law is azimuth uniform, so one trace reduces
+to a 4500 bin elevation histogram and any height or range band is a dot product.
+Every parameter value is therefore scored on identical rays and the differential
+numbers carry no independent Monte Carlo noise. Harvested $\chi$ matches the
+tracer's own to 1e-9 isotropic and 3e-3 street worst standpoint, and is bit
+identical to the production run at Krakow and Toulouse.
+
+**What survives the cap is the contrast.** Between city contrast swings 0.51 dB
+median against 7.40 dB absolute, 14 times steadier, with eight of eleven cities
+inside 0.75 dB. Name the three that are not: Brussels 1.92, Madrid 2.60, New York
+4.64 dB. Two honest negatives travel with it: normalising by $\chi$ isotropic
+gives *exactly* the same cap sensitivity, because it is a decomposition and not a
+fix, and the ranking is not cap invariant, Spearman 0.81 with 7 of 11 sites
+changing rank. So quote Spearman, do not claim a stable ordering.
+
+**The crop and the cap were conflated in code and nothing checked one against the
+other.** The crop is centred on the square while standpoints reach 90 m out, so
+built extent is 180 to 227 m at the tenth percentile. At the published 250 m cap
+0.5 to 7 % of $\chi$ rooftop comes from lines of sight with nothing built on
+them, 20 % at New York. At 400 m that is 5 to 60 %, worth up to 4.17 dB, so a
+400 m column is not supportable on a 250 m crop and must not be reported. Caps at
+or below 175 m are clean everywhere.
+
+Height edges are worth 0.3 to 1.9 dB rooftop. The cap dominates them not because
+the physics is insensitive to height but because the assumed cap interval spans a
+factor 2.7 against the ceiling's 1.3: per natural log the ceiling's elasticity is
+65 to 90 % of the cap's. The four band edges are exactly scale free, so doubling
+the box moves $\chi$ by 0.0 and the four elasticities sum to zero, verified to
+0.034 dB per natural log. The tempting reduction to a single support edge fails,
+a fit in $\arctan(h_-/d_\mathrm{max})$ explains 86 to 90 % of the surface against
+97 to 99 % for $d_\mathrm{max}$ alone.
+
+*Source: `SENSITIVITY.md`, `make_sensitivity_study.py`.*
 
 ---
 
@@ -195,13 +387,14 @@ Everything a referee would find, found first and stated with its size and sign.
 
 | what | size | direction |
 |---|---|---|
-| no diffraction | bounded, see `WHY_NOT.md` §2.6 | biases $\chi$ **low** |
+| no diffraction | 0.06 / 0.15 / 0.44 dB median, isotropic / rooftop / street | biases $\chi$ **low** |
 | unpolarised average, facades | ≤ 3.0 dB | biases low |
 | unpolarised average, ground near 24° elevation | up to tens of dB, over 7.8 % of rooftop measure and 0.4 % of street | biases high |
 | truncation at $L=3$ | 0.0038 of escaping power median | biases low |
 | convex body, no limb self shadow | unquantified | unknown |
 | image evidence | one square only, 0.479 pooled first interaction coverage | scope |
 | one registered station | excluded at 0.362 coverage | scope |
+| diffuse scattering strength is a modelled Rayleigh split, not fitted | ablating diffuse scattering moves published RMSE from 6 to 13 dB up to 25 to 37 dB at 28 and 38 GHz (Vitucci et al., Radio Science 2019) | unknown, and the larger referee risk than diffraction |
 
 Two things that must not be quoted as measured:
 

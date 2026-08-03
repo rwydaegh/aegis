@@ -26,10 +26,21 @@ from .directions import (
     fibonacci_sphere,
     measure_below,
 )
-from .geometry import MitsubaGeometry, PlaneGeometry, SphereGeometry
-from .tracer import TERMINATIONS, PathRecord, PathRecorder, PointResult, SbrTracer, TraceConfig
+from .geometry import MitsubaGeometry, PlaneGeometry, SphereGeometry  # noqa: F401
+from .tracer import (
+    DEFAULT_MAX_BOUNCES,
+    TERMINATIONS,
+    BounceEvidenceTally,
+    PathRecord,
+    PathRecorder,
+    PointResult,
+    SbrTracer,
+    TraceConfig,
+    trace_standpoints,
+)
 
 __all__ = [
+    "DEFAULT_MAX_BOUNCES",
     "ISOTROPIC",
     "MODELS",
     "PEC_PERMITTIVITY",
@@ -41,6 +52,7 @@ __all__ = [
     "STREET_SMALL_CELL_PATHLOSS",
     "TERMINATIONS",
     "VARIANTS",
+    "BounceEvidenceTally",
     "IlluminationModel",
     "MitsubaGeometry",
     "PathRecord",
@@ -54,4 +66,5 @@ __all__ = [
     "fibonacci_sphere",
     "ground_plane_susceptibility",
     "measure_below",
+    "trace_standpoints",
 ]

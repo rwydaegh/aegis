@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import platform
 import sys
@@ -29,6 +30,7 @@ from typing import Any
 import numpy as np
 
 from semantic_twin.propagation import (
+    DEFAULT_MAX_BOUNCES,
     ISOTROPIC,
     PEC_PERMITTIVITY,
     ROOFTOP,
@@ -41,8 +43,22 @@ from semantic_twin.propagation import (
 )
 from semantic_twin.propagation.exposure import BodyCoupler, describe
 from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings
-from semantic_twin.propagation.semantic_binding import bind, bind_from_walk
-from semantic_twin.propagation.walk import build_walk, stratified_subset
+from semantic_twin.propagation.semantic_binding import bind, bind_from_walk, bind_from_walk_material
+from semantic_twin.propagation.walk import build_walk, ground_datum, measure_ground_datum, stratified_subset
+
+#: ``ground_datum`` now lives beside the walk it feeds, in
+#: semantic_twin/propagation/walk.py. It is re-exported because the ablation and
+#: payload scripts import it from this module.
+__all__ = [
+    "GROUND_DATUM_M",
+    "MODELS",
+    "SITES",
+    "ground_datum",
+    "measure_ground_datum",
+    "run",
+    "site_mesh",
+    "validate",
+]
 
 ROOT = pathlib.Path(__file__).resolve().parent
 MESH = ROOT / "data" / "geometry" / "korenmarkt" / "inhouse_leaf_130m_f64.ply"
@@ -53,6 +69,14 @@ OUTPUT = ROOT / "outputs" / "exposure_korenmarkt"
 #: config/korenmarkt.json ``camera_ground_z_m``.
 GROUND_DATUM_M = 50.83747424667166
 
+#: How far the measured ground datum may sit from the registered panorama camera
+#: ground height before the run refuses to continue. The two are independent:
+#: the registered value comes from the panorama registration of section 3, the
+#: measured one from the mesh alone. Eight of the eleven sites carry a registered
+#: value and all eight agree to within 0.30 m, so a metre is a loud disagreement
+#: rather than a tolerance anything currently uses.
+DATUM_CROSS_CHECK_M = 1.0
+
 #: Free space incident power density the external network would deliver at head
 #: height with no local scene. Every absolute number below is linear in this, so
 #: it is a scale factor and not a physical claim. 1 W/m^2 is chosen because it
@@ -61,19 +85,95 @@ GROUND_DATUM_M = 50.83747424667166
 REFERENCE_S0_W_M2 = 1.0
 
 #: Duke, the adult male IT'IS phantom, standing upright. 72.4 kg from
-#: aegis/data/phantoms.yaml.
-PHANTOM = "/home/user/aegis/data/duke.stl"
+#: aegis/data/phantoms.yaml. ``AEGIS_DATA_DIR`` is AEGIS's own documented data
+#: override, so honouring it here is what lets this script run on a machine
+#: where the AEGIS checkout does not sit at the same absolute path.
+PHANTOM = str(pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data")) / "duke.stl")
 PHANTOM_MASS_KG = 72.4
 
-#: The fishnet surfaces were cut against the single precision export of the same
-#: tiles, so the semantic join runs through a centroid match. See
-#: semantic_twin/propagation/semantic_binding.py.
-FISHNET_MESH = ROOT / "data" / "geometry" / "korenmarkt" / "inhouse_leaf_130m.ply"
-FISHNET_DIR = ROOT / "outputs" / "korenmarkt_fishnet_vistas"
+#: The Mapillary Vistas entity to RF material prior. It is a property of the
+#: segmentation vocabulary rather than of any city, and it lives in this file
+#: only because Korenmarkt is where the hybrid backend ran. Every station level
+#: ``semantics.json`` in the repository carries the same 65 class vocabulary,
+#: checked label by label in build_site_semantics.py before the prior is used.
 SEMANTICS = ROOT / "data" / "panoramas" / "korenmarkt" / "semantics" / "semantics.json"
 
 #: Fused semantics from the eight registered Mapillary stations along the walk.
 WALK_SEMANTIC = ROOT / "outputs" / "walk_korenmarkt" / "walk_semantic.npz"
+
+#: Fused semantics from a site's own registered Street View stations, written by
+#: build_site_semantics.py, one file per site and per crop radius.
+SITE_SEMANTICS = ROOT / "outputs" / "site_semantics"
+
+
+def site_walk_semantics(site: str, crop_m: int) -> pathlib.Path | None:
+    """The fused station binding for one site at one crop radius, or None.
+
+    ``modal_class`` is indexed by triangle with no join key, so a binding is
+    only valid against the exact mesh it was cast against and the crop radius is
+    part of the identity of the file. Korenmarkt keeps its Mapillary built
+    130 m binding, which is what every published walk number here was measured
+    on, and falls through to its Street View binding at any other radius.
+    """
+    if site == "korenmarkt" and crop_m == 130 and WALK_SEMANTIC.exists():
+        return WALK_SEMANTIC
+    path = SITE_SEMANTICS / site / f"walk_semantic_{crop_m}m.npz"
+    return path if path.exists() else None
+
+
+def site_fishnet(site: str) -> tuple[pathlib.Path, pathlib.Path] | None:
+    """A site's fishnet directory and the single precision mesh it was cut against.
+
+    The mesh is read from the fishnet's own manifest rather than derived from
+    the crop radius of the run. ``bind`` matches each fishnet face back to a source triangle
+    index, so handing it the mesh of the run rather than the mesh of the cut
+    would join two different triangle numberings and would do it quietly. A
+    fishnet cut at 130 m is usable in a 250 m run, which is why the mismatch is
+    passed through rather than refused, but only if it is passed through
+    honestly.
+
+    ``bind`` globs ``*_fishnet.npz`` at the top of the directory it is given and
+    does not recurse, so a site whose surfaces sit one level down in a folder
+    per panorama has nothing to bind. That is worth saying out loud rather than
+    returning None for, because the two failures need opposite fixes: build the
+    surfaces, or move the ones already built.
+    """
+    directory = ROOT / "outputs" / f"{site}_fishnet_vistas"
+    if not directory.is_dir():
+        return None
+    if not any(directory.glob("*_fishnet.npz")):
+        nested = sorted({path.parent.name for path in directory.glob("*/*_fishnet.npz")})
+        if nested:
+            raise ValueError(
+                f"{directory} holds its fishnet surfaces one level down, under {len(nested)} folders "
+                f"beginning {nested[0]}, and bind() does not recurse. Write them at the top of the "
+                f"directory with the panorama in the file name."
+            )
+        return None
+    mesh = fishnet_source_mesh(directory, site)
+    return (directory, mesh) if mesh is not None and mesh.exists() else None
+
+
+def fishnet_source_mesh(directory: pathlib.Path, site: str) -> pathlib.Path | None:
+    """The mesh named by a fishnet manifest, as an absolute path.
+
+    Two manifest spellings are in use, one carrying a repository relative path
+    and one carrying a bare file name, so both are resolved against the site's
+    geometry directory when they are not already a path that exists.
+    """
+    for name in ("fishnet_manifest.json", "site_fishnet_manifest.json"):
+        manifest = directory / name
+        if not manifest.exists():
+            continue
+        named = json.loads(manifest.read_text()).get("mesh")
+        if not named:
+            continue
+        candidate = pathlib.Path(named)
+        if not candidate.is_absolute():
+            candidate = ROOT / named
+        return candidate if candidate.exists() else ROOT / "data" / "geometry" / site / pathlib.Path(named).name
+    return None
+
 
 FREQUENCY_NOTE = (
     "15 GHz is the FR3 midpoint, the band this study leads on: 3GPP FR3 as "
@@ -155,27 +255,20 @@ def site_mesh(site: str, crop_m: int = 130) -> pathlib.Path:
     raise FileNotFoundError(f"no double precision {crop_m} m mesh for {site}")
 
 
-def ground_datum(geometry: Any, *, radius_m: float = 15.0, samples: int = 4096) -> float:
-    """Median height of the surface under the centre of the crop.
+def registered_ground_z(site: str) -> float | None:
+    """Pavement height under the panorama cameras, where a registration exists.
 
-    The sites have no surveyed datum in common, and their local ENU origins sit
-    anywhere from -220 m to +2200 m, so the walkable height has to come from
-    the mesh itself. The median over a central disc is used rather than a single
-    downward ray, because a single ray at the origin lands on whatever monument
-    the square was built around.
+    Independent of the mesh statistic: it comes out of the panorama registration
+    of section 3, which solved for camera pose against the skyline. Eight of the
+    eleven sites have one. It is used as a cross check on the measured datum and
+    never as the datum itself, because three sites do not have it and a rule that
+    only works on eight sites is not a rule.
     """
-    rng = np.random.default_rng(0)
-    angle = rng.uniform(0.0, 2.0 * np.pi, samples)
-    distance = radius_m * np.sqrt(rng.random(samples))
-    xy = np.column_stack([distance * np.cos(angle), distance * np.sin(angle)])
-    probe = 1.0e4
-    origins = np.column_stack([xy, np.full(samples, probe)])
-    directions = np.tile(np.array([0.0, 0.0, -1.0]), (samples, 1))
-    hit, travel, _, _ = geometry.intersect(origins, directions)
-    heights = probe - travel[hit]
-    if heights.size == 0:
-        raise RuntimeError("no surface under the centre of the crop")
-    return float(np.median(heights))
+    path = CONFIG / f"{site}.json"
+    if not path.exists():
+        return None
+    value = json.loads(path.read_text()).get("camera_ground_z_m")
+    return None if value is None else float(value)
 
 
 def validate(rays: int = 400_000) -> dict[str, object]:
@@ -258,21 +351,55 @@ def run(
     started = time.perf_counter()
     mesh = site_mesh(site, crop_m)
     geometry = MitsubaGeometry(mesh, variant=variant)
-    datum = GROUND_DATUM_M if site == "korenmarkt" else ground_datum(geometry)
+    measured = measure_ground_datum(geometry, radius_m=walk_radius_m)
+    datum = measured.z_m
+    registered = registered_ground_z(site)
+    datum_provenance: dict[str, Any] = dict(measured.provenance)
+    datum_provenance["registered_camera_ground_z_m"] = registered
+    if registered is not None:
+        offset = datum - registered
+        datum_provenance["measured_minus_registered_m"] = offset
+        if abs(offset) > DATUM_CROSS_CHECK_M:
+            raise RuntimeError(
+                f"{site}: the measured ground datum {datum:.3f} m disagrees with the registered "
+                f"camera ground height {registered:.3f} m by {offset:+.3f} m, more than the "
+                f"{DATUM_CROSS_CHECK_M:.1f} m cross check allows"
+            )
+    print(
+        f"{site}: ground datum {datum:.3f} m from {measured.band_columns} of {measured.columns} "
+        f"columns ({100 * measured.band_fraction:.1f} %)",
+        flush=True,
+    )
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
     areas = geometry.face_areas()
     semantic_provenance: dict[str, Any] = {"materials": materials}
-    if materials in ("semantic", "walk") and site != "korenmarkt":
-        raise ValueError(f"no panorama semantics for {site}, use --materials geometric")
+    # Whether a site can be run with image evidence is a question about what is
+    # on disk for that site at that crop radius, not about which site it is. The
+    # guard this replaced named korenmarkt, which was true when korenmarkt held
+    # the only binding and became a self fulfilling prophecy once it did not.
+    walk_binding = walk_npz or site_walk_semantics(site, crop_m)
+    fishnet = site_fishnet(site)
+    if materials.startswith("walk") and walk_binding is None:
+        raise ValueError(
+            f"no fused station binding for {site} at {crop_m} m. Build one with "
+            f"`build_site_semantics.py --site {site} --crop-m {crop_m}`, which needs registered "
+            f"panoramas under data/panoramas/{site}, or run --materials geometric."
+        )
+    if materials == "semantic" and fishnet is None:
+        raise ValueError(
+            f"no fishnet surface set for {site} at {crop_m} m, so there is nothing to bind. "
+            f"Use --materials walk if the site has a fused station binding, or --materials geometric."
+        )
 
     if materials == "semantic":
-        source = MitsubaGeometry(FISHNET_MESH, variant=variant)
+        fishnet_dir, fishnet_mesh = fishnet
+        source = MitsubaGeometry(fishnet_mesh, variant=variant)
         semantic = bind(
             geometry.vertices,
             geometry.faces,
             areas,
             face_class,
-            fishnet_dir=FISHNET_DIR,
+            fishnet_dir=fishnet_dir,
             semantics_path=SEMANTICS,
             source_ply_vertices=source.vertices,
             source_ply_faces=source.faces,
@@ -304,7 +431,7 @@ def run(
         semantic = bind_from_walk(
             areas,
             face_class,
-            walk_npz=WALK_SEMANTIC if walk_npz is None else walk_npz,
+            walk_npz=walk_binding,
             semantics_path=SEMANTICS,
         )
         face_class = semantic.face_class
@@ -327,6 +454,44 @@ def run(
         )
         print(
             f"walk semantic binding: {semantic.covered_fraction_by_face:.4f} of faces, "
+            f"{semantic.covered_fraction_by_area:.4f} of area",
+            flush=True,
+        )
+    elif materials in (
+        "walk_material",
+        "walk_material_mixture",
+        "walk_material_over_entity",
+        "walk_material_facade_only",
+    ):
+        semantic = bind_from_walk_material(
+            areas,
+            face_class,
+            walk_npz=walk_binding,
+            semantics_path=SEMANTICS,
+            mixture=materials == "walk_material_mixture",
+            over_entity=materials == "walk_material_over_entity",
+            facade_only=materials == "walk_material_facade_only",
+        )
+        face_class = semantic.face_class
+        binding = load_bindings(
+            CONFIG,
+            frequency_hz,
+            class_names=semantic.class_names,
+            class_binding=semantic.class_binding,
+            class_rule=(
+                "fused multi station walk SAM 3 material posterior where any station bound "
+                "the triangle, geometric orientation rule everywhere else"
+            ),
+        )
+        semantic_provenance.update(
+            {
+                "covered_fraction_by_face": semantic.covered_fraction_by_face,
+                "covered_fraction_by_area": semantic.covered_fraction_by_area,
+                **semantic.provenance,
+            }
+        )
+        print(
+            f"walk material binding: {semantic.covered_fraction_by_face:.4f} of faces, "
             f"{semantic.covered_fraction_by_area:.4f} of area",
             flush=True,
         )
@@ -365,11 +530,8 @@ def run(
         "mesh_triangles": int(geometry.face_count),
         "crop_radius_m": crop_m,
         "ground_datum_m": datum,
-        "ground_datum_source": (
-            "config/korenmarkt.json camera_ground_z_m"
-            if site == "korenmarkt"
-            else "median downward hit over a 15 m disc at the crop centre"
-        ),
+        "ground_datum_source": datum_provenance["rule"],
+        "ground_datum": datum_provenance,
         "reference_s0_w_m2": REFERENCE_S0_W_M2,
         "trace_config": config.as_dict(),
         "surface_binding": binding.as_dict(),
@@ -509,20 +671,24 @@ COVERAGE_LADDER = (
 )
 
 
-def coverage_report(frequency_hz: float) -> pathlib.Path:
+def coverage_report(frequency_hz: float, tag_suffix: str = "") -> pathlib.Path:
     """How far does the exposure distribution move as image evidence grows?
 
     This is the experiment that says whether the material assignment matters at
     all. Everything except the material binding is held fixed, so the only
     thing varying between the three runs is the fraction of scene area whose
     material came from an image rather than from which way the triangle points.
+
+    ``tag_suffix`` reads a rerun of the same three rungs written under suffixed
+    tags, so a rerun at a different bounce budget does not overwrite the
+    published ladder and can be compared against it.
     """
     from semantic_twin.propagation.report import empirical_cdf, load_rows
 
     entries: list[dict[str, Any]] = []
     baseline: np.ndarray | None = None
     for stem, description in COVERAGE_LADDER:
-        full = f"{stem}_{frequency_hz / 1e9:g}ghz"
+        full = f"{stem}{tag_suffix}_{frequency_hz / 1e9:g}ghz"
         rows_path = OUTPUT / f"{full}_locations.jsonl"
         manifest_path = OUTPUT / f"{full}_manifest.json"
         if not rows_path.exists() or not manifest_path.exists():
@@ -532,6 +698,10 @@ def coverage_report(frequency_hz: float) -> pathlib.Path:
         values = np.array([row["chi_rooftop"] for row in rows])
         entry: dict[str, Any] = {
             "run": stem,
+            # The suffixed stem, because the figure below reloads these rows and
+            # rebuilding the name from ``run`` would silently read the published
+            # ladder while the table above described the rerun.
+            "stem": full,
             "evidence": description,
             "covered_fraction_by_area": manifest["semantic_binding"].get("covered_fraction_by_area", 0.0),
             "locations": len(rows),
@@ -573,7 +743,7 @@ def coverage_report(frequency_hz: float) -> pathlib.Path:
         "frequency_hz": frequency_hz,
         "ladder": entries,
     }
-    path = OUTPUT / f"coverage_ladder_{frequency_hz / 1e9:g}ghz.json"
+    path = OUTPUT / f"coverage_ladder{tag_suffix}_{frequency_hz / 1e9:g}ghz.json"
     path.write_text(json.dumps(summary, indent=2))
 
     if len(entries) >= 2:
@@ -584,8 +754,7 @@ def coverage_report(frequency_hz: float) -> pathlib.Path:
 
         figure, panel = plt.subplots(figsize=(5.2, 4.0))
         for entry, colour in zip(entries, ("0.55", "tab:blue", "tab:red"), strict=False):
-            full = f"{entry['run']}_{frequency_hz / 1e9:g}ghz"
-            rows = load_rows(OUTPUT / f"{full}_locations.jsonl")
+            rows = load_rows(OUTPUT / f"{entry['stem']}_locations.jsonl")
             ordered, probability = empirical_cdf(np.array([r["chi_rooftop"] for r in rows]))
             panel.step(
                 ordered,
@@ -605,7 +774,7 @@ def coverage_report(frequency_hz: float) -> pathlib.Path:
         panel.legend(fontsize=8, loc="lower right")
         panel.grid(alpha=0.25)
         figure.tight_layout()
-        figure_path = OUTPUT / f"coverage_ladder_{frequency_hz / 1e9:g}ghz.png"
+        figure_path = OUTPUT / f"coverage_ladder{tag_suffix}_{frequency_hz / 1e9:g}ghz.png"
         figure.savefig(figure_path, dpi=170)
         figure.savefig(figure_path.with_suffix(".pdf"))
         plt.close(figure)
@@ -754,8 +923,20 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--locations", type=int, default=20)
     parser.add_argument("--rays", type=int, default=200_000)
-    parser.add_argument("--max-bounces", type=int, default=6)
-    parser.add_argument("--materials", choices=("semantic", "walk", "geometric"), default="semantic")
+    parser.add_argument("--max-bounces", type=int, default=DEFAULT_MAX_BOUNCES)
+    parser.add_argument(
+        "--materials",
+        choices=(
+            "semantic",
+            "walk",
+            "walk_material",
+            "walk_material_mixture",
+            "walk_material_over_entity",
+            "walk_material_facade_only",
+            "geometric",
+        ),
+        default="semantic",
+    )
     parser.add_argument(
         "--walk-npz",
         default=None,
@@ -792,7 +973,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.coverage_report:
-        coverage_report(args.frequency_ghz * 1e9)
+        coverage_report(args.frequency_ghz * 1e9, tag_suffix=args.tag_suffix)
         return 0
 
     if args.all_sites:

@@ -14,11 +14,13 @@ import numpy as np
 import pytest
 
 from semantic_twin.propagation import (
+    DEFAULT_MAX_BOUNCES,
     ISOTROPIC,
     PEC_PERMITTIVITY,
     ROOFTOP,
     STREET_SMALL_CELL,
     TERMINATIONS,
+    BounceEvidenceTally,
     PathRecorder,
     PlaneGeometry,
     SbrTracer,
@@ -464,8 +466,20 @@ def test_specular_share_is_a_fraction() -> None:
 
 
 def test_closed_lossless_cavity_conserves_energy() -> None:
-    """Section 11.3 white furnace. Nothing escapes a closed perfect reflector."""
-    tracer = make_tracer(SphereGeometry(10.0), PEC_PERMITTIVITY, 0.0, rays=20_000, seed=4, max_bounces=8)
+    """Section 11.3 white furnace. Nothing escapes a closed perfect reflector.
+
+    Roulette is switched off rather than left at whatever the default budget
+    implies, which makes the last assertion exact instead of lucky. The stand in
+    for a perfect conductor is a permittivity of ``1 - 1e12j``, whose power
+    reflectance is 0.999997 and not 1, so the survival probability sits a few
+    parts per million below one and over 20,000 rays and several depths the
+    roulette kills a ray a few percent of the time. That is a property of the
+    random stream and not of the cavity, and a white furnace test should not be
+    able to fail on it.
+    """
+    tracer = make_tracer(
+        SphereGeometry(10.0), PEC_PERMITTIVITY, 0.0, rays=20_000, seed=4, max_bounces=8, roulette_start=99
+    )
     result = tracer.trace(np.array([0.0, 0.0, 0.0]), {"isotropic": ISOTROPIC})
     assert result.escaped_fraction == 0.0
     assert result.susceptibility["isotropic"] == 0.0
@@ -734,3 +748,100 @@ def test_recorded_terminations_agree_with_the_traced_totals() -> None:
     straight = np.count_nonzero((record.termination == sky) & (record.bounces == 0))
     assert straight / len(record) == pytest.approx(result.sky_fraction, abs=1.0e-12)
     assert np.allclose(np.linalg.norm(record.exit_direction, axis=1), 1.0)
+
+
+def test_the_bounce_budget_has_exactly_one_default() -> None:
+    """Four values used to be in circulation. The config must read the constant."""
+    assert TraceConfig().max_bounces == DEFAULT_MAX_BOUNCES
+    assert DEFAULT_MAX_BOUNCES == 3
+
+
+def test_roulette_never_fires_at_the_default_budget() -> None:
+    """Pins the relationship between the two constants, not either literal.
+
+    Roulette trades variance for work by killing weak rays so they need not be
+    intersected again. At the default budget there is no further intersection to
+    buy, so it would fire exactly once, one iteration before the hard cap drops
+    the ray anyway, and pay the 0.05 survival floor's twentyfold weight
+    inflation for nothing. BOUNCE_BUDGET.md measures that. This asserts the
+    tracer stays that way if either constant moves.
+    """
+    config = TraceConfig()
+    assert config.roulette_start > config.max_bounces
+    # The loop guard is ``depth + 1 >= roulette_start`` and the deepest depth at
+    # which an interaction is processed is ``max_bounces - 1``, so this is the
+    # condition restated against the code rather than against the comment.
+    assert (config.max_bounces - 1) + 1 < config.roulette_start
+
+
+def test_the_default_budget_kills_no_ray_by_roulette() -> None:
+    """The pin above, checked by running the estimator rather than reading it.
+
+    Inside a closed sphere no ray ever escapes, so at the default budget every
+    ray must be truncated and none may be killed by roulette. A recorder counts
+    the terminations, which is the only place the two are told apart.
+    """
+    tracer = make_tracer(SphereGeometry(10.0), CONCRETE, 0.0, rays=2_000, seed=17)
+    recorder = PathRecorder(capacity=2_000)
+    tracer.trace(np.zeros(3), MODELS, ground_z_m=-10.0, recorder=recorder)
+    record = recorder.result()
+    counts = {name: int(np.count_nonzero(record.termination == TERMINATIONS.index(name))) for name in TERMINATIONS}
+    assert counts["roulette"] == 0
+    assert counts["truncated"] == 2_000
+    assert np.all(record.bounces == TraceConfig().max_bounces)
+
+
+def test_tallying_bounce_evidence_does_not_change_a_single_number() -> None:
+    """The tally must be a passive observer, exactly as the path recorder is.
+
+    Otherwise the coverage fractions in BOUNCE_BUDGET.md would describe a
+    different trace from the one that produced the published susceptibility.
+    """
+    origin = np.array([0.0, 0.0, 1.5])
+    plain = make_tracer(PlaneGeometry(0.0), CONCRETE, 0.0, rays=20_000, seed=11, max_bounces=4)
+    watched = make_tracer(PlaneGeometry(0.0), CONCRETE, 0.0, rays=20_000, seed=11, max_bounces=4)
+    tally = BounceEvidenceTally({"all": np.array([True])}, 4)
+
+    reference = plain.trace(origin, MODELS, ground_z_m=0.0)
+    observed = watched.trace(origin, MODELS, ground_z_m=0.0, tally=tally)
+
+    for name in MODELS:
+        assert observed.susceptibility[name] == reference.susceptibility[name]
+        assert np.array_equal(observed.rho[name], reference.rho[name])
+    assert observed.sky_fraction == reference.sky_fraction
+    assert observed.mean_bounces == reference.mean_bounces
+
+
+def test_bounce_evidence_tally_scores_every_interaction_against_its_mask() -> None:
+    """A mask that covers everything gives 1, one that covers nothing gives 0.
+
+    Inside a closed sphere every ray hits at every depth, so a depth the tally
+    silently skipped shows up as a zero count rather than as a wrong fraction.
+    Roulette is switched off so that the counts are the geometry and not the
+    survival draw. The sphere carries a single triangle index, so the two masks
+    bracket the measurement exactly.
+    """
+    origin = np.array([0.0, 0.0, 0.0])
+    depth = 4
+    fractions = {}
+    for name, mask in (("seen", np.array([True])), ("unseen", np.array([False]))):
+        tracer = make_tracer(
+            SphereGeometry(10.0), CONCRETE, 0.0, rays=20_000, seed=5, max_bounces=depth, roulette_start=99
+        )
+        tally = BounceEvidenceTally({name: mask}, depth)
+        tracer.trace(origin, MODELS, ground_z_m=-10.0, tally=tally)
+        by_count, by_power = tally.fractions(name)
+        fractions[name] = (tally, by_count, by_power)
+
+    seen, seen_count, seen_power = fractions["seen"]
+    _, unseen_count, unseen_power = fractions["unseen"]
+    # A closed sphere never lets a ray escape, so every ray is still travelling
+    # at every permitted depth.
+    assert np.all(seen.hits == 20_000)
+    assert np.allclose(seen_count, 1.0)
+    assert np.allclose(seen_power, 1.0)
+    assert np.allclose(unseen_count, 0.0)
+    assert np.allclose(unseen_power, 0.0)
+    # Throughput decays by one concrete reflectance per interaction, so the
+    # power incident at each depth has to fall strictly.
+    assert np.all(np.diff(seen.throughput) < 0.0)

@@ -24,7 +24,10 @@ polarisation ratio, which nothing downstream in this study consumes.
 
 from __future__ import annotations
 
+import multiprocessing
+import os
 import time
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -32,6 +35,19 @@ import numpy as np
 
 from .directions import IlluminationModel, fibonacci_sphere, nearest_cell, sample_sphere
 
+
+#: The bounce budget of this study, and the only place it is written down.
+#: Everything that traces reads it from here rather than carrying its own
+#: default, because the four values that used to be in circulation disagreed.
+#:
+#: Three is set by where the image evidence runs out, not by a convergence
+#: threshold. The trace is adjoint, so the first surface interaction is the one
+#: that scatters energy into the observation point, and it is by construction a
+#: surface the panorama standing at that point can see. The second lands on the
+#: facades of the same enclosed square, which the same panorama set also sees.
+#: The third is the first that can plausibly land on a surface no panorama ever
+#: observed. BOUNCE_BUDGET.md measures that claim rather than asserting it.
+DEFAULT_MAX_BOUNCES = 3
 
 #: How a recorded ray stopped. ``sky`` escaped the crop, ``roulette`` was killed
 #: by Russian roulette while still carrying throughput, ``truncated`` was still
@@ -168,6 +184,87 @@ class PathRecorder:
         )
 
 
+class BounceEvidenceTally:
+    """Where each bounce lands, split by whether a panorama saw that triangle.
+
+    Each mask is a per triangle boolean on the tracer's own mesh, so no join is
+    needed: it is true where at least one registered panorama collected a
+    transient free ray on that triangle. The tally then answers one question per
+    bounce depth, which is what fraction of the energy arriving at a surface at
+    that depth arrives at a surface the image evidence actually covers.
+
+    Two weights are kept because they answer different questions. The count is
+    how often a ray lands on covered geometry. The throughput weight is how much
+    of the power that survives to that depth lands on it, and it is the one that
+    matters, because a bounce carrying a thousandth of the power is not where a
+    material error hurts. Throughput is read before the reflectance of that
+    interaction is applied, so it is the power incident on the surface.
+
+    Attaching a tally consumes no random draw and touches no accumulator, so a
+    traced result is bit identical with it and without it.
+
+    Several masks are carried at once because a trace is expensive and the
+    definition of "observed" is not unique. One trace scores all of them, so the
+    definitions are compared on identical rays rather than on separate runs.
+    """
+
+    def __init__(self, masks: dict[str, np.ndarray], max_depth: int) -> None:
+        self.names = tuple(masks)
+        self.masks = {name: np.asarray(mask, dtype=bool) for name, mask in masks.items()}
+        self.max_depth = int(max_depth)
+        self.hits = np.zeros(self.max_depth, dtype=np.int64)
+        self.throughput = np.zeros(self.max_depth)
+        self.hits_observed = {name: np.zeros(self.max_depth, dtype=np.int64) for name in self.names}
+        self.throughput_observed = {name: np.zeros(self.max_depth) for name in self.names}
+
+    def record(self, depth: int, face: np.ndarray, throughput: np.ndarray) -> None:
+        """``depth`` is zero based, so bounce number ``depth + 1``."""
+        if depth >= self.max_depth:
+            return
+        index = np.asarray(face, dtype=np.int64)
+        self.hits[depth] += int(index.size)
+        self.throughput[depth] += float(throughput.sum())
+        for name, mask in self.masks.items():
+            seen = mask[index]
+            self.hits_observed[name][depth] += int(np.count_nonzero(seen))
+            self.throughput_observed[name][depth] += float(throughput[seen].sum())
+
+    def add(self, other: BounceEvidenceTally) -> None:
+        """Pool another tally built from the same masks into this one."""
+        self.hits += other.hits
+        self.throughput += other.throughput
+        for name in self.names:
+            self.hits_observed[name] += other.hits_observed[name]
+            self.throughput_observed[name] += other.throughput_observed[name]
+
+    def fractions(self, name: str) -> tuple[np.ndarray, np.ndarray]:
+        """``(by_count, by_power)`` for one mask, NaN where nothing landed."""
+        with np.errstate(invalid="ignore", divide="ignore"):
+            by_count = np.where(self.hits > 0, self.hits_observed[name] / np.maximum(self.hits, 1), np.nan)
+            by_power = np.where(
+                self.throughput > 0.0,
+                self.throughput_observed[name] / np.maximum(self.throughput, 1e-300),
+                np.nan,
+            )
+        return by_count, by_power
+
+    def as_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "bounce": list(range(1, self.max_depth + 1)),
+            "hits": self.hits.tolist(),
+            "incident_throughput": self.throughput.tolist(),
+        }
+        for name in self.names:
+            by_count, by_power = self.fractions(name)
+            out[name] = {
+                "hits_on_observed_triangles": self.hits_observed[name].tolist(),
+                "covered_fraction_by_count": [None if np.isnan(v) else float(v) for v in by_count],
+                "incident_throughput_on_observed_triangles": self.throughput_observed[name].tolist(),
+                "covered_fraction_by_power": [None if np.isnan(v) else float(v) for v in by_power],
+            }
+        return out
+
+
 @dataclass(frozen=True)
 class TraceConfig:
     """Everything that changes the numbers, and nothing that does not."""
@@ -176,8 +273,16 @@ class TraceConfig:
     rays: int = 400_000
     local_cells: int = 512
     exit_bands: int = 18
-    max_bounces: int = 12
-    roulette_start: int = 3
+    max_bounces: int = DEFAULT_MAX_BOUNCES
+    #: One past the budget, so at the default budget roulette never fires.
+    #: Roulette trades variance for work, and at three bounces there is no work
+    #: to buy: it would kill a ray one iteration before the hard cap drops it
+    #: anyway. Measured over 40 Korenmarkt standpoints and eight seeds each, the
+    #: relative standard deviation of every chi agrees to three significant
+    #: figures with roulette on and off, and off is four percent faster.
+    #: BOUNCE_BUDGET.md carries the numbers. Roulette is unbiased whichever way
+    #: this is set, so it never was and is not now what bounds the truncation.
+    roulette_start: int = DEFAULT_MAX_BOUNCES + 1
     roulette_floor: float = 0.05
     ray_epsilon_m: float = 1.0e-3
     seed: int = 0
@@ -248,6 +353,37 @@ def specular_share(rms_height_m: np.ndarray, cos_incidence: np.ndarray, waveleng
     return np.exp(-np.minimum(g * g, 60.0))
 
 
+def _cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """``np.cross`` for stacks of 3 vectors, written out.
+
+    Term for term what ``np.cross`` evaluates, so the result is the same to the
+    last bit. What it skips is the shape negotiation ``np.cross`` does on every
+    call, which at 400k rows is most of what the call costs.
+    """
+    out = np.empty(a.shape, dtype=np.float64)
+    a0, a1, a2 = a[:, 0], a[:, 1], a[:, 2]
+    b0, b1, b2 = b[:, 0], b[:, 1], b[:, 2]
+    np.multiply(a1, b2, out=out[:, 0])
+    out[:, 0] -= a2 * b1
+    np.multiply(a2, b0, out=out[:, 1])
+    out[:, 1] -= a0 * b2
+    np.multiply(a0, b1, out=out[:, 2])
+    out[:, 2] -= a1 * b0
+    return out
+
+
+def _row_norms(a: np.ndarray) -> np.ndarray:
+    """``np.linalg.norm(a, axis=1, keepdims=True)``, in the same summation order."""
+    total = a[:, 0] * a[:, 0]
+    total = total + a[:, 1] * a[:, 1]
+    total = total + a[:, 2] * a[:, 2]
+    return np.sqrt(total)[:, None]
+
+
+_UP = np.array([[0.0, 0.0, 1.0]])
+_ACROSS = np.array([[1.0, 0.0, 0.0]])
+
+
 def _cosine_hemisphere(normals: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     """Cosine weighted directions about ``normals``."""
     count = normals.shape[0]
@@ -258,10 +394,10 @@ def _cosine_hemisphere(normals: np.ndarray, rng: np.random.Generator) -> np.ndar
     x = radius * np.cos(phi)
     y = radius * np.sin(phi)
     z = np.sqrt(np.maximum(0.0, 1.0 - u1))
-    helper = np.where(np.abs(normals[:, 2:3]) < 0.9, np.array([[0.0, 0.0, 1.0]]), np.array([[1.0, 0.0, 0.0]]))
-    tangent = np.cross(helper, normals)
-    tangent /= np.linalg.norm(tangent, axis=1, keepdims=True)
-    bitangent = np.cross(normals, tangent)
+    helper = np.where(np.abs(normals[:, 2:3]) < 0.9, _UP, _ACROSS)
+    tangent = _cross(helper, normals)
+    tangent /= _row_norms(tangent)
+    bitangent = _cross(normals, tangent)
     return x[:, None] * tangent + y[:, None] * bitangent + z[:, None] * normals
 
 
@@ -299,17 +435,19 @@ class SbrTracer:
         ground_z_m: float = 0.0,
         seed: int | None = None,
         recorder: PathRecorder | None = None,
+        tally: BounceEvidenceTally | None = None,
         gather: Any = None,
     ) -> PointResult:
         """Shoot ``rays`` from ``origin`` and reduce them to a :class:`PointResult`.
 
         ``gather``, when given, is any object exposing ``begin(origin, count)``
         and ``vertex(index, position, incoming, normal, throughput, share,
-        order, path_length, face)``. It is called once per surface interaction,
-        and it is how :mod:`semantic_twin.propagation.monostatic` reads the
-        co-located return off the same rays that produce the adjoint transfer.
-        Like ``recorder`` it draws no random number and touches no accumulator,
-        so a traced result is bit identical with one attached and without it.
+        order, path_length, face)``. It is called once per surface interaction, and it
+        is how :mod:`semantic_twin.propagation.monostatic` reads the co-located
+        return off the same rays that produce the adjoint transfer. Like
+        ``recorder`` and ``tally`` it draws no random number and touches no
+        accumulator, so a traced result is bit identical with one attached and
+        without it.
         """
         cfg = self.config
         started = time.perf_counter()
@@ -347,6 +485,7 @@ class SbrTracer:
                 exit_power,
                 totals,
                 recorder,
+                tally,
                 gather,
             )
 
@@ -400,6 +539,7 @@ class SbrTracer:
         exit_power: np.ndarray,
         totals: dict[str, float],
         recorder: PathRecorder | None = None,
+        tally: BounceEvidenceTally | None = None,
         gather: Any = None,
     ) -> None:
         cfg = self.config
@@ -418,24 +558,34 @@ class SbrTracer:
         bounces = np.zeros(count, dtype=np.int32)
         alive = np.arange(count)
 
+        # The live slice of every per ray array is read several times a bounce,
+        # by the intersector, the deposit, the reflection and whatever observer
+        # is attached. Each read used to be its own gather out of the full
+        # length array. They are gathered once here instead and the copies are
+        # shared, which is the same arithmetic on the same values in the same
+        # order.
         for depth in range(cfg.max_bounces + 1):
             if alive.size == 0:
                 break
+            live_position = position[alive]
+            live_direction = direction[alive]
+            live_throughput = throughput[alive]
+            live_bounces = bounces[alive]
             hit, distance, normal, face = self.geometry.intersect(
-                position[alive] + cfg.ray_epsilon_m * direction[alive], direction[alive]
+                live_position + cfg.ray_epsilon_m * live_direction, live_direction
             )
             escaped_local = ~hit
             if np.any(escaped_local):
                 index = alive[escaped_local]
                 self._deposit(
                     index,
-                    direction[index],
-                    throughput[index],
+                    live_direction[escaped_local],
+                    live_throughput[escaped_local],
                     cell[index],
                     path_length[index],
                     last_vertex[index],
                     np.asarray(origin, dtype=np.float64),
-                    bounces[index],
+                    live_bounces[escaped_local],
                     models,
                     normalisations,
                     rho,
@@ -444,29 +594,41 @@ class SbrTracer:
                     totals,
                 )
                 if recorder is not None:
-                    recorder.close(index, position[index], direction[index], bounces[index], "sky")
+                    recorder.close(
+                        index,
+                        live_position[escaped_local],
+                        live_direction[escaped_local],
+                        live_bounces[escaped_local],
+                        "sky",
+                    )
             alive = alive[hit]
             if alive.size == 0:
                 break
+            live_position = live_position[hit]
+            live_direction = live_direction[hit]
+            live_throughput = live_throughput[hit]
+            live_bounces = live_bounces[hit]
             if depth == cfg.max_bounces:
                 # ``max_bounces`` counts surface interactions, so the escapes of
                 # the last permitted bounce are deposited above and only the
                 # rays still travelling are dropped here.
                 totals["truncated"] += int(alive.size)
-                totals["truncated_throughput"] += float(throughput[alive].sum())
+                totals["truncated_throughput"] += float(live_throughput.sum())
                 if recorder is not None:
-                    recorder.close(alive, position[alive], direction[alive], bounces[alive], "truncated")
+                    recorder.close(alive, live_position, live_direction, live_bounces, "truncated")
                 break
             distance = distance[hit]
             normal = normal[hit]
             face = face[hit] if face is not None else None
 
-            position[alive] = position[alive] + (distance + cfg.ray_epsilon_m)[:, None] * direction[alive]
+            live_position = live_position + (distance + cfg.ray_epsilon_m)[:, None] * live_direction
+            position[alive] = live_position
             path_length[alive] += distance
-            last_vertex[alive] = position[alive]
-            bounces[alive] += 1
+            last_vertex[alive] = live_position
+            live_bounces += 1
+            bounces[alive] = live_bounces
 
-            incoming = direction[alive]
+            incoming = live_direction
             facing = np.sign(-np.einsum("ij,ij->i", incoming, normal))
             facing[facing == 0.0] = 1.0
             normal = normal * facing[:, None]
@@ -479,18 +641,22 @@ class SbrTracer:
             reflectance = fresnel_power_reflectance(cos_i, self.permittivity[klass])
             share = specular_share(self.rms_height_m[klass], cos_i, self.wavelength_m)
 
-            throughput[alive] *= reflectance
+            if tally is not None and face is not None:
+                tally.record(depth, face, live_throughput)
+
+            live_throughput = live_throughput * reflectance
+            throughput[alive] = live_throughput
             if recorder is not None:
-                recorder.advance(alive, position[alive], throughput[alive], klass)
+                recorder.advance(alive, live_position, live_throughput, klass)
             if gather is not None:
                 gather.vertex(
                     alive,
-                    position[alive],
+                    live_position,
                     incoming,
                     normal,
-                    throughput[alive],
+                    live_throughput,
                     share,
-                    bounces[alive],
+                    live_bounces,
                     path_length[alive],
                     face,
                 )
@@ -498,16 +664,18 @@ class SbrTracer:
             mirror = incoming - 2.0 * np.einsum("ij,ij->i", incoming, normal)[:, None] * normal
             diffuse = _cosine_hemisphere(normal, rng)
             new_direction = np.where(take_specular[:, None], mirror, diffuse)
-            new_direction /= np.linalg.norm(new_direction, axis=1, keepdims=True)
+            new_direction /= _row_norms(new_direction)
             direction[alive] = new_direction
 
             if depth + 1 >= cfg.roulette_start:
-                survive_probability = np.clip(throughput[alive], cfg.roulette_floor, 1.0)
+                survive_probability = np.clip(live_throughput, cfg.roulette_floor, 1.0)
                 survive = rng.random(alive.size) < survive_probability
-                throughput[alive] /= survive_probability
+                throughput[alive] = live_throughput / survive_probability
                 if recorder is not None:
                     killed = alive[~survive]
-                    recorder.close(killed, position[killed], direction[killed], bounces[killed], "roulette")
+                    recorder.close(
+                        killed, position[killed], new_direction[~survive], live_bounces[~survive], "roulette"
+                    )
                 alive = alive[survive]
 
     def _deposit(
@@ -547,3 +715,90 @@ class SbrTracer:
         totals["delay_sum"] += float(np.sum(throughput * excess))
         totals["delay_weight"] += float(np.sum(throughput))
         totals["zero_bounce"] += int(np.count_nonzero(zero_bounce))
+
+
+#: One observation point of a sweep: where to stand, the pavement height under
+#: it, and the seed that fixes every random draw made there.
+Standpoint = tuple[np.ndarray, float, int]
+
+#: Environment variables that make a worker process single threaded. Set in the
+#: parent immediately before the pool is created, so the children inherit them
+#: and the parent's own already loaded BLAS is left alone.
+_SINGLE_THREAD_ENV = (
+    "OPENBLAS_NUM_THREADS",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
+
+_WORKER: dict[str, Any] = {}
+
+
+def _worker_setup(tracer: SbrTracer, models: dict[str, IlluminationModel]) -> None:
+    _WORKER["tracer"] = tracer
+    _WORKER["models"] = models
+    try:
+        import drjit as dr
+
+        dr.set_thread_count(1)
+    except Exception:  # pragma: no cover - drjit is absent for the analytic geometries
+        pass
+
+
+def _worker_trace(item: tuple[int, np.ndarray, float, int]) -> tuple[int, PointResult]:
+    row, origin, ground_z_m, seed = item
+    result = _WORKER["tracer"].trace(origin, _WORKER["models"], ground_z_m=ground_z_m, seed=seed)
+    return row, result
+
+
+def trace_standpoints(
+    tracer: SbrTracer,
+    standpoints: Sequence[Standpoint],
+    models: dict[str, IlluminationModel],
+    *,
+    workers: int | None = None,
+) -> Iterator[tuple[int, PointResult]]:
+    """Trace a sweep of observation points, yielding ``(row, result)`` in order.
+
+    Standpoints do not talk to each other. Each one opens its own generator on
+    its own seed, reads a scene nothing writes to, and reduces to its own
+    counters, so which process runs which point cannot reach the numbers. That
+    is the whole argument for running them at once, and it is why the results
+    are the results of the serial loop bit for bit rather than to a tolerance.
+    The test suite checks that against a real mesh rather than asserting it.
+
+    Ordering is preserved, so a caller can keep streaming its rows to disk in
+    sweep order and stay restartable. Each worker is made single threaded,
+    because the estimator's own BLAS and Dr.Jit threading fight a process pool
+    for the same cores and lose.
+
+    ``workers`` of one, or a sweep of one point, runs in this process and starts
+    no pool at all.
+    """
+    points = list(standpoints)
+    count = os.cpu_count() or 1 if workers is None else int(workers)
+    count = max(1, min(count, len(points)))
+    if count == 1:
+        for row, (origin, ground_z_m, seed) in enumerate(points):
+            yield row, tracer.trace(origin, models, ground_z_m=ground_z_m, seed=seed)
+        return
+
+    items = [(row, origin, ground_z_m, seed) for row, (origin, ground_z_m, seed) in enumerate(points)]
+    context = multiprocessing.get_context("spawn")
+    saved = {name: os.environ.get(name) for name in _SINGLE_THREAD_ENV}
+    for name in _SINGLE_THREAD_ENV:
+        os.environ[name] = "1"
+    try:
+        pool = context.Pool(count, initializer=_worker_setup, initargs=(tracer, models))
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+    try:
+        yield from pool.imap(_worker_trace, items, chunksize=1)
+    finally:
+        pool.terminate()
+        pool.join()
