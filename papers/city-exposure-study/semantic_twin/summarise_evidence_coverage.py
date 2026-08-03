@@ -341,7 +341,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--into",
         type=pathlib.Path,
-        default=SCRIPT_DIR / "COVERAGE.md",
+        default=SCRIPT_DIR / "docs" / "COVERAGE.md",
         help="markdown file whose COVERAGE_TABLE marker holds the generated table",
     )
     parser.add_argument("--no-write", action="store_true", help="print the table and touch nothing")

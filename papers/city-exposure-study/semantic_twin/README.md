@@ -64,21 +64,26 @@ band law of 2026-08-02 is the one the current results use.
 
 ## Reading order
 
-- `PAPER_METHODS.md` is the method and results writeup, and it is where the
-  eleven site table and its caveats live. Start here if you want the numbers.
-- `DECISIONS.md` is the running record of every call and the measurement behind
+The notes below all live in `docs/`, which has its own index sorting them by
+kind and saying which ones are current.
+
+- `docs/SPINE.md` is the argument and the current numbers. Start here.
+- `docs/PAPER_METHODS.md` is the older method and results writeup, and it is
+  where the eleven site table and its caveats live. Its own first lines now
+  defer to `SPINE.md`, so read it for the derivations rather than the numbers.
+- `docs/DECISIONS.md` is the running record of every call and the measurement behind
   it. Start here if you want to know why anything is the way it is. It is a log,
   so it carries superseded numbers on purpose, labelled where they are
   superseded.
-- `ROADMAP.md` is the phase plan with current status against it.
-- `DESIGN.md` covers the pipeline architecture.
-- `FISHNET.md` covers the geometry cutter that replaced the quadtree.
-- `MONOSTATIC_SBR.md` is the propagation formulation the surface elements feed.
-- `ROUGHNESS.md` and `config/surface_roughness.json` grade the roughness prior by
+- `docs/ROADMAP.md` is the phase plan with current status against it.
+- `docs/DESIGN.md` covers the pipeline architecture.
+- `docs/FISHNET.md` covers the geometry cutter that replaced the quadtree.
+- `docs/MONOSTATIC_SBR.md` is the propagation formulation the surface elements feed.
+- `docs/ROUGHNESS.md` and `config/surface_roughness.json` grade the roughness prior by
   provenance, since much of what the literature reports as a measured roughness
   is a radio fit wearing a metrology citation.
-- `PRIOR_ART.md` is a hostile review of what the published work already owns.
-- `METHOD.tex` is the explanatory writeup of the co-located transmitter argument
+- `docs/PRIOR_ART.md` is a hostile review of what the published work already owns.
+- `docs/METHOD.tex` is the explanatory writeup of the co-located transmitter argument
   and where it stops applying.
 - `FIGURES/README.md` says what each numbered figure shows and which script
   regenerates it.
@@ -100,7 +105,7 @@ python run_exposure.py --site korenmarkt --crop-m 250 --locations 80 \
 ```
 
 That run takes minutes on a quiet machine and much longer on a busy one. To send
-it to the rented 8 core box instead, see `REMOTE_COMPUTE.md`:
+it to the rented 8 core box instead, see `docs/REMOTE_COMPUTE.md`:
 
 ```bash
 JOB=$(tools/blgpu.sh run --sync "python run_exposure.py --all-sites --locations 80")
@@ -123,7 +128,7 @@ built, validated against closed forms and run: eleven squares at a 250 m crop,
 `city250_L3_*`. Earlier tags for the same eleven squares are kept beside it and
 are not the headline. `city250_corrected_*` is the same sweep at four bounces on
 a ground datum that put the Krakow and Toulouse walks on a roof, and
-`AGGREGATE_REBUILD.md` audits the difference.
+`docs/AGGREGATE_REBUILD.md` audits the difference.
 
 Three things about those numbers should be read before the numbers themselves.
 
@@ -157,6 +162,6 @@ squares.
 A second correction lands on 2026-08-03 and is independent of the first. The
 ground datum estimator took the median downward first hit at the crop centre,
 which at Krakow and Toulouse is a building, so those two walks ran 18.19 and
-13.94 m up on the Cloth Hall and the Capitole. `GROUND_DATUM.md` carries the
-replacement and `AGGREGATE_REBUILD.md` the requalified sweep. Anything quoting
+13.94 m up on the Cloth Hall and the Capitole. `docs/GROUND_DATUM.md` carries the
+replacement and `docs/AGGREGATE_REBUILD.md` the requalified sweep. Anything quoting
 Krakow or Toulouse from before that date is a roof.
