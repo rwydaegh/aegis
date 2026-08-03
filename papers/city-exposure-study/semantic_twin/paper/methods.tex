@@ -186,19 +186,43 @@ metrology on the corresponding material.
 An optional path replaces the geometric class with one read from street level
 photographs. Panoramas are segmented, registered to the mesh by matching the
 skyline they see against the skyline the mesh casts, and their labels are
-projected onto the triangles each panorama can see. The registration and
-projection are described in the supplementary information. The comparison
-between the geometric and the image derived assignment is a result rather than a
-part of the method, so it is reported separately.
+projected onto the triangles each panorama can see. Two models are used and they
+answer different questions. A semantic segmentation network trained on street
+scenes names the object, which separates a building from a tree from a road
+surface but has one class for every facade regardless of what it is made of. A
+promptable segmentation model is then asked for the material within those facade
+regions, which is the axis the first model cannot resolve \cite{sam}. The
+registration and projection are described in the supplementary information.
+
+Imagery comes from two providers and the split matters when reading coverage.
+Sites represented by a single panorama use one provider's official captures,
+while the multi-station route at the reference site comes from a second,
+community sourced provider, which is the only set carrying the material axis.
+The comparison between the geometric and the image derived assignment is a
+result rather than part of the method, so it is reported separately.
 
 \subsection{Standpoints}
 
-Exposure is not evaluated at one point. Each site contributes 80 standpoints
-spread along the walkable street network of the square, each at head height
-above the local pavement, and results are reported as a distribution over those
-standpoints rather than as a single value. The spread within one square is
-comparable to the spread between squares, so reporting a single point would hide
-most of the variation.
+Exposure is not evaluated at one point. Each site contributes 80 standpoints and
+results are reported as a distribution over them rather than as a single value,
+because the spread within one square is comparable to the spread between
+squares, so a single point would hide most of the variation.
+
+Where a person can stand is decided from the mesh and not from a map. A grid of
+columns at 3\,m spacing is laid over the crop, a ray is dropped down each one,
+and the column is kept when it lands on a near horizontal face at the square's
+ground level with enough clearance that a head at that position is not inside a
+wall or a stall. Kept columns are then chained by nearest neighbour, which fixes
+an order for plotting and for the step statistics but has no effect on any
+exposure value, since each standpoint is traced independently. No street
+centreline, footway polygon or other map layer is used, so the sampling does not
+inherit whatever a mapping provider decided a street is.
+
+This set of standpoints is distinct from the route the photographs were captured
+along, and the two should not be confused. The capture route is wherever the
+imagery provider drove or walked, and it determines what the panoramas see. The
+standpoints are where exposure is evaluated. They overlap but are neither equal
+nor derived from one another.
 
 \section{Illumination model}
 \label{sec:illum}
@@ -606,6 +630,10 @@ J.~Arvo and D.~Kirk, ``Particle transport and image synthesis,'' in
 \bibitem{aegis}
 R.~Wydaeghe, ``AEGIS: absorbed power density on human bodies in wireless
 environments,'' software, 2026.
+
+\bibitem{sam}
+A.~Kirillov \emph{et al.}, ``Segment anything,'' in \emph{Proc. IEEE/CVF Int.
+Conf. Comput. Vis.}, 2023, pp. 4015--4026.
 
 \bibitem{itis}
 P.~A.~Hasgall \emph{et al.}, ``IT'IS database for thermal and electromagnetic
