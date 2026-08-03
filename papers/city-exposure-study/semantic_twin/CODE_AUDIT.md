@@ -5,7 +5,7 @@ around it, run on 2026-08-02 against the working tree of
 `feature/coherent-exposure-studio`. Written to be read alongside
 `PAPER_METHODS.md` section 8, whose validation set it extends.
 
-Three findings, in order.
+Four findings, in order.
 
 **The estimator is correct.** Every part of the physics that could be checked
 against an exact answer was checked against one and agrees to a part in a
@@ -28,6 +28,12 @@ eleven city figure is at 4, the evidence ladder is at 6, the class default is 12
 and the CLI default is 6. The numerical cost is negligible and the documentary
 problem is not.
 
+**One outright bug, in code too new to have published anything.** The antenna
+module's `LoadedBeam` averaged the array factor over the served user on the
+midpoint rule's weights and the trapezoid rule's nodes, which is first order
+rather than second and was 29 percent wrong at the node counts it shipped with.
+Its own test caught it. Section 11.
+
 Everything else found is small, and is listed in section 6.
 
 ---
@@ -36,17 +42,29 @@ Everything else found is small, and is listed in section 6.
 
 | check | before | after |
 |---|---|---|
-| `pytest tests/ -q` | 739 passed, 1 skipped, 110 s | 897 passed, 7 failed, 3 skipped, 663 s |
+| `pytest tests/ -q` | 739 passed, 1 skipped, 110 s | 975 passed, 2 skipped, 388 s |
 | `ruff check .` | all checks passed | all checks passed |
+| `ruff format --check .` | 10 files would be reformatted | 167 files already formatted |
 
-The one skip at the start is `test_infer_unidepth.py`, which needs a model
-checkpoint that is not on this box. No test was failing at the start, none was
-weakened, and the 158 tests that appeared in between are other agents' work, not
-mine.
+The tree ends green. One of the two skips is `test_infer_unidepth.py`, which
+needs a model checkpoint that is not on this box. No test was failing at the
+start, eleven failed at one point or another in between, none is failing at the
+end, and not one of them was made to pass by weakening what it asserts. The 236
+tests that appeared in between are other agents' work.
 
-The seven failures in the middle of the night were a real regression and none of
-them was mine. All seven were in `tests/test_propagation_viz.py` and all seven
-read
+Two warnings about that number. Other agents were still writing when it was
+taken, so it is a reading of a moving tree rather than a fixed one, and one file
+was caught mid write during an earlier pass, which produced a failure that
+cleared on its own once the write finished. And `ruff format` had to be run over
+the whole directory to get the third row, touching 11 files that other agents
+own. Formatting cannot change behaviour and the suite was re-run after it, but
+anything committed after this will need the sweep repeating.
+
+Of the eleven, seven were one regression in the Blender stage and four were in
+the new antenna module. The antenna four are section 11, and two of them were
+real bugs.
+
+The seven were in `tests/test_propagation_viz.py` and all seven read
 `ModuleNotFoundError: No module named 'mathutils'` at
 `propagation_blender.py:57`:
 
@@ -94,6 +112,12 @@ Four modules appeared or grew mid audit and are **not covered**: `antenna.py`
 `material_posterior.py` (159), plus growth in `walk.py` (175 to 340 lines) and
 `semantic_binding.py` (352 to 509, gaining a `bind_from_walk_material` entry
 point that `run_exposure.py` already imports).
+
+`antenna.py` is the partial exception. It is not audited, but the three of its
+tests that were failing were taken to root cause, which is section 11, so the
+`PlanarArray` beamwidth, the `source_frame_angles` seam and the whole of
+`LoadedBeam`'s user quadrature have been looked at properly. Nothing else in it
+has.
 
 The estimator core did not stay still either. `tracer.py` grew from 21.8 to
 34.4 kB and `directions.py` from 15.0 to 21.3 kB after the measurements in
@@ -703,6 +727,23 @@ out:
 - `blgpu_backup/` and `propagation_previews/` are untracked directories that
   look like working artefacts rather than deliverables.
 
+Re-read at the end of the night, after other agents had been committing for
+several hours, most of that had cleared. `run_substreet_ablation.py` is in.
+The geometry split has got worse rather than better: 23 meshes at 195 MB are
+tracked and 17 at 342 MB are not, so the untracked half is now the larger one.
+Seven files are still untracked and every one of them is somebody's work in
+progress rather than an oversight:
+
+    build_site_fishnets.py            semantic_twin/propagation/antenna.py
+    crop_fused_semantics.py           semantic_twin/propagation/sionna_check.py
+    FIGURES/make_bounce_budget_figure.py
+    tests/test_antenna.py             tests/test_sionna_check.py
+
+The two that would matter if the night ended here are `antenna.py` with its
+paired test file, because they carry the `LoadedBeam` fix of section 11, and
+`sionna_check.py` with its own, because an external cross validation that is not
+in the repository is not evidence. Both belong to agents that were still running.
+
 ---
 
 ## 10. What was changed, and what was not
@@ -713,9 +754,9 @@ out:
   sections 2 and 3, plus the definition pin of section 6.1.
 - `CODE_AUDIT.md`, this file.
 
-**Five edits to files other agents wrote tonight, four of them to get the tree
-green and one because a test caught a real bug.** Each is the narrowest thing
-that fixes the named cause.
+**Seven edits to files other agents wrote tonight, all of them to get the tree
+green or ruff clean, and two of them because a test caught a real bug.** Each is
+the narrowest thing that fixes the named cause.
 
 - `propagation_blender.py`, moved `import mathutils` off the module level into
   the two functions that use it. Section 1. Restores an invariant that file's
@@ -726,7 +767,11 @@ that fixes the named cause.
   parser and the ray classifier raised on its first call. Ruff F821, twice.
 - `semantic_twin/propagation/antenna.py`, `LoadedBeam._user_draw`, changed the
   azimuth nodes from `linspace(-half, half, n)` to the centres of `n` equal
-  bins. Section 11. This is the one real bug of the night.
+  bins. Section 11.4. This is the real bug of the night.
+- `semantic_twin/propagation/antenna.py`, `steering_artefact`, guarded the
+  weighted quantile against an empty sub population. Section 11.5.
+- `ruff format` over the directory, 12 files, none of them mine and none of
+  them changed in behaviour.
 - `bound_diffraction.py`, removed an unused `import math`. Ruff F401.
 - `FIGURES/make_diffraction_bound_figure.py`, dropped an unused `manifest`
   binding, keeping the read so the existence check it was doing survives. Ruff
@@ -861,3 +906,21 @@ with an eightfold refinement to 5 percent over a 1 to 60 degree sweep, for both
 site populations and for the isotropic limit. The corrected rule delivers 1.3
 percent worst case for rooftop and 3.4 percent for street, so the bar is six
 times inside the error the old rule carried and could not let it back through.
+
+### 11.5 `steering_artefact` crashed on the scene it is measured against
+
+`quantile` inside `steering_artefact` takes the deposit weighted quantile of the
+per ray offset over the bounced rays only, `mask=~direct`. In a scene with no
+surfaces every ray is direct, that sub population is empty, `weight.sum()` is
+zero and `np.interp` raises `ValueError: array of sample points is empty` on an
+empty abscissa. The function two lines below already guards the identical case,
+`if np.any(~direct) else float("nan")`, so the pattern was established and these
+two calls simply did not use it.
+
+The scene it crashes on is not an odd corner. It is the free space reference
+that `test_a_scene_with_no_surfaces_has_no_artefact_at_all` uses to establish
+that the measurement reads exactly zero before any of its other numbers mean
+anything. The guard returns 0.0 rather than nan, because with no bounced ray
+there is no offset, which is the number the test asks for and the thing the
+whole statistic measures the size of. `direct_measure` is 1 in exactly that
+situation, so nothing is concealed by it.
