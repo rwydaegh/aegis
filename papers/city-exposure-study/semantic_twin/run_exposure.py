@@ -81,9 +81,11 @@ def _escape_config(
         models=tuple(MODELS),
         estimator="escape",
         next_event=None,
-        walk="grid",
+        walk=options.pop("walk", "grid"),
+        walk_path=options.pop("walk_path", "links"),
         walk_radius_m=options.pop("walk_radius_m"),
         walk_spacing_m=options.pop("walk_spacing_m"),
+        walk_stride_m=options.pop("walk_stride_m", 6.0),
         locations=locations,
         frequency_hz=frequency_hz,
         max_bounces=options.pop("max_bounces"),
@@ -214,6 +216,9 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--tag", default="korenmarkt")
     parser.add_argument("--walk-radius-m", type=float, default=90.0)
     parser.add_argument("--walk-spacing-m", type=float, default=3.0)
+    parser.add_argument("--walk", choices=("grid", "route"), default="grid")
+    parser.add_argument("--walk-path", choices=("links", "street", "closest"), default="links")
+    parser.add_argument("--walk-stride-m", type=float, default=6.0)
     parser.add_argument("--site", default="korenmarkt")
     parser.add_argument("--crop-m", type=int, default=250)
     parser.add_argument(
@@ -269,6 +274,9 @@ def main(argv: list[str] | None = None) -> int:
             local_cells=args.local_cells,
             walk_radius_m=args.walk_radius_m,
             walk_spacing_m=args.walk_spacing_m,
+            walk=args.walk,
+            walk_path=args.walk_path,
+            walk_stride_m=args.walk_stride_m,
             max_bounces=args.max_bounces,
             sites=tuple(args.ladder_sites.split(",")) if args.ladder_sites else SITES,
             crop_m=args.crop_m,
@@ -286,6 +294,9 @@ def main(argv: list[str] | None = None) -> int:
             local_cells=args.local_cells,
             walk_radius_m=args.walk_radius_m,
             walk_spacing_m=args.walk_spacing_m,
+            walk=args.walk,
+            walk_path=args.walk_path,
+            walk_stride_m=args.walk_stride_m,
             max_bounces=args.max_bounces,
             crop_m=args.crop_m,
             tag_suffix=args.tag_suffix,
@@ -312,6 +323,9 @@ def main(argv: list[str] | None = None) -> int:
             local_cells=args.local_cells,
             walk_radius_m=args.walk_radius_m,
             walk_spacing_m=args.walk_spacing_m,
+            walk=args.walk,
+            walk_path=args.walk_path,
+            walk_stride_m=args.walk_stride_m,
             max_bounces=args.max_bounces,
             materials=args.materials,
             site=args.site,

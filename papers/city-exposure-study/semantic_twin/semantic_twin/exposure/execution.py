@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import pathlib
 import platform
 import time
@@ -59,6 +60,7 @@ class StudyEnvironment:
     bind_walk_materials: Callable[..., Any]
     load_table: Callable[..., Any]
     build_walk: Callable[..., Any]
+    site_walk: Callable[..., Any]
     measure_ground_datum: Callable[..., Any]
     stratified_subset: Callable[..., np.ndarray]
     trace_config_type: Any
@@ -160,11 +162,10 @@ def _validate_run(run: RunConfig, available_models: Mapping[str, Any]) -> None:
         "law": (run.law, "band"),
         "estimator": (run.estimator, "escape"),
         "next_event": (run.next_event, None),
-        "walk": (run.walk, "grid"),
     }
     unsupported = [f"{name}={actual!r}" for name, (actual, expected) in required.items() if actual != expected]
     if unsupported:
-        raise ValueError(f"exposure executor requires band/escape/grid configuration; got {', '.join(unsupported)}")
+        raise ValueError(f"exposure executor requires band/escape configuration; got {', '.join(unsupported)}")
     unknown = [name for name in run.models if name not in available_models]
     if unknown:
         raise ValueError(f"unknown illumination models: {', '.join(unknown)}")
@@ -334,6 +335,19 @@ def _bound_material(
 
 
 def _build_walk(run: RunConfig, replay: LegacyReplay, scene: PreparedScene, environment: StudyEnvironment) -> Any:
+    if run.walk == "route":
+        walk, _provenance = environment.site_walk(
+            scene.geometry,
+            run.site,
+            stride_m=run.walk_stride_m,
+            head_height_m=run.head_height_m,
+            path=run.walk_path,
+            crop_m=run.crop_m,
+            ground_datum_m=scene.datum,
+            radius_m=run.walk_radius_m,
+            seed=run.seed,
+        )
+        return walk
     options = {} if replay.walk_probe_z_m is None else {"probe_z_m": replay.walk_probe_z_m}
     return environment.build_walk(
         scene.geometry,
@@ -372,6 +386,7 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
         "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "site": run.site,
         "mesh": str(scene.mesh),
+        "mesh_sha256": _file_sha256(scene.mesh),
         "mesh_triangles": int(scene.geometry.face_count),
         "crop_radius_m": run.crop_m,
         "ground_datum_m": scene.datum,
@@ -380,14 +395,17 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
         "reference_s0_w_m2": environment.reference_s0_w_m2,
         "trace_config": prepared.trace_config.as_dict(),
         "surface_binding": material.table.as_dict(),
-        "semantic_binding": material.provenance,
+        "semantic_binding": {
+            **material.provenance,
+            "face_class_sha256": _array_sha256(material.face_class),
+        },
         "class_area_fractions": {
             name: float(scene.areas[material.face_class == i].sum() / scene.areas.sum())
             for i, name in enumerate(material.table.class_names)
         },
         "frequency_note": environment.frequency_note,
         "crop_bound_note": environment.crop_bound_note,
-        "walk": prepared.walk.provenance,
+        "walk": _walk_provenance(run, prepared.walk),
         "locations_requested": run.locations,
         "locations_traced": int(prepared.picks.size),
         "illumination_models": {
@@ -411,6 +429,13 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
     }
 
 
+def _walk_provenance(run: RunConfig, walk: Any) -> dict[str, Any]:
+    """Give an all-location route the same explicit candidate count as a grid."""
+    if run.walk == "grid":
+        return walk.provenance
+    return {**walk.provenance, "candidates_after_clearance": len(walk)}
+
+
 def _transport_provenance(run: RunConfig) -> dict[str, Any]:
     """Record the numerical transport implementation separately from geometry."""
     provenance: dict[str, Any] = {"kernel": run.transport_kernel}
@@ -426,6 +451,25 @@ def _transport_provenance(run: RunConfig) -> dict[str, Any]:
             }
         )
     return provenance
+
+
+def _array_sha256(array: np.ndarray) -> str:
+    """Hash an array's exact type, shape, and bytes for payload matching."""
+    value = np.ascontiguousarray(array)
+    digest = hashlib.sha256()
+    digest.update(value.dtype.str.encode())
+    digest.update(str(value.shape).encode())
+    digest.update(value.tobytes())
+    return digest.hexdigest()
+
+
+def _file_sha256(path: pathlib.Path) -> str:
+    """Hash the exact bytes from which the production geometry was loaded."""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _distribution_version(name: str) -> str:

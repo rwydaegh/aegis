@@ -68,7 +68,7 @@ from semantic_twin.transport.tracer import (
     trace_standpoints,
 )
 from semantic_twin.runconfig import RunConfig
-from semantic_twin.walk import build_walk, ground_datum, measure_ground_datum, stratified_subset
+from semantic_twin.walk import build_walk, ground_datum, measure_ground_datum, site_walk, stratified_subset
 
 #: ``ground_datum`` lives beside the walk it feeds, in ``semantic_twin.walk``.
 #: It is re-exported because the ablation and
@@ -295,6 +295,7 @@ def _execution_environment() -> StudyEnvironment:
         bind_walk_materials=bind_walk_materials,
         load_table=load_table,
         build_walk=build_walk,
+        site_walk=site_walk,
         measure_ground_datum=measure_ground_datum,
         stratified_subset=stratified_subset,
         trace_config_type=TraceConfig,

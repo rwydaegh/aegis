@@ -388,7 +388,7 @@ def test_the_escape_driver_defaults_match_the_run_config():
     driver["frequency_hz"] = driver.pop("frequency_ghz") * 1e9
     config = RunConfig(site="korenmarkt")
 
-    shared = {name for name in driver if hasattr(config, name)} - {"site", "tag"}
+    shared = {name for name in driver if hasattr(config, name)} - {"site", "tag", "walk"}
     assert {"rays", "seed", "variant", "walk_radius_m", "walk_spacing_m", "walk_npz"} <= shared
 
     for name in sorted(shared):
@@ -396,6 +396,10 @@ def test_the_escape_driver_defaults_match_the_run_config():
         if isinstance(shipped, str) and shipped.isupper():
             shipped = package_constant(shipped)
         assert getattr(config, name) == shipped, name
+
+    #: Escape keeps its published grid default. The generic RunConfig default
+    #: serves the next-event driver and therefore names the route.
+    assert driver["walk"] == "grid"
 
     #: The bounce budget agrees above by way of the tracer's own constant, which the
     #: driver reads rather than retypes. Worth stating, since it is the one default

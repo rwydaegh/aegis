@@ -9,16 +9,19 @@ import pytest
 import run_exposure
 from semantic_twin.exposure.execution import (
     ExecutionConfig,
+    LegacyReplay,
     MaterialBinding,
     OutputFiles,
     PreparedRun,
     PreparedScene,
     _build_walk,
     _manifest,
+    _prepare_scene,
     _transport_provenance,
     _trace_config,
     _trace_rows,
     _validate_run,
+    _walk_provenance,
     execute,
 )
 from semantic_twin.exposure.sweeps import LadderSweepConfig, SweepEnvironment, run_coverage_ladder
@@ -69,6 +72,58 @@ def test_the_legacy_driver_builds_the_live_run_config_without_changing_its_defau
     assert execution == ExecutionConfig()
 
 
+def test_route_flags_reach_the_single_run(monkeypatch):
+    captured = {}
+
+    def run(locations, rays, frequency_hz, **options):
+        captured.update(locations=locations, rays=rays, frequency_hz=frequency_hz, **options)
+
+    monkeypatch.setattr(run_exposure, "run", run)
+
+    assert (
+        run_exposure.main(
+            [
+                "--walk",
+                "route",
+                "--walk-path",
+                "links",
+                "--walk-stride-m",
+                "6",
+                "--locations",
+                "0",
+            ]
+        )
+        == 0
+    )
+    assert captured["walk"] == "route"
+    assert captured["walk_path"] == "links"
+    assert captured["walk_stride_m"] == 6.0
+    assert captured["locations"] == 0
+
+
+@pytest.mark.parametrize(
+    ("mode", "target"), [("--all-sites", "run_all_sites"), ("--coverage-ladder", "run_coverage_ladder")]
+)
+def test_route_flags_reach_the_sweep_drivers(monkeypatch, mode, target):
+    captured = {}
+
+    def run(locations, rays, frequency_hz, **options):
+        captured.update(locations=locations, rays=rays, frequency_hz=frequency_hz, **options)
+
+    monkeypatch.setattr(run_exposure, target, run)
+
+    assert (
+        run_exposure.main(
+            [mode, "--walk", "route", "--walk-path", "street", "--walk-stride-m", "4", "--locations", "5"]
+        )
+        == 0
+    )
+    assert captured["walk"] == "route"
+    assert captured["walk_path"] == "street"
+    assert captured["walk_stride_m"] == 4.0
+    assert captured["locations"] == 5
+
+
 def test_explicit_none_keeps_the_legacy_tracer_default_at_a_larger_bounce_budget():
     options = {
         "variant": "llvm_ad_rgb",
@@ -91,7 +146,7 @@ def test_explicit_none_keeps_the_legacy_tracer_default_at_a_larger_bounce_budget
 @pytest.mark.parametrize(
     ("config", "message"),
     [
-        (RunConfig(site="korenmarkt"), "band/escape/grid"),
+        (RunConfig(site="korenmarkt"), "band/escape"),
         (escape_config(models=("isotropic",)), "requires the rooftop model"),
         (escape_config(models=("rooftop", "invented")), "unknown illumination models: invented"),
     ],
@@ -138,9 +193,10 @@ def test_device_executor_rejects_invalid_execution_before_it_creates_output(tmp_
 
 
 @pytest.mark.parametrize("models", [("rooftop",), ("isotropic", "rooftop")])
-def test_executor_accepts_supported_model_subsets(models):
+@pytest.mark.parametrize("walk", ["grid", "route"])
+def test_executor_accepts_supported_model_subsets(models, walk):
     available = {"isotropic": object(), "rooftop": object(), "street_small_cell": object()}
-    _validate_run(escape_config(models=models), available)
+    _validate_run(escape_config(models=models, walk=walk), available)
 
 
 def test_every_trace_field_in_run_config_reaches_the_tracer():
@@ -195,6 +251,110 @@ def test_head_height_in_run_config_reaches_walk_construction():
         "head_height_m": 1.72,
         "seed": 7,
     }
+
+
+def test_route_walk_uses_the_typed_site_builder_and_keeps_its_order():
+    points = np.array([[3.0, 0.0, 1.5], [1.0, 0.0, 1.5], [2.0, 0.0, 1.5]])
+    walk = SimpleNamespace(points=points, provenance={"stations": ["c", "a", "b"]})
+    received = {}
+
+    def site_walk(geometry, site, **options):
+        received.update(geometry=geometry, site=site, **options)
+        return walk, walk.provenance
+
+    run = escape_config(
+        walk="route",
+        walk_path="links",
+        walk_stride_m=6.0,
+        walk_radius_m=75.0,
+        head_height_m=1.7,
+        crop_m=250,
+        seed=19,
+    )
+    scene = SimpleNamespace(geometry=object(), datum=5.0)
+    built = _build_walk(
+        run,
+        SimpleNamespace(walk_probe_z_m=None),
+        scene,
+        SimpleNamespace(site_walk=site_walk, build_walk=lambda *_args, **_kwargs: pytest.fail("grid builder used")),
+    )
+
+    assert built is walk
+    assert np.array_equal(built.points, points)
+    assert received == {
+        "geometry": scene.geometry,
+        "site": "korenmarkt",
+        "stride_m": 6.0,
+        "head_height_m": 1.7,
+        "path": "links",
+        "crop_m": 250,
+        "ground_datum_m": 5.0,
+        "radius_m": 75.0,
+        "seed": 19,
+    }
+
+
+def test_route_walk_failure_is_not_replaced_by_the_grid():
+    def missing_route(*_args, **_kwargs):
+        raise FileNotFoundError("capture route assets")
+
+    with pytest.raises(FileNotFoundError, match="capture route assets"):
+        _build_walk(
+            escape_config(walk="route"),
+            SimpleNamespace(walk_probe_z_m=None),
+            SimpleNamespace(geometry=object(), datum=5.0),
+            SimpleNamespace(
+                site_walk=missing_route,
+                build_walk=lambda *_args, **_kwargs: pytest.fail("grid fallback used"),
+            ),
+        )
+
+
+@pytest.mark.slow
+def test_korenmarkt_route_pilot_is_the_actual_fourteen_point_capture_walk():
+    from semantic_twin.exposure import study
+
+    run = escape_config(
+        site="korenmarkt",
+        crop_m=250,
+        models=("rooftop",),
+        walk="route",
+        walk_path="links",
+        walk_stride_m=6.0,
+        walk_radius_m=90.0,
+        locations=0,
+    )
+    environment = study._execution_environment()
+    try:
+        scene = _prepare_scene(run, LegacyReplay(), environment)
+    except FileNotFoundError as error:
+        pytest.skip(str(error))
+    walk = _build_walk(run, LegacyReplay(), scene, environment)
+    picks = environment.stratified_subset(walk, run.locations)
+
+    assert len(walk) == 14
+    assert picks.tolist() == list(range(14))
+    assert walk.provenance["path"] == "links"
+    assert walk.provenance["stations"] == 5
+    assert walk.provenance["added_along_the_road"] == 9
+    assert walk.provenance["road_length_m"] == pytest.approx(49.13658180700937)
+    assert _walk_provenance(run, walk)["candidates_after_clearance"] == 14
+    assert np.round(walk.points[:, :2], 6).tolist() == [
+        [-6.423196, -14.907749],
+        [-4.767796, -4.551447],
+        [-1.723791, 15.419926],
+        [-0.50841, 25.443502],
+        [2.608824, 33.257496],
+        [-10.368615, -18.738698],
+        [-9.047949, -12.885849],
+        [-7.770581, -7.024573],
+        [-6.799777, -1.103633],
+        [-5.743489, 4.801935],
+        [-4.590528, 10.690116],
+        [-3.416997, 16.574222],
+        [-2.160403, 22.438584],
+        [-0.533181, 28.213716],
+    ]
 
 
 def test_standpoint_seed_row_and_spectrum_order_are_kept(tmp_path):
@@ -257,6 +417,7 @@ def test_standpoint_seed_row_and_spectrum_order_are_kept(tmp_path):
 
 def test_device_execute_selects_resident_tracer_and_keeps_output_contract(tmp_path, monkeypatch):
     captured = {}
+    (tmp_path / "mesh.ply").write_bytes(b"mock mesh")
 
     class Model:
         elevation_min_deg = 0.0
@@ -487,6 +648,7 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
         np.array([0]),
         np.array([2.0]),
     )
+    scene.mesh.write_bytes(b"mesh")
     environment = SimpleNamespace(
         reference_s0_w_m2=1.0,
         frequency_note="frequency",
@@ -513,6 +675,7 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
         "created_utc",
         "site",
         "mesh",
+        "mesh_sha256",
         "mesh_triangles",
         "crop_radius_m",
         "ground_datum_m",
@@ -541,6 +704,10 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
     assert manifest["run"] == prepared.run.as_dict()
     assert manifest["run_digest"] == prepared.run.digest()
     assert manifest["transport"] == {"kernel": "numpy"}
+    assert manifest["mesh_sha256"] == "d30ca7a7a32bf5772dc5eb2a2e7bd35737eff795ad74f2479b359716b59abdfa"
+    assert manifest["semantic_binding"]["face_class_sha256"] == (
+        "ba553f9413e2fef99c0d1c2ad6c5d34ab435aef491a26c047ef48231c1631b75"
+    )
 
 
 def test_device_transport_provenance_names_its_arithmetic_rng_and_versions(monkeypatch):
