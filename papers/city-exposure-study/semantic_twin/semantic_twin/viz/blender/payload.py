@@ -16,13 +16,17 @@ rather than a Blender call.
 from __future__ import annotations
 
 import hashlib
+import io
+import json
 import math
 import pathlib
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from typing import Any, cast
 
 import numpy as np
 
-from .style import RIM_LIFT_RADII, RIM_RAMP_FLOOR, MODEL_BANDS, colour_ramp
+from .style import MODEL_BANDS, RIM_LIFT_RADII, RIM_RAMP_FLOOR, colour_ramp
 
 #: The sources a blend is built from. A blend whose fingerprint over these does
 #: not match today's is a build artefact from different code, exactly the way a
@@ -35,6 +39,7 @@ from .style import RIM_LIFT_RADII, RIM_RAMP_FLOOR, MODEL_BANDS, colour_ramp
 BUILDER_SOURCES: tuple[str, ...] = (
     "propagation_blender.py",
     "export_propagation_payload.py",
+    "semantic_twin/viz/blender/exporter.py",
     "semantic_twin/viz/blender/payload.py",
     "semantic_twin/viz/blender/style.py",
     "semantic_twin/viz/blender/scene.py",
@@ -51,6 +56,113 @@ BUILDER_SOURCES: tuple[str, ...] = (
     "semantic_twin/walk/route.py",
     "semantic_twin/walk/site.py",
 )
+
+
+@dataclass(frozen=True)
+class ProductionFiles:
+    """The three files that together make one streamed exposure result."""
+
+    locations: pathlib.Path
+    spectra: pathlib.Path
+    manifest: pathlib.Path
+
+    def hashes(self) -> dict[str, dict[str, str]]:
+        """Exact input identity written into the visualization manifest."""
+        return {
+            name: {"path": str(path.resolve()), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+            for name, path in (
+                ("locations_jsonl", self.locations),
+                ("spectra_npz", self.spectra),
+                ("manifest_json", self.manifest),
+            )
+        }
+
+
+@dataclass(frozen=True)
+class ProductionData:
+    """Validated arrays and rows read from one production exposure result."""
+
+    files: ProductionFiles
+    input_identity: dict[str, dict[str, str]]
+    manifest: dict[str, Any]
+    rows: tuple[dict[str, Any], ...]
+    index: np.ndarray
+    rho_rooftop: np.ndarray
+    local_grid: np.ndarray
+    solid_angle: float
+
+
+def production_files(
+    *,
+    stem: pathlib.Path | None,
+    locations: pathlib.Path | None,
+    spectra: pathlib.Path | None,
+    manifest: pathlib.Path | None,
+    default_directory: pathlib.Path,
+) -> ProductionFiles | None:
+    """Resolve a named stem or three exact paths, and reject mixed input."""
+    exact = (locations, spectra, manifest)
+    if stem is not None and any(path is not None for path in exact):
+        raise ValueError("use --production-stem or the three exact production paths, not both")
+    if stem is not None:
+        base = stem if stem.parent != pathlib.Path(".") else default_directory / stem
+        return ProductionFiles(
+            base.with_name(f"{base.name}_locations.jsonl"),
+            base.with_name(f"{base.name}_spectra.npz"),
+            base.with_name(f"{base.name}_manifest.json"),
+        )
+    if not any(path is not None for path in exact):
+        return None
+    if not all(path is not None for path in exact):
+        raise ValueError(
+            "production input needs --production-locations, --production-spectra, and --production-manifest"
+        )
+    return ProductionFiles(
+        cast(pathlib.Path, locations),
+        cast(pathlib.Path, spectra),
+        cast(pathlib.Path, manifest),
+    )
+
+
+def read_production_data(files: ProductionFiles) -> ProductionData:
+    """Read the three files without deciding whether they describe this model."""
+    missing = [str(path) for path in (files.locations, files.spectra, files.manifest) if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(f"production exposure input does not exist: {', '.join(missing)}")
+    content = {
+        "locations_jsonl": files.locations.read_bytes(),
+        "spectra_npz": files.spectra.read_bytes(),
+        "manifest_json": files.manifest.read_bytes(),
+    }
+    identity = {
+        name: {"path": str(path.resolve()), "sha256": hashlib.sha256(content[name]).hexdigest()}
+        for name, path in (
+            ("locations_jsonl", files.locations),
+            ("spectra_npz", files.spectra),
+            ("manifest_json", files.manifest),
+        )
+    }
+    manifest = json.loads(content["manifest_json"])
+    if not isinstance(manifest, dict):
+        raise TypeError(f"{files.manifest} must contain one JSON object")
+    text = content["locations_jsonl"].decode()
+    if text and not text.endswith("\n"):
+        raise ValueError(f"{files.locations} ends with an incomplete JSONL row")
+    rows = tuple(json.loads(line) for line in text.splitlines())
+    with np.load(io.BytesIO(content["spectra_npz"])) as saved:
+        arrays = {
+            name: np.array(saved[name], copy=True) for name in ("index", "rho_rooftop", "local_grid", "solid_angle")
+        }
+    return ProductionData(
+        files=files,
+        input_identity=identity,
+        manifest=manifest,
+        rows=rows,
+        index=arrays["index"],
+        rho_rooftop=arrays["rho_rooftop"],
+        local_grid=arrays["local_grid"],
+        solid_angle=float(arrays["solid_angle"]),
+    )
 
 
 def builder_fingerprint(root: pathlib.Path | None = None) -> str:
@@ -80,6 +192,12 @@ def has(payload: Any, prefix: str) -> bool:
     and never has been.
     """
     return any(key.startswith(prefix) for key in payload.files)
+
+
+def available_spectrum_models(payload: Any, candidates: Sequence[str]) -> tuple[str, ...]:
+    """Models whose angular spectrum is actually present in this payload."""
+    keys = payload.files if hasattr(payload, "files") else payload
+    return tuple(name for name in candidates if f"rho_{name}" in keys)
 
 
 def elevation_deg(directions: np.ndarray) -> np.ndarray:

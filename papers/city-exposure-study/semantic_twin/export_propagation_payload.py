@@ -6,8 +6,10 @@ import argparse
 import pathlib
 import sys
 
+from semantic_twin.exposure.study import OUTPUT as EXPOSURE_OUTPUT
 from semantic_twin.propagation import DEFAULT_MAX_BOUNCES
 from semantic_twin.viz.blender.exporter import DEFAULT_DRAW_RADIUS_M, OUTPUT, export
+from semantic_twin.viz.blender.payload import production_files
 
 
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
@@ -51,6 +53,17 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--variant", default="llvm_ad_rgb")
     parser.add_argument("--out", type=pathlib.Path, default=OUTPUT)
     parser.add_argument(
+        "--production-stem",
+        type=pathlib.Path,
+        help=(
+            "Load one production exposure run instead of retracing its walk. A bare stem is resolved "
+            "under outputs/exposure_korenmarkt; a path is used in place."
+        ),
+    )
+    parser.add_argument("--production-locations", type=pathlib.Path, help="Exact production locations JSONL")
+    parser.add_argument("--production-spectra", type=pathlib.Path, help="Exact production spectra NPZ")
+    parser.add_argument("--production-manifest", type=pathlib.Path, help="Exact production manifest JSON")
+    parser.add_argument(
         "--no-evidence",
         dest="evidence",
         action="store_false",
@@ -72,7 +85,20 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         default=4,
         help="Pixel stride of the two depth clouds. Four keeps a 1024 crop at 256 by 256",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    try:
+        args.production_files = production_files(
+            stem=args.production_stem,
+            locations=args.production_locations,
+            spectra=args.production_spectra,
+            manifest=args.production_manifest,
+            default_directory=EXPOSURE_OUTPUT,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+    if args.production_files is not None and (args.evidence_only or args.rim_only):
+        parser.error("production input cannot be combined with --evidence-only or --rim-only")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:

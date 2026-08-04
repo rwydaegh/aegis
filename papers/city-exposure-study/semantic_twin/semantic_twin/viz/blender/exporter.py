@@ -28,6 +28,7 @@ Run from the ``semantic_twin`` directory::
     python export_propagation_payload.py --site newyork_timessquare --locations 60
     python export_propagation_payload.py --site krakow_rynek --no-evidence
     python export_propagation_payload.py --site tokyo_hachiko --rim-only
+    python export_propagation_payload.py --production-stem korenmarkt_gpu_15ghz
 
 Then hand the payload to Blender::
 
@@ -41,11 +42,15 @@ from __future__ import annotations
 import json
 import pathlib
 import time
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
 
 from semantic_twin.exposure import BodyCoupler
+from semantic_twin.exposure import study as exposure_study
+from semantic_twin.exposure.execution import PreparedScene, _array_sha256, _bind_materials, _file_sha256
+from semantic_twin.exposure.reuse import complete_output, same_models, same_run_identity
 from semantic_twin.exposure.study import (
     MODELS,
     PHANTOM,
@@ -63,9 +68,12 @@ from semantic_twin.propagation import (
     SbrTracer,
     TraceConfig,
 )
+from semantic_twin.runconfig import RunConfig
 from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.model import stratified_subset
 from semantic_twin.walk.site import site_walk
+
+from .payload import ProductionData, read_production_data
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parents[3]
 
@@ -78,6 +86,10 @@ OUTPUT = SCRIPT_DIR / "outputs" / "propagation_viz"
 #: and carrying it would triple the file for nothing visible. The traced radius
 #: is recorded in the payload so the blend can say which is which.
 DEFAULT_DRAW_RADIUS_M = 110.0
+
+# The roofline and visible-path arms explain geometry. The production escape
+# run alone owns these numerical outputs.
+NO_EXPOSURE_OUTPUT = ("rho", "body dose", "walk exposure")
 
 
 #: Height above head, in metres, of each site population, read off the models
@@ -322,7 +334,14 @@ def store_connections(bundle: dict[str, Any], connections: dict[str, Any]) -> No
     bundle["payload"]["nee_weight"] = connections["weight"].astype(np.float32)
     bundle["payload"]["nee_blocked"] = connections["blocked"]
     bundle["payload"]["nee_paths"] = connections["paths"]
-    bundle["manifest"]["hero"]["next_event_estimation"] = connections["summary"]
+    if "source_estimator_arm" in bundle["payload"]:
+        bundle["manifest"]["hero"]["roofline_source_evidence"] = {
+            **connections["summary"],
+            "role": "source evidence only",
+            "does_not_supply": list(NO_EXPOSURE_OUTPUT),
+        }
+    else:
+        bundle["manifest"]["hero"]["next_event_estimation"] = connections["summary"]
 
 
 def sphere_triangulation(grid: np.ndarray) -> np.ndarray:
@@ -530,6 +549,346 @@ def trace_site(args: Any) -> dict[str, Any]:
     return bundle
 
 
+def load_production_run(files: Any) -> tuple[ProductionData, RunConfig]:
+    """Load and prove the identity and completeness of one GPU exposure run."""
+    data = read_production_data(files)
+    run = _production_run_config(data)
+    _validate_production_mode(data, run)
+    return data, run
+
+
+def _production_run_config(data: ProductionData) -> RunConfig:
+    """Recover the run identity and validate the three output files together."""
+    recorded = data.manifest.get("run")
+    if not isinstance(recorded, dict):
+        raise TypeError("production exposure manifest has no complete RunConfig record")
+    try:
+        run = RunConfig.from_dict(recorded)
+    except (TypeError, ValueError) as error:
+        raise ValueError("production exposure manifest has an invalid RunConfig record") from error
+    if data.manifest.get("run_digest") != run.digest():
+        raise ValueError("production exposure manifest run_digest does not match its RunConfig")
+    if not complete_output(data.manifest, run, data.files.locations, data.files.spectra):
+        raise ValueError("production exposure files are incomplete or their indices and shapes do not align")
+    if not same_run_identity(data.manifest, run, MODELS) or not same_models(data.manifest, run, MODELS):
+        raise ValueError("production exposure manifest does not match the recorded run or illumination models")
+    if data.files.hashes() != data.input_identity:
+        raise ValueError("production exposure files changed while they were being validated")
+    return run
+
+
+def _validate_production_mode(data: ProductionData, run: RunConfig) -> None:
+    """Require the production algorithm and all redundant provenance to agree."""
+    expected_trace = TraceConfig(
+        frequency_hz=run.frequency_hz,
+        rays=run.rays,
+        local_cells=run.local_cells,
+        exit_bands=run.exit_bands,
+        max_bounces=run.max_bounces,
+        roulette_start=run.effective_roulette_start,
+        roulette_floor=run.roulette_floor,
+        ray_epsilon_m=run.ray_epsilon_m,
+        range_weighted_escape=run.range_weighted_escape,
+        seed=run.seed,
+        batch=run.batch,
+    ).as_dict()
+    if data.manifest.get("trace_config") != expected_trace:
+        raise ValueError("production trace_config does not match its RunConfig")
+    if data.manifest.get("site") != run.site:
+        raise ValueError("production site does not match its RunConfig")
+    if run.transport_kernel != "drjit" or run.variant != "cuda_ad_rgb":
+        raise ValueError(
+            "production visualization input must be a resident GPU run "
+            f"(transport_kernel='drjit', variant='cuda_ad_rgb'); got {run.transport_kernel!r}, {run.variant!r}"
+        )
+    if run.estimator != "escape" or run.law != "band" or "rooftop" not in run.models:
+        raise ValueError("production visualization input must contain the band-law rooftop escape estimator")
+    transport = data.manifest.get("transport")
+    if not isinstance(transport, dict) or transport.get("kernel") != "drjit":
+        raise ValueError("production transport provenance does not identify the resident device kernel")
+    semantic_binding = data.manifest.get("semantic_binding")
+    face_digest = semantic_binding.get("face_class_sha256") if isinstance(semantic_binding, dict) else None
+    if not isinstance(face_digest, str) or len(face_digest) != 64:
+        raise ValueError("production semantic binding has no exact face-class SHA-256")
+    mesh_digest = data.manifest.get("mesh_sha256")
+    if not isinstance(mesh_digest, str) or len(mesh_digest) != 64:
+        raise ValueError("production manifest has no exact source mesh SHA-256")
+    if not isinstance(data.manifest.get("mesh"), str):
+        raise TypeError("production manifest mesh must be a path string")
+    reference_s0 = data.manifest.get("reference_s0_w_m2")
+    if type(reference_s0) not in (int, float) or not np.isfinite(reference_s0) or reference_s0 <= 0.0:
+        raise ValueError("production reference_s0_w_m2 must be a finite positive number")
+    if not data.rows:
+        raise ValueError("production visualization input contains no walk locations")
+
+
+def _recorded_mesh(manifest: dict[str, Any]) -> pathlib.Path:
+    path = pathlib.Path(manifest["mesh"])
+    return path if path.is_absolute() else SCRIPT_DIR / path
+
+
+def validate_face_class_digest(face_class: np.ndarray, manifest: dict[str, Any]) -> None:
+    """Require the rebuilt material array to equal the production trace input."""
+    recorded = manifest.get("semantic_binding", {}).get("face_class_sha256")
+    if _array_sha256(face_class) != recorded:
+        raise ValueError("current semantic face classes do not match the production exposure manifest")
+
+
+def validate_mesh_digest(mesh: pathlib.Path, manifest: dict[str, Any]) -> None:
+    """Require the hero trace mesh bytes to equal the production trace input."""
+    if _file_sha256(mesh) != manifest.get("mesh_sha256"):
+        raise ValueError("current mesh bytes do not match the production exposure manifest")
+
+
+def _production_scene(data: ProductionData, run: RunConfig) -> tuple[Any, Any, Any]:
+    """Rebuild the exact mesh and material binding named by the production run."""
+    mesh = _recorded_mesh(data.manifest)
+    if not mesh.is_file():
+        raise FileNotFoundError(f"production mesh does not exist: {mesh}")
+    validate_mesh_digest(mesh, data.manifest)
+    geometry = MitsubaGeometry(mesh, variant=run.variant)
+    datum = float(data.manifest["ground_datum_m"])
+    geometric_class = classify_faces(geometry.vertices, geometry.faces, datum)
+    scene = PreparedScene(
+        mesh=mesh,
+        geometry=geometry,
+        datum=datum,
+        datum_provenance=dict(data.manifest.get("ground_datum", {})),
+        face_class=geometric_class,
+        areas=geometry.face_areas(),
+    )
+    material = _bind_materials(run, scene, exposure_study._execution_environment())
+    if material.table.as_dict() != data.manifest.get("surface_binding"):
+        raise ValueError("current surface table does not match the production exposure manifest")
+    recorded_binding = dict(data.manifest.get("semantic_binding", {}))
+    recorded_binding.pop("face_class_sha256", None)
+    if material.provenance != recorded_binding:
+        raise ValueError("current semantic face binding does not match the production exposure manifest")
+    validate_face_class_digest(material.face_class, data.manifest)
+    return geometry, material, mesh
+
+
+def _body_from_row(row: dict[str, Any], model: str) -> dict[str, float]:
+    prefix = f"{model}_"
+    return {
+        key.removeprefix(prefix): float(value)
+        for key, value in row.items()
+        if key.startswith(prefix)
+        and key.removeprefix(prefix)
+        in {
+            "reference_s0_w_m2",
+            "arriving_power_density_w_m2",
+            "susceptibility",
+            "peak_sab_w_m2",
+            "mean_sab_w_m2",
+            "absorbed_power_w",
+            "sar_wb_w_kg",
+        }
+    }
+
+
+def production_provenance(data: ProductionData, run: RunConfig) -> dict[str, Any]:
+    """The exact source and estimator boundary stamped into a production blend."""
+    return {
+        "production_exposure": {
+            "run_digest": run.digest(),
+            "inputs": data.input_identity,
+            "arrays": {
+                "walk": "locations JSONL",
+                "rho_rooftop": "spectra NPZ",
+                "body_scalars": "locations JSONL",
+                "body_surface_field": "recomputed by AEGIS from the stored rooftop rho",
+            },
+        },
+        "estimator_arms": {
+            "exposure": {
+                "label": "GPU escape transport and rooftop body exposure",
+                "estimator": "escape",
+                "transport": data.manifest["transport"],
+                "produces": ["walk susceptibility", "rooftop rho", "body exposure"],
+            },
+            "source_evidence": {
+                "label": "Roofline next-event and source evidence",
+                "estimator": "next_event visualization evidence",
+                "produces": ["facade-tip rim", "visible source connections"],
+                "does_not_produce": list(NO_EXPOSURE_OUTPUT),
+            },
+        },
+    }
+
+
+def visible_path_config(config: TraceConfig, capacity: int) -> TraceConfig:
+    """Trace only enough rays to fill the bounded visible-path buffer."""
+    rays = min(config.rays, max(1, int(capacity)))
+    return replace(config, rays=rays, batch=min(config.batch, rays))
+
+
+def production_role_payload() -> dict[str, np.ndarray]:
+    """Labels embedded only in a production-derived visualization payload."""
+    return {
+        "exposure_estimator_arm": np.array("GPU escape transport and rooftop body exposure"),
+        "source_estimator_arm": np.array("Roofline next-event and source evidence"),
+        "visible_path_role": np.array("bounded visualization trace only; supplies no exposure value"),
+    }
+
+
+def trace_production_site(args: Any, data: ProductionData, run: RunConfig) -> dict[str, Any]:
+    """Build a visualization payload from production results and one visible ray trace."""
+    started = time.perf_counter()
+    geometry, material, mesh = _production_scene(data, run)
+    rows = data.rows
+    points = np.array([[row[axis] for axis in ("x", "y", "z")] for row in rows], dtype=np.float64)
+    datums = np.array([row["ground_z_m"] for row in rows], dtype=np.float64)
+    rooftop = np.array([row["chi_rooftop"] for row in rows], dtype=np.float64)
+    hero = int(np.argmin(np.abs(rooftop - np.median(rooftop))))
+    walk_index = int(data.index[hero])
+    hero_seed = run.seed + 1000 * walk_index
+
+    # This trace supplies only the bounded ray polylines. Every exposure number,
+    # angular spectrum and body value below is loaded from the production files.
+    config = TraceConfig(**data.manifest["trace_config"])
+    visual_config = visible_path_config(config, args.paths)
+    tracer = SbrTracer(
+        geometry,
+        material.face_class,
+        material.table.permittivity,
+        material.table.rms_height_m,
+        visual_config,
+    )
+    recorder = PathRecorder(capacity=args.paths, sky_distance_m=args.draw_radius_m * 1.6)
+    tracer.trace(
+        points[hero],
+        {name: MODELS[name] for name in run.models},
+        ground_z_m=float(datums[hero]),
+        seed=hero_seed,
+        recorder=recorder,
+    )
+    record = recorder.result()
+
+    coupler = BodyCoupler(PHANTOM, run.frequency_hz, body_mass_kg=PHANTOM_MASS_KG)
+    hero_rho = data.rho_rooftop[hero]
+    reference_s0 = float(data.manifest["reference_s0_w_m2"])
+    body_sab = body_field_from_spectrum(
+        coupler,
+        data.local_grid,
+        hero_rho,
+        data.solid_angle,
+        reference_s0_w_m2=reference_s0,
+    )
+    coupled = coupler.couple(data.local_grid, hero_rho, data.solid_angle, reference_s0)
+    recorded_body = _body_from_row(rows[hero], "rooftop")
+    if set(recorded_body) != set(coupled.as_dict()) or any(
+        not np.isclose(recorded_body[name], value, rtol=1.0e-10, atol=1.0e-12, equal_nan=True)
+        for name, value in coupled.as_dict().items()
+    ):
+        raise ValueError("production rooftop body row does not match its stored angular spectrum")
+
+    rng = np.random.default_rng(run.seed)
+    network = {name: network_markers(name, args.sources, rng) for name in MODELS}
+    rim = facade_tip_rim(geometry, points[hero])
+    vertices, faces, kept = crop_for_drawing(geometry.vertices, geometry.faces, args.draw_radius_m)
+
+    payload: dict[str, Any] = {
+        "mesh_vertices": vertices.astype(np.float32),
+        "mesh_faces": faces.astype(np.int32),
+        "mesh_face_class": material.face_class[kept].astype(np.int8),
+        "walk_points": points.astype(np.float32),
+        "walk_ground_z_m": datums.astype(np.float32),
+        "path_vertices": record.vertices.astype(np.float32),
+        "path_offsets": record.offsets.astype(np.int32),
+        "path_throughput": record.throughput.astype(np.float32),
+        "path_face_class": record.face_class.astype(np.int8),
+        "path_exit_direction": record.exit_direction.astype(np.float32),
+        "path_bounces": record.bounces.astype(np.int16),
+        "path_termination": record.termination.astype(np.int8),
+        "hero_index": np.array(hero),
+        "hero_point": points[hero].astype(np.float32),
+        "local_grid": data.local_grid.astype(np.float32),
+        "local_grid_faces": sphere_triangulation(data.local_grid).astype(np.int32),
+        "rho_rooftop": hero_rho.astype(np.float32),
+        "body_vertices": body_sab["vertices"].astype(np.float32),
+        "body_faces": body_sab["faces"].astype(np.int32),
+        "body_sab_w_m2": body_sab["sab"].astype(np.float32),
+        **production_role_payload(),
+    }
+    for name in run.models:
+        payload[f"walk_chi_{name}"] = np.array([row[f"chi_{name}"] for row in rows], dtype=np.float32)
+        payload[f"walk_peak_sab_{name}"] = np.array([row[f"{name}_peak_sab_w_m2"] for row in rows], dtype=np.float32)
+    for name in MODELS:
+        payload[f"network_{name}"] = network[name]["positions"].astype(np.float32)
+
+    hero_body = {name: _body_from_row(rows[hero], name) for name in run.models}
+    manifest = {
+        "site": run.site,
+        "mesh": str(mesh),
+        "traced_crop_radius_m": run.crop_m,
+        "drawn_radius_m": args.draw_radius_m,
+        "traced_triangles": geometry.face_count,
+        "drawn_triangles": int(faces.shape[0]),
+        "ground_datum_m": float(data.manifest["ground_datum_m"]),
+        "frequency_hz": run.frequency_hz,
+        "reference_s0_w_m2": reference_s0,
+        "class_names": list(material.table.class_names),
+        "terminations": list(TERMINATIONS),
+        "locations": len(rows),
+        "walk_candidates": data.manifest.get("walk", {}).get("candidates_after_clearance"),
+        "walk_provenance": data.manifest.get("walk", {}),
+        "trace_config": data.manifest["trace_config"],
+        "surface_binding": data.manifest["surface_binding"],
+        "illumination_models": data.manifest["illumination_models"],
+        "hero": {
+            "index": hero,
+            "production_walk_index": walk_index,
+            "point_enu_m": points[hero].tolist(),
+            "sky_fraction": float(rows[hero]["sky_fraction"]),
+            "mean_bounces": float(rows[hero]["mean_bounces"]),
+            "recorded_paths": len(record),
+            "susceptibility": {name: float(rows[hero][f"chi_{name}"]) for name in run.models},
+            "susceptibility_direct": {name: float(rows[hero][f"chi_{name}_direct"]) for name in run.models},
+            "body": hero_body,
+            "visible_path_trace": {
+                "role": "bounded visualization trace only",
+                "transport_kernel": "numpy",
+                "intersection_variant": run.variant,
+                "frequency_hz": run.frequency_hz,
+                "rays_cast": visual_config.rays,
+                "seed": hero_seed,
+                "seed_policy": "run seed + 1000 * production walk index",
+                "paths_recorded": len(record),
+                "does_not_supply": list(NO_EXPOSURE_OUTPUT),
+            },
+        },
+        "walk_summary": {
+            name: {
+                "median_chi": float(np.median([row[f"chi_{name}"] for row in rows])),
+                "min_chi": float(np.min([row[f"chi_{name}"] for row in rows])),
+                "max_chi": float(np.max([row[f"chi_{name}"] for row in rows])),
+            }
+            for name in run.models
+        },
+        "network_height_band_m": {name: network[name]["height_band_m"].tolist() for name in MODELS},
+        **production_provenance(data, run),
+        "seconds": time.perf_counter() - started,
+        "storage_note": (
+            "The production run supplied the walk, rooftop spectrum, and body exposure. "
+            "A separate bounded host trace supplied visible path polylines only."
+        ),
+    }
+    bundle = {"payload": payload, "manifest": manifest}
+    store_rim(bundle, rim)
+    connections = next_event_connections(
+        geometry,
+        record.vertices,
+        record.offsets,
+        rim,
+        points[hero],
+        paths=args.nee_paths,
+        seed=run.seed,
+    )
+    store_connections(bundle, connections)
+    return bundle
+
+
 def body_field(coupler: BodyCoupler, result: Any, model: str) -> dict[str, np.ndarray]:
     """Per triangle absorbed power density on the phantom, plus its geometry.
 
@@ -539,11 +898,23 @@ def body_field(coupler: BodyCoupler, result: Any, model: str) -> dict[str, np.nd
     ``Sab`` is a per triangle quantity and a shared vertex would have to average
     across the faces that meet at it.
     """
+    return body_field_from_spectrum(coupler, result.local_grid, result.rho[model], result.local_solid_angle)
+
+
+def body_field_from_spectrum(
+    coupler: BodyCoupler,
+    local_grid: np.ndarray,
+    rho: np.ndarray,
+    solid_angle: float,
+    *,
+    reference_s0_w_m2: float = REFERENCE_S0_W_M2,
+) -> dict[str, np.ndarray]:
+    """Per-face body field derived from one stored angular spectrum."""
     from aegis.paths import PropagationPaths
 
-    power = result.rho[model] * result.local_solid_angle * REFERENCE_S0_W_M2
+    power = rho * solid_angle * reference_s0_w_m2
     keep = power > 0.0
-    paths = PropagationPaths.from_powers(-result.local_grid[keep], power[keep])
+    paths = PropagationPaths.from_powers(-local_grid[keep], power[keep])
     dosimetry = coupler.engine.compute(coupler.body, paths, level=coupler.level, body_mass=coupler.body_mass_kg)
     corners = np.asarray(coupler.body.vertices, dtype=np.float64)
     count = corners.shape[0]
@@ -901,9 +1272,9 @@ def rejected_layer(directory: pathlib.Path) -> dict[str, Any] | None:
     drawing it once per row would put ten coincident copies of the same wall in
     the scene. The image area is summed over the rows that were merged.
     """
-    from semantic_twin.scene.fishnet import REJECTION_REASONS
-
     import trimesh
+
+    from semantic_twin.scene.fishnet import REJECTION_REASONS
 
     support = support_mesh_of(directory)
     if support is None:
@@ -1421,15 +1792,24 @@ def measure_rim(args: Any) -> dict[str, Any]:
 def export(args: Any) -> int:
     """Build and serialize the payload requested by a command namespace."""
     args.out.mkdir(parents=True, exist_ok=True)
+    output_stem = args.site
     if args.rim_only:
         bundle = measure_rim(args)
     else:
-        bundle = reopen(args) if args.evidence_only else trace_site(args)
+        if getattr(args, "production_files", None) is not None:
+            data, run = load_production_run(args.production_files)
+            # The named production run is authoritative. This also lets an exact
+            # three-file input for another city work without repeating --site.
+            args.site = run.site
+            output_stem = f"{run.site}_{run.frequency_ghz:g}ghz_{run.digest()}"
+            bundle = trace_production_site(args, data, run)
+        else:
+            bundle = reopen(args) if args.evidence_only else trace_site(args)
         if args.evidence:
             attach_evidence(args, bundle)
-    payload_path = args.out / f"{args.site}_payload.npz"
+    payload_path = args.out / f"{output_stem}_payload.npz"
     np.savez_compressed(payload_path, **bundle["payload"])
-    manifest_path = args.out / f"{args.site}_manifest.json"
+    manifest_path = args.out / f"{output_stem}_manifest.json"
     manifest_path.write_text(json.dumps(bundle["manifest"], indent=2, default=float) + "\n")
     size_mb = payload_path.stat().st_size / 1e6
     print(f"[done] {payload_path} ({size_mb:.1f} MB) and {manifest_path.name}")

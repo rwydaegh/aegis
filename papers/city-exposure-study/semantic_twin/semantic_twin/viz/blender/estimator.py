@@ -1,10 +1,11 @@
 """Drawing the estimator: the mesh, the paths, the spectrum, the sources, the body.
 
 Everything in this module is measured. The mesh is the support mesh the rays were
-cast against, the ray polylines are the paths the estimator integrated, the lobe is
-the angular power spectrum it accumulated, and the colours on the phantom are the
-absorbed power density AEGIS returned for that spectrum. Nothing is drawn to
-illustrate a number that was computed elsewhere.
+cast against, the lobe is a stored angular power spectrum, and the colours on the
+phantom are the absorbed power density AEGIS returned for that spectrum. A
+standalone payload records paths from its exposure trace. A production payload
+marks its smaller second trace as visible-path evidence only. The production walk,
+spectrum, and body values still come from the three files named in its manifest.
 
 The arithmetic each of these depends on is in
 :mod:`~semantic_twin.viz.blender.payload` and the Blender calls are in
@@ -15,12 +16,14 @@ says about itself.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import bpy
 import numpy as np
 
 from .payload import (
+    available_spectrum_models,
     octahedra,
     path_slice,
     place_body,
@@ -56,6 +59,11 @@ from .style import (
     RIM_SITE_RADII,
     colour_ramp,
 )
+
+
+def _payload_text(payload: Any, key: str) -> str | None:
+    keys = payload.files if hasattr(payload, "files") else payload
+    return str(np.asarray(payload[key]).item()) if key in keys else None
 
 
 def build_twin(payload: Any, class_names: Sequence[str], into: Any) -> Any:
@@ -99,6 +107,8 @@ def build_rays(payload: Any, terminations: Sequence[str], into: Any, *, base_rad
         obj["colour_layers"] = ["fate", "power_db"]
         obj["power_db_range"] = list(span)
         obj["reading"] = "thickness is the cube root of throughput, and power_db is the same number as a colour"
+        if role := _payload_text(payload, "visible_path_role"):
+            obj["role"] = role
         assign(obj, emissive_material(f"ray_{name}", "fate"))
         show_layer(obj, "fate")
         obj.hide_render = not visible
@@ -175,7 +185,7 @@ def build_arrival(
     faces = payload["local_grid_faces"]
     centre = hero + np.array([0.0, 0.0, offset_m])
     peaks: dict[str, float] = {}
-    for name in MODEL_NAMES:
+    for name in available_spectrum_models(payload, MODEL_NAMES):
         rho = payload[f"rho_{name}"].astype(np.float64)
         peak = float(rho.max())
         peaks[name] = peak
@@ -194,6 +204,8 @@ def build_arrival(
         assign(obj, emissive_material(f"arrival_{name}", "power"))
         obj["peak_rho_per_sr"] = peak
         obj["normalised_by"] = "its own peak, so shape is comparable across models and level is not"
+        if arm := _payload_text(payload, "exposure_estimator_arm"):
+            obj["estimator_arm"] = arm
         obj.hide_render = name != "rooftop"
     return peaks
 
@@ -375,11 +387,10 @@ def build_next_event(
 ) -> dict[str, object]:
     """A few dozen rays, and the connection every scattering vertex of them makes.
 
-    This is the estimator in one picture. A ray leaves the head, bounces off the
-    buildings up to three times, and at the head and at every bounce it is connected
-    by one straight line to a site sampled on the facade tip. The connection is the
-    contribution, so the fan of thin lines is the estimator and the spray of thick
-    ones is only how it got there.
+    In a standalone next-event payload this is the estimator in one picture. In a
+    production escape payload the same geometry is labeled source evidence. It
+    supplies no angular spectrum or body result there. A ray leaves the head,
+    bounces off the buildings, and each vertex is connected to a sampled facade tip.
 
     A few dozen paths rather than the nine hundred in ``09 ray paths by fate``,
     because the answer here is how the method works and a dense fan hides it.
@@ -391,6 +402,8 @@ def build_next_event(
     connection by the flux of the site it reached instead, which is the same number
     the rim is shaded by.
     """
+    source_arm = _payload_text(payload, "source_estimator_arm")
+    object_prefix = "source_evidence" if source_arm else "estimator"
     origin = payload["nee_origin_m"].astype(np.float64)
     site = payload["nee_site_m"].astype(np.float64)
     blocked = payload["nee_blocked"].astype(bool)
@@ -418,11 +431,13 @@ def build_next_event(
     keep = path_slice(offsets, picked)
     lengths = offsets[picked + 1] - offsets[picked]
     drawn = shorten_sky_legs(vertices[keep], lengths, reach=sky_leg_m)
-    rays = build_curves("estimator_rays", drawn, lengths, np.full(keep.size, ray_radius), into)
+    rays = build_curves(f"{object_prefix}_rays", drawn, lengths, np.full(keep.size, ray_radius), into)
     attach_point_colour(rays, "ray", np.tile((*NEE_RAY_COLOUR, 1.0), (keep.size, 1)), byte=False)
-    assign(rays, emissive_material("estimator_rays", "ray"))
+    assign(rays, emissive_material(f"{object_prefix}_rays", "ray"))
     rays["paths_drawn"] = int(picked.size)
     rays["reading"] = "the same recorded paths as 09, thinned to a readable few dozen"
+    if role := _payload_text(payload, "visible_path_role"):
+        rays["role"] = role
     rays["last_leg_shortened_to_m"] = sky_leg_m
     rays["what_that_changes"] = (
         "only the drawn length of the leg that left the scene. In 09 it runs to the sky sphere "
@@ -440,7 +455,7 @@ def build_next_event(
     contribution[dark] = (*NEE_BLOCKED_COLOUR, 1.0)
     visibility = np.where(dark[:, None], np.array([*NEE_BLOCKED_COLOUR, 1.0]), np.array([*NEE_CLEAR_COLOUR, 1.0]))
     lines = build_curves(
-        "estimator_connections",
+        f"{object_prefix}_connections",
         ends,
         np.full(origin.shape[0], 2),
         np.repeat(np.where(blocked, 0.75 * line_radius, line_radius), 2),
@@ -451,14 +466,20 @@ def build_next_event(
     attach_values(lines, "value_direct_flux", np.repeat(weight, 2), "POINT")
     attach_values(lines, "value_blocked", np.repeat(blocked.astype(np.int32), 2), "POINT")
     attach_values(lines, "value_bounce_index", np.repeat(depth, 2), "POINT")
-    assign(lines, emissive_material("estimator_connections", "visibility", strength=RIM_EMISSION_STRENGTH))
+    assign(lines, emissive_material(f"{object_prefix}_connections", "visibility", strength=RIM_EMISSION_STRENGTH))
     layered(lines, ("visibility", "contribution"), "visibility")
     lines["connections"] = int(origin.shape[0])
     lines["blocked"] = int(np.count_nonzero(blocked))
     lines["from_the_head"] = int(np.count_nonzero(depth == 0))
     lines["blocked_from_the_head"] = int(np.count_nonzero(blocked & (depth == 0)))
     lines["sites_sampled"] = "uniformly in azimuth on the facade tip, one per scattering vertex"
-    lines["reading"] = "one straight line per contribution. Dark red carries nothing, something is in the way"
+    lines["reading"] = (
+        "one straight visibility line per sampled roofline site. This is source evidence and supplies no exposure value"
+        if source_arm
+        else "one straight line per contribution. Dark red carries nothing, something is in the way"
+    )
+    if source_arm:
+        lines["evidence_arm"] = source_arm
     lines["connections_left_out"] = left_out
     lines["why_they_are_left_out"] = (
         "the site they reached is further out than the mesh this file draws, so the line would "
@@ -485,6 +506,8 @@ def build_walk(payload: Any, into: Any, model: str) -> tuple[float, float]:
     assign(obj, emissive_material("walk_chi", "chi_db"))
     obj["illumination_model"] = model
     obj["chi_db_range"] = [low, high]
+    if arm := _payload_text(payload, "exposure_estimator_arm"):
+        obj["estimator_arm"] = arm
     return low, high
 
 
@@ -498,4 +521,6 @@ def build_body(payload: Any, hero: np.ndarray, ground_z: float, into: Any) -> tu
     assign(obj, emissive_material("phantom_sab", "sab"))
     obj["sab_w_m2_range"] = [low, high]
     obj["phantom"] = "duke, IT'IS adult male"
+    if arm := _payload_text(payload, "exposure_estimator_arm"):
+        obj["estimator_arm"] = arm
     return low, high
