@@ -9,11 +9,15 @@ properties the report's numbers rest on.
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 import numpy as np
 import pytest
 
+from semantic_twin.materials import MaterialLibrary, bind_posterior, realised_composition
+from semantic_twin.vision.facade_blinding import blind_name
+from semantic_twin.vision.material_vlm_study import _decode
 from semantic_twin.vision.vlm import (
     MATERIAL_VOCABULARY,
     Layer,
@@ -33,8 +37,7 @@ from semantic_twin.vision.vlm import (
     stack_power_reflectance,
     total_variation,
 )
-from semantic_twin.materials import MaterialLibrary
-from semantic_twin.materials import bind_posterior, realised_composition
+from semantic_twin.vision.vlm_batches import make_vlm_batches
 
 CONFIG = pathlib.Path(__file__).resolve().parents[1] / "config"
 
@@ -59,6 +62,37 @@ def payload(**overrides: object) -> dict:
     }
     base.update(overrides)
     return base
+
+
+def test_material_transcript_repair_only_closes_a_missing_wrapper() -> None:
+    record, repaired = _decode('{"crop_blind":"x","payload":{"confidence":1.0}')
+    assert repaired
+    assert record == {"crop_blind": "x", "payload": {"confidence": 1.0}}
+    with pytest.raises(RuntimeError, match="No active exception to reraise"):
+        _decode('{"payload":}')
+
+
+def test_facade_blinding_is_reproducible_and_hides_the_source() -> None:
+    panorama = blind_name("crop-a", "panorama")
+    assert panorama == blind_name("crop-a", "panorama")
+    assert panorama.startswith("patch_")
+    assert panorama != blind_name("crop-a", "texture")
+
+
+def test_vlm_batch_plan_covers_every_image_once_per_draw(tmp_path: pathlib.Path) -> None:
+    order = ["a", "b", "c", "d", "e"]
+    (tmp_path / "blind_order.json").write_text(json.dumps(order))
+    make_vlm_batches(tmp_path, draws=2, batches=3, seed=11)
+    plan = json.loads((tmp_path / "batch_plan.json").read_text())
+    assert [(call["draw"], call["batch"], call["images"]) for call in plan["calls"]] == [
+        (0, 0, ["c", "e"]),
+        (0, 1, ["a", "d"]),
+        (0, 2, ["b"]),
+        (1, 0, ["a", "c"]),
+        (1, 1, ["b", "d"]),
+        (1, 2, ["e"]),
+    ]
+    assert (tmp_path / "prompt.txt").read_text() == build_prompt()
 
 
 def test_parse_normalises_the_posterior_and_translates_finishes() -> None:

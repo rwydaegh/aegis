@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import build_site_semantics
-from build_site_semantics import _modal_class, station_verdict, stations
+from semantic_twin.scene.site_semantics import _modal_class, station_verdict, stations
 
 GATE = {"max_residual_deg": 4.0, "max_sky_conflict": 0.5, "min_conflict_range_m": 2.0}
 
@@ -95,6 +95,38 @@ def test_modal_class_agrees_with_the_dense_table_it_replaces():
     assert _modal_class(face, label, faces, classes).tolist() == dense.tolist()
 
 
+def test_the_command_build_adapter_preserves_the_original_keyword_interface(tmp_path, monkeypatch):
+    captured = {}
+
+    def fake_build(site, options):
+        captured.update(site=site, options=options)
+        return {"result": "fixture"}
+
+    monkeypatch.setattr(build_site_semantics, "_build", fake_build)
+    result = build_site_semantics.build(
+        "korenmarkt",
+        crop_m=250,
+        grid_height=768,
+        block_rows=64,
+        workers=3,
+        max_residual_deg=3.5,
+        max_sky_conflict=0.4,
+        min_conflict_range_m=1.5,
+        out_root=tmp_path,
+    )
+
+    assert result == {"result": "fixture"}
+    assert captured["site"] == "korenmarkt"
+    assert captured["options"].crop_m == 250
+    assert captured["options"].grid_height == 768
+    assert captured["options"].block_rows == 64
+    assert captured["options"].workers == 3
+    assert captured["options"].max_residual_deg == 3.5
+    assert captured["options"].max_sky_conflict == 0.4
+    assert captured["options"].min_conflict_range_m == 1.5
+    assert captured["options"].out_root == tmp_path
+
+
 def build(root, name, *, residual=1.0):
     """A registered, segmented station directory, thin but complete."""
     folder = root / name
@@ -108,37 +140,34 @@ def build(root, name, *, residual=1.0):
     return folder
 
 
-def test_a_companion_campaign_is_read_as_the_same_site(tmp_path, monkeypatch):
+def test_a_companion_campaign_is_read_as_the_same_site(tmp_path):
     panoramas = tmp_path / "data" / "panoramas"
     build(panoramas / "korenmarkt", "pano_00_a")
     for index in range(3):
         build(panoramas / "korenmarkt_walk", f"walk_{index:02d}_b")
-    monkeypatch.setattr(build_site_semantics, "SCRIPT_DIR", tmp_path)
-    admitted, refused = stations("korenmarkt", **GATE)
+    admitted, refused = stations("korenmarkt", root=tmp_path, **GATE)
     assert refused == []
     assert [entry["station"] for entry in admitted] == ["pano_00_a", "walk_00_b", "walk_01_b", "walk_02_b"]
 
 
-def test_a_site_without_a_companion_reads_only_its_own_directory(tmp_path, monkeypatch):
+def test_a_site_without_a_companion_reads_only_its_own_directory(tmp_path):
     panoramas = tmp_path / "data" / "panoramas"
     build(panoramas / "madrid_plazamayor", "pano_00_a")
     build(panoramas / "korenmarkt_walk", "walk_00_b")
-    monkeypatch.setattr(build_site_semantics, "SCRIPT_DIR", tmp_path)
-    admitted, _ = stations("madrid_plazamayor", **GATE)
+    admitted, _ = stations("madrid_plazamayor", root=tmp_path, **GATE)
     assert [entry["station"] for entry in admitted] == ["pano_00_a"]
 
 
-def test_the_probe_of_a_rejected_indoor_capture_is_not_a_station(tmp_path, monkeypatch):
+def test_the_probe_of_a_rejected_indoor_capture_is_not_a_station(tmp_path):
     panoramas = tmp_path / "data" / "panoramas"
     build(panoramas / "tokyo_hachiko", "pano_00_a")
     build(panoramas / "tokyo_hachiko", "indoor_2018-05_00_c")
-    monkeypatch.setattr(build_site_semantics, "SCRIPT_DIR", tmp_path)
-    admitted, refused = stations("tokyo_hachiko", **GATE)
+    admitted, refused = stations("tokyo_hachiko", root=tmp_path, **GATE)
     assert [entry["station"] for entry in admitted] == ["pano_00_a"]
     assert refused == []
 
 
-def test_a_walk_manifest_beside_the_stations_is_not_counted_as_one(tmp_path, monkeypatch):
+def test_a_walk_manifest_beside_the_stations_is_not_counted_as_one(tmp_path):
     # Every multi panorama site carries a walk_manifest.json, which matches the
     # walk_ prefix and is a file. Counting it inflates the denominator in every
     # "n admitted of N" line without changing the answer, which is the worst
@@ -146,7 +175,6 @@ def test_a_walk_manifest_beside_the_stations_is_not_counted_as_one(tmp_path, mon
     panoramas = tmp_path / "data" / "panoramas"
     build(panoramas / "prague_staromestske", "pano_00_a")
     (panoramas / "prague_staromestske" / "walk_manifest.json").write_text("{}")
-    monkeypatch.setattr(build_site_semantics, "SCRIPT_DIR", tmp_path)
-    admitted, refused = stations("prague_staromestske", **GATE)
+    admitted, refused = stations("prague_staromestske", root=tmp_path, **GATE)
     assert [entry["station"] for entry in admitted] == ["pano_00_a"]
     assert refused == []

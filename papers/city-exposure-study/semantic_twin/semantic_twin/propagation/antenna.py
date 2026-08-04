@@ -75,6 +75,7 @@ from ..illumination import (
     IlluminationModel,
     Isotropic,
 )
+from ..sites import STUDY_ORDER
 from ..transport.tracer import DEFAULT_MAX_BOUNCES, TERMINATIONS
 
 SPEED_OF_LIGHT_M_S = 299_792_458.0
@@ -1056,31 +1057,17 @@ def build_models(
 # The study
 # --------------------------------------------------------------------------
 
-SITES: tuple[str, ...] = (
-    "brussels_grandplace",
-    "korenmarkt",
-    "krakow_rynek",
-    "london_trafalgar",
-    "madrid_plazamayor",
-    "mexico_zocalo",
-    "milan_duomo",
-    "newyork_timessquare",
-    "prague_staromestske",
-    "tokyo_hachiko",
-    "toulouse_capitole",
-)
+SITES = tuple(sorted(STUDY_ORDER))
 
 
 def _trace_site(site: str, args: argparse.Namespace, models: dict[str, Any]) -> dict[str, np.ndarray]:
     """One traced pass over a site, scoring every model on the same rays."""
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
-    from run_exposure import GROUND_DATUM_M, ground_datum, site_mesh
-
+    from ..exposure.study import GROUND_DATUM_M
     from .geometry import MitsubaGeometry
     from ..materials import classify_faces, load_table
+    from ..paths import site_mesh
     from ..transport.tracer import SbrTracer, TraceConfig
-    from ..walk.grid import build_walk
-    from ..walk.model import stratified_subset
+    from ..walk import build_walk, ground_datum, stratified_subset
 
     config_dir = pathlib.Path(__file__).resolve().parents[2] / "config"
     geometry = MitsubaGeometry(site_mesh(site, args.crop_m))
@@ -1138,14 +1125,12 @@ def _artefact_site(site: str, args: argparse.Namespace) -> dict[str, Any]:
     only way to see it, and it is bounded by its own capacity and never reaches
     disk.
     """
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
-    from run_exposure import GROUND_DATUM_M, ground_datum, site_mesh
-
+    from ..exposure.study import GROUND_DATUM_M
     from .geometry import MitsubaGeometry
     from ..materials import classify_faces, load_table
+    from ..paths import site_mesh
     from ..transport.tracer import PathRecorder, SbrTracer, TraceConfig
-    from ..walk.grid import build_walk
-    from ..walk.model import stratified_subset
+    from ..walk import build_walk, ground_datum, stratified_subset
 
     config_dir = pathlib.Path(__file__).resolve().parents[2] / "config"
     geometry = MitsubaGeometry(site_mesh(site, args.crop_m))

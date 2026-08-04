@@ -1,4 +1,6 @@
-"""Eight worker processes, each starting Dr.Jit's own thread pool, on eight cores.
+"""Archived worker sweep behind ``transport.tracer.trace_standpoints``.
+
+Eight worker processes, each starting Dr.Jit's own thread pool, on eight cores.
 
 ``trace_standpoints`` spawns ``os.cpu_count()`` processes and every one of them
 loads the mesh into an LLVM backend that threads internally. The question is

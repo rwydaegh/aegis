@@ -1,4 +1,6 @@
-"""Does pinning Dr.Jit to one thread per worker recover the pool's scaling.
+"""Archived benchmark behind ``transport.tracer._worker_setup``.
+
+Does pinning Dr.Jit to one thread per worker recover the pool's scaling.
 
 ``dr.thread_count()`` defaults to the core count, so ``trace_standpoints``
 spawning ``os.cpu_count()`` processes gives cores squared threads on cores. The

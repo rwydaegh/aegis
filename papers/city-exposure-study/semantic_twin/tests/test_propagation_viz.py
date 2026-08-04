@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from export_propagation_payload import (
+from semantic_twin.viz.blender.exporter import (
     HEIGHT_BAND_M,
     RANGE_BAND_M,
     crop_for_drawing,

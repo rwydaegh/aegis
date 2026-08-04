@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 
-import run_exposure
+from semantic_twin.exposure import study as run_exposure
 
 
 def test_report_uses_the_current_output_directory(tmp_path, monkeypatch):

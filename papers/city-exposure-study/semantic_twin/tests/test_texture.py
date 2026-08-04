@@ -9,13 +9,14 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from semantic_twin.vision.evidence import EvidenceAccumulator
 from semantic_twin.vision.appearance import (
     TEXTURE_FEATURES,
     MomentAccumulator,
     srgb_to_lab,
     texture_features,
 )
+from semantic_twin.vision.evidence import EvidenceAccumulator
+from semantic_twin.vision.facade_crop_study import barycentric, building_windows, spread_pick
 from semantic_twin.vision.texture import (
     PANORAMA_WIDTH_PX,
     MaterialClassifier,
@@ -49,6 +50,21 @@ GLTF_BIN_CHUNK = 0x004E4942
 # A real Photorealistic 3D Tiles leaf placement. Reading it in single precision
 # is the defect this module deliberately does not inherit.
 ECEF_TRANSLATION = (4008982.414761939, 4937332.26941904, -260985.39804007116)
+
+
+def test_facade_windows_are_filtered_and_spread_deterministically():
+    labels = np.ones((4, 4), dtype=np.int64)
+    windows = building_windows(labels, 1, size=2, stride=2, minimum_fraction=1.0)
+    assert windows == [(0, 0, 1.0), (0, 2, 1.0), (2, 0, 1.0), (2, 2, 1.0)]
+    assert spread_pick(windows, limit=2, separation=2) == windows[:2]
+
+
+def test_barycentric_coordinates_reconstruct_points():
+    triangles = np.array([[[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]])
+    point = np.array([[0.5, 1.0, 0.0]])
+    weights = barycentric(triangles, point)
+    assert weights[0] == pytest.approx([0.25, 0.25, 0.5])
+    assert np.einsum("ij,ijk->ik", weights, triangles) == pytest.approx(point)
 
 
 def _chunk(payload: bytes, kind: int, pad: bytes) -> bytes:

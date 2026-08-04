@@ -54,7 +54,7 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from run_exposure import (  # noqa: E402
+from semantic_twin.exposure.study import (  # noqa: E402
     MODELS,
     SEMANTICS,
     measure_ground_datum,

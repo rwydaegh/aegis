@@ -1,4 +1,4 @@
-"""Project adaptive, pixel-faithful semantic tiles onto a coarse Blender mesh.
+"""Archived pixel projection path superseded by fishnet surface cutting.
 
 Unlike ``project_semantics.py``, this script never assigns one label to an
 existing photogrammetry triangle. It starts from the dense perspective label
@@ -21,10 +21,10 @@ import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
-ROOT = pathlib.Path(__file__).resolve().parent
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from render_blender_alignment import (  # noqa: E402
+from semantic_twin.viz.blender.alignment import (  # noqa: E402
     camera_matrix,
     cylinder_between,
     local_view_basis,

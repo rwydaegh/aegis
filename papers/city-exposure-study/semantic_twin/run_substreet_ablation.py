@@ -37,7 +37,7 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from run_exposure import MODELS, ground_datum, site_mesh  # noqa: E402
+from semantic_twin.exposure.study import MODELS, ground_datum, site_mesh  # noqa: E402
 from semantic_twin.propagation import (  # noqa: E402
     DEFAULT_MAX_BOUNCES,
     MitsubaGeometry,

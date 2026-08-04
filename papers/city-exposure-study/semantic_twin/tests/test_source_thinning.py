@@ -11,8 +11,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from measure_source_silhouette import thin
-from source_support import direct_from_sites, silhouette_cloud
+from semantic_twin.illumination.source_studies import coverage, sites_from_votes, skyline_summary, skyline_term
+from semantic_twin.illumination.sources import direct_from_sites, silhouette_cloud, thin
 
 
 def wall(length_m: float, height_m: float, n: int) -> np.ndarray:
@@ -88,6 +88,30 @@ def test_empty_cloud_survives_both_grids():
     empty = np.empty((0, 3))
     assert thin(empty, 1.0, dims=2).shape == (0, 3)
     assert thin(empty, 1.0, dims=3).shape == (0, 3)
+
+
+def test_facade_votes_keep_the_highest_point_in_each_horizontal_cell():
+    votes = np.array([[0.2, 0.2, 3.0], [0.3, 0.4, 8.0], [1.2, 0.1, 5.0]])
+    sites = sites_from_votes(votes, 1.0)
+    assert sites.shape == (2, 3)
+    assert sorted(sites[:, 2]) == [5.0, 8.0]
+
+
+def test_study_coverage_is_measured_against_the_reference_cloud():
+    points = np.array([[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]])
+    reference = np.array([[0.5, 0.0, 0.0], [20.0, 0.0, 0.0]])
+    assert coverage(points, reference, radius_m=1.0) == pytest.approx(0.5)
+
+
+def test_skyline_summary_and_range_floor_use_the_same_direct_term():
+    alpha = np.array([0.0, 0.0, 0.0])
+    horizontal = np.array([2.0, 10.0, np.inf])
+    found = np.array([True, True, False])
+    assert skyline_term(alpha, horizontal, found) == pytest.approx((0.5 + 0.1) / 3.0)
+    assert skyline_term(alpha, horizontal, found, floor_m=5.0) == pytest.approx(0.1 / 3.0)
+    summary = skyline_summary(alpha, horizontal, found)
+    assert summary["direct_term"] == pytest.approx((0.5 + 0.1) / 3.0)
+    assert summary["open_azimuth_fraction"] == pytest.approx(1.0 / 3.0)
 
 
 class OpenSky:

@@ -25,7 +25,7 @@ from typing import Any
 
 import numpy as np
 
-from run_exposure import CONFIG, MODELS, REFERENCE_S0_W_M2, SITES, site_mesh, site_walk_semantics
+from semantic_twin.exposure.study import CONFIG, MODELS, REFERENCE_S0_W_M2, SITES, site_mesh, site_walk_semantics
 from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig
 from semantic_twin.transport.monostatic import MonostaticConfig, to_db, trace_monostatic
 from semantic_twin.materials import classify_faces, load_table

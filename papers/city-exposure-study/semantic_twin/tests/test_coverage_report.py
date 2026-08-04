@@ -9,10 +9,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from semantic_twin import paths
+from semantic_twin.scene import site_config_build
+
 trimesh = pytest.importorskip("trimesh")
 pytest.importorskip("trimesh.ray.ray_pyembree")
 
-from build_site_config import ground_datum  # noqa: E402
+from semantic_twin.scene.site_config_build import ground_datum  # noqa: E402
 from summarise_evidence_coverage import markdown, splice  # noqa: E402
 
 
@@ -59,6 +62,33 @@ def test_an_empty_crop_is_refused_rather_than_guessed(tmp_path):
     far.export(path)
     with pytest.raises(SystemExit, match="no surface under the crop"):
         ground_datum(path, radius_m=80.0, samples=200)
+
+
+@pytest.mark.parametrize(("site", "crop_m"), (("korenmarkt", 130), ("milan_duomo", 170)))
+def test_a_rebuilt_config_records_the_acquisition_mesh_not_the_preferred_trace_mesh(monkeypatch, site, crop_m):
+    datum = {
+        "camera_ground_z_m": 1.0,
+        "method": "fixture",
+        "modal_share": 1.0,
+        "band_spread_m": 0.0,
+        "relief_m": [1.0, 1.0],
+        "anchor_topmost_surface_m": 1.0,
+    }
+    monkeypatch.setattr(site_config_build, "ground_datum", lambda *_args, **_kwargs: datum)
+
+    document = site_config_build.build(
+        site,
+        crop_m=crop_m,
+        screening=paths.screening(),
+        walk_date=None,
+        radius_m=80.0,
+    )
+
+    recorded = paths.root() / document["source_mesh"]
+    recorded_manifest = paths.root() / document["source_mesh_manifest"]
+    assert recorded.name == f"inhouse_leaf_{crop_m}m.ply"
+    assert recorded_manifest == paths.mesh_manifest(recorded)
+    assert recorded != paths.site_mesh(site, crop_m)
 
 
 ROW = {

@@ -8,7 +8,7 @@ wants a traceable scene comes out of here.
 
 The per-face sampling is coarse on purpose: a face gets exactly one label, so
 semantic boundaries land on the photogrammetry triangulation rather than on the
-image. ``project_pixel_semantics.py`` and ``semantic_twin/fishnet.py`` are the
+image. ``archive/scripts/project_pixel_semantics.py`` and the fishnet package are the
 boundary-faithful paths. Neither of them exports a scene yet, which is why this
 module stays.
 

@@ -38,13 +38,9 @@ def literal(relative: str, name: str):
 
 #: Every file carrying all eleven sites, and the order it carries them in.
 ELEVEN = (
-    ("run_exposure.py", "SITES"),
-    ("build_site_semantics.py", "SITES"),
     ("FIGURES/make_eleven_cities_exposure.py", "SITES"),
     ("summarise_panorama_routes.py", "SITES"),
     ("measure_near_clutter.py", "SITES"),
-    ("plot_skyline_function.py", "SITES"),
-    ("semantic_twin/propagation/antenna.py", "SITES"),
 )
 
 
@@ -71,16 +67,10 @@ def test_the_study_order_is_the_one_the_reporting_files_use():
     first, and none of those four gives a reason, so they are re-sorts of this one
     rather than a competing claim.
     """
-    for relative in ("run_exposure.py", "build_site_semantics.py", "FIGURES/make_eleven_cities_exposure.py"):
-        assert tuple(literal(relative, "SITES")) == STUDY_ORDER
+    assert tuple(literal("FIGURES/make_eleven_cities_exposure.py", "SITES")) == STUDY_ORDER
 
     assert tuple(literal("summarise_panorama_routes.py", "SITES")) == tuple(sorted(STUDY_ORDER))
     assert tuple(literal("measure_near_clutter.py", "SITES")) == tuple(sorted(STUDY_ORDER))
-    assert tuple(literal("semantic_twin/propagation/antenna.py", "SITES")) == tuple(sorted(STUDY_ORDER))
-
-    korenmarkt_first = literal("plot_skyline_function.py", "SITES")
-    assert korenmarkt_first[0] == "korenmarkt"
-    assert tuple(korenmarkt_first[1:]) == tuple(sorted(set(STUDY_ORDER) - {"korenmarkt"}))
 
 
 def test_milan_is_out_of_alphabetical_order_because_it_joins_the_sweep_late():
@@ -94,16 +84,38 @@ def test_milan_is_out_of_alphabetical_order_because_it_joins_the_sweep_late():
 # ------------------------------------------------------------------ the subsets
 
 
-def test_the_fishnet_builder_list_is_the_sites_with_a_registered_camera():
+def test_the_site_builders_derive_their_site_sets_from_the_registry():
     """Eight of eleven, and the eight are derivable rather than chosen.
 
     London is the one that shows the predicate is the right one. It has fifteen
     panoramas on disk and no registered pose among them, so it is in the imagery
     list and out of the evidence list.
     """
-    assert set(literal("build_site_fishnets.py", "SITES")) == {site.name for site in sites.with_registered_stations()}
+    from semantic_twin.scene import site_fishnets, site_semantics
+
+    assert site_fishnets.SITES == tuple(site.name for site in sites.with_registered_stations())
+    assert site_semantics.SITES == Site.names()
     assert "london_trafalgar" in {site.name for site in sites.with_panoramas()}
     assert "london_trafalgar" not in {site.name for site in sites.with_registered_stations()}
+
+
+def test_the_fishnet_builder_routes_a_canonical_mesh_name_through_the_shared_resolver(tmp_path, monkeypatch):
+    from semantic_twin.scene import site_fishnets
+
+    expected = tmp_path / "preferred.ply"
+    monkeypatch.setattr(paths, "site_mesh", lambda site, crop_m: expected)
+    assert site_fishnets.site_mesh("korenmarkt", "inhouse_leaf_250m.ply") == expected
+
+
+def test_the_fishnet_builder_keeps_support_for_an_arbitrary_mesh_filename(tmp_path, monkeypatch):
+    from semantic_twin.scene import site_fishnets
+
+    mesh = tmp_path / "experimental_surface.ply"
+    mesh.write_bytes(b"fixture")
+    paths.mesh_manifest(mesh).write_text(json.dumps({"format_version": 3}))
+    monkeypatch.setattr(paths, "geometry_dir", lambda site: tmp_path)
+
+    assert site_fishnets.site_mesh("korenmarkt", mesh.name) == mesh
 
 
 def test_the_station_calibration_lists_are_the_sites_with_a_fused_binding_at_250_m():
@@ -243,7 +255,7 @@ def test_a_registry_pointed_at_a_different_config_directory_can_be_told_to_look_
 
 def test_the_gallery_titles_are_square_then_city():
     """Two files carry twelve titles each and they agree character for character."""
-    for relative in ("render_city_gallery.py", "make_city_sheet.py"):
+    for relative in ("semantic_twin/viz/blender/city_gallery.py", "semantic_twin/viz/city_sheet.py"):
         titles = literal(relative, "TITLES")
         for site in Site.all():
             assert titles[site.name] == site.title

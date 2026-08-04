@@ -42,7 +42,7 @@ from typing import Any
 
 import numpy as np
 
-from run_exposure import CONFIG, MODELS, OUTPUT as EXPOSURE_OUTPUT, ROOT, SEMANTICS, site_mesh
+from semantic_twin.exposure.study import CONFIG, MODELS, OUTPUT as EXPOSURE_OUTPUT, ROOT, SEMANTICS, site_mesh
 from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig, trace_standpoints
 from semantic_twin.materials import classify_faces, load_table
 from semantic_twin.materials import bind_walk_entities

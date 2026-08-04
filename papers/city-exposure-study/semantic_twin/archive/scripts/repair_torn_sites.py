@@ -1,4 +1,6 @@
-"""Re-trace a site of a published cross city sweep, under the configuration it was published at.
+"""Archived repair for the completed ``city250_corrected`` recovery.
+
+Re-trace a site of a published cross city sweep, under the configuration it was published at.
 
 Two rows of ``city250_corrected`` were destroyed by an interleaved write. New
 York lost two of its eighty records and Prague gained a fragment of an eighty
@@ -37,8 +39,8 @@ from typing import Any
 
 import numpy as np
 
-import run_exposure
-from run_exposure import OUTPUT, PHANTOM, PHANTOM_MASS_KG
+from semantic_twin.exposure import study as run_exposure
+from semantic_twin.exposure.study import OUTPUT, PHANTOM, PHANTOM_MASS_KG
 from semantic_twin.exposure import BodyCoupler
 
 #: The published sweep being repaired, and the tag the repair is written under.

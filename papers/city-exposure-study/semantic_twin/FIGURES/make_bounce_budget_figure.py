@@ -100,8 +100,8 @@ def retrace(
     """
     import time
 
-    from run_exposure import MODELS as ILLUMINATION
-    from run_exposure import measure_ground_datum, site_mesh
+    from semantic_twin.exposure.study import MODELS as ILLUMINATION
+    from semantic_twin.exposure.study import measure_ground_datum, site_mesh
     from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig
     from semantic_twin.materials import classify_faces, load_table
     from semantic_twin.walk.grid import build_walk

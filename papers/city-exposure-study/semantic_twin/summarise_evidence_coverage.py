@@ -108,7 +108,7 @@ def measure_semantic_coverage(site: str, *, variant: str = "llvm_ad_rgb") -> dic
     """
     # Mitsuba is slow to import and is not needed to read the cache, so the
     # dependency is taken only when a measurement is actually asked for.
-    import run_exposure
+    from semantic_twin.exposure import study as run_exposure
     from semantic_twin.propagation import MitsubaGeometry
     from semantic_twin.materials import bind_fishnet
 

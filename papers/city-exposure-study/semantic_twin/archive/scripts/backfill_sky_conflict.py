@@ -1,4 +1,4 @@
-"""Compute the sky-conflict second opinion for poses that shipped without it.
+"""Archived one-time repair for poses that shipped without sky conflict.
 
 `semantic_twin.vision.conflict` already computes `sky_conflict`, but it needs a
 first-hit ray cast, which needs `trimesh` with `embreex`. The GPU box's
@@ -28,9 +28,9 @@ mesh is reported and skipped rather than guessed at.
 
 Run from the ``semantic_twin`` directory::
 
-    ../../../.venv/bin/python backfill_sky_conflict.py
-    ../../../.venv/bin/python backfill_sky_conflict.py --site prague_staromestske
-    ../../../.venv/bin/python backfill_sky_conflict.py --dry-run
+    ../../../.venv/bin/python archive/scripts/backfill_sky_conflict.py
+    ../../../.venv/bin/python archive/scripts/backfill_sky_conflict.py --site prague_staromestske
+    ../../../.venv/bin/python archive/scripts/backfill_sky_conflict.py --dry-run
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ from typing import Any
 
 import numpy as np
 
-SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parents[2]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 

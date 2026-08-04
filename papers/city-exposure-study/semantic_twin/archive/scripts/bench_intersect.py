@@ -1,4 +1,6 @@
-"""The cast is 2.5 percent of a trace and marshalling its result is 38 percent.
+"""Archived benchmark behind ``propagation.geometry.MitsubaGeometry.intersect``.
+
+The cast is 2.5 percent of a trace and marshalling its result is 38 percent.
 
 ``MitsubaGeometry.intersect`` asks ``ray_intersect`` for a full
 ``SurfaceInteraction3f``, which computes UVs, shading frames and position
@@ -71,9 +73,7 @@ def main() -> None:
     face_normal /= np.linalg.norm(face_normal, axis=1, keepdims=True)
 
     def make_ray():
-        return mi.Ray3f(
-            mi.Point3f(np.ascontiguousarray(o.T)), mi.Vector3f(np.ascontiguousarray(d.T))
-        )
+        return mi.Ray3f(mi.Point3f(np.ascontiguousarray(o.T)), mi.Vector3f(np.ascontiguousarray(d.T)))
 
     def current():
         si = scene.ray_intersect(make_ray())

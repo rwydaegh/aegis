@@ -15,7 +15,7 @@ import json
 import numpy as np
 import pytest
 
-import run_exposure
+from semantic_twin.exposure import study as run_exposure
 
 
 @pytest.fixture

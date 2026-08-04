@@ -173,7 +173,7 @@ def test_invalid_shapes_are_rejected():
 
 
 def test_coverage_curve_is_monotone_and_ends_at_the_union():
-    from build_walk_twin import coverage_curve
+    from semantic_twin.vision.walk_evidence import coverage_curve
 
     seen = np.array([[True, False, False], [True, True, False], [False, False, True]])
     area = np.array([1.0, 1.0, 2.0])
@@ -185,20 +185,24 @@ def test_coverage_curve_is_monotone_and_ends_at_the_union():
 
 
 def test_saturation_curve_is_order_averaged_and_ends_at_the_union():
-    from build_walk_twin import saturation_curves
+    from semantic_twin.vision.walk_evidence import saturation_curves
 
-    seen = np.array([[True, False, False], [False, True, False], [False, False, True]])
-    area = np.ones(3)
-    result = saturation_curves(seen, area, permutations=8)
-    assert result["mean_face_fraction"][-1] == pytest.approx(1.0)
-    assert result["mean_faces"][0] == pytest.approx(1.0)
-    # Every order reaches the same union, so the spread must close at the end.
-    assert result["face_fraction_p10"][-1] == pytest.approx(result["face_fraction_p90"][-1])
+    seen = np.array([[True, False, False, False], [True, True, False, False], [False, False, True, True]])
+    result = saturation_curves(seen, np.array([1.0, 2.0, 3.0, 4.0]), permutations=4, rng_seed=17)
+    assert result == {
+        "permutations": 4,
+        "mean_faces": [1.75, 2.5, 4.0],
+        "mean_face_fraction": [0.4375, 0.625, 1.0],
+        "mean_area_fraction": [0.35, 0.55, 1.0],
+        "face_fraction_p10": [0.325, 0.5, 1.0],
+        "face_fraction_p90": [0.5, 0.75, 1.0],
+        "marginal_faces_per_panorama": [1.75, 0.75, 1.5],
+    }
 
 
 def test_marginal_gain_decays_when_stations_are_redundant():
     """A saturating set must show a falling marginal, an expanding one must not."""
-    from build_walk_twin import saturation_curves
+    from semantic_twin.vision.walk_evidence import saturation_curves
 
     faces = 400
     redundant = np.zeros((6, faces), dtype=bool)
@@ -216,7 +220,7 @@ def test_marginal_gain_decays_when_stations_are_redundant():
 
 
 def test_random_order_never_beats_the_union():
-    from build_walk_twin import saturation_curves
+    from semantic_twin.vision.walk_evidence import saturation_curves
 
     rng = np.random.default_rng(5)
     seen = rng.random((7, 300)) > 0.7

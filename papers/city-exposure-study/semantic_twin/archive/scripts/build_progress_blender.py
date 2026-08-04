@@ -1,4 +1,4 @@
-"""Build one honest Blender hand-off of the current semantic-twin evidence.
+"""Archived predecessor of the packaged propagation Blender workflow.
 
 This is a review scene, not a promoted RT scene.  It deliberately keeps
 unregistered image semantics on evidence boards rather than painting them onto
@@ -17,10 +17,10 @@ import sys
 import bpy
 from mathutils import Vector
 
-ROOT = pathlib.Path(__file__).resolve().parent
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from render_blender_alignment import look_at, setup_scene  # noqa: E402
+from semantic_twin.viz.blender.alignment import look_at, setup_scene  # noqa: E402
 from semantic_twin.vision.bodies import DynamicBodyArtifact  # noqa: E402
 
 
