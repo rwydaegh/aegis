@@ -33,7 +33,6 @@ import numpy as np
 from semantic_twin import paths
 from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 from semantic_twin.materials import (
-    CLASS_NAMES,
     bind_fishnet,
     bind_walk_entities,
     bind_walk_materials,
@@ -41,9 +40,11 @@ from semantic_twin.materials import (
     load_table,
 )
 from semantic_twin.paths import site_mesh
-from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY, ground_plane_susceptibility
 from semantic_twin.exposure import BodyCoupler, describe
-from semantic_twin.propagation.geometry import MitsubaGeometry, PlaneGeometry
+from semantic_twin.exposure.validation import validate as validate_exposure
+from semantic_twin.propagation.geometry import MitsubaGeometry
+from semantic_twin.report.coverage import _against_baseline, _one_value, _spread, ladder_markdown
+from semantic_twin.report.exposure import report as exposure_report
 from semantic_twin.transport.tracer import (
     DEFAULT_MAX_BOUNCES,
     SbrTracer,
@@ -237,55 +238,7 @@ def registered_ground_z(site: str) -> float | None:
 
 def validate(rays: int = 400_000) -> dict[str, object]:
     """Section 11.1 and the free space identity, run rather than asserted."""
-    report: dict[str, object] = {}
-    config = TraceConfig(rays=rays, local_cells=256, exit_bands=18, seed=11)
-
-    class Empty:
-        def intersect(self, origins, directions):  # noqa: ANN001, ANN202
-            count = origins.shape[0]
-            return (
-                np.zeros(count, dtype=bool),
-                np.full(count, 1.0e30),
-                np.zeros((count, 3)),
-                np.zeros(count, dtype=np.int64),
-            )
-
-    tracer = SbrTracer(Empty(), None, np.array([PEC_PERMITTIVITY]), np.array([0.0]), config)
-    free = tracer.trace(np.array([0.0, 0.0, 1.5]), MODELS)
-    report["free_space"] = {
-        "chi": free.susceptibility,
-        "exit_profile_max_abs_error": float(np.max(np.abs(free.exit_profile - 1.0))),
-    }
-
-    tracer = SbrTracer(PlaneGeometry(0.0), None, np.array([PEC_PERMITTIVITY]), np.array([0.0]), config)
-    pec = tracer.trace(np.array([0.0, 0.0, 1.5]), MODELS, ground_z_m=0.0)
-    upper = pec.exit_profile[config.exit_bands // 2 :]
-    lower = pec.exit_profile[: config.exit_bands // 2]
-    report["pec_ground_plane"] = {
-        "target_upper_hemisphere": 2.0,
-        "measured_upper_mean": float(upper.mean()),
-        "measured_upper_max_abs_error": float(np.max(np.abs(upper - 2.0))),
-        "measured_lower_max": float(lower.max()),
-        "chi": pec.susceptibility,
-    }
-
-    binding = load_table(CONFIG, 15.0e9)
-    concrete = binding.permittivity[CLASS_NAMES.index("roof")]
-    tracer = SbrTracer(PlaneGeometry(0.0), None, np.array([concrete]), np.array([0.0]), config)
-    dielectric = tracer.trace(np.array([0.0, 0.0, 1.5]), MODELS, ground_z_m=0.0)
-    centres = 0.5 * (dielectric.exit_sin_edges[:-1] + dielectric.exit_sin_edges[1:])
-    elevation = np.degrees(np.arcsin(centres))
-    target = ground_plane_susceptibility(elevation, concrete)
-    above = elevation > 0.0
-    report["dielectric_ground_plane"] = {
-        "permittivity": [float(concrete.real), float(concrete.imag)],
-        "elevation_deg": [float(x) for x in elevation[above]],
-        "closed_form": [float(x) for x in target[above]],
-        "measured": [float(x) for x in dielectric.exit_profile[above]],
-        "max_abs_error": float(np.max(np.abs(dielectric.exit_profile[above] - target[above]))),
-        "max_rel_error": float(np.max(np.abs(dielectric.exit_profile[above] / target[above] - 1.0))),
-    }
-    return report
+    return validate_exposure(MODELS, CONFIG, rays)
 
 
 def run(
@@ -610,53 +563,7 @@ def run(
 
 def report(stem: str) -> pathlib.Path:
     """Regenerate the CDF figure and the numbers behind it from the JSONL."""
-    from semantic_twin.report import read_rows, split_half_stability, summarise
-    from semantic_twin.viz.cdf import walk_cdf
-
-    rows_path = OUTPUT / f"{stem}_locations.jsonl"
-    manifest = json.loads((OUTPUT / f"{stem}_manifest.json").read_text())
-    # ``read_rows`` returns the file plus what it cost to read. Only the rows go
-    # on from here, because the summary this writes is pinned by a golden fixture
-    # and has no field for a torn line count.
-    rows = list(read_rows(rows_path, site=stem).rows)
-    keys = [
-        "chi_isotropic",
-        "chi_rooftop",
-        "chi_street_small_cell",
-        "chi_isotropic_direct",
-        "chi_rooftop_direct",
-        "chi_street_small_cell_direct",
-        "multipath_gain_isotropic",
-        "multipath_gain_rooftop",
-        "sky_fraction",
-        "mean_bounces",
-        "mean_excess_delay_ns",
-        "truncated_throughput_share",
-        "rooftop_peak_sab_w_m2",
-        "rooftop_mean_sab_w_m2",
-        "rooftop_absorbed_power_w",
-        "rooftop_sar_wb_w_kg",
-        "isotropic_peak_sab_w_m2",
-        "street_small_cell_peak_sab_w_m2",
-    ]
-    summary = summarise(rows, keys)
-    stability_keys = ["chi_rooftop", "chi_isotropic", "sky_fraction", "rooftop_peak_sab_w_m2"]
-    summary["split_half_stability"] = {
-        split: split_half_stability(rows, stability_keys, split=split) for split in ("interleaved", "contiguous")
-    }
-    summary["reference_s0_w_m2"] = manifest["reference_s0_w_m2"]
-    summary["frequency_hz"] = manifest["trace_config"]["frequency_hz"]
-    summary["rays_per_location"] = manifest["trace_config"]["rays"]
-    summary_path = OUTPUT / f"{stem}_summary.json"
-    summary_path.write_text(json.dumps(summary, indent=2))
-    figure = walk_cdf(
-        rows,
-        OUTPUT / f"{stem}_cdf.png",
-        reference_s0_w_m2=manifest["reference_s0_w_m2"],
-        frequency_ghz=manifest["trace_config"]["frequency_hz"] / 1e9,
-    )
-    print(f"wrote {summary_path} and {figure}")
-    return summary_path
+    return exposure_report(stem, OUTPUT)
 
 
 #: The evidence coverage ladder. Same geometry, same walk, same illumination,
@@ -689,33 +596,6 @@ LADDER_EVIDENCE: dict[str, str] = {
 #: least resolved of the three. Reporting only the quiet model would flatter the
 #: result.
 LADDER_MODELS = ("chi_isotropic", "chi_rooftop", "chi_street_small_cell")
-
-
-def _against_baseline(baseline: np.ndarray, values: np.ndarray) -> dict[str, float | int]:
-    """How far one rung sits from the no evidence rung, paired standpoint by standpoint.
-
-    Both rungs trace the same walk on the same per standpoint seeds, so the ray
-    stream is common to the two and the difference carries no independent Monte
-    Carlo noise from it. What the difference does carry is the standpoint draw,
-    which is why the shift is replicated over seeds rather than quoted from one.
-    """
-    count = min(baseline.size, values.size)
-    ratio = values[:count] / baseline[:count]
-    return {
-        # Median of the paired per location ratios: how far a typical location
-        # moves.
-        "median_ratio": float(np.median(ratio)),
-        "median_shift_db": float(10.0 * np.log10(np.median(ratio))),
-        # Ratio of the two distribution medians: how far the published
-        # distribution moves. Larger than the paired figure at Korenmarkt, which
-        # says the shift is concentrated in a minority of locations rather than
-        # spread evenly.
-        "distribution_median_shift_db": float(10.0 * np.log10(np.quantile(values, 0.5) / np.quantile(baseline, 0.5))),
-        "spread_db_p95_over_p05": float(10.0 * np.log10(np.quantile(values, 0.95) / np.quantile(values, 0.05))),
-        "p95_ratio": float(np.quantile(ratio, 0.95)),
-        "max_absolute_change": float(np.max(np.abs(ratio - 1.0))),
-        "locations_moved_more_than_1_db": int(np.count_nonzero(np.abs(10.0 * np.log10(ratio)) > 1.0)),
-    }
 
 
 #: The coverage ledger summarise_evidence_coverage.py writes, read here for the
@@ -1221,57 +1101,6 @@ def plot_cross_site_ladder(
     plt.close(figure)
     print(f"wrote {path}", flush=True)
     return path
-
-
-def _one_value(values: list[float]) -> float | list[float]:
-    """A bound fraction does not depend on the seed, so a spread in it is a fault."""
-    unique = sorted(set(values))
-    return unique[0] if len(unique) == 1 else unique
-
-
-def _spread(values: list[float]) -> dict[str, Any]:
-    array = np.array(values, dtype=float)
-    if array.size == 0:
-        return {"replicates": 0, "mean_db": None, "sd_db": None, "standard_error_db": None, "per_seed_db": []}
-    sd = float(array.std(ddof=1)) if array.size > 1 else None
-    return {
-        "replicates": int(array.size),
-        "mean_db": float(array.mean()),
-        "sd_db": sd,
-        "standard_error_db": None if sd is None else sd / float(np.sqrt(array.size)),
-        "per_seed_db": [float(x) for x in array],
-    }
-
-
-def ladder_markdown(rows: list[dict[str, Any]]) -> str:
-    """The per square table, bound fraction first and never on its own."""
-    header = (
-        "| Site | Rung | Bound area | Stations or views | Standpoints | "
-        "Rooftop shift | Isotropic shift | Street shift |"
-    )
-    lines = [header, "| --- | --- | --- | --- | --- | --- | --- | --- |"]
-    for row in rows:
-        bound = row["covered_fraction_by_area"]
-        bound_cell = f"{100 * bound:.1f} %" if isinstance(bound, float) else "inconsistent across seeds"
-        evidence = row["stations"] if row["stations"] is not None else row["views"]
-        kind = "stations" if row["stations"] is not None else "views"
-        cells = [
-            row["site"],
-            row["rung"],
-            bound_cell,
-            "not recorded" if evidence is None else f"{evidence} {kind}",
-            f"{sum(row['locations'])} over {len(row['seeds'])} seeds",
-        ]
-        for key in ("chi_rooftop", "chi_isotropic", "chi_street_small_cell"):
-            spread = row["shift_db"][key]
-            if spread["mean_db"] is None:
-                cells.append("n/a")
-            elif spread["standard_error_db"] is None:
-                cells.append(f"{spread['mean_db']:+.3f} dB, one seed")
-            else:
-                cells.append(f"{spread['mean_db']:+.3f} +/- {spread['standard_error_db']:.3f} dB")
-        lines.append("| " + " | ".join(cells) + " |")
-    return "\n".join(lines)
 
 
 def run_all_sites(

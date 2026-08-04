@@ -8,6 +8,17 @@ import pytest
 import run_exposure
 
 
+def test_report_uses_the_current_output_directory(tmp_path, monkeypatch):
+    def fake_report(stem, output):
+        assert output == tmp_path
+        return output / f"{stem}_summary.json"
+
+    monkeypatch.setattr(run_exposure, "OUTPUT", tmp_path)
+    monkeypatch.setattr(run_exposure, "exposure_report", fake_report)
+
+    assert run_exposure.report("trial") == tmp_path / "trial_summary.json"
+
+
 def test_a_site_with_a_binding_at_that_crop_resolves(tmp_path, monkeypatch):
     monkeypatch.setattr(run_exposure, "SITE_SEMANTICS", tmp_path)
     site = tmp_path / "prague_staromestske"
