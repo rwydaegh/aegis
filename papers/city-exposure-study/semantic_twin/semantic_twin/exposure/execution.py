@@ -386,6 +386,8 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
         "variant": run.variant,
         "python": platform.python_version(),
         "storage_policy": "paths are never written, only per location scalars and rho",
+        "run_digest": run.digest(),
+        "run": run.as_dict(),
     }
 
 

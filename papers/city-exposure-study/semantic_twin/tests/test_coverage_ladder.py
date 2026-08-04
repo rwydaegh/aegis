@@ -11,14 +11,17 @@ survive the coverage ledger's own admission rule.
 from __future__ import annotations
 
 import json
+from dataclasses import fields
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 from semantic_twin.exposure import study as run_exposure
 from semantic_twin.exposure.execution import ExecutionConfig
+from semantic_twin.exposure.reuse import model_identity
 from semantic_twin.exposure.sweeps import LadderSweepConfig
-from semantic_twin.runconfig import RunConfig
+from semantic_twin.runconfig import NextEventConfig, RunConfig
 
 
 @pytest.fixture
@@ -255,14 +258,60 @@ def test_every_shift_in_the_table_is_quoted_beside_its_bound_area():
     assert line.count("+0.150") == 3
 
 
+def complete_result_row(index, models):
+    row = {
+        "index": index,
+        "x": float(index),
+        "y": 0.0,
+        "z": 1.5,
+        "ground_z_m": 0.0,
+        "seconds": 1.0,
+        "sky_fraction": 0.25,
+        "mean_bounces": 1.0,
+        "mean_excess_delay_ns": 2.0,
+        "escaped_fraction": 0.5,
+        "truncated_throughput_share": 0.01,
+    }
+    for name in models:
+        row[f"chi_{name}"] = 0.2
+        row[f"chi_{name}_direct"] = 0.1
+        for suffix in (
+            "reference_s0_w_m2",
+            "arriving_power_density_w_m2",
+            "susceptibility",
+            "peak_sab_w_m2",
+            "mean_sab_w_m2",
+            "absorbed_power_w",
+            "sar_wb_w_kg",
+        ):
+            row[f"{name}_{suffix}"] = 0.1
+    return row
+
+
+def write_complete_spectra(path, indices, local_cells):
+    local_grid = np.zeros((local_cells, 3))
+    local_grid[:, 2] = 1.0
+    np.savez(
+        path,
+        index=np.asarray(indices),
+        rho_rooftop=np.zeros((len(indices), local_cells)),
+        local_grid=local_grid,
+        solid_angle=np.asarray(4.0 * np.pi / local_cells),
+    )
+
+
 def complete_run(output, stem, **overrides):
-    (output / f"{stem}_locations.jsonl").write_text("{}\n" * 80)
+    rows = "".join(json.dumps(complete_result_row(index, run_exposure.MODELS)) + "\n" for index in range(80))
+    (output / f"{stem}_locations.jsonl").write_text(rows)
+    write_complete_spectra(output / f"{stem}_spectra.npz", np.arange(80), replay_config().local_cells)
     manifest = {
         "site": "korenmarkt",
         "crop_radius_m": 130,
+        "locations_requested": 80,
         "locations_traced": 80,
+        "walk": {"candidates_after_clearance": 100},
         "trace_config": {"rays": 200_000, "seed": 7, "max_bounces": 6},
-        "illumination_models": {name: {"law": model.law} for name, model in run_exposure.MODELS.items()},
+        "illumination_models": {name: model_identity(model) for name, model in run_exposure.MODELS.items()},
     } | overrides
     (output / f"{stem}_manifest.json").write_text(json.dumps(manifest))
 
@@ -278,6 +327,7 @@ def replay_config() -> RunConfig:
         walk="grid",
         locations=80,
         max_bounces=6,
+        roulette_start=4,
         materials="walk",
         rays=200_000,
         seed=7,
@@ -290,13 +340,373 @@ def test_a_run_already_on_disk_at_the_same_settings_is_not_retraced(ledger):
     assert run_exposure.reusable(replay_config())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="existing reuse check compares selected manifest fields instead of the complete RunConfig identity",
+def complete_identified_run(output, recorded: RunConfig, *, path_config: RunConfig | None = None):
+    path_config = path_config or recorded
+    stem = f"{path_config.tag}_{path_config.frequency_ghz:g}ghz"
+    rows = "".join(
+        json.dumps(complete_result_row(index, recorded.models)) + "\n" for index in range(recorded.locations)
+    )
+    (output / f"{stem}_locations.jsonl").write_text(rows)
+    write_complete_spectra(output / f"{stem}_spectra.npz", np.arange(recorded.locations), recorded.local_cells)
+    models = {name: model_identity(run_exposure.MODELS[name]) for name in recorded.models}
+    manifest = {
+        "locations_requested": recorded.locations,
+        "locations_traced": recorded.locations,
+        "walk": {"candidates_after_clearance": recorded.locations + 20},
+        "illumination_models": models,
+        "run_digest": recorded.digest(),
+        "run": recorded.as_dict(),
+    }
+    (output / f"{stem}_manifest.json").write_text(json.dumps(manifest))
+
+
+IDENTITY_CHANGES = {
+    "site": "milan_duomo",
+    "crop_m": 250,
+    "law": "roofline",
+    "models": ("rooftop",),
+    "estimator": "next_event",
+    "walk": "route",
+    "walk_path": "street",
+    "walk_radius_m": 75.0,
+    "walk_spacing_m": 2.5,
+    "walk_stride_m": 4.0,
+    "head_height_m": 1.72,
+    "locations": 81,
+    "frequency_hz": 28.0e9,
+    "max_bounces": 5,
+    "roulette_start": 3,
+    "roulette_floor": 0.2,
+    "ray_epsilon_m": 0.004,
+    "range_weighted_escape": True,
+    "materials": "geometric",
+    "walk_npz": "outputs/another_walk.npz",
+    "rays": 100_000,
+    "batch": 100_000,
+    "local_cells": 256,
+    "exit_bands": 12,
+    "seed": 9,
+    "variant": "cuda_ad_rgb",
+}
+
+
+def test_the_identity_change_table_covers_every_run_field_that_can_change_this_escape_run():
+    identity_fields = {field.name for field in fields(RunConfig)} - {"tag", "next_event"}
+    assert set(IDENTITY_CHANGES) == identity_fields
+
+
+@pytest.mark.parametrize(("field", "value"), IDENTITY_CHANGES.items())
+def test_every_run_identity_field_prevents_reuse(ledger, field, value):
+    recorded = replay_config()
+    requested = recorded.replace(**{field: value})
+    complete_identified_run(run_exposure.OUTPUT, recorded, path_config=requested)
+
+    assert not run_exposure.reusable(requested)
+
+
+@pytest.mark.parametrize("field", [field.name for field in fields(NextEventConfig)])
+def test_every_nested_next_event_field_prevents_reuse(ledger, field):
+    recorded = replay_config().replace(estimator="next_event")
+    changed_source_set = NextEventConfig(**(recorded.next_event.__dict__ | {field: 2}))
+    requested = recorded.replace(next_event=changed_source_set)
+    complete_identified_run(run_exposure.OUTPUT, recorded, path_config=requested)
+
+    assert not run_exposure.reusable(requested)
+
+
+@pytest.mark.parametrize("models", [("rooftop",), ("isotropic", "rooftop")])
+def test_an_exact_model_subset_is_reusable(ledger, models):
+    config = replay_config().replace(models=models)
+    complete_identified_run(run_exposure.OUTPUT, config)
+
+    assert run_exposure.reusable(config)
+
+
+def test_a_multi_model_run_keeps_the_deliberate_rooftop_only_spectrum(ledger):
+    config = replay_config().replace(models=("isotropic", "rooftop", "street_small_cell"))
+    complete_identified_run(run_exposure.OUTPUT, config)
+    with np.load(run_exposure.OUTPUT / "korenmarkt_walk_15ghz_spectra.npz") as spectra:
+        names = spectra.files
+
+    assert names == ["index", "rho_rooftop", "local_grid", "solid_angle"]
+    assert run_exposure.reusable(config)
+
+
+def test_the_output_tag_is_a_label_and_does_not_change_reuse_identity(ledger):
+    recorded = replay_config()
+    requested = recorded.replace(tag="copied_run")
+    complete_identified_run(run_exposure.OUTPUT, recorded, path_config=requested)
+
+    assert run_exposure.reusable(requested)
+
+
+def test_a_tampered_run_digest_is_not_reusable(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    document = json.loads(manifest.read_text())
+    document["run_digest"] = "not-the-run"
+    manifest.write_text(json.dumps(document))
+
+    assert not run_exposure.reusable(config)
+
+
+def test_a_modern_manifest_missing_a_default_run_field_is_not_reusable(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    document = json.loads(manifest.read_text())
+    del document["run"]["batch"]
+    manifest.write_text(json.dumps(document))
+
+    assert not run_exposure.reusable(config)
+
+
+@pytest.mark.parametrize("field", ["elevation_min_deg", "height_band_m", "range_band_m"])
+def test_a_numeric_source_model_change_prevents_reuse(ledger, monkeypatch, field):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    model = run_exposure.MODELS["rooftop"]
+    values = {
+        "elevation_min_deg": model.elevation_min_deg + 1.0,
+        "elevation_max_deg": model.elevation_max_deg,
+        "law": model.law,
+        "height_band_m": (12.0, 42.0) if field == "height_band_m" else model.height_band_m,
+        "range_band_m": (30.0, 240.0) if field == "range_band_m" else model.range_band_m,
+    }
+    if field != "elevation_min_deg":
+        values["elevation_min_deg"] = model.elevation_min_deg
+    monkeypatch.setitem(run_exposure.MODELS, "rooftop", SimpleNamespace(**values))
+
+    assert not run_exposure.reusable(config)
+
+
+def test_a_truncated_final_json_row_is_not_reusable(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    rows = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_locations.jsonl"
+    rows.write_text(rows.read_text().rsplit("\n", 2)[0] + '\n{"index":')
+
+    assert not run_exposure.reusable(config)
+
+
+def test_a_coordinated_short_modern_run_is_not_reusable(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    stem = run_exposure.OUTPUT / "korenmarkt_walk_15ghz"
+    manifest_path = stem.with_name(f"{stem.name}_manifest.json")
+    document = json.loads(manifest_path.read_text())
+    document["locations_traced"] = 79
+    manifest_path.write_text(json.dumps(document))
+    rows_path = stem.with_name(f"{stem.name}_locations.jsonl")
+    rows_path.write_text("\n".join(rows_path.read_text().splitlines()[:79]) + "\n")
+    write_complete_spectra(stem.with_name(f"{stem.name}_spectra.npz"), np.arange(79), config.local_cells)
+
+    assert not run_exposure.reusable(config)
+
+
+def test_a_walk_shorter_than_the_requested_pilot_remains_reusable(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    stem = run_exposure.OUTPUT / "korenmarkt_walk_15ghz"
+    manifest_path = stem.with_name(f"{stem.name}_manifest.json")
+    document = json.loads(manifest_path.read_text())
+    document["walk"]["candidates_after_clearance"] = 63
+    document["locations_traced"] = 63
+    manifest_path.write_text(json.dumps(document))
+    rows_path = stem.with_name(f"{stem.name}_locations.jsonl")
+    rows_path.write_text("\n".join(rows_path.read_text().splitlines()[:63]) + "\n")
+    write_complete_spectra(stem.with_name(f"{stem.name}_spectra.npz"), np.arange(63), config.local_cells)
+
+    assert run_exposure.reusable(config)
+
+
+def test_a_malformed_manifest_is_not_reusable(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    manifest.write_text("{not json")
+
+    assert not run_exposure.reusable(config)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "missing",
+        "short_index",
+        "short_rho",
+        "wrong_rho_width",
+        "missing_grid",
+        "wrong_grid",
+        "nonscalar_solid_angle",
+    ],
 )
-def test_reuse_will_need_to_compare_every_field_in_the_run_identity(ledger):
-    complete_run(run_exposure.OUTPUT, "korenmarkt_walk_15ghz")
-    assert not run_exposure.reusable(replay_config().replace(batch=100_000))
+def test_missing_or_short_spectra_are_not_reusable(ledger, damage):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    spectra = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_spectra.npz"
+    if damage == "missing":
+        spectra.unlink()
+    elif damage == "short_index":
+        write_complete_spectra(spectra, np.arange(79), config.local_cells)
+    elif damage == "short_rho":
+        np.savez(
+            spectra,
+            index=np.arange(80),
+            rho_rooftop=np.zeros((79, config.local_cells)),
+            local_grid=np.zeros((config.local_cells, 3)),
+            solid_angle=0.1,
+        )
+    elif damage == "wrong_rho_width":
+        np.savez(
+            spectra,
+            index=np.arange(80),
+            rho_rooftop=np.zeros((80, config.local_cells - 1)),
+            local_grid=np.zeros((config.local_cells, 3)),
+            solid_angle=0.1,
+        )
+    elif damage == "missing_grid":
+        np.savez(
+            spectra,
+            index=np.arange(80),
+            rho_rooftop=np.zeros((80, config.local_cells)),
+            solid_angle=0.1,
+        )
+    elif damage == "wrong_grid":
+        np.savez(
+            spectra,
+            index=np.arange(80),
+            rho_rooftop=np.zeros((80, config.local_cells)),
+            local_grid=np.zeros((config.local_cells, 2)),
+            solid_angle=0.1,
+        )
+    else:
+        np.savez(
+            spectra,
+            index=np.arange(80),
+            rho_rooftop=np.zeros((80, config.local_cells)),
+            local_grid=np.zeros((config.local_cells, 3)),
+            solid_angle=np.array([0.1]),
+        )
+
+    assert not run_exposure.reusable(config)
+
+
+@pytest.mark.parametrize(
+    "missing",
+    ["x", "sky_fraction", "chi_rooftop", "chi_rooftop_direct", "rooftop_peak_sab_w_m2"],
+)
+def test_a_row_missing_a_required_result_is_not_reusable(ledger, missing):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    rows_path = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_locations.jsonl"
+    rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+    del rows[37][missing]
+    rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+
+    assert not run_exposure.reusable(config)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    ["duplicate", "spectrum_order", "coordinated_unsorted", "spectrum_float", "float_index"],
+)
+def test_row_and_spectrum_indices_must_match_exactly(ledger, damage):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    rows_path = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_locations.jsonl"
+    spectra_path = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_spectra.npz"
+    if damage == "duplicate":
+        rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+        rows[40]["index"] = rows[39]["index"]
+        rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    elif damage == "spectrum_order":
+        indices = np.arange(80)
+        indices[[20, 21]] = indices[[21, 20]]
+        write_complete_spectra(spectra_path, indices, config.local_cells)
+    elif damage == "coordinated_unsorted":
+        rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+        rows[20], rows[21] = rows[21], rows[20]
+        rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+        indices = np.arange(80)
+        indices[[20, 21]] = indices[[21, 20]]
+        write_complete_spectra(spectra_path, indices, config.local_cells)
+    elif damage == "spectrum_float":
+        write_complete_spectra(spectra_path, np.arange(80, dtype=float), config.local_cells)
+    else:
+        rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+        rows[40]["index"] = 40.0
+        rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+
+    assert not run_exposure.reusable(config)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    ["row_null", "row_nan", "rho_nan", "negative_rho", "grid_string", "zero_grid", "wrong_solid_angle"],
+)
+def test_results_and_spectra_must_be_finite_numbers(ledger, damage):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    rows_path = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_locations.jsonl"
+    spectra_path = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_spectra.npz"
+    if damage.startswith("row"):
+        rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+        rows[13]["chi_rooftop"] = None if damage == "row_null" else float("nan")
+        rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    elif damage in ("rho_nan", "negative_rho"):
+        rho = np.zeros((80, config.local_cells))
+        rho[13, 7] = np.nan if damage == "rho_nan" else -0.01
+        local_grid = np.zeros((config.local_cells, 3))
+        local_grid[:, 2] = 1.0
+        np.savez(
+            spectra_path,
+            index=np.arange(80),
+            rho_rooftop=rho,
+            local_grid=local_grid,
+            solid_angle=4.0 * np.pi / config.local_cells,
+        )
+    elif damage == "grid_string":
+        np.savez(
+            spectra_path,
+            index=np.arange(80),
+            rho_rooftop=np.zeros((80, config.local_cells)),
+            local_grid=np.full((config.local_cells, 3), "north"),
+            solid_angle=4.0 * np.pi / config.local_cells,
+        )
+    elif damage == "zero_grid":
+        np.savez(
+            spectra_path,
+            index=np.arange(80),
+            rho_rooftop=np.zeros((80, config.local_cells)),
+            local_grid=np.zeros((config.local_cells, 3)),
+            solid_angle=4.0 * np.pi / config.local_cells,
+        )
+    else:
+        local_grid = np.zeros((config.local_cells, 3))
+        local_grid[:, 2] = 1.0
+        np.savez(
+            spectra_path,
+            index=np.arange(80),
+            rho_rooftop=np.zeros((80, config.local_cells)),
+            local_grid=local_grid,
+            solid_angle=0.1,
+        )
+
+    assert not run_exposure.reusable(config)
+
+
+@pytest.mark.parametrize("count", [80.0, True, -1])
+def test_locations_traced_is_an_exact_nonnegative_integer(ledger, count):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    document = json.loads(manifest.read_text())
+    document["locations_traced"] = count
+    manifest.write_text(json.dumps(document))
+
+    assert not run_exposure.reusable(config)
 
 
 @pytest.mark.parametrize(

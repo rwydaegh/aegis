@@ -289,8 +289,12 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
         "variant",
         "python",
         "storage_policy",
+        "run_digest",
+        "run",
     ]
     assert list(manifest["illumination_models"]) == ["isotropic", "rooftop", "street_small_cell"]
+    assert manifest["run"] == prepared.run.as_dict()
+    assert manifest["run_digest"] == prepared.run.digest()
 
 
 def test_ladder_sweep_remains_seed_major_and_reuses_one_body(tmp_path):

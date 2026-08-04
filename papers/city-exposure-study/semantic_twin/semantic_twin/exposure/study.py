@@ -25,6 +25,7 @@ import pathlib
 from typing import Any, Sequence
 
 from semantic_twin import paths
+from semantic_twin.exposure.reuse import reusable as reusable_output
 from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 from semantic_twin.materials import (
     bind_fishnet,
@@ -488,34 +489,7 @@ def reusable(config: RunConfig) -> bool:
     about it. Every field that changes the number is checked, and a rung is
     retraced whenever any of them disagrees.
     """
-    stem = f"{config.tag}_{config.frequency_ghz:g}ghz"
-    manifest_path = OUTPUT / f"{stem}_manifest.json"
-    rows_path = OUTPUT / f"{stem}_locations.jsonl"
-    if not manifest_path.exists() or not rows_path.exists():
-        return False
-    manifest = json.loads(manifest_path.read_text())
-    with rows_path.open() as handle:
-        written = sum(1 for _ in handle)
-    trace_document = manifest.get("trace_config", {})
-    # The illumination law is the field that caught this: the correction of
-    # MONOSTATIC_SBR.md moved the rooftop median by more than two decibels at
-    # every standpoint while leaving every other manifest field identical.
-    laws = {name: entry.get("law") for name, entry in manifest.get("illumination_models", {}).items()}
-    expected = (
-        ("locations_traced", config.locations),
-        ("site", config.site),
-        ("crop_radius_m", config.crop_m),
-    )
-    if written != config.locations or any(manifest.get(key) != value for key, value in expected):
-        return False
-    trace_expected = (
-        ("rays", config.rays),
-        ("seed", config.seed),
-        ("max_bounces", config.max_bounces),
-    )
-    if any(trace_document.get(key) != value for key, value in trace_expected):
-        return False
-    return laws == {name: model.law for name, model in MODELS.items()}
+    return reusable_output(config, OUTPUT, MODELS)
 
 
 def run_coverage_ladder(
