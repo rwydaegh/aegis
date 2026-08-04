@@ -5,14 +5,16 @@ the NumPy reference. Rays stay at fixed width and use an active mask through
 launch, intersection, material response, scattering, and roulette. The only
 host transfer is one packed record array after the last bounce.
 
-The prototype returns escaped paths. It does not score illumination models or
-support observers and next-event estimation yet, so production execution does
-not call it.
+The prototype returns the launch population and escaped paths. It does not
+score illumination models or support observers and next-event estimation yet,
+so production execution does not call it.
 """
 
 from __future__ import annotations
 
+import math
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,23 +29,45 @@ _PACKED_COLUMNS = 13
 
 @dataclass(frozen=True)
 class DeviceEscapeRecords:
-    """Escaped paths copied to the host after one device trace."""
+    """Launch population and escaped paths copied after one device trace.
 
+    ``all_launch_direction`` has one row for every ray, in the global order
+    ``ray_start + arange(rays)``. ``escaped_launch_direction`` contains only
+    escaped rays and aligns row for row with ``ray_index`` and the other path
+    fields. ``truncated_throughput_terms`` keeps the raw float32 values so
+    split ranges can be merged with :meth:`merge_truncated_throughput` without
+    rounding every part first.
+    """
+
+    all_launch_direction: np.ndarray
     ray_index: np.ndarray
-    launch_direction: np.ndarray
+    escaped_launch_direction: np.ndarray
     exit_direction: np.ndarray
     throughput: np.ndarray
     path_length: np.ndarray
     last_vertex: np.ndarray
     bounces: np.ndarray
+    ray_start: int
     rays: int
     truncated: int
+    truncated_throughput: float
+    truncated_throughput_terms: np.ndarray
     roulette_killed: int
     seconds: float
 
     @property
     def escaped(self) -> int:
         return int(self.ray_index.size)
+
+    @property
+    def launch_direction(self) -> np.ndarray:
+        """Compatibility name for the launch directions of escaped rays."""
+        return self.escaped_launch_direction
+
+    @staticmethod
+    def merge_truncated_throughput(records: Iterable[DeviceEscapeRecords]) -> float:
+        """Sum raw float32 terms once so splitting a ray range changes nothing."""
+        return math.fsum(float(value) for record in records for value in record.truncated_throughput_terms)
 
 
 def _counter_random(mi: Any, ray_index: Any, seed: int, depth: int, dimension: int) -> Any:
@@ -261,25 +285,42 @@ class DeviceSbrKernel:
             last_vertex,
             bounces,
             status,
+            ray_start,
             count,
             started,
         )
 
     def _transfer_records(self, *parts: Any) -> DeviceEscapeRecords:
         """Compact escaped rays and cross the device boundary in one array copy."""
-        ray_index, launch, direction, throughput, path_length, last_vertex, bounces, status, count, started = parts
+        (
+            ray_index,
+            launch,
+            direction,
+            throughput,
+            path_length,
+            last_vertex,
+            bounces,
+            status,
+            ray_start,
+            count,
+            started,
+        ) = parts
         mi, dr = self.mi, self.dr
         dr.schedule(ray_index, launch, direction, throughput, path_length, last_vertex, bounces, status)
         escaped_index = dr.compress(status == _STATUS_ESCAPED)
+        truncated_index = dr.compress(status == _STATUS_TRUNCATED)
         truncated = dr.sum(mi.UInt32(status == _STATUS_TRUNCATED))
         roulette_killed = dr.sum(mi.UInt32(status == _STATUS_ROULETTE))
-        summary = (
+        packed_parts = [
             dr.reinterpret_array(mi.Float, truncated),
             dr.reinterpret_array(mi.Float, roulette_killed),
-        )
-        if dr.width(escaped_index) == 0:
-            packed_device = dr.concat(summary)
-        else:
+            launch.x,
+            launch.y,
+            launch.z,
+        ]
+        if dr.width(truncated_index) > 0:
+            packed_parts.append(dr.gather(mi.Float, throughput, truncated_index))
+        if dr.width(escaped_index) > 0:
             ray_index = dr.gather(mi.UInt32, ray_index, escaped_index)
             launch = dr.gather(mi.Vector3f, launch, escaped_index)
             direction = dr.gather(mi.Vector3f, direction, escaped_index)
@@ -287,9 +328,8 @@ class DeviceSbrKernel:
             path_length = dr.gather(mi.Float, path_length, escaped_index)
             last_vertex = dr.gather(mi.Point3f, last_vertex, escaped_index)
             bounces = dr.gather(mi.UInt32, bounces, escaped_index)
-            packed_device = dr.concat(
-                summary
-                + (
+            packed_parts.extend(
+                (
                     dr.reinterpret_array(mi.Float, ray_index),
                     launch.x,
                     launch.y,
@@ -305,21 +345,39 @@ class DeviceSbrKernel:
                     dr.reinterpret_array(mi.Float, bounces),
                 )
             )
+        packed_device = dr.concat(packed_parts)
         transferred = np.asarray(packed_device).copy()
         summary = transferred[:2].view(np.uint32)
-        escaped_count = (transferred.size - 2) // _PACKED_COLUMNS
-        packed = transferred[2:].reshape(_PACKED_COLUMNS, escaped_count).T
+        offset = 2
+        launch_size = 3 * count
+        all_launch_direction = transferred[offset : offset + launch_size].reshape(3, count).T.copy()
+        offset += launch_size
+        truncated_count = int(summary[0])
+        truncated_throughput_terms = transferred[offset : offset + truncated_count].copy()
+        truncated_throughput = math.fsum(float(value) for value in truncated_throughput_terms)
+        offset += truncated_count
+        escaped_count = (transferred.size - offset) // _PACKED_COLUMNS
+        if transferred.size - offset != _PACKED_COLUMNS * escaped_count:
+            raise RuntimeError("device escape record packing is inconsistent")
+        packed = transferred[offset:].reshape(_PACKED_COLUMNS, escaped_count).T
         integer_bits = packed.view(np.uint32)
+        escaped_ray_index = integer_bits[:, 0].copy()
+        if escaped_ray_index.size > 1 and np.any(escaped_ray_index[1:] <= escaped_ray_index[:-1]):
+            raise RuntimeError("device escape records are not in increasing global ray-index order")
         return DeviceEscapeRecords(
-            ray_index=integer_bits[:, 0].copy(),
-            launch_direction=packed[:, 1:4].copy(),
+            all_launch_direction=all_launch_direction,
+            ray_index=escaped_ray_index,
+            escaped_launch_direction=packed[:, 1:4].copy(),
             exit_direction=packed[:, 4:7].copy(),
             throughput=packed[:, 7].copy(),
             path_length=packed[:, 8].copy(),
             last_vertex=packed[:, 9:12].copy(),
             bounces=integer_bits[:, 12].copy(),
+            ray_start=ray_start,
             rays=count,
-            truncated=int(summary[0]),
+            truncated=truncated_count,
+            truncated_throughput=truncated_throughput,
+            truncated_throughput_terms=truncated_throughput_terms,
             roulette_killed=int(summary[1]),
             seconds=time.perf_counter() - started,
         )

@@ -101,6 +101,27 @@ def _kernel(
     )
 
 
+def _cube_kernel(
+    path: Path,
+    variant: str,
+    *,
+    face_class: np.ndarray | None = None,
+    permittivity: np.ndarray | None = None,
+    **changes: object,
+) -> DeviceSbrKernel:
+    _set_variant(variant)
+    geometry = MitsubaGeometry(_write_cube(path), variant=variant)
+    config = replace(TraceConfig(rays=2048, max_bounces=2, roulette_start=3, seed=91), **changes)
+    materials = np.array([4.2 - 0.15j]) if permittivity is None else permittivity
+    return DeviceSbrKernel(
+        geometry,
+        np.zeros(geometry.face_count, dtype=np.int64) if face_class is None else face_class,
+        materials,
+        np.zeros(materials.size),
+        config,
+    )
+
+
 @pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
 def test_device_intersection_keeps_hit_face_and_normal_on_backend(tmp_path: Path, variant: str) -> None:
     _set_variant(variant)
@@ -125,8 +146,14 @@ def test_device_kernel_matches_smooth_plane_physics(tmp_path: Path, variant: str
     result = kernel.trace_escape_records(np.array([0.0, 0.0, 1.0]))
 
     assert result.escaped == result.rays == 2048
+    assert result.ray_start == 0
     assert result.truncated == 0
+    assert result.truncated_throughput == 0.0
+    assert result.truncated_throughput_terms.shape == (0,)
     assert result.roulette_killed == 0
+    assert np.array_equal(result.ray_index, np.arange(result.rays, dtype=np.uint32))
+    assert np.array_equal(result.all_launch_direction, result.escaped_launch_direction)
+    assert result.launch_direction is result.escaped_launch_direction
     direct = result.bounces == 0
     bounced = result.bounces == 1
     assert direct.any() and bounced.any()
@@ -164,6 +191,7 @@ def test_counter_rng_is_exact_across_ray_ranges(tmp_path: Path, variant: str) ->
     ]
 
     for field in (
+        "all_launch_direction",
         "ray_index",
         "launch_direction",
         "exit_direction",
@@ -174,7 +202,9 @@ def test_counter_rng_is_exact_across_ray_ranges(tmp_path: Path, variant: str) ->
     ):
         assert np.array_equal(getattr(whole, field), _join(parts, field))
     assert whole.truncated == sum(part.truncated for part in parts)
+    assert whole.truncated_throughput == DeviceEscapeRecords.merge_truncated_throughput(parts)
     assert whole.roulette_killed == sum(part.roulette_killed for part in parts)
+    assert [part.ray_start for part in parts] == [0, 997]
 
 
 def test_adjacent_seeds_do_not_permute_the_same_paths(tmp_path: Path) -> None:
@@ -212,26 +242,83 @@ def test_device_roulette_kills_and_reweights_paths(tmp_path: Path, variant: str)
     assert result.truncated == 0
     assert result.escaped + result.roulette_killed == result.rays
     assert np.allclose(result.throughput, 1.0, atol=2.0e-6)
+    assert np.all(result.ray_index[1:] > result.ray_index[:-1])
+    launch_rows = result.ray_index.astype(np.int64) - result.ray_start
+    assert np.array_equal(result.escaped_launch_direction, result.all_launch_direction[launch_rows])
 
 
 @pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
 def test_device_kernel_truncates_after_several_closed_cube_hits(tmp_path: Path, variant: str) -> None:
-    _set_variant(variant)
-    geometry = MitsubaGeometry(_write_cube(tmp_path / "cube.ply"), variant=variant)
-    config = replace(TraceConfig(rays=2048), max_bounces=2, roulette_start=3, seed=91)
-    kernel = DeviceSbrKernel(
-        geometry,
-        np.zeros(geometry.face_count, dtype=np.int64),
-        np.array([4.2 - 0.15j]),
-        np.array([0.0]),
-        config,
-    )
+    kernel = _cube_kernel(tmp_path / "cube.ply", variant)
 
     result = kernel.trace_escape_records(np.zeros(3))
 
     assert result.escaped == 0
     assert result.truncated == result.rays == 2048
+    assert result.truncated_throughput > 0.0
+    assert result.truncated_throughput == DeviceEscapeRecords.merge_truncated_throughput([result])
+    assert result.truncated_throughput_terms.shape == (result.truncated,)
     assert result.roulette_killed == 0
+    assert result.all_launch_direction.shape == (result.rays, 3)
+    assert result.ray_index.shape == (0,)
+    assert result.launch_direction.shape == (0, 3)
+    assert result.exit_direction.shape == (0, 3)
+
+
+@pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
+def test_closed_cube_reports_mixed_roulette_and_truncation(tmp_path: Path, variant: str) -> None:
+    kernel = _cube_kernel(tmp_path / "cube.ply", variant, rays=4096, roulette_start=1)
+    result = kernel.trace_escape_records(np.zeros(3))
+
+    assert result.escaped == 0
+    assert result.roulette_killed > 0
+    assert result.truncated > 0
+    assert result.roulette_killed + result.truncated == result.rays
+    assert np.isclose(result.truncated_throughput, float(result.truncated), rtol=0.0, atol=5.0e-7)
+
+
+@pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
+def test_closed_cube_contract_is_exact_across_ray_ranges(tmp_path: Path, variant: str) -> None:
+    kernel = _cube_kernel(tmp_path / "cube.ply", variant, rays=4096, roulette_start=1)
+    origin = np.zeros(3)
+    whole = kernel.trace_escape_records(origin)
+    parts = [
+        kernel.trace_escape_records(origin, rays=997, ray_start=0),
+        kernel.trace_escape_records(origin, rays=3099, ray_start=997),
+    ]
+
+    assert np.array_equal(whole.all_launch_direction, _join(parts, "all_launch_direction"))
+    assert whole.truncated == sum(part.truncated for part in parts)
+    assert whole.truncated_throughput == DeviceEscapeRecords.merge_truncated_throughput(parts)
+    assert whole.roulette_killed == sum(part.roulette_killed for part in parts)
+    assert all(part.escaped == 0 for part in parts)
+
+
+@pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
+def test_nonuniform_truncated_throughput_is_exact_across_ranges(tmp_path: Path, variant: str) -> None:
+    face_class = np.arange(12, dtype=np.int64) % 3
+    permittivity = np.array([2.0 - 0.05j, 4.2 - 0.15j, 12.0 - 0.5j])
+    kernel = _cube_kernel(
+        tmp_path / "cube.ply",
+        variant,
+        face_class=face_class,
+        permittivity=permittivity,
+        rays=4097,
+        max_bounces=5,
+        roulette_start=6,
+    )
+    origin = np.zeros(3)
+    whole = kernel.trace_escape_records(origin)
+    parts = [
+        kernel.trace_escape_records(origin, rays=997, ray_start=0),
+        kernel.trace_escape_records(origin, rays=3100, ray_start=997),
+    ]
+
+    assert whole.rays == 4097
+    assert whole.truncated > 4000
+    assert whole.truncated == sum(part.truncated for part in parts)
+    assert np.array_equal(whole.truncated_throughput_terms, _join(parts, "truncated_throughput_terms"))
+    assert whole.truncated_throughput == DeviceEscapeRecords.merge_truncated_throughput(parts)
 
 
 @pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
