@@ -22,11 +22,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import platform
-import time
 from typing import Any, Sequence
-
-import numpy as np
 
 from semantic_twin import paths
 from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
@@ -40,8 +36,20 @@ from semantic_twin.materials import (
 from semantic_twin.paths import site_mesh
 from semantic_twin.exposure import BodyCoupler, describe
 from semantic_twin.exposure.validation import validate as validate_exposure
+from semantic_twin.exposure.execution import ExecutionConfig, StudyEnvironment, execute
+from semantic_twin.exposure.sweeps import (
+    CitySweepConfig,
+    LadderSweepConfig,
+    SweepEnvironment,
+    run_all_sites as execute_all_sites,
+    run_coverage_ladder as execute_coverage_ladder,
+)
 from semantic_twin.propagation.geometry import MitsubaGeometry
 from semantic_twin.report.coverage import (
+    CoverageReportConfig,
+    CoverageReportEnvironment,
+    LadderReportConfig,
+    LadderReportEnvironment,
     _against_baseline,
     _one_value,
     _spread,
@@ -58,6 +66,7 @@ from semantic_twin.transport.tracer import (
     TraceConfig,
     trace_standpoints,
 )
+from semantic_twin.runconfig import RunConfig
 from semantic_twin.walk import build_walk, ground_datum, measure_ground_datum, stratified_subset
 
 #: ``ground_datum`` lives beside the walk it feeds, in ``semantic_twin.walk``.
@@ -236,28 +245,7 @@ def validate(rays: int = 400_000) -> dict[str, object]:
     return validate_exposure(MODELS, CONFIG, rays)
 
 
-def run(
-    locations: int,
-    rays: int,
-    frequency_hz: float,
-    *,
-    variant: str,
-    seed: int,
-    tag: str,
-    local_cells: int,
-    walk_radius_m: float,
-    walk_spacing_m: float,
-    max_bounces: int,
-    materials: str,
-    site: str = "korenmarkt",
-    coupler: Any = None,
-    crop_m: int = 130,
-    walk_npz: pathlib.Path | None = None,
-    workers: int | None = None,
-    roulette_start: int | None = None,
-    ground_datum_m: float | None = None,
-    walk_probe_z_m: float | None = None,
-) -> pathlib.Path:
+def run(config: RunConfig, execution: ExecutionConfig | None = None) -> pathlib.Path:
     """Trace one site's walk and stream it to disk.
 
     Three of these arguments exist only so that a published run can be repaired
@@ -280,280 +268,41 @@ def run(
     In every case the published manifest is the authority. Read the value out
     of it and pass it back in, rather than reconstructing the rule.
     """
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-    stem = f"{tag}_{frequency_hz / 1e9:g}ghz"
-    rows_path = OUTPUT / f"{stem}_locations.jsonl"
-    spectra_path = OUTPUT / f"{stem}_spectra.npz"
-    manifest_path = OUTPUT / f"{stem}_manifest.json"
+    return execute(config, execution or ExecutionConfig(), _execution_environment())
 
-    started = time.perf_counter()
-    mesh = site_mesh(site, crop_m)
-    geometry = MitsubaGeometry(mesh, variant=variant)
-    measured = measure_ground_datum(geometry, radius_m=walk_radius_m)
-    datum = measured.z_m if ground_datum_m is None else float(ground_datum_m)
-    registered = registered_ground_z(site)
-    datum_provenance: dict[str, Any] = dict(measured.provenance)
-    datum_provenance["registered_camera_ground_z_m"] = registered
-    if ground_datum_m is not None:
-        datum_provenance["measured_z_m"] = measured.z_m
-        datum_provenance["rule"] = (
-            f"forced to {datum} m by the caller, overriding the measured "
-            f"{measured.z_m} m. The measurement is kept above for comparison"
-        )
-    if registered is not None:
-        offset = datum - registered
-        datum_provenance["measured_minus_registered_m"] = offset
-        if abs(offset) > DATUM_CROSS_CHECK_M:
-            raise RuntimeError(
-                f"{site}: the measured ground datum {datum:.3f} m disagrees with the registered "
-                f"camera ground height {registered:.3f} m by {offset:+.3f} m, more than the "
-                f"{DATUM_CROSS_CHECK_M:.1f} m cross check allows"
-            )
-    print(
-        f"{site}: ground datum {datum:.3f} m from {measured.band_columns} of {measured.columns} "
-        f"columns ({100 * measured.band_fraction:.1f} %)",
-        flush=True,
+
+def _execution_environment() -> StudyEnvironment:
+    return StudyEnvironment(
+        output=OUTPUT,
+        material_config=CONFIG,
+        semantics=SEMANTICS,
+        phantom=PHANTOM,
+        phantom_mass_kg=PHANTOM_MASS_KG,
+        reference_s0_w_m2=REFERENCE_S0_W_M2,
+        frequency_note=FREQUENCY_NOTE,
+        crop_bound_note=CROP_BOUND_NOTE,
+        datum_cross_check_m=DATUM_CROSS_CHECK_M,
+        models=MODELS,
+        site_mesh=site_mesh,
+        registered_ground_z=registered_ground_z,
+        site_walk_semantics=site_walk_semantics,
+        site_fishnet=site_fishnet,
+        geometry_type=MitsubaGeometry,
+        classify_faces=classify_faces,
+        bind_fishnet=bind_fishnet,
+        bind_walk_entities=bind_walk_entities,
+        bind_walk_materials=bind_walk_materials,
+        load_table=load_table,
+        build_walk=build_walk,
+        measure_ground_datum=measure_ground_datum,
+        stratified_subset=stratified_subset,
+        trace_config_type=TraceConfig,
+        tracer_type=SbrTracer,
+        trace_standpoints=trace_standpoints,
+        body_coupler_type=BodyCoupler,
+        describe_body=describe,
+        report=report,
     )
-    face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    areas = geometry.face_areas()
-    semantic_provenance: dict[str, Any] = {"materials": materials}
-    # Whether a site can be run with image evidence is a question about what is
-    # on disk for that site at that crop radius, not about which site it is. The
-    # guard this replaced named korenmarkt, which was true when korenmarkt held
-    # the only binding and became a self fulfilling prophecy once it did not.
-    walk_binding = walk_npz or site_walk_semantics(site, crop_m)
-    fishnet = site_fishnet(site)
-    if materials.startswith("walk") and walk_binding is None:
-        raise ValueError(
-            f"no fused station binding for {site} at {crop_m} m. Build one with "
-            f"`build_site_semantics.py --site {site} --crop-m {crop_m}`, which needs registered "
-            f"panoramas under data/panoramas/{site}, or run --materials geometric."
-        )
-    if materials == "semantic" and fishnet is None:
-        raise ValueError(
-            f"no fishnet surface set for {site} at {crop_m} m, so there is nothing to bind. "
-            f"Use --materials walk if the site has a fused station binding, or --materials geometric."
-        )
-
-    if materials == "semantic":
-        fishnet_dir, fishnet_mesh = fishnet
-        source = MitsubaGeometry(fishnet_mesh, variant=variant)
-        semantic = bind_fishnet(
-            geometry.vertices,
-            geometry.faces,
-            areas,
-            face_class,
-            fishnet_dir=fishnet_dir,
-            semantics_path=SEMANTICS,
-            source_ply_vertices=source.vertices,
-            source_ply_faces=source.faces,
-        )
-        face_class = semantic.face_class
-        binding = load_table(
-            CONFIG,
-            frequency_hz,
-            class_names=semantic.class_names,
-            class_binding=semantic.class_binding,
-            class_rule=(
-                "panorama semantic posterior where a panorama saw the triangle, "
-                "geometric orientation rule everywhere else"
-            ),
-        )
-        semantic_provenance.update(
-            {
-                "covered_fraction_by_face": semantic.covered_fraction_by_face,
-                "covered_fraction_by_area": semantic.covered_fraction_by_area,
-                **semantic.provenance,
-            }
-        )
-        print(
-            f"semantic binding: {semantic.covered_fraction_by_face:.4f} of faces, "
-            f"{semantic.covered_fraction_by_area:.4f} of area",
-            flush=True,
-        )
-    elif materials == "walk":
-        semantic = bind_walk_entities(
-            areas,
-            face_class,
-            walk_npz=walk_binding,
-            semantics_path=SEMANTICS,
-        )
-        face_class = semantic.face_class
-        binding = load_table(
-            CONFIG,
-            frequency_hz,
-            class_names=semantic.class_names,
-            class_binding=semantic.class_binding,
-            class_rule=(
-                "fused multi station walk semantic posterior where any station saw "
-                "the triangle, geometric orientation rule everywhere else"
-            ),
-        )
-        semantic_provenance.update(
-            {
-                "covered_fraction_by_face": semantic.covered_fraction_by_face,
-                "covered_fraction_by_area": semantic.covered_fraction_by_area,
-                **semantic.provenance,
-            }
-        )
-        print(
-            f"walk semantic binding: {semantic.covered_fraction_by_face:.4f} of faces, "
-            f"{semantic.covered_fraction_by_area:.4f} of area",
-            flush=True,
-        )
-    elif materials in (
-        "walk_material",
-        "walk_material_mixture",
-        "walk_material_over_entity",
-        "walk_material_facade_only",
-    ):
-        semantic = bind_walk_materials(
-            areas,
-            face_class,
-            walk_npz=walk_binding,
-            semantics_path=SEMANTICS,
-            mixture=materials == "walk_material_mixture",
-            over_entity=materials == "walk_material_over_entity",
-            facade_only=materials == "walk_material_facade_only",
-        )
-        face_class = semantic.face_class
-        binding = load_table(
-            CONFIG,
-            frequency_hz,
-            class_names=semantic.class_names,
-            class_binding=semantic.class_binding,
-            class_rule=(
-                "fused multi station walk SAM 3 material posterior where any station bound "
-                "the triangle, geometric orientation rule everywhere else"
-            ),
-        )
-        semantic_provenance.update(
-            {
-                "covered_fraction_by_face": semantic.covered_fraction_by_face,
-                "covered_fraction_by_area": semantic.covered_fraction_by_area,
-                **semantic.provenance,
-            }
-        )
-        print(
-            f"walk material binding: {semantic.covered_fraction_by_face:.4f} of faces, "
-            f"{semantic.covered_fraction_by_area:.4f} of area",
-            flush=True,
-        )
-    elif materials == "geometric":
-        binding = load_table(CONFIG, frequency_hz)
-        semantic_provenance.update({"covered_fraction_by_face": 0.0, "covered_fraction_by_area": 0.0})
-    else:
-        raise ValueError(f"unknown materials mode {materials!r}")
-
-    walk = build_walk(
-        geometry,
-        ground_datum_m=datum,
-        radius_m=walk_radius_m,
-        spacing_m=walk_spacing_m,
-        seed=seed,
-        **({} if walk_probe_z_m is None else {"probe_z_m": walk_probe_z_m}),
-    )
-    picks = stratified_subset(walk, locations)
-    print(f"walk: {len(walk)} candidates, tracing {picks.size}", flush=True)
-
-    config = TraceConfig(
-        frequency_hz=frequency_hz,
-        rays=rays,
-        local_cells=local_cells,
-        max_bounces=max_bounces,
-        seed=seed,
-        **({} if roulette_start is None else {"roulette_start": roulette_start}),
-    )
-    tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
-    if coupler is None:
-        coupler = BodyCoupler(PHANTOM, frequency_hz, body_mass_kg=PHANTOM_MASS_KG)
-
-    manifest = {
-        "generator": "run_exposure.py",
-        "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "site": site,
-        "mesh": str(mesh),
-        "mesh_triangles": int(geometry.face_count),
-        "crop_radius_m": crop_m,
-        "ground_datum_m": datum,
-        "ground_datum_source": datum_provenance["rule"],
-        "ground_datum": datum_provenance,
-        "reference_s0_w_m2": REFERENCE_S0_W_M2,
-        "trace_config": config.as_dict(),
-        "surface_binding": binding.as_dict(),
-        "semantic_binding": semantic_provenance,
-        "class_area_fractions": {
-            name: float(areas[face_class == i].sum() / areas.sum()) for i, name in enumerate(binding.class_names)
-        },
-        "frequency_note": FREQUENCY_NOTE,
-        "crop_bound_note": CROP_BOUND_NOTE,
-        "walk": walk.provenance,
-        "locations_requested": locations,
-        "locations_traced": int(picks.size),
-        "illumination_models": {
-            name: {
-                "elevation_deg": [model.elevation_min_deg, model.elevation_max_deg],
-                "law": model.law,
-                "height_band_m": list(model.height_band_m) if model.height_band_m else None,
-                "range_band_m": list(model.range_band_m) if model.range_band_m else None,
-                "description": model.description,
-            }
-            for name, model in MODELS.items()
-        },
-        "body": describe(coupler),
-        "variant": variant,
-        "python": platform.python_version(),
-        "storage_policy": "paths are never written, only per location scalars and rho",
-    }
-    manifest_path.write_text(json.dumps(manifest, indent=2))
-
-    spectra = np.zeros((picks.size, local_cells))
-    standpoints = [(walk.points[i], float(walk.ground_z_m[i]), seed + 1000 * int(i)) for i in picks]
-    with rows_path.open("w") as handle:
-        for row_index, result in trace_standpoints(tracer, standpoints, MODELS, workers=workers):
-            index = picks[row_index]
-            point = walk.points[index]
-            row = {
-                "index": int(index),
-                "x": float(point[0]),
-                "y": float(point[1]),
-                "z": float(point[2]),
-                "ground_z_m": float(walk.ground_z_m[index]),
-                "seconds": result.seconds,
-            }
-            row.update(result.scalars())
-            for name in MODELS:
-                exposure = coupler.couple(
-                    result.local_grid,
-                    result.rho[name],
-                    result.local_solid_angle,
-                    REFERENCE_S0_W_M2,
-                )
-                for key, value in exposure.as_dict().items():
-                    row[f"{name}_{key}"] = value
-            spectra[row_index] = result.rho["rooftop"]
-            handle.write(json.dumps(row) + "\n")
-            handle.flush()
-            print(
-                f"[{row_index + 1}/{picks.size}] chi_rooftop={row['chi_rooftop']:.3f} "
-                f"sky={row['sky_fraction']:.3f} "
-                f"peak_sab={row['rooftop_peak_sab_w_m2']:.4f} "
-                f"({result.seconds:.1f} s)",
-                flush=True,
-            )
-            np.savez_compressed(
-                spectra_path,
-                rho_rooftop=spectra[: row_index + 1],
-                local_grid=result.local_grid,
-                solid_angle=result.local_solid_angle,
-                index=picks[: row_index + 1],
-            )
-
-    manifest["wall_seconds"] = time.perf_counter() - started
-    manifest_path.write_text(json.dumps(manifest, indent=2))
-    print(f"wrote {rows_path}")
-    report(stem)
-    return rows_path
 
 
 def report(stem: str) -> pathlib.Path:
@@ -691,18 +440,15 @@ def coverage_report(
     tags, so a rerun at a different bounce budget does not overwrite the
     published ladder and can be compared against it.
     """
-    return write_coverage_report(
-        frequency_hz,
-        tag_suffix,
-        site=site,
-        crop_m=crop_m,
-        seed=seed,
+    config = CoverageReportConfig(frequency_hz, tag_suffix, site, crop_m, seed)
+    environment = CoverageReportEnvironment(
         output=OUTPUT,
         rungs_for=coverage_ladder,
         key_for=ladder_key,
         model_keys=LADDER_MODELS,
         compare_to_baseline=_against_baseline,
     )
+    return write_coverage_report(config, environment)
 
 
 def ladder_sites(sites: tuple[str, ...], crop_m: int) -> tuple[list[str], dict[str, str]]:
@@ -732,7 +478,7 @@ def ladder_sites(sites: tuple[str, ...], crop_m: int) -> tuple[list[str], dict[s
     return admitted, refused
 
 
-def reusable(stem: str, locations: int, rays: int, site: str, crop_m: int, seed: int, max_bounces: int) -> bool:
+def reusable(config: RunConfig) -> bool:
     """Whether a run already on disk is the run this sweep would produce.
 
     Existing and complete is not enough. Korenmarkt's three published 130 m
@@ -742,6 +488,7 @@ def reusable(stem: str, locations: int, rays: int, site: str, crop_m: int, seed:
     about it. Every field that changes the number is checked, and a rung is
     retraced whenever any of them disagrees.
     """
+    stem = f"{config.tag}_{config.frequency_ghz:g}ghz"
     manifest_path = OUTPUT / f"{stem}_manifest.json"
     rows_path = OUTPUT / f"{stem}_locations.jsonl"
     if not manifest_path.exists() or not rows_path.exists():
@@ -749,37 +496,32 @@ def reusable(stem: str, locations: int, rays: int, site: str, crop_m: int, seed:
     manifest = json.loads(manifest_path.read_text())
     with rows_path.open() as handle:
         written = sum(1 for _ in handle)
-    config = manifest.get("trace_config", {})
+    trace_document = manifest.get("trace_config", {})
     # The illumination law is the field that caught this: the correction of
     # MONOSTATIC_SBR.md moved the rooftop median by more than two decibels at
     # every standpoint while leaving every other manifest field identical.
     laws = {name: entry.get("law") for name, entry in manifest.get("illumination_models", {}).items()}
-    return (
-        manifest.get("locations_traced") == written == locations
-        and manifest.get("site") == site
-        and manifest.get("crop_radius_m") == crop_m
-        and config.get("rays") == rays
-        and config.get("seed") == seed
-        and config.get("max_bounces") == max_bounces
-        and laws == {name: model.law for name, model in MODELS.items()}
+    expected = (
+        ("locations_traced", config.locations),
+        ("site", config.site),
+        ("crop_radius_m", config.crop_m),
     )
+    if written != config.locations or any(manifest.get(key) != value for key, value in expected):
+        return False
+    trace_expected = (
+        ("rays", config.rays),
+        ("seed", config.seed),
+        ("max_bounces", config.max_bounces),
+    )
+    if any(trace_document.get(key) != value for key, value in trace_expected):
+        return False
+    return laws == {name: model.law for name, model in MODELS.items()}
 
 
 def run_coverage_ladder(
-    locations: int,
-    rays: int,
-    frequency_hz: float,
-    *,
-    variant: str,
-    seeds: tuple[int, ...],
-    local_cells: int,
-    walk_radius_m: float,
-    walk_spacing_m: float,
-    max_bounces: int,
-    sites: tuple[str, ...] = SITES,
-    crop_m: int = 130,
-    tag_suffix: str = "",
-    workers: int | None = None,
+    config: RunConfig,
+    execution: ExecutionConfig,
+    sweep: LadderSweepConfig,
 ) -> pathlib.Path | None:
     """Climb every site's evidence ladder, on every seed, then compare the sites.
 
@@ -798,61 +540,7 @@ def run_coverage_ladder(
     be stopped early then holds a complete cross site answer with no error bar
     rather than an error bar on a third of the sites.
     """
-    coupler = BodyCoupler(PHANTOM, frequency_hz, body_mass_kg=PHANTOM_MASS_KG)
-    admitted, refused = ladder_sites(sites, crop_m)
-    for site, reason in refused.items():
-        print(f"[skip] {site}: {reason}", flush=True)
-    failures: dict[str, str] = {}
-    for seed in seeds:
-        for site in admitted:
-            for tag, materials, _description in coverage_ladder(site, crop_m, seed):
-                stem = f"{tag}{tag_suffix}_{frequency_hz / 1e9:g}ghz"
-                if reusable(stem, locations, rays, site, crop_m, seed, max_bounces):
-                    print(f"[have] {stem}", flush=True)
-                    continue
-                if (OUTPUT / f"{stem}_manifest.json").exists():
-                    # Korenmarkt at 130 m on seed 7 writes the three published
-                    # stems, and those hold 120 standpoint runs made under the
-                    # superseded elevation law. A resume refuses to read them,
-                    # which would otherwise leave a sweep quietly overwriting
-                    # the runs the paper quotes.
-                    raise ValueError(
-                        f"{stem} is on disk and was made at different settings. Overwriting it would "
-                        f"destroy a run something else may quote. Pass --tag-suffix to write beside it."
-                    )
-                try:
-                    run(
-                        locations,
-                        rays,
-                        frequency_hz,
-                        variant=variant,
-                        seed=seed,
-                        tag=f"{tag}{tag_suffix}",
-                        local_cells=local_cells,
-                        walk_radius_m=walk_radius_m,
-                        walk_spacing_m=walk_spacing_m,
-                        max_bounces=max_bounces,
-                        materials=materials,
-                        site=site,
-                        coupler=coupler,
-                        crop_m=crop_m,
-                        workers=workers,
-                    )
-                except Exception as error:  # noqa: BLE001
-                    # Named and carried into the report. A rung that failed is a
-                    # row that says why, never a row filled from a neighbour.
-                    failures[stem] = repr(error)
-                    print(f"RUNG FAILED {stem}: {error!r}", flush=True)
-            coverage_report(frequency_hz, tag_suffix, site=site, crop_m=crop_m, seed=seed)
-    return coverage_ladder_report(
-        admitted,
-        crop_m,
-        seeds,
-        frequency_hz,
-        tag_suffix=tag_suffix,
-        refused=refused,
-        failures=failures,
-    )
+    return execute_coverage_ladder(config, execution, sweep, _sweep_environment())
 
 
 def coverage_ladder_report(
@@ -860,10 +548,7 @@ def coverage_ladder_report(
     crop_m: int,
     seeds: tuple[int, ...],
     frequency_hz: float,
-    *,
-    tag_suffix: str = "",
-    refused: dict[str, str] | None = None,
-    failures: dict[str, str] | None = None,
+    **options: Any,
 ) -> pathlib.Path | None:
     """Does the single square material negative travel? One row per square.
 
@@ -877,14 +562,18 @@ def coverage_ladder_report(
     of how good the segmentation is, so the rows are ordered by site name and
     not by it.
     """
-    return write_coverage_ladder_report(
+    config = LadderReportConfig(
         sites,
         crop_m,
         seeds,
         frequency_hz,
-        tag_suffix=tag_suffix,
-        refused=refused,
-        failures=failures,
+        tag_suffix=options.pop("tag_suffix", ""),
+        refused=options.pop("refused", None),
+        failures=options.pop("failures", None),
+    )
+    if options:
+        raise TypeError(f"unknown coverage ladder report options: {', '.join(sorted(options))}")
+    environment = LadderReportEnvironment(
         output=OUTPUT,
         key_for=ladder_key,
         model_keys=LADDER_MODELS,
@@ -893,24 +582,10 @@ def coverage_ladder_report(
         plotter=plot_cross_site_ladder,
         markdown=ladder_markdown,
     )
+    return write_coverage_ladder_report(config, environment)
 
 
-def run_all_sites(
-    locations: int,
-    rays: int,
-    frequency_hz: float,
-    *,
-    variant: str,
-    seed: int,
-    local_cells: int,
-    walk_radius_m: float,
-    walk_spacing_m: float,
-    max_bounces: int,
-    sites: tuple[str, ...] = SITES,
-    crop_m: int = 130,
-    tag_suffix: str = "",
-    workers: int | None = None,
-) -> None:
+def run_all_sites(config: RunConfig, execution: ExecutionConfig, sweep: CitySweepConfig) -> None:
     """One geometric materials run per site, then the cross city figure.
 
     The material treatment is held constant across sites on purpose. Only nine
@@ -919,59 +594,24 @@ def run_all_sites(
     varied would confound geometry with material assignment. What varies here
     is urban form, which is the question.
     """
-    coupler = BodyCoupler(PHANTOM, frequency_hz, body_mass_kg=PHANTOM_MASS_KG)
-    done: list[str] = []
-    buildable: list[str] = []
-    for site in sites:
-        try:
-            site_mesh(site, crop_m)
-        except FileNotFoundError:
-            # Not a failure. A site simply has no build at this radius, and
-            # substituting a different one would confound geometry with crop.
-            print(f"[skip] {site}: no {crop_m} m mesh, not comparable at this radius", flush=True)
-            continue
-        buildable.append(site)
-        # The suffix keeps a rerun from landing on a published run's files. The
-        # city250_* tags hold the results computed under the superseded
-        # elevation law, and those have to stay readable next to their
-        # replacements rather than be overwritten in place.
-        stem = "city" if crop_m == 130 else f"city{crop_m}"
-        tag = f"{stem}{tag_suffix}_{site}"
-        try:
-            run(
-                locations,
-                rays,
-                frequency_hz,
-                variant=variant,
-                seed=seed,
-                tag=tag,
-                local_cells=local_cells,
-                walk_radius_m=walk_radius_m,
-                walk_spacing_m=walk_spacing_m,
-                max_bounces=max_bounces,
-                materials="geometric",
-                site=site,
-                coupler=coupler,
-                crop_m=crop_m,
-                workers=workers,
-            )
-            done.append(site)
-        except Exception as error:  # noqa: BLE001
-            print(f"SITE FAILED {site}: {error!r}", flush=True)
-        # Written after every site so a sweep that dies at hour two still leaves
-        # a readable aggregate. It therefore spends most of its life partial,
-        # and used to say nothing about that: the published eleven city figure
-        # was copied from one of these mid-sweep snapshots and showed a site at
-        # 3 standpoints. The table now carries its own coverage and the figure is
-        # only drawn from a table that passes it.
-        #
-        # ``buildable`` still grows inside this loop, so mid sweep it names the
-        # squares reached rather than the squares intended and the two agree at
-        # every step of a healthy sweep. The list is what the old counter was,
-        # with names instead of a number. Hoisting the mesh check above the loop
-        # would make the expectation durable and is the remaining half of this
-        # fix.
-        cross_city_report(done, frequency_hz, crop_m=crop_m, tag_suffix=tag_suffix, sites_expected=tuple(buildable))
+    execute_all_sites(config, execution, sweep, _sweep_environment())
+
+
+def _sweep_environment() -> SweepEnvironment:
+    return SweepEnvironment(
+        output=OUTPUT,
+        phantom=PHANTOM,
+        phantom_mass_kg=PHANTOM_MASS_KG,
+        body_coupler_type=BodyCoupler,
+        site_mesh=site_mesh,
+        ladder_sites=ladder_sites,
+        coverage_ladder=coverage_ladder,
+        reusable=reusable,
+        execute=run,
+        coverage_report=coverage_report,
+        coverage_ladder_report=coverage_ladder_report,
+        cross_city_report=cross_city_report,
+    )
 
 
 def cross_city_report(

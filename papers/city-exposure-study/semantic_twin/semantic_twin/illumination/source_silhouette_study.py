@@ -1,12 +1,13 @@
 """The source set with no threshold in it, taken straight off the skyline.
 
 Two earlier attempts put base station sites on the mesh by testing surface
-samples. `measure_source_thickness.py` shows that a band of given thickness fails
-outright: the thickness moves the answer by 3.6 to 6.1 dB and reorders the
-squares. `measure_source_construction.py` repairs part of that by counting
-footprint cells rather than wall area, but it still carries four thresholds, a
-sky test, a drop, a drop radius and a minimum height, and its coverage of the
-visible skyline saturates near 0.57 however small the cells get.
+samples. `archive/scripts/measure_source_thickness.py` shows that a band of
+given thickness fails outright: the thickness moves the answer by 3.6 to 6.1
+dB and reorders the squares. `archive/scripts/measure_source_construction.py`
+repairs part of that by counting footprint cells rather than wall area, but it
+still carries four thresholds, a sky test, a drop, a drop radius and a minimum
+height, and its coverage of the visible skyline saturates near 0.57 however
+small the cells get.
 
 Both share one flaw. They ask the mesh where its roof edges are, and a
 photogrammetric mesh does not know. Its roofs are lumpy at the half metre scale,

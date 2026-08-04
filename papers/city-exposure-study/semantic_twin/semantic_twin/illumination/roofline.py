@@ -97,7 +97,8 @@ class Roofline:
     This is one of the two constructions of the facade tip law. It filters a
     uniform draw over mesh area. The other, :func:`~.sources.build_source_set`,
     casts a ray fan from the walk and keeps the topmost hit. They exist to be
-    compared, and ``measure_source_construction.py`` is the comparison.
+    compared, and ``archive/scripts/measure_source_construction.py`` is the
+    comparison.
     """
 
     points: np.ndarray  # (N, 3)

@@ -536,7 +536,17 @@ def _station_semantics(job: tuple) -> dict:
 
     from semantic_twin.pano_geometry import equirectangular_directions, panorama_to_world_matrix
 
-    mesh_path, pose, semantics_path, transient_ids, grid_height, image_id, material_count = job
+    (
+        mesh_path,
+        pose,
+        semantics_path,
+        transient_ids,
+        grid_height,
+        image_id,
+        material_count,
+        vegetation_form_count,
+        vegetation_subtype_count,
+    ) = job
     mesh = trimesh.load(mesh_path, process=False)
     height, width = grid_height, 2 * grid_height
     rotation = panorama_to_world_matrix(
@@ -551,6 +561,8 @@ def _station_semantics(job: tuple) -> dict:
 
     rf_material = None
     material_source = None
+    vegetation_form = None
+    vegetation_subtype = None
     with np.load(semantics_path) as document:
         entity = document["entity"]
         # Present only for panoramas segmented with ``--backend hybrid``. The
@@ -559,6 +571,9 @@ def _station_semantics(job: tuple) -> dict:
         if "rf_material" in document.files:
             rf_material = document["rf_material"]
             material_source = document["material_source"]
+        if "vegetation_form" in document.files and "vegetation_subtype" in document.files:
+            vegetation_form = document["vegetation_form"]
+            vegetation_subtype = document["vegetation_subtype"]
     rows = np.repeat(np.arange(height) * entity.shape[0] // height, width)
     columns = np.tile(np.arange(width) * entity.shape[1] // width, height)
     labels = entity[rows, columns]
@@ -584,6 +599,31 @@ def _station_semantics(job: tuple) -> dict:
         "view_transient_pixels": int(transient.sum()),
         "view_mesh_rays": len(index_ray),
     }
+    if vegetation_form is not None and vegetation_form_count:
+        hit_form = vegetation_form[rows, columns][index_ray]
+        resolved = clean & (hit_form > 0)
+        form_tally = np.zeros((face_count, vegetation_form_count), dtype=np.int32)
+        np.add.at(form_tally, (index_tri[resolved], hit_form[resolved]), 1)
+        modal_form = np.where(
+            form_tally.sum(axis=1) > 0,
+            form_tally.argmax(axis=1),
+            0,
+        ).astype(np.uint8)
+        hit_subtype = vegetation_subtype[rows, columns][index_ray]
+        subtype_tally = np.zeros((face_count, vegetation_subtype_count), dtype=np.int32)
+        diagnostic = resolved & (hit_subtype > 0) & (hit_form == modal_form[index_tri])
+        np.add.at(subtype_tally, (index_tri[diagnostic], hit_subtype[diagnostic]), 1)
+        record.update(
+            modal_vegetation_form=modal_form,
+            modal_vegetation_subtype=np.where(
+                subtype_tally.sum(axis=1) > 0,
+                subtype_tally.argmax(axis=1),
+                0,
+            ).astype(np.uint8),
+            vegetation_rays=form_tally.sum(axis=1).astype(np.int32),
+            vegetation_form_counts=form_tally,
+            vegetation_subtype_counts=subtype_tally,
+        )
     if rf_material is None:
         return record
     # Same rays, same transient mask, same modal reduction. The only thing that
@@ -608,10 +648,20 @@ def _semantic_jobs(
     selection: dict,
     download: dict,
     mesh_path: str,
-) -> tuple[list[tuple], list[dict], list[dict], list[str], list[str] | None]:
+) -> tuple[
+    list[tuple],
+    list[dict],
+    list[dict],
+    list[str],
+    list[str] | None,
+    list[str] | None,
+    list[str] | None,
+]:
     """Admit registered stations and build their independent semantic jobs."""
     jobs, kept, skipped, backends = [], [], [], []
     material_names: list[str] | None = None
+    vegetation_form_names: list[str] | None = None
+    vegetation_subtype_names: list[str] | None = None
     for index, record in enumerate(download["stations"]):
         folder = pathlib.Path(record["folder"])
         aligned = folder / "alignment/pose_aligned.json"
@@ -628,12 +678,15 @@ def _semantic_jobs(
             continue
         meta = json.loads((folder / "semantics/semantics.json").read_text())
         transient = {int(k) for k, v in meta["entity_id2label"].items() if v in TRANSIENT_CLASSES}
+        material_names, vegetation_form_names, vegetation_subtype_names = _merge_semantic_vocabularies(
+            meta,
+            material_names,
+            vegetation_form_names,
+            vegetation_subtype_names,
+        )
         vocabulary = meta.get("rf_material_id2label")
-        if vocabulary is not None:
-            names = [vocabulary[str(index)] for index in range(len(vocabulary))]
-            if material_names is not None and names != material_names:
-                raise SystemExit("stations disagree on the RF material vocabulary, refusing to fuse them")
-            material_names = names
+        form_vocabulary = meta.get("vegetation_form_id2label")
+        subtype_vocabulary = meta.get("vegetation_subtype_id2label")
         backends.append(meta.get("backend", "mask2former"))
         jobs.append(
             (
@@ -644,6 +697,8 @@ def _semantic_jobs(
                 args.grid_height,
                 record["image_id"],
                 0 if vocabulary is None else len(vocabulary),
+                0 if form_vocabulary is None else len(form_vocabulary),
+                0 if subtype_vocabulary is None else len(subtype_vocabulary),
             )
         )
         kept.append(
@@ -654,7 +709,48 @@ def _semantic_jobs(
                 "skyline_residual_deg": residual,
             }
         )
-    return jobs, kept, skipped, backends, material_names
+    return (
+        jobs,
+        kept,
+        skipped,
+        backends,
+        material_names,
+        vegetation_form_names,
+        vegetation_subtype_names,
+    )
+
+
+def _ordered_vocabulary(document: dict, key: str) -> list[str] | None:
+    vocabulary = document.get(key)
+    if vocabulary is None:
+        return None
+    return [vocabulary[str(index)] for index in range(len(vocabulary))]
+
+
+def _same_vocabulary(current: list[str] | None, found: list[str] | None, axis: str) -> list[str] | None:
+    if found is None:
+        return current
+    if current is not None and found != current:
+        raise SystemExit(f"stations disagree on the {axis} vocabulary, refusing to fuse them")
+    return found
+
+
+def _merge_semantic_vocabularies(
+    document: dict,
+    material: list[str] | None,
+    form: list[str] | None,
+    subtype: list[str] | None,
+) -> tuple[list[str] | None, list[str] | None, list[str] | None]:
+    found_material = _ordered_vocabulary(document, "rf_material_id2label")
+    found_form = _ordered_vocabulary(document, "vegetation_form_id2label")
+    found_subtype = _ordered_vocabulary(document, "vegetation_subtype_id2label")
+    if (found_form is None) != (found_subtype is None):
+        raise SystemExit("a station carries only half of the vegetation vocabulary")
+    return (
+        _same_vocabulary(material, found_material, "RF material"),
+        _same_vocabulary(form, found_form, "vegetation form"),
+        _same_vocabulary(subtype, found_subtype, "vegetation subtype"),
+    )
 
 
 def stage_semantic(args: WalkEvidenceConfig) -> None:
@@ -670,7 +766,15 @@ def stage_semantic(args: WalkEvidenceConfig) -> None:
     mesh_path = _mesh_path(args, scene)
     area = np.asarray(trimesh.load(mesh_path, process=False).area_faces, dtype=float)
 
-    jobs, kept, skipped, backends, material_names = _semantic_jobs(args, selection, download, mesh_path)
+    (
+        jobs,
+        kept,
+        skipped,
+        backends,
+        material_names,
+        vegetation_form_names,
+        vegetation_subtype_names,
+    ) = _semantic_jobs(args, selection, download, mesh_path)
     if len(jobs) < 2:
         raise SystemExit("fewer than two usable stations, nothing to cross-validate")
 
@@ -727,6 +831,14 @@ def stage_semantic(args: WalkEvidenceConfig) -> None:
         "modal_class": modal,
         "clean_rays": clean,
     }
+    vegetation_arrays, vegetation_report = _walk_vegetation_arrays(
+        results,
+        vegetation_form_names,
+        vegetation_subtype_names,
+    )
+    arrays.update(vegetation_arrays)
+    if vegetation_report is not None:
+        report["vegetation"] = vegetation_report
     if material_names is not None and all("modal_material" in result for result in results):
         modal_material = np.stack([result["modal_material"] for result in results])
         concept_rays = np.stack([result["concept_rays"] for result in results])
@@ -776,6 +888,40 @@ def stage_semantic(args: WalkEvidenceConfig) -> None:
     np.savez_compressed(out / "walk_semantic.npz", **arrays)
     (out / "walk_semantic.json").write_text(json.dumps(report, indent=2))
     print(json.dumps({"occlusion": report["occlusion"], "agreement": report["agreement"]}, indent=2)[:3000], flush=True)
+
+
+def _walk_vegetation_arrays(
+    results: list[dict],
+    form_names: list[str] | None,
+    subtype_names: list[str] | None,
+) -> tuple[dict[str, np.ndarray], dict | None]:
+    if form_names is None or subtype_names is None:
+        return {}, None
+    if not all("modal_vegetation_form" in result for result in results):
+        return {}, {"status": "mixed semantic files, refusing a vegetation axis only some stations carry"}
+    modal_form = np.stack([result["modal_vegetation_form"] for result in results])
+    vegetation_rays = np.stack([result["vegetation_rays"] for result in results])
+    form_counts = np.sum([result["vegetation_form_counts"] for result in results], axis=0)
+    subtype_counts = np.sum([result["vegetation_subtype_counts"] for result in results], axis=0)
+    arrays = {
+        "modal_vegetation_form": modal_form,
+        "modal_vegetation_subtype": np.stack([result["modal_vegetation_subtype"] for result in results]),
+        "vegetation_rays": vegetation_rays,
+        "vegetation_form_counts": form_counts.astype(np.int32),
+        "vegetation_subtype_counts": subtype_counts.astype(np.int32),
+        "vegetation_form_names": np.asarray(form_names),
+        "vegetation_subtype_names": np.asarray(subtype_names),
+    }
+    report = {
+        "form_vocabulary": form_names,
+        "diagnostic_subtype_vocabulary": subtype_names,
+        "faces_with_resolved_form": int((vegetation_rays.sum(axis=0) > 0).sum()),
+        "note": (
+            "only vegetation-specific concept masks vote; dense Vegetation pixels carry "
+            "the unresolved value and add no form vote"
+        ),
+    }
+    return arrays, report
 
 
 def _agreement(modal, clean_seen, kept, area, args, *, axis: str = "", caveat: str = "") -> dict:

@@ -33,12 +33,20 @@ from typing import Any
 
 import numpy as np
 
-from ..illumination import IlluminationModel, fibonacci_sphere, nearest_cell, sample_sphere
+from ..illumination import IlluminationModel, fibonacci_sphere
 from .observers import (
     TERMINATIONS as TERMINATIONS,
     BounceEvidenceTally,
     PathRecord as PathRecord,
     PathRecorder,
+)
+from .trace_kernel import (
+    BatchObservers,
+    EscapeDeposit,
+    TraceAccumulators,
+    deposit,
+    range_to_source_shell,
+    run_batch,
 )
 
 
@@ -138,13 +146,11 @@ class PointResult:
 
 
 def fresnel_power_reflectance(cos_incidence: np.ndarray, permittivity: np.ndarray) -> np.ndarray:
-    """Unpolarised half space power reflectance.
+    """Unpolarised half-space power reflectance.
 
     ``permittivity`` is the complex relative permittivity with a negative
     imaginary part, the ITU-R P.2040-4 convention. Returns the mean of
-    ``|Gamma_TE|**2`` and ``|Gamma_TM|**2``, which is the correct power weight
-    for an unpolarised or fully depolarised field and is exactly what the two
-    closed form checks of section 11.1 average over.
+    ``|Gamma_TE|**2`` and ``|Gamma_TM|**2``.
     """
     cos_i = np.clip(cos_incidence, 0.0, 1.0).astype(np.complex128)
     sin_sq = 1.0 - cos_i**2
@@ -158,54 +164,6 @@ def specular_share(rms_height_m: np.ndarray, cos_incidence: np.ndarray, waveleng
     """Rayleigh coherent power fraction ``exp(-g**2)``, g = 4 pi s cos(th)/lam."""
     g = 4.0 * np.pi * rms_height_m * cos_incidence / wavelength_m
     return np.exp(-np.minimum(g * g, 60.0))
-
-
-def _cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """``np.cross`` for stacks of 3 vectors, written out.
-
-    Term for term what ``np.cross`` evaluates, so the result is the same to the
-    last bit. What it skips is the shape negotiation ``np.cross`` does on every
-    call, which at 400k rows is most of what the call costs.
-    """
-    out = np.empty(a.shape, dtype=np.float64)
-    a0, a1, a2 = a[:, 0], a[:, 1], a[:, 2]
-    b0, b1, b2 = b[:, 0], b[:, 1], b[:, 2]
-    np.multiply(a1, b2, out=out[:, 0])
-    out[:, 0] -= a2 * b1
-    np.multiply(a2, b0, out=out[:, 1])
-    out[:, 1] -= a0 * b2
-    np.multiply(a0, b1, out=out[:, 2])
-    out[:, 2] -= a1 * b0
-    return out
-
-
-def _row_norms(a: np.ndarray) -> np.ndarray:
-    """``np.linalg.norm(a, axis=1, keepdims=True)``, in the same summation order."""
-    total = a[:, 0] * a[:, 0]
-    total = total + a[:, 1] * a[:, 1]
-    total = total + a[:, 2] * a[:, 2]
-    return np.sqrt(total)[:, None]
-
-
-_UP = np.array([[0.0, 0.0, 1.0]])
-_ACROSS = np.array([[1.0, 0.0, 0.0]])
-
-
-def _cosine_hemisphere(normals: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    """Cosine weighted directions about ``normals``."""
-    count = normals.shape[0]
-    u1 = rng.random(count)
-    u2 = rng.random(count)
-    radius = np.sqrt(u1)
-    phi = 2.0 * np.pi * u2
-    x = radius * np.cos(phi)
-    y = radius * np.sin(phi)
-    z = np.sqrt(np.maximum(0.0, 1.0 - u1))
-    helper = np.where(np.abs(normals[:, 2:3]) < 0.9, _UP, _ACROSS)
-    tangent = _cross(helper, normals)
-    tangent /= _row_norms(tangent)
-    bitangent = _cross(normals, tangent)
-    return x[:, None] * tangent + y[:, None] * bitangent + z[:, None] * normals
 
 
 class SbrTracer:
@@ -243,6 +201,12 @@ class SbrTracer:
             else 250.0
         )
 
+    def _fresnel_power_reflectance(self, cos_incidence: np.ndarray, permittivity: np.ndarray) -> np.ndarray:
+        return fresnel_power_reflectance(cos_incidence, permittivity)
+
+    def _specular_share(self, rms_height_m: np.ndarray, cos_incidence: np.ndarray) -> np.ndarray:
+        return specular_share(rms_height_m, cos_incidence, self.wavelength_m)
+
     def trace(
         self,
         origin: np.ndarray,
@@ -270,21 +234,7 @@ class SbrTracer:
         rng = np.random.default_rng(cfg.seed if seed is None else seed)
         local_solid_angle = 4.0 * np.pi / cfg.local_cells
 
-        normalisations = {name: model.normalisation() for name, model in models.items()}
-        rho = {name: np.zeros(cfg.local_cells) for name in models}
-        rho_direct = {name: np.zeros(cfg.local_cells) for name in models}
-        cell_counts = np.zeros(cfg.local_cells)
-        exit_power = np.zeros(cfg.exit_bands)
-
-        totals = {
-            "escaped": 0,
-            "bounce_sum": 0.0,
-            "delay_sum": 0.0,
-            "delay_weight": 0.0,
-            "zero_bounce": 0,
-            "truncated": 0,
-            "truncated_throughput": 0.0,
-        }
+        accumulators = TraceAccumulators.create(models, cfg.local_cells, cfg.exit_bands)
         remaining = cfg.rays
         while remaining > 0:
             count = min(cfg.batch, remaining)
@@ -294,32 +244,35 @@ class SbrTracer:
                 count,
                 rng,
                 models,
-                normalisations,
-                rho,
-                rho_direct,
-                cell_counts,
-                exit_power,
-                totals,
+                accumulators.normalisations,
+                accumulators.rho,
+                accumulators.rho_direct,
+                accumulators.cell_counts,
+                accumulators.exit_power,
+                accumulators.totals,
                 recorder,
                 tally,
                 gather,
             )
 
-        counts = np.maximum(cell_counts, 1.0)
+        counts = np.maximum(accumulators.cell_counts, 1.0)
         for name in models:
-            rho[name] /= counts
-            rho_direct[name] /= counts
-        exit_profile = exit_power / (cfg.rays / cfg.exit_bands)
+            accumulators.rho[name] /= counts
+            accumulators.rho_direct[name] /= counts
+        exit_profile = accumulators.exit_power / (cfg.rays / cfg.exit_bands)
 
-        susceptibility = {name: float(np.sum(rho[name]) * local_solid_angle) for name in models}
-        susceptibility_direct = {name: float(np.sum(rho_direct[name]) * local_solid_angle) for name in models}
+        susceptibility = {name: float(np.sum(accumulators.rho[name]) * local_solid_angle) for name in models}
+        susceptibility_direct = {
+            name: float(np.sum(accumulators.rho_direct[name]) * local_solid_angle) for name in models
+        }
+        totals = accumulators.totals
         escaped = totals["escaped"]
         return PointResult(
             origin=np.asarray(origin, dtype=np.float64),
             ground_z_m=float(ground_z_m),
             local_grid=self.local_grid,
             local_solid_angle=local_solid_angle,
-            rho=rho,
+            rho=accumulators.rho,
             susceptibility=susceptibility,
             susceptibility_direct=susceptibility_direct,
             exit_profile=exit_profile,
@@ -348,151 +301,26 @@ class SbrTracer:
         count: int,
         rng: np.random.Generator,
         models: dict[str, IlluminationModel],
-        normalisations: dict[str, float],
-        rho: dict[str, np.ndarray],
-        rho_direct: dict[str, np.ndarray],
-        cell_counts: np.ndarray,
-        exit_power: np.ndarray,
-        totals: dict[str, float],
-        recorder: PathRecorder | None = None,
-        tally: BounceEvidenceTally | None = None,
-        gather: Any = None,
+        *batch_parts: Any,
     ) -> None:
-        cfg = self.config
-        direction = sample_sphere(count, rng)
-        cell = nearest_cell(direction, self.local_grid)
-        np.add.at(cell_counts, cell, 1.0)
-        if recorder is not None:
-            recorder.begin(origin, count)
-        if gather is not None:
-            gather.begin(origin, count)
-
-        position = np.tile(np.asarray(origin, dtype=np.float64), (count, 1))
-        throughput = np.ones(count)
-        path_length = np.zeros(count)
-        last_vertex = position.copy()
-        bounces = np.zeros(count, dtype=np.int32)
-        alive = np.arange(count)
-
-        # The live slice of every per ray array is read several times a bounce,
-        # by the intersector, the deposit, the reflection and whatever observer
-        # is attached. Each read used to be its own gather out of the full
-        # length array. They are gathered once here instead and the copies are
-        # shared, which is the same arithmetic on the same values in the same
-        # order.
-        for depth in range(cfg.max_bounces + 1):
-            if alive.size == 0:
-                break
-            live_position = position[alive]
-            live_direction = direction[alive]
-            live_throughput = throughput[alive]
-            live_bounces = bounces[alive]
-            hit, distance, normal, face = self.geometry.intersect(
-                live_position + cfg.ray_epsilon_m * live_direction, live_direction
-            )
-            escaped_local = ~hit
-            if np.any(escaped_local):
-                index = alive[escaped_local]
-                self._deposit(
-                    index,
-                    live_direction[escaped_local],
-                    live_throughput[escaped_local],
-                    cell[index],
-                    path_length[index],
-                    last_vertex[index],
-                    np.asarray(origin, dtype=np.float64),
-                    live_bounces[escaped_local],
-                    models,
-                    normalisations,
-                    rho,
-                    rho_direct,
-                    exit_power,
-                    totals,
-                )
-                if recorder is not None:
-                    recorder.close(
-                        index,
-                        live_position[escaped_local],
-                        live_direction[escaped_local],
-                        live_bounces[escaped_local],
-                        "sky",
-                    )
-            alive = alive[hit]
-            if alive.size == 0:
-                break
-            live_position = live_position[hit]
-            live_direction = live_direction[hit]
-            live_throughput = live_throughput[hit]
-            live_bounces = live_bounces[hit]
-            if depth == cfg.max_bounces:
-                # ``max_bounces`` counts surface interactions, so the escapes of
-                # the last permitted bounce are deposited above and only the
-                # rays still travelling are dropped here.
-                totals["truncated"] += int(alive.size)
-                totals["truncated_throughput"] += float(live_throughput.sum())
-                if recorder is not None:
-                    recorder.close(alive, live_position, live_direction, live_bounces, "truncated")
-                break
-            distance = distance[hit]
-            normal = normal[hit]
-            face = face[hit] if face is not None else None
-
-            live_position = live_position + (distance + cfg.ray_epsilon_m)[:, None] * live_direction
-            position[alive] = live_position
-            path_length[alive] += distance
-            last_vertex[alive] = live_position
-            live_bounces += 1
-            bounces[alive] = live_bounces
-
-            incoming = live_direction
-            facing = np.sign(-np.einsum("ij,ij->i", incoming, normal))
-            facing[facing == 0.0] = 1.0
-            normal = normal * facing[:, None]
-            cos_i = np.clip(-np.einsum("ij,ij->i", incoming, normal), 0.0, 1.0)
-
-            if self.face_class is not None and face is not None:
-                klass = self.face_class[face]
-            else:
-                klass = np.zeros(alive.size, dtype=np.int64)
-            reflectance = fresnel_power_reflectance(cos_i, self.permittivity[klass])
-            share = specular_share(self.rms_height_m[klass], cos_i, self.wavelength_m)
-
-            if tally is not None and face is not None:
-                tally.record(depth, face, live_throughput)
-
-            live_throughput = live_throughput * reflectance
-            throughput[alive] = live_throughput
-            if recorder is not None:
-                recorder.advance(alive, live_position, live_throughput, klass)
-            if gather is not None:
-                gather.vertex(
-                    alive,
-                    live_position,
-                    incoming,
-                    normal,
-                    live_throughput,
-                    share,
-                    live_bounces,
-                    path_length[alive],
-                    face,
-                )
-            take_specular = rng.random(alive.size) < share
-            mirror = incoming - 2.0 * np.einsum("ij,ij->i", incoming, normal)[:, None] * normal
-            diffuse = _cosine_hemisphere(normal, rng)
-            new_direction = np.where(take_specular[:, None], mirror, diffuse)
-            new_direction /= _row_norms(new_direction)
-            direction[alive] = new_direction
-
-            if depth + 1 >= cfg.roulette_start:
-                survive_probability = np.clip(live_throughput, cfg.roulette_floor, 1.0)
-                survive = rng.random(alive.size) < survive_probability
-                throughput[alive] = live_throughput / survive_probability
-                if recorder is not None:
-                    killed = alive[~survive]
-                    recorder.close(
-                        killed, position[killed], new_direction[~survive], live_bounces[~survive], "roulette"
-                    )
-                alive = alive[survive]
+        normalisations, rho, rho_direct, cell_counts, exit_power, totals, recorder, tally, gather = batch_parts
+        accumulators = TraceAccumulators(
+            normalisations,
+            rho,
+            rho_direct,
+            cell_counts,
+            exit_power,
+            totals,
+        )
+        run_batch(
+            self,
+            origin,
+            count,
+            rng,
+            models,
+            accumulators,
+            BatchObservers(recorder, tally, gather),
+        )
 
     def _range_to_the_source_shell(
         self,
@@ -515,54 +343,56 @@ class SbrTracer:
         the whole point: it is what a range term prices and the escape estimator
         does not.
         """
-        radius = self.source_shell_radius_m
-        # Where the exit ray crosses the shell: solve |p + t u| = R for t > 0.
-        along = np.einsum("ij,ij->i", last_vertex, exit_direction)
-        square = np.einsum("ij,ij->i", last_vertex, last_vertex)
-        inside = np.maximum(along**2 - square + radius**2, 0.0)
-        out = np.maximum(-along + np.sqrt(inside), 0.0)
-        return np.maximum(path_length + out, self.config.ray_epsilon_m)
+        return range_to_source_shell(
+            last_vertex,
+            exit_direction,
+            path_length,
+            self.source_shell_radius_m,
+            self.config.ray_epsilon_m,
+        )
 
     def _deposit(
         self,
         index: np.ndarray,
         exit_direction: np.ndarray,
-        throughput: np.ndarray,
-        cell: np.ndarray,
-        path_length: np.ndarray,
-        last_vertex: np.ndarray,
-        origin: np.ndarray,
-        bounces: np.ndarray,
-        models: dict[str, IlluminationModel],
-        normalisations: dict[str, float],
-        rho: dict[str, np.ndarray],
-        rho_direct: dict[str, np.ndarray],
-        exit_power: np.ndarray,
-        totals: dict[str, float],
+        *deposit_parts: Any,
     ) -> None:
-        zero_bounce = bounces == 0
-        weight = throughput
-        if self.config.range_weighted_escape:
-            weight = throughput / self._range_to_the_source_shell(last_vertex, exit_direction, path_length) ** 2
-        for name, model in models.items():
-            contribution = weight * model.density(exit_direction, normalisations[name])
-            np.add.at(rho[name], cell, contribution)
-            if np.any(zero_bounce):
-                np.add.at(rho_direct[name], cell[zero_bounce], contribution[zero_bounce])
-        band = np.clip(
-            np.searchsorted(self.exit_sin_edges, exit_direction[:, 2], side="right") - 1,
-            0,
-            exit_power.size - 1,
+        (
+            throughput,
+            cell,
+            path_length,
+            last_vertex,
+            origin,
+            bounces,
+            models,
+            normalisations,
+            rho,
+            rho_direct,
+            exit_power,
+            totals,
+        ) = deposit_parts
+        deposit(
+            self,
+            EscapeDeposit(
+                index,
+                exit_direction,
+                throughput,
+                cell,
+                path_length,
+                last_vertex,
+                origin,
+                bounces,
+            ),
+            models,
+            TraceAccumulators(
+                normalisations,
+                rho,
+                rho_direct,
+                np.empty(0),
+                exit_power,
+                totals,
+            ),
         )
-        np.add.at(exit_power, band, throughput)
-
-        # Excess path of MONOSTATIC_SBR.md section 2.4: Delta = l_K - u_e.(x_K - S).
-        excess = path_length - np.einsum("ij,ij->i", exit_direction, last_vertex - origin)
-        totals["escaped"] += int(index.size)
-        totals["bounce_sum"] += float(bounces.sum())
-        totals["delay_sum"] += float(np.sum(throughput * excess))
-        totals["delay_weight"] += float(np.sum(throughput))
-        totals["zero_bounce"] += int(np.count_nonzero(zero_bounce))
 
 
 #: One observation point of a sweep: where to stand, the pavement height under

@@ -228,6 +228,26 @@ def _fuse_concept_layers(
     return fuse_layers(views, layers, width=width, height=height, require_nonzero=True)
 
 
+def vegetation_from_concepts(
+    concept: np.ndarray,
+    confidence: np.ndarray,
+    catalog: ConceptCatalog,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Resolve vegetation form only where a vegetation prompt supplied evidence.
+
+    Dense ``Vegetation`` has no form information. Its pixels therefore stay at
+    the reserved ``unresolved`` value instead of being treated as canopy. The
+    subtype is diagnostic and may remain unresolved even when the form is known.
+    """
+    form_table, subtype_table = catalog.vegetation_tables()
+    if concept.size and (int(concept.min()) < 0 or int(concept.max()) >= len(form_table)):
+        raise ValueError("vegetation concept raster names a concept outside the catalogue")
+    form = form_table[concept]
+    subtype = subtype_table[concept]
+    resolved_confidence = np.where(form > 0, confidence, 0.0).astype(np.float16)
+    return form, subtype, resolved_confidence
+
+
 def run(config: PanoramaRunConfig) -> None:
     out = config.out
     views_dir = out / "views"
@@ -330,6 +350,11 @@ def run(config: PanoramaRunConfig) -> None:
             concept_material=catalog.material_matrix(),
             support_table=support_table,
         )
+        vegetation_form, vegetation_subtype, vegetation_confidence = vegetation_from_concepts(
+            layer_data["vegetation"][0],
+            layer_data["vegetation"][1],
+            catalog,
+        )
         arrays.update(
             rf_material=resolved.material,
             rf_material_prior_mass=resolved.prior_mass,
@@ -342,6 +367,10 @@ def run(config: PanoramaRunConfig) -> None:
             clutter_confidence=layer_data["clutter"][1],
             dynamic_clutter_concept=layer_data["dynamic_clutter"][0],
             dynamic_clutter_confidence=layer_data["dynamic_clutter"][1],
+            vegetation_concept=layer_data["vegetation"][0],
+            vegetation_form=vegetation_form,
+            vegetation_subtype=vegetation_subtype,
+            vegetation_confidence=vegetation_confidence,
         )
         rf_colours = palette(len(catalog.taxonomy["materials"]))
         Image.fromarray(rf_colours[resolved.material], "RGB").save(out / "panorama_rf_materials.png")
@@ -353,6 +382,8 @@ def run(config: PanoramaRunConfig) -> None:
             concept_id2label=catalog.id2label(),
             rf_material_id2label=dict(enumerate(catalog.taxonomy["materials"])),
             material_source_id2label=dict(enumerate(resolved.source_names)),
+            vegetation_form_id2label=dict(enumerate(catalog.vegetation_forms)),
+            vegetation_subtype_id2label=dict(enumerate(catalog.vegetation_subtypes)),
             material_grounding={
                 name: {"library": binding.library, "row": binding.row, "status": binding.status}
                 for name, binding in catalog.material_grounding.items()
@@ -381,6 +412,13 @@ def run(config: PanoramaRunConfig) -> None:
                     "the class in its entity support, a material-only concept needs the class prior "
                     "to carry some mass on its material. Elsewhere the prior stands."
                 ),
+            },
+            vegetation_resolution={
+                "rule": (
+                    "a vegetation form is written only where a vegetation-specific open-vocabulary "
+                    "prompt won its independent layer; dense Vegetation alone remains unresolved"
+                ),
+                "tree_trunk": "an object with wood material evidence, never a woody canopy volume",
             },
             concept_seconds=round(concepts.elapsed_s, 2),
         )

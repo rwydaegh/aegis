@@ -14,7 +14,7 @@ from ..pano_geometry import inference_views
 from .fuse import fuse_layers, palette
 
 KIND_ID = {"surface": 1, "object": 2}
-LAYER_NAMES = ("support", "material", "clutter", "dynamic_clutter")
+LAYER_NAMES = ("support", "material", "clutter", "dynamic_clutter", "vegetation")
 
 
 @dataclass(frozen=True)
@@ -88,6 +88,11 @@ def layer_rules(catalog: ConceptCatalog) -> tuple[LayerRule, ...]:
         LayerRule(
             "dynamic_clutter",
             frozenset(concept.prompt for concept in clutter if _is_dynamic_clutter(concept)),
+            {},
+        ),
+        LayerRule(
+            "vegetation",
+            frozenset(concept.prompt for concept in surfaces if concept.vegetation_form != "unresolved"),
             {},
         ),
     )
@@ -172,6 +177,8 @@ def _rgba_layer(concept: np.ndarray, confidence: np.ndarray, colours: np.ndarray
 def _legend_entries(layer_data: dict[str, tuple[np.ndarray, np.ndarray]], id2label: dict[int, str]) -> list[str]:
     entries: list[str] = []
     for layer_name in LAYER_NAMES:
+        if layer_name not in layer_data:
+            continue
         labels = layer_data[layer_name][0]
         ids, counts = np.unique(labels[labels > 0], return_counts=True)
         if len(ids):
@@ -276,6 +283,8 @@ def fuse(config: LayerFusionConfig) -> None:
         clutter_confidence=clutter_confidence,
         dynamic_clutter_concept=layer_data["dynamic_clutter"][0],
         dynamic_clutter_confidence=layer_data["dynamic_clutter"][1],
+        vegetation_concept=layer_data["vegetation"][0],
+        vegetation_confidence=layer_data["vegetation"][1],
     )
     colours = palette(len(id2label))
     # Keep this stable filename as the material-detail quicklook. The support
@@ -293,6 +302,7 @@ def fuse(config: LayerFusionConfig) -> None:
             "material": "surface material-detail candidates with a window/door/material ordering hint",
             "clutter": "all object candidates, independently stitched",
             "dynamic_clutter": "object candidates with movable or transient probability at least 0.5",
+            "vegetation": "only prompts that resolve ground vegetation against woody canopy",
         },
         "overlap_policy": "layer-local confidence with angular-centre weighting; layers are non-exclusive",
         "projection_note": "diagnostic layers do not alter camera geometry or projection; resolve support/depth conflicts during 3D fusion",

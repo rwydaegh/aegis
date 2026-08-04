@@ -1,8 +1,8 @@
 # Archive
 
 Nothing here was deleted. These are files that the study no longer reads,
-moved out of the way so that what is left in `../docs/` is current. Each one is
-on disk exactly as it was.
+moved out of the way so that what is left in `../docs/` is current. Small import
+and path updates keep the archived programs runnable from their new locations.
 
 For why the illumination law changed, and for which results survive it, read
 `../docs/LAW_CHANGE.md` first.
@@ -11,10 +11,13 @@ There is a second, larger archive at `../../archive/`, which holds big binary
 things such as the GPU box backup and the Blender previews. This one holds
 documents and completed study scripts.
 
-## `scripts/`
+## `scripts/` and `studies/`
 
 These programs remain runnable reproduction records. They no longer belong to
-the current command surface.
+the current command surface. The commands are in `scripts/`. The reusable code
+for completed illumination experiments is in the importable `studies` package.
+This archive is available from the source tree and is not included in package
+builds.
 
 - `bench_intersect.py` measured the preliminary intersection path now used by
   `semantic_twin.propagation.geometry.MitsubaGeometry.intersect`.
@@ -34,8 +37,8 @@ the current command surface.
   missing escape-range factor as the cause of the multipath surplus.
 - `measure_source_construction.py`, `measure_source_near_share.py`, and
   `measure_source_thickness.py` record source-region constructions that the
-  illumination study tested and rejected. Their reusable calculations remain
-  under `semantic_twin.illumination`.
+  illumination study tested and rejected. Their implementations are in
+  `archive.studies`.
 
 ## `METHOD.tex`
 

@@ -1,8 +1,15 @@
 """Archived command-line entry point for the source-range share study."""
 
-import argparse
+from __future__ import annotations
 
-from semantic_twin.illumination.source_near_share_study import run
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from archive.studies.source_near_share_study import run  # noqa: E402
 
 
 def main() -> None:

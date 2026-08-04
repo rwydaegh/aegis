@@ -16,6 +16,9 @@ import numpy as np
 import pytest
 
 from semantic_twin.exposure import study as run_exposure
+from semantic_twin.exposure.execution import ExecutionConfig
+from semantic_twin.exposure.sweeps import LadderSweepConfig
+from semantic_twin.runconfig import RunConfig
 
 
 @pytest.fixture
@@ -264,9 +267,36 @@ def complete_run(output, stem, **overrides):
     (output / f"{stem}_manifest.json").write_text(json.dumps(manifest))
 
 
+def replay_config() -> RunConfig:
+    return RunConfig(
+        site="korenmarkt",
+        crop_m=130,
+        law="band",
+        models=tuple(run_exposure.MODELS),
+        estimator="escape",
+        next_event=None,
+        walk="grid",
+        locations=80,
+        max_bounces=6,
+        materials="walk",
+        rays=200_000,
+        seed=7,
+        tag="korenmarkt_walk",
+    )
+
+
 def test_a_run_already_on_disk_at_the_same_settings_is_not_retraced(ledger):
     complete_run(run_exposure.OUTPUT, "korenmarkt_walk_15ghz")
-    assert run_exposure.reusable("korenmarkt_walk_15ghz", 80, 200_000, "korenmarkt", 130, 7, 6)
+    assert run_exposure.reusable(replay_config())
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="existing reuse check compares selected manifest fields instead of the complete RunConfig identity",
+)
+def test_reuse_will_need_to_compare_every_field_in_the_run_identity(ledger):
+    complete_run(run_exposure.OUTPUT, "korenmarkt_walk_15ghz")
+    assert not run_exposure.reusable(replay_config().replace(batch=100_000))
 
 
 @pytest.mark.parametrize(
@@ -282,7 +312,7 @@ def test_a_run_already_on_disk_at_the_same_settings_is_not_retraced(ledger):
 )
 def test_any_setting_that_moves_the_number_forces_a_retrace(ledger, field, value):
     complete_run(run_exposure.OUTPUT, "korenmarkt_walk_15ghz", **{field: value})
-    assert not run_exposure.reusable("korenmarkt_walk_15ghz", 80, 200_000, "korenmarkt", 130, 7, 6)
+    assert not run_exposure.reusable(replay_config())
 
 
 def test_a_run_made_under_the_superseded_illumination_law_is_refused(ledger):
@@ -291,13 +321,13 @@ def test_a_run_made_under_the_superseded_illumination_law_is_refused(ledger):
     # would put a different physics into a row of a cross site table silently.
     superseded = {name: {"law": "uniform_sites"} for name in run_exposure.MODELS}
     complete_run(run_exposure.OUTPUT, "korenmarkt_walk_15ghz", illumination_models=superseded)
-    assert not run_exposure.reusable("korenmarkt_walk_15ghz", 80, 200_000, "korenmarkt", 130, 7, 6)
+    assert not run_exposure.reusable(replay_config())
 
 
 def test_a_half_written_run_is_not_reusable(ledger):
     complete_run(run_exposure.OUTPUT, "korenmarkt_walk_15ghz")
     (run_exposure.OUTPUT / "korenmarkt_walk_15ghz_locations.jsonl").write_text("{}\n" * 31)
-    assert not run_exposure.reusable("korenmarkt_walk_15ghz", 80, 200_000, "korenmarkt", 130, 7, 6)
+    assert not run_exposure.reusable(replay_config())
 
 
 def test_a_sweep_refuses_to_overwrite_a_run_it_cannot_reuse(ledger, monkeypatch):
@@ -312,17 +342,9 @@ def test_a_sweep_refuses_to_overwrite_a_run_it_cannot_reuse(ledger, monkeypatch)
     (run_exposure.OUTPUT / "korenmarkt_geometric_15ghz_locations.jsonl").write_text("{}\n" * 120)
     with pytest.raises(ValueError, match="tag-suffix"):
         run_exposure.run_coverage_ladder(
-            80,
-            200_000,
-            15.0e9,
-            variant="llvm_ad_rgb",
-            seeds=(7,),
-            local_cells=512,
-            walk_radius_m=90.0,
-            walk_spacing_m=3.0,
-            max_bounces=6,
-            sites=("korenmarkt",),
-            crop_m=130,
+            replay_config().replace(tag="", materials="geometric"),
+            ExecutionConfig(),
+            LadderSweepConfig(("korenmarkt",), (7,)),
         )
 
 

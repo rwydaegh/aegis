@@ -1,8 +1,15 @@
 """Archived command-line entry point for the escape-range diagnostic."""
 
-import argparse
+from __future__ import annotations
 
-from semantic_twin.illumination.escape_range_study import run, surplus_db, trace_both_ways
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from archive.studies.escape_range_study import run, surplus_db, trace_both_ways  # noqa: E402
 
 __all__ = ["main", "surplus_db", "trace_both_ways"]
 

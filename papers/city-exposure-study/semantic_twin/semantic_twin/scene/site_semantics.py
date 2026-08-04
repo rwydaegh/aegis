@@ -314,7 +314,17 @@ def _cast(job: tuple) -> dict[str, Any]:
 
     from semantic_twin.pano_geometry import equirectangular_directions, panorama_to_world_matrix
 
-    mesh_path, pose, semantics_path, transient_ids, grid_height, station, block_rows = job
+    (
+        mesh_path,
+        pose,
+        semantics_path,
+        transient_ids,
+        grid_height,
+        station,
+        block_rows,
+        vegetation_form_count,
+        vegetation_subtype_count,
+    ) = job
     mesh = trimesh.load(mesh_path, process=False)
     height, width = grid_height, 2 * grid_height
     rotation = panorama_to_world_matrix(
@@ -324,11 +334,14 @@ def _cast(job: tuple) -> dict[str, Any]:
     )
     camera = np.asarray(pose["position_enu_m"], dtype=np.float64)
 
-    with np.load(semantics_path) as document:
-        entity = document["entity"]
-        rows = np.arange(height) * entity.shape[0] // height
-        columns = np.arange(width) * entity.shape[1] // width
-        labels = np.ascontiguousarray(entity[np.ix_(rows, columns)])
+    labels, forms, subtypes = _load_site_semantic_rasters(
+        pathlib.Path(semantics_path),
+        height,
+        width,
+        vegetation_form_count,
+        vegetation_subtype_count,
+        station,
+    )
     classes = int(labels.max()) + 1
     transient_lookup = np.zeros(classes, dtype=bool)
     for identifier in transient_ids:
@@ -341,6 +354,7 @@ def _cast(job: tuple) -> dict[str, Any]:
     blocked = np.zeros(face_count, dtype=np.int64)
     clean_count = np.zeros(face_count, dtype=np.int64)
     hit_faces, hit_labels, rays_cast, transient_rays = [], [], 0, 0
+    vegetation_faces, vegetation_forms, vegetation_subtypes = [], [], []
     for start in range(0, height, block_rows):
         stop = min(start + block_rows, height)
         directions = grid[start:stop].reshape(-1, 3) @ rotation.T
@@ -357,13 +371,25 @@ def _cast(job: tuple) -> dict[str, Any]:
         clean_count += np.bincount(index_tri[keep], minlength=face_count)
         hit_faces.append(index_tri[keep].astype(np.int32))
         hit_labels.append(block_labels[keep].astype(np.int16))
+        vegetation_face, vegetation_form, vegetation_subtype = _vegetation_block(
+            forms,
+            subtypes,
+            start,
+            stop,
+            index_ray,
+            index_tri,
+            keep,
+        )
+        vegetation_faces.append(vegetation_face)
+        vegetation_forms.append(vegetation_form)
+        vegetation_subtypes.append(vegetation_subtype)
         rays_cast += len(index_ray)
         transient_rays += int(transient.sum())
         del index_tri, index_ray, block_labels, transient, keep
 
     face = np.concatenate(hit_faces) if hit_faces else np.zeros(0, dtype=np.int32)
     label = np.concatenate(hit_labels) if hit_labels else np.zeros(0, dtype=np.int16)
-    return {
+    record = {
         "station": station,
         "rays": total.astype(np.int32),
         "transient_rays": blocked.astype(np.int32),
@@ -372,6 +398,128 @@ def _cast(job: tuple) -> dict[str, Any]:
         "view_transient_fraction": float(transient_rays / rays_cast) if rays_cast else 0.0,
         "view_mesh_rays": int(rays_cast),
     }
+    record.update(
+        _vegetation_record(
+            vegetation_faces,
+            vegetation_forms,
+            vegetation_subtypes,
+            face_count,
+            vegetation_form_count,
+            vegetation_subtype_count,
+        )
+    )
+    return record
+
+
+def _load_site_semantic_rasters(
+    path: pathlib.Path,
+    height: int,
+    width: int,
+    form_count: int,
+    subtype_count: int,
+    station: str,
+) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None]:
+    """Load one station only when its JSON vocabulary and NPZ axes agree."""
+    expects_vegetation = bool(form_count or subtype_count)
+    if bool(form_count) != bool(subtype_count):
+        raise ValueError(f"{station} metadata carries only half of the vegetation vocabulary")
+    with np.load(path) as document:
+        entity = document["entity"]
+        has_form = "vegetation_form" in document.files
+        has_subtype = "vegetation_subtype" in document.files
+        if has_form != has_subtype:
+            raise ValueError(f"{station} NPZ carries only half of the vegetation axis")
+        if expects_vegetation != has_form:
+            metadata = "declares" if expects_vegetation else "does not declare"
+            arrays = "contains" if has_form else "does not contain"
+            raise ValueError(f"{station} metadata {metadata} vegetation but its NPZ {arrays} the arrays")
+        rows = np.arange(height) * entity.shape[0] // height
+        columns = np.arange(width) * entity.shape[1] // width
+        labels = np.ascontiguousarray(entity[np.ix_(rows, columns)])
+        if not has_form:
+            return labels, None, None
+        vegetation_form = document["vegetation_form"]
+        vegetation_subtype = document["vegetation_subtype"]
+        if vegetation_form.shape != entity.shape or vegetation_subtype.shape != entity.shape:
+            raise ValueError(f"{station} vegetation rasters do not match its entity raster")
+        if vegetation_form.size and (int(vegetation_form.min()) < 0 or int(vegetation_form.max()) >= form_count):
+            raise ValueError(f"{station} vegetation form leaves its declared vocabulary")
+        if vegetation_subtype.size and (
+            int(vegetation_subtype.min()) < 0 or int(vegetation_subtype.max()) >= subtype_count
+        ):
+            raise ValueError(f"{station} vegetation subtype leaves its declared vocabulary")
+        forms = np.ascontiguousarray(vegetation_form[np.ix_(rows, columns)])
+        subtypes = np.ascontiguousarray(vegetation_subtype[np.ix_(rows, columns)])
+    return labels, forms, subtypes
+
+
+def _vegetation_block(
+    forms: np.ndarray | None,
+    subtypes: np.ndarray | None,
+    start: int,
+    stop: int,
+    index_ray: np.ndarray,
+    index_tri: np.ndarray,
+    keep: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if forms is None or subtypes is None:
+        return np.zeros(0, dtype=np.int32), np.zeros(0, dtype=np.uint8), np.zeros(0, dtype=np.uint8)
+    block_forms = forms[start:stop].reshape(-1)[index_ray]
+    resolved = keep & (block_forms > 0)
+    block_subtypes = subtypes[start:stop].reshape(-1)[index_ray]
+    return (
+        index_tri[resolved].astype(np.int32),
+        block_forms[resolved].astype(np.uint8),
+        block_subtypes[resolved].astype(np.uint8),
+    )
+
+
+def _vegetation_record(
+    faces: list[np.ndarray],
+    forms: list[np.ndarray],
+    subtypes: list[np.ndarray],
+    face_count: int,
+    form_count: int,
+    subtype_count: int,
+) -> dict[str, np.ndarray]:
+    if not form_count:
+        return {}
+    face = np.concatenate(faces) if faces else np.zeros(0, dtype=np.int32)
+    form = np.concatenate(forms) if forms else np.zeros(0, dtype=np.uint8)
+    subtype = np.concatenate(subtypes) if subtypes else np.zeros(0, dtype=np.uint8)
+    modal_form = _modal_class(face, form, face_count, form_count).clip(min=0).astype(np.uint8)
+    diagnostic = (subtype > 0) & (form == modal_form[face])
+    return {
+        "modal_vegetation_form": modal_form,
+        "modal_vegetation_subtype": _modal_class(
+            face[diagnostic],
+            subtype[diagnostic],
+            face_count,
+            subtype_count,
+        )
+        .clip(min=0)
+        .astype(np.uint8),
+        "vegetation_rays": np.bincount(face, minlength=face_count).astype(np.int32),
+    }
+
+
+def _site_vegetation_vocabularies(
+    document: dict[str, Any],
+    current_form: list[str] | None,
+    current_subtype: list[str] | None,
+) -> tuple[list[str] | None, list[str] | None, bool]:
+    form_vocabulary = document.get("vegetation_form_id2label")
+    subtype_vocabulary = document.get("vegetation_subtype_id2label")
+    if form_vocabulary is None and subtype_vocabulary is None:
+        return current_form, current_subtype, True
+    if form_vocabulary is None or subtype_vocabulary is None:
+        return current_form, current_subtype, False
+    form = [form_vocabulary[str(index)] for index in range(len(form_vocabulary))]
+    subtype = [subtype_vocabulary[str(index)] for index in range(len(subtype_vocabulary))]
+    compatible = (current_form is None or form == current_form) and (
+        current_subtype is None or subtype == current_subtype
+    )
+    return (form, subtype, True) if compatible else (current_form, current_subtype, False)
 
 
 def vocabulary_matches(meta_path: pathlib.Path, prior: dict[str, Any]) -> bool:
@@ -415,6 +563,8 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
         return report
 
     jobs, mismatched = [], []
+    vegetation_form_names: list[str] | None = None
+    vegetation_subtype_names: list[str] | None = None
     for station in admitted:
         folder = pathlib.Path(station["folder"])
         meta_path = folder / "semantics" / "semantics.json"
@@ -422,6 +572,16 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
             mismatched.append(station["station"])
             continue
         meta = json.loads(meta_path.read_text())
+        vegetation_form_names, vegetation_subtype_names, compatible = _site_vegetation_vocabularies(
+            meta,
+            vegetation_form_names,
+            vegetation_subtype_names,
+        )
+        if not compatible:
+            mismatched.append(station["station"])
+            continue
+        form_vocabulary = meta.get("vegetation_form_id2label")
+        subtype_vocabulary = meta.get("vegetation_subtype_id2label")
         transient = {int(k) for k, v in meta["entity_id2label"].items() if v in TRANSIENT_CLASSES}
         jobs.append(
             (
@@ -432,6 +592,8 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
                 options.grid_height,
                 station["station"],
                 options.block_rows,
+                0 if form_vocabulary is None else len(form_vocabulary),
+                0 if subtype_vocabulary is None else len(subtype_vocabulary),
             )
         )
     report["stations_with_a_different_vocabulary"] = mismatched
@@ -457,14 +619,22 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
     out_dir = options.out_root / site
     out_dir.mkdir(parents=True, exist_ok=True)
     npz = out_dir / f"walk_semantic_{options.crop_m}m.npz"
-    np.savez_compressed(
-        npz,
-        image_ids=np.asarray([r["station"] for r in results]),
-        rays=rays,
-        transient_rays=blocked,
-        modal_class=modal,
-        clean_rays=clean,
+    arrays: dict[str, np.ndarray] = {
+        "image_ids": np.asarray([r["station"] for r in results]),
+        "rays": rays,
+        "transient_rays": blocked,
+        "modal_class": modal,
+        "clean_rays": clean,
+    }
+    vegetation_arrays, vegetation_report = _site_vegetation_arrays(
+        results,
+        vegetation_form_names,
+        vegetation_subtype_names,
     )
+    arrays.update(vegetation_arrays)
+    if vegetation_report is not None:
+        report["vegetation"] = vegetation_report
+    np.savez_compressed(npz, **arrays)
     report.update(
         {
             "result": "written",
@@ -486,3 +656,28 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
     )
     (out_dir / f"walk_semantic_{options.crop_m}m.json").write_text(json.dumps(report, indent=2) + "\n")
     return report
+
+
+def _site_vegetation_arrays(
+    results: list[dict[str, Any]],
+    form_names: list[str] | None,
+    subtype_names: list[str] | None,
+) -> tuple[dict[str, np.ndarray], dict[str, Any] | None]:
+    if form_names is None or subtype_names is None:
+        return {}, None
+    if not all("modal_vegetation_form" in result for result in results):
+        return {}, {"status": "mixed semantic files, refusing a vegetation axis only some stations carry"}
+    return (
+        {
+            "modal_vegetation_form": np.stack([result["modal_vegetation_form"] for result in results]),
+            "modal_vegetation_subtype": np.stack([result["modal_vegetation_subtype"] for result in results]),
+            "vegetation_rays": np.stack([result["vegetation_rays"] for result in results]),
+            "vegetation_form_names": np.asarray(form_names),
+            "vegetation_subtype_names": np.asarray(subtype_names),
+        },
+        {
+            "form_vocabulary": form_names,
+            "diagnostic_subtype_vocabulary": subtype_names,
+            "dense_vegetation": "unresolved and contributes no form vote",
+        },
+    )

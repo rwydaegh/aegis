@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import pathlib
 
-from semantic_twin.propagation.bystanders import (
-    CLOTHING_RMS_HEIGHT_M,
-    DENSITY_LADDER,
+from semantic_twin.exposure.bystander_study import (
     STATURE_MODES,
     BystanderStudyConfig,
     run_bystander_study,
+)
+from semantic_twin.propagation.bystander_geometry import (
+    CLOTHING_RMS_HEIGHT_M,
+    DENSITY_LADDER,
 )
 from semantic_twin.transport.tracer import DEFAULT_MAX_BOUNCES
 

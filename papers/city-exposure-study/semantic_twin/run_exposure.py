@@ -9,6 +9,9 @@ import sys
 from typing import Any
 
 from semantic_twin.exposure import study as _study
+from semantic_twin.exposure.execution import ExecutionConfig, LegacyReplay
+from semantic_twin.exposure.sweeps import CitySweepConfig, LadderSweepConfig
+from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.tracer import DEFAULT_MAX_BOUNCES
 
 # Compatibility exports for published reproduction scripts and the immutable
@@ -41,16 +44,120 @@ ladder_sites = _study.ladder_sites
 ladder_tag = _study.ladder_tag
 measure_ground_datum = _study.measure_ground_datum
 report = _study.report
-reusable = _study.reusable
-run = _study.run
-run_all_sites = _study.run_all_sites
-run_coverage_ladder = _study.run_coverage_ladder
 site_fishnet = _study.site_fishnet
 site_mesh = _study.site_mesh
 site_walk_semantics = _study.site_walk_semantics
 _against_baseline = _study._against_baseline
 _one_value = _study._one_value
 _spread = _study._spread
+
+
+def _escape_config(
+    locations: int,
+    rays: int,
+    frequency_hz: float,
+    **options: Any,
+) -> tuple[RunConfig, ExecutionConfig]:
+    """Translate established arguments while keeping their old ``None`` rules.
+
+    The legacy runner omitted ``roulette_start`` from ``TraceConfig`` when the
+    caller passed ``None``. Its tracer default is the literal 4, even when a
+    caller raises ``max_bounces``. A direct :class:`RunConfig` uses its own
+    documented rule instead: ``None`` means one past that run's bounce budget.
+    """
+    coupler = options.pop("coupler", None)
+    workers = options.pop("workers", None)
+    replay = LegacyReplay(
+        ground_datum_m=options.pop("ground_datum_m", None),
+        walk_probe_z_m=options.pop("walk_probe_z_m", None),
+    )
+    roulette_start = options.pop("roulette_start", DEFAULT_MAX_BOUNCES + 1)
+    if roulette_start is None:
+        roulette_start = DEFAULT_MAX_BOUNCES + 1
+    config = RunConfig(
+        site=options.pop("site", "korenmarkt"),
+        crop_m=options.pop("crop_m", 130),
+        law="band",
+        models=tuple(MODELS),
+        estimator="escape",
+        next_event=None,
+        walk="grid",
+        walk_radius_m=options.pop("walk_radius_m"),
+        walk_spacing_m=options.pop("walk_spacing_m"),
+        locations=locations,
+        frequency_hz=frequency_hz,
+        max_bounces=options.pop("max_bounces"),
+        roulette_start=roulette_start,
+        materials=options.pop("materials"),
+        walk_npz=str(path) if (path := options.pop("walk_npz", None)) is not None else None,
+        rays=rays,
+        local_cells=options.pop("local_cells"),
+        seed=options.pop("seed"),
+        variant=options.pop("variant"),
+        tag=options.pop("tag"),
+    )
+    if options:
+        raise TypeError(f"unknown run options: {', '.join(sorted(options))}")
+    return config, ExecutionConfig(workers=workers, coupler=coupler, replay=replay)
+
+
+def run(locations: int, rays: int, frequency_hz: float, **options: Any) -> pathlib.Path:
+    """Compatibility call for published scripts that predate :class:`RunConfig`."""
+    config, execution = _escape_config(locations, rays, frequency_hz, **options)
+    return _study.run(config, execution)
+
+
+def reusable(stem: str, locations: int, rays: int, site: str, crop_m: int, seed: int, max_bounces: int) -> bool:
+    """Compatibility check using the historic stem-based call."""
+    tag, frequency = stem.rsplit("_", 1)
+    frequency_hz = float(frequency.removesuffix("ghz")) * 1e9
+    config = RunConfig(
+        site=site,
+        crop_m=crop_m,
+        law="band",
+        models=tuple(MODELS),
+        estimator="escape",
+        next_event=None,
+        walk="grid",
+        locations=locations,
+        frequency_hz=frequency_hz,
+        max_bounces=max_bounces,
+        materials="geometric",
+        rays=rays,
+        seed=seed,
+        tag=tag,
+    )
+    return _study.reusable(config)
+
+
+def run_coverage_ladder(locations: int, rays: int, frequency_hz: float, **options: Any) -> pathlib.Path | None:
+    seeds = options.pop("seeds")
+    sites = options.pop("sites", SITES)
+    tag_suffix = options.pop("tag_suffix", "")
+    config, execution = _escape_config(
+        locations,
+        rays,
+        frequency_hz,
+        seed=seeds[0],
+        tag="",
+        materials="geometric",
+        **options,
+    )
+    return _study.run_coverage_ladder(config, execution, LadderSweepConfig(tuple(sites), tuple(seeds), tag_suffix))
+
+
+def run_all_sites(locations: int, rays: int, frequency_hz: float, **options: Any) -> None:
+    sites = options.pop("sites", SITES)
+    tag_suffix = options.pop("tag_suffix", "")
+    config, execution = _escape_config(
+        locations,
+        rays,
+        frequency_hz,
+        tag="",
+        materials="geometric",
+        **options,
+    )
+    _study.run_all_sites(config, execution, CitySweepConfig(tuple(sites), tag_suffix))
 
 
 def validate(rays: int = 400_000) -> dict[str, object]:

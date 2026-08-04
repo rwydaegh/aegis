@@ -1,8 +1,15 @@
 """Archived command-line entry point for the source-thickness study."""
 
-import argparse
+from __future__ import annotations
 
-from semantic_twin.illumination.source_thickness_study import coverage, prepare, run
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from archive.studies.source_thickness_study import coverage, prepare, run  # noqa: E402
 
 __all__ = ["coverage", "main", "prepare"]
 

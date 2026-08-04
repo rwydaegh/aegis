@@ -6,6 +6,12 @@ import numpy as np
 import pytest
 
 from semantic_twin.exposure import study as run_exposure
+from semantic_twin.report.coverage import (
+    CoverageReportConfig,
+    CoverageReportEnvironment,
+    LadderReportConfig,
+    LadderReportEnvironment,
+)
 
 
 def test_report_uses_the_current_output_directory(tmp_path, monkeypatch):
@@ -47,17 +53,11 @@ def test_coverage_report_forwards_the_current_report_dependencies(tmp_path, monk
     assert run_exposure.coverage_report(15.0e9, "_trial", site="site", crop_m=250, seed=9) is result
     assert calls == [
         (
-            (15.0e9, "_trial"),
-            {
-                "site": "site",
-                "crop_m": 250,
-                "seed": 9,
-                "output": tmp_path,
-                "rungs_for": rungs_for,
-                "key_for": key_for,
-                "model_keys": model_keys,
-                "compare_to_baseline": compare_to_baseline,
-            },
+            (
+                CoverageReportConfig(15.0e9, "_trial", "site", 250, 9),
+                CoverageReportEnvironment(tmp_path, rungs_for, key_for, model_keys, compare_to_baseline),
+            ),
+            {},
         )
     ]
 
@@ -111,19 +111,11 @@ def test_coverage_ladder_report_forwards_the_current_report_dependencies(tmp_pat
     )
     assert calls == [
         (
-            (["site"], 250, (7, 9), 15.0e9),
-            {
-                "tag_suffix": "_trial",
-                "refused": refused,
-                "failures": failures,
-                "output": tmp_path,
-                "key_for": key_for,
-                "model_keys": model_keys,
-                "one_value": one_value,
-                "spread": spread,
-                "plotter": plotter,
-                "markdown": markdown,
-            },
+            (
+                LadderReportConfig(["site"], 250, (7, 9), 15.0e9, "_trial", refused, failures),
+                LadderReportEnvironment(tmp_path, key_for, model_keys, one_value, spread, plotter, markdown),
+            ),
+            {},
         )
     ]
 

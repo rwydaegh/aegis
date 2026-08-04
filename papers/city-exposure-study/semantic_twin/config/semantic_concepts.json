@@ -2,7 +2,9 @@
   "taxonomy": {
     "entities": ["unknown", "facade", "window", "door", "shutter", "opening", "roof", "solar_panel", "scaffolding", "road", "pavement", "ground", "rail", "water", "vegetation", "tree_trunk", "person", "road_vehicle", "bicycle", "motorcycle", "bollard", "lighting", "utility_pole", "traffic_sign", "traffic_light", "bench", "waste_bin", "bicycle_rack", "table", "chair", "canopy", "planter", "mailbox", "hydrant", "utility_cabinet", "parking_meter", "public_art", "kiosk", "barrier", "railing", "drainpipe", "manhole", "cable"],
     "materials": ["unknown", "air", "brick", "concrete", "plasterboard", "plywood", "chipboard", "wood", "glass", "metal", "marble", "asphalt_concrete", "ceramic", "polymer", "fabric", "soil", "water", "vegetation_effective", "human_tissue", "vehicle_composite"],
-    "attributes": ["fixed", "movable", "transient", "thin", "reflective", "transparent", "rough", "smooth", "conductive", "porous", "wet", "hollow", "flexible", "layered", "periodic", "metallised"]
+    "attributes": ["fixed", "movable", "transient", "thin", "reflective", "transparent", "rough", "smooth", "conductive", "porous", "wet", "hollow", "flexible", "layered", "periodic", "metallised"],
+    "vegetation_forms": ["unresolved", "ground_vegetation", "woody_canopy"],
+    "vegetation_subtypes": ["unresolved", "grass", "shrub", "tree", "forest"]
   },
 
   "material_grounding": {
@@ -186,13 +188,13 @@
 {"prompt": "brick paving", "kind": "surface", "entity": {"pavement": 0.8, "road": 0.2}, "material": {"brick": 0.75, "concrete": 0.15, "unknown": 0.1}, "attributes": {"fixed": 0.99, "rough": 0.8, "wet": 0.15, "periodic": 0.8}},
 {"prompt": "paving slab", "kind": "surface", "entity": {"pavement": 1.0}, "material": {"concrete": 0.6, "marble": 0.25, "unknown": 0.15}, "attributes": {"fixed": 0.99, "rough": 0.6, "periodic": 0.6}},
 {"prompt": "gravel", "kind": "surface", "entity": {"ground": 1.0}, "material": {"soil": 0.6, "marble": 0.25, "unknown": 0.15}, "attributes": {"fixed": 0.9, "movable": 0.2, "rough": 0.99, "porous": 0.9, "wet": 0.2}},
-{"prompt": "grass lawn", "kind": "surface", "entity": {"vegetation": 0.7, "ground": 0.3}, "material": {"vegetation_effective": 0.8, "soil": 0.15, "unknown": 0.05}, "attributes": {"fixed": 0.9, "rough": 0.8, "porous": 0.9, "wet": 0.3}},
+{"prompt": "grass lawn", "kind": "surface", "entity": {"vegetation": 0.7, "ground": 0.3}, "material": {"vegetation_effective": 0.8, "soil": 0.15, "unknown": 0.05}, "attributes": {"fixed": 0.9, "rough": 0.8, "porous": 0.9, "wet": 0.3}, "vegetation": {"form": "ground_vegetation", "subtype": "grass"}},
 {"prompt": "bare soil", "kind": "surface", "entity": {"ground": 1.0}, "material": {"soil": 0.93, "unknown": 0.07}, "attributes": {"fixed": 0.99, "rough": 0.9, "porous": 0.9, "wet": 0.2}},
 {"prompt": "painted road marking", "kind": "surface", "entity": {"road": 1.0}, "material": {"polymer": 0.78, "asphalt_concrete": 0.12, "unknown": 0.1}, "attributes": {"fixed": 0.99, "thin": 0.99, "smooth": 0.75}},
 {"prompt": "tram rail", "kind": "surface", "entity": {"rail": 1.0}, "material": {"metal": 0.88, "concrete": 0.07, "unknown": 0.05}, "attributes": {"fixed": 0.99, "thin": 0.6, "reflective": 0.75, "smooth": 0.8, "conductive": 0.98},
      "caveat": "A pair of polished steel strips flush with the pavement. Geometrically thin and dielectrically extreme, which is the combination the support mesh is least able to represent."},
 {"prompt": "water", "kind": "surface", "entity": {"water": 1.0}, "material": {"water": 1.0}, "attributes": {"reflective": 0.8, "smooth": 0.9, "wet": 1.0}},
-{"prompt": "foliage", "kind": "surface", "entity": {"vegetation": 1.0}, "material": {"vegetation_effective": 0.93, "wood": 0.04, "unknown": 0.03}, "attributes": {"movable": 0.6, "transient": 0.25, "rough": 0.95, "porous": 0.95, "wet": 0.25},
+{"prompt": "foliage", "kind": "surface", "entity": {"vegetation": 1.0}, "material": {"vegetation_effective": 0.93, "wood": 0.04, "unknown": 0.03}, "attributes": {"movable": 0.6, "transient": 0.25, "rough": 0.95, "porous": 0.95, "wet": 0.25}, "vegetation": {"form": "woody_canopy", "subtype": "unresolved"},
      "caveat": "Deciduous canopy is a seasonal surface. A summer panorama and a winter one describe different scenes, and the capture date is in the ledger for exactly this reason."},
 {"prompt": "wooden door", "kind": "surface", "entity": {"door": 1.0}, "material": {"wood": 0.88, "metal": 0.05, "glass": 0.04, "unknown": 0.03}, "attributes": {"fixed": 0.85, "movable": 0.8, "layered": 0.7}},
 {"prompt": "metal door", "kind": "surface", "entity": {"door": 1.0}, "material": {"metal": 0.92, "glass": 0.04, "unknown": 0.04}, "attributes": {"fixed": 0.85, "movable": 0.8, "reflective": 0.7, "conductive": 0.98}},

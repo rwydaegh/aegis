@@ -1,6 +1,6 @@
 """Building the source set without a free number in it.
 
-`measure_source_thickness.py` shows that letting the source occupy the top few
+`archive/scripts/measure_source_thickness.py` shows that letting the source occupy the top few
 metres of a facade does not work. The thickness moves the direct term by 3.6 dB
 at Korenmarkt, 6.1 dB at Brussels and 4.4 dB at New York, and it reorders the
 squares: New York sits below Korenmarkt at half a metre and above it at eight.

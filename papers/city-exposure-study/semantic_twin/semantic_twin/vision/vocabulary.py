@@ -34,6 +34,8 @@ import numpy as np
 
 KINDS = ("surface", "object")
 UNBOUND_STATUS = ("no_model", "no_row", "different_recommendation", "different_library", "not_a_material")
+VEGETATION_FORMS = ("unresolved", "ground_vegetation", "woody_canopy")
+VEGETATION_SUBTYPES = ("unresolved", "grass", "shrub", "tree", "forest")
 
 # Smallest share a dense class prior must give a material before a material-only
 # prompt is allowed to claim that material over the class. See
@@ -49,6 +51,8 @@ class Concept:
     material: dict[str, float]
     attributes: dict[str, float]
     caveat: str = ""
+    vegetation_form: str = "unresolved"
+    vegetation_subtype: str = "unresolved"
 
 
 @dataclass(frozen=True)
@@ -197,8 +201,24 @@ class ConceptCatalog:
             unknown_attributes = set(concept.attributes) - attribute_labels
             if unknown_attributes or any(not 0.0 <= value <= 1.0 for value in concept.attributes.values()):
                 raise ValueError(f"invalid attributes for {concept.prompt}: {unknown_attributes}")
+        self._validate_vegetation()
         self._validate_grounding(material_labels)
         self._validate_bridges(entity_labels, material_labels)
+
+    def _validate_vegetation(self) -> None:
+        vegetation_forms = self.vegetation_forms
+        vegetation_subtypes = self.vegetation_subtypes
+        if not vegetation_forms or vegetation_forms[0] != "unresolved":
+            raise ValueError("vegetation_forms must start with unresolved")
+        if not vegetation_subtypes or vegetation_subtypes[0] != "unresolved":
+            raise ValueError("vegetation_subtypes must start with unresolved")
+        for concept in self.concepts:
+            if concept.vegetation_form not in vegetation_forms:
+                raise ValueError(f"invalid vegetation form for {concept.prompt}: {concept.vegetation_form}")
+            if concept.vegetation_subtype not in vegetation_subtypes:
+                raise ValueError(f"invalid vegetation subtype for {concept.prompt}: {concept.vegetation_subtype}")
+            if concept.vegetation_form == "unresolved" and concept.vegetation_subtype != "unresolved":
+                raise ValueError(f"vegetation subtype without a resolved form for {concept.prompt}")
 
     def _validate_grounding(self, material_labels: set[str]) -> None:
         if not self.material_grounding:
@@ -246,6 +266,25 @@ class ConceptCatalog:
             matrix[index + 1] = self.categorical_probability(concept, "materials")
         return matrix
 
+    @property
+    def vegetation_forms(self) -> tuple[str, ...]:
+        """Stable vegetation-form vocabulary, with zero reserved for unresolved."""
+        return tuple(self.taxonomy.get("vegetation_forms", VEGETATION_FORMS))
+
+    @property
+    def vegetation_subtypes(self) -> tuple[str, ...]:
+        """Diagnostic vegetation vocabulary, with zero reserved for unresolved."""
+        return tuple(self.taxonomy.get("vegetation_subtypes", VEGETATION_SUBTYPES))
+
+    def vegetation_tables(self) -> tuple[np.ndarray, np.ndarray]:
+        """Map concept raster values onto vegetation form and diagnostic subtype."""
+        form = np.zeros(len(self.concepts) + 1, dtype=np.uint8)
+        subtype = np.zeros(len(self.concepts) + 1, dtype=np.uint8)
+        for index, concept in enumerate(self.concepts, start=1):
+            form[index] = self.vegetation_forms.index(concept.vegetation_form)
+            subtype[index] = self.vegetation_subtypes.index(concept.vegetation_subtype)
+        return form, subtype
+
     def reachable_materials(self) -> frozenset[str]:
         """Material labels that at least one prompt can put probability mass on."""
         return frozenset(
@@ -290,6 +329,8 @@ class ConceptCatalog:
                 material={name: float(value) for name, value in record["material"].items()},
                 attributes={name: float(value) for name, value in record.get("attributes", {}).items()},
                 caveat=str(record.get("caveat", "")),
+                vegetation_form=str(record.get("vegetation", {}).get("form", "unresolved")),
+                vegetation_subtype=str(record.get("vegetation", {}).get("subtype", "unresolved")),
             )
             for record in document["concepts"]
         ]

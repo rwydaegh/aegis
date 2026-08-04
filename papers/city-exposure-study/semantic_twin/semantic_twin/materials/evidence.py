@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -43,6 +44,205 @@ from .catalogue import IMAGE_MATERIALS, MATERIAL_SUBSTITUTION, VEGETATION_NOTE
 
 #: Prefix every evidence class name carries in the class table.
 SEMANTIC_PREFIX = "semantic_"
+VEGETATION_FORM_NAMES = ("unresolved", "ground_vegetation", "woody_canopy")
+VEGETATION_SUBTYPE_NAMES = ("unresolved", "grass", "shrub", "tree", "forest")
+
+
+@dataclass(frozen=True)
+class VegetationBinding:
+    """Per-face vegetation form kept apart from surface material classes.
+
+    A canopy is a volume and grass is ground cover. Neither belongs in the
+    interface-only class index of :class:`SurfaceBinding`. Zero is unresolved
+    on both axes, including faces seen only by the dense Vegetation class.
+    """
+
+    form_names: tuple[str, ...]
+    subtype_names: tuple[str, ...]
+    face_form: np.ndarray
+    face_subtype: np.ndarray
+    face_weight: np.ndarray
+    face_area_m2: np.ndarray
+    provenance: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        count = self.face_form.shape[0]
+        shapes = (self.face_subtype.shape, self.face_weight.shape, self.face_area_m2.shape)
+        if any(shape != (count,) for shape in shapes):
+            raise ValueError(f"{count} vegetation forms but incompatible subtype, weight, or area arrays")
+        _validate_vegetation_axis(self.form_names, self.face_form, "form")
+        _validate_vegetation_axis(self.subtype_names, self.face_subtype, "subtype")
+        if np.any((self.face_subtype > 0) & (self.face_form == 0)):
+            raise ValueError("a vegetation subtype cannot resolve where vegetation form is unresolved")
+        if np.any(self.face_weight < 0.0):
+            raise ValueError("vegetation evidence weight cannot be negative")
+        if not self.provenance:
+            raise ValueError("a vegetation binding must record how its forms were decided")
+
+    @property
+    def resolved(self) -> np.ndarray:
+        return self.face_form > 0
+
+    @property
+    def covered_fraction_by_face(self) -> float:
+        return float(self.resolved.mean()) if self.face_form.size else 0.0
+
+    @property
+    def covered_fraction_by_area(self) -> float:
+        total = float(self.face_area_m2.sum())
+        return float(self.face_area_m2[self.resolved].sum() / total) if total else 0.0
+
+
+def _vegetation_names(data: Any, key: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
+    if key not in data.files:
+        return fallback
+    names = tuple(str(name) for name in data[key])
+    if not names or names[0] != "unresolved":
+        raise ValueError(f"{key} must start with unresolved")
+    return names
+
+
+def _validate_vegetation_axis(names: tuple[str, ...], values: np.ndarray, axis: str) -> None:
+    if not names or names[0] != "unresolved":
+        raise ValueError(f"vegetation {axis}s must start with unresolved")
+    if values.size and (values.min() < 0 or values.max() >= len(names)):
+        raise ValueError(f"face_{axis} leaves the vegetation {axis}s it names")
+
+
+def _legacy_vegetation_binding(
+    areas: np.ndarray,
+    walk_npz: pathlib.Path,
+    form_names: tuple[str, ...],
+    subtype_names: tuple[str, ...],
+) -> VegetationBinding:
+    zeros = np.zeros(areas.size, dtype=np.uint8)
+    return VegetationBinding(
+        form_names=form_names,
+        subtype_names=subtype_names,
+        face_form=zeros,
+        face_subtype=zeros.copy(),
+        face_weight=np.zeros(areas.size, dtype=np.float64),
+        face_area_m2=areas,
+        provenance={
+            "walk_npz": str(walk_npz),
+            "status": "legacy walk file with no vegetation-form axis",
+            "dense_vegetation": "unresolved",
+        },
+    )
+
+
+def _validate_walk_vegetation(
+    modal_form: np.ndarray,
+    modal_subtype: np.ndarray,
+    rays: np.ndarray,
+    areas: np.ndarray,
+    form_names: tuple[str, ...],
+    subtype_names: tuple[str, ...],
+) -> None:
+    if modal_form.shape != modal_subtype.shape or modal_form.shape != rays.shape:
+        raise ValueError("walk vegetation form, subtype, and ray arrays have different shapes")
+    if modal_form.ndim != 2 or modal_form.shape[1] != areas.size:
+        faces = modal_form.shape[1] if modal_form.ndim == 2 else "an invalid rank"
+        raise ValueError(f"walk vegetation covers {faces} faces, the tracer mesh has {areas.size}")
+    _validate_vegetation_axis(form_names, modal_form, "form")
+    _validate_vegetation_axis(subtype_names, modal_subtype, "subtype")
+
+
+def _vegetation_votes(
+    labels: np.ndarray,
+    rays: np.ndarray,
+    weights: np.ndarray,
+    order: np.ndarray,
+    classes: int,
+    min_rays: int,
+    allowed_form: np.ndarray | None = None,
+) -> np.ndarray:
+    votes = np.zeros((rays.shape[1], classes), dtype=np.float64)
+    for station in order:
+        eligible = (rays[station] >= min_rays) & (labels[station] > 0)
+        if allowed_form is not None:
+            eligible &= allowed_form[station] > 0
+        face = np.flatnonzero(eligible)
+        contribution = rays[station, face] * weights[station]
+        np.add.at(votes, (face, labels[station, face]), contribution)
+    return votes
+
+
+def bind_walk_vegetation(
+    areas: np.ndarray,
+    *,
+    walk_npz: pathlib.Path,
+    min_rays: int = 1,
+    station_weight: dict[str, float] | None = None,
+) -> VegetationBinding:
+    """Bind ground vegetation and woody canopy without making either a surface.
+
+    New walk files carry one vegetation form per station and face, voted with
+    the rays that hit a vegetation-specific concept mask. Old walk files carry
+    no such axis. They load as fully unresolved, which preserves their legacy
+    meaning instead of treating dense ``Vegetation`` as canopy.
+    """
+    areas = np.asarray(areas, dtype=np.float64)
+    with np.load(walk_npz, allow_pickle=True) as data:
+        form_names = _vegetation_names(data, "vegetation_form_names", VEGETATION_FORM_NAMES)
+        subtype_names = _vegetation_names(data, "vegetation_subtype_names", VEGETATION_SUBTYPE_NAMES)
+        required = {"modal_vegetation_form", "modal_vegetation_subtype", "vegetation_rays"}
+        present = required & set(data.files)
+        if not present:
+            return _legacy_vegetation_binding(areas, walk_npz, form_names, subtype_names)
+        if present != required:
+            missing = sorted(required - present)
+            raise ValueError(f"walk vegetation schema is incomplete; missing {missing}")
+        modal_form = data["modal_vegetation_form"].astype(np.int64)
+        modal_subtype = data["modal_vegetation_subtype"].astype(np.int64)
+        rays = data["vegetation_rays"].astype(np.float64)
+        has_image_ids = "image_ids" in data.files
+        image_ids = [str(name) for name in data["image_ids"]] if has_image_ids else []
+
+    _validate_walk_vegetation(modal_form, modal_subtype, rays, areas, form_names, subtype_names)
+    if has_image_ids and len(image_ids) != modal_form.shape[0]:
+        raise ValueError(f"walk vegetation has {modal_form.shape[0]} station rows but {len(image_ids)} image_ids")
+
+    weights = _station_weights(image_ids, modal_form.shape[0], station_weight)
+    # Canonical station order makes a weighted floating-point vote invariant to
+    # row order when image ids are present. Unweighted integer ray counts are
+    # exact in either order.
+    order = np.argsort(np.asarray(image_ids), kind="stable") if image_ids else np.arange(modal_form.shape[0])
+    form_votes = _vegetation_votes(modal_form, rays, weights, order, len(form_names), min_rays)
+
+    face_form = form_votes.argmax(axis=1).astype(np.uint8)
+    face_weight = form_votes.sum(axis=1)
+    face_form[np.isclose(face_weight, 0.0)] = 0
+    matching_form = np.where(modal_form == face_form, modal_form, 0)
+    subtype_votes = _vegetation_votes(
+        modal_subtype,
+        rays,
+        weights,
+        order,
+        len(subtype_names),
+        min_rays,
+        matching_form,
+    )
+    face_subtype = subtype_votes.argmax(axis=1).astype(np.uint8)
+    face_subtype[np.isclose(subtype_votes.sum(axis=1), 0.0)] = 0
+    return VegetationBinding(
+        form_names=form_names,
+        subtype_names=subtype_names,
+        face_form=face_form,
+        face_subtype=face_subtype,
+        face_weight=face_weight,
+        face_area_m2=areas,
+        provenance={
+            "walk_npz": str(walk_npz),
+            "stations": int(modal_form.shape[0]),
+            "image_ids": image_ids,
+            "weight": "vegetation-specific rays per station",
+            "station_weight": station_weight or "every station at one",
+            "min_rays": min_rays,
+            "dense_vegetation": "unresolved and contributes no vote",
+            "tie_break": "lowest vocabulary index",
+        },
+    )
 
 
 def _triangle_centroids(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:

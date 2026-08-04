@@ -54,9 +54,11 @@ from .catalogue import (
 from .evidence import (
     CLUTTER_ENTITIES,
     SEMANTIC_PREFIX,
+    VegetationBinding,
     bind_fishnet,
     bind_walk_entities,
     bind_walk_materials,
+    bind_walk_vegetation,
     clutter_triangles,
 )
 from .itu import (
@@ -108,10 +110,12 @@ __all__ = [
     "SurfaceBinding",
     "SurfaceRoughnessLibrary",
     "SurfaceRoughnessPrior",
+    "VegetationBinding",
     "bind_fishnet",
     "bind_posterior",
     "bind_walk_entities",
     "bind_walk_materials",
+    "bind_walk_vegetation",
     "class_area_fractions",
     "classify_faces",
     "clutter_triangles",
