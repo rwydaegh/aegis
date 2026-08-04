@@ -162,6 +162,43 @@ def test_distance_to_the_path_is_measured_to_the_line_and_not_to_its_corners():
     assert gap_to_path(points, line) == pytest.approx([4.0, 4.0, 10.0, 30.0])
 
 
+def test_the_walk_keeps_whichever_path_stands_nearer_a_camera(monkeypatch: pytest.MonkeyPatch):
+    """Neither path wins everywhere, so the choice is measured rather than assumed."""
+    from semantic_twin.propagation import route as route_module
+    from semantic_twin.propagation.walk import Walk
+
+    cameras = [{"camera_enu_m": np.array([0.0, 0.0, 2.5])}, {"camera_enu_m": np.array([40.0, 0.0, 2.5])}]
+    # links stands 1 m off the cameras, street stands 20 m off.
+    built = {
+        "links": Walk(
+            points=np.array([[0.0, 1.0, 1.5], [40.0, 1.0, 1.5]]),
+            ground_z_m=np.zeros(2),
+            step_m=np.zeros(2),
+            provenance={},
+        ),
+        "street": Walk(
+            points=np.array([[0.0, 20.0, 1.5], [40.0, 20.0, 1.5]]),
+            ground_z_m=np.zeros(2),
+            step_m=np.zeros(2),
+            provenance={},
+        ),
+    }
+    real = route_module.site_walk
+
+    def stub(geometry, site, *, path="links", **kwargs):
+        if path == "closest":
+            return real(geometry, site, path=path, **kwargs)
+        return built[path], {"path": path}
+
+    monkeypatch.setattr(route_module, "site_walk", stub)
+    monkeypatch.setattr(route_module, "load_admitted_stations", lambda site, root=None: cameras)
+
+    walk, record = real(None, "nowhere", path="closest")
+    assert record["path"] == "links"
+    assert record["path_candidates_m"] == {"links": 1.0, "street": 20.0}
+    assert walk.points[0][1] == 1.0
+
+
 # --- what the path is for -----------------------------------------------------
 
 

@@ -994,10 +994,57 @@ def site_walk(
     not a standpoint. It still labels geometry through its panorama. Dropping it
     is what stops the walk from having orphan points hanging off it.
 
+    ``closest`` builds both and keeps whichever stands nearer a camera, which is
+    the one thing the method rests on. Neither path wins everywhere. Measured at
+    six squares, mean metres from a standpoint to the nearest camera:
+
+    | | links | street |
+    |---|---|---|
+    | Ghent Korenmarkt | 2.8 | 2.9 |
+    | Brussels Grand-Place | 8.9 | **6.7** |
+    | Madrid Plaza Mayor | **9.5** | 12.1 |
+    | Mexico City Zocalo | **8.3** | 46.0 |
+    | Prague Old Town | **6.5** | 7.3 |
+    | Tokyo Hachiko | **13.5** | 20.3 |
+
+    Brussels is the case the walking path was built for, a pedestrianised square
+    the survey car had to drive around. Mexico City is the opposite: the Zocalo is
+    240 m across with no way mapped inside it, so Routes walks the streets around
+    the outside and every camera ends up 24 m or more from the walk. A rule that
+    picks one path for all eleven squares would be wrong at several of them, so
+    this measures instead.
+
     Returns the walk and a provenance record. It raises rather than quietly
     falling back to the grid: a run that silently changed what a standpoint means
     is how a stale walk survives, and the caller should decide.
     """
+    if path == "closest":
+        best, best_gap, tried = None, np.inf, {}
+        for candidate in ("links", "street"):
+            walk, record = site_walk(
+                geometry,
+                site,
+                stride_m=stride_m,
+                head_height_m=head_height_m,
+                root=root,
+                bridge_m=bridge_m,
+                path=candidate,
+                endpoints=endpoints,
+                crop_m=crop_m,
+                **kwargs,
+            )
+            cameras = np.array(
+                [s["camera_enu_m"] for s in load_admitted_stations(site, root=root)],
+                dtype=float,
+            )
+            gap = float(np.linalg.norm(walk.points[:, None, :2] - cameras[None, :, :2], axis=2).min(axis=1).mean())
+            tried[candidate] = round(gap, 2)
+            if gap < best_gap:
+                best, best_gap = (walk, record), gap
+        walk, record = best  # type: ignore[misc]
+        record["path_chosen_by"] = "mean metres from a standpoint to the nearest camera"
+        record["path_candidates_m"] = tried
+        return walk, record
     stations = load_admitted_stations(site, root=root)
     graph = load_link_graph(site, root=root, bridge_m=bridge_m)
     route = build_panorama_route(geometry, stations, graph, head_height_m=head_height_m, **kwargs)
@@ -1010,6 +1057,11 @@ def site_walk(
         "road_length_m": float(np.sum(route.road_length_m)),
         "stride_m": stride_m,
     }
+    # Camera heights, kept before any filtering. The stride probes the ground
+    # from just under an interpolated camera, and dropping a station off the walk
+    # must not also drop the height it measured.
+    heights = walk.points.copy()
+
     if path == "street":
         legs, street = street_path(site, route, root=root, crop_m=crop_m, endpoints=endpoints)
         provenance["street_route"] = street
@@ -1017,6 +1069,16 @@ def site_walk(
         on = gap_to_path(walk.points, line) <= max(stride_m, 5.0)
         provenance["stations_on_path"] = int(on.sum())
         provenance["stations_off_path"] = int((~on).sum())
+        if not on.any():
+            # Every camera is off the routed path. This is the pedestrian network
+            # not entering the square: Mexico City's Zocalo is 240 m across with
+            # no way mapped inside it, so Routes walks the streets around it and
+            # the nearest camera to that walk is 24 m away. The walk is still
+            # real, it just carries no station, and the caller should hear it.
+            provenance["note"] = (
+                f"no camera lies within {max(stride_m, 5.0):.0f} m of the walking path, "
+                f"nearest is {gap_to_path(walk.points, line).min():.0f} m off"
+            )
         walk = Walk(
             points=walk.points[on],
             ground_z_m=walk.ground_z_m[on],
@@ -1037,12 +1099,12 @@ def site_walk(
 
     # Camera height along the road, so the downward probe starts under the
     # camera exactly as it does at a station.
-    at = walk.points[:, :2]
+    at = heights[:, :2]
     order = np.argsort(np.linalg.norm(at - at[0], axis=1))
     camera_z = np.interp(
         np.linalg.norm(extra - at[0], axis=1),
         np.linalg.norm(at[order] - at[0], axis=1),
-        walk.points[order, 2],
+        heights[order, 2],
     )
     z, _ = ground_under_camera(geometry, extra, camera_z)
     good = np.isfinite(z)

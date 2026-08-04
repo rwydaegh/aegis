@@ -1373,9 +1373,9 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--walk-path",
-        choices=["street", "links"],
-        default="street",
-        help="street is one A to B walk from Google Routes, links follows the panorama link graph",
+        choices=["closest", "street", "links"],
+        default="closest",
+        help="closest builds both and keeps whichever stands nearer a camera",
     )
     parser.add_argument(
         "--walk-stride-m",

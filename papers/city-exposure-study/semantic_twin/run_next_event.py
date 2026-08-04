@@ -103,9 +103,9 @@ def main() -> None:
     ap.add_argument("--walk", choices=["route", "grid"], default="route")
     ap.add_argument(
         "--walk-path",
-        choices=["street", "links"],
-        default="street",
-        help="street is one A to B walk from Google Routes, links follows the panorama link graph",
+        choices=["closest", "street", "links"],
+        default="closest",
+        help="closest builds both and keeps whichever stands nearer a camera",
     )
     ap.add_argument("--walk-stride-m", type=float, default=6.0)
     ap.add_argument(
