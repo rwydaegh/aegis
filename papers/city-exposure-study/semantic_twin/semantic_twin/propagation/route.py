@@ -1010,9 +1010,15 @@ def site_walk(
     Brussels is the case the walking path was built for, a pedestrianised square
     the survey car had to drive around. Mexico City is the opposite: the Zocalo is
     240 m across with no way mapped inside it, so Routes walks the streets around
-    the outside and every camera ends up 24 m or more from the walk. A rule that
-    picks one path for all eleven squares would be wrong at several of them, so
-    this measures instead.
+    the outside and every camera ends up 24 m or more from the walk.
+
+    ``closest`` is not the default, and the reason is in `BOUNCE_BUDGET.md`. The
+    first interaction lands on photographed surface with probability 0.987 to
+    0.999 anywhere inside ten metres of a camera. Brussels on links is 8.90 m and
+    on the walking path 6.67 m, so both sit in the same band and the choice buys
+    nothing the physics can feel. ``links`` is the default because one sampling
+    rule for all eleven squares is easier to defend than a rule that changes site
+    by site to gain 2.2 m that does not matter.
 
     Returns the walk and a provenance record. It raises rather than quietly
     falling back to the grid: a run that silently changed what a standpoint means
