@@ -145,6 +145,62 @@ class PointResult:
         return out
 
 
+def finalize_point_result(
+    origin: np.ndarray,
+    ground_z_m: float,
+    models: dict[str, IlluminationModel],
+    config: TraceConfig,
+    local_grid: np.ndarray,
+    exit_sin_edges: np.ndarray,
+    accumulators: TraceAccumulators,
+    started: float,
+) -> PointResult:
+    """Reduce completed trace accumulators into one point result.
+
+    The NumPy tracer and a device tracer can share this host-side reduction as
+    long as they fill :class:`TraceAccumulators` with the same quantities. The
+    reduction keeps model iteration and floating-point operations in the
+    established order. It normalises the accumulator arrays in place, matching
+    the original tracer implementation.
+    """
+    local_solid_angle = 4.0 * np.pi / config.local_cells
+    counts = np.maximum(accumulators.cell_counts, 1.0)
+    for name in models:
+        accumulators.rho[name] /= counts
+        accumulators.rho_direct[name] /= counts
+    exit_profile = accumulators.exit_power / (config.rays / config.exit_bands)
+
+    susceptibility = {name: float(np.sum(accumulators.rho[name]) * local_solid_angle) for name in models}
+    susceptibility_direct = {name: float(np.sum(accumulators.rho_direct[name]) * local_solid_angle) for name in models}
+    totals = accumulators.totals
+    escaped = totals["escaped"]
+    return PointResult(
+        origin=np.asarray(origin, dtype=np.float64),
+        ground_z_m=float(ground_z_m),
+        local_grid=local_grid,
+        local_solid_angle=local_solid_angle,
+        rho=accumulators.rho,
+        susceptibility=susceptibility,
+        susceptibility_direct=susceptibility_direct,
+        exit_profile=exit_profile,
+        exit_sin_edges=exit_sin_edges,
+        sky_fraction=totals["zero_bounce"] / config.rays,
+        mean_bounces=totals["bounce_sum"] / max(escaped, 1),
+        mean_excess_delay_ns=(
+            totals["delay_sum"] / totals["delay_weight"] * 1e9 / 299_792_458.0 if totals["delay_weight"] > 0.0 else 0.0
+        ),
+        escaped_fraction=escaped / config.rays,
+        rays=config.rays,
+        seconds=time.perf_counter() - started,
+        diagnostics={
+            "truncated_rays": totals["truncated"],
+            "truncated_throughput_share": (
+                totals["truncated_throughput"] / totals["delay_weight"] if totals["delay_weight"] > 0.0 else 0.0
+            ),
+        },
+    )
+
+
 def fresnel_power_reflectance(cos_incidence: np.ndarray, permittivity: np.ndarray) -> np.ndarray:
     """Unpolarised half-space power reflectance.
 
@@ -232,7 +288,6 @@ class SbrTracer:
         cfg = self.config
         started = time.perf_counter()
         rng = np.random.default_rng(cfg.seed if seed is None else seed)
-        local_solid_angle = 4.0 * np.pi / cfg.local_cells
 
         accumulators = TraceAccumulators.create(models, cfg.local_cells, cfg.exit_bands)
         remaining = cfg.rays
@@ -255,44 +310,15 @@ class SbrTracer:
                 gather,
             )
 
-        counts = np.maximum(accumulators.cell_counts, 1.0)
-        for name in models:
-            accumulators.rho[name] /= counts
-            accumulators.rho_direct[name] /= counts
-        exit_profile = accumulators.exit_power / (cfg.rays / cfg.exit_bands)
-
-        susceptibility = {name: float(np.sum(accumulators.rho[name]) * local_solid_angle) for name in models}
-        susceptibility_direct = {
-            name: float(np.sum(accumulators.rho_direct[name]) * local_solid_angle) for name in models
-        }
-        totals = accumulators.totals
-        escaped = totals["escaped"]
-        return PointResult(
-            origin=np.asarray(origin, dtype=np.float64),
-            ground_z_m=float(ground_z_m),
-            local_grid=self.local_grid,
-            local_solid_angle=local_solid_angle,
-            rho=accumulators.rho,
-            susceptibility=susceptibility,
-            susceptibility_direct=susceptibility_direct,
-            exit_profile=exit_profile,
-            exit_sin_edges=self.exit_sin_edges,
-            sky_fraction=totals["zero_bounce"] / cfg.rays,
-            mean_bounces=totals["bounce_sum"] / max(escaped, 1),
-            mean_excess_delay_ns=(
-                totals["delay_sum"] / totals["delay_weight"] * 1e9 / 299_792_458.0
-                if totals["delay_weight"] > 0.0
-                else 0.0
-            ),
-            escaped_fraction=escaped / cfg.rays,
-            rays=cfg.rays,
-            seconds=time.perf_counter() - started,
-            diagnostics={
-                "truncated_rays": totals["truncated"],
-                "truncated_throughput_share": (
-                    totals["truncated_throughput"] / totals["delay_weight"] if totals["delay_weight"] > 0.0 else 0.0
-                ),
-            },
+        return finalize_point_result(
+            origin,
+            ground_z_m,
+            models,
+            cfg,
+            self.local_grid,
+            self.exit_sin_edges,
+            accumulators,
+            started,
         )
 
     def _run_batch(

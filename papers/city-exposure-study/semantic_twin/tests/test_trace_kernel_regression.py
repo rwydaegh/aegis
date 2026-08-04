@@ -10,6 +10,7 @@ import pytest
 from semantic_twin.illumination import ISOTROPIC
 from semantic_twin.transport import BounceEvidenceTally, PathRecorder, SbrTracer, TraceConfig
 from semantic_twin.transport import tracer as tracer_module
+from semantic_twin.transport.trace_kernel import TraceAccumulators
 
 
 class LeakySphere:
@@ -88,6 +89,113 @@ class RecordingGather:
 
 def _sha(array: np.ndarray) -> str:
     return hashlib.sha256(np.asarray(array).tobytes()).hexdigest()
+
+
+def test_trace_uses_the_shared_finalizer_without_changing_result_bits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    original = tracer_module.finalize_point_result
+
+    def watched(*args: object, **kwargs: object) -> tracer_module.PointResult:
+        nonlocal calls
+        calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(tracer_module, "finalize_point_result", watched)
+    config = TraceConfig(rays=31, local_cells=8, exit_bands=4, batch=13, seed=91)
+    tracer = SbrTracer(OpenGeometry(), None, np.array([1.0 + 0.0j]), np.array([0.0]), config)
+
+    result = tracer.trace(np.array([1.0, 2.0, 3.0]), {"iso": ISOTROPIC}, ground_z_m=-2.0)
+
+    assert calls == 1
+    assert result.susceptibility["iso"].hex() == "0x1.c000000027904p-1"
+    assert result.susceptibility_direct["iso"].hex() == "0x1.c000000027904p-1"
+    assert _sha(result.rho["iso"]) == "9eb243db1e25e73d13c9b9afcfb04baf13c7e2d8046a0776538a3e6edd1a6775"
+    assert _sha(result.exit_profile) == "eff942ca745f3d7ef8a3c98ca56964985282d1b95ff7b0e6d2029ad324cfd0b1"
+    assert result.local_solid_angle.hex() == "0x1.921fb54442d18p+0"
+    assert (
+        result.sky_fraction.hex(),
+        result.mean_bounces.hex(),
+        result.mean_excess_delay_ns.hex(),
+        result.escaped_fraction.hex(),
+    ) == (
+        "0x1.0000000000000p+0",
+        "0x0.0p+0",
+        "0x0.0p+0",
+        "0x1.0000000000000p+0",
+    )
+    assert result.diagnostics == {"truncated_rays": 0, "truncated_throughput_share": 0.0}
+
+
+def test_shared_finalizer_has_a_stable_host_reduction_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = TraceConfig(rays=8, local_cells=2, exit_bands=2)
+    models = {"tilted": TiltedLaw(), "iso": ISOTROPIC}
+    rho = {"tilted": np.array([4.0, 8.0]), "iso": np.array([2.0, 12.0])}
+    rho_direct = {"tilted": np.array([2.0, 4.0]), "iso": np.array([1.0, 8.0])}
+    accumulators = TraceAccumulators(
+        normalisations={"tilted": 1.0, "iso": 1.0},
+        rho=rho,
+        rho_direct=rho_direct,
+        cell_counts=np.array([2.0, 4.0]),
+        exit_power=np.array([4.0, 12.0]),
+        totals={
+            "escaped": 5,
+            "bounce_sum": 7.0,
+            "delay_sum": 6.0,
+            "delay_weight": 3.0,
+            "zero_bounce": 2,
+            "truncated": 3,
+            "truncated_throughput": 1.5,
+        },
+    )
+    origin = np.array([1, 2, 3], dtype=np.int64)
+    local_grid = np.array([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
+    exit_sin_edges = np.array([-1.0, 0.0, 1.0])
+    monkeypatch.setattr(tracer_module.time, "perf_counter", lambda: 12.5)
+
+    result = tracer_module.finalize_point_result(
+        origin,
+        -2.0,
+        models,
+        config,
+        local_grid,
+        exit_sin_edges,
+        accumulators,
+        10.0,
+    )
+
+    assert tuple(result.rho) == ("tilted", "iso")
+    assert result.rho is rho
+    assert accumulators.rho_direct is rho_direct
+    assert np.array_equal(rho["tilted"], np.array([2.0, 2.0]))
+    assert np.array_equal(rho["iso"], np.array([1.0, 3.0]))
+    assert np.array_equal(rho_direct["tilted"], np.array([1.0, 1.0]))
+    assert np.array_equal(rho_direct["iso"], np.array([0.5, 2.0]))
+    assert tuple(value.hex() for value in result.susceptibility.values()) == (
+        "0x1.921fb54442d18p+4",
+        "0x1.921fb54442d18p+4",
+    )
+    assert tuple(value.hex() for value in result.susceptibility_direct.values()) == (
+        "0x1.921fb54442d18p+3",
+        "0x1.f6a7a2955385ep+3",
+    )
+    assert tuple(result.susceptibility_direct) == ("tilted", "iso")
+    assert np.array_equal(result.exit_profile, np.array([1.0, 3.0]))
+    assert result.local_grid is local_grid
+    assert result.exit_sin_edges is exit_sin_edges
+    assert result.origin.dtype == np.float64
+    assert np.array_equal(result.origin, np.array([1.0, 2.0, 3.0]))
+    assert result.origin is not origin
+    assert result.ground_z_m == -2.0
+    assert result.local_solid_angle.hex() == "0x1.921fb54442d18p+2"
+    assert result.sky_fraction.hex() == "0x1.0000000000000p-2"
+    assert result.mean_bounces.hex() == "0x1.6666666666666p+0"
+    assert result.mean_excess_delay_ns.hex() == "0x1.aaf6485ffabe7p+2"
+    assert result.escaped_fraction.hex() == "0x1.4000000000000p-1"
+    assert result.rays == 8
+    assert result.seconds.hex() == "0x1.4000000000000p+1"
+    assert result.diagnostics == {"truncated_rays": 3, "truncated_throughput_share": 0.5}
 
 
 def test_trace_kernel_keeps_the_recorded_bits_and_callback_order() -> None:
