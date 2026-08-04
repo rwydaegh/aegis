@@ -28,6 +28,7 @@ from semantic_twin.viz.blender.exporter import (
 from semantic_twin.viz.blender.payload import (
     ProductionFiles,
     available_spectrum_models,
+    connection_render_layers,
     production_files,
 )
 
@@ -316,6 +317,15 @@ def test_production_role_labels_are_explicit_and_self_consistent() -> None:
     assert labels["exposure_estimator_arm"].item() == "GPU escape transport and rooftop body exposure"
     assert labels["source_estimator_arm"].item() == "Roofline next-event and source evidence"
     assert "supplies no exposure value" in labels["visible_path_role"].item()
+
+
+def test_figure_21_targets_the_connection_name_of_each_payload_family() -> None:
+    layers = {"estimator_connections": "visibility", "skyline_rim": "direct_flux"}
+    assert connection_render_layers(layers, {"estimator_connections", "skyline_rim"}) == layers
+    assert connection_render_layers(layers, {"source_evidence_connections", "skyline_rim"}) == {
+        "source_evidence_connections": "visibility",
+        "skyline_rim": "direct_flux",
+    }
 
 
 def test_production_export_uses_a_digest_qualified_name(

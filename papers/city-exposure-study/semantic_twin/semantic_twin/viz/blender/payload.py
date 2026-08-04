@@ -20,7 +20,7 @@ import io
 import json
 import math
 import pathlib
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -198,6 +198,15 @@ def available_spectrum_models(payload: Any, candidates: Sequence[str]) -> tuple[
     """Models whose angular spectrum is actually present in this payload."""
     keys = payload.files if hasattr(payload, "files") else payload
     return tuple(name for name in candidates if f"rho_{name}" in keys)
+
+
+def connection_render_layers(layers: Mapping[str, str], object_names: Collection[str]) -> dict[str, str]:
+    """Select the correctly named connection object for this payload family."""
+    resolved = dict(layers)
+    if "estimator_connections" in resolved and "source_evidence_connections" in object_names:
+        channel = resolved.pop("estimator_connections")
+        resolved["source_evidence_connections"] = channel
+    return resolved
 
 
 def elevation_deg(directions: np.ndarray) -> np.ndarray:

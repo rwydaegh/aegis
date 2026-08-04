@@ -16,13 +16,13 @@ Krakow shipped that one. Both are refused with a line saying which site lacked w
 from __future__ import annotations
 
 import pathlib
-from typing import Sequence
+from collections.abc import Sequence
 
 import bpy
 
+from .payload import connection_render_layers
 from .scene import BUILT, COLLECTION_NAMES, show_layer, use_gpu
 from .style import MODEL_NAMES, RAY_STYLE
-
 
 FIGURE_VIEWS: tuple[dict[str, object], ...] = (
     {"name": "01_the_square", "camera": "cam_overview", "show": ("twin",)},
@@ -208,9 +208,10 @@ def render_every_figure(
         if only is not None and not any(name.startswith(wanted) for wanted in only):
             continue
         lit = {COLLECTION_NAMES.get(key, key) for key in shown}
+        layers = connection_render_layers(dict(figure.get("layers", {})), bpy.data.objects.keys())
         # A figure is about the object its layer entry names, and a site that never
         # built that object has nothing to say in that frame.
-        subject = {obj_name for obj_name in dict(figure.get("layers", {})) if obj_name not in bpy.data.objects}
+        subject = {obj_name for obj_name in layers if obj_name not in bpy.data.objects}
         if camera not in bpy.data.objects or subject:
             print(f"[render] skipped {name}, this site has no {', '.join(sorted(subject)) or camera}", flush=True)
             continue
@@ -228,7 +229,7 @@ def render_every_figure(
                 obj.hide_render = (
                     group.name not in lit or obj.name in dropped or (wanted is not None and obj.name not in wanted)
                 )
-        for obj_name, channel in dict(figure.get("layers", {})).items():
+        for obj_name, channel in layers.items():
             if obj_name in bpy.data.objects:
                 show_layer(bpy.data.objects[obj_name], channel)
         scene.camera = bpy.data.objects[camera]
