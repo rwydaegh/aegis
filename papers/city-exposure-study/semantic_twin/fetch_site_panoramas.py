@@ -75,9 +75,10 @@ from semantic_twin.acquire.streetview import (  # noqa: E402
     pose_from_metadata,
     zoom_dimensions,
 )
+from semantic_twin import paths  # noqa: E402
 from semantic_twin.scene.site_config import load_scene  # noqa: E402
 
-DEFAULT_SCREENING = pathlib.Path("outputs/city_screening/screening.json")
+DEFAULT_SCREENING = paths.screening()
 
 
 def spread_subset(positions: np.ndarray, count: int) -> list[int]:

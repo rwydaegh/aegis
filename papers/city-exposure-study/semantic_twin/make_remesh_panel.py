@@ -1,10 +1,10 @@
 """Three support meshes, same camera, with what each one costs written on it."""
 
-import pathlib
-
 from PIL import Image, ImageDraw, ImageFont
+from semantic_twin import paths
+from semantic_twin.viz import figures
 
-ROOT = pathlib.Path("/home/user/aegis/papers/city-exposure-study/semantic_twin")
+ROOT = paths.root()
 PANELS = [
     (
         "orbit_as_built_157k.png",
@@ -66,6 +66,6 @@ for image, (_, label, tris, numbers) in zip(images, PANELS):
     draw.text((pad, y + 44), numbers, font=font(18), fill=(150, 152, 158))
     y += caption + gap
 
-out = ROOT / "FIGURES/10_remesh_visual.png"
+out = figures.get("remesh_visual").path()
 canvas.save(out)
 print(f"wrote {out}  {canvas.size}")

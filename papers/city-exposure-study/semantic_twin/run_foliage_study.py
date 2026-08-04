@@ -38,11 +38,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import pathlib
 import sys
 
 import numpy as np
 
+from semantic_twin import paths
 from semantic_twin.materials.foliage import (
     LEAF_AREA_INDEX,
     CanopyCanyonGeometry,
@@ -56,7 +56,7 @@ from semantic_twin.materials.foliage import (
 )
 from semantic_twin.illumination import MODELS
 
-OUTPUT = pathlib.Path("outputs/foliage_study")
+OUTPUT = paths.output("foliage_study")
 
 #: The study band. 15 GHz sits in FR3 and is the tracer's own default carrier.
 FREQUENCY_HZ = 15.0e9

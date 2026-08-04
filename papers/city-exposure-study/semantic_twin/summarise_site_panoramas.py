@@ -26,6 +26,8 @@ import statistics
 import sys
 from typing import Any
 
+from semantic_twin import paths
+
 DEGREE_KEYS = ("skyline_score_mean_deg", "skyline_signed_residual_median_deg")
 
 
@@ -120,7 +122,7 @@ def markdown(summaries: list[dict[str, Any]]) -> str:
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site", type=pathlib.Path, nargs="+", required=True)
-    parser.add_argument("--out", type=pathlib.Path, default=pathlib.Path("outputs/city_screening"))
+    parser.add_argument("--out", type=pathlib.Path, default=paths.output("city_screening"))
     return parser.parse_args(argv)
 
 

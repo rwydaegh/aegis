@@ -31,6 +31,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from semantic_twin.scene.site_config import google_api_key  # noqa: E402
 from semantic_twin.acquire.streetview import StreetViewTiles  # noqa: E402
+from semantic_twin import paths  # noqa: E402
 from semantic_twin.screening import (  # noqa: E402
     DEFAULT_MAX_PANORAMAS,
     DEFAULT_SCREEN_RADIUS_M,
@@ -251,7 +252,7 @@ def markdown_table(rows: list[dict[str, Any]]) -> str:
 
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", type=pathlib.Path, default=pathlib.Path("outputs/city_screening"))
+    parser.add_argument("--out", type=pathlib.Path, default=paths.output("city_screening"))
     parser.add_argument("--radius-m", type=float, default=DEFAULT_SCREEN_RADIUS_M)
     parser.add_argument("--max-panoramas", type=int, default=DEFAULT_MAX_PANORAMAS)
     parser.add_argument("--workers", type=int, default=8)
