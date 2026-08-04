@@ -22,8 +22,6 @@ import json
 import pathlib
 import sys
 import time
-import urllib.error
-import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -32,6 +30,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from semantic_twin.scene.site_config import google_api_key  # noqa: E402
+from semantic_twin.acquire.streetview import StreetViewTiles  # noqa: E402
 from semantic_twin.screening import (  # noqa: E402
     DEFAULT_MAX_PANORAMAS,
     DEFAULT_SCREEN_RADIUS_M,
@@ -39,9 +38,6 @@ from semantic_twin.screening import (  # noqa: E402
     rank,
     screen,
 )
-
-CREATE_SESSION = "https://tile.googleapis.com/v1/createSession"
-METADATA = "https://tile.googleapis.com/v1/streetview/metadata"
 
 # Candidate sites. Two are already acquired and are screened anyway, as the only
 # way to know what the numbers mean: Ghent is a car track through a square and
@@ -233,57 +229,6 @@ CANDIDATES = [
 ]
 
 
-class MapTilesMetadata:
-    """One Map Tiles Street View session, used for metadata lookups only.
-
-    A single session token is reused for every request in the run, and the
-    connection pool is a plain opener so that repeated lookups do not each pay
-    for a fresh TLS handshake.
-    """
-
-    def __init__(self, api_key: str, *, tries: int = 4, timeout_s: float = 30.0) -> None:
-        self.api_key = api_key
-        self.tries = tries
-        self.timeout_s = timeout_s
-        self.requests = 0
-        self.opener = urllib.request.build_opener()
-        body = json.dumps({"mapType": "streetview", "language": "en-US"}).encode()
-        request = urllib.request.Request(
-            f"{CREATE_SESSION}?{urllib.parse.urlencode({'key': api_key})}",
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        self.session = json.loads(self.opener.open(request, timeout=timeout_s).read())["session"]
-        self.requests += 1
-
-    def _get(self, params: dict[str, Any]) -> dict[str, Any]:
-        params = dict(params, session=self.session, key=self.api_key)
-        url = f"{METADATA}?{urllib.parse.urlencode(params)}"
-        last: Exception | None = None
-        for attempt in range(self.tries):
-            self.requests += 1
-            try:
-                with self.opener.open(url, timeout=self.timeout_s) as response:
-                    return json.loads(response.read())
-            except urllib.error.HTTPError as exc:
-                if exc.code == 404:
-                    return {}
-                if exc.code < 500 and exc.code != 429:
-                    raise RuntimeError(f"Street View metadata HTTP {exc.code}") from exc
-                last = exc
-            except OSError as exc:
-                last = exc
-            time.sleep(1.0 * (attempt + 1))
-        raise RuntimeError("Street View metadata request failed") from last
-
-    def by_pano_id(self, pano_id: str) -> dict[str, Any]:
-        return self._get({"panoId": pano_id})
-
-    def by_location(self, lat: float, lon: float, radius_m: float) -> dict[str, Any]:
-        return self._get({"lat": lat, "lng": lon, "radius": int(round(radius_m))})
-
-
 def markdown_table(rows: list[dict[str, Any]]) -> str:
     """Render the ranked screening rows as a markdown table."""
     header = (
@@ -314,6 +259,20 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def screening_source(api_key: str) -> StreetViewTiles:
+    """Build the shared Street View client with the screening request policy."""
+    source = StreetViewTiles(
+        api_key,
+        throttle_backoff_s=1.0,
+        server_backoff_s=1.0,
+        timeout_s=30.0,
+        region=None,
+        opener=urllib.request.build_opener(),
+    )
+    source.create_session(retry=False)
+    return source
+
+
 def main(argv: list[str] | None = None) -> int:
     args = arguments(argv)
     candidates = [c for c in CANDIDATES if args.only is None or c.key in args.only]
@@ -321,7 +280,7 @@ def main(argv: list[str] | None = None) -> int:
         print("No candidate matched --only", file=sys.stderr)
         return 2
 
-    source = MapTilesMetadata(google_api_key())
+    source = screening_source(google_api_key())
     rows: list[dict[str, Any]] = []
     for candidate in candidates:
         started = time.time()

@@ -67,13 +67,34 @@ def streetview_orientation_source(metadata: dict[str, Any]) -> str:
 class StreetViewTiles:
     """Small, retrying client for one Map Tiles Street View session."""
 
-    def __init__(self, api_key: str, *, tries: int = 4, throttle_backoff_s: float = 20.0) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        tries: int = 4,
+        throttle_backoff_s: float = 20.0,
+        server_backoff_s: float = 1.5,
+        timeout_s: float = 60.0,
+        region: str | None = "BE",
+        opener: Any | None = None,
+    ) -> None:
         self.api_key = api_key
         self.tries = tries
         self.throttle_backoff_s = throttle_backoff_s
+        self.server_backoff_s = server_backoff_s
+        self.timeout_s = timeout_s
+        self.region = region
+        self.opener = opener
+        self.requests = 0
         self.session: dict[str, Any] | None = None
 
-    def _read(self, request: str | urllib.request.Request) -> bytes:
+    def _read(
+        self,
+        request: str | urllib.request.Request,
+        *,
+        missing_ok: bool = False,
+        retry: bool = True,
+    ) -> bytes:
         """Fetch one resource, retrying on server errors and on throttling.
 
         A 4xx is a statement that the request itself is wrong and retrying it
@@ -85,12 +106,22 @@ class StreetViewTiles:
         window is seconds to minutes rather than milliseconds.
         """
         last: Exception | None = None
-        for attempt in range(self.tries):
+        attempts = self.tries if retry else 1
+        for attempt in range(attempts):
+            self.requests += 1
             try:
-                with urllib.request.urlopen(request, timeout=60) as response:
+                if self.opener is None:
+                    response = urllib.request.urlopen(request, timeout=self.timeout_s)
+                else:
+                    response = self.opener.open(request, timeout=self.timeout_s)
+                with response:
                     return response.read()
             except (OSError, urllib.error.HTTPError) as exc:
                 last = exc
+                if isinstance(exc, urllib.error.HTTPError) and exc.code == 404 and missing_ok:
+                    return b"{}"
+                if not retry:
+                    raise
                 throttled = isinstance(exc, urllib.error.HTTPError) and exc.code == 429
                 if isinstance(exc, urllib.error.HTTPError) and exc.code < 500 and not throttled:
                     detail = exc.read().decode("utf-8", errors="replace")[:1000]
@@ -98,19 +129,22 @@ class StreetViewTiles:
                 if throttled:
                     time.sleep(self.throttle_backoff_s * (attempt + 1))
                 else:
-                    time.sleep(1.5 * (attempt + 1))
+                    time.sleep(self.server_backoff_s * (attempt + 1))
         if isinstance(last, urllib.error.HTTPError) and last.code == 429:
             raise RuntimeError(
-                f"Street View still throttled after {self.tries} attempts. A daily quota, as opposed to a "
+                f"Street View still throttled after {attempts} attempts. A daily quota, as opposed to a "
                 "burst limit, does not clear by waiting and has to be raised in the console."
             ) from last
-        raise RuntimeError(f"Street View request failed after {self.tries} attempts") from last
+        raise RuntimeError(f"Street View request failed after {attempts} attempts") from last
 
-    def create_session(self) -> dict[str, Any]:
-        body = json.dumps({"mapType": "streetview", "language": "en-US", "region": "BE"}).encode()
+    def create_session(self, *, retry: bool = True) -> dict[str, Any]:
+        payload = {"mapType": "streetview", "language": "en-US"}
+        if self.region is not None:
+            payload["region"] = self.region
+        body = json.dumps(payload).encode()
         url = f"{CREATE_SESSION}?{urllib.parse.urlencode({'key': self.api_key})}"
         request = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
-        self.session = json.loads(self._read(request))
+        self.session = json.loads(self._read(request, retry=retry))
         return self.session
 
     @property
@@ -135,7 +169,15 @@ class StreetViewTiles:
             params.update({"lat": lat, "lng": lon, "radius": int(round(radius_m))})
         else:
             raise ValueError("metadata needs pano_id or both lat and lon")
-        return json.loads(self._read(f"{METADATA}?{urllib.parse.urlencode(params)}"))
+        return json.loads(self._read(f"{METADATA}?{urllib.parse.urlencode(params)}", missing_ok=True))
+
+    def by_pano_id(self, pano_id: str) -> dict[str, Any]:
+        """Return metadata for one panorama, as required by screening."""
+        return self.metadata(pano_id=pano_id)
+
+    def by_location(self, lat: float, lon: float, radius_m: float) -> dict[str, Any]:
+        """Return metadata near one point, as required by screening."""
+        return self.metadata(lat=lat, lon=lon, radius_m=radius_m)
 
     def tile_bytes(self, pano_id: str, zoom: int, x: int, y: int) -> bytes:
         params = urllib.parse.urlencode({"session": self.token, "key": self.api_key, "panoId": pano_id})

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import io
+import json
 import math
+import urllib.error
+import urllib.parse
+import urllib.request
+from collections import deque
 
 import numpy as np
 import pytest
 
-from screen_cities import CANDIDATES, markdown_table
+from screen_cities import CANDIDATES, markdown_table, screening_source
 from semantic_twin.screening import (
     EARTH_RADIUS_M,
     azimuth_spread,
@@ -24,6 +30,51 @@ from semantic_twin.screening import (
 
 CENTRE_LAT = 51.055
 CENTRE_LON = 3.722
+
+
+class FakeResponse:
+    def __init__(self, payload: dict) -> None:
+        self.body = json.dumps(payload).encode()
+
+    def read(self) -> bytes:
+        return self.body
+
+    def __enter__(self) -> FakeResponse:
+        return self
+
+    def __exit__(self, *_args) -> bool:
+        return False
+
+
+class FakeOpener:
+    def __init__(self, replies: list[dict | Exception]) -> None:
+        self.replies = deque(replies)
+        self.calls: list[tuple[str | urllib.request.Request, float]] = []
+
+    def open(self, request: str | urllib.request.Request, timeout: float) -> FakeResponse:
+        self.calls.append((request, timeout))
+        reply = self.replies.popleft()
+        if isinstance(reply, Exception):
+            raise reply
+        return FakeResponse(reply)
+
+
+@pytest.fixture
+def screening_http(monkeypatch) -> tuple[FakeOpener, list[float]]:
+    server_error = urllib.error.HTTPError("url", 500, "Server error", {}, None)
+    missing = urllib.error.HTTPError("url", 404, "Not found", {}, io.BytesIO())
+    opener = FakeOpener(
+        [
+            {"session": "screen-session"},
+            server_error,
+            {"panoId": "p1", "lat": CENTRE_LAT, "lng": CENTRE_LON},
+            missing,
+        ]
+    )
+    sleeps: list[float] = []
+    monkeypatch.setattr("screen_cities.urllib.request.build_opener", lambda: opener)
+    monkeypatch.setattr("semantic_twin.acquire.streetview.time.sleep", sleeps.append)
+    return opener, sleeps
 
 
 def at(east_m: float, north_m: float) -> tuple[float, float]:
@@ -106,6 +157,45 @@ def grid(spacing_m: float, reach_m: float, prefix: str = "g", date: str = "2023-
 
 
 CANDIDATE = Candidate("test", "Test square", "Nowhere", CENTRE_LAT, CENTRE_LON, "test")
+
+
+def test_screening_uses_the_shared_client_with_the_same_request_policy(screening_http) -> None:
+    opener, sleeps = screening_http
+    source = screening_source("secret")
+    found = source.by_pano_id("p1")
+    missing = source.by_location(CENTRE_LAT, CENTRE_LON, 25.4)
+
+    assert found == {"panoId": "p1", "lat": CENTRE_LAT, "lng": CENTRE_LON}
+    assert missing == {}
+    assert source.requests == 4
+    assert sleeps == [1.0]
+    assert [timeout for _, timeout in opener.calls] == [30.0] * 4
+
+    session_request = opener.calls[0][0]
+    assert isinstance(session_request, urllib.request.Request)
+    assert json.loads(session_request.data) == {"mapType": "streetview", "language": "en-US"}
+
+    retry_urls = [str(request) for request, _ in opener.calls[1:3]]
+    assert retry_urls[0] == retry_urls[1]
+    retry_query = urllib.parse.parse_qs(urllib.parse.urlparse(retry_urls[0]).query)
+    assert retry_query == {"session": ["screen-session"], "key": ["secret"], "panoId": ["p1"]}
+
+    location_url = str(opener.calls[3][0])
+    location_query = urllib.parse.parse_qs(urllib.parse.urlparse(location_url).query)
+    assert location_query["radius"] == ["25"]
+
+
+def test_screening_does_not_retry_session_creation(monkeypatch) -> None:
+    server_error = urllib.error.HTTPError("url", 500, "Server error", {}, None)
+    opener = FakeOpener([server_error, {"session": "would-succeed-on-a-retry"}])
+    sleeps: list[float] = []
+    monkeypatch.setattr("screen_cities.urllib.request.build_opener", lambda: opener)
+    monkeypatch.setattr("semantic_twin.acquire.streetview.time.sleep", sleeps.append)
+
+    with pytest.raises(urllib.error.HTTPError, match="Server error"):
+        screening_source("secret")
+    assert len(opener.calls) == 1
+    assert sleeps == []
 
 
 def test_offsets_recover_the_metres_they_were_built_from():
