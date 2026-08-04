@@ -1,7 +1,7 @@
 name = "overnight"
 description = "Use when Robin explicitly grants long autonomous or overnight work and wants Codex to keep going without waiting for input."
 nickname_candidates = ["overnight", "night-shift", "autonomous"]
-model = "gpt-5.4"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 
 developer_instructions = """
