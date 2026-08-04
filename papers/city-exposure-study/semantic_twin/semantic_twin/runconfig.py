@@ -28,10 +28,11 @@ it here in its own comment. ``batch`` is the one to watch: it is inert only whil
 different runs under one identity the first time a sweep asks for more rays.
 
 The identity is not the whole object. :meth:`RunConfig.identity` says what the
-digest hashes and why the two exceptions are exceptions, and the digests of four
+digest hashes and why its compatibility rules are safe, and the digests of four
 shipped configurations are pinned to literal strings in
-``tests/test_runconfig.py``. Adding a field moves every stem in the study, so it
-has to announce itself rather than quietly renaming every output.
+``tests/test_runconfig.py``. A new numerical choice normally moves every stem in
+the study. An explicit name for the sole historical default may preserve its old
+canonical form, while every new choice still gets a distinct identity.
 """
 
 from __future__ import annotations
@@ -89,6 +90,12 @@ MATERIALS = (
     "walk_material_over_entity",
     "walk_material_facade_only",
 )
+
+#: Which implementation advances rays between launch and escape. ``numpy`` is
+#: the established host tracer. ``drjit`` is the fixed-width device tracer. The
+#: two use different arithmetic and random-number streams, so they are different
+#: numerical runs even when they use the same Mitsuba intersection variant.
+TRANSPORT_KERNELS = ("numpy", "drjit")
 
 
 @dataclass(frozen=True)
@@ -220,6 +227,11 @@ class RunConfig:
     #: benchmarked against each other and a difference between them would be a
     #: difference in the answer, not in the wall clock.
     variant: str = "llvm_ad_rgb"
+    #: The implementation that owns the path state and scattering work. This is
+    #: separate from ``variant``: the established NumPy tracer can ask Mitsuba's
+    #: CUDA backend to intersect rays while still returning to the host after
+    #: each intersection.
+    transport_kernel: str = "numpy"
 
     # --------------------------------------------------------------- labelling
     #: What the run's output files are named after.
@@ -244,6 +256,7 @@ class RunConfig:
             ("walk", WALKS),
             ("walk_path", WALK_PATHS),
             ("materials", MATERIALS),
+            ("transport_kernel", TRANSPORT_KERNELS),
         ):
             value = getattr(self, name)
             if value not in allowed:
@@ -300,7 +313,7 @@ class RunConfig:
     def identity(self) -> dict[str, Any]:
         """What :meth:`digest` hashes: the run, with the label and the aliases gone.
 
-        Two departures from :meth:`as_dict`, both deliberate.
+        Three departures from :meth:`as_dict`, all deliberate.
 
         ``tag`` is dropped, because it names the files and not the physics. The
         drivers ship ``--tag-suffix`` precisely so a rerun can land beside a
@@ -315,9 +328,20 @@ class RunConfig:
         budget leaves the roulette branch unentered, draws no random number and
         produces the same trace. Old manifests write the explicit ``4`` where this
         code writes ``None`` at a three bounce budget. Those are one run.
+
+        ``transport_kernel`` is omitted for ``numpy``. NumPy was the only path
+        transport before this field existed, so explicit NumPy and a historical
+        manifest with no field are one run. ``drjit`` remains in the document
+        and therefore has a different digest.
         """
         document = self.as_dict()
         document.pop("tag")
+        # ``numpy`` was the only implementation before this field existed. Keep
+        # its established digest so published CPU and hybrid-CUDA runs retain
+        # their identity. A device run retains the field and therefore cannot
+        # collide with either historical form.
+        if document["transport_kernel"] == "numpy":
+            document.pop("transport_kernel")
         document["roulette_start"] = min(self.effective_roulette_start, self.max_bounces + 1)
         return document
 
@@ -330,9 +354,10 @@ class RunConfig:
         fields. Sorted keys, so the hash does not move when a field is added in
         the middle of the class.
 
-        Adding a field does move the hash, and therefore every output stem in the
-        study. ``tests/test_runconfig.py`` pins four of these to literal strings so
-        that it happens on purpose.
+        Adding a numerical choice normally moves the hash, and therefore every
+        output stem in the study. ``tests/test_runconfig.py`` pins four of these
+        to literal strings so that it happens on purpose. ``numpy`` transport is
+        the compatibility exception documented in :meth:`identity`.
         """
         payload = json.dumps(self.identity(), sort_keys=True, separators=(",", ":"))
         return hashlib.blake2b(payload.encode(), digest_size=length).hexdigest()[:length]
@@ -424,6 +449,7 @@ class Provenance:
             "versions": dict(self.versions),
             "law": self.run.law,
             "estimator": self.run.estimator,
+            "transport_kernel": self.run.transport_kernel,
             "run_digest": self.run.digest(),
             "run": self.run.as_dict(),
         }

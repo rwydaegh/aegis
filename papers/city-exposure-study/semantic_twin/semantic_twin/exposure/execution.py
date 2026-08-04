@@ -8,6 +8,7 @@ import platform
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from importlib import metadata
 from typing import Any
 
 import numpy as np
@@ -157,6 +158,7 @@ def _validate_run(run: RunConfig, available_models: Mapping[str, Any]) -> None:
         "estimator": (run.estimator, "escape"),
         "next_event": (run.next_event, None),
         "walk": (run.walk, "grid"),
+        "transport_kernel": (run.transport_kernel, "numpy"),
     }
     unsupported = [f"{name}={actual!r}" for name, (actual, expected) in required.items() if actual != expected]
     if unsupported:
@@ -384,11 +386,36 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
         },
         "body": environment.describe_body(prepared.coupler),
         "variant": run.variant,
+        "transport": _transport_provenance(run),
         "python": platform.python_version(),
         "storage_policy": "paths are never written, only per location scalars and rho",
         "run_digest": run.digest(),
         "run": run.as_dict(),
     }
+
+
+def _transport_provenance(run: RunConfig) -> dict[str, Any]:
+    """Record the numerical transport implementation separately from geometry."""
+    provenance: dict[str, Any] = {"kernel": run.transport_kernel}
+    if run.transport_kernel == "drjit":
+        provenance.update(
+            {
+                "floating_point": "float32",
+                "rng": {"family": "counter", "algorithm": "tea32"},
+                "versions": {
+                    "mitsuba": _distribution_version("mitsuba"),
+                    "drjit": _distribution_version("drjit"),
+                },
+            }
+        )
+    return provenance
+
+
+def _distribution_version(name: str) -> str:
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return "unavailable"
 
 
 def _trace_rows(prepared: PreparedRun, execution: ExecutionConfig, files: OutputFiles) -> None:

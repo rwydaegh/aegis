@@ -387,6 +387,7 @@ IDENTITY_CHANGES = {
     "exit_bands": 12,
     "seed": 9,
     "variant": "cuda_ad_rgb",
+    "transport_kernel": "drjit",
 }
 
 
@@ -460,6 +461,29 @@ def test_a_modern_manifest_missing_a_default_run_field_is_not_reusable(ledger):
     manifest.write_text(json.dumps(document))
 
     assert not run_exposure.reusable(config)
+
+
+def test_a_modern_manifest_from_before_transport_identity_means_numpy(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    document = json.loads(manifest.read_text())
+    del document["run"]["transport_kernel"]
+    manifest.write_text(json.dumps(document))
+
+    assert run_exposure.reusable(config)
+
+
+def test_an_old_hybrid_cuda_manifest_is_never_reused_for_device_transport(ledger):
+    hybrid = replay_config().replace(variant="cuda_ad_rgb")
+    complete_identified_run(run_exposure.OUTPUT, hybrid)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    document = json.loads(manifest.read_text())
+    del document["run"]["transport_kernel"]
+    manifest.write_text(json.dumps(document))
+
+    requested = hybrid.replace(transport_kernel="drjit")
+    assert not run_exposure.reusable(requested)
 
 
 @pytest.mark.parametrize("field", ["elevation_min_deg", "height_band_m", "range_band_m"])

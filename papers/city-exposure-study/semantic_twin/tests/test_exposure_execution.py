@@ -15,6 +15,7 @@ from semantic_twin.exposure.execution import (
     PreparedScene,
     _build_walk,
     _manifest,
+    _transport_provenance,
     _trace_config,
     _trace_rows,
     _validate_run,
@@ -63,6 +64,7 @@ def test_the_legacy_driver_builds_the_live_run_config_without_changing_its_defau
     assert config.crop_m == 250
     assert config.max_bounces == 6
     assert config.roulette_start == 4
+    assert config.transport_kernel == "numpy"
     assert config.head_height_m == 1.5
     assert execution == ExecutionConfig()
 
@@ -92,6 +94,7 @@ def test_explicit_none_keeps_the_legacy_tracer_default_at_a_larger_bounce_budget
         (RunConfig(site="korenmarkt"), "band/escape/grid"),
         (escape_config(models=("isotropic",)), "requires the rooftop model"),
         (escape_config(models=("rooftop", "invented")), "unknown illumination models: invented"),
+        (escape_config(transport_kernel="drjit"), "transport_kernel='drjit'"),
     ],
 )
 def test_executor_rejects_unsupported_configs_before_it_creates_output(tmp_path, config, message):
@@ -287,6 +290,7 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
         "illumination_models",
         "body",
         "variant",
+        "transport",
         "python",
         "storage_policy",
         "run_digest",
@@ -295,6 +299,21 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
     assert list(manifest["illumination_models"]) == ["isotropic", "rooftop", "street_small_cell"]
     assert manifest["run"] == prepared.run.as_dict()
     assert manifest["run_digest"] == prepared.run.digest()
+    assert manifest["transport"] == {"kernel": "numpy"}
+
+
+def test_device_transport_provenance_names_its_arithmetic_rng_and_versions(monkeypatch):
+    monkeypatch.setattr(
+        "semantic_twin.exposure.execution._distribution_version",
+        lambda name: {"mitsuba": "3.8.0", "drjit": "1.3.1"}[name],
+    )
+
+    assert _transport_provenance(escape_config(transport_kernel="drjit")) == {
+        "kernel": "drjit",
+        "floating_point": "float32",
+        "rng": {"family": "counter", "algorithm": "tea32"},
+        "versions": {"mitsuba": "3.8.0", "drjit": "1.3.1"},
+    }
 
 
 def test_ladder_sweep_remains_seed_major_and_reuses_one_body(tmp_path):

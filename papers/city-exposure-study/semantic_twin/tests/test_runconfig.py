@@ -12,9 +12,9 @@ Two more kinds are here and they are the ones with teeth.
 
 The digests of four shipped configurations are pinned to literal hex strings.
 That is the golden lock for the run identity. Every output file in the study is
-named after a digest, so adding a field renames every one of them, and without a
-pin that happens quietly. With it, the field cannot be added without a test
-saying so and a human agreeing.
+named after a digest, so a new numerical choice usually renames every one of
+them. The explicit name for a sole historical default can retain its canonical
+form, but the pin makes either policy visible.
 
 The defaults are read out of the drivers with :mod:`ast` rather than compared to
 themselves. The test these replaced read the dataclass back to the dataclass and
@@ -36,6 +36,7 @@ from semantic_twin.runconfig import (
     ESTIMATORS,
     LAWS,
     MATERIALS,
+    TRANSPORT_KERNELS,
     WALK_PATHS,
     WALKS,
     NextEventConfig,
@@ -158,6 +159,15 @@ def test_two_configs_that_differ_anywhere_get_different_digests():
     assert base.digest() != base.replace(seed=8).digest()
     assert base.digest() != base.replace(law="roofline").digest()
     assert base.digest() != base.replace(models=("isotropic", "rooftop")).digest()
+    assert base.digest() != base.replace(transport_kernel="drjit").digest()
+
+
+def test_the_established_numpy_kernel_keeps_the_published_digest():
+    """Adding the explicit default does not rename the runs already on disk."""
+    document = escape().identity()
+    assert escape().transport_kernel == "numpy"
+    assert "transport_kernel" not in document
+    assert "transport_kernel" in escape().as_dict()
 
 
 @pytest.mark.parametrize("field", ["ray_epsilon_m", "roulette_floor", "batch"])
@@ -229,10 +239,10 @@ def test_a_run_with_no_tag_still_names_itself():
 #: produces today.
 #:
 #: This is the golden lock for the run identity, and it is here because nothing
-#: else in the study holds it. Every output file is named after a digest, so adding
-#: a field to :class:`RunConfig` renames every file the study writes. Without a pin
-#: that happens in silence and the next sweep quietly fails to find its own
-#: published runs.
+#: else in the study holds it. Every output file is named after a digest, so a new
+#: numerical choice usually renames every file the study writes. An explicit name
+#: for the sole historical default may keep the old canonical form. The pins make
+#: either policy visible before the next sweep tries to find its published runs.
 #:
 #: When one of these moves, the question to answer is not "what is the new hash".
 #: It is whether the field that moved it belongs in the identity at all. If it
@@ -277,6 +287,7 @@ def test_the_pinned_digests_are_four_different_runs_and_not_four_copies():
         ("walk", "street"),
         ("walk_path", "grid"),
         ("materials", "sam3"),
+        ("transport_kernel", "cupy"),
     ],
 )
 def test_a_name_outside_the_allowed_set_is_refused_at_construction(field, value):
@@ -415,6 +426,7 @@ def test_every_name_this_class_allows_is_one_a_driver_actually_accepts():
     assert set(MATERIALS) == argparse_choices("run_exposure.py", "--materials")
     assert set(WALKS) == argparse_choices("run_next_event.py", "--walk")
     assert set(WALK_PATHS) == argparse_choices("run_next_event.py", "--walk-path")
+    assert set(TRANSPORT_KERNELS) == argparse_choices("run_exposure.py", "--transport-kernel")
 
 
 def test_the_two_law_families_are_the_two_the_illumination_package_declares():
@@ -469,6 +481,7 @@ def test_provenance_puts_the_law_and_the_git_sha_where_a_reader_will_find_them()
     document = record.as_dict()
     assert document["law"] == "band"
     assert document["estimator"] == "escape"
+    assert document["transport_kernel"] == "numpy"
     assert document["git_sha"]
     assert document["run_digest"] == escape().digest()
     assert document["run"]["site"] == "korenmarkt"

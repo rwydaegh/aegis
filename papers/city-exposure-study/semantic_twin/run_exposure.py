@@ -94,6 +94,7 @@ def _escape_config(
         local_cells=options.pop("local_cells"),
         seed=options.pop("seed"),
         variant=options.pop("variant"),
+        transport_kernel=options.pop("transport_kernel", "numpy"),
         tag=options.pop("tag"),
     )
     if options:
@@ -196,6 +197,12 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--frequency-ghz", type=float, default=15.0)
     parser.add_argument("--local-cells", type=int, default=512)
     parser.add_argument("--variant", default="llvm_ad_rgb")
+    parser.add_argument(
+        "--transport-kernel",
+        choices=("numpy", "drjit"),
+        default="numpy",
+        help="path transport implementation. drjit is reserved until production device execution is wired",
+    )
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument(
         "--workers",
@@ -257,6 +264,7 @@ def main(argv: list[str] | None = None) -> int:
             args.rays,
             args.frequency_ghz * 1e9,
             variant=args.variant,
+            transport_kernel=args.transport_kernel,
             seeds=tuple(int(value) for value in args.ladder_seeds.split(",")),
             local_cells=args.local_cells,
             walk_radius_m=args.walk_radius_m,
@@ -273,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
             args.rays,
             args.frequency_ghz * 1e9,
             variant=args.variant,
+            transport_kernel=args.transport_kernel,
             seed=args.seed,
             local_cells=args.local_cells,
             walk_radius_m=args.walk_radius_m,
@@ -297,6 +306,7 @@ def main(argv: list[str] | None = None) -> int:
             args.rays,
             args.frequency_ghz * 1e9,
             variant=args.variant,
+            transport_kernel=args.transport_kernel,
             seed=args.seed,
             tag=args.tag,
             local_cells=args.local_cells,

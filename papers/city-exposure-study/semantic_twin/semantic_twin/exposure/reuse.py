@@ -175,8 +175,18 @@ def same_run_identity(manifest: dict[str, Any], config: RunConfig, models: Mappi
     recorded = manifest.get("run")
     try:
         if recorded is not None:
-            if not isinstance(recorded, dict) or set(recorded) != {field.name for field in fields(RunConfig)}:
+            if not isinstance(recorded, dict):
                 return False
+            expected_fields = {field.name for field in fields(RunConfig)}
+            recorded_fields = set(recorded)
+            missing = expected_fields - recorded_fields
+            if recorded_fields - expected_fields or missing not in (set(), {"transport_kernel"}):
+                return False
+            if missing:
+                # NumPy was the sole transport family before the field existed.
+                # This also classifies old ``cuda_ad_rgb`` manifests correctly:
+                # CUDA named their intersection backend, not a resident kernel.
+                recorded = dict(recorded, transport_kernel="numpy")
             previous = RunConfig.from_dict(recorded)
             digest_matches = manifest.get("run_digest") == previous.digest()
         else:
@@ -245,6 +255,7 @@ def legacy_run(manifest: dict[str, Any], requested: RunConfig, models: Mapping[s
         exit_bands=trace.get("exit_bands", 18),
         seed=trace.get("seed", 7),
         variant=manifest.get("variant", "llvm_ad_rgb"),
+        transport_kernel="numpy",
         tag=requested.tag,
     )
 
