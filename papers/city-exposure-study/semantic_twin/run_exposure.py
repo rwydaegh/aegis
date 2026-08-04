@@ -201,7 +201,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         "--transport-kernel",
         choices=("numpy", "drjit"),
         default="numpy",
-        help="path transport implementation. drjit is reserved until production device execution is wired",
+        help="path transport implementation. drjit uses one LLVM or CUDA JIT process",
     )
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument(

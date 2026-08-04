@@ -94,7 +94,6 @@ def test_explicit_none_keeps_the_legacy_tracer_default_at_a_larger_bounce_budget
         (RunConfig(site="korenmarkt"), "band/escape/grid"),
         (escape_config(models=("isotropic",)), "requires the rooftop model"),
         (escape_config(models=("rooftop", "invented")), "unknown illumination models: invented"),
-        (escape_config(transport_kernel="drjit"), "transport_kernel='drjit'"),
     ],
 )
 def test_executor_rejects_unsupported_configs_before_it_creates_output(tmp_path, config, message):
@@ -106,6 +105,34 @@ def test_executor_rejects_unsupported_configs_before_it_creates_output(tmp_path,
 
     with pytest.raises(ValueError, match=message):
         execute(config, ExecutionConfig(), environment)
+
+    assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    ("config", "execution", "message"),
+    [
+        (
+            escape_config(transport_kernel="drjit", variant="scalar_rgb"),
+            ExecutionConfig(),
+            "drjit transport requires a Mitsuba JIT RGB variant",
+        ),
+        (
+            escape_config(transport_kernel="drjit", variant="cuda_ad_rgb"),
+            ExecutionConfig(workers=2),
+            "Dr.Jit state cannot cross worker boundaries",
+        ),
+    ],
+)
+def test_device_executor_rejects_invalid_execution_before_it_creates_output(tmp_path, config, execution, message):
+    output = tmp_path / "output"
+    environment = SimpleNamespace(
+        output=output,
+        models={"isotropic": object(), "rooftop": object(), "street_small_cell": object()},
+    )
+
+    with pytest.raises(ValueError, match=message):
+        execute(config, execution, environment)
 
     assert not output.exists()
 
@@ -226,6 +253,220 @@ def test_standpoint_seed_row_and_spectrum_order_are_kept(tmp_path):
     saved = np.load(files.spectra)
     assert saved["index"].tolist() == [2, 0]
     assert saved["rho_rooftop"].tolist() == [[10.0, 11.0], [20.0, 21.0]]
+
+
+def test_device_execute_selects_resident_tracer_and_keeps_output_contract(tmp_path, monkeypatch):
+    captured = {}
+
+    class Model:
+        elevation_min_deg = 0.0
+        elevation_max_deg = 90.0
+        law = "band"
+        height_band_m = (20.0, 40.0)
+        range_band_m = (10.0, 100.0)
+        description = "rooftop"
+
+    class Geometry:
+        face_count = 1
+        vertices = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        faces = np.array([[0, 1, 2]])
+
+        def face_areas(self):
+            return np.array([0.5])
+
+    class Table:
+        class_names = ("facade",)
+        permittivity = np.array([4.0 - 0.1j])
+        rms_height_m = np.array([0.002])
+
+        def as_dict(self):
+            return {"classes": ["facade"]}
+
+    class DeviceTracer:
+        def __init__(self, geometry, face_class, permittivity, rms_height_m, config):
+            captured["tracer_args"] = (geometry, face_class, permittivity, rms_height_m, config)
+
+    class Result:
+        local_grid = np.array([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
+        local_solid_angle = 2.0 * np.pi
+        seconds = 0.01
+
+        def __init__(self, value):
+            self.rho = {"rooftop": np.array([value, value + 1.0])}
+
+        def scalars(self):
+            return {"chi_rooftop": 0.4, "sky_fraction": 0.3}
+
+    class Coupler:
+        def couple(self, *_args):
+            return SimpleNamespace(as_dict=lambda: {"peak_sab_w_m2": 0.2})
+
+    class Walk:
+        points = np.array([[1.0, 0.0, 1.5], [2.0, 0.0, 1.5], [3.0, 0.0, 1.5]])
+        ground_z_m = np.zeros(3)
+        provenance = {"rule": "test walk"}
+
+        def __len__(self):
+            return len(self.points)
+
+    walk = Walk()
+
+    def trace_standpoints(tracer, standpoints, models, workers):
+        captured["tracer"] = tracer
+        captured["standpoints"] = standpoints
+        captured["models"] = tuple(models)
+        captured["workers"] = workers
+        return iter(((0, Result(10.0)), (1, Result(20.0))))
+
+    environment = SimpleNamespace(
+        output=tmp_path / "output",
+        material_config=tmp_path / "materials.json",
+        semantics=tmp_path / "semantics.json",
+        phantom="phantom.stl",
+        phantom_mass_kg=70.0,
+        reference_s0_w_m2=1.0,
+        frequency_note="frequency",
+        crop_bound_note="crop",
+        datum_cross_check_m=0.5,
+        models={"rooftop": Model()},
+        site_mesh=lambda _site, _crop: tmp_path / "mesh.ply",
+        registered_ground_z=lambda _site: None,
+        site_walk_semantics=lambda _site, _crop: None,
+        site_fishnet=lambda _site: None,
+        geometry_type=lambda _mesh, variant: Geometry(),
+        classify_faces=lambda *_args: np.array([0]),
+        bind_fishnet=None,
+        bind_walk_entities=None,
+        bind_walk_materials=None,
+        load_table=lambda *_args, **_kwargs: Table(),
+        build_walk=lambda *_args, **_kwargs: walk,
+        measure_ground_datum=lambda *_args, **_kwargs: SimpleNamespace(
+            z_m=0.0,
+            provenance={"rule": "measured"},
+            band_columns=1,
+            columns=1,
+            band_fraction=1.0,
+        ),
+        stratified_subset=lambda _walk, _locations: np.array([2, 0]),
+        trace_config_type=TraceConfig,
+        tracer_type=lambda *_args: pytest.fail("NumPy tracer was selected for a Dr.Jit run"),
+        trace_standpoints=trace_standpoints,
+        body_coupler_type=lambda *_args, **_kwargs: Coupler(),
+        describe_body=lambda _coupler: {"phantom": "test"},
+        report=lambda stem: tmp_path / f"{stem}.json",
+    )
+    monkeypatch.setattr("semantic_twin.exposure.execution.DeviceEscapeTracer", DeviceTracer)
+    run = escape_config(
+        transport_kernel="drjit",
+        variant="cuda_ad_rgb",
+        models=("rooftop",),
+        local_cells=2,
+        seed=11,
+        locations=2,
+    )
+
+    rows = execute(run, ExecutionConfig(workers=None), environment)
+
+    assert isinstance(captured["tracer"], DeviceTracer)
+    geometry, face_class, permittivity, rms_height_m, trace_config = captured["tracer_args"]
+    assert isinstance(geometry, Geometry)
+    assert np.array_equal(face_class, [0])
+    assert np.array_equal(permittivity, [4.0 - 0.1j])
+    assert np.array_equal(rms_height_m, [0.002])
+    assert trace_config.rays == run.rays
+    assert captured["workers"] == 1
+    assert captured["models"] == ("rooftop",)
+    assert [seed for _point, _ground, seed in captured["standpoints"]] == [2011, 11]
+    documents = [json.loads(line) for line in rows.read_text().splitlines()]
+    assert [document["index"] for document in documents] == [2, 0]
+    assert all("rooftop_peak_sab_w_m2" in document for document in documents)
+    saved = np.load(environment.output / "trial_15ghz_spectra.npz")
+    assert saved["rho_rooftop"].tolist() == [[10.0, 11.0], [20.0, 21.0]]
+    assert saved["index"].tolist() == [2, 0]
+    manifest = json.loads((environment.output / "trial_15ghz_manifest.json").read_text())
+    assert manifest["transport"]["kernel"] == "drjit"
+
+
+def test_llvm_device_trace_writes_one_production_location(tmp_path):
+    pytest.importorskip("mitsuba")
+    from semantic_twin.illumination import MODELS
+    from semantic_twin.propagation.geometry import MitsubaGeometry
+    from semantic_twin.transport.device_tracer import DeviceEscapeTracer
+    from semantic_twin.transport.tracer import trace_standpoints
+
+    mesh = tmp_path / "plane.ply"
+    mesh.write_text(
+        """ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property float z
+element face 2
+property list uchar int vertex_indices
+end_header
+-100 -100 0
+100 -100 0
+100 100 0
+-100 100 0
+3 0 1 2
+3 0 2 3
+"""
+    )
+    run = escape_config(
+        transport_kernel="drjit",
+        variant="llvm_ad_rgb",
+        models=("rooftop",),
+        locations=1,
+        rays=4_000,
+        batch=1_501,
+        local_cells=64,
+        max_bounces=1,
+        roulette_start=2,
+    )
+    geometry = MitsubaGeometry(mesh, variant=run.variant)
+    trace_config = _trace_config(run, SimpleNamespace(trace_config_type=TraceConfig))
+    tracer = DeviceEscapeTracer(
+        geometry,
+        np.zeros(geometry.face_count, dtype=np.int64),
+        np.array([4.2 - 0.15j]),
+        np.array([0.0]),
+        trace_config,
+    )
+
+    class Coupler:
+        def couple(self, *_args):
+            return SimpleNamespace(as_dict=lambda: {"peak_sab_w_m2": 0.1})
+
+    walk = SimpleNamespace(points=np.array([[0.0, 0.0, 1.0]]), ground_z_m=np.array([0.0]))
+    environment = SimpleNamespace(
+        models={"rooftop": MODELS["rooftop"]},
+        trace_standpoints=trace_standpoints,
+        reference_s0_w_m2=1.0,
+    )
+    prepared = PreparedRun(
+        run,
+        environment,
+        None,
+        None,
+        walk,
+        np.array([0]),
+        trace_config,
+        tracer,
+        Coupler(),
+    )
+    files = OutputFiles(tmp_path / "rows.jsonl", tmp_path / "spectra.npz", tmp_path / "manifest.json")
+
+    _trace_rows(prepared, ExecutionConfig(), files)
+
+    row = json.loads(files.rows.read_text())
+    assert row["index"] == 0
+    assert row["chi_rooftop"] > 0.0
+    assert row["rooftop_peak_sab_w_m2"] == 0.1
+    saved = np.load(files.spectra)
+    assert saved["rho_rooftop"].shape == (1, run.local_cells)
+    assert saved["local_grid"].shape == (run.local_cells, 3)
+    assert saved["index"].tolist() == [0]
 
 
 def test_manifest_keys_keep_the_published_insertion_order(tmp_path):

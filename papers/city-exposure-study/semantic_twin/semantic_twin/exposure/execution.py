@@ -14,6 +14,7 @@ from typing import Any
 import numpy as np
 
 from semantic_twin.runconfig import RunConfig
+from semantic_twin.transport.device_tracer import DeviceEscapeTracer
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,7 @@ class OutputFiles:
 def execute(run: RunConfig, execution: ExecutionConfig, environment: StudyEnvironment) -> pathlib.Path:
     """Trace one site's walk and stream reduced results to the fixed study output."""
     _validate_run(run, environment.models)
+    _validate_execution(run, execution)
     environment.output.mkdir(parents=True, exist_ok=True)
     stem = f"{run.tag}_{run.frequency_ghz:g}ghz"
     files = OutputFiles(
@@ -124,7 +126,8 @@ def execute(run: RunConfig, execution: ExecutionConfig, environment: StudyEnviro
     print(f"walk: {len(walk)} candidates, tracing {picks.size}", flush=True)
 
     trace_config = _trace_config(run, environment)
-    tracer = environment.tracer_type(
+    tracer_type = DeviceEscapeTracer if run.transport_kernel == "drjit" else environment.tracer_type
+    tracer = tracer_type(
         scene.geometry,
         material.face_class,
         material.table.permittivity,
@@ -158,7 +161,6 @@ def _validate_run(run: RunConfig, available_models: Mapping[str, Any]) -> None:
         "estimator": (run.estimator, "escape"),
         "next_event": (run.next_event, None),
         "walk": (run.walk, "grid"),
-        "transport_kernel": (run.transport_kernel, "numpy"),
     }
     unsupported = [f"{name}={actual!r}" for name, (actual, expected) in required.items() if actual != expected]
     if unsupported:
@@ -168,6 +170,21 @@ def _validate_run(run: RunConfig, available_models: Mapping[str, Any]) -> None:
         raise ValueError(f"unknown illumination models: {', '.join(unknown)}")
     if "rooftop" not in run.models:
         raise ValueError("exposure executor requires the rooftop model for its spectra and progress schema")
+
+
+def _validate_execution(run: RunConfig, execution: ExecutionConfig) -> None:
+    """Reject device states that would fork or select an unsupported backend."""
+    if run.transport_kernel != "drjit":
+        return
+    if run.variant not in ("llvm_ad_rgb", "cuda_ad_rgb"):
+        raise ValueError(
+            f"drjit transport requires a Mitsuba JIT RGB variant: llvm_ad_rgb or cuda_ad_rgb, got {run.variant!r}"
+        )
+    if execution.workers is not None and execution.workers > 1:
+        raise ValueError(
+            "drjit transport runs in one process because Dr.Jit state cannot cross worker boundaries; "
+            f"got workers={execution.workers}"
+        )
 
 
 def _prepare_scene(run: RunConfig, replay: LegacyReplay, environment: StudyEnvironment) -> PreparedScene:
@@ -426,8 +443,9 @@ def _trace_rows(prepared: PreparedRun, execution: ExecutionConfig, files: Output
     models = {name: environment.models[name] for name in run.models}
     spectra = np.zeros((picks.size, run.local_cells))
     standpoints = [(walk.points[i], float(walk.ground_z_m[i]), run.seed + 1000 * int(i)) for i in picks]
+    workers = 1 if run.transport_kernel == "drjit" else execution.workers
     with files.rows.open("w") as handle:
-        results = environment.trace_standpoints(prepared.tracer, standpoints, models, workers=execution.workers)
+        results = environment.trace_standpoints(prepared.tracer, standpoints, models, workers=workers)
         for row_index, result in results:
             index = picks[row_index]
             row = _result_row(run, environment, prepared.coupler, walk, index, result, models)
