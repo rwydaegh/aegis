@@ -19,6 +19,148 @@ def test_report_uses_the_current_output_directory(tmp_path, monkeypatch):
     assert run_exposure.report("trial") == tmp_path / "trial_summary.json"
 
 
+def test_coverage_report_forwards_the_current_report_dependencies(tmp_path, monkeypatch):
+    result = object()
+    model_keys = ("model",)
+    calls = []
+
+    def rungs_for(site, crop_m, seed):
+        return ()
+
+    def key_for(site, crop_m, seed):
+        return "key"
+
+    def compare_to_baseline(baseline, values):
+        return {}
+
+    def fake_report(*args, **kwargs):
+        calls.append((args, kwargs))
+        return result
+
+    monkeypatch.setattr(run_exposure, "OUTPUT", tmp_path)
+    monkeypatch.setattr(run_exposure, "coverage_ladder", rungs_for)
+    monkeypatch.setattr(run_exposure, "ladder_key", key_for)
+    monkeypatch.setattr(run_exposure, "LADDER_MODELS", model_keys)
+    monkeypatch.setattr(run_exposure, "_against_baseline", compare_to_baseline)
+    monkeypatch.setattr(run_exposure, "write_coverage_report", fake_report)
+
+    assert run_exposure.coverage_report(15.0e9, "_trial", site="site", crop_m=250, seed=9) is result
+    assert calls == [
+        (
+            (15.0e9, "_trial"),
+            {
+                "site": "site",
+                "crop_m": 250,
+                "seed": 9,
+                "output": tmp_path,
+                "rungs_for": rungs_for,
+                "key_for": key_for,
+                "model_keys": model_keys,
+                "compare_to_baseline": compare_to_baseline,
+            },
+        )
+    ]
+
+
+def test_coverage_ladder_report_forwards_the_current_report_dependencies(tmp_path, monkeypatch):
+    result = object()
+    model_keys = ("model",)
+    refused = {"missing": "reason"}
+    failures = {"failed": "error"}
+    calls = []
+
+    def key_for(site, crop_m, seed):
+        return "key"
+
+    def one_value(values):
+        return values[0]
+
+    def spread(values):
+        return {"values": values}
+
+    def plotter(rows, path, crop_m, frequency_hz):
+        return path
+
+    def markdown(rows):
+        return "table"
+
+    def fake_report(*args, **kwargs):
+        calls.append((args, kwargs))
+        return result
+
+    monkeypatch.setattr(run_exposure, "OUTPUT", tmp_path)
+    monkeypatch.setattr(run_exposure, "ladder_key", key_for)
+    monkeypatch.setattr(run_exposure, "LADDER_MODELS", model_keys)
+    monkeypatch.setattr(run_exposure, "_one_value", one_value)
+    monkeypatch.setattr(run_exposure, "_spread", spread)
+    monkeypatch.setattr(run_exposure, "plot_cross_site_ladder", plotter)
+    monkeypatch.setattr(run_exposure, "ladder_markdown", markdown)
+    monkeypatch.setattr(run_exposure, "write_coverage_ladder_report", fake_report)
+
+    assert (
+        run_exposure.coverage_ladder_report(
+            ["site"],
+            250,
+            (7, 9),
+            15.0e9,
+            tag_suffix="_trial",
+            refused=refused,
+            failures=failures,
+        )
+        is result
+    )
+    assert calls == [
+        (
+            (["site"], 250, (7, 9), 15.0e9),
+            {
+                "tag_suffix": "_trial",
+                "refused": refused,
+                "failures": failures,
+                "output": tmp_path,
+                "key_for": key_for,
+                "model_keys": model_keys,
+                "one_value": one_value,
+                "spread": spread,
+                "plotter": plotter,
+                "markdown": markdown,
+            },
+        )
+    ]
+
+
+def test_cross_city_report_forwards_the_current_report_dependencies(tmp_path, monkeypatch):
+    result = object()
+    sites_expected = ("site", "other")
+    calls = []
+
+    def fake_report(*args, **kwargs):
+        calls.append((args, kwargs))
+        return result
+
+    monkeypatch.setattr(run_exposure, "OUTPUT", tmp_path)
+    monkeypatch.setattr(run_exposure, "REFERENCE_S0_W_M2", 2.5)
+    monkeypatch.setattr(run_exposure, "CROP_BOUND_NOTE", "bound note")
+    monkeypatch.setattr(run_exposure, "write_cross_city_report", fake_report)
+
+    assert (
+        run_exposure.cross_city_report(["site"], 15.0e9, crop_m=250, tag_suffix="_trial", sites_expected=sites_expected)
+        is result
+    )
+    assert calls == [
+        (
+            (["site"], 15.0e9),
+            {
+                "crop_m": 250,
+                "tag_suffix": "_trial",
+                "sites_expected": sites_expected,
+                "output": tmp_path,
+                "reference_s0_w_m2": 2.5,
+                "crop_bound_note": "bound note",
+            },
+        )
+    ]
+
+
 def test_a_site_with_a_binding_at_that_crop_resolves(tmp_path, monkeypatch):
     monkeypatch.setattr(run_exposure, "SITE_SEMANTICS", tmp_path)
     site = tmp_path / "prague_staromestske"

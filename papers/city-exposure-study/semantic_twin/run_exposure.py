@@ -43,7 +43,16 @@ from semantic_twin.paths import site_mesh
 from semantic_twin.exposure import BodyCoupler, describe
 from semantic_twin.exposure.validation import validate as validate_exposure
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.report.coverage import _against_baseline, _one_value, _spread, ladder_markdown
+from semantic_twin.report.coverage import (
+    _against_baseline,
+    _one_value,
+    _spread,
+    coverage_ladder_report as write_coverage_ladder_report,
+    coverage_report as write_coverage_report,
+    ladder_markdown,
+    plot_cross_site_ladder,
+)
+from semantic_twin.report.exposure import cross_city_report as write_cross_city_report
 from semantic_twin.report.exposure import report as exposure_report
 from semantic_twin.transport.tracer import (
     DEFAULT_MAX_BOUNCES,
@@ -696,113 +705,18 @@ def coverage_report(
     tags, so a rerun at a different bounce budget does not overwrite the
     published ladder and can be compared against it.
     """
-    from semantic_twin.report import empirical_cdf, read_rows
-
-    entries: list[dict[str, Any]] = []
-    baseline: dict[str, np.ndarray] | None = None
-    for stem, _materials, description in coverage_ladder(site, crop_m, seed):
-        full = f"{stem}{tag_suffix}_{frequency_hz / 1e9:g}ghz"
-        rows_path = OUTPUT / f"{full}_locations.jsonl"
-        manifest_path = OUTPUT / f"{full}_manifest.json"
-        if not rows_path.exists() or not manifest_path.exists():
-            continue
-        rows = read_rows(rows_path, site=site).rows
-        manifest = json.loads(manifest_path.read_text())
-        binding = manifest["semantic_binding"]
-        columns = {key: np.array([row[key] for row in rows]) for key in LADDER_MODELS}
-        values = columns["chi_rooftop"]
-        entry: dict[str, Any] = {
-            "run": stem,
-            # The suffixed stem, because the figure below reloads these rows and
-            # rebuilding the name from ``run`` would silently read the published
-            # ladder while the table above described the rerun.
-            "stem": full,
-            "site": site,
-            "crop_radius_m": crop_m,
-            "seed": seed,
-            "evidence": description,
-            # A bound run is a run in which this fraction of the triangle area
-            # carries image evidence and the rest still falls back to the
-            # orientation rule. It travels beside every shift below because a
-            # shift without it is not interpretable.
-            "covered_fraction_by_area": binding.get("covered_fraction_by_area", 0.0),
-            "covered_fraction_by_face": binding.get("covered_fraction_by_face", 0.0),
-            "stations": binding.get("stations"),
-            "views": len(binding["views"]) if isinstance(binding.get("views"), list) else None,
-            # Every fishnet in this study was cut against a smaller mesh than the
-            # 250 m run uses, so the join from the cut mesh's triangle numbering
-            # to the run's is done by centroid and normal and can drop triangles.
-            # How many it kept is part of the result, not an implementation
-            # detail, so it is carried rather than left inside the manifest.
-            "mesh_match": binding.get("mesh_match"),
-            "binding_source": binding.get("walk_npz") or binding.get("fishnet_dir"),
-            "locations": len(rows),
-            "chi_rooftop": {
-                "p05": float(np.quantile(values, 0.05)),
-                "p50": float(np.quantile(values, 0.50)),
-                "p95": float(np.quantile(values, 0.95)),
-                "mean": float(values.mean()),
-            },
-        }
-        if baseline is None:
-            baseline = columns
-        else:
-            entry["against_no_evidence"] = _against_baseline(baseline["chi_rooftop"], values)
-            entry["by_model"] = {
-                key: _against_baseline(baseline[key], columns[key]) for key in LADDER_MODELS if key in baseline
-            }
-        entries.append(entry)
-
-    summary = {
-        "question": (
-            "how far does the exposure distribution move as the fraction of scene area carrying image evidence grows"
-        ),
-        "site": site,
-        "crop_radius_m": crop_m,
-        "seed": seed,
-        "frequency_hz": frequency_hz,
-        "ladder": entries,
-    }
-    path = OUTPUT / f"coverage_ladder{ladder_key(site, crop_m, seed)}{tag_suffix}_{frequency_hz / 1e9:g}ghz.json"
-    path.write_text(json.dumps(summary, indent=2))
-
-    if len(entries) >= 2:
-        import matplotlib
-
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-
-        figure, panel = plt.subplots(figsize=(5.2, 4.0))
-        for entry, colour in zip(entries, ("0.55", "tab:blue", "tab:red"), strict=False):
-            rows = read_rows(OUTPUT / f"{entry['stem']}_locations.jsonl", site=site).rows
-            ordered, probability = empirical_cdf(np.array([r["chi_rooftop"] for r in rows]))
-            panel.step(
-                ordered,
-                probability,
-                where="post",
-                color=colour,
-                linewidth=1.6,
-                label=f"{100 * entry['covered_fraction_by_area']:.1f} % of area from images",
-            )
-        panel.set_xscale("log")
-        panel.set_xlabel("rooftop susceptibility $\\chi_S$")
-        panel.set_ylabel("fraction of walk locations")
-        panel.set_title(
-            f"{site}, {crop_m} m crop, {frequency_hz / 1e9:g} GHz\nexposure against image evidence coverage",
-            fontsize=10,
-        )
-        panel.legend(fontsize=8, loc="lower right")
-        panel.grid(alpha=0.25)
-        figure_path = (
-            OUTPUT / f"coverage_ladder{ladder_key(site, crop_m, seed)}{tag_suffix}_{frequency_hz / 1e9:g}ghz.png"
-        )
-        figure.tight_layout()
-        figure.savefig(figure_path, dpi=170)
-        figure.savefig(figure_path.with_suffix(".pdf"))
-        plt.close(figure)
-        print(f"wrote {figure_path}")
-    print(f"wrote {path}")
-    return path
+    return write_coverage_report(
+        frequency_hz,
+        tag_suffix,
+        site=site,
+        crop_m=crop_m,
+        seed=seed,
+        output=OUTPUT,
+        rungs_for=coverage_ladder,
+        key_for=ladder_key,
+        model_keys=LADDER_MODELS,
+        compare_to_baseline=_against_baseline,
+    )
 
 
 def ladder_sites(sites: tuple[str, ...], crop_m: int) -> tuple[list[str], dict[str, str]]:
@@ -977,130 +891,22 @@ def coverage_ladder_report(
     of how good the segmentation is, so the rows are ordered by site name and
     not by it.
     """
-    rows: list[dict[str, Any]] = []
-    for site in sites:
-        per_rung: dict[str, dict[str, Any]] = {}
-        for seed in seeds:
-            path = (
-                OUTPUT / f"coverage_ladder{ladder_key(site, crop_m, seed)}{tag_suffix}_{frequency_hz / 1e9:g}ghz.json"
-            )
-            if not path.exists():
-                continue
-            for entry in json.loads(path.read_text())["ladder"]:
-                if "against_no_evidence" not in entry:
-                    continue
-                rung = entry["run"].rsplit("_", 1)[-1]
-                record = per_rung.setdefault(
-                    rung,
-                    {
-                        "rung": rung,
-                        "evidence": entry["evidence"],
-                        "covered_fraction_by_area": [],
-                        "stations": entry["stations"],
-                        "views": entry["views"],
-                        "locations": [],
-                        "seeds": [],
-                        "shift_db": {key: [] for key in LADDER_MODELS},
-                        "paired_median_shift_db": {key: [] for key in LADDER_MODELS},
-                        "locations_moved_more_than_1_db": [],
-                    },
-                )
-                record["covered_fraction_by_area"].append(entry["covered_fraction_by_area"])
-                record["locations"].append(entry["locations"])
-                record["seeds"].append(seed)
-                record["locations_moved_more_than_1_db"].append(
-                    entry["against_no_evidence"]["locations_moved_more_than_1_db"]
-                )
-                for key in LADDER_MODELS:
-                    against = entry.get("by_model", {}).get(key)
-                    if against is None:
-                        continue
-                    record["shift_db"][key].append(against["distribution_median_shift_db"])
-                    record["paired_median_shift_db"][key].append(against["median_shift_db"])
-        for rung in per_rung.values():
-            rung["covered_fraction_by_area"] = _one_value(rung["covered_fraction_by_area"])
-            rung["shift_db"] = {key: _spread(values) for key, values in rung["shift_db"].items()}
-            rung["paired_median_shift_db"] = {
-                key: _spread(values) for key, values in rung["paired_median_shift_db"].items()
-            }
-            rows.append({"site": site, **rung})
-    if not rows:
-        print("no ladder to report", flush=True)
-        return None
-    summary = {
-        "question": "does the single square material negative travel to the other squares",
-        "crop_radius_m": crop_m,
-        "frequency_hz": frequency_hz,
-        "seeds": list(seeds),
-        "shift_definition": (
-            "ratio of the two distribution medians in dB, the walk or fishnet rung against the "
-            "geometric rung on the same standpoints, averaged over the seeds"
-        ),
-        "standard_error": "standard deviation over the seeds divided by the square root of their count",
-        "bound_fraction_note": (
-            "covered_fraction_by_area is the fraction of the crop's triangle area carrying image "
-            "evidence. The rest falls back to the orientation rule. It is set by where a camera "
-            "could stand against how far the crop reaches, not by segmentation quality, so it does "
-            "not rank the squares by evidence quality."
-        ),
-        "rows": rows,
-        "sites_refused": refused or {},
-        "rungs_failed": failures or {},
-    }
-    path = OUTPUT / f"coverage_ladder_cross_site_{crop_m}m{tag_suffix}_{frequency_hz / 1e9:g}ghz.json"
-    path.write_text(json.dumps(summary, indent=2))
-    plot_cross_site_ladder(rows, path.with_suffix(".png"), crop_m, frequency_hz)
-    print(ladder_markdown(rows), flush=True)
-    print(f"wrote {path}", flush=True)
-    return path
-
-
-def plot_cross_site_ladder(
-    rows: list[dict[str, Any]],
-    path: pathlib.Path,
-    crop_m: int,
-    frequency_hz: float,
-) -> pathlib.Path | None:
-    """Shift against bound area, one point per square, with the noise floor on it.
-
-    Plotting the shift against the bound fraction rather than against the site
-    name is the whole question in one panel: if knowing the materials mattered,
-    the squares that know more of them would move further, and the cloud would
-    have a slope.
-    """
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    figure, panel = plt.subplots(figsize=(5.4, 4.0))
-    markers = {"walk": "o", "semantic": "s"}
-    for rung, marker in markers.items():
-        chosen = [row for row in rows if row["rung"] == rung and isinstance(row["covered_fraction_by_area"], float)]
-        if not chosen:
-            continue
-        x = [100.0 * row["covered_fraction_by_area"] for row in chosen]
-        y = [row["shift_db"]["chi_rooftop"]["mean_db"] for row in chosen]
-        error = [row["shift_db"]["chi_rooftop"]["standard_error_db"] or 0.0 for row in chosen]
-        panel.errorbar(x, y, yerr=error, fmt=marker, capsize=3, label=f"{rung} rung", linewidth=1.2, markersize=5)
-        for row, px, py in zip(chosen, x, y, strict=True):
-            panel.annotate(row["site"].split("_")[0], (px, py), fontsize=7, xytext=(4, 3), textcoords="offset points")
-    panel.axhline(0.0, color="0.4", linewidth=0.8)
-    panel.set_xlabel("percent of triangle area carrying image evidence")
-    panel.set_ylabel("shift of the distribution median, dB")
-    panel.set_title(
-        f"{crop_m} m crop, {frequency_hz / 1e9:g} GHz, rooftop model\nexposure shift against how much of the "
-        "square a camera saw",
-        fontsize=10,
+    return write_coverage_ladder_report(
+        sites,
+        crop_m,
+        seeds,
+        frequency_hz,
+        tag_suffix=tag_suffix,
+        refused=refused,
+        failures=failures,
+        output=OUTPUT,
+        key_for=ladder_key,
+        model_keys=LADDER_MODELS,
+        one_value=_one_value,
+        spread=_spread,
+        plotter=plot_cross_site_ladder,
+        markdown=ladder_markdown,
     )
-    panel.legend(fontsize=8)
-    panel.grid(alpha=0.25)
-    figure.tight_layout()
-    figure.savefig(path, dpi=170)
-    figure.savefig(path.with_suffix(".pdf"))
-    plt.close(figure)
-    print(f"wrote {path}", flush=True)
-    return path
 
 
 def run_all_sites(
@@ -1203,48 +1009,16 @@ def cross_city_report(
     complete. Names go into :class:`~semantic_twin.report.Coverage`, which will
     not hand the figure a table it cannot vouch for.
     """
-    if not sites:
-        return
-    from semantic_twin.report import CrossCityTable, IncompleteAggregate, read_rows
-    from semantic_twin.viz.cdf import cross_city_cdf
-
-    prefix = "city" if crop_m == 130 else f"city{crop_m}"
-    stems = {site: f"{prefix}{tag_suffix}_{site}_{frequency_hz / 1e9:g}ghz" for site in sites}
-    rows = {}
-    for site, stem in stems.items():
-        path = OUTPUT / f"{stem}_locations.jsonl"
-        if path.exists():
-            rows[site] = read_rows(path, site=site)
-    if not rows:
-        return
-    table = CrossCityTable.build(
-        rows,
-        expected=sites if sites_expected is None else sites_expected,
-        frequency_hz=frequency_hz,
+    return write_cross_city_report(
+        sites,
+        frequency_hz,
+        crop_m=crop_m,
+        tag_suffix=tag_suffix,
+        sites_expected=sites_expected,
+        output=OUTPUT,
         reference_s0_w_m2=REFERENCE_S0_W_M2,
-        crop_radius_m=float(crop_m),
-        materials="geometric class prior, identical across sites",
         crop_bound_note=CROP_BOUND_NOTE,
     )
-    path = OUTPUT / f"cities{crop_m}{tag_suffix}_{frequency_hz / 1e9:g}ghz_summary.json"
-    path.write_text(json.dumps(table.as_dict(), indent=2))
-    try:
-        published = table.publish()
-    except IncompleteAggregate as refusal:
-        # The table is still written, because a sweep that dies at hour two should
-        # leave a readable aggregate behind. The figure is not, because the figure
-        # is the thing that got copied into the paper.
-        print(f"[partial] {refusal}", flush=True)
-        print(f"wrote {path}, no figure", flush=True)
-        return
-    figure = cross_city_cdf(
-        published,
-        OUTPUT / f"cities{crop_m}{tag_suffix}_{frequency_hz / 1e9:g}ghz_cdf.png",
-        frequency_ghz=frequency_hz / 1e9,
-        reference_s0_w_m2=REFERENCE_S0_W_M2,
-        crop_radius_m=float(crop_m),
-    )
-    print(f"wrote {path} and {figure}", flush=True)
 
 
 def main(argv: list[str] | None = None) -> int:
