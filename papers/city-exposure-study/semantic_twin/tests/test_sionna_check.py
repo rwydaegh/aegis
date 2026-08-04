@@ -25,7 +25,7 @@ import pytest
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
 from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 from semantic_twin.propagation.geometry import PlaneGeometry
-from semantic_twin.propagation.sionna_check import (
+from semantic_twin.transport.sionna_check import (
     FULLY_DIFFUSE_RMS_HEIGHT_M,
     MODES,
     SLAB_THICKNESS_M,
@@ -45,7 +45,7 @@ from semantic_twin.propagation.sionna_check import (
     susceptibility,
     write_ply,
 )
-from semantic_twin.propagation.tracer import (
+from semantic_twin.transport.tracer import (
     PathRecorder,
     SbrTracer,
     TraceConfig,
@@ -377,7 +377,7 @@ def test_oracle_reproduces_the_ground_plane_closed_forms() -> None:
         import numpy as np
         import sys
         sys.path.insert(0, {str(__file__).rsplit("/tests/", 1)[0]!r})
-        from semantic_twin.propagation.sionna_check import build_payload, run_payload, write_ply
+        from semantic_twin.transport.sionna_check import build_payload, run_payload, write_ply
 
         half = 3.0e3
         vertices = np.array([[-half, -half, 0.0], [half, -half, 0.0], [half, half, 0.0], [-half, half, 0.0]])

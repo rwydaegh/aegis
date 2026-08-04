@@ -35,7 +35,7 @@ def main() -> None:
 
     from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
     from semantic_twin.propagation.geometry import MitsubaGeometry
-    from semantic_twin.propagation.tracer import (
+    from semantic_twin.transport.tracer import (
         DEFAULT_MAX_BOUNCES,
         SbrTracer,
         TraceConfig,

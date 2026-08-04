@@ -90,7 +90,7 @@ def main() -> None:
     from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
     from semantic_twin.propagation.geometry import MitsubaGeometry
     from semantic_twin.materials import classify_faces, load_table
-    from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
+    from semantic_twin.transport.tracer import SbrTracer, TraceConfig
     from semantic_twin.walk.grid import build_walk
     from semantic_twin.walk.ground import ground_datum
     from semantic_twin.walk.model import stratified_subset

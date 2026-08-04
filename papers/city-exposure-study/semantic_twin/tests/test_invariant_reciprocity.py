@@ -32,13 +32,14 @@ import pytest
 from scipy.integrate import quad
 
 from semantic_twin.illumination import ISOTROPIC, fibonacci_sphere
-from semantic_twin.illumination.sources import NextEventGather, SourceSet
-from semantic_twin.propagation.tracer import (
+from semantic_twin.illumination.sources import SourceSet
+from semantic_twin.transport.tracer import (
     SbrTracer,
     TraceConfig,
     fresnel_power_reflectance,
     specular_share,
 )
+from semantic_twin.transport.next_event import NextEventGather
 
 #: Concrete at 15 GHz, so the reflectance is angle dependent and nowhere near 1.
 PERMITTIVITY = complex(5.31, -0.90)

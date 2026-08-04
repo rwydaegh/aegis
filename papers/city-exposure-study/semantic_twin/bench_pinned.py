@@ -33,7 +33,7 @@ def pinned_setup(worker_tracer, worker_models):
     """Module level so ``spawn`` can pickle it. A closure cannot cross that boundary."""
     import drjit as worker_dr
 
-    from semantic_twin.propagation import tracer as worker_tracer_module
+    from semantic_twin.transport import tracer as worker_tracer_module
 
     worker_dr.set_thread_count(1)
     # The child imports this module fresh, so a module global set in the parent
@@ -53,10 +53,10 @@ def main() -> None:
 
     import drjit as dr
 
-    from semantic_twin.propagation import tracer as tracer_module
+    from semantic_twin.transport import tracer as tracer_module
     from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
     from semantic_twin.propagation.geometry import MitsubaGeometry
-    from semantic_twin.propagation.tracer import (
+    from semantic_twin.transport.tracer import (
         DEFAULT_MAX_BOUNCES,
         SbrTracer,
         TraceConfig,

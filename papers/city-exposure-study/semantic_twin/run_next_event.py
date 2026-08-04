@@ -40,11 +40,12 @@ import numpy as np
 
 from typing import Any
 
-from semantic_twin.illumination import ISOTROPIC, ROOFTOP, SITE_LIFT_M, NextEventGather, build_source_set, silhouette
+from semantic_twin.illumination import ISOTROPIC, ROOFTOP, SITE_LIFT_M, build_source_set, silhouette
 from semantic_twin.materials import classify_faces, clutter_triangles, load_table
 from semantic_twin.paths import site_mesh
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
+from semantic_twin.transport import SbrTracer, TraceConfig
+from semantic_twin.transport.next_event import NextEventGather
 from semantic_twin.walk import build_walk, measure_ground_datum, site_walk
 
 ROOT = pathlib.Path(__file__).resolve().parent

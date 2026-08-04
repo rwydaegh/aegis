@@ -39,7 +39,7 @@ import numpy as np
 
 import run_exposure
 from run_exposure import OUTPUT, PHANTOM, PHANTOM_MASS_KG
-from semantic_twin.propagation.exposure import BodyCoupler
+from semantic_twin.exposure import BodyCoupler
 
 #: The published sweep being repaired, and the tag the repair is written under.
 #: A distinct tag is not optional. Nine of the eleven sites of the published

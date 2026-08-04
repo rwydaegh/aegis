@@ -42,7 +42,6 @@ from semantic_twin.illumination import (
     BandLaw,
     ElevationLaw,
     FixedHeightLaw,
-    NextEventGather,
     SourceSet,
     credited_by,
     register_law,
@@ -50,6 +49,7 @@ from semantic_twin.illumination import (
 from semantic_twin.illumination.model import AngularIllumination, IlluminationModel, PlacedIllumination
 from semantic_twin.illumination.sphere import _brute_nearest_cell, fibonacci_sphere, nearest_cell, sample_sphere
 from semantic_twin.runconfig import ESTIMATORS, LAWS
+from semantic_twin.transport.next_event import NextEventGather
 
 # ---------------------------------------------------------------------------
 # A third law, written here and nowhere else, to prove one class is enough

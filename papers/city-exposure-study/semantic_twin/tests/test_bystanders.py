@@ -245,7 +245,7 @@ def test_skin_is_lossy_and_opaque_at_15_ghz():
     assert eps.imag < -10.0
     # One skin depth at 15 GHz is under a millimetre, so a body is opaque and
     # the tracer's treatment of it as a half space is the right one.
-    from semantic_twin.propagation.tracer import fresnel_power_reflectance
+    from semantic_twin.transport.tracer import fresnel_power_reflectance
 
     reflectance = fresnel_power_reflectance(np.array([1.0]), np.array([eps]))
     assert 0.3 < reflectance[0] < 0.7
@@ -261,7 +261,7 @@ def test_the_absorber_control_reflects_essentially_nothing():
     grazing.
     """
     from semantic_twin.propagation.bystanders import ABSORBER_PERMITTIVITY
-    from semantic_twin.propagation.tracer import fresnel_power_reflectance
+    from semantic_twin.transport.tracer import fresnel_power_reflectance
 
     cos_i = np.cos(np.radians(np.array([0.0, 30.0, 60.0, 80.0, 85.0])))
     reflectance = fresnel_power_reflectance(cos_i, np.full(cos_i.shape, ABSORBER_PERMITTIVITY))

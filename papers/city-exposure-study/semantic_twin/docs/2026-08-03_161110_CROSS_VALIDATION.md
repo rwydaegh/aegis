@@ -732,15 +732,15 @@ law, and that is worth keeping and narrowing to it.
 ## 9. Reproducing
 
 ```bash
-python -m semantic_twin.propagation.sionna_check plane
-python -m semantic_twin.propagation.sionna_check tessellation
-python -m semantic_twin.propagation.sionna_check tessellation --jitters-mm 0.001,0.01,0.05,0.2,0.5,2 --tag _lowend
-python -m semantic_twin.propagation.sionna_check site --site korenmarkt --locations 8 --sky-samples 3000
-python -m semantic_twin.propagation.sionna_check site --site brussels_grandplace --locations 8 --sky-samples 3000
-python -m semantic_twin.propagation.sionna_check site --site korenmarkt --locations 8 --sky-samples 3000 --modes diffuse --diffraction
-python -m semantic_twin.propagation.sionna_check sampling
-python -m semantic_twin.propagation.sionna_check convergence --site korenmarkt --locations 12
-python -m semantic_twin.propagation.sionna_check convergence --site brussels_grandplace --locations 12
+python -m semantic_twin.transport.sionna_check plane
+python -m semantic_twin.transport.sionna_check tessellation
+python -m semantic_twin.transport.sionna_check tessellation --jitters-mm 0.001,0.01,0.05,0.2,0.5,2 --tag _lowend
+python -m semantic_twin.transport.sionna_check site --site korenmarkt --locations 8 --sky-samples 3000
+python -m semantic_twin.transport.sionna_check site --site brussels_grandplace --locations 8 --sky-samples 3000
+python -m semantic_twin.transport.sionna_check site --site korenmarkt --locations 8 --sky-samples 3000 --modes diffuse --diffraction
+python -m semantic_twin.transport.sionna_check sampling
+python -m semantic_twin.transport.sionna_check convergence --site korenmarkt --locations 12
+python -m semantic_twin.transport.sionna_check convergence --site brussels_grandplace --locations 12
 SIONNA_ORACLE_TESTS=1 python -m pytest tests/test_sionna_check.py -n 0
 ```
 

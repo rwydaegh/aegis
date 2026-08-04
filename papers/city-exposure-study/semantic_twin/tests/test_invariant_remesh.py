@@ -98,7 +98,7 @@ SOLID_ANGLE = 4.0 * np.pi / GRID.shape[0]
 @pytest.fixture(scope="module")
 def pair(tmp_path_factory):
     """The same surface, cut two ways, each run through the body coupler."""
-    from semantic_twin.propagation.exposure import BodyCoupler
+    from semantic_twin.exposure import BodyCoupler
 
     root = tmp_path_factory.mktemp("remesh")
     coarse_v, coarse_n = patchwork()

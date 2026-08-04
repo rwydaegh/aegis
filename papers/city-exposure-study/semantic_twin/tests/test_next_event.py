@@ -13,8 +13,9 @@ import pytest
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
 from semantic_twin.illumination import ISOTROPIC
 from semantic_twin.propagation.geometry import PlaneGeometry
-from semantic_twin.illumination.sources import NextEventGather, SourceSet
-from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
+from semantic_twin.illumination.sources import SourceSet
+from semantic_twin.transport.tracer import SbrTracer, TraceConfig
+from semantic_twin.transport.next_event import NextEventGather
 
 
 def one_site(height_m: float) -> SourceSet:

@@ -1,13 +1,8 @@
-"""Adjoint shoot and bounce propagation core for the semantic twin.
+"""Geometry and closed-form checks used by the transport package.
 
-Streaming by design. A trace reduces to per location scalars and one angular
-power spectrum on a few hundred cell grid, and the paths are discarded. Nothing
-in this package writes a path or a ray table.
-
-The one exception is :class:`~.tracer.PathRecorder`, which keeps the polyline of
-a capped number of rays so a figure can show the paths the estimator integrated.
-It is opt in, bounded by a capacity set at the call site, and off in every
-production run.
+The tracer now lives in :mod:`semantic_twin.transport`. Its established public
+names remain available here because the frozen golden capture imports this
+package facade.
 """
 
 from ..illumination import (
@@ -27,7 +22,7 @@ from ..illumination import (
 )
 from .closed_form import PEC_PERMITTIVITY, ground_plane_susceptibility
 from .geometry import MitsubaGeometry, PlaneGeometry, SphereGeometry  # noqa: F401
-from .tracer import (
+from ..transport.tracer import (
     DEFAULT_MAX_BOUNCES,
     TERMINATIONS,
     BounceEvidenceTally,

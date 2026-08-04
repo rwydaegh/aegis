@@ -46,7 +46,7 @@ from semantic_twin.illumination import (
     sample_sphere,
 )
 from semantic_twin.materials import CLASS_NAMES, classify_faces
-from semantic_twin.propagation.tracer import fresnel_power_reflectance, specular_share
+from semantic_twin.transport.tracer import fresnel_power_reflectance, specular_share
 
 MODELS = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
 BAND_MODELS = {
@@ -617,7 +617,7 @@ def test_absorbed_power_density_obeys_the_relu_bound() -> None:
     traced spectra in the study, and here against three extreme ones.
     """
     pytest.importorskip("aegis")
-    from semantic_twin.propagation.exposure import BodyCoupler
+    from semantic_twin.exposure import BodyCoupler
 
     phantom = pathlib.Path("/home/user/aegis/data/duke.stl")
     if not phantom.exists():

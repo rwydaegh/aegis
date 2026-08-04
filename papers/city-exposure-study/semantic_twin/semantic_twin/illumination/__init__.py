@@ -53,7 +53,7 @@ from .model import (
     solid_angle_of_band,
 )
 from .roofline import FACADE_TIP_FAMILY, FACADE_TIP_LAW, Roofline, extract_roofline, silhouette
-from .sources import SITE_LIFT_M, MultiGather, NextEventGather, SourceSet, build_source_set, thin
+from .sources import SITE_LIFT_M, SourceSet, build_source_set, thin
 from .sphere import fibonacci_sphere, nearest_cell, sample_sphere
 
 __all__ = [
@@ -84,8 +84,6 @@ __all__ = [
     "FixedHeightLaw",
     "IlluminationModel",
     "Isotropic",
-    "MultiGather",
-    "NextEventGather",
     "PlacedIllumination",
     "Roofline",
     "SourceSet",

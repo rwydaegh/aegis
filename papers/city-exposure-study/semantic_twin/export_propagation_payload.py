@@ -67,7 +67,7 @@ from semantic_twin.propagation import (  # noqa: E402
     SbrTracer,
     TraceConfig,
 )
-from semantic_twin.propagation.exposure import BodyCoupler  # noqa: E402
+from semantic_twin.exposure import BodyCoupler  # noqa: E402
 from semantic_twin.materials import CLASS_NAMES, classify_faces, load_table  # noqa: E402
 from semantic_twin.walk.site import site_walk  # noqa: E402
 from semantic_twin.walk.grid import build_walk  # noqa: E402

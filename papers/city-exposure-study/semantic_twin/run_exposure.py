@@ -42,9 +42,9 @@ from semantic_twin.materials import (
 )
 from semantic_twin.paths import site_mesh
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY, ground_plane_susceptibility
-from semantic_twin.propagation.exposure import BodyCoupler, describe
+from semantic_twin.exposure import BodyCoupler, describe
 from semantic_twin.propagation.geometry import MitsubaGeometry, PlaneGeometry
-from semantic_twin.propagation.tracer import (
+from semantic_twin.transport.tracer import (
     DEFAULT_MAX_BOUNCES,
     SbrTracer,
     TraceConfig,

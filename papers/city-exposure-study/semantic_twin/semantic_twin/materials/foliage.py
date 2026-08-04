@@ -729,7 +729,7 @@ class FoliageTracer:
     """Adjoint shoot and bounce with an optional participating medium region.
 
     Deliberately a separate estimator from
-    :class:`semantic_twin.propagation.tracer.SbrTracer` rather than a change to
+    :class:`semantic_twin.transport.tracer.SbrTracer` rather than a change to
     it, because that module is shared. It reproduces the same susceptibility to
     Monte Carlo error when the medium is absent, which
     ``tests/test_foliage.py`` checks against the closed form ground plane, and
@@ -775,7 +775,7 @@ class FoliageTracer:
         import time
 
         from ..illumination import sample_sphere
-        from ..propagation.tracer import fresnel_power_reflectance, specular_share
+        from ..transport.tracer import fresnel_power_reflectance, specular_share
 
         started = time.perf_counter()
         rng = np.random.default_rng(self.seed)

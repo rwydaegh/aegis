@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 
 from semantic_twin.propagation import ISOTROPIC, SbrTracer, SphereGeometry, TraceConfig
-from semantic_twin.propagation.monostatic import (
+from semantic_twin.transport.monostatic import (
     MonostaticConfig,
     MonostaticGather,
     half_space_first_order_return,

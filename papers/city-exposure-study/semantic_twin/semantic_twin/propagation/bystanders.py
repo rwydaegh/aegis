@@ -50,7 +50,7 @@ from typing import Any
 import numpy as np
 
 from .geometry import INFINITY, MitsubaGeometry
-from .tracer import DEFAULT_MAX_BOUNCES
+from ..transport.tracer import DEFAULT_MAX_BOUNCES
 
 #: Speed of light, for the skin permittivity conversion.
 _EPS0 = 8.8541878128e-12
@@ -905,7 +905,7 @@ def run_study(
     """
     from ..illumination import MODELS as models
     from ..materials import classify_faces, load_table
-    from .tracer import SbrTracer, TraceConfig
+    from ..transport.tracer import SbrTracer, TraceConfig
     from ..walk.grid import build_walk
     from ..walk.model import stratified_subset
 
@@ -1166,7 +1166,7 @@ def noise_floor(
     """
     from ..illumination import MODELS as models
     from ..materials import classify_faces, load_table
-    from .tracer import SbrTracer, TraceConfig
+    from ..transport.tracer import SbrTracer, TraceConfig
     from ..walk.grid import build_walk
     from ..walk.model import stratified_subset
 

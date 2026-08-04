@@ -34,8 +34,9 @@ from semantic_twin.propagation.geometry import MitsubaGeometry
 from semantic_twin.walk.site import site_walk
 from semantic_twin.materials import classify_faces, load_table
 from semantic_twin.illumination.roofline import silhouette
-from semantic_twin.illumination.sources import SITE_LIFT_M, NextEventGather, build_source_set
-from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
+from semantic_twin.illumination.sources import SITE_LIFT_M, build_source_set
+from semantic_twin.transport.tracer import SbrTracer, TraceConfig
+from semantic_twin.transport.next_event import NextEventGather
 from semantic_twin.walk.ground import measure_ground_datum
 
 ROOT = pathlib.Path(__file__).resolve().parent

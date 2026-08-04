@@ -35,7 +35,7 @@ from semantic_twin.propagation import (
 )
 from semantic_twin.illumination import ROOFTOP, STREET_SMALL_CELL
 from semantic_twin.illumination.sphere import _brute_nearest_cell, nearest_cell
-from semantic_twin.propagation.tracer import trace_standpoints
+from semantic_twin.transport.tracer import trace_standpoints
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONCRETE = complex(5.24, -0.46055233310470917)

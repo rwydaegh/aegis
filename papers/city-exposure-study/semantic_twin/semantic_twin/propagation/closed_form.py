@@ -26,7 +26,7 @@ def ground_plane_susceptibility(elevation_deg: float | np.ndarray, permittivity:
     exactly at every elevation, which is the angle independent, non trivial
     target section 11.1 asks for.
     """
-    from .tracer import fresnel_power_reflectance
+    from ..transport.tracer import fresnel_power_reflectance
 
     cosine = np.cos(np.radians(90.0 - np.asarray(elevation_deg, dtype=np.float64)))
     return 1.0 + fresnel_power_reflectance(cosine, np.asarray(permittivity))

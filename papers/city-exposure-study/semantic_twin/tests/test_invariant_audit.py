@@ -98,13 +98,14 @@ from semantic_twin.illumination import (
     fibonacci_sphere,
 )
 from semantic_twin.propagation.geometry import PlaneGeometry
-from semantic_twin.illumination.sources import NextEventGather, SourceSet, direct_from_sites
-from semantic_twin.propagation.tracer import (
+from semantic_twin.illumination.sources import SourceSet, direct_from_sites
+from semantic_twin.transport.tracer import (
     SbrTracer,
     TraceConfig,
     fresnel_power_reflectance,
     specular_share,
 )
+from semantic_twin.transport.next_event import NextEventGather
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config"
@@ -738,7 +739,7 @@ def couple_a_synthetic_body(triangles: np.ndarray) -> tuple[object, float]:
     from aegis.geometry.mesh import BodyMesh
     from aegis.tissue import TissueModel
 
-    from semantic_twin.propagation.exposure import BodyCoupler
+    from semantic_twin.exposure import BodyCoupler
 
     mesh = BodyMesh.from_arrays(triangles, name="box")
     coupler = BodyCoupler.__new__(BodyCoupler)

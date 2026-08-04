@@ -1,7 +1,7 @@
 """The co-located return at the same standpoints the exposure runs use.
 
 Two questions, one trace each, and the trace is the one ``run_exposure.py``
-already runs. The gather of ``semantic_twin/propagation/monostatic.py`` rides it
+already runs. The gather of ``semantic_twin/transport/monostatic.py`` rides it
 and reads off what a radar standing where the pedestrian stands would receive.
 
     python run_monostatic.py --sites all --locations 80 --rays 200000
@@ -27,7 +27,7 @@ import numpy as np
 
 from run_exposure import CONFIG, MODELS, REFERENCE_S0_W_M2, SITES, site_mesh, site_walk_semantics
 from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig
-from semantic_twin.propagation.monostatic import MonostaticConfig, to_db, trace_monostatic
+from semantic_twin.transport.monostatic import MonostaticConfig, to_db, trace_monostatic
 from semantic_twin.materials import classify_faces, load_table
 from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.ground import measure_ground_datum
@@ -411,7 +411,7 @@ def validate(rays: int = 200_000) -> pathlib.Path:
     residuals down.
     """
     from semantic_twin.propagation import SphereGeometry
-    from semantic_twin.propagation.monostatic import MonostaticGather, specular_glints
+    from semantic_twin.transport.monostatic import MonostaticGather, specular_glints
 
     OUTPUT.mkdir(parents=True, exist_ok=True)
     wavelength = 299_792_458.0 / 15.0e9

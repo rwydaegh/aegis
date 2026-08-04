@@ -75,7 +75,7 @@ from ..illumination import (
     IlluminationModel,
     Isotropic,
 )
-from .tracer import DEFAULT_MAX_BOUNCES, TERMINATIONS
+from ..transport.tracer import DEFAULT_MAX_BOUNCES, TERMINATIONS
 
 SPEED_OF_LIGHT_M_S = 299_792_458.0
 
@@ -593,7 +593,7 @@ class AntennaIllumination:
     """A site population times a per site gain towards the pedestrian.
 
     Satisfies :class:`~semantic_twin.illumination.model.AngularIllumination`
-    so :class:`~semantic_twin.propagation.tracer.SbrTracer` consumes it with no
+    so :class:`~semantic_twin.transport.tracer.SbrTracer` consumes it with no
     change at all. That protocol is ``name``, ``law``, ``family``,
     ``describe()``, the elevation window, ``weight()``, ``knots()``,
     ``normalisation()`` and ``density(directions, normalisation)``, and calls
@@ -797,7 +797,7 @@ def steering_artefact(
     Zero bounce rays have ``x_K = x``, offset zero and suppression one, which is
     the check that the LOS term is untouched.
 
-    ``record`` is a :class:`~semantic_twin.propagation.tracer.PathRecord`. The
+    ``record`` is a :class:`~semantic_twin.transport.tracer.PathRecord`. The
     source range along each escaping ray is integrated over the same radial
     interval the illumination law itself integrates, so the site population here
     is the population the law describes and not a new assumption.
@@ -1078,7 +1078,7 @@ def _trace_site(site: str, args: argparse.Namespace, models: dict[str, Any]) -> 
 
     from .geometry import MitsubaGeometry
     from ..materials import classify_faces, load_table
-    from .tracer import SbrTracer, TraceConfig
+    from ..transport.tracer import SbrTracer, TraceConfig
     from ..walk.grid import build_walk
     from ..walk.model import stratified_subset
 
@@ -1143,7 +1143,7 @@ def _artefact_site(site: str, args: argparse.Namespace) -> dict[str, Any]:
 
     from .geometry import MitsubaGeometry
     from ..materials import classify_faces, load_table
-    from .tracer import PathRecorder, SbrTracer, TraceConfig
+    from ..transport.tracer import PathRecorder, SbrTracer, TraceConfig
     from ..walk.grid import build_walk
     from ..walk.model import stratified_subset
 

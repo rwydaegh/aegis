@@ -36,7 +36,7 @@ from typing import Any
 import numpy as np
 
 from semantic_twin.propagation import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL, MitsubaGeometry, SbrTracer, TraceConfig
-from semantic_twin.propagation.exposure import BodyCoupler, describe
+from semantic_twin.exposure import BodyCoupler, describe
 from semantic_twin.materials import bind_posterior, realised_composition
 from semantic_twin.materials import CLASS_NAMES, classify_faces, load_table
 from semantic_twin.walk.grid import build_walk

@@ -48,7 +48,7 @@ from semantic_twin.materials.stack import (
     material_power_reflectance,
     posterior_power_reflectance,
 )
-from semantic_twin.propagation.tracer import fresnel_power_reflectance
+from semantic_twin.transport.tracer import fresnel_power_reflectance
 
 CONFIG = pathlib.Path(__file__).resolve().parents[1] / "config"
 CARRIER_HZ = 15.0e9

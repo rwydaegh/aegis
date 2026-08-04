@@ -1,6 +1,6 @@
 """An upper bound on the power a diffraction term could add, for this geometry.
 
-The tracer of ``semantic_twin.propagation.tracer`` is rectilinear. It has no
+The tracer of ``semantic_twin.transport.tracer`` is rectilinear. It has no
 diffraction term, so every direction whose straight line to the sky is blocked
 contributes nothing at zero bounces and can only be recovered by a reflected or
 scattered path. This script bounds what a diffraction term would have added,

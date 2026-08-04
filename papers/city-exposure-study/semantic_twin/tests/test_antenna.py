@@ -43,7 +43,7 @@ from semantic_twin.propagation.antenna import (
     steering_artefact,
 )
 from semantic_twin.illumination import sample_sphere
-from semantic_twin.propagation.tracer import PathRecorder, SbrTracer, TraceConfig
+from semantic_twin.transport.tracer import PathRecorder, SbrTracer, TraceConfig
 
 
 class Empty:
