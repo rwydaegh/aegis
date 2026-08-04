@@ -13,11 +13,22 @@ that produces the published numbers, not against a copy of it.
 from __future__ import annotations
 
 import pathlib
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
 INFINITY = 1.0e30
+
+
+@dataclass(frozen=True)
+class DeviceIntersection:
+    """A Mitsuba intersection whose fields remain on the active Dr.Jit backend."""
+
+    hit: Any
+    distance: Any
+    normal: Any
+    face: Any
 
 
 class MitsubaGeometry:
@@ -48,6 +59,7 @@ class MitsubaGeometry:
         self.vertices = np.array(shape.vertex_positions_buffer()).reshape(-1, 3).astype(np.float64)
         self.faces = np.array(shape.faces_buffer()).reshape(-1, 3).astype(np.int64)
         self._face_normals: np.ndarray | None = None
+        self._device_normals: Any = None
 
     def __reduce__(self) -> tuple[Any, tuple[Any, ...]]:
         return (_load_mitsuba_geometry, (str(self.path), self.variant))
@@ -102,6 +114,43 @@ class MitsubaGeometry:
         normal = np.where(hit[:, None], self.face_normals()[face], 0.0)
         distance = np.where(hit, distance, INFINITY)
         return hit, distance, normal, face
+
+    def intersect_device(self, origins: Any, directions: Any, active: Any) -> DeviceIntersection:
+        """Intersect without moving rays, hits, or normals through NumPy.
+
+        The mesh acceleration structure, preliminary hit query, and face-normal
+        lookup all run on the backend selected by ``variant``. The ordinary
+        :meth:`intersect` method stays as the NumPy reference path.
+        """
+        import drjit as dr
+
+        mi = self._mi
+        self.prepare_device()
+        ray = mi.Ray3f(origins, directions)
+        preliminary = self.scene.ray_intersect_preliminary(ray, False, active)
+        hit = active & preliminary.is_valid() & (preliminary.t < INFINITY)
+        face = dr.select(hit, preliminary.prim_index, 0)
+        normal = dr.gather(mi.Vector3f, self._device_normals, face, hit)
+        distance = dr.select(hit, preliminary.t, INFINITY)
+        return DeviceIntersection(hit, distance, normal, face)
+
+    def prepare_device(self) -> None:
+        """Upload the face-normal lookup before a timed device trace."""
+        import drjit as dr
+
+        mi = self._mi
+        if mi.variant() != self.variant:
+            raise RuntimeError(
+                f"MitsubaGeometry was built for {self.variant!r}, but the active variant is {mi.variant()!r}"
+            )
+        if self._device_normals is None:
+            normals = self.face_normals()
+            self._device_normals = mi.Vector3f(
+                mi.Float(np.ascontiguousarray(normals[:, 0])),
+                mi.Float(np.ascontiguousarray(normals[:, 1])),
+                mi.Float(np.ascontiguousarray(normals[:, 2])),
+            )
+            dr.eval(self._device_normals)
 
 
 def _load_mitsuba_geometry(ply_path: str, variant: str) -> MitsubaGeometry:
