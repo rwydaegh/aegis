@@ -338,22 +338,24 @@ def test_korenmarkt_route_pilot_is_the_actual_fourteen_point_capture_walk():
     assert walk.provenance["stations"] == 5
     assert walk.provenance["added_along_the_road"] == 9
     assert walk.provenance["road_length_m"] == pytest.approx(49.13658180700937)
+    assert walk.provenance["standpoint_ordering"] == "increasing distance travelled along the selected path"
+    assert walk.step_m.max() == pytest.approx(6.0)
     assert _walk_provenance(run, walk)["candidates_after_clearance"] == 14
     assert np.round(walk.points[:, :2], 6).tolist() == [
-        [-6.423196, -14.907749],
-        [-4.767796, -4.551447],
-        [-1.723791, 15.419926],
-        [-0.50841, 25.443502],
-        [2.608824, 33.257496],
         [-10.368615, -18.738698],
+        [-6.423196, -14.907749],
         [-9.047949, -12.885849],
         [-7.770581, -7.024573],
+        [-4.767796, -4.551447],
         [-6.799777, -1.103633],
         [-5.743489, 4.801935],
         [-4.590528, 10.690116],
+        [-1.723791, 15.419926],
         [-3.416997, 16.574222],
         [-2.160403, 22.438584],
+        [-0.50841, 25.443502],
         [-0.533181, 28.213716],
+        [2.608824, 33.257496],
     ]
 
 

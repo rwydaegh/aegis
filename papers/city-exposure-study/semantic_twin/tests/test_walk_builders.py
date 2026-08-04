@@ -229,6 +229,27 @@ def test_the_capture_route_stays_connected() -> None:
     assert float(steps.max()) < 20.0
 
 
+def test_densified_route_is_returned_in_path_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Camera points and stride points form one walk, not two concatenated lists."""
+    graph = straight_graph(5, step=10.0)
+    cameras = [station(f"pano_{i}", f"n{i}", (float(i) * 10.0, 0.0)) for i in range(5)]
+    monkeypatch.setattr(site_module, "load_admitted_stations", lambda site, root=None: cameras)
+    monkeypatch.setattr(site_module, "load_link_graph", lambda site, root=None, bridge_m=0.0: graph)
+
+    walk, provenance = site_module.site_walk(
+        open_square(),
+        "nowhere",
+        stride_m=6.0,
+        path="links",
+        clearance_samples=16,
+    )
+
+    assert walk.points[:, 0] == pytest.approx([0.0, 6.0, 10.0, 12.0, 18.0, 20.0, 24.0, 30.0, 36.0, 40.0])
+    assert walk.points[:, 1] == pytest.approx(0.0)
+    assert walk.step_m.max() == pytest.approx(6.0)
+    assert provenance["standpoint_ordering"] == "increasing distance travelled along the selected path"
+
+
 def test_the_grid_ordering_is_fixed_by_the_geometry_and_not_by_the_seed() -> None:
     """Standpoint selection order is what the golden lock is most sensitive to.
 

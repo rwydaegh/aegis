@@ -271,7 +271,36 @@ def _stride_along(
     ground = np.concatenate([walk.ground_z_m, z[good]])
     seen = np.round(points[:, :2], 2)
     _, unique = np.unique(seen, axis=0, return_index=True)
-    return points[np.sort(unique)], ground[np.sort(unique)]
+    unique = np.sort(unique)
+    points, ground = points[unique], ground[unique]
+    order = _order_along_path(points, legs)
+    return points[order], ground[order]
+
+
+def _order_along_path(points: np.ndarray, polylines: Sequence[np.ndarray]) -> np.ndarray:
+    """Order an existing point set by distance travelled along its road."""
+    chain = [np.asarray(polyline, dtype=float)[:, :2] for polyline in polylines if len(polyline) >= 2]
+    if not chain or len(points) < 2:
+        return np.arange(len(points))
+    line = np.concatenate(chain, axis=0)
+    keep = np.concatenate([[True], np.linalg.norm(np.diff(line, axis=0), axis=1) > 1.0e-9])
+    line = line[keep]
+    if line.shape[0] < 2:
+        return np.arange(len(points))
+
+    start = line[:-1]
+    segment = line[1:] - start
+    length = np.linalg.norm(segment, axis=1)
+    along_segment = np.clip(
+        np.einsum("pij,ij->pi", points[:, None, :2] - start[None], segment) / np.square(length),
+        0.0,
+        1.0,
+    )
+    foot = start[None] + along_segment[..., None] * segment[None]
+    nearest = np.argmin(np.linalg.norm(points[:, None, :2] - foot, axis=2), axis=1)
+    travelled = np.concatenate([[0.0], np.cumsum(length)])
+    coordinate = travelled[nearest] + along_segment[np.arange(len(points)), nearest] * length[nearest]
+    return np.argsort(coordinate, kind="stable")
 
 
 def site_walk(
@@ -368,6 +397,7 @@ def site_walk(
     step = np.concatenate([[0.0], np.linalg.norm(np.diff(points[:, :2], axis=0), axis=1)])
     provenance["standpoints"] = int(points.shape[0])
     provenance["added_along_the_road"] = int(points.shape[0] - len(walk))
+    provenance["standpoint_ordering"] = "increasing distance travelled along the selected path"
     return (
         Walk(
             points=points,
