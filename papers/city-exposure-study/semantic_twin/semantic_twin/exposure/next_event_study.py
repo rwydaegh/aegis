@@ -16,7 +16,7 @@ from semantic_twin.materials import classify_faces, clutter_triangles, load_tabl
 from semantic_twin.paths import site_mesh
 from semantic_twin.propagation.geometry import MitsubaGeometry
 from semantic_twin.transport import SbrTracer, TraceConfig
-from semantic_twin.transport.next_event import NextEventGather
+from semantic_twin.transport.next_event import NextEventEstimator
 from semantic_twin.walk import build_walk, measure_ground_datum, site_walk
 
 
@@ -56,8 +56,6 @@ class _SiteStudy:
     datum: Any
     evaluate: np.ndarray
     sources: Any
-    direct: np.ndarray
-    seen: np.ndarray
     tracer: SbrTracer
     clutter_report: dict[str, Any]
     config: NextEventStudyConfig
@@ -146,7 +144,6 @@ def _prepare_site(site: str, mesh: pathlib.Path, config: NextEventStudyConfig) -
         site_lift_m=config.site_lift_m,
         clutter_triangles=clutter,
     )
-    direct, seen = sources.direct(geometry, evaluate)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum.z_m)
     binding = load_table(config.root / "config", config.frequency_hz)
     trace_config = TraceConfig(
@@ -164,8 +161,6 @@ def _prepare_site(site: str, mesh: pathlib.Path, config: NextEventStudyConfig) -
         datum,
         evaluate,
         sources,
-        direct,
-        seen,
         tracer,
         clutter_report,
         config,
@@ -174,39 +169,29 @@ def _prepare_site(site: str, mesh: pathlib.Path, config: NextEventStudyConfig) -
 
 def _trace_points(study: _SiteStudy) -> list[dict[str, Any]]:
     models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP}
+    estimator = NextEventEstimator(
+        tracer=study.tracer,
+        geometry=study.geometry,
+        sources=study.sources,
+        samples=study.config.connections,
+        max_order=study.config.max_bounces,
+        diagnostic_models=models,
+    )
     per_point = []
     for i, origin in enumerate(study.evaluate):
-        gather = NextEventGather(
-            geometry=study.geometry,
-            sources=study.sources,
-            rng=np.random.default_rng(study.config.seed + 1000 + i),
-            samples=study.config.connections,
-            max_order=study.config.max_bounces,
-        )
-        point = study.tracer.trace(
+        result = estimator.estimate(
             origin,
-            models,
             ground_z_m=study.datum.z_m,
             seed=study.config.seed + i,
-            gather=gather,
         )
-        bounced = gather.chi_bounce()
-        total = float(study.direct[i]) + bounced
         per_point.append(
             {
                 "origin": [float(value) for value in origin],
-                "direct": float(study.direct[i]),
-                "bounced": bounced,
-                "surplus": total / study.direct[i] if study.direct[i] > 0.0 else float("nan"),
-                "surplus_db": (10.0 * np.log10(total / study.direct[i]) if study.direct[i] > 0.0 else float("nan")),
-                "by_order": [float(value) for value in gather.chi_by_order()],
-                "visible_fraction": float(study.seen[i]),
-                "sky_fraction": point.sky_fraction,
-                "mean_bounces": point.mean_bounces,
-                "escape_chi": {name: point.susceptibility[name] for name in models},
-                "escape_chi_direct": {name: point.susceptibility_direct[name] for name in models},
-                "connections": gather.connections,
-                "clear_fraction": gather.cleared / max(gather.connections, 1),
+                "direct": result.direct,
+                "bounced": result.detail["bounced"],
+                "surplus": result.surplus,
+                "surplus_db": (10.0 * np.log10(result.surplus) if result.direct > 0.0 else float("nan")),
+                **{name: value for name, value in result.detail.items() if name != "bounced"},
             }
         )
     return per_point

@@ -37,7 +37,7 @@ from semantic_twin.materials import classify_faces, load_table
 from semantic_twin.illumination.roofline import silhouette
 from semantic_twin.illumination.sources import build_source_set
 from semantic_twin.transport.tracer import SbrTracer, TraceConfig
-from semantic_twin.transport.next_event import NextEventGather
+from semantic_twin.transport.next_event import NextEventEstimator
 from semantic_twin.walk.ground import measure_ground_datum
 
 ROOT = paths.root()
@@ -67,8 +67,6 @@ def one_seed(site: str, seed: int, args: Any) -> float:
         cell_m=args.cell_m,
         site_lift_m=args.site_lift_m,
     )
-    direct, _ = sources.direct(geometry, evaluate)
-
     face_class = classify_faces(geometry.vertices, geometry.faces, datum.z_m)
     binding = load_table(CONFIG, args.frequency_hz)
     config = TraceConfig(
@@ -79,24 +77,22 @@ def one_seed(site: str, seed: int, args: Any) -> float:
     )
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
 
+    estimator = NextEventEstimator(
+        tracer=tracer,
+        geometry=geometry,
+        sources=sources,
+        samples=args.connections,
+        max_order=args.max_bounces,
+        diagnostic_models={"isotropic": ISOTROPIC, "rooftop": ROOFTOP},
+    )
     surplus = []
     for i, origin in enumerate(evaluate):
-        gather = NextEventGather(
-            geometry=geometry,
-            sources=sources,
-            rng=np.random.default_rng(seed + 1000 + i),
-            samples=args.connections,
-            max_order=args.max_bounces,
-        )
-        tracer.trace(
+        result = estimator.estimate(
             origin,
-            {"isotropic": ISOTROPIC, "rooftop": ROOFTOP},
             ground_z_m=datum.z_m,
             seed=seed + i,
-            gather=gather,
         )
-        bounced = gather.chi_bounce()
-        surplus.append(10.0 * np.log10((direct[i] + bounced) / direct[i]) if direct[i] > 0.0 else np.nan)
+        surplus.append(10.0 * np.log10(result.surplus) if result.direct > 0.0 else np.nan)
     return float(np.nanmedian(surplus))
 
 

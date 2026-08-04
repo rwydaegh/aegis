@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 
-from ..illumination.sources import SourceSet
+from ..illumination.model import AngularIllumination, PlacedIllumination
+from ..illumination.sources import direct_from_sites
+from .model import Surplus, require_credit
+from .tracer import SbrTracer
 
 #: Sites closer than this to a connecting point are dropped from that
 #: connection. A site is a point standing for a real antenna of finite size, and
@@ -36,12 +40,12 @@ class NextEventGather:
     The accumulated quantity is the bounced part of ``chi``, per source, averaged
     over the set. Divide by the ray count and multiply by ``4 pi`` to read it as
     an integral of arriving radiance over the sphere, which :meth:`chi_bounce`
-    does. The line of sight part is not accumulated here: it is exact and
-    :meth:`SourceSet.direct` computes it in one call.
+    does. The line of sight part is not accumulated here. The estimator computes
+    it exactly from :meth:`PlacedIllumination.sites` in one call.
     """
 
     geometry: Any
-    sources: SourceSet
+    sources: PlacedIllumination
     rng: np.random.Generator
     samples: int = 1
     max_order: int = 8
@@ -77,7 +81,7 @@ class NextEventGather:
         face: np.ndarray | None = None,
     ) -> None:
         del index, incoming, path_length, face
-        sites = self.sources.positions
+        sites = self.sources.sites()
         if sites.shape[0] == 0 or position.shape[0] == 0:
             return
 
@@ -159,3 +163,81 @@ class NextEventGather:
             "rays": self.rays,
             "samples": self.samples,
         }
+
+
+@dataclass(frozen=True)
+class NextEventEstimator:
+    """Score one explicit source set from one standpoint.
+
+    The gather draws from ``seed + 1000`` while the trace draws from ``seed``.
+    That split is the convention used by every published next-event run. The
+    direct term still accepts sources closer than :data:`MIN_CONNECT_M`, while
+    the bounced term refuses them. That known mismatch is preserved here until
+    it can be changed and measured in its own physics commit.
+
+    ``diagnostic_models`` are angular laws traced alongside the connection.
+    They do not feed the next-event answer. They preserve the live escape
+    comparison written by the next-event study.
+    """
+
+    tracer: SbrTracer
+    geometry: Any
+    sources: PlacedIllumination
+    samples: int = 1
+    max_order: int | None = None
+    diagnostic_models: Mapping[str, AngularIllumination] = field(default_factory=dict)
+
+    name: ClassVar[str] = "next_event"
+    gather_seed_offset: ClassVar[int] = 1000
+
+    def __post_init__(self) -> None:
+        require_credit(self.name, self.sources)
+
+    def illumination(self) -> PlacedIllumination:
+        return self.sources
+
+    def estimate(
+        self,
+        origin: np.ndarray,
+        *,
+        ground_z_m: float = 0.0,
+        seed: int | None = None,
+    ) -> Surplus:
+        trace_seed = self.tracer.config.seed if seed is None else seed
+        direct, seen = direct_from_sites(
+            self.geometry,
+            np.atleast_2d(origin),
+            self.sources.sites(),
+        )
+        gather = NextEventGather(
+            geometry=self.geometry,
+            sources=self.sources,
+            rng=np.random.default_rng(trace_seed + self.gather_seed_offset),
+            samples=self.samples,
+            max_order=self.tracer.config.max_bounces if self.max_order is None else self.max_order,
+        )
+        point = self.tracer.trace(
+            origin,
+            dict(self.diagnostic_models),
+            ground_z_m=ground_z_m,
+            seed=seed,
+            gather=gather,
+        )
+        bounced = gather.chi_bounce()
+        return Surplus(
+            estimator=self.name,
+            law=self.sources.law,
+            direct=float(direct[0]),
+            total=float(direct[0]) + bounced,
+            detail={
+                "bounced": bounced,
+                "by_order": [float(value) for value in gather.chi_by_order()],
+                "visible_fraction": float(seen[0]),
+                "sky_fraction": point.sky_fraction,
+                "mean_bounces": point.mean_bounces,
+                "escape_chi": {name: point.susceptibility[name] for name in self.diagnostic_models},
+                "escape_chi_direct": {name: point.susceptibility_direct[name] for name in self.diagnostic_models},
+                "connections": gather.connections,
+                "clear_fraction": gather.cleared / max(gather.connections, 1),
+            },
+        )
