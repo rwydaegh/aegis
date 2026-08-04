@@ -22,6 +22,7 @@ once and cached beside the bound outputs.
 
 from __future__ import annotations
 
+import importlib
 import json
 import pathlib
 import sys
@@ -35,9 +36,12 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, "/home/user/aegis/theory/scripts")
 
-from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
-
-from bound_diffraction import direction_grid, knife_edge_loss_db  # noqa: E402
+_plot_style = importlib.import_module("_plot_style")
+apply_monograph_style = _plot_style.apply_monograph_style
+fig_size_ieee = _plot_style.fig_size_ieee
+_diffraction_bound = importlib.import_module("semantic_twin.propagation.diffraction_bound")
+direction_grid = _diffraction_bound.direction_grid
+knife_edge_loss_db = _diffraction_bound.knife_edge_loss_db
 
 OUT = pathlib.Path(__file__).resolve().parent
 BOUND = ROOT / "outputs" / "diffraction_bound"

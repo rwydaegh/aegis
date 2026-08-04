@@ -331,7 +331,7 @@ def bind_walk_materials(
     if "modal_material" not in data.files:
         raise SystemExit(
             f"{walk_npz} carries no material axis. Re-run the panoramas with "
-            "`semantic_twin.vision.panorama --backend hybrid` and rebuild the walk semantics."
+            "`semantic_twin.cli.panorama --backend hybrid` and rebuild the walk semantics."
         )
     names = [str(name) for name in data["material_names"]]
     rays = data["clean_rays"].astype(np.float64)

@@ -95,27 +95,38 @@ def test_modal_class_agrees_with_the_dense_table_it_replaces():
     assert _modal_class(face, label, faces, classes).tolist() == dense.tolist()
 
 
-def test_the_command_build_adapter_preserves_the_original_keyword_interface(tmp_path, monkeypatch):
+def test_the_command_builds_package_options(tmp_path, monkeypatch):
     captured = {}
 
     def fake_build(site, options):
         captured.update(site=site, options=options)
-        return {"result": "fixture"}
+        return None
 
     monkeypatch.setattr(build_site_semantics, "_build", fake_build)
-    result = build_site_semantics.build(
-        "korenmarkt",
-        crop_m=250,
-        grid_height=768,
-        block_rows=64,
-        workers=3,
-        max_residual_deg=3.5,
-        max_sky_conflict=0.4,
-        min_conflict_range_m=1.5,
-        out_root=tmp_path,
+    result = build_site_semantics.main(
+        [
+            "--site",
+            "korenmarkt",
+            "--crop-m",
+            "250",
+            "--grid-height",
+            "768",
+            "--block-rows",
+            "64",
+            "--workers",
+            "3",
+            "--max-residual-deg",
+            "3.5",
+            "--max-sky-conflict",
+            "0.4",
+            "--min-conflict-range-m",
+            "1.5",
+            "--out",
+            str(tmp_path),
+        ]
     )
 
-    assert result == {"result": "fixture"}
+    assert result == 0
     assert captured["site"] == "korenmarkt"
     assert captured["options"].crop_m == 250
     assert captured["options"].grid_height == 768

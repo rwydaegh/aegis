@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import pathlib
 from dataclasses import dataclass
@@ -31,6 +30,18 @@ class LayerRule:
     name: str
     labels: frozenset[str]
     priority_bonus: dict[str, float]
+
+
+@dataclass(frozen=True)
+class LayerFusionConfig:
+    """Inputs for fusing prompted predictions into panorama layers."""
+
+    predictions: pathlib.Path
+    concepts: pathlib.Path
+    out: pathlib.Path
+    panorama: pathlib.Path | None
+    output_width: int
+    row_chunk: int
 
 
 def _is_dynamic_clutter(concept: Concept) -> bool:
@@ -205,15 +216,15 @@ def render_layer_diagnostics(
     composed.save(out / "panorama_layered_overlay.png")
 
 
-def fuse(args: argparse.Namespace) -> None:
-    catalog = ConceptCatalog.load(args.concepts)
-    concept_ids, id2label = load_concepts(args.concepts)
+def fuse(config: LayerFusionConfig) -> None:
+    catalog = ConceptCatalog.load(config.concepts)
+    concept_ids, id2label = load_concepts(config.concepts)
     rules = layer_rules(catalog)
     by_name = {view.name: view for view in inference_views()}
     order: list = []
     layers: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {rule.name: [] for rule in rules}
     instance_offset = 0
-    for path in sorted(args.predictions.glob("*.npz")):
+    for path in sorted(config.predictions.glob("*.npz")):
         if path.stem not in by_name:
             continue
         masks, labels, kinds, scores = unpack_masks(path)
@@ -235,16 +246,23 @@ def fuse(args: argparse.Namespace) -> None:
         missing = sorted(set(by_name) - found)
         raise SystemExit(f"missing SAM predictions for: {', '.join(missing)}")
 
-    width, height = args.output_width, args.output_width // 2
+    width, height = config.output_width, config.output_width // 2
     # One traversal for all four layers. The projection and the footprint spans
     # depend on the view, not on what is painted in it.
-    layer_data = fuse_layers(order, layers, width=width, height=height, row_chunk=args.row_chunk, require_nonzero=True)
+    layer_data = fuse_layers(
+        order,
+        layers,
+        width=width,
+        height=height,
+        row_chunk=config.row_chunk,
+        require_nonzero=True,
+    )
     support_concept, support_confidence = layer_data["support"]
     clutter_concept, clutter_confidence = layer_data["clutter"]
 
-    args.out.mkdir(parents=True, exist_ok=True)
+    config.out.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
-        args.out / "panorama_concepts.npz",
+        config.out / "panorama_concepts.npz",
         # Compatibility winner for older consumers. It is intentionally not a
         # projection target because it flattens concurrent physical evidence.
         concept=np.where(clutter_concept > 0, clutter_concept, support_concept),
@@ -263,8 +281,8 @@ def fuse(args: argparse.Namespace) -> None:
     # Keep this stable filename as the material-detail quicklook. The support
     # façade remains available separately, so a broad prompt cannot hide a
     # detected window in the default image anymore.
-    Image.fromarray(colours[layer_data["material"][0]], "RGB").save(args.out / "panorama_concepts.png")
-    render_layer_diagnostics(layer_data, id2label, args.out, args.panorama)
+    Image.fromarray(colours[layer_data["material"][0]], "RGB").save(config.out / "panorama_concepts.png")
+    render_layer_diagnostics(layer_data, id2label, config.out, config.panorama)
     manifest = {
         "concept_id2label": id2label,
         "kind_id2label": {0: "unlabelled", 1: "surface", 2: "object"},
@@ -279,25 +297,6 @@ def fuse(args: argparse.Namespace) -> None:
         "overlap_policy": "layer-local confidence with angular-centre weighting; layers are non-exclusive",
         "projection_note": "diagnostic layers do not alter camera geometry or projection; resolve support/depth conflicts during 3D fusion",
     }
-    (args.out / "concepts.json").write_text(json.dumps(manifest, indent=2))
+    (config.out / "concepts.json").write_text(json.dumps(manifest, indent=2))
     print(f"[concept-fusion] {instance_offset} view-local instances")
-    print(f"[concept-fusion] -> {args.out / 'panorama_concepts.npz'}")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--predictions", type=pathlib.Path, required=True)
-    parser.add_argument("--concepts", type=pathlib.Path, required=True)
-    parser.add_argument("--out", type=pathlib.Path, required=True)
-    parser.add_argument(
-        "--panorama",
-        type=pathlib.Path,
-        help="optional equirectangular source image for a diagnostic alpha overlay",
-    )
-    parser.add_argument("--output-width", type=int, default=8192)
-    parser.add_argument("--row-chunk", type=int, default=128)
-    fuse(parser.parse_args())
-
-
-if __name__ == "__main__":
-    main()
+    print(f"[concept-fusion] -> {config.out / 'panorama_concepts.npz'}")

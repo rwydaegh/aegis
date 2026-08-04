@@ -71,7 +71,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from semantic_twin.viz.blender import estimator, evidence, renders, scene  # noqa: E402
-from semantic_twin.viz.blender.payload import builder_fingerprint  # noqa: E402
 from semantic_twin.viz.blender.style import MODEL_NAMES  # noqa: E402
 
 
@@ -126,51 +125,6 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     if argv is None:
         argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     return parser.parse_args(argv)
-
-
-def stamp_scene(
-    manifest: dict,
-    *,
-    rays: dict,
-    legs: dict,
-    connections: dict,
-    layers: dict,
-) -> None:
-    """Write the reading notes and the counts onto the scene, where a reader lands.
-
-    A blend has no README. The scene custom properties are the only place a note
-    survives being emailed to somebody, so the fingerprint, the two radii and the
-    counts of everything drawn go there.
-    """
-    import bpy
-
-    current = bpy.context.scene
-    current["site"] = manifest["site"]
-    current["builder_fingerprint"] = builder_fingerprint(ROOT)
-    current["frequency_ghz"] = manifest["frequency_hz"] / 1.0e9
-    current["traced_crop_radius_m"] = manifest["traced_crop_radius_m"]
-    current["drawn_radius_m"] = manifest["drawn_radius_m"]
-    current["hero_sky_fraction"] = manifest["hero"]["sky_fraction"]
-    current["hero_susceptibility"] = json.dumps(manifest["hero"]["susceptibility"])
-    current["ray_bundle_counts"] = json.dumps(rays)
-    current["ray_leg_counts"] = json.dumps(legs)
-    current["next_event_counts"] = json.dumps(connections)
-    current["evidence_layers"] = json.dumps(layers, default=str)
-    current["reading_note"] = (
-        "Every object here is measured. Ray thickness is the cube root of throughput. "
-        "The lobes are normalised by their own peak so their shapes compare and their "
-        "levels do not. The drawn mesh is smaller than the traced mesh, see "
-        "drawn_radius_m against traced_crop_radius_m. The evidence collections start "
-        "hidden and each of their objects carries several colour layers, listed on the "
-        "object as colour_layers. PAYLOAD.md says what each one means."
-    )
-    record = manifest.get("evidence", {})
-    offset = record.get("semantic_surface_offset_from_drawn_mesh")
-    if offset is not None:
-        current["semantic_surface_offset_from_drawn_mesh"] = json.dumps(offset)
-    camera = record.get("camera")
-    if camera is not None:
-        current["evidence_camera"] = json.dumps(camera)
 
 
 def main() -> int:
@@ -234,7 +188,14 @@ def main() -> int:
     scene.hide_heavy_collections()
     scene.frame_the_viewport(twin, hero)
 
-    stamp_scene(manifest, rays=rays, legs=legs, connections=connections, layers=layers)
+    scene.stamp_scene(
+        manifest,
+        rays=rays,
+        legs=legs,
+        connections=connections,
+        layers=layers,
+        root=ROOT,
+    )
 
     args.blend.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(args.blend.resolve()), compress=True)

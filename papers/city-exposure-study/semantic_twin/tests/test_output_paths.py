@@ -3,42 +3,16 @@
 from __future__ import annotations
 
 import ast
-import pathlib
 
-import fetch_site_panoramas
-import run_foliage_study
-import screen_cities
-import summarise_site_panoramas
 from semantic_twin import paths
+from semantic_twin.materials import foliage_study
 from semantic_twin.viz import figures
-
-
-def test_screening_scripts_keep_their_defaults_when_cwd_changes(monkeypatch, tmp_path):
-    monkeypatch.chdir(tmp_path)
-
-    assert fetch_site_panoramas.DEFAULT_SCREENING == paths.screening()
-    assert fetch_site_panoramas.arguments(["--scene", "scene.json"]).screening == paths.screening()
-    assert screen_cities.arguments([]).out == paths.output("city_screening")
-    assert summarise_site_panoramas.arguments(["--site", "panoramas"]).out == paths.output("city_screening")
-
-
-def test_explicit_screening_paths_still_win(monkeypatch, tmp_path):
-    monkeypatch.chdir(tmp_path)
-    screening = pathlib.Path("chosen.json")
-    output = pathlib.Path("chosen")
-
-    assert (
-        fetch_site_panoramas.arguments(["--scene", "scene.json", "--screening", str(screening)]).screening == screening
-    )
-    assert screen_cities.arguments(["--out", str(output)]).out == output
-    assert summarise_site_panoramas.arguments(["--site", "panoramas", "--out", str(output)]).out == output
-    assert output.resolve() == tmp_path / "chosen"
 
 
 def test_foliage_output_is_independent_of_cwd(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
 
-    assert run_foliage_study.OUTPUT == paths.output("foliage_study")
+    assert foliage_study.OUTPUT == paths.output("foliage_study")
 
 
 def test_remesh_panel_uses_the_root_and_figure_registry_without_importing_it():

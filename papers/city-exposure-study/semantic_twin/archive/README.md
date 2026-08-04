@@ -30,6 +30,12 @@ the current command surface.
 - `project_pixel_semantics.py` records the pixel-projection approach superseded
   by fishnet surface cutting. Its adaptive tiling primitives remain active in
   `semantic_twin.vision.project`.
+- `measure_escape_range_term.py` records the completed test that ruled out a
+  missing escape-range factor as the cause of the multipath surplus.
+- `measure_source_construction.py`, `measure_source_near_share.py`, and
+  `measure_source_thickness.py` record source-region constructions that the
+  illumination study tested and rejected. Their reusable calculations remain
+  under `semantic_twin.illumination`.
 
 ## `METHOD.tex`
 

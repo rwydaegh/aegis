@@ -136,8 +136,7 @@ def main(argv: list[str] | None = None) -> int:
     args = arguments(argv)
     if args.cities_report:
         cross_city_report(list(SITES), args.frequency_ghz * 1e9, crop_m=args.crop_m, tag_suffix=args.tag_suffix)
-        return 0
-    if args.coverage_report:
+    elif args.coverage_report:
         coverage_report(
             args.frequency_ghz * 1e9,
             tag_suffix=args.tag_suffix,
@@ -145,8 +144,7 @@ def main(argv: list[str] | None = None) -> int:
             crop_m=args.crop_m,
             seed=args.seed,
         )
-        return 0
-    if args.coverage_ladder:
+    elif args.coverage_ladder:
         run_coverage_ladder(
             args.locations,
             args.rays,
@@ -162,8 +160,7 @@ def main(argv: list[str] | None = None) -> int:
             tag_suffix=args.tag_suffix,
             workers=args.workers,
         )
-        return 0
-    if args.all_sites:
+    elif args.all_sites:
         run_all_sites(
             args.locations,
             args.rays,
@@ -178,35 +175,33 @@ def main(argv: list[str] | None = None) -> int:
             tag_suffix=args.tag_suffix,
             workers=args.workers,
         )
-        return 0
-    if args.report:
+    elif args.report:
         report(args.report)
-        return 0
-    if args.validate:
+    elif args.validate:
         outcome = validate(args.rays)
         OUTPUT.mkdir(parents=True, exist_ok=True)
         path = OUTPUT / "exposure_validation.json"
         path.write_text(json.dumps(outcome, indent=2))
         print(json.dumps(outcome, indent=2))
         print(f"wrote {path}")
-        return 0
-    run(
-        args.locations,
-        args.rays,
-        args.frequency_ghz * 1e9,
-        variant=args.variant,
-        seed=args.seed,
-        tag=args.tag,
-        local_cells=args.local_cells,
-        walk_radius_m=args.walk_radius_m,
-        walk_spacing_m=args.walk_spacing_m,
-        max_bounces=args.max_bounces,
-        materials=args.materials,
-        site=args.site,
-        crop_m=args.crop_m,
-        walk_npz=pathlib.Path(args.walk_npz) if args.walk_npz else None,
-        workers=args.workers,
-    )
+    else:
+        run(
+            args.locations,
+            args.rays,
+            args.frequency_ghz * 1e9,
+            variant=args.variant,
+            seed=args.seed,
+            tag=args.tag,
+            local_cells=args.local_cells,
+            walk_radius_m=args.walk_radius_m,
+            walk_spacing_m=args.walk_spacing_m,
+            max_bounces=args.max_bounces,
+            materials=args.materials,
+            site=args.site,
+            crop_m=args.crop_m,
+            walk_npz=pathlib.Path(args.walk_npz) if args.walk_npz else None,
+            workers=args.workers,
+        )
     return 0
 
 

@@ -17,7 +17,7 @@ answer is nearly flat. That is the evidence that the older number was largely
 restating openness rather than measuring multipath.
 
 The reason is what the two estimators take the sources to be, and it is not the
-missing range term. ``measure_escape_range_term.py`` charges every escaping ray
+missing range term. ``archive/scripts/measure_escape_range_term.py`` charges every escaping ray
 for the distance it travelled and the escape answer moves 0.13 dB at Korenmarkt
 and 0.35 dB at Brussels, against a gap of about 1.3 dB, so range is a quarter of
 it at most. What is left is the source population. The escape estimator assumes

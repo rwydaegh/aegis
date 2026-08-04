@@ -240,7 +240,7 @@ rule says later. That is standard git behaviour, not a bug, and needs no fix.
   the one thing in this whole audit that truly cannot be regenerated, even
   with a GPU and the same crops, because they are recorded API responses.
 - `outputs/next_event/escape_range_term.json`: the result of
-  `measure_escape_range_term.py`, the script that ruled out a missing range
+  `archive/scripts/measure_escape_range_term.py`, the script that ruled out a missing range
   term as the reason the two estimators disagree. It is the only artefact of
   that specific negative result.
 

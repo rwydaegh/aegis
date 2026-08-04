@@ -1,4 +1,4 @@
-"""Command-line entry point for the source-range share study."""
+"""Archived command-line entry point for the source-range share study."""
 
 import argparse
 

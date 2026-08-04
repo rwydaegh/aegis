@@ -38,7 +38,6 @@ Then hand the payload to Blender::
 
 from __future__ import annotations
 
-import argparse
 import json
 import pathlib
 import time
@@ -357,7 +356,7 @@ def crop_for_drawing(
     return vertices[used], remapped.reshape(kept.shape), np.flatnonzero(keep)
 
 
-def trace_site(args: argparse.Namespace) -> dict[str, Any]:
+def trace_site(args: Any) -> dict[str, Any]:
     started = time.perf_counter()
     mesh = site_mesh(args.site, args.crop_m)
     geometry = MitsubaGeometry(mesh, variant=args.variant)
@@ -1170,7 +1169,7 @@ def surface_offset_to_drawn_mesh(
     }
 
 
-def attach_evidence(args: argparse.Namespace, bundle: dict[str, Any]) -> None:
+def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
     """Add every evidence layer that exists for this site to the payload.
 
     Kept out of :func:`trace_site` on purpose. None of this is traced, none of it
@@ -1354,7 +1353,7 @@ def attach_evidence(args: argparse.Namespace, bundle: dict[str, Any]) -> None:
             print(f"[evidence] {bodies['vertices'].shape[0]} SMPL-X bystanders", flush=True)
 
 
-def reopen(args: argparse.Namespace) -> dict[str, Any]:
+def reopen(args: Any) -> dict[str, Any]:
     """Load a payload that was already traced, so the evidence can be rebuilt alone.
 
     Tracing Times Square is two hours on this machine and gathering its evidence
@@ -1371,7 +1370,7 @@ def reopen(args: argparse.Namespace) -> dict[str, Any]:
     return {"payload": payload, "manifest": manifest}
 
 
-def measure_rim(args: argparse.Namespace) -> dict[str, Any]:
+def measure_rim(args: Any) -> dict[str, Any]:
     """Measure the facade tip rim into a payload that was already traced.
 
     The rim is one ray fan and takes a fifth of a second. Retracing Times Square
@@ -1419,7 +1418,7 @@ def measure_rim(args: argparse.Namespace) -> dict[str, Any]:
     return bundle
 
 
-def export(args: argparse.Namespace) -> int:
+def export(args: Any) -> int:
     """Build and serialize the payload requested by a command namespace."""
     args.out.mkdir(parents=True, exist_ok=True)
     if args.rim_only:

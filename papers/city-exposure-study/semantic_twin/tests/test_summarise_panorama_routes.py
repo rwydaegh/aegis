@@ -12,7 +12,7 @@ import pathlib
 
 import pytest
 
-from summarise_panorama_routes import link_spacing_m, on_disk, site_row, table
+from semantic_twin.report.panorama_routes import build_report, link_spacing_m, on_disk, site_row, table, write_report
 from semantic_twin.walk.links import link_graph_from_screening
 
 
@@ -116,6 +116,20 @@ def test_counting_what_is_on_disk_separates_registered_from_present(tmp_path: pa
     assert on_disk("somewhere", tmp_path) == (2, 1)
 
 
+def test_counting_uses_the_registry_for_companion_walks(tmp_path: pathlib.Path):
+    station = tmp_path / "data" / "panoramas" / "korenmarkt" / "alignment"
+    station.mkdir(parents=True)
+    (station / "pose_aligned.json").write_text("{}")
+    walk = tmp_path / "data" / "panoramas" / "korenmarkt_walk" / "walk_00" / "alignment"
+    walk.mkdir(parents=True)
+    (walk / "pose_aligned.json").write_text("{}")
+    reconstruction = tmp_path / "data" / "panoramas" / "korenmarkt_mapillary" / "view_00" / "alignment"
+    reconstruction.mkdir(parents=True)
+    (reconstruction / "pose_aligned.json").write_text("{}")
+
+    assert on_disk("korenmarkt", tmp_path) == (2, 2)
+
+
 def test_link_spacing_is_the_median_over_links_and_not_over_pairs():
     row = {
         "key": "somewhere",
@@ -134,3 +148,15 @@ def test_the_table_holds_a_line_per_site_and_a_header(one_street: pathlib.Path):
     assert len(lines) == 3
     assert lines[0].startswith("| site |")
     assert "somewhere" in lines[2]
+
+
+def test_report_builder_and_writer_preserve_both_output_contracts(one_street: pathlib.Path, tmp_path: pathlib.Path):
+    rows, rendered = build_report(["somewhere"], one_street)
+    output = tmp_path / "report"
+
+    write_report(rows, rendered, output)
+
+    json_text = (output / "panorama_routes.json").read_text()
+    assert not json_text.endswith("\n")
+    assert json.loads(json_text) == rows
+    assert (output / "panorama_routes.md").read_text() == rendered + "\n"

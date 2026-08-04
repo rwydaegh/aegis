@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from project_semantics import UNOBSERVED_MATERIAL, assign_materials, material_groups
+from semantic_twin.scene.semantic_projection import UNOBSERVED_MATERIAL, assign_materials, material_groups
 
 
 def test_never_observed_faces_carry_a_sentinel_instead_of_material_zero() -> None:

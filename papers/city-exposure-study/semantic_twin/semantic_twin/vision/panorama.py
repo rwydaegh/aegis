@@ -20,7 +20,7 @@ Run after a panorama has been acquired, by
 :mod:`semantic_twin.acquire.streetview` at ten of the eleven sites and by
 :mod:`semantic_twin.acquire.mapillary` for the Korenmarkt walk::
 
-    ../../../.venv/bin/python -m semantic_twin.vision.panorama \
+    ../../../.venv/bin/python -m semantic_twin.cli.panorama \
         --panorama data/panoramas/korenmarkt/panorama_z5.jpg \
         --out data/panoramas/korenmarkt/semantics \
         --backend hybrid --concepts config/semantic_concepts.json
@@ -28,7 +28,6 @@ Run after a panorama has been acquired, by
 
 from __future__ import annotations
 
-import argparse
 import json
 import pathlib
 import time
@@ -42,15 +41,13 @@ from ..pano_geometry import PerspectiveView, inference_views
 from .dense import (
     BRIDGE,
     DEFAULT_GATE_MIN_PIXELS,
-    DEFAULT_INFERENCE_SIZE,
-    MODEL,
     Mask2FormerBackend,
     dense_cache_settings,
     reusable_dense_cache,
 )
 from .fuse import fuse_layers, fuse_predictions, palette
 from .material import concept_support_table, material_hints, resolve_material, vistas_material_prior
-from .views import DEFAULT_VIEW_SIZE, perspective_crop, present_classes
+from .views import perspective_crop, present_classes
 from .vocabulary import BackendBridge, ConceptCatalog, PromptGate, gate_prompts
 
 
@@ -65,6 +62,26 @@ class ViewPrediction:
     prompts_skipped: int = 0
     concept_instances: int = 0
     concept_seconds: float = 0.0
+
+
+@dataclass(frozen=True)
+class PanoramaRunConfig:
+    """Inputs for end-to-end panorama segmentation."""
+
+    panorama: pathlib.Path
+    out: pathlib.Path
+    model: str
+    device: str
+    backend: str
+    concepts: pathlib.Path | None
+    view_size: int
+    inference_size: int
+    concept_resolution: int
+    concept_threshold: float
+    prompt_batch: int
+    gate_min_pixels: int
+    output_width: int
+    force: bool
 
 
 @dataclass
@@ -211,22 +228,22 @@ def _fuse_concept_layers(
     return fuse_layers(views, layers, width=width, height=height, require_nonzero=True)
 
 
-def run(args: argparse.Namespace) -> None:
-    out = args.out
+def run(config: PanoramaRunConfig) -> None:
+    out = config.out
     views_dir = out / "views"
     views_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
-    backend = Mask2FormerBackend(args.model, args.device, inference_size=args.inference_size)
+    backend = Mask2FormerBackend(config.model, config.device, inference_size=config.inference_size)
 
     concepts: ConceptPass | None = None
     catalog: ConceptCatalog | None = None
-    if args.backend == "hybrid":
+    if config.backend == "hybrid":
         from .prompted import MODEL as SAM3_MODEL
         from .prompted import Sam3ConceptBackend, cache_key
 
-        if args.concepts is None:
+        if config.concepts is None:
             raise SystemExit("--backend hybrid needs --concepts pointing at the concept catalogue")
-        catalog = ConceptCatalog.load(args.concepts)
+        catalog = ConceptCatalog.load(config.concepts)
         if BRIDGE not in catalog.bridges:
             raise SystemExit(f"the catalogue has no {BRIDGE} bridge, so prompts cannot be gated or fused")
         concept_dir = out / "concepts"
@@ -236,41 +253,41 @@ def run(args: argparse.Namespace) -> None:
             bridge=catalog.bridges[BRIDGE],
             backend=Sam3ConceptBackend(
                 catalog,
-                resolution=args.concept_resolution,
-                threshold=args.concept_threshold,
-                prompt_batch=args.prompt_batch,
+                resolution=config.concept_resolution,
+                threshold=config.concept_threshold,
+                prompt_batch=config.prompt_batch,
             ),
             cache_dir=concept_dir,
             cache_key=cache_key(
                 model=SAM3_MODEL,
-                resolution=args.concept_resolution,
-                threshold=args.concept_threshold,
-                view_size=args.view_size,
+                resolution=config.concept_resolution,
+                threshold=config.concept_threshold,
+                view_size=config.view_size,
                 catalog=catalog,
             ),
-            minimum_pixels=args.gate_min_pixels,
+            minimum_pixels=config.gate_min_pixels,
         )
 
     # Read before the run, because predict_views rewrites the stamp on its way
     # out. Without it the wall clock below is unreadable: a warm re-run over
     # cached views does fusion only and reports 8 to 11 s against a cold 58 s,
     # and nothing in the output said which of the two you were looking at.
-    dense_cache_reused = not args.force and reusable_dense_cache(
-        views_dir, dense_cache_settings(backend, args.view_size, args.panorama)
+    dense_cache_reused = not config.force and reusable_dense_cache(
+        views_dir, dense_cache_settings(backend, config.view_size, config.panorama)
     )
 
-    with Image.open(args.panorama) as panorama:
+    with Image.open(config.panorama) as panorama:
         predictions, manifest, concept_predictions = predict_views(
             panorama,
             backend,
             views_dir,
-            view_size=args.view_size,
-            force=args.force,
+            view_size=config.view_size,
+            force=config.force,
             concepts=concepts,
-            panorama_path=args.panorama,
+            panorama_path=config.panorama,
         )
 
-    output_width = args.output_width
+    output_width = config.output_width
     output_height = output_width // 2
     labels, confidence = fuse_predictions(predictions, width=output_width, height=output_height)
     entity_to_material, material_names = material_hints(backend.id2label)
@@ -281,12 +298,12 @@ def run(args: argparse.Namespace) -> None:
         "confidence": confidence,
     }
     document: dict[str, Any] = {
-        "backend": args.backend,
-        "model": args.model,
+        "backend": config.backend,
+        "model": config.model,
         "entity_id2label": backend.id2label,
         "material_id2label": dict(enumerate(material_names)),
         "material_status": "provisional hints, refine with concept/material backend",
-        "view_size": args.view_size,
+        "view_size": config.view_size,
         "inference_size": backend.inference_size,
         "processor_saved_size": backend.processor_saved_size,
         "checkpoint": backend.checkpoint_digest,
@@ -377,36 +394,3 @@ def run(args: argparse.Namespace) -> None:
     document["wall_clock_seconds"] = round(time.perf_counter() - started, 2)
     (out / "semantics.json").write_text(json.dumps(document, indent=2))
     print(f"[semantic] -> {out / 'panorama_semantics.npz'} in {document['wall_clock_seconds']:.1f} s")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--panorama", type=pathlib.Path, required=True)
-    parser.add_argument("--out", type=pathlib.Path, required=True)
-    parser.add_argument("--model", default=MODEL)
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
-    parser.add_argument(
-        "--backend",
-        choices=("mask2former", "hybrid"),
-        default="mask2former",
-        help="hybrid adds the SAM 3 concept pass and resolves the RF material axis.",
-    )
-    parser.add_argument("--concepts", type=pathlib.Path, help="concept catalogue, required by --backend hybrid")
-    parser.add_argument("--view-size", type=int, default=DEFAULT_VIEW_SIZE)
-    parser.add_argument(
-        "--inference-size",
-        type=int,
-        default=DEFAULT_INFERENCE_SIZE,
-        help="Square input the segmenter actually sees, instead of the checkpoint processor's 384.",
-    )
-    parser.add_argument("--concept-resolution", type=int, default=1008)
-    parser.add_argument("--concept-threshold", type=float, default=0.35)
-    parser.add_argument("--prompt-batch", type=int, default=32)
-    parser.add_argument("--gate-min-pixels", type=int, default=DEFAULT_GATE_MIN_PIXELS)
-    parser.add_argument("--output-width", type=int, default=8192)
-    parser.add_argument("--force", action="store_true")
-    run(parser.parse_args())
-
-
-if __name__ == "__main__":
-    main()

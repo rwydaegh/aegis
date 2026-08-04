@@ -253,8 +253,8 @@ lines of the package are called by other package code, so `semantic_twin/` is no
 a library with scripts on top. It is a second script folder that happens to be
 importable.
 
-The line between the two is arbitrary. Eight package modules have their own
-`__main__` block and run as `python -m semantic_twin.propagation.bystanders`.
+The line between the two is arbitrary. Eight package modules now have separate
+commands under `semantic_twin.cli`, such as `python -m semantic_twin.cli.bystanders`.
 Meanwhile `propagation_blender.py` (2,116 lines) and `run_exposure.py` (1,610) sit
 at the top level.
 

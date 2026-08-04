@@ -11,7 +11,6 @@ from collections import deque
 import numpy as np
 import pytest
 
-from screen_cities import CANDIDATES, markdown_table, screening_source
 from semantic_twin.screening import (
     EARTH_RADIUS_M,
     azimuth_spread,
@@ -27,6 +26,7 @@ from semantic_twin.screening import (
     screen,
     traverse,
 )
+from semantic_twin.screening_workflow import CANDIDATES, markdown_table, screening_source
 
 CENTRE_LAT = 51.055
 CENTRE_LON = 3.722
@@ -72,7 +72,7 @@ def screening_http(monkeypatch) -> tuple[FakeOpener, list[float]]:
         ]
     )
     sleeps: list[float] = []
-    monkeypatch.setattr("screen_cities.urllib.request.build_opener", lambda: opener)
+    monkeypatch.setattr("semantic_twin.screening_workflow.urllib.request.build_opener", lambda: opener)
     monkeypatch.setattr("semantic_twin.acquire.streetview.time.sleep", sleeps.append)
     return opener, sleeps
 
@@ -189,7 +189,7 @@ def test_screening_does_not_retry_session_creation(monkeypatch) -> None:
     server_error = urllib.error.HTTPError("url", 500, "Server error", {}, None)
     opener = FakeOpener([server_error, {"session": "would-succeed-on-a-retry"}])
     sleeps: list[float] = []
-    monkeypatch.setattr("screen_cities.urllib.request.build_opener", lambda: opener)
+    monkeypatch.setattr("semantic_twin.screening_workflow.urllib.request.build_opener", lambda: opener)
     monkeypatch.setattr("semantic_twin.acquire.streetview.time.sleep", sleeps.append)
 
     with pytest.raises(urllib.error.HTTPError, match="Server error"):

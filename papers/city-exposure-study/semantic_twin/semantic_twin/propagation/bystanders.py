@@ -1436,88 +1436,77 @@ def plot_mechanism(
     return path
 
 
-def main(argv: list[str] | None = None) -> int:
-    import argparse
+@dataclass(frozen=True)
+class BystanderStudyConfig:
+    """Inputs for the two-arm bystander study command."""
 
-    root = pathlib.Path(__file__).resolve().parents[2]
-    parser = argparse.ArgumentParser(description="Bystander blockage study, both arms.")
-    parser.add_argument("--locations", type=int, default=12)
-    parser.add_argument("--realisations", type=int, default=3)
-    parser.add_argument("--rays", type=int, default=200_000)
-    parser.add_argument("--max-bounces", type=int, default=DEFAULT_MAX_BOUNCES)
-    parser.add_argument("--local-cells", type=int, default=512)
-    parser.add_argument("--frequency-ghz", type=float, default=15.0)
-    parser.add_argument("--crop-m", type=int, default=250)
-    parser.add_argument("--site", default="korenmarkt")
-    parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--tag", default="korenmarkt")
-    parser.add_argument("--target-faces", type=int, default=600)
-    parser.add_argument("--max-radius-m", type=float, default=30.0)
-    parser.add_argument("--mean-free-paths", type=float, default=float("inf"))
-    parser.add_argument("--clothing-rms-mm", type=float, default=CLOTHING_RMS_HEIGHT_M * 1e3)
-    parser.add_argument(
-        "--body-absorber",
-        action="store_true",
-        help="make the bodies index matched absorbers, the control that removes re-illumination",
-    )
-    parser.add_argument("--densities", type=float, nargs="+", default=list(DENSITY_LADDER))
-    parser.add_argument("--stature-modes", nargs="+", default=list(STATURE_MODES), choices=list(STATURE_MODES))
-    parser.add_argument("--bodies", default=str(root / "outputs" / "korenmarkt_dynamic_bodies"))
-    parser.add_argument("--output", default=str(root / "outputs" / "bystander_study"))
-    parser.add_argument("--variant", default="llvm_ad_rgb")
-    parser.add_argument("--report", metavar="STEM", default=None, help="resummarise an existing run")
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="keep the standpoints already fully traced, drop the partial one, and carry on",
-    )
-    parser.add_argument(
-        "--noise-floor",
-        action="store_true",
-        help="measure how large a dB shift the estimator's own variance can fake, then stop",
-    )
-    args = parser.parse_args(argv)
+    locations: int
+    realisations: int
+    rays: int
+    max_bounces: int
+    local_cells: int
+    frequency_ghz: float
+    crop_m: int
+    site: str
+    seed: int
+    tag: str
+    target_faces: int
+    max_radius_m: float
+    mean_free_paths: float
+    clothing_rms_mm: float
+    body_absorber: bool
+    densities: list[float]
+    stature_modes: list[str]
+    bodies: str
+    output: str
+    variant: str
+    report: str | None
+    resume: bool
+    noise_floor: bool
 
-    output_dir = pathlib.Path(args.output)
-    stem = args.report or f"{args.tag}_{args.frequency_ghz:g}ghz"
-    if args.noise_floor:
+
+def run_bystander_study(config: BystanderStudyConfig) -> None:
+    """Run or summarise the bystander study from validated command inputs."""
+    output_dir = pathlib.Path(config.output)
+    stem = config.report or f"{config.tag}_{config.frequency_ghz:g}ghz"
+    if config.noise_floor:
         noise_floor(
             output_dir=output_dir,
-            site=args.site,
-            crop_m=args.crop_m,
-            frequency_hz=args.frequency_ghz * 1e9,
-            locations=args.locations,
-            rays=args.rays,
-            local_cells=args.local_cells,
-            max_bounces=args.max_bounces,
-            seed=args.seed,
-            variant=args.variant,
-            tag=args.tag,
+            site=config.site,
+            crop_m=config.crop_m,
+            frequency_hz=config.frequency_ghz * 1e9,
+            locations=config.locations,
+            rays=config.rays,
+            local_cells=config.local_cells,
+            max_bounces=config.max_bounces,
+            seed=config.seed,
+            variant=config.variant,
+            tag=config.tag,
         )
-        return 0
-    if args.report is None:
+        return
+    if config.report is None:
         run_study(
             output_dir=output_dir,
-            bodies_dir=pathlib.Path(args.bodies),
-            site=args.site,
-            crop_m=args.crop_m,
-            frequency_hz=args.frequency_ghz * 1e9,
-            locations=args.locations,
-            densities=tuple(args.densities),
-            realisations=args.realisations,
-            rays=args.rays,
-            local_cells=args.local_cells,
-            max_bounces=args.max_bounces,
-            seed=args.seed,
-            stature_modes=tuple(args.stature_modes),
-            target_faces=args.target_faces,
-            max_radius_m=args.max_radius_m,
-            mean_free_paths=args.mean_free_paths,
-            clothing_rms_height_m=args.clothing_rms_mm * 1e-3,
-            body_absorber=args.body_absorber,
-            variant=args.variant,
-            tag=args.tag,
-            resume=args.resume,
+            bodies_dir=pathlib.Path(config.bodies),
+            site=config.site,
+            crop_m=config.crop_m,
+            frequency_hz=config.frequency_ghz * 1e9,
+            locations=config.locations,
+            densities=tuple(config.densities),
+            realisations=config.realisations,
+            rays=config.rays,
+            local_cells=config.local_cells,
+            max_bounces=config.max_bounces,
+            seed=config.seed,
+            stature_modes=tuple(config.stature_modes),
+            target_faces=config.target_faces,
+            max_radius_m=config.max_radius_m,
+            mean_free_paths=config.mean_free_paths,
+            clothing_rms_height_m=config.clothing_rms_mm * 1e-3,
+            body_absorber=config.body_absorber,
+            variant=config.variant,
+            tag=config.tag,
+            resume=config.resume,
         )
     summary = summarise_study(output_dir / f"{stem}_rows.jsonl")
     summary_path = output_dir / f"{stem}_summary.json"
@@ -1525,12 +1514,7 @@ def main(argv: list[str] | None = None) -> int:
     figure = plot_study(summary, output_dir / f"{stem}_shift.png")
     mechanism = plot_mechanism(
         output_dir / f"{stem}_mechanism.png",
-        library=load_body_library(pathlib.Path(args.bodies), target_faces=args.target_faces),
+        library=load_body_library(pathlib.Path(config.bodies), target_faces=config.target_faces),
         summary=summary,
     )
     print(f"wrote {summary_path}, {figure} and {mechanism}")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

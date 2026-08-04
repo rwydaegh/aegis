@@ -39,7 +39,6 @@ def literal(relative: str, name: str):
 #: Every file carrying all eleven sites, and the order it carries them in.
 ELEVEN = (
     ("FIGURES/make_eleven_cities_exposure.py", "SITES"),
-    ("summarise_panorama_routes.py", "SITES"),
     ("measure_near_clutter.py", "SITES"),
 )
 
@@ -69,7 +68,8 @@ def test_the_study_order_is_the_one_the_reporting_files_use():
     """
     assert tuple(literal("FIGURES/make_eleven_cities_exposure.py", "SITES")) == STUDY_ORDER
 
-    assert tuple(literal("summarise_panorama_routes.py", "SITES")) == tuple(sorted(STUDY_ORDER))
+    panorama_routes = (paths.root() / "summarise_panorama_routes.py").read_text()
+    assert "sorted(STUDY_ORDER)" in panorama_routes
     assert tuple(literal("measure_near_clutter.py", "SITES")) == tuple(sorted(STUDY_ORDER))
 
 
@@ -307,7 +307,7 @@ def test_the_walk_cities_figure_renames_prague_and_nothing_else_does():
 
 def test_the_squares_and_countries_are_what_the_screener_proposed():
     """The registry's names trace back to the study's first statement of them."""
-    tree = ast.parse((paths.root() / "screen_cities.py").read_text())
+    tree = ast.parse((paths.root() / "semantic_twin" / "screening_workflow.py").read_text())
     proposed = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "Candidate":

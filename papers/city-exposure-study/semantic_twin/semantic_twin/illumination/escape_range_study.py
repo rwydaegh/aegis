@@ -48,8 +48,8 @@ spread of those lengths is what a range term would price.
 
 Run from the ``semantic_twin`` directory::
 
-    ../../../.venv/bin/python measure_escape_range_term.py
-    ../../../.venv/bin/python measure_escape_range_term.py --sites korenmarkt --locations 8
+    ../../../.venv/bin/python archive/scripts/measure_escape_range_term.py
+    ../../../.venv/bin/python archive/scripts/measure_escape_range_term.py --sites korenmarkt --locations 8
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Command-line entry point for the escape-range diagnostic."""
+"""Archived command-line entry point for the escape-range diagnostic."""
 
 import argparse
 

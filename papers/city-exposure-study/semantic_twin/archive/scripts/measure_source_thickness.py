@@ -1,4 +1,4 @@
-"""Command-line entry point for the source-thickness study."""
+"""Archived command-line entry point for the source-thickness study."""
 
 import argparse
 

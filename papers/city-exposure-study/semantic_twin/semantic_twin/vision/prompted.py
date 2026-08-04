@@ -28,7 +28,7 @@ Note on resolution: ``Sam3Processor`` resizes every input to 1008 x 1008. Unlike
 the Mapillary Vistas processor's 384, that is the resolution the model was
 trained at, not a config accident, so it is recorded rather than overridden.
 
-    python -m semantic_twin.vision.prompted \
+    python -m semantic_twin.cli.prompted \
       --views data/panoramas/korenmarkt/semantics/views \
       --concepts config/semantic_concepts.json \
       --out data/panoramas/korenmarkt/sam3
@@ -36,7 +36,6 @@ trained at, not a config accident, so it is recorded rather than overridden.
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import pathlib
@@ -381,47 +380,50 @@ class Sam3ConceptBackend:
         }
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--views", type=pathlib.Path, required=True)
-    parser.add_argument("--concepts", type=pathlib.Path, required=True)
-    parser.add_argument("--out", type=pathlib.Path, required=True)
-    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
-    parser.add_argument("--resolution", type=int, default=DEFAULT_RESOLUTION)
-    parser.add_argument("--prompt-batch", type=int, default=DEFAULT_PROMPT_BATCH)
-    parser.add_argument("--limit-views", type=int)
-    parser.add_argument("--force", action="store_true")
-    args = parser.parse_args()
+@dataclass(frozen=True)
+class PromptedRunConfig:
+    """Inputs for prompted concept segmentation over prepared views."""
 
-    catalog = ConceptCatalog.load(args.concepts)
-    args.out.mkdir(parents=True, exist_ok=True)
-    image_paths = [path for path in sorted(args.views.glob("*.jpg")) if not path.stem.endswith("_key")]
-    if args.limit_views is not None:
-        if args.limit_views < 1:
+    views: pathlib.Path
+    concepts: pathlib.Path
+    out: pathlib.Path
+    threshold: float
+    resolution: int
+    prompt_batch: int
+    limit_views: int | None
+    force: bool
+
+
+def run_prompted(config: PromptedRunConfig) -> None:
+    catalog = ConceptCatalog.load(config.concepts)
+    config.out.mkdir(parents=True, exist_ok=True)
+    image_paths = [path for path in sorted(config.views.glob("*.jpg")) if not path.stem.endswith("_key")]
+    if config.limit_views is not None:
+        if config.limit_views < 1:
             raise SystemExit("--limit-views must be positive")
-        image_paths = image_paths[: args.limit_views]
+        image_paths = image_paths[: config.limit_views]
     if not image_paths:
-        raise SystemExit(f"no views found under {args.views}")
+        raise SystemExit(f"no views found under {config.views}")
 
     with Image.open(image_paths[0]) as probe:
         view_size = probe.size[0]
     key = cache_key(
         model=MODEL,
-        resolution=args.resolution,
-        threshold=args.threshold,
+        resolution=config.resolution,
+        threshold=config.threshold,
         view_size=view_size,
         catalog=catalog,
     )
     backend = Sam3ConceptBackend(
         catalog,
-        resolution=args.resolution,
-        threshold=args.threshold,
-        prompt_batch=args.prompt_batch,
+        resolution=config.resolution,
+        threshold=config.threshold,
+        prompt_batch=config.prompt_batch,
     )
     elapsed = 0.0
     for image_path in image_paths:
-        destination = args.out / f"{image_path.stem}.npz"
-        if not args.force and load_prediction(destination, key=key) is not None:
+        destination = config.out / f"{image_path.stem}.npz"
+        if not config.force and load_prediction(destination, key=key) is not None:
             print(f"[sam3] {image_path.name}: cached")
             continue
         with Image.open(image_path) as source:
@@ -440,8 +442,4 @@ def main() -> None:
         "views": len(image_paths),
         "inference_seconds": round(elapsed, 3),
     }
-    (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2))
-
-
-if __name__ == "__main__":
-    main()
+    (config.out / "manifest.json").write_text(json.dumps(manifest, indent=2))

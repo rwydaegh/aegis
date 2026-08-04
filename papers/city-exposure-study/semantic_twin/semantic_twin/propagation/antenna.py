@@ -55,11 +55,9 @@ the antenna boresight.
 
 from __future__ import annotations
 
-import argparse
 import json
 import math
 import pathlib
-import sys
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -76,7 +74,7 @@ from ..illumination import (
     Isotropic,
 )
 from ..sites import STUDY_ORDER
-from ..transport.tracer import DEFAULT_MAX_BOUNCES, TERMINATIONS
+from ..transport.tracer import TERMINATIONS
 
 SPEED_OF_LIGHT_M_S = 299_792_458.0
 
@@ -1060,7 +1058,28 @@ def build_models(
 SITES = tuple(sorted(STUDY_ORDER))
 
 
-def _trace_site(site: str, args: argparse.Namespace, models: dict[str, Any]) -> dict[str, np.ndarray]:
+@dataclass(frozen=True)
+class AntennaStudyConfig:
+    """Inputs for an antenna model or steering artefact study."""
+
+    sites: list[str]
+    all_sites: bool
+    kernel: bool
+    artefact: bool
+    locations: int
+    rays: int
+    max_bounces: int
+    frequency_hz: float
+    crop_m: int
+    walk_radius_m: float
+    seed: int
+    grid_rotation_deg: float
+    macro_tilt_deg: float
+    micro_tilt_deg: float
+    tag: str
+
+
+def _trace_site(site: str, config: AntennaStudyConfig, models: dict[str, Any]) -> dict[str, np.ndarray]:
     """One traced pass over a site, scoring every model on the same rays."""
     from ..exposure.study import GROUND_DATUM_M
     from .geometry import MitsubaGeometry
@@ -1070,20 +1089,26 @@ def _trace_site(site: str, args: argparse.Namespace, models: dict[str, Any]) -> 
     from ..walk import build_walk, ground_datum, stratified_subset
 
     config_dir = pathlib.Path(__file__).resolve().parents[2] / "config"
-    geometry = MitsubaGeometry(site_mesh(site, args.crop_m))
+    geometry = MitsubaGeometry(site_mesh(site, config.crop_m))
     datum = GROUND_DATUM_M if site == "korenmarkt" else ground_datum(geometry)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_table(config_dir, args.frequency_hz)
-    config = TraceConfig(
-        frequency_hz=args.frequency_hz,
-        rays=args.rays,
+    binding = load_table(config_dir, config.frequency_hz)
+    trace_config = TraceConfig(
+        frequency_hz=config.frequency_hz,
+        rays=config.rays,
         local_cells=512,
-        max_bounces=args.max_bounces,
-        seed=args.seed,
+        max_bounces=config.max_bounces,
+        seed=config.seed,
     )
-    tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
-    walk = build_walk(geometry, ground_datum_m=datum, radius_m=args.walk_radius_m, spacing_m=3.0, seed=args.seed)
-    picks = stratified_subset(walk, args.locations)
+    tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, trace_config)
+    walk = build_walk(
+        geometry,
+        ground_datum_m=datum,
+        radius_m=config.walk_radius_m,
+        spacing_m=3.0,
+        seed=config.seed,
+    )
+    picks = stratified_subset(walk, config.locations)
 
     rows: list[dict[str, float]] = []
     for offset, index in enumerate(picks):
@@ -1091,7 +1116,7 @@ def _trace_site(site: str, args: argparse.Namespace, models: dict[str, Any]) -> 
             walk.points[index],
             models,
             ground_z_m=float(walk.ground_z_m[index]),
-            seed=args.seed + 1000 * int(index),
+            seed=config.seed + 1000 * int(index),
         )
         rows.append(result.scalars())
         if offset % 10 == 0:
@@ -1113,7 +1138,7 @@ ARTEFACT_APERTURES: tuple[int, ...] = (2, 4, 8, 16, 32)
 ARTEFACT_CODEBOOKS: tuple[int, ...] = (8, 16, 32)
 
 
-def _artefact_site(site: str, args: argparse.Namespace) -> dict[str, Any]:
+def _artefact_site(site: str, config: AntennaStudyConfig) -> dict[str, Any]:
     """The steering measurement at one site. Needs the polylines, so it re-traces.
 
     This is the generator for BEAMFORMING.md section 6.3 and for the paper's
@@ -1133,30 +1158,36 @@ def _artefact_site(site: str, args: argparse.Namespace) -> dict[str, Any]:
     from ..walk import build_walk, ground_datum, stratified_subset
 
     config_dir = pathlib.Path(__file__).resolve().parents[2] / "config"
-    geometry = MitsubaGeometry(site_mesh(site, args.crop_m))
+    geometry = MitsubaGeometry(site_mesh(site, config.crop_m))
     datum = GROUND_DATUM_M if site == "korenmarkt" else ground_datum(geometry)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_table(config_dir, args.frequency_hz)
-    config = TraceConfig(
-        frequency_hz=args.frequency_hz,
-        rays=args.rays,
+    binding = load_table(config_dir, config.frequency_hz)
+    trace_config = TraceConfig(
+        frequency_hz=config.frequency_hz,
+        rays=config.rays,
         local_cells=512,
-        max_bounces=args.max_bounces,
-        seed=args.seed,
+        max_bounces=config.max_bounces,
+        seed=config.seed,
     )
-    tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
-    walk = build_walk(geometry, ground_datum_m=datum, radius_m=args.walk_radius_m, spacing_m=3.0, seed=args.seed)
-    picks = stratified_subset(walk, args.locations)
+    tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, trace_config)
+    walk = build_walk(
+        geometry,
+        ground_datum_m=datum,
+        radius_m=config.walk_radius_m,
+        spacing_m=3.0,
+        seed=config.seed,
+    )
+    picks = stratified_subset(walk, config.locations)
     populations = {"rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
 
     rows: list[dict[str, Any]] = []
     for offset, index in enumerate(picks):
-        recorder = PathRecorder(capacity=args.rays)
+        recorder = PathRecorder(capacity=config.rays)
         result = tracer.trace(
             walk.points[index],
             {"isotropic": ISOTROPIC, **populations},
             ground_z_m=float(walk.ground_z_m[index]),
-            seed=args.seed + 1000 * int(index),
+            seed=config.seed + 1000 * int(index),
             recorder=recorder,
         )
         record = recorder.result()
@@ -1198,40 +1229,19 @@ def _artefact_site(site: str, args: argparse.Namespace) -> dict[str, Any]:
     return {"standpoints": rows, "summary": summary}
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--sites", nargs="+", default=["korenmarkt"])
-    parser.add_argument("--all-sites", action="store_true")
-    parser.add_argument("--kernel", action="store_true", help="add the elevation kernel probes to the model set")
-    parser.add_argument(
-        "--artefact",
-        action="store_true",
-        help="measure the geometric steering reduction instead of scoring the model set",
-    )
-    parser.add_argument("--locations", type=int, default=80)
-    parser.add_argument("--rays", type=int, default=200_000)
-    parser.add_argument("--max-bounces", type=int, default=DEFAULT_MAX_BOUNCES)
-    parser.add_argument("--frequency-hz", type=float, default=15.0e9)
-    parser.add_argument("--crop-m", type=int, default=250)
-    parser.add_argument("--walk-radius-m", type=float, default=90.0)
-    parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--grid-rotation-deg", type=float, default=0.0)
-    parser.add_argument("--macro-tilt-deg", type=float, default=MACRO_TILT_DEG)
-    parser.add_argument("--micro-tilt-deg", type=float, default=MICRO_TILT_DEG)
-    parser.add_argument("--tag", default="antenna")
-    args = parser.parse_args(argv)
-
+def run_antenna_study(config: AntennaStudyConfig) -> None:
+    """Run the antenna model or geometric steering study."""
     output = pathlib.Path(__file__).resolve().parents[2] / "outputs" / "antenna"
     output.mkdir(parents=True, exist_ok=True)
-    sites = SITES if args.all_sites else tuple(args.sites)
+    sites = SITES if config.all_sites else tuple(config.sites)
 
-    if args.artefact:
+    if config.artefact:
         started = time.perf_counter()
-        payload = {"kind": "artefact", "arguments": vars(args), "sites": {}}
-        path = output / f"{args.tag}_artefact_{args.crop_m}m.json"
+        payload = {"kind": "artefact", "arguments": dict(config.__dict__), "sites": {}}
+        path = output / f"{config.tag}_artefact_{config.crop_m}m.json"
         for site in sites:
-            print(f"[artefact] {site} at {args.crop_m} m", flush=True)
-            payload["sites"][site] = _artefact_site(site, args)
+            print(f"[artefact] {site} at {config.crop_m} m", flush=True)
+            payload["sites"][site] = _artefact_site(site, config)
             path.write_text(json.dumps(payload, indent=2, default=float) + "\n")
         payload["seconds"] = time.perf_counter() - started
         path.write_text(json.dumps(payload, indent=2, default=float) + "\n")
@@ -1244,15 +1254,15 @@ def main(argv: list[str] | None = None) -> int:
                     f"  floor {value['floor_db']:+.2f}  offset {value['median_offset_deg']:5.2f} deg"
                 )
         print(f"\n[done] {path} in {payload['seconds']:.0f} s")
-        return 0
+        return
 
     models: dict[str, Any] = build_models(
-        grid_rotation_deg=args.grid_rotation_deg,
-        macro_tilt_deg=args.macro_tilt_deg,
-        micro_tilt_deg=args.micro_tilt_deg,
+        grid_rotation_deg=config.grid_rotation_deg,
+        macro_tilt_deg=config.macro_tilt_deg,
+        micro_tilt_deg=config.micro_tilt_deg,
     )
     payload: dict[str, Any] = {"kind": "models"}
-    if args.kernel:
+    if config.kernel:
         # The kernel rides along on the same rays. It costs one more deposit per
         # band and it buys every azimuthally symmetric pattern offline, so a
         # downtilt sweep after the fact needs no tracing at all.
@@ -1261,20 +1271,15 @@ def main(argv: list[str] | None = None) -> int:
     payload["models"] = sorted(models)
 
     started = time.perf_counter()
-    payload["arguments"] = vars(args)
+    payload["arguments"] = dict(config.__dict__)
     payload["sites"] = {}
     for site in sites:
-        print(f"[trace] {site} at {args.crop_m} m, {len(models)} models", flush=True)
-        scored = _trace_site(site, args, models)
+        print(f"[trace] {site} at {config.crop_m} m, {len(models)} models", flush=True)
+        scored = _trace_site(site, config, models)
         payload["sites"][site] = {key: value.tolist() for key, value in scored.items()}
-        path = output / f"{args.tag}_{args.crop_m}m.json"
+        path = output / f"{config.tag}_{config.crop_m}m.json"
         path.write_text(json.dumps(payload, indent=2, default=float) + "\n")
     payload["seconds"] = time.perf_counter() - started
-    path = output / f"{args.tag}_{args.crop_m}m.json"
+    path = output / f"{config.tag}_{config.crop_m}m.json"
     path.write_text(json.dumps(payload, indent=2, default=float) + "\n")
     print(f"[done] {path} in {payload['seconds']:.0f} s")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

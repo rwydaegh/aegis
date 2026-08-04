@@ -1,4 +1,4 @@
-"""Command-line entry point for the facade-tip construction study."""
+"""Archived command-line entry point for the facade-tip construction study."""
 
 import argparse
 

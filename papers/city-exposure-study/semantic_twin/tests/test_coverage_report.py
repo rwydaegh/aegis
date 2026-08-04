@@ -15,8 +15,8 @@ from semantic_twin.scene import site_config_build
 trimesh = pytest.importorskip("trimesh")
 pytest.importorskip("trimesh.ray.ray_pyembree")
 
+from semantic_twin.report.evidence_coverage import markdown, splice  # noqa: E402
 from semantic_twin.scene.site_config_build import ground_datum  # noqa: E402
-from summarise_evidence_coverage import markdown, splice  # noqa: E402
 
 
 def square_with_a_block(tmp_path, ground_z=10.0, roof_z=30.0, half=90.0, block=40.0):

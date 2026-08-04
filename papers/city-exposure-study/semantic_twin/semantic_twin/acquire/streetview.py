@@ -9,7 +9,7 @@ which and why the two are not interchangeable.
 
 Run from ``semantic_twin`` with the AEGIS virtual environment::
 
-    ../../../.venv/bin/python -m semantic_twin.acquire.streetview \
+    ../../../.venv/bin/python -m semantic_twin.cli.streetview \
       --scene config/korenmarkt.json --zoom 5
 
 Zoom 5 is the native panorama resolution for a car capture, usually 13k or 16k
@@ -20,7 +20,6 @@ folder records the complete metadata and ENU pose the projection pipeline reads.
 
 from __future__ import annotations
 
-import argparse
 import json
 import math
 import pathlib
@@ -29,7 +28,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from io import BytesIO
 from typing import Any
 
@@ -340,20 +339,23 @@ def download_panorama(
     return destination
 
 
-def main() -> None:
+@dataclass(frozen=True)
+class StreetViewAcquireConfig:
+    """Inputs for acquiring one Street View panorama."""
+
+    scene: pathlib.Path
+    zoom: int
+    workers: int
+    max_tiles: int
+    out: pathlib.Path | None
+
+
+def acquire_panorama(config: StreetViewAcquireConfig) -> None:
     from ..scene.site_config import load_scene
 
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scene", type=pathlib.Path, required=True)
-    parser.add_argument("--zoom", type=int, choices=range(0, 6), default=5)
-    parser.add_argument("--workers", type=int, default=8)
-    parser.add_argument("--max-tiles", type=int, default=600)
-    parser.add_argument("--out", type=pathlib.Path)
-    args = parser.parse_args()
-
-    scene = load_scene(args.scene)
+    scene = load_scene(config.scene)
     location = scene["location"]
-    out_dir = args.out or paths.panorama_set(str(scene["name"]))
+    out_dir = config.out or paths.panorama_set(str(scene["name"]))
     client = StreetViewTiles(google_api_key())
     session = client.create_session()
     metadata = client.metadata(
@@ -364,7 +366,7 @@ def main() -> None:
     if "panoId" not in metadata:
         raise SystemExit(f"no Street View panorama found: {metadata}")
 
-    zoom = min(args.zoom, native_zoom(metadata))
+    zoom = min(config.zoom, native_zoom(metadata))
     pose = pose_from_metadata(metadata, scene, support_mesh=load_support_mesh(scene))
     safe_session = {k: session[k] for k in ("expiry", "tileWidth", "tileHeight", "imageFormat")}
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -377,15 +379,11 @@ def main() -> None:
         metadata,
         out_dir,
         zoom=zoom,
-        workers=args.workers,
-        max_tiles=args.max_tiles,
+        workers=config.workers,
+        max_tiles=config.max_tiles,
     )
     width, height = zoom_dimensions(metadata, zoom)
     print(f"[panorama] {metadata.get('date', 'undated')} {width}x{height}")
     print(f"[panorama] ENU camera {pose.position_enu_m}")
     print(f"[panorama] {metadata.get('copyright', '')}")
     print(f"[panorama] -> {destination}")
-
-
-if __name__ == "__main__":
-    main()

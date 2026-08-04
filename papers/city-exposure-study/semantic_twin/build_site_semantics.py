@@ -17,34 +17,6 @@ from semantic_twin.scene.site_semantics import (
 )
 
 
-def build(
-    site: str,
-    *,
-    crop_m: int,
-    grid_height: int,
-    block_rows: int,
-    workers: int,
-    max_residual_deg: float,
-    max_sky_conflict: float,
-    min_conflict_range_m: float,
-    out_root: pathlib.Path,
-) -> dict[str, object] | None:
-    """Preserve the command module's original callable interface."""
-    return _build(
-        site,
-        SemanticBuildOptions(
-            crop_m=crop_m,
-            grid_height=grid_height,
-            block_rows=block_rows,
-            workers=workers,
-            max_residual_deg=max_residual_deg,
-            max_sky_conflict=max_sky_conflict,
-            min_conflict_range_m=min_conflict_range_m,
-            out_root=out_root,
-        ),
-    )
-
-
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site", nargs="+")
@@ -70,19 +42,19 @@ def main(argv: list[str] | None = None) -> int:
     selected = SITES if args.all_sites else tuple(args.site or ())
     if not selected:
         raise SystemExit("name --site or pass --all-sites")
+    options = SemanticBuildOptions(
+        crop_m=args.crop_m,
+        grid_height=args.grid_height,
+        block_rows=args.block_rows,
+        workers=args.workers,
+        max_residual_deg=args.max_residual_deg,
+        max_sky_conflict=args.max_sky_conflict,
+        min_conflict_range_m=args.min_conflict_range_m,
+        out_root=args.out,
+    )
     for site in selected:
         try:
-            report = build(
-                site,
-                crop_m=args.crop_m,
-                grid_height=args.grid_height,
-                block_rows=args.block_rows,
-                workers=args.workers,
-                max_residual_deg=args.max_residual_deg,
-                max_sky_conflict=args.max_sky_conflict,
-                min_conflict_range_m=args.min_conflict_range_m,
-                out_root=args.out,
-            )
+            report = _build(site, options)
         except FileNotFoundError as exc:
             print(f"[skip] {site}: {exc}", flush=True)
             continue

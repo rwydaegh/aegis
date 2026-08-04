@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import pathlib
 
-from summarise_site_panoramas import markdown, panorama_rows, summarise
+from semantic_twin.report.panorama_registration import markdown, panorama_rows, summarise, write_summary
 
 
 def write_panorama(
@@ -94,3 +94,16 @@ def test_markdown_does_not_print_none_for_a_site_with_nothing_registered(tmp_pat
     table = markdown([summarise(site)])
     assert "n/a" in table
     assert "None" not in table
+
+
+def test_writer_preserves_the_json_and_markdown_contract(tmp_path):
+    site = tmp_path / "prague"
+    write_panorama(site, "pano_00_a", residual=0.8)
+    output = tmp_path / "report"
+
+    rendered = write_summary([site], output)
+
+    assert (output / "panorama_registration.md").read_text() == rendered
+    json_text = (output / "panorama_registration.json").read_text()
+    assert json_text.endswith("\n")
+    assert json.loads(json_text) == [summarise(site)]

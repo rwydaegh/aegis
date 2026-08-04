@@ -3,7 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from fetch_site_panoramas import select, spread_subset
+from semantic_twin.acquire.panorama_selection import SelectionOptions, select as select_panoramas, spread_subset
+
+
+def select(row, count, walk_date=None, **kwargs):
+    return select_panoramas(row, SelectionOptions(count=count, walk_date=walk_date, **kwargs))
 
 
 def test_farthest_point_sampling_starts_at_the_centre():

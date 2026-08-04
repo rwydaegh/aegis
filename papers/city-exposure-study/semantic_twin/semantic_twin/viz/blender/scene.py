@@ -16,14 +16,55 @@ it.
 
 from __future__ import annotations
 
+import json
 import math
+import pathlib
 from typing import Any, Mapping, Sequence
 
 import bpy
 import numpy as np
 
-from .payload import camera_rotation
+from .payload import builder_fingerprint, camera_rotation
 from .style import colour_ramp
+
+
+def stamp_scene(
+    manifest: dict,
+    *,
+    rays: dict,
+    legs: dict,
+    connections: dict,
+    layers: dict,
+    root: pathlib.Path,
+) -> None:
+    """Write reading notes and measured counts onto the Blender scene."""
+    current = bpy.context.scene
+    current["site"] = manifest["site"]
+    current["builder_fingerprint"] = builder_fingerprint(root)
+    current["frequency_ghz"] = manifest["frequency_hz"] / 1.0e9
+    current["traced_crop_radius_m"] = manifest["traced_crop_radius_m"]
+    current["drawn_radius_m"] = manifest["drawn_radius_m"]
+    current["hero_sky_fraction"] = manifest["hero"]["sky_fraction"]
+    current["hero_susceptibility"] = json.dumps(manifest["hero"]["susceptibility"])
+    current["ray_bundle_counts"] = json.dumps(rays)
+    current["ray_leg_counts"] = json.dumps(legs)
+    current["next_event_counts"] = json.dumps(connections)
+    current["evidence_layers"] = json.dumps(layers, default=str)
+    current["reading_note"] = (
+        "Every object here is measured. Ray thickness is the cube root of throughput. "
+        "The lobes are normalised by their own peak so their shapes compare and their "
+        "levels do not. The drawn mesh is smaller than the traced mesh, see "
+        "drawn_radius_m against traced_crop_radius_m. The evidence collections start "
+        "hidden and each of their objects carries several colour layers, listed on the "
+        "object as colour_layers. PAYLOAD.md says what each one means."
+    )
+    record = manifest.get("evidence", {})
+    offset = record.get("semantic_surface_offset_from_drawn_mesh")
+    if offset is not None:
+        current["semantic_surface_offset_from_drawn_mesh"] = json.dumps(offset)
+    camera = record.get("camera")
+    if camera is not None:
+        current["evidence_camera"] = json.dumps(camera)
 
 
 def reset_scene() -> None:
