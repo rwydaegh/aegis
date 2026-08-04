@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from semantic_twin.materials import SurfaceRoughnessLibrary
-from semantic_twin.mmwave import rayleigh_smooth_threshold_m, specular_power_fraction
+from semantic_twin.materials.roughness import rayleigh_smooth_threshold_m, specular_power_fraction
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config" / "surface_roughness.json"

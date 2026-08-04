@@ -1,8 +1,8 @@
 """Infer metric range and uncertainty for perspective panorama crops.
 
 UniDepthV2 operates on normal perspective cameras.  The Street View panorama is
-therefore never passed to the model directly: ``semantics.py`` has already
-created 90-degree crops with known pinhole intrinsics.  The produced ``range_m``
+therefore never passed to the model directly: ``semantic_twin/vision/views.py``
+has already created 90-degree crops with known pinhole intrinsics.  The produced ``range_m``
 is the Euclidean distance along each image ray, which is the quantity needed to
 compare a model prediction with the first hit in the support mesh.
 
@@ -19,6 +19,8 @@ import pathlib
 
 import numpy as np
 from PIL import Image
+
+from semantic_twin.vision.bodies import pinhole_intrinsics as body_intrinsics
 
 # What UniDepthV2's ``confidence`` output actually is, settled from the source
 # rather than from the key name.  ``unidepth/models/unidepthv2/decoder.py``
@@ -65,9 +67,14 @@ def relative_error_to_log_sigma(
 
 
 def pinhole_intrinsics(width: int, height: int, horizontal_fov_deg: float = 90.0) -> np.ndarray:
-    """Return the known intrinsics of one panorama perspective crop."""
-    focal = width / (2.0 * np.tan(np.deg2rad(horizontal_fov_deg) / 2.0))
-    return np.array([[focal, 0.0, width / 2.0], [0.0, focal, height / 2.0], [0.0, 0.0, 1.0]], dtype=np.float32)
+    """Intrinsics of one panorama perspective crop, in the single precision UniDepth wants.
+
+    The arithmetic is :func:`semantic_twin.vision.bodies.pinhole_intrinsics`,
+    which the body reconstruction already needed and which validates its inputs.
+    Narrowing its float64 result rounds each element exactly once, so this is bit
+    identical to the copy that used to live here.
+    """
+    return body_intrinsics(width, height, horizontal_fov_deg).astype(np.float32)
 
 
 def uncertainty_visual(uncertainty: np.ndarray) -> Image.Image:

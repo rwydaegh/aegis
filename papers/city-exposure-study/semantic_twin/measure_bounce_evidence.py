@@ -14,7 +14,7 @@ can come out the other way.
 The evidence mask is the per triangle transient free ray count from the fused
 station binding, indexed on the tracer's own mesh with no join. A triangle is
 observed when at least one admitted station collected at least one clean ray on
-it, which is exactly the set that ``bind_from_walk`` gives a measured material
+it, which is exactly the set that ``bind_walk_entities`` gives a measured material
 to. Everything else falls back to the geometric orientation rule, so a bounce
 landing outside the mask is a bounce landing on a guessed material.
 
@@ -69,9 +69,10 @@ from semantic_twin.propagation import (  # noqa: E402
     SbrTracer,
     TraceConfig,
 )
-from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings  # noqa: E402
-from semantic_twin.propagation.semantic_binding import bind, bind_from_walk  # noqa: E402
-from semantic_twin.propagation.walk import build_walk, stratified_subset  # noqa: E402
+from semantic_twin.materials import CLASS_NAMES, classify_faces, load_table  # noqa: E402
+from semantic_twin.materials import bind_fishnet, bind_walk_entities  # noqa: E402
+from semantic_twin.walk.grid import build_walk  # noqa: E402
+from semantic_twin.walk.model import stratified_subset  # noqa: E402
 
 CONFIG = SCRIPT_DIR / "config"
 OUTPUT = SCRIPT_DIR / "outputs" / "bounce_budget"
@@ -109,7 +110,7 @@ def evidence_masks(
     landed on at all. ``survived_transient_rejection`` is the subset whose rays
     were not thrown away as a person, a vehicle or a piece of clutter in front.
     ``walk`` is the subset that came out of that with a material, which is the
-    set ``bind_from_walk`` actually binds and therefore the only one that changes
+    set ``bind_walk_entities`` actually binds and therefore the only one that changes
     a number. ``fishnet`` is the stricter cut surface set, which exists only
     where a fishnet was built and joins on triangle centroids rather than on
     index.
@@ -129,7 +130,7 @@ def evidence_masks(
             "source": str(walk_npz.relative_to(SCRIPT_DIR)),
             "definition": "at least one of those rays was not rejected as a transient or as clutter in front",
         }
-        binding = bind_from_walk(areas, face_class, walk_npz=walk_npz, semantics_path=SEMANTICS)
+        binding = bind_walk_entities(areas, face_class, walk_npz=walk_npz, semantics_path=SEMANTICS)
         covered = binding.face_class >= len(CLASS_NAMES)
         masks["walk"] = {
             "mask": covered,
@@ -148,7 +149,7 @@ def evidence_masks(
     if fishnet is not None:
         directory, mesh_path = fishnet
         source = MitsubaGeometry(mesh_path)
-        binding = bind(
+        binding = bind_fishnet(
             geometry.vertices,
             geometry.faces,
             areas,
@@ -251,7 +252,7 @@ def measure(site: str, crop_m: int, args: argparse.Namespace) -> dict[str, Any]:
     datum = measure_ground_datum(geometry, radius_m=args.walk_radius_m).z_m
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
     areas = geometry.face_areas()
-    binding = load_bindings(CONFIG, args.frequency_hz)
+    binding = load_table(CONFIG, args.frequency_hz)
 
     masks = evidence_masks(site, crop_m, geometry, areas, face_class)
     if not masks:

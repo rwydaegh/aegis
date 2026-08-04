@@ -3,6 +3,13 @@
 The panorama is treated as a sphere whose centre column faces the reported
 heading. Perspective inference views are sampled from that sphere so segmentation
 models never see the severe pole distortion of a raw equirectangular image.
+
+This is part of the geometry layer that :mod:`semantic_twin.scene` holds, and it
+was left at the top level rather than moved into it. It has about thirty
+importers spread across modules that several other waves are rewriting, and two
+live spellings of the most imported module in the package would cost more than
+the tidier import path is worth. The one function it shares with the mesh cutter
+does live under :mod:`semantic_twin.scene`, and is imported back here.
 """
 
 from __future__ import annotations
@@ -14,6 +21,8 @@ from dataclasses import dataclass
 import numpy as np
 from PIL import Image
 from scipy.ndimage import map_coordinates
+
+from .scene.frames import view_basis
 
 _LAST_DECODE: tuple[weakref.ReferenceType[Image.Image], np.ndarray] | None = None
 
@@ -61,15 +70,6 @@ def inference_views() -> list[PerspectiveView]:
     ]
     views.extend([PerspectiveView("zenith", 0.0, 90.0, 100.0), PerspectiveView("nadir", 0.0, -90.0, 100.0)])
     return views
-
-
-def view_basis(yaw_deg: float, pitch_deg: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Panorama-local right, forward and up axes of one rectilinear view."""
-    yaw, pitch = np.radians([yaw_deg, pitch_deg])
-    forward = np.array([math.sin(yaw) * math.cos(pitch), math.cos(yaw) * math.cos(pitch), math.sin(pitch)])
-    right = np.array([math.cos(yaw), -math.sin(yaw), 0.0])
-    up = np.cross(right, forward)
-    return right, forward, up
 
 
 def perspective_directions(view: PerspectiveView, width: int, height: int) -> np.ndarray:

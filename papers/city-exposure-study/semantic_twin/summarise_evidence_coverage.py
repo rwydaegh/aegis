@@ -110,7 +110,7 @@ def measure_semantic_coverage(site: str, *, variant: str = "llvm_ad_rgb") -> dic
     # dependency is taken only when a measurement is actually asked for.
     import run_exposure
     from semantic_twin.propagation import MitsubaGeometry
-    from semantic_twin.propagation.semantic_binding import bind
+    from semantic_twin.materials import bind_fishnet
 
     resolved = run_exposure.site_fishnet(site)
     if resolved is None:
@@ -122,7 +122,7 @@ def measure_semantic_coverage(site: str, *, variant: str = "llvm_ad_rgb") -> dic
     # triangles. They do not affect the covered fraction, so the datum they are
     # cut at does not either.
     classes = run_exposure.classify_faces(geometry.vertices, geometry.faces, 0.0)
-    bound = bind(
+    bound = bind_fishnet(
         geometry.vertices,
         geometry.faces,
         areas,

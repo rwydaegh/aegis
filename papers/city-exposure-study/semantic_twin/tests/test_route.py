@@ -14,24 +14,20 @@ import itertools
 import numpy as np
 import pytest
 
-from semantic_twin.propagation.route import (
-    EXACT_ORDER_LIMIT,
-    HEAD_HEIGHT_M,
+from semantic_twin.walk.ground import ground_under_camera
+from semantic_twin.walk.links import (
     LinkGraph,
-    PanoramaRoute,
-    _held_karp,
-    _nearest_neighbour_two_opt,
     bridge_components,
-    build_panorama_route,
     fragments,
-    densify,
-    ground_under_camera,
     link_graph_from_screening,
     link_graph_from_sequences,
-    order_along_links,
-    panorama_walk,
 )
-from semantic_twin.propagation.walk import Walk, build_walk, ground_height
+from semantic_twin.walk.ordering import EXACT_ORDER_LIMIT, _held_karp, _nearest_neighbour_two_opt, order_along_links
+from semantic_twin.walk.route import HEAD_HEIGHT_M, PanoramaRoute, build_panorama_route, panorama_walk
+from semantic_twin.walk.site import densify
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import ground_height
+from semantic_twin.walk.model import Walk
 
 
 class Boxes:

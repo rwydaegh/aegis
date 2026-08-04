@@ -21,7 +21,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from render_blender_alignment import look_at, setup_scene  # noqa: E402
-from semantic_twin.body_layer import DynamicBodyArtifact  # noqa: E402
+from semantic_twin.vision.bodies import DynamicBodyArtifact  # noqa: E402
 
 
 def arguments() -> argparse.Namespace:
@@ -30,7 +30,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--mesh", type=pathlib.Path, required=True)
     parser.add_argument("--views-root", type=pathlib.Path, required=True)
     parser.add_argument("--reference-blend", type=pathlib.Path)
-    parser.add_argument("--inhouse-pano", type=pathlib.Path)
+    parser.add_argument("--google-pano", type=pathlib.Path)
     parser.add_argument("--smooth-blend", type=pathlib.Path)
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--size", type=int, default=1600)
@@ -234,7 +234,7 @@ def main() -> None:
     legacy_collection = collection("10 Legacy SAM3 decal reference | pre-Mapillary")
     candidate_collection = collection("20 Cameras | candidates only")
     evidence_collection = collection("30 Mapillary evidence | unprojected")
-    inhouse_collection = collection("31 Existing Inhouse pano | visual reference only")
+    google_collection = collection("31 Existing Google pano | visual reference only")
     dynamic_collection = collection("40 Dynamic clutter | SAM 3D Body | floor unresolved")
     smooth_collection = collection("50 Experimental smooth projection | Mapillary | not registered")
     annotation_collection = collection("90 Review annotations")
@@ -292,13 +292,13 @@ def main() -> None:
                 label_material=label_surface,
             )
 
-    if args.inhouse_pano is not None and args.inhouse_pano.exists():
+    if args.google_pano is not None and args.google_pano.exists():
         add_evidence_board(
-            image_path=args.inhouse_pano,
-            title="Existing Inhouse Street View pano | visual reference only",
+            image_path=args.google_pano,
+            title="Existing Google Street View pano | visual reference only",
             location=Vector((centre.x, board_y, board_z + 17.5)),
             width=24.0,
-            target=inhouse_collection,
+            target=google_collection,
             label_material=label_surface,
         )
 

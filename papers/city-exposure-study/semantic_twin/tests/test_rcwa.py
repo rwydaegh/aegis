@@ -3,8 +3,8 @@ import math
 import numpy as np
 import pytest
 
-from semantic_twin.masonry import BRICK_FORMATS, RECESSED_JOINT, STACK_BOND, JointGeometry, MasonryWall
-from semantic_twin.rcwa import Layer, convolution_matrix, harmonic_indices, solve
+from semantic_twin.materials.masonry import BRICK_FORMATS, RECESSED_JOINT, STACK_BOND, JointGeometry, MasonryWall
+from semantic_twin.materials.masonry import Layer, convolution_matrix, harmonic_indices, solve
 
 
 def fresnel(permittivity: complex, theta_deg: float, polarisation: str) -> float:

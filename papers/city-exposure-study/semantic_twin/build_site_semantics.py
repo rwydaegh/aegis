@@ -18,7 +18,7 @@ Three things are not inherited from the Mapillary path and are stated here.
 **The mesh is the tracer's, not the scene's.** `modal_class` is indexed by
 triangle with no join key, so it is only meaningful against the exact mesh it
 was cast against. A binding is therefore built per site *and per crop radius*,
-and `bind_from_walk` will refuse a mismatch on the column count. A 130 m
+and `bind_walk_entities` will refuse a mismatch on the column count. A 130 m
 binding is not valid for a 250 m run.
 
 **Admission is on two tests, not one.** `build_walk_twin.py` admits a station
@@ -41,7 +41,7 @@ eleven of them at Korenmarkt. All 83 station level files carry one and the same
 65 class Vistas vocabulary from the same mask2former checkpoint, verified label
 by label before use, so the same table applies and is passed through rather than
 recomputed. What the other sites do not carry is the SAM 3 material axis, so
-`bind_from_walk_material` is unavailable at them and only the entity axis
+`bind_walk_materials` is unavailable at them and only the entity axis
 binding is built here.
 
 **Ray density is not free and is not converged at the cheap settings.** The
@@ -73,6 +73,8 @@ import numpy as np
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from semantic_twin.vision.provenance import AdmissionGate, Registration  # noqa: E402
 
 #: Copied rather than imported from ``build_walk_twin.py``, which is under
 #: concurrent edit. The list is the Mapillary Vistas classes that describe
@@ -168,48 +170,38 @@ def station_verdict(
 ) -> dict[str, Any]:
     """Admit or refuse one registered pose, and say which test decided.
 
+    The two tests and the gate they compare against now live in
+    :class:`~semantic_twin.vision.provenance.Registration` and
+    :class:`~semantic_twin.vision.provenance.AdmissionGate`, so that anything
+    else asking how good a pose is gets the same answer as the admission does.
+    This function stays because it names the keys the site report writes, and it
+    was checked against the previous inline version on all 83 poses in the
+    repository before the two were merged.
+
     ``sky_conflict`` may be absent on a pose registered before the diagnostic
     existed, or carry ``unavailable`` where the raycast extra was missing. That
     is recorded as unknown rather than silently treated as a pass, because the
     whole point of the second test is that the first one cannot see this.
     """
-    residual = float(pose.get("skyline_score_mean_deg", 99.0))
-    conflict = pose.get("sky_conflict") or {}
-    hit = conflict.get("sky_with_mesh_hit_fraction")
-    near = conflict.get("conflict_median_range_m")
-    reasons = []
-    if residual > max_residual_deg:
-        reasons.append(f"skyline residual {residual:.2f} deg above {max_residual_deg:.2f}")
-    if hit is None:
-        conflict_state = "unknown"
-    elif float(hit) > max_sky_conflict and float(near if near is not None else 1e9) < min_conflict_range_m:
-        conflict_state = "inside the geometry"
-        reasons.append(
-            f"sky conflict {float(hit):.3f} of sky directions hit the mesh at a median range of "
-            f"{float(near):.2f} m, so the camera is inside a building"
-        )
-    else:
-        conflict_state = "clear"
+    registration = Registration.from_pose(pose)
+    gate = AdmissionGate(
+        max_residual_deg=max_residual_deg,
+        max_sky_conflict=max_sky_conflict,
+        min_conflict_range_m=min_conflict_range_m,
+    )
+    verdict = registration.verdict(gate)
     return {
-        "residual_deg": residual,
-        "sky_with_mesh_hit_fraction": None if hit is None else float(hit),
-        "conflict_median_range_m": None if near is None else float(near),
-        "sky_conflict_state": conflict_state,
-        "dz_at_bound": bool(pose.get("skyline_dz_at_bound", False)),
-        "position_sigma_m": _position_sigma(pose),
-        "admitted": not reasons,
-        "refused_because": reasons,
+        # An unregistered pose reports 99 degrees rather than nothing, because
+        # this key feeds a sort in the site report.
+        "residual_deg": 99.0 if registration.residual_deg is None else registration.residual_deg,
+        "sky_with_mesh_hit_fraction": registration.sky_conflict,
+        "conflict_median_range_m": registration.conflict_median_range_m,
+        "sky_conflict_state": verdict.sky_conflict_state,
+        "dz_at_bound": registration.dz_at_bound,
+        "position_sigma_m": registration.position_sigma_m,
+        "admitted": verdict.admitted,
+        "refused_because": list(verdict.reasons),
     }
-
-
-def _position_sigma(pose: dict[str, Any]) -> float | None:
-    """One sigma horizontal spread of the pose, from the seed ensemble covariance."""
-    uncertainty = pose.get("pose_uncertainty") or {}
-    covariance = uncertainty.get("covariance")
-    if not covariance:
-        return None
-    diagonal = np.diag(np.asarray(covariance, dtype=float))
-    return float(np.sqrt(diagonal[0] + diagonal[1]))
 
 
 def stations(

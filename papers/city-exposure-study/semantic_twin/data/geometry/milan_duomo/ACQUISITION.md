@@ -269,10 +269,10 @@ python download_inhouse_tiles.py --lat 45.4642 --lon 9.1900 --radius-m 320 \
 
 python -m semantic_twin.panorama --scene config/milan_duomo.json --zoom 5
 
-python -m semantic_twin.semantics --panorama data/panoramas/milan_duomo/panorama_z5.jpg \
+python -m semantic_twin.vision.panorama --panorama data/panoramas/milan_duomo/panorama_z5.jpg \
   --out data/panoramas/milan_duomo/semantics --device cpu
 
-python -m semantic_twin.align_skyline \
+python -m semantic_twin.vision.align \
   --mesh data/geometry/milan_duomo/inhouse_leaf_170m.ply \
   --semantics data/panoramas/milan_duomo/semantics/panorama_semantics.npz \
   --semantics-json data/panoramas/milan_duomo/semantics/semantics.json \

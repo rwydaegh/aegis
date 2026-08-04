@@ -31,8 +31,9 @@ import time
 import numpy as np
 
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.skyline import silhouette
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum
+from semantic_twin.illumination.roofline import silhouette
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import measure_ground_datum
 
 ROOT = pathlib.Path(__file__).resolve().parent
 
@@ -104,9 +105,7 @@ def main() -> None:
         per_floor: dict[float, list[float]] = {f: [] for f in args.floors_m}
         near_share = []
         for point in points:
-            alpha, horizontal, found = silhouette(
-                geometry, point, azimuths=args.azimuths, elevations=args.elevations
-            )
+            alpha, horizontal, found = silhouette(geometry, point, azimuths=args.azimuths, elevations=args.elevations)
             for floor in args.floors_m:
                 per_floor[floor].append(term(alpha, horizontal, found, floor))
             good = found & np.isfinite(horizontal) & (horizontal > 0.0)

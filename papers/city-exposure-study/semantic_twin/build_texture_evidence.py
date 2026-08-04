@@ -46,27 +46,31 @@ from PIL import Image
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from semantic_twin.concepts import ConceptCatalog  # noqa: E402
+from semantic_twin.vision.vocabulary import ConceptCatalog  # noqa: E402
 from semantic_twin.pano_geometry import (  # noqa: E402
     equirectangular_directions,
     panorama_to_world_matrix,
 )
-from semantic_twin.texture_evidence import (  # noqa: E402
-    MaterialClassifier,
+from semantic_twin.vision.appearance import (
     MomentAccumulator,
+    image_lab_and_gradient,
+    texture_features,
+)
+from semantic_twin.vision.texture import (
+    MaterialClassifier,
     blocked_folds,
     build_texture_evidence,
     collapsing_pairs,
     confusion_matrix,
     fit_softmax,
     fit_temperature,
-    image_lab_and_gradient,
-    match_support_faces,
     pairwise_separability,
     posterior_top_mass,
-    read_tile_surface,
     softmax_probability,
-    texture_features,
+)
+from semantic_twin.vision.tiles import (
+    match_support_faces,
+    read_tile_surface,
 )
 
 Image.MAX_IMAGE_PIXELS = None

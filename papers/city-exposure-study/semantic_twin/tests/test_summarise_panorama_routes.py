@@ -13,7 +13,7 @@ import pathlib
 import pytest
 
 from summarise_panorama_routes import link_spacing_m, on_disk, site_row, table
-from semantic_twin.propagation.route import link_graph_from_screening
+from semantic_twin.walk.links import link_graph_from_screening
 
 
 def lay_out_site(

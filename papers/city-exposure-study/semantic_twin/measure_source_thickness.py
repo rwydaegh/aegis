@@ -47,13 +47,14 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.skyline import (
+from semantic_twin.illumination.roofline import (
     UP_EPSILON_M,
     _neighbourhood_extremes,
     sample_surface,
     silhouette,
 )
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import measure_ground_datum
 
 from source_support import direct_from_sites, silhouette_cloud
 
@@ -181,9 +182,7 @@ def main() -> None:
                     "direct_median": float(np.median(direct)),
                     "direct_p05": float(np.percentile(direct, 5)),
                     "direct_p95": float(np.percentile(direct, 95)),
-                    "spread_db": float(
-                        10.0 * np.log10(np.percentile(direct, 95) / np.percentile(direct, 5))
-                    ),
+                    "spread_db": float(10.0 * np.log10(np.percentile(direct, 95) / np.percentile(direct, 5))),
                     "visible_fraction_median": float(np.median(seen)),
                     "direct_per_standpoint": [float(v) for v in direct],
                 }

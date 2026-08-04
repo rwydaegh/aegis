@@ -31,7 +31,7 @@ from PIL import Image
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from semantic_twin.body_layer import person_instances, pinhole_intrinsics  # noqa: E402
+from semantic_twin.vision.bodies import person_instances, pinhole_intrinsics  # noqa: E402
 
 # Vistas splits a person by what they are doing, and a rider is still a body.
 PERSON_WORDS = ("person", "rider", "bicyclist", "motorcyclist")

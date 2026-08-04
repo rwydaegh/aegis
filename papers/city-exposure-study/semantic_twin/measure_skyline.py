@@ -29,7 +29,8 @@ import time
 import numpy as np
 
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum, sky_visibility
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import measure_ground_datum, sky_visibility
 
 ROOT = pathlib.Path(__file__).resolve().parent
 
@@ -160,9 +161,7 @@ def main() -> None:
         distance_all = []
         sky_implied = []
         for point in points:
-            alpha, horizontal, found = skyline(
-                geometry, point, azimuths=args.azimuths, elevations=args.elevations
-            )
+            alpha, horizontal, found = skyline(geometry, point, azimuths=args.azimuths, elevations=args.elevations)
             per_standpoint.append(direct_term(alpha, horizontal, found))
             good = found & np.isfinite(horizontal) & (horizontal > 0.0)
             alpha_all.append(np.degrees(alpha[good]))
@@ -184,16 +183,12 @@ def main() -> None:
             "direct_term_median": float(np.median(terms)),
             "direct_term_p05": float(np.percentile(terms, 5)),
             "direct_term_p95": float(np.percentile(terms, 95)),
-            "direct_term_spread_db": float(
-                10.0 * np.log10(np.percentile(terms, 95) / np.percentile(terms, 5))
-            ),
+            "direct_term_spread_db": float(10.0 * np.log10(np.percentile(terms, 95) / np.percentile(terms, 5))),
             "alpha_deg_median": float(np.median(alpha_all)) if alpha_all.size else float("nan"),
             "alpha_deg_p95": float(np.percentile(alpha_all, 95)) if alpha_all.size else float("nan"),
             "distance_m_median": float(np.median(distance_all)) if distance_all.size else float("nan"),
             "distance_m_p95": float(np.percentile(distance_all, 95)) if distance_all.size else float("nan"),
-            "open_azimuth_fraction_median": float(
-                np.median([r["open_azimuth_fraction"] for r in per_standpoint])
-            ),
+            "open_azimuth_fraction_median": float(np.median([r["open_azimuth_fraction"] for r in per_standpoint])),
             "sky_check": {
                 "implied_median": float(np.median(sky_implied)),
                 "measured_median": float(np.median(sky_measured)),

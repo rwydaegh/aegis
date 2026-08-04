@@ -47,8 +47,9 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.skyline import UP_EPSILON_M, sample_surface, silhouette
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum
+from semantic_twin.illumination.roofline import UP_EPSILON_M, sample_surface, silhouette
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import measure_ground_datum
 
 from source_support import direct_from_sites, silhouette_cloud
 
@@ -93,9 +94,7 @@ def vote(
     return kept[kept[:, 2] - lowest >= drop_m]
 
 
-def _cell_extreme(
-    points: np.ndarray, cell_m: float, op, fill: float, *, neighbours: bool
-) -> np.ndarray:
+def _cell_extreme(points: np.ndarray, cell_m: float, op, fill: float, *, neighbours: bool) -> np.ndarray:
     """Extreme ``z`` in each point's cell, or in the nine cells touching it.
 
     Linear in the sample count. The roofline of a 250 m crop is tens of kilometres
@@ -175,9 +174,7 @@ def lift_to_top(geometry: MitsubaGeometry, points: np.ndarray) -> np.ndarray:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--sites", nargs="*", default=["korenmarkt", "brussels_grandplace", "newyork_timessquare"]
-    )
+    ap.add_argument("--sites", nargs="*", default=["korenmarkt", "brussels_grandplace", "newyork_timessquare"])
     ap.add_argument("--crop-m", type=int, default=250)
     ap.add_argument("--cell-m", nargs="*", type=float, default=[8.0, 4.0, 2.0, 1.0, 0.5])
     ap.add_argument("--drop-m", nargs="*", type=float, default=[3.0])
@@ -222,9 +219,7 @@ def main() -> None:
             index = np.linspace(0, points.shape[0] - 1, args.standpoints).round().astype(int)
             points = points[index]
 
-        cloud = silhouette_cloud(
-            geometry, points, silhouette, azimuths=args.azimuths, elevations=args.elevations
-        )
+        cloud = silhouette_cloud(geometry, points, silhouette, azimuths=args.azimuths, elevations=args.elevations)
         tree = cKDTree(cloud) if cloud.shape[0] else None
 
         per_case = []
@@ -253,10 +248,7 @@ def main() -> None:
                         "sites": int(station.shape[0]),
                         "coverage": covered,
                         "direct_median": float(np.median(direct)),
-                        "spread_db": float(
-                            10.0
-                            * np.log10(np.percentile(direct, 95) / np.percentile(direct, 5))
-                        ),
+                        "spread_db": float(10.0 * np.log10(np.percentile(direct, 95) / np.percentile(direct, 5))),
                         "visible_fraction_median": float(np.median(seen)),
                         "direct_per_standpoint": [float(v) for v in direct],
                     }
@@ -304,11 +296,7 @@ def main() -> None:
                 continue
             terms = np.array([c["direct_median"] for c in case])
             steps = 10.0 * np.log10(terms[1:] / terms[:-1])
-            print(
-                f"{row['site']:22s} drop {drop_m:4.1f}  step to step "
-                + " ".join(f"{s:+.2f}" for s in steps)
-                + " dB"
-            )
+            print(f"{row['site']:22s} drop {drop_m:4.1f}  step to step " + " ".join(f"{s:+.2f}" for s in steps) + " dB")
 
 
 if __name__ == "__main__":

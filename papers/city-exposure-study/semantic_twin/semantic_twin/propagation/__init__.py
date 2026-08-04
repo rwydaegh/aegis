@@ -10,8 +10,7 @@ It is opt in, bounded by a capacity set at the call site, and off in every
 production run.
 """
 
-from .closed_form import PEC_PERMITTIVITY, ground_plane_susceptibility
-from .directions import (
+from ..illumination import (
     ISOTROPIC,
     MODELS,
     ROOFTOP,
@@ -26,6 +25,7 @@ from .directions import (
     fibonacci_sphere,
     measure_below,
 )
+from .closed_form import PEC_PERMITTIVITY, ground_plane_susceptibility
 from .geometry import MitsubaGeometry, PlaneGeometry, SphereGeometry  # noqa: F401
 from .tracer import (
     DEFAULT_MAX_BOUNCES,

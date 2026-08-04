@@ -3,30 +3,32 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from semantic_twin.fishnet import (
+from semantic_twin.pano_geometry import PerspectiveView, perspective_directions
+from semantic_twin.scene.fishnet import (
     PAINT_REASONS,
     REJECTION_REASONS,
-    CameraPose,
-    PinholeView,
     aggregate_occlusion_budget,
     angular_tolerance_deg,
     boundary_chains,
     build_fishnet,
     build_region_map,
     class_fidelity,
-    image_to_view_directions,
     load_fishnet,
     occlusion_budget,
     occlusion_fidelity,
     paintability,
     rasterize_fishnet,
     save_fishnet,
-    triangle_solid_angle,
+)
+from semantic_twin.scene.pinhole import (
+    CameraPose,
+    PinholeView,
+    image_to_view_directions,
     view_to_image,
     view_to_world,
     world_to_view,
 )
-from semantic_twin.pano_geometry import PerspectiveView, perspective_directions
+from semantic_twin.scene.planar import triangle_solid_angle
 
 WALL_DISTANCE_M = 6.0
 WALL_HALF_M = 12.0

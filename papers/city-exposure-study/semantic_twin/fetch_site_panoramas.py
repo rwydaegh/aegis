@@ -1,6 +1,6 @@
 """Fetch a spatially spread set of panoramas for one screened site.
 
-`semantic_twin.panorama` acquires the one panorama nearest a scene's centre,
+`semantic_twin.acquire.streetview` acquires the one panorama nearest a scene's centre,
 which is the right tool for a site with one camera and the wrong one here. A
 site needs twelve to sixteen cameras, and which twelve decides how much of the
 scene is ever observed.
@@ -66,15 +66,16 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from semantic_twin.panorama import (  # noqa: E402
+from semantic_twin.acquire import load_support_mesh  # noqa: E402
+from semantic_twin.acquire.streetview import (  # noqa: E402
     StreetViewTiles,
     download_panorama,
-    load_support_mesh,
+    google_api_key,
     native_zoom,
     pose_from_metadata,
     zoom_dimensions,
 )
-from semantic_twin.scene import inhouse_api_key, load_scene  # noqa: E402
+from semantic_twin.scene.site_config import load_scene  # noqa: E402
 
 DEFAULT_SCREENING = pathlib.Path("outputs/city_screening/screening.json")
 
@@ -320,7 +321,7 @@ def fetch(
     out_dir = out_root or (SCRIPT_DIR / "data" / "panoramas" / name)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    client = StreetViewTiles(inhouse_api_key())
+    client = StreetViewTiles(google_api_key())
     session = client.create_session()
     safe_session = {k: session[k] for k in ("expiry", "tileWidth", "tileHeight", "imageFormat")}
     requests = 1

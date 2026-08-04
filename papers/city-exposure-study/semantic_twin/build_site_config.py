@@ -33,7 +33,7 @@ gate demanded, so the estimator reproduces the shipped constants where they
 exist and keeps working where they do not.
 
 What the constant is used for matters for reading that error bar.
-`semantic_twin.support_mesh.camera_altitude` casts under each camera's own
+`semantic_twin.scene.camera_ground.camera_altitude` casts under each camera's own
 easting and northing and uses `camera_ground_z_m` only to set the ceiling the
 ray starts from, at datum plus `search_up_m`. So the constant has to be within
 a few metres of the pavement to keep an arcade roof out of the answer, and it

@@ -54,7 +54,7 @@ def main() -> None:
     import drjit as dr
 
     from semantic_twin.propagation import tracer as tracer_module
-    from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
+    from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
     from semantic_twin.propagation.geometry import MitsubaGeometry
     from semantic_twin.propagation.tracer import (
         DEFAULT_MAX_BOUNCES,
@@ -77,9 +77,7 @@ def main() -> None:
     rng = np.random.default_rng(3)
     angle = rng.uniform(0.0, 2.0 * np.pi, args.standpoints)
     radius = 30.0 * np.sqrt(rng.uniform(0.0, 1.0, args.standpoints))
-    points = np.column_stack(
-        [radius * np.cos(angle), radius * np.sin(angle), np.full(args.standpoints, 52.5)]
-    )
+    points = np.column_stack([radius * np.cos(angle), radius * np.sin(angle), np.full(args.standpoints, 52.5)])
     standpoints = [(p, args.ground_z, 7 + i) for i, p in enumerate(points)]
 
     global _ORIGINAL_SETUP

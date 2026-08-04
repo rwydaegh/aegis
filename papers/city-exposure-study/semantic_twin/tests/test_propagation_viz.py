@@ -19,8 +19,10 @@ from export_propagation_payload import (
     next_event_connections,
     sphere_triangulation,
 )
-from semantic_twin.propagation.directions import MODELS, elevation_band_measure, fibonacci_sphere
+from semantic_twin.illumination import MODELS, elevation_band_measure, fibonacci_sphere
 from semantic_twin.propagation.geometry import INFINITY
+from semantic_twin.viz.blender.payload import camera_rotation, octahedra, ray_bundles
+from semantic_twin.viz.blender.style import RAY_STYLE, colour_ramp
 
 #: Integrated per band, never sampled at the midpoint. The reason lives in the
 #: docstring of the library function, which this file used to carry its own copy
@@ -331,15 +333,22 @@ def test_crop_for_drawing_keeps_only_what_is_inside_and_reindexes_cleanly() -> N
     assert np.allclose(kept_vertices[kept_faces], vertices[faces[expected]])
 
 
-def blender_module():
-    """Import the Blender stage with ``bpy`` stubbed out.
+def scene_module():
+    """Import the Blender vocabulary with ``bpy`` stubbed out.
 
-    Its module level is deliberately free of ``bpy`` calls so the pure geometry
-    in it stays testable outside Blender. Shelling out to a headless Blender to
-    check a rotation matrix would take a hundred times longer and prove less.
+    Everything in ``semantic_twin.viz.blender.scene`` calls Blender, so this is
+    the one module here that cannot be imported plainly. Its module level is
+    still free of ``bpy`` calls, so a stub is enough to reach the camera search,
+    which decides where to stand by casting rays at an object it is handed and
+    never touches the scene. Shelling out to a headless Blender to check that
+    would take a hundred times longer and prove less.
+
+    The three pure helpers this file also covers live in
+    :mod:`~semantic_twin.viz.blender.payload` and
+    :mod:`~semantic_twin.viz.blender.style` and are imported at the top like any
+    other library. That is the whole point of the split.
     """
-    import importlib.util
-    import pathlib
+    import importlib
     import sys
     import types
 
@@ -347,23 +356,18 @@ def blender_module():
         stub = types.ModuleType("bpy")
         stub.types = types.SimpleNamespace(Object=object, Collection=object, Material=object)
         sys.modules["bpy"] = stub
-    path = pathlib.Path(__file__).resolve().parent.parent / "propagation_blender.py"
-    spec = importlib.util.spec_from_file_location("propagation_blender", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return importlib.import_module("semantic_twin.viz.blender.scene")
 
 
 def test_camera_rotation_actually_points_at_the_target() -> None:
     """Rebuild the rotation and check it maps the camera axis onto the sight line."""
-    module = blender_module()
     rng = np.random.default_rng(7)
     for _ in range(64):
         location = rng.uniform(-200.0, 200.0, size=3)
         target = rng.uniform(-200.0, 200.0, size=3)
         if np.linalg.norm(target - location) < 1.0:
             continue
-        rx, ry, rz = module.camera_rotation(location, target)
+        rx, ry, rz = camera_rotation(location, target)
         assert ry == 0.0
         cx, sx = np.cos(rx), np.sin(rx)
         cz, sz = np.cos(rz), np.sin(rz)
@@ -380,9 +384,8 @@ def test_camera_rotation_actually_points_at_the_target() -> None:
 
 
 def test_colour_ramp_is_monotone_and_clamps() -> None:
-    module = blender_module()
     values = np.array([-5.0, 0.0, 0.25, 0.5, 0.75, 1.0, 5.0])
-    rgba = module.colour_ramp(values, 0.0, 1.0)
+    rgba = colour_ramp(values, 0.0, 1.0)
     assert rgba.shape == (values.size, 4)
     assert np.allclose(rgba[:, 3], 1.0)
     assert np.allclose(rgba[0], rgba[1])
@@ -393,7 +396,6 @@ def test_colour_ramp_is_monotone_and_clamps() -> None:
 
 
 def test_ray_bundles_are_exclusive_and_exhaustive() -> None:
-    module = blender_module()
     rng = np.random.default_rng(3)
     count = 500
     directions = rng.normal(size=(count, 3))
@@ -403,16 +405,15 @@ def test_ray_bundles_are_exclusive_and_exhaustive() -> None:
         "path_bounces": rng.integers(0, 5, size=count),
         "path_exit_direction": directions,
     }
-    bundles = module.ray_bundles(payload, ["sky", "roulette", "truncated"])
+    bundles = ray_bundles(payload, ["sky", "roulette", "truncated"])
     stacked = np.stack(list(bundles.values()))
     assert np.array_equal(stacked.sum(axis=0), np.ones(count, dtype=int))
-    assert set(bundles) == set(module.RAY_STYLE)
+    assert set(bundles) == set(RAY_STYLE)
 
 
 def test_octahedra_build_one_closed_marker_per_centre() -> None:
-    module = blender_module()
     centres = np.array([[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [0.0, -4.0, 3.0]])
-    vertices, faces = module.octahedra(centres, 2.0)
+    vertices, faces = octahedra(centres, 2.0)
     assert vertices.shape == (18, 3)
     assert faces.shape == (24, 3)
     for i, centre in enumerate(centres):
@@ -452,7 +453,7 @@ def test_clear_view_avoids_a_blocked_bearing_rather_than_shortening_it() -> None
     Casting along the wanted bearing and stopping short of the wall parks the
     camera inside its own subject. The search has to leave the blocked sector.
     """
-    module = blender_module()
+    module = scene_module()
     twin = FakeTwin(blocked_azimuth_deg=225.0, half_width_deg=40.0, wall_distance_m=8.0)
     subject = np.zeros(3)
     location = module.clear_view(twin, subject, 85.0, (28.0, 40.0, 55.0))
@@ -469,7 +470,7 @@ def test_clear_view_prefers_the_lowest_open_elevation() -> None:
     A three quarter view is the readable one and overhead is the fallback, so
     ties have to break downwards or every site gets a plan view.
     """
-    module = blender_module()
+    module = scene_module()
 
     class OpenTwin:
         data = None
@@ -484,7 +485,7 @@ def test_clear_view_prefers_the_lowest_open_elevation() -> None:
 
 def test_clear_view_climbs_when_every_bearing_at_low_elevation_is_shut() -> None:
     """A canyon has one open direction and it is up. The search has to find it."""
-    module = blender_module()
+    module = scene_module()
 
     class CanyonTwin:
         data = None

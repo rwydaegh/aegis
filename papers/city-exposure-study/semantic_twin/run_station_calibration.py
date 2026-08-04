@@ -18,7 +18,7 @@ a 250 m crop, 15 GHz, three interactions and roulette off.
 
 **Is the evidence actually exact here.** The same ``BounceEvidenceTally`` that
 BOUNCE_BUDGET.md uses, attached to a trace launched from each station, scored on
-the ``walk`` mask that ``bind_from_walk`` actually binds. If the first
+the ``walk`` mask that ``bind_walk_entities`` actually binds. If the first
 interaction is not near 1.0 at a station, the premise of the whole experiment
 fails there and that is the result.
 
@@ -81,9 +81,9 @@ from semantic_twin.propagation import (  # noqa: E402
     TraceConfig,
     trace_standpoints,
 )
-from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings  # noqa: E402
-from semantic_twin.propagation.semantic_binding import bind, bind_from_walk, bind_from_walk_material  # noqa: E402
-from semantic_twin.propagation.walk import ground_height  # noqa: E402
+from semantic_twin.materials import CLASS_NAMES, classify_faces, load_table  # noqa: E402
+from semantic_twin.materials import bind_fishnet, bind_walk_entities, bind_walk_materials  # noqa: E402
+from semantic_twin.walk.ground import ground_height  # noqa: E402
 
 OUTPUT = SCRIPT_DIR / "outputs" / "station_calibration"
 
@@ -220,7 +220,7 @@ def evidence_masks(site: str, crop_m: int, geometry: Any, areas: np.ndarray, fac
 
     The same four nested definitions ``measure_bounce_evidence.py`` carries, so
     a coverage number here is the same quantity as one there and the two can be
-    compared without a caveat. ``walk`` is the set ``bind_from_walk`` binds and
+    compared without a caveat. ``walk`` is the set ``bind_walk_entities`` binds and
     is therefore the only one that changes an exposure number.
     """
     masks: dict[str, Any] = {}
@@ -235,7 +235,7 @@ def evidence_masks(site: str, crop_m: int, geometry: Any, areas: np.ndarray, fac
             "mask": data["clean_rays"].sum(axis=0) > 0,
             "definition": "at least one of those rays was not rejected as a transient or as clutter in front",
         }
-        binding = bind_from_walk(areas, face_class, walk_npz=walk_npz, semantics_path=SEMANTICS)
+        binding = bind_walk_entities(areas, face_class, walk_npz=walk_npz, semantics_path=SEMANTICS)
         masks["walk"] = {
             "mask": binding.face_class >= len(CLASS_NAMES),
             "definition": "and the entity class it collected carries a material in vistas_material_prior",
@@ -246,7 +246,7 @@ def evidence_masks(site: str, crop_m: int, geometry: Any, areas: np.ndarray, fac
     if fishnet is not None:
         directory, mesh_path = fishnet
         source = MitsubaGeometry(mesh_path)
-        binding = bind(
+        binding = bind_fishnet(
             geometry.vertices,
             geometry.faces,
             areas,
@@ -285,9 +285,9 @@ def bind_materials(
     there is no seam in it to hand a standpoint set to.
     """
     if materials == "geometric":
-        return face_class, load_bindings(CONFIG, frequency_hz), {"covered_fraction_by_area": 0.0}
+        return face_class, load_table(CONFIG, frequency_hz), {"covered_fraction_by_area": 0.0}
     if materials == "walk":
-        semantic = bind_from_walk(
+        semantic = bind_walk_entities(
             areas,
             face_class,
             walk_npz=site_walk_semantics(site, crop_m),
@@ -303,7 +303,7 @@ def bind_materials(
             raise ValueError(f"no fishnet surface set for {site}")
         directory, mesh_path = fishnet
         source = MitsubaGeometry(mesh_path, variant=variant)
-        semantic = bind(
+        semantic = bind_fishnet(
             geometry.vertices,
             geometry.faces,
             areas,
@@ -322,7 +322,7 @@ def bind_materials(
         "walk_material_over_entity",
         "walk_material_facade_only",
     ):
-        semantic = bind_from_walk_material(
+        semantic = bind_walk_materials(
             areas,
             face_class,
             walk_npz=site_walk_semantics(site, crop_m),
@@ -337,7 +337,7 @@ def bind_materials(
         )
     else:
         raise ValueError(f"unknown materials mode {materials!r}")
-    binding = load_bindings(
+    binding = load_table(
         CONFIG,
         frequency_hz,
         class_names=semantic.class_names,
@@ -387,7 +387,7 @@ def stage_evidence(site: str, crop_m: int, args: argparse.Namespace) -> dict[str
         raise RuntimeError(f"{site} has no fused station binding at {crop_m} m")
     plain = {name: entry["mask"] for name, entry in masks.items()}
 
-    binding = load_bindings(CONFIG, args.frequency_hz)
+    binding = load_table(CONFIG, args.frequency_hz)
     config = TraceConfig(
         frequency_hz=args.frequency_hz,
         rays=args.rays,

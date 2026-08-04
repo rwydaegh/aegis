@@ -26,7 +26,7 @@ sys.path.insert(0, "/home/user/aegis/theory/scripts")
 
 from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
 
-from semantic_twin.propagation.directions import (  # noqa: E402
+from semantic_twin.illumination import (  # noqa: E402
     MODELS,
     elevation_band_measure,
 )

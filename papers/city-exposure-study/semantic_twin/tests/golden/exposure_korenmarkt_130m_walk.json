@@ -1,0 +1,659 @@
+{
+ "kind": "exposure",
+ "rows": [
+  {
+   "chi_isotropic": 0.11665124448019232,
+   "chi_isotropic_direct": 0.08802597680127251,
+   "chi_rooftop": 0.012441184243034137,
+   "chi_rooftop_direct": 0.006581382416910495,
+   "chi_street_small_cell": 0.00043523572734726186,
+   "chi_street_small_cell_direct": 6.642823894620585e-05,
+   "escaped_fraction": 0.56343,
+   "ground_z_m": 50.5185546875,
+   "index": 0,
+   "isotropic_absorbed_power_w": 0.021671816668481933,
+   "isotropic_arriving_power_density_w_m2": 0.1166512444801923,
+   "isotropic_mean_sab_w_m2": 0.011732752774965846,
+   "isotropic_peak_sab_w_m2": 0.04424185829542102,
+   "isotropic_reference_s0_w_m2": 1.0,
+   "isotropic_sar_wb_w_kg": 0.0002993344843712974,
+   "isotropic_susceptibility": 0.1166512444801923,
+   "mean_bounces": 1.6859503398825053,
+   "mean_excess_delay_ns": 4.476230225173421,
+   "multipath_gain_isotropic": 1.3251911392422742,
+   "multipath_gain_rooftop": 1.8903603308428345,
+   "multipath_gain_street_small_cell": 6.551968473825107,
+   "rooftop_absorbed_power_w": 0.0028925351648970443,
+   "rooftop_arriving_power_density_w_m2": 0.012441184243034139,
+   "rooftop_mean_sab_w_m2": 0.001477301851675954,
+   "rooftop_peak_sab_w_m2": 0.004133780938322775,
+   "rooftop_reference_s0_w_m2": 1.0,
+   "rooftop_sar_wb_w_kg": 3.995214316156138e-05,
+   "rooftop_susceptibility": 0.012441184243034139,
+   "sky_fraction": 0.086975,
+   "street_small_cell_absorbed_power_w": 9.168970374905339e-05,
+   "street_small_cell_arriving_power_density_w_m2": 0.0004352357273472618,
+   "street_small_cell_mean_sab_w_m2": 4.771438878842571e-05,
+   "street_small_cell_peak_sab_w_m2": 0.0001515119472652066,
+   "street_small_cell_reference_s0_w_m2": 1.0,
+   "street_small_cell_sar_wb_w_kg": 1.2664323722244942e-06,
+   "street_small_cell_susceptibility": 0.0004352357273472618,
+   "truncated_throughput_share": 0.020124932204517543,
+   "x": -60.0,
+   "y": -60.0,
+   "z": 52.0185546875
+  },
+  {
+   "chi_isotropic": 0.32190382725154876,
+   "chi_isotropic_direct": 0.24724608395250927,
+   "chi_rooftop": 0.35508212437588405,
+   "chi_rooftop_direct": 0.2315583190720724,
+   "chi_street_small_cell": 0.20924766780625592,
+   "chi_street_small_cell_direct": 0.159034165344041,
+   "escaped_fraction": 0.898385,
+   "ground_z_m": 50.7890625,
+   "index": 114,
+   "isotropic_absorbed_power_w": 0.07000352924625133,
+   "isotropic_arriving_power_density_w_m2": 0.3219038272515488,
+   "isotropic_mean_sab_w_m2": 0.03753335697013533,
+   "isotropic_peak_sab_w_m2": 0.08970923026807817,
+   "isotropic_reference_s0_w_m2": 1.0,
+   "isotropic_sar_wb_w_kg": 0.0009668995752244658,
+   "isotropic_susceptibility": 0.3219038272515488,
+   "mean_bounces": 1.1224141097636313,
+   "mean_excess_delay_ns": 8.361033180943119,
+   "multipath_gain_isotropic": 1.301957232670992,
+   "multipath_gain_rooftop": 1.5334457677824347,
+   "multipath_gain_street_small_cell": 1.315740346444346,
+   "rooftop_absorbed_power_w": 0.09620753294246269,
+   "rooftop_arriving_power_density_w_m2": 0.35508212437588405,
+   "rooftop_mean_sab_w_m2": 0.04948891302764884,
+   "rooftop_peak_sab_w_m2": 0.10483637126788307,
+   "rooftop_reference_s0_w_m2": 1.0,
+   "rooftop_sar_wb_w_kg": 0.0013288333279345675,
+   "rooftop_susceptibility": 0.35508212437588405,
+   "sky_fraction": 0.247715,
+   "street_small_cell_absorbed_power_w": 0.058546696131301604,
+   "street_small_cell_arriving_power_density_w_m2": 0.20924766780625598,
+   "street_small_cell_mean_sab_w_m2": 0.029978427102279857,
+   "street_small_cell_peak_sab_w_m2": 0.07448354185155544,
+   "street_small_cell_reference_s0_w_m2": 1.0,
+   "street_small_cell_sar_wb_w_kg": 0.0008086560239130055,
+   "street_small_cell_susceptibility": 0.20924766780625598,
+   "truncated_throughput_share": 0.003329877835383897,
+   "x": 15.0,
+   "y": -75.0,
+   "z": 52.2890625
+  },
+  {
+   "chi_isotropic": 0.32952458415243735,
+   "chi_isotropic_direct": 0.2433487321242829,
+   "chi_rooftop": 0.23549635421284207,
+   "chi_rooftop_direct": 0.16300796989668237,
+   "chi_street_small_cell": 0.09696699267536185,
+   "chi_street_small_cell_direct": 0.07019990259323283,
+   "escaped_fraction": 0.894385,
+   "ground_z_m": 50.6611328125,
+   "index": 229,
+   "isotropic_absorbed_power_w": 0.07255140837170332,
+   "isotropic_arriving_power_density_w_m2": 0.3295245841524373,
+   "isotropic_mean_sab_w_m2": 0.03847656899065189,
+   "isotropic_peak_sab_w_m2": 0.08948137714513557,
+   "isotropic_reference_s0_w_m2": 1.0,
+   "isotropic_sar_wb_w_kg": 0.0010020912758522556,
+   "isotropic_susceptibility": 0.3295245841524373,
+   "mean_bounces": 1.112580152842456,
+   "mean_excess_delay_ns": 7.292944592617769,
+   "multipath_gain_isotropic": 1.3541249271195823,
+   "multipath_gain_rooftop": 1.444692270949109,
+   "multipath_gain_street_small_cell": 1.3812981085918106,
+   "rooftop_absorbed_power_w": 0.06401598746756619,
+   "rooftop_arriving_power_density_w_m2": 0.2354963542128421,
+   "rooftop_mean_sab_w_m2": 0.03259750465000582,
+   "rooftop_peak_sab_w_m2": 0.07526985884001745,
+   "rooftop_reference_s0_w_m2": 1.0,
+   "rooftop_sar_wb_w_kg": 0.0008841987219277098,
+   "rooftop_susceptibility": 0.2354963542128421,
+   "sky_fraction": 0.24412,
+   "street_small_cell_absorbed_power_w": 0.027329337570389252,
+   "street_small_cell_arriving_power_density_w_m2": 0.09696699267536185,
+   "street_small_cell_mean_sab_w_m2": 0.013887968183452084,
+   "street_small_cell_peak_sab_w_m2": 0.041721453738492786,
+   "street_small_cell_reference_s0_w_m2": 1.0,
+   "street_small_cell_sar_wb_w_kg": 0.00037747703826504486,
+   "street_small_cell_susceptibility": 0.09696699267536185,
+   "truncated_throughput_share": 0.003606001435403531,
+   "x": 9.0,
+   "y": -45.0,
+   "z": 52.1611328125
+  },
+  {
+   "chi_isotropic": 0.4086639148388727,
+   "chi_isotropic_direct": 0.33188709360071195,
+   "chi_rooftop": 0.5688900506469184,
+   "chi_rooftop_direct": 0.4415964475735659,
+   "chi_street_small_cell": 0.3884197745668032,
+   "chi_street_small_cell_direct": 0.3378025735664716,
+   "escaped_fraction": 0.947835,
+   "ground_z_m": 50.216796875,
+   "index": 343,
+   "isotropic_absorbed_power_w": 0.09223118835390814,
+   "isotropic_arriving_power_density_w_m2": 0.40866391483887277,
+   "isotropic_mean_sab_w_m2": 0.048974112350206725,
+   "isotropic_peak_sab_w_m2": 0.10877761976436605,
+   "isotropic_reference_s0_w_m2": 1.0,
+   "isotropic_sar_wb_w_kg": 0.0012739114413523223,
+   "isotropic_susceptibility": 0.40866391483887277,
+   "mean_bounces": 0.9394145605511508,
+   "mean_excess_delay_ns": 5.04079685580381,
+   "multipath_gain_isotropic": 1.2313341576654673,
+   "multipath_gain_rooftop": 1.2882577606155823,
+   "multipath_gain_street_small_cell": 1.149842555863096,
+   "rooftop_absorbed_power_w": 0.15400392199658358,
+   "rooftop_arriving_power_density_w_m2": 0.5688900506469184,
+   "rooftop_mean_sab_w_m2": 0.07955079782956313,
+   "rooftop_peak_sab_w_m2": 0.15613653335397384,
+   "rooftop_reference_s0_w_m2": 1.0,
+   "rooftop_sar_wb_w_kg": 0.00212712599442795,
+   "rooftop_susceptibility": 0.5688900506469184,
+   "sky_fraction": 0.331425,
+   "street_small_cell_absorbed_power_w": 0.10761681327296167,
+   "street_small_cell_arriving_power_density_w_m2": 0.3884197745668032,
+   "street_small_cell_mean_sab_w_m2": 0.05574347246209005,
+   "street_small_cell_peak_sab_w_m2": 0.12863082423835928,
+   "street_small_cell_reference_s0_w_m2": 1.0,
+   "street_small_cell_sar_wb_w_kg": 0.0014864200728309622,
+   "street_small_cell_susceptibility": 0.3884197745668032,
+   "truncated_throughput_share": 0.0012653406530658902,
+   "x": -81.0,
+   "y": -6.0,
+   "z": 51.716796875
+  },
+  {
+   "chi_isotropic": 0.3606760854472518,
+   "chi_isotropic_direct": 0.29683449211761687,
+   "chi_rooftop": 0.3391955480018039,
+   "chi_rooftop_direct": 0.27438108808567496,
+   "chi_street_small_cell": 0.18811546194737155,
+   "chi_street_small_cell_direct": 0.1568008391087711,
+   "escaped_fraction": 0.912265,
+   "ground_z_m": 51.0810546875,
+   "index": 457,
+   "isotropic_absorbed_power_w": 0.07814786111691249,
+   "isotropic_arriving_power_density_w_m2": 0.3606760854472519,
+   "isotropic_mean_sab_w_m2": 0.041947087024519186,
+   "isotropic_peak_sab_w_m2": 0.10250719307312861,
+   "isotropic_reference_s0_w_m2": 1.0,
+   "isotropic_sar_wb_w_kg": 0.0010793903469186808,
+   "isotropic_susceptibility": 0.3606760854472519,
+   "mean_bounces": 1.036880730927965,
+   "mean_excess_delay_ns": 6.050997095800385,
+   "multipath_gain_isotropic": 1.215074713434376,
+   "multipath_gain_rooftop": 1.2362205805375723,
+   "multipath_gain_street_small_cell": 1.199709536100619,
+   "rooftop_absorbed_power_w": 0.09119072151985194,
+   "rooftop_arriving_power_density_w_m2": 0.3391955480018039,
+   "rooftop_mean_sab_w_m2": 0.04722941842528405,
+   "rooftop_peak_sab_w_m2": 0.10617867440046168,
+   "rooftop_reference_s0_w_m2": 1.0,
+   "rooftop_sar_wb_w_kg": 0.0012595403524841428,
+   "rooftop_susceptibility": 0.3391955480018039,
+   "sky_fraction": 0.296805,
+   "street_small_cell_absorbed_power_w": 0.05270008017999869,
+   "street_small_cell_arriving_power_density_w_m2": 0.18811546194737158,
+   "street_small_cell_mean_sab_w_m2": 0.027057772806879057,
+   "street_small_cell_peak_sab_w_m2": 0.06550898053335456,
+   "street_small_cell_reference_s0_w_m2": 1.0,
+   "street_small_cell_sar_wb_w_kg": 0.0007279016599447333,
+   "street_small_cell_susceptibility": 0.18811546194737158,
+   "truncated_throughput_share": 0.0021690397483452245,
+   "x": -66.0,
+   "y": 48.0,
+   "z": 52.5810546875
+  },
+  {
+   "chi_isotropic": 0.37409909664873225,
+   "chi_isotropic_direct": 0.2882120457271679,
+   "chi_rooftop": 0.29702451930404783,
+   "chi_rooftop_direct": 0.2018162240626255,
+   "chi_street_small_cell": 0.13598822015245096,
+   "chi_street_small_cell_direct": 0.10308253701163038,
+   "escaped_fraction": 0.883585,
+   "ground_z_m": 53.037109375,
+   "index": 571,
+   "isotropic_absorbed_power_w": 0.08207562979740544,
+   "isotropic_arriving_power_density_w_m2": 0.37409909664873237,
+   "isotropic_mean_sab_w_m2": 0.04334992811387976,
+   "isotropic_peak_sab_w_m2": 0.10094315803399856,
+   "isotropic_reference_s0_w_m2": 1.0,
+   "isotropic_sar_wb_w_kg": 0.001133641295544274,
+   "isotropic_susceptibility": 0.37409909664873237,
+   "mean_bounces": 1.03593881743126,
+   "mean_excess_delay_ns": 10.112004426635554,
+   "multipath_gain_isotropic": 1.2979995187392972,
+   "multipath_gain_rooftop": 1.4717573905846058,
+   "multipath_gain_street_small_cell": 1.3192168537441795,
+   "rooftop_absorbed_power_w": 0.08072103664021868,
+   "rooftop_arriving_power_density_w_m2": 0.29702451930404783,
+   "rooftop_mean_sab_w_m2": 0.040716307407985895,
+   "rooftop_peak_sab_w_m2": 0.07911153481095083,
+   "rooftop_reference_s0_w_m2": 1.0,
+   "rooftop_sar_wb_w_kg": 0.0011149314453068877,
+   "rooftop_susceptibility": 0.29702451930404783,
+   "sky_fraction": 0.287985,
+   "street_small_cell_absorbed_power_w": 0.03882146301259788,
+   "street_small_cell_arriving_power_density_w_m2": 0.135988220152451,
+   "street_small_cell_mean_sab_w_m2": 0.019266947253577773,
+   "street_small_cell_peak_sab_w_m2": 0.058383443282502494,
+   "street_small_cell_reference_s0_w_m2": 1.0,
+   "street_small_cell_sar_wb_w_kg": 0.0005362080526601917,
+   "street_small_cell_susceptibility": 0.135988220152451,
+   "truncated_throughput_share": 0.004336493209732792,
+   "x": -18.0,
+   "y": -36.0,
+   "z": 54.537109375
+  },
+  {
+   "chi_isotropic": 0.2647992752693703,
+   "chi_isotropic_direct": 0.21289587144882946,
+   "chi_rooftop": 0.08371907861089187,
+   "chi_rooftop_direct": 0.061763621176923016,
+   "chi_street_small_cell": 0.0063251952251508975,
+   "chi_street_small_cell_direct": 0.002261032145431706,
+   "escaped_fraction": 0.79693,
+   "ground_z_m": 52.240234375,
+   "index": 686,
+   "isotropic_absorbed_power_w": 0.05541247840946451,
+   "isotropic_arriving_power_density_w_m2": 0.2647992752693703,
+   "isotropic_mean_sab_w_m2": 0.029146702698772432,
+   "isotropic_peak_sab_w_m2": 0.08531170067177499,
+   "isotropic_reference_s0_w_m2": 1.0,
+   "isotropic_sar_wb_w_kg": 0.0007653657238876313,
+   "isotropic_susceptibility": 0.2647992752693703,
+   "mean_bounces": 1.2381325837902952,
+   "mean_excess_delay_ns": 5.900853957918774,
+   "multipath_gain_isotropic": 1.24379713644666,
+   "multipath_gain_rooftop": 1.355475553660901,
+   "multipath_gain_street_small_cell": 2.797481335208177,
+   "rooftop_absorbed_power_w": 0.02102982702492652,
+   "rooftop_arriving_power_density_w_m2": 0.08371907861089187,
+   "rooftop_mean_sab_w_m2": 0.01073773108632521,
+   "rooftop_peak_sab_w_m2": 0.024740987366134806,
+   "rooftop_reference_s0_w_m2": 1.0,
+   "rooftop_sar_wb_w_kg": 0.000290467224101195,
+   "rooftop_susceptibility": 0.08371907861089187,
+   "sky_fraction": 0.214145,
+   "street_small_cell_absorbed_power_w": 0.0015723980178862342,
+   "street_small_cell_arriving_power_density_w_m2": 0.0063251952251508975,
+   "street_small_cell_mean_sab_w_m2": 0.0008193198376126325,
+   "street_small_cell_peak_sab_w_m2": 0.0016500767245368683,
+   "street_small_cell_reference_s0_w_m2": 1.0,
+   "street_small_cell_sar_wb_w_kg": 2.1718204666936933e-05,
+   "street_small_cell_susceptibility": 0.0063251952251508975,
+   "truncated_throughput_share": 0.006217248185746613,
+   "x": 0.0,
+   "y": 81.0,
+   "z": 53.740234375
+  },
+  {
+   "chi_isotropic": 0.2457864039850759,
+   "chi_isotropic_direct": 0.1506059610841231,
+   "chi_rooftop": 0.1053860552636951,
+   "chi_rooftop_direct": 0.05193570499483149,
+   "chi_street_small_cell": 0.028760143791708336,
+   "chi_street_small_cell_direct": 0.009483897685466083,
+   "escaped_fraction": 0.753435,
+   "ground_z_m": 51.58203125,
+   "index": 800,
+   "isotropic_absorbed_power_w": 0.04933325738301976,
+   "isotropic_arriving_power_density_w_m2": 0.24578640398507587,
+   "isotropic_mean_sab_w_m2": 0.02743668035453539,
+   "isotropic_peak_sab_w_m2": 0.059974521364605696,
+   "isotropic_reference_s0_w_m2": 1.0,
+   "isotropic_sar_wb_w_kg": 0.0006813985826383944,
+   "isotropic_susceptibility": 0.24578640398507587,
+   "mean_bounces": 1.4269910476683456,
+   "mean_excess_delay_ns": 9.443190521127292,
+   "multipath_gain_isotropic": 1.6319832376873078,
+   "multipath_gain_rooftop": 2.0291638531561835,
+   "multipath_gain_street_small_cell": 3.0325236253637344,
+   "rooftop_absorbed_power_w": 0.027721479739965964,
+   "rooftop_arriving_power_density_w_m2": 0.1053860552636951,
+   "rooftop_mean_sab_w_m2": 0.014407508423676158,
+   "rooftop_peak_sab_w_m2": 0.029879383954519164,
+   "rooftop_reference_s0_w_m2": 1.0,
+   "rooftop_sar_wb_w_kg": 0.0003828933665741155,
+   "rooftop_susceptibility": 0.1053860552636951,
+   "sky_fraction": 0.15149,
+   "street_small_cell_absorbed_power_w": 0.0077234901596202644,
+   "street_small_cell_arriving_power_density_w_m2": 0.028760143791708333,
+   "street_small_cell_mean_sab_w_m2": 0.003972323934142321,
+   "street_small_cell_peak_sab_w_m2": 0.009188654676492155,
+   "street_small_cell_reference_s0_w_m2": 1.0,
+   "street_small_cell_sar_wb_w_kg": 0.00010667804087873293,
+   "street_small_cell_susceptibility": 0.028760143791708333,
+   "truncated_throughput_share": 0.007951025792661572,
+   "x": 18.0,
+   "y": 81.0,
+   "z": 53.08203125
+  }
+ ],
+ "scene": {
+  "body": {
+   "T0": 0.5001397541911426,
+   "frequency_hz": 15000000000.0,
+   "level": 2,
+   "phantom": "duke",
+   "triangles": 56024
+  },
+  "chosen_material_triangle_counts": {
+   "semantic_asphalt_concrete": 195,
+   "semantic_brick": 7997,
+   "semantic_chipboard": 0,
+   "semantic_concrete": 77,
+   "semantic_glass": 1,
+   "semantic_marble": 686,
+   "semantic_metal": 695,
+   "semantic_plasterboard": 0,
+   "semantic_plywood": 0,
+   "semantic_vegetation_effective": 940,
+   "semantic_wood": 268
+  },
+  "class_area_fractions": {
+   "facade": 0.35264146258255363,
+   "ground": 0.2524746922868864,
+   "roof": 0.25593813556057937,
+   "semantic_asphalt_concrete": 0.0017998291630634447,
+   "semantic_brick": 0.07214801374417809,
+   "semantic_chipboard": 0.0,
+   "semantic_concrete": 0.0013350030694602413,
+   "semantic_glass": 2.5455773504766044e-07,
+   "semantic_marble": 0.009248739703532276,
+   "semantic_metal": 0.012138170435179422,
+   "semantic_plasterboard": 0.0,
+   "semantic_plywood": 0.0,
+   "semantic_vegetation_effective": 0.007138241338029826,
+   "semantic_wood": 0.0019355063430579402,
+   "soffit": 0.033201951215744346
+  },
+  "crop_radius_m": 130,
+  "ground_datum_band_fraction": 0.43720985596952744,
+  "ground_datum_m": 50.87109375,
+  "ground_datum_rule": "lowest major walkable level: square metre columns over the walk disc, downward first hit from above the scene, near horizontal faces only, the lowest height whose acceptance band holds at least half as many hits as the busiest height anywhere, settled onto the median of its own band",
+  "illumination_models": {
+   "isotropic": {
+    "description": "Uniform over 4 pi. Equals 1 in free space by construction.",
+    "elevation_deg": [
+     -90.0,
+     90.0
+    ],
+    "height_band_m": null,
+    "law": "isotropic",
+    "range_band_m": null
+   },
+   "rooftop": {
+    "description": "Macro sites of uniform areal density, height above head 13.5 to 43.5 m drawn independently of position, horizontal range 25 to 250 m. Density on dOmega goes as the count of sites per steradian, which is the cubed slant range depth of the height band along that direction. MONOSTATIC_SBR.md section 2.7, corrected 2026-08-02.",
+    "elevation_deg": [
+     3.090970003540502,
+     60.113473059575966
+    ],
+    "height_band_m": [
+     13.5,
+     43.5
+    ],
+    "law": "uniform_sites_band",
+    "range_band_m": [
+     25.0,
+     250.0
+    ]
+   },
+   "street_small_cell": {
+    "description": "Street furniture small cells, height above head 2.5 to 6.5 m drawn independently of position, horizontal range 10 to 150 m. MONOSTATIC_SBR.md section 2.7, corrected 2026-08-02.",
+    "elevation_deg": [
+     0.9548412538721887,
+     33.02386755579665
+    ],
+    "height_band_m": [
+     2.5,
+     6.5
+    ],
+    "law": "uniform_sites_band",
+    "range_band_m": [
+     10.0,
+     150.0
+    ]
+   }
+  },
+  "locations_traced": 8,
+  "materials": "walk",
+  "mesh": "inhouse_leaf_130m_f64.ply",
+  "mesh_triangles": 157862,
+  "reference_s0_w_m2": 1.0,
+  "semantic_covered_fraction_by_area": 0.10574375835423629,
+  "semantic_covered_fraction_by_face": 0.06878792869721656,
+  "semantic_mesh_match": null,
+  "site": "korenmarkt",
+  "surface_binding_classes": {
+   "facade": {
+    "itu_row": "brick",
+    "relative_permittivity": [
+     3.91,
+     -0.043999727503422376
+    ],
+    "rms_height_m": 0.0011550901840693365,
+    "roughness_class": "brick_wall_with_mortar_joints"
+   },
+   "ground": {
+    "itu_row": "asphalt_concrete",
+    "relative_permittivity": [
+     4.83,
+     -0.568858253507591
+    ],
+    "rms_height_m": 0.0037859388972001826,
+    "roughness_class": "stone_sett_paving"
+   },
+   "roof": {
+    "itu_row": "concrete",
+    "relative_permittivity": [
+     5.24,
+     -0.46055233310470917
+    ],
+    "rms_height_m": 0.0006,
+    "roughness_class": "concrete_board_marked_or_exposed_aggregate"
+   },
+   "semantic_asphalt_concrete": {
+    "itu_row": "asphalt_concrete",
+    "relative_permittivity": [
+     4.83,
+     -0.568858253507591
+    ],
+    "rms_height_m": 0.00045,
+    "roughness_class": "asphalt_road_dense_graded"
+   },
+   "semantic_brick": {
+    "itu_row": "brick",
+    "relative_permittivity": [
+     3.91,
+     -0.043999727503422376
+    ],
+    "rms_height_m": 0.0011550901840693365,
+    "roughness_class": "brick_wall_with_mortar_joints"
+   },
+   "semantic_chipboard": {
+    "itu_row": "chipboard",
+    "relative_permittivity": [
+     2.58,
+     -0.21503509456618472
+    ],
+    "rms_height_m": 0.002887184326178939,
+    "roughness_class": "wood_cladding"
+   },
+   "semantic_concrete": {
+    "itu_row": "concrete",
+    "relative_permittivity": [
+     5.24,
+     -0.46055233310470917
+    ],
+    "rms_height_m": 0.0006,
+    "roughness_class": "concrete_board_marked_or_exposed_aggregate"
+   },
+   "semantic_glass": {
+    "itu_row": "glass",
+    "relative_permittivity": [
+     6.31,
+     -0.1622772208848989
+    ],
+    "rms_height_m": 1e-06,
+    "roughness_class": "glass_glazing_unit"
+   },
+   "semantic_marble": {
+    "itu_row": "marble",
+    "relative_permittivity": [
+     7.074,
+     -0.08097609733068681
+    ],
+    "rms_height_m": 0.0006416645021608515,
+    "roughness_class": "stone_ashlar_dressed"
+   },
+   "semantic_metal": {
+    "itu_row": "metal",
+    "relative_permittivity": [
+     1.0,
+     -11986666.666666666
+    ],
+    "rms_height_m": 5e-06,
+    "roughness_class": "metal_cladding_panel_smooth"
+   },
+   "semantic_plasterboard": {
+    "itu_row": "plasterboard",
+    "relative_permittivity": [
+     2.73,
+     -0.1297343833640666
+    ],
+    "rms_height_m": 0.00015,
+    "roughness_class": "render_plaster_painted"
+   },
+   "semantic_plywood": {
+    "itu_row": "plywood",
+    "relative_permittivity": [
+     2.71,
+     -0.39556
+    ],
+    "rms_height_m": 0.002887184326178939,
+    "roughness_class": "wood_cladding"
+   },
+   "semantic_vegetation_effective": {
+    "itu_row": "vacuum_air",
+    "relative_permittivity": [
+     1.0,
+     -0.0
+    ],
+    "rms_height_m": 1e-06,
+    "roughness_class": "glass_glazing_unit"
+   },
+   "semantic_wood": {
+    "itu_row": "wood",
+    "relative_permittivity": [
+     1.99,
+     -0.10264336889420383
+    ],
+    "rms_height_m": 0.002887184326178939,
+    "roughness_class": "wood_cladding"
+   },
+   "soffit": {
+    "itu_row": "concrete",
+    "relative_permittivity": [
+     5.24,
+     -0.46055233310470917
+    ],
+    "rms_height_m": 0.00015,
+    "roughness_class": "concrete_as_cast_smooth"
+   }
+  },
+  "trace_config": {
+   "batch": 400000,
+   "exit_bands": 18,
+   "frequency_hz": 15000000000.0,
+   "local_cells": 512,
+   "max_bounces": 3,
+   "range_weighted_escape": false,
+   "ray_epsilon_m": 0.001,
+   "rays": 200000,
+   "roulette_floor": 0.05,
+   "roulette_start": 4,
+   "seed": 7
+  },
+  "walk_candidates": null,
+  "walk_provenance": {
+   "candidates_after_clearance": 801,
+   "candidates_before_clearance": 821,
+   "candidates_rejected_as_enclosed": 0,
+   "centre_xy": [
+    0.0,
+    0.0
+   ],
+   "clearance_samples": 96,
+   "datum_tolerance_m": 2.5,
+   "ground_datum_m": 50.87109375,
+   "head_height_m": 1.5,
+   "min_clearance_m": 2.0,
+   "min_sky_fraction": 0.01,
+   "min_up_cosine": 0.85,
+   "probe_z_m": 10000.0,
+   "radius_m": 90.0,
+   "spacing_m": 3.0
+  }
+ },
+ "spectra": {
+  "grid_sha256": "f96fc8736a5f508cf1dcf520fa09e8b5f4ebde7547ccdd3377cc941924479d1b",
+  "per_location": [
+   {
+    "argmax": 176,
+    "max": 0.030819618263823022,
+    "sum": 0.5068994483701461
+   },
+   {
+    "argmax": 214,
+    "max": 0.7134872239464968,
+    "sum": 14.467347276286242
+   },
+   {
+    "argmax": 214,
+    "max": 0.6777960222460604,
+    "sum": 9.594984666391989
+   },
+   {
+    "argmax": 219,
+    "max": 0.7287191402051055,
+    "sum": 23.178665890881476
+   },
+   {
+    "argmax": 219,
+    "max": 0.731052574035807,
+    "sum": 13.820069923648347
+   },
+   {
+    "argmax": 214,
+    "max": 0.7265567108448796,
+    "sum": 12.101867639483725
+   },
+   {
+    "argmax": 181,
+    "max": 0.14525972729031253,
+    "sum": 3.4110221291577365
+   },
+   {
+    "argmax": 227,
+    "max": 0.3355770089973844,
+    "sum": 4.293814176812219
+   }
+  ],
+  "sha256": "1c7761c38976137bf4dc3d57a6a7179859ff436cf692c06f06ebb9736a0225bd",
+  "shape": [
+   8,
+   512
+  ],
+  "solid_angle_sha256": "6135714a7b78f551814c5591129dc5343c6f01bd306fc9b225e8a9bfa1d4d2e3",
+  "solid_angle_total": 0.02454369260617026
+ }
+}

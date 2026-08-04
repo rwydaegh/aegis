@@ -766,6 +766,6 @@ def rejection_reason_names() -> dict[int, str]:
     Blender, whose bundled interpreter has neither shapely nor mapbox_earcut,
     and the cutter needs both.
     """
-    from semantic_twin.fishnet import REJECTION_REASONS
+    from semantic_twin.scene.fishnet import REJECTION_REASONS
 
     return {code: name for name, code in REJECTION_REASONS.items()}

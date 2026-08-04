@@ -66,13 +66,14 @@ from typing import Any, Callable
 
 import numpy as np
 
-from .directions import (
+from ..illumination import (
     ISOTROPIC,
     ROOFTOP,
     ROOFTOP_PATHLOSS,
     STREET_SMALL_CELL,
     STREET_SMALL_CELL_PATHLOSS,
     IlluminationModel,
+    Isotropic,
 )
 from .tracer import DEFAULT_MAX_BOUNCES, TERMINATIONS
 
@@ -525,7 +526,7 @@ class LoadedBeam:
         """Quadrature nodes and weights over the served user's direction."""
         if self._users is not None:
             return self._users
-        from .directions import elevation_band_measure
+        from ..illumination import elevation_band_measure
 
         edges = np.linspace(
             self.user_population.elevation_min_deg,
@@ -591,10 +592,11 @@ class LoadedBeam:
 class AntennaIllumination:
     """A site population times a per site gain towards the pedestrian.
 
-    Duck types :class:`~semantic_twin.propagation.directions.IlluminationModel`
+    Satisfies :class:`~semantic_twin.illumination.model.AngularIllumination`
     so :class:`~semantic_twin.propagation.tracer.SbrTracer` consumes it with no
-    change at all. The tracer needs exactly ``name``, ``normalisation()``,
-    ``knots()`` and ``density(directions, normalisation)``, and calls
+    change at all. That protocol is ``name``, ``law``, ``family``,
+    ``describe()``, the elevation window, ``weight()``, ``knots()``,
+    ``normalisation()`` and ``density(directions, normalisation)``, and calls
     ``density`` on the exact exit direction of every escaping ray rather than on
     a grid cell, so a pattern with nulls in it costs variance and never bias.
 
@@ -685,7 +687,7 @@ class AntennaIllumination:
                 elevation = np.insert(elevation, int(np.searchsorted(elevation, knot)), knot)
         nodes, table = self._mean_gain_table()
         mean_gain = np.interp(elevation, nodes, table)
-        raw = self.base._raw(np.clip(elevation, low, high))
+        raw = self.base.profile(np.clip(elevation, low, high))
         self._normalisation = float(2.0 * np.pi * np.trapezoid(raw * mean_gain * np.cos(elevation), elevation))
         return self._normalisation
 
@@ -717,9 +719,8 @@ def elevation_probes(edges_deg: np.ndarray, *, prefix: str = "band") -> dict[str
     """
     edges = np.asarray(edges_deg, dtype=np.float64)
     return {
-        f"{prefix}{index:03d}": IlluminationModel(
+        f"{prefix}{index:03d}": Isotropic(
             name=f"{prefix}{index:03d}",
-            law="isotropic",
             elevation_min_deg=float(edges[index]),
             elevation_max_deg=float(edges[index + 1]),
             description=f"transfer kernel probe, elevation {edges[index]:.3f} to {edges[index + 1]:.3f} deg",
@@ -756,7 +757,7 @@ def kernel_susceptibility(
     section 4.4 of PAPER_METHODS.md gives: the grazing laws are convex, so a
     midpoint rule reads as a factor of six error in the physics.
     """
-    from .directions import elevation_band_measure
+    from ..illumination import elevation_band_measure
 
     edges = np.asarray(edges_deg, dtype=np.float64)
     measure = elevation_band_measure(model, edges, samples=samples)
@@ -1076,15 +1077,16 @@ def _trace_site(site: str, args: argparse.Namespace, models: dict[str, Any]) -> 
     from run_exposure import GROUND_DATUM_M, ground_datum, site_mesh
 
     from .geometry import MitsubaGeometry
-    from .scene import classify_faces, load_bindings
+    from ..materials import classify_faces, load_table
     from .tracer import SbrTracer, TraceConfig
-    from .walk import build_walk, stratified_subset
+    from ..walk.grid import build_walk
+    from ..walk.model import stratified_subset
 
     config_dir = pathlib.Path(__file__).resolve().parents[2] / "config"
     geometry = MitsubaGeometry(site_mesh(site, args.crop_m))
     datum = GROUND_DATUM_M if site == "korenmarkt" else ground_datum(geometry)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(config_dir, args.frequency_hz)
+    binding = load_table(config_dir, args.frequency_hz)
     config = TraceConfig(
         frequency_hz=args.frequency_hz,
         rays=args.rays,
@@ -1140,15 +1142,16 @@ def _artefact_site(site: str, args: argparse.Namespace) -> dict[str, Any]:
     from run_exposure import GROUND_DATUM_M, ground_datum, site_mesh
 
     from .geometry import MitsubaGeometry
-    from .scene import classify_faces, load_bindings
+    from ..materials import classify_faces, load_table
     from .tracer import PathRecorder, SbrTracer, TraceConfig
-    from .walk import build_walk, stratified_subset
+    from ..walk.grid import build_walk
+    from ..walk.model import stratified_subset
 
     config_dir = pathlib.Path(__file__).resolve().parents[2] / "config"
     geometry = MitsubaGeometry(site_mesh(site, args.crop_m))
     datum = GROUND_DATUM_M if site == "korenmarkt" else ground_datum(geometry)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(config_dir, args.frequency_hz)
+    binding = load_table(config_dir, args.frequency_hz)
     config = TraceConfig(
         frequency_hz=args.frequency_hz,
         rays=args.rays,

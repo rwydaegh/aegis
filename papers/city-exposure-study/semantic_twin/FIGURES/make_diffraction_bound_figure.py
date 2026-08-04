@@ -157,7 +157,7 @@ def build_mask(n_azimuth: int = 720, n_elevation: int = 600) -> dict:
 
 def street_measure_below(degrees: float = 5.0) -> float:
     """Share of the street small cell illumination measure below an elevation."""
-    from semantic_twin.propagation.directions import MODELS as LAWS
+    from semantic_twin.illumination import MODELS as LAWS
 
     unit, omega, elevation = direction_grid(720, 600, 0.05)
     model = LAWS["street_small_cell"]

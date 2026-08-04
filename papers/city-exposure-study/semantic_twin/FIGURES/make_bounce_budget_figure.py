@@ -103,14 +103,15 @@ def retrace(
     from run_exposure import MODELS as ILLUMINATION
     from run_exposure import measure_ground_datum, site_mesh
     from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig
-    from semantic_twin.propagation.scene import classify_faces, load_bindings
-    from semantic_twin.propagation.walk import build_walk, stratified_subset
+    from semantic_twin.materials import classify_faces, load_table
+    from semantic_twin.walk.grid import build_walk
+    from semantic_twin.walk.model import stratified_subset
 
     mesh = site_mesh(site, crop_m)
     geometry = MitsubaGeometry(mesh, variant=variant)
     datum = measure_ground_datum(geometry, radius_m=walk_radius_m).z_m
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(ROOT / "config", frequency_hz)
+    binding = load_table(ROOT / "config", frequency_hz)
     walk = build_walk(
         geometry,
         ground_datum_m=datum,

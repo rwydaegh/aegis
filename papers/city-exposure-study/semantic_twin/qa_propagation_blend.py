@@ -40,7 +40,6 @@ Run from the ``semantic_twin`` directory::
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import pathlib
 import subprocess
@@ -59,7 +58,9 @@ BUILDERS = (
     "propagation_blender.py",
     "build_propagation_blends.py",
     "export_propagation_payload.py",
-    "semantic_twin/propagation/walk.py",
+    "semantic_twin/walk/grid.py",
+    "semantic_twin/walk/route.py",
+    "semantic_twin/walk/site.py",
 )
 
 #: Collections the published renders draw from. Empty means a missing layer in
@@ -174,22 +175,17 @@ def check_stale(blend: pathlib.Path, summary: dict, newest: int) -> list[str]:
 
 
 def builder_fingerprint() -> str:
-    """The same hash ``propagation_blender.py`` stamps, computed here."""
-    digest = hashlib.sha256()
-    for name in BUILDER_SOURCES:
-        path = ROOT / name
-        digest.update(path.read_bytes() if path.exists() else b"")
-    return digest.hexdigest()[:16]
+    """The same hash the blend builder stamps, computed here.
 
+    Imported rather than copied. This used to be a hand kept duplicate of the
+    source list with a comment saying that importing the real one would pull in
+    ``bpy``. That is no longer true: the list lives in
+    ``semantic_twin.viz.blender.payload``, which is the half of the builder that
+    has no Blender in it, so the two lists cannot drift.
+    """
+    from semantic_twin.viz.blender.payload import builder_fingerprint as fingerprint
 
-#: Kept identical to ``propagation_blender.BUILDER_SOURCES``. Importing it would
-#: mean importing ``bpy``, which is not available outside Blender.
-BUILDER_SOURCES = (
-    "propagation_blender.py",
-    "export_propagation_payload.py",
-    "semantic_twin/propagation/walk.py",
-    "semantic_twin/propagation/route.py",
-)
+    return fingerprint(ROOT)
 
 
 def check_populated(summary: dict) -> list[str]:

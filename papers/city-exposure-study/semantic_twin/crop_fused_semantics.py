@@ -2,7 +2,7 @@
 
 ``build_fishnet_surface.py`` reads per-view ``h+00_YYY_labels.npy`` and
 ``h+00_YYY_confidence.npy`` written by the dense pass in
-``semantic_twin/semantics.py``.  Those per-view arrays live wherever the pass
+``semantic_twin/vision/panorama.py``.  Those per-view arrays live wherever the pass
 ran, and only Korenmarkt and Milan carry them in this repository.  What every
 segmented panorama does carry is the product the same pass fused out of them,
 ``semantics/panorama_semantics.npz``, holding the dense Mapillary Vistas entity

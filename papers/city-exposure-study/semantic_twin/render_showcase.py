@@ -43,6 +43,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from semantic_twin.materials import SurfaceRoughnessLibrary  # noqa: E402
+from semantic_twin import paths as study_paths  # noqa: E402
 from semantic_twin.showcase import (  # noqa: E402
     MATERIAL_COLOURS,
     REJECTION_COLOURS,
@@ -842,7 +843,9 @@ def resolve_paths(site: dict[str, Any]) -> dict[str, pathlib.Path]:
         return path if path.is_absolute() else (SCRIPT_DIR / path)
 
     paths = {
-        "support_mesh": resolve(site["support_mesh"]),
+        "support_mesh": study_paths.site_mesh(
+            str(site["site_key"]), int(round(float(site["crop_radius_m"]))), root_dir=SCRIPT_DIR
+        ),
         "fishnet": resolve(site["fishnet"]),
         "fishnet_source_mesh": resolve(site["fishnet_source_mesh"]),
         "pose": resolve(site["pose"]),
@@ -1122,7 +1125,7 @@ def main() -> None:
     document = json.loads(args.config.read_text())
     if args.site not in document["sites"]:
         raise SystemExit(f"Unknown site {args.site}. Known: {', '.join(sorted(document['sites']))}")
-    site = {**document["defaults"], **document["sites"][args.site]}
+    site = {**document["defaults"], **document["sites"][args.site], "site_key": args.site}
     out = args.out or (SCRIPT_DIR / "outputs" / f"showcase_{args.site}")
     out.mkdir(parents=True, exist_ok=True)
     payload = out / "payload.npz"

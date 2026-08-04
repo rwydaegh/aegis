@@ -26,30 +26,34 @@ import pathlib
 import platform
 import sys
 import time
-from typing import Any
+from typing import Any, Sequence
 
 import numpy as np
 
-from semantic_twin.propagation import (
+from semantic_twin import paths
+from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
+from semantic_twin.materials import (
+    CLASS_NAMES,
+    bind_fishnet,
+    bind_walk_entities,
+    bind_walk_materials,
+    classify_faces,
+    load_table,
+)
+from semantic_twin.paths import site_mesh
+from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY, ground_plane_susceptibility
+from semantic_twin.propagation.exposure import BodyCoupler, describe
+from semantic_twin.propagation.geometry import MitsubaGeometry, PlaneGeometry
+from semantic_twin.propagation.tracer import (
     DEFAULT_MAX_BOUNCES,
-    ISOTROPIC,
-    PEC_PERMITTIVITY,
-    ROOFTOP,
-    STREET_SMALL_CELL,
-    MitsubaGeometry,
-    PlaneGeometry,
     SbrTracer,
     TraceConfig,
-    ground_plane_susceptibility,
     trace_standpoints,
 )
-from semantic_twin.propagation.exposure import BodyCoupler, describe
-from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings
-from semantic_twin.propagation.semantic_binding import bind, bind_from_walk, bind_from_walk_material
-from semantic_twin.propagation.walk import build_walk, ground_datum, measure_ground_datum, stratified_subset
+from semantic_twin.walk import build_walk, ground_datum, measure_ground_datum, stratified_subset
 
-#: ``ground_datum`` now lives beside the walk it feeds, in
-#: semantic_twin/propagation/walk.py. It is re-exported because the ablation and
+#: ``ground_datum`` lives beside the walk it feeds, in ``semantic_twin.walk``.
+#: It is re-exported because the ablation and
 #: payload scripts import it from this module.
 __all__ = [
     "GROUND_DATUM_M",
@@ -152,29 +156,8 @@ def site_fishnet(site: str) -> tuple[pathlib.Path, pathlib.Path] | None:
                 f"directory with the panorama in the file name."
             )
         return None
-    mesh = fishnet_source_mesh(directory, site)
+    mesh = paths.fishnet_source_mesh(directory, site, root_dir=ROOT)
     return (directory, mesh) if mesh is not None and mesh.exists() else None
-
-
-def fishnet_source_mesh(directory: pathlib.Path, site: str) -> pathlib.Path | None:
-    """The mesh named by a fishnet manifest, as an absolute path.
-
-    Two manifest spellings are in use, one carrying a repository relative path
-    and one carrying a bare file name, so both are resolved against the site's
-    geometry directory when they are not already a path that exists.
-    """
-    for name in ("fishnet_manifest.json", "site_fishnet_manifest.json"):
-        manifest = directory / name
-        if not manifest.exists():
-            continue
-        named = json.loads(manifest.read_text()).get("mesh")
-        if not named:
-            continue
-        candidate = pathlib.Path(named)
-        if not candidate.is_absolute():
-            candidate = ROOT / named
-        return candidate if candidate.exists() else ROOT / "data" / "geometry" / site / pathlib.Path(named).name
-    return None
 
 
 FREQUENCY_NOTE = (
@@ -236,27 +219,6 @@ SITES: tuple[str, ...] = (
 )
 
 
-def site_mesh(site: str, crop_m: int = 130) -> pathlib.Path:
-    """The double precision export for a site, refusing the defective one.
-
-    Korenmarkt has both a ``format_version: 2`` build, whose tile placement was
-    read back through Blender in single precision and carries up to a metre of
-    seaming, and a ``_f64`` rebuild that does not. The other sites were built
-    after that fix, so their unsuffixed file is already the good one. Rather
-    than encode which is which by name, the manifest's ``format_version`` is
-    read and anything below 3 is refused.
-    """
-    directory = ROOT / "data" / "geometry" / site
-    for candidate in (f"inhouse_leaf_{crop_m}m_f64.ply", f"inhouse_leaf_{crop_m}m.ply"):
-        path = directory / candidate
-        manifest = path.with_suffix(".json")
-        if not path.exists() or not manifest.exists():
-            continue
-        if int(json.loads(manifest.read_text()).get("format_version", 0)) >= 3:
-            return path
-    raise FileNotFoundError(f"no double precision {crop_m} m mesh for {site}")
-
-
 def registered_ground_z(site: str) -> float | None:
     """Pavement height under the panorama cameras, where a registration exists.
 
@@ -307,7 +269,7 @@ def validate(rays: int = 400_000) -> dict[str, object]:
         "chi": pec.susceptibility,
     }
 
-    binding = load_bindings(CONFIG, 15.0e9)
+    binding = load_table(CONFIG, 15.0e9)
     concrete = binding.permittivity[CLASS_NAMES.index("roof")]
     tracer = SbrTracer(PlaneGeometry(0.0), None, np.array([concrete]), np.array([0.0]), config)
     dielectric = tracer.trace(np.array([0.0, 0.0, 1.5]), MODELS, ground_z_m=0.0)
@@ -428,7 +390,7 @@ def run(
     if materials == "semantic":
         fishnet_dir, fishnet_mesh = fishnet
         source = MitsubaGeometry(fishnet_mesh, variant=variant)
-        semantic = bind(
+        semantic = bind_fishnet(
             geometry.vertices,
             geometry.faces,
             areas,
@@ -439,7 +401,7 @@ def run(
             source_ply_faces=source.faces,
         )
         face_class = semantic.face_class
-        binding = load_bindings(
+        binding = load_table(
             CONFIG,
             frequency_hz,
             class_names=semantic.class_names,
@@ -462,14 +424,14 @@ def run(
             flush=True,
         )
     elif materials == "walk":
-        semantic = bind_from_walk(
+        semantic = bind_walk_entities(
             areas,
             face_class,
             walk_npz=walk_binding,
             semantics_path=SEMANTICS,
         )
         face_class = semantic.face_class
-        binding = load_bindings(
+        binding = load_table(
             CONFIG,
             frequency_hz,
             class_names=semantic.class_names,
@@ -497,7 +459,7 @@ def run(
         "walk_material_over_entity",
         "walk_material_facade_only",
     ):
-        semantic = bind_from_walk_material(
+        semantic = bind_walk_materials(
             areas,
             face_class,
             walk_npz=walk_binding,
@@ -507,7 +469,7 @@ def run(
             facade_only=materials == "walk_material_facade_only",
         )
         face_class = semantic.face_class
-        binding = load_bindings(
+        binding = load_table(
             CONFIG,
             frequency_hz,
             class_names=semantic.class_names,
@@ -530,7 +492,7 @@ def run(
             flush=True,
         )
     elif materials == "geometric":
-        binding = load_bindings(CONFIG, frequency_hz)
+        binding = load_table(CONFIG, frequency_hz)
         semantic_provenance.update({"covered_fraction_by_face": 0.0, "covered_fraction_by_area": 0.0})
     else:
         raise ValueError(f"unknown materials mode {materials!r}")
@@ -648,16 +610,15 @@ def run(
 
 def report(stem: str) -> pathlib.Path:
     """Regenerate the CDF figure and the numbers behind it from the JSONL."""
-    from semantic_twin.propagation.report import (
-        load_rows,
-        plot_cdf,
-        split_half_stability,
-        summarise,
-    )
+    from semantic_twin.report import read_rows, split_half_stability, summarise
+    from semantic_twin.viz.cdf import walk_cdf
 
     rows_path = OUTPUT / f"{stem}_locations.jsonl"
     manifest = json.loads((OUTPUT / f"{stem}_manifest.json").read_text())
-    rows = load_rows(rows_path)
+    # ``read_rows`` returns the file plus what it cost to read. Only the rows go
+    # on from here, because the summary this writes is pinned by a golden fixture
+    # and has no field for a torn line count.
+    rows = list(read_rows(rows_path, site=stem).rows)
     keys = [
         "chi_isotropic",
         "chi_rooftop",
@@ -688,7 +649,7 @@ def report(stem: str) -> pathlib.Path:
     summary["rays_per_location"] = manifest["trace_config"]["rays"]
     summary_path = OUTPUT / f"{stem}_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2))
-    figure = plot_cdf(
+    figure = walk_cdf(
         rows,
         OUTPUT / f"{stem}_cdf.png",
         reference_s0_w_m2=manifest["reference_s0_w_m2"],
@@ -855,7 +816,7 @@ def coverage_report(
     tags, so a rerun at a different bounce budget does not overwrite the
     published ladder and can be compared against it.
     """
-    from semantic_twin.propagation.report import empirical_cdf, load_rows
+    from semantic_twin.report import empirical_cdf, read_rows
 
     entries: list[dict[str, Any]] = []
     baseline: dict[str, np.ndarray] | None = None
@@ -865,7 +826,7 @@ def coverage_report(
         manifest_path = OUTPUT / f"{full}_manifest.json"
         if not rows_path.exists() or not manifest_path.exists():
             continue
-        rows = load_rows(rows_path)
+        rows = read_rows(rows_path, site=site).rows
         manifest = json.loads(manifest_path.read_text())
         binding = manifest["semantic_binding"]
         columns = {key: np.array([row[key] for row in rows]) for key in LADDER_MODELS}
@@ -933,7 +894,7 @@ def coverage_report(
 
         figure, panel = plt.subplots(figsize=(5.2, 4.0))
         for entry, colour in zip(entries, ("0.55", "tab:blue", "tab:red"), strict=False):
-            rows = load_rows(OUTPUT / f"{entry['stem']}_locations.jsonl")
+            rows = read_rows(OUTPUT / f"{entry['stem']}_locations.jsonl", site=site).rows
             ordered, probability = empirical_cdf(np.array([r["chi_rooftop"] for r in rows]))
             panel.step(
                 ordered,
@@ -1339,7 +1300,7 @@ def run_all_sites(
     """
     coupler = BodyCoupler(PHANTOM, frequency_hz, body_mass_kg=PHANTOM_MASS_KG)
     done: list[str] = []
-    expected = 0
+    buildable: list[str] = []
     for site in sites:
         try:
             site_mesh(site, crop_m)
@@ -1348,7 +1309,7 @@ def run_all_sites(
             # substituting a different one would confound geometry with crop.
             print(f"[skip] {site}: no {crop_m} m mesh, not comparable at this radius", flush=True)
             continue
-        expected += 1
+        buildable.append(site)
         # The suffix keeps a rerun from landing on a published run's files. The
         # city250_* tags hold the results computed under the superseded
         # elevation law, and those have to stay readable next to their
@@ -1380,9 +1341,16 @@ def run_all_sites(
         # a readable aggregate. It therefore spends most of its life partial,
         # and used to say nothing about that: the published eleven city figure
         # was copied from one of these mid-sweep snapshots and showed a site at
-        # 3 standpoints. The completeness fields below exist so a consumer can
-        # tell, and cross_city_cdf refuses to title a partial run "converged".
-        cross_city_report(done, frequency_hz, crop_m=crop_m, tag_suffix=tag_suffix, sites_expected=expected)
+        # 3 standpoints. The table now carries its own coverage and the figure is
+        # only drawn from a table that passes it.
+        #
+        # ``buildable`` still grows inside this loop, so mid sweep it names the
+        # squares reached rather than the squares intended and the two agree at
+        # every step of a healthy sweep. The list is what the old counter was,
+        # with names instead of a number. Hoisting the mesh check above the loop
+        # would make the expectation durable and is the remaining half of this
+        # fix.
+        cross_city_report(done, frequency_hz, crop_m=crop_m, tag_suffix=tag_suffix, sites_expected=tuple(buildable))
 
 
 def cross_city_report(
@@ -1391,7 +1359,7 @@ def cross_city_report(
     *,
     crop_m: int = 130,
     tag_suffix: str = "",
-    sites_expected: int | None = None,
+    sites_expected: Sequence[str] | None = None,
 ) -> None:
     """CDF with one curve per city, plus the numbers behind it.
 
@@ -1400,10 +1368,16 @@ def cross_city_report(
     every site, then read the unsuffixed per site files and rewrote the
     unsuffixed aggregate from them, so the new runs were simply not in the
     figure and nothing said so.
+
+    ``sites_expected`` names the squares the sweep meant to reach. It used to be
+    a count, and a count is what let a ten of eleven aggregate call itself
+    complete. Names go into :class:`~semantic_twin.report.Coverage`, which will
+    not hand the figure a table it cannot vouch for.
     """
     if not sites:
         return
-    from semantic_twin.propagation.report import cross_city_cdf, load_rows, summarise
+    from semantic_twin.report import CrossCityTable, IncompleteAggregate, read_rows
+    from semantic_twin.viz.cdf import cross_city_cdf
 
     prefix = "city" if crop_m == 130 else f"city{crop_m}"
     stems = {site: f"{prefix}{tag_suffix}_{site}_{frequency_hz / 1e9:g}ghz" for site in sites}
@@ -1411,38 +1385,31 @@ def cross_city_report(
     for site, stem in stems.items():
         path = OUTPUT / f"{stem}_locations.jsonl"
         if path.exists():
-            rows[site] = load_rows(path)
+            rows[site] = read_rows(path, site=site)
     if not rows:
         return
-    keys = ["chi_rooftop", "chi_isotropic", "sky_fraction", "rooftop_peak_sab_w_m2"]
-    expected = len(sites) if sites_expected is None else sites_expected
-    complete = len(rows) == expected
-    counts = {site: len(values) for site, values in rows.items()}
-    ragged = len(set(counts.values())) > 1
-    summary = {
-        "frequency_hz": frequency_hz,
-        "reference_s0_w_m2": REFERENCE_S0_W_M2,
-        "materials": "geometric class prior, identical across sites",
-        "crop_radius_m": crop_m,
-        "crop_bound_note": CROP_BOUND_NOTE,
-        "sites_present": len(rows),
-        "sites_expected": expected,
-        "complete": complete,
-        "locations_by_site": counts,
-        "ragged_locations": ragged,
-        "sites": {site: summarise(values, keys) for site, values in rows.items()},
-    }
-    if not complete or ragged:
-        print(
-            f"[partial] aggregate holds {len(rows)} of {expected} sites, "
-            f"locations per site {sorted(set(counts.values()))}. "
-            "Do not publish this figure.",
-            flush=True,
-        )
-    path = OUTPUT / f"cities{crop_m}{tag_suffix}_{frequency_hz / 1e9:g}ghz_summary.json"
-    path.write_text(json.dumps(summary, indent=2))
-    figure = cross_city_cdf(
+    table = CrossCityTable.build(
         rows,
+        expected=sites if sites_expected is None else sites_expected,
+        frequency_hz=frequency_hz,
+        reference_s0_w_m2=REFERENCE_S0_W_M2,
+        crop_radius_m=float(crop_m),
+        materials="geometric class prior, identical across sites",
+        crop_bound_note=CROP_BOUND_NOTE,
+    )
+    path = OUTPUT / f"cities{crop_m}{tag_suffix}_{frequency_hz / 1e9:g}ghz_summary.json"
+    path.write_text(json.dumps(table.as_dict(), indent=2))
+    try:
+        published = table.publish()
+    except IncompleteAggregate as refusal:
+        # The table is still written, because a sweep that dies at hour two should
+        # leave a readable aggregate behind. The figure is not, because the figure
+        # is the thing that got copied into the paper.
+        print(f"[partial] {refusal}", flush=True)
+        print(f"wrote {path}, no figure", flush=True)
+        return
+    figure = cross_city_cdf(
+        published,
         OUTPUT / f"cities{crop_m}{tag_suffix}_{frequency_hz / 1e9:g}ghz_cdf.png",
         frequency_ghz=frequency_hz / 1e9,
         reference_s0_w_m2=REFERENCE_S0_W_M2,
@@ -1453,7 +1420,7 @@ def cross_city_report(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--locations", type=int, default=20)
+    parser.add_argument("--locations", type=int, default=0)
     parser.add_argument("--rays", type=int, default=200_000)
     parser.add_argument("--max-bounces", type=int, default=DEFAULT_MAX_BOUNCES)
     parser.add_argument(
@@ -1467,7 +1434,7 @@ def main(argv: list[str] | None = None) -> int:
             "walk_material_facade_only",
             "geometric",
         ),
-        default="semantic",
+        default="geometric",
     )
     parser.add_argument(
         "--walk-npz",
@@ -1494,7 +1461,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--walk-radius-m", type=float, default=90.0)
     parser.add_argument("--walk-spacing-m", type=float, default=3.0)
     parser.add_argument("--site", default="korenmarkt")
-    parser.add_argument("--crop-m", type=int, default=130)
+    parser.add_argument("--crop-m", type=int, default=250)
     parser.add_argument(
         "--tag-suffix",
         default="",

@@ -61,9 +61,10 @@ from semantic_twin.propagation import (
     SbrTracer,
     TraceConfig,
 )
-from semantic_twin.propagation.directions import IlluminationModel
-from semantic_twin.propagation.scene import classify_faces, load_bindings
-from semantic_twin.propagation.walk import build_walk, stratified_subset
+from semantic_twin.illumination import BandLaw, IlluminationModel
+from semantic_twin.materials import classify_faces, load_table
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.model import stratified_subset
 
 ROOT = pathlib.Path(__file__).resolve().parent
 OUTPUT = ROOT / "outputs" / "sensitivity"
@@ -263,7 +264,7 @@ def harvest_site(site: str, *, locations: int = LOCATIONS, rays: int = RAYS, str
     # one site where it can be asked.
     datum = run_exposure.ground_datum(geometry, radius_m=WALK_RADIUS_M)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(run_exposure.CONFIG, FREQUENCY_HZ)
+    binding = load_table(run_exposure.CONFIG, FREQUENCY_HZ)
     walk = build_walk(geometry, ground_datum_m=datum, radius_m=WALK_RADIUS_M, spacing_m=WALK_SPACING_M, seed=SEED)
     picks = stratified_subset(walk, locations)[:: max(1, int(stride))]
 
@@ -348,9 +349,8 @@ DEFENSIBLE: dict[str, dict[str, tuple[float, float]]] = {
 
 
 def band_model(name: str, h_min: float, h_max: float, d_min: float, d_max: float) -> IlluminationModel:
-    return IlluminationModel(
+    return BandLaw(
         name=f"{name}_{h_min:g}_{h_max:g}_{d_min:g}_{d_max:g}",
-        law="uniform_sites_band",
         height_band_m=(float(h_min), float(h_max)),
         range_band_m=(float(d_min), float(d_max)),
         description="sensitivity sweep",
@@ -460,7 +460,7 @@ def mechanism(model: str) -> dict[str, Any]:
     axis: it is the reason the per site sensitivities come out as unequal as
     they do.
     """
-    from semantic_twin.propagation.directions import measure_below
+    from semantic_twin.illumination import measure_below
 
     h_min, h_max = DEFAULTS[model]["height_band_m"]
     d_min, _ = DEFAULTS[model]["range_band_m"]

@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from semantic_twin.mmwave import (
+from semantic_twin.materials.roughness import roughness_to_scattering_coefficient, wavelength_m
+from semantic_twin.materials.mmwave import (
     coherent_amplitude_retention,
     feature_electrical_size,
     phase_standard_deviation_rad,
-    roughness_to_scattering_coefficient,
-    wavelength_m,
 )
 
 

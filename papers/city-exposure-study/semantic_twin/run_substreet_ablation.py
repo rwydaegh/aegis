@@ -44,8 +44,9 @@ from semantic_twin.propagation import (  # noqa: E402
     SbrTracer,
     TraceConfig,
 )
-from semantic_twin.propagation.scene import classify_faces, load_bindings  # noqa: E402
-from semantic_twin.propagation.walk import build_walk, stratified_subset  # noqa: E402
+from semantic_twin.materials import classify_faces, load_table  # noqa: E402
+from semantic_twin.walk.grid import build_walk  # noqa: E402
+from semantic_twin.walk.model import stratified_subset  # noqa: E402
 
 CONFIG = SCRIPT_DIR / "config"
 OUTPUT = SCRIPT_DIR / "outputs" / "substreet_ablation"
@@ -83,7 +84,7 @@ def write_culled(geometry: MitsubaGeometry, floor_z: float, path: pathlib.Path) 
 
 def trace_all(geometry: MitsubaGeometry, datum: float, points, datums, config, frequency_hz) -> dict[str, np.ndarray]:
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(CONFIG, frequency_hz)
+    binding = load_table(CONFIG, frequency_hz)
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
     rows = []
     for index, (point, ground) in enumerate(zip(points, datums, strict=True)):

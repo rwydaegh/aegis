@@ -45,7 +45,7 @@ sys.path.insert(0, str(ROOT))
 from semantic_twin.blender_mesh import mesh_arrays  # noqa: E402
 from semantic_twin.export import compact, scene_xml, write_ply  # noqa: E402
 from semantic_twin.pano_geometry import panorama_to_world_matrix  # noqa: E402
-from semantic_twin.taxonomy import is_object  # noqa: E402
+from semantic_twin.vision.vocabulary import is_object  # noqa: E402
 
 # Material id 0 is the real ``unknown`` class, which a segmenter can genuinely
 # assign to an observed surface. Never-observed geometry therefore needs its own

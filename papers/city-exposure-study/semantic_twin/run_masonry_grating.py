@@ -32,8 +32,8 @@ import time
 
 import numpy as np
 
-from semantic_twin.floquet import diffraction_orders
-from semantic_twin.kirchhoff import (
+from semantic_twin.materials.masonry import diffraction_orders
+from semantic_twin.materials.masonry import (
     DisorderModel,
     bistatic_map,
     equivalent_rms_height_m,
@@ -45,7 +45,7 @@ from semantic_twin.kirchhoff import (
     order_angular_width_deg,
     specular_retention,
 )
-from semantic_twin.masonry import (
+from semantic_twin.materials.masonry import (
     BONDS,
     BRICK_FORMATS,
     TOLERANCE_CLASSES,
@@ -53,9 +53,9 @@ from semantic_twin.masonry import (
     MasonryWall,
     permittivity_from_evaluation,
 )
-from semantic_twin.mmwave import wavelength_m
-from semantic_twin.rcwa import convergence_sweep
-from semantic_twin.rcwa import solve as rcwa_solve
+from semantic_twin.materials.roughness import wavelength_m
+from semantic_twin.materials.masonry import convergence_sweep
+from semantic_twin.materials.masonry import solve as rcwa_solve
 
 ROOT = pathlib.Path(__file__).resolve().parent
 OUTPUT = ROOT / "outputs" / "masonry_grating"
@@ -629,8 +629,8 @@ def stage_model() -> None:
                 "config/itu_p2040_4.json supplies the dielectric.",
             ],
             "solvers": {
-                "rigorous": "semantic_twin.rcwa, Fourier modal method on the unit cell.",
-                "cheap": "semantic_twin.kirchhoff, phase screen with the disorder averaged in closed form.",
+                "rigorous": "semantic_twin.materials.masonry.rcwa, Fourier modal method on the unit cell.",
+                "cheap": "semantic_twin.materials.masonry.kirchhoff, phase screen with the disorder averaged in closed form.",
                 "sweep": "run_masonry_grating.py",
             },
         },

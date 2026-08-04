@@ -21,11 +21,18 @@ from dataclasses import asdict
 
 import numpy as np
 
-from semantic_twin import walk as walk_module
-from semantic_twin.geo import EnuFrame
-from semantic_twin.mapillary import pose_from_metadata, download_panorama_image, token
-from semantic_twin.panorama import load_support_mesh
-from semantic_twin.scene import load_scene
+from semantic_twin.acquire import load_support_mesh
+from semantic_twin import paths
+from semantic_twin.acquire.mapillary import (
+    download_panorama_image,
+    pose_from_metadata,
+    seed_sequence_ids,
+    token,
+    traverse,
+)
+from semantic_twin.scene.enu import EnuFrame
+from semantic_twin.scene.site_config import load_scene
+from semantic_twin.vision import captures
 
 REPO = pathlib.Path(__file__).resolve().parent
 
@@ -44,7 +51,11 @@ def _mesh_path(args: argparse.Namespace, scene: dict) -> str:
     area fraction by about 4.6 percent relative, downward. The rest of the study
     reads tile placement in double precision, so this does too.
     """
-    return str(REPO / (args.mesh or scene["source_mesh"]))
+    if args.mesh:
+        mesh = pathlib.Path(args.mesh)
+        return str(mesh if mesh.is_absolute() else REPO / mesh)
+    crop_m = int(round(float(scene["geometry_selection"]["crop_radius_m"])))
+    return str(paths.site_mesh(str(scene["name"]), crop_m, root_dir=REPO))
 
 
 def stage_select(args: argparse.Namespace) -> None:
@@ -54,19 +65,20 @@ def stage_select(args: argparse.Namespace) -> None:
     longitude = float(scene["location"]["lon"])
     access_token = token()
 
-    sequences, seeds = walk_module.seed_sequences(
+    seeds = seed_sequence_ids(
         access_token,
         latitude=latitude,
         longitude=longitude,
         half_width_m=args.seed_half_width_m,
         cells=args.seed_cells,
     )
-    print(f"[walk] {seeds} panorama seeds name {len(sequences)} sequences", flush=True)
-    images = walk_module.traverse(access_token, sequences, progress=True)
-    stations = walk_module.stations_from_images(
+    sequences = seeds.sequence_ids
+    print(f"[walk] {seeds.seed_images} panorama seeds name {len(sequences)} sequences", flush=True)
+    images = traverse(access_token, sequences, progress=True)
+    stations = captures.stations_from_images(
         images.values(), frame, target_lat=latitude, target_lon=longitude, radius_m=args.radius_m
     )
-    chosen = walk_module.select_walk(
+    chosen = captures.select_walk(
         stations, count=args.count, separation_m=args.separation_m, per_sequence_cap=args.per_sequence_cap
     )
     out = pathlib.Path(args.out)
@@ -75,7 +87,7 @@ def stage_select(args: argparse.Namespace) -> None:
         "site": scene["name"],
         "traversal": {
             "method": "Mapillary sequence link graph, seeded by a tiled bounding box and expanded by sequence id",
-            "bbox_seed_panoramas": seeds,
+            "bbox_seed_panoramas": seeds.seed_images,
             "sequences_named": sorted(sequences),
             "images_after_expansion": len(images),
             "panoramas_in_radius": len(stations),
@@ -90,7 +102,7 @@ def stage_select(args: argparse.Namespace) -> None:
             "separation_m": args.separation_m,
             "per_sequence_cap": args.per_sequence_cap,
         },
-        "spread": walk_module.spread(chosen),
+        "spread": captures.spread(chosen),
         "stations": [station.summary() for station in chosen],
         "candidates": [station.summary() for station in sorted(stations, key=lambda s: s.range_m)],
     }
@@ -198,8 +210,6 @@ def stage_fuse(args: argparse.Namespace) -> None:
     import trimesh
     from concurrent.futures import ProcessPoolExecutor
 
-    from semantic_twin import walk as walk_module
-
     out = pathlib.Path(args.out)
     selection = json.loads((out / "walk_selection.json").read_text())
     download = json.loads((out / "walk_download.json").read_text())
@@ -231,7 +241,7 @@ def stage_fuse(args: argparse.Namespace) -> None:
 
     union = seen.any(axis=0)
     single = seen[0]
-    stations = [walk_module.WalkStation(**{**record, "metadata": {}}) for record in selection["stations"]]
+    stations = [captures.WalkStation(**{**record, "metadata": {}}) for record in selection["stations"]]
     centres = np.asarray(mesh.triangles_center, dtype=float)[:, :2]
 
     # Independence over the union faces only, which is where double counting
@@ -242,11 +252,9 @@ def stage_fuse(args: argparse.Namespace) -> None:
         if len(union_index) <= args.independence_sample
         else np.random.default_rng(7).choice(union_index, args.independence_sample, replace=False)
     )
-    parallax = walk_module.parallax_angles_deg(stations, centres[sample])
-    independence = walk_module.parallax_independence(
-        parallax, seen[:, sample].T, decorrelation_deg=args.decorrelation_deg
-    )
-    looks = walk_module.effective_looks(independence)
+    parallax = captures.parallax_angles_deg(stations, centres[sample])
+    independence = captures.parallax_independence(parallax, seen[:, sample].T, decorrelation_deg=args.decorrelation_deg)
+    looks = captures.effective_looks(independence)
     raw = seen[:, sample].sum(axis=0)
 
     multi = raw >= 2
@@ -378,13 +386,11 @@ def stage_saturate(args: argparse.Namespace) -> None:
     import trimesh
     from concurrent.futures import ProcessPoolExecutor
 
-    from semantic_twin import walk as walk_module
-
     out = pathlib.Path(args.out)
     scene = load_scene(pathlib.Path(args.scene))
     frame = _frame(scene)
     metadata = json.loads((out / "walk_all_metadata.json").read_text())
-    stations = walk_module.stations_from_images(
+    stations = captures.stations_from_images(
         metadata.values(),
         frame,
         target_lat=float(scene["location"]["lat"]),

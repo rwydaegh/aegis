@@ -27,11 +27,17 @@ baseline = [
 test = ["pytest>=8", "ruff>=0.12"]
 raycast = ["embreex>=2.17", "trimesh>=4"]
 
-[tool.setuptools]
-packages = ["semantic_twin"]
+[tool.setuptools.packages.find]
+# Every subpackage, not just the top level. The explicit list this replaces named
+# only "semantic_twin", so propagation was never installed and an editable install
+# worked solely because the working directory sits on sys.path.
+include = ["semantic_twin*"]
 
 [tool.ruff]
 line-length = 120
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "slow: runs a driver end to end on a city mesh, minutes rather than seconds",
+]

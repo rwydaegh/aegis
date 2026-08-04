@@ -10,7 +10,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from semantic_twin.mapillary import persist_selected_panorama  # noqa: E402
+from semantic_twin.acquire.mapillary import persist_selected_panorama  # noqa: E402
 
 
 def main() -> None:

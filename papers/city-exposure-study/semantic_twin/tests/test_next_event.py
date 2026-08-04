@@ -1,6 +1,6 @@
 """What the next event estimator has to survive.
 
-The connection is the whole physics of `semantic_twin.propagation.sources`, so it
+The connection is the whole physics of `semantic_twin.illumination.sources`, so it
 is checked against a case with an answer known in closed form, and against the
 two numerical traps that were found the expensive way while building it.
 """
@@ -11,9 +11,9 @@ import numpy as np
 import pytest
 
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
-from semantic_twin.propagation.directions import ISOTROPIC
+from semantic_twin.illumination import ISOTROPIC
 from semantic_twin.propagation.geometry import PlaneGeometry
-from semantic_twin.propagation.sources import NextEventGather, SourceSet
+from semantic_twin.illumination.sources import NextEventGather, SourceSet
 from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
 
 

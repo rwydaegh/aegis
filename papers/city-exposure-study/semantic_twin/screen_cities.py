@@ -31,7 +31,7 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from semantic_twin.scene import inhouse_api_key  # noqa: E402
+from semantic_twin.scene.site_config import google_api_key  # noqa: E402
 from semantic_twin.screening import (  # noqa: E402
     DEFAULT_MAX_PANORAMAS,
     DEFAULT_SCREEN_RADIUS_M,
@@ -321,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
         print("No candidate matched --only", file=sys.stderr)
         return 2
 
-    source = MapTilesMetadata(inhouse_api_key())
+    source = MapTilesMetadata(google_api_key())
     rows: list[dict[str, Any]] = []
     for candidate in candidates:
         started = time.time()

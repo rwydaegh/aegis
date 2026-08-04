@@ -14,7 +14,7 @@ import json
 import pathlib
 import random
 
-from semantic_twin.facade_vlm import PROMPT_VERSION, build_prompt, prompt_digest
+from semantic_twin.vision.vlm import PROMPT_VERSION, build_prompt, prompt_digest
 
 
 def main() -> None:

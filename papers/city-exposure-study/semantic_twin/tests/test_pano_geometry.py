@@ -16,7 +16,7 @@ from semantic_twin.pano_geometry import (
     view_basis,
     world_directions_to_equirectangular,
 )
-from semantic_twin.semantics import material_hints
+from semantic_twin.vision.material import material_hints
 
 
 def test_streetview_orientation_prior_uses_tilt_departure_from_horizon() -> None:

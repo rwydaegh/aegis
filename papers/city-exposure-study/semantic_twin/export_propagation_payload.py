@@ -68,9 +68,10 @@ from semantic_twin.propagation import (  # noqa: E402
     TraceConfig,
 )
 from semantic_twin.propagation.exposure import BodyCoupler  # noqa: E402
-from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings  # noqa: E402
-from semantic_twin.propagation.route import site_walk  # noqa: E402
-from semantic_twin.propagation.walk import build_walk, stratified_subset  # noqa: E402
+from semantic_twin.materials import CLASS_NAMES, classify_faces, load_table  # noqa: E402
+from semantic_twin.walk.site import site_walk  # noqa: E402
+from semantic_twin.walk.grid import build_walk  # noqa: E402
+from semantic_twin.walk.model import stratified_subset  # noqa: E402
 
 from measure_skyline import skyline  # noqa: E402
 
@@ -367,7 +368,7 @@ def trace_site(args: argparse.Namespace) -> dict[str, Any]:
     geometry = MitsubaGeometry(mesh, variant=args.variant)
     datum = ground_datum(geometry, radius_m=args.walk_radius_m)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(CONFIG, args.frequency_hz)
+    binding = load_table(CONFIG, args.frequency_hz)
     print(f"{args.site}: {geometry.face_count} triangles, ground datum {datum:.3f} m", flush=True)
 
     config = TraceConfig(
@@ -852,7 +853,7 @@ def support_evidence_layer(directory: pathlib.Path, class_count: int) -> dict[st
     """
     import trimesh
 
-    from semantic_twin.fishnet import REJECTION_REASONS
+    from semantic_twin.scene.fishnet import REJECTION_REASONS
 
     support = support_mesh_of(directory)
     if support is None:
@@ -906,7 +907,7 @@ def rejected_layer(directory: pathlib.Path) -> dict[str, Any] | None:
     drawing it once per row would put ten coincident copies of the same wall in
     the scene. The image area is summed over the rows that were merged.
     """
-    from semantic_twin.fishnet import REJECTION_REASONS
+    from semantic_twin.scene.fishnet import REJECTION_REASONS
 
     import trimesh
 

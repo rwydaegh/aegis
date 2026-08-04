@@ -48,10 +48,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from scipy.ndimage import percentile_filter  # noqa: E402
 
-from semantic_twin.align_skyline import mesh_skyline  # noqa: E402
+from semantic_twin.vision.register import mesh_skyline  # noqa: E402
 from semantic_twin.pano_geometry import panorama_to_world_matrix  # noqa: E402
 from semantic_twin.propagation.geometry import MitsubaGeometry  # noqa: E402
-from semantic_twin.propagation.skyline import silhouette  # noqa: E402
+from semantic_twin.illumination.roofline import silhouette  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent
 
@@ -107,9 +107,7 @@ def find_panorama(site: str) -> pathlib.Path | None:
     return best
 
 
-def panorama_curve(
-    folder: pathlib.Path, pose: dict, n_bins: int
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def panorama_curve(folder: pathlib.Path, pose: dict, n_bins: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Elevation of the sky boundary against world azimuth, and what holds it up.
 
     Columns where the image has no sky at all are returned as ``nan`` rather than
@@ -240,12 +238,26 @@ def draw(
         # of these bands, which is the argument for reading the class and not
         # only the shape.
         ax_top.fill_between(
-            degrees, 0, 1, where=~structural, transform=ax_top.get_xaxis_transform(),
-            color="#f0a800", alpha=0.16, lw=0, zorder=0,
+            degrees,
+            0,
+            1,
+            where=~structural,
+            transform=ax_top.get_xaxis_transform(),
+            color="#f0a800",
+            alpha=0.16,
+            lw=0,
+            zorder=0,
         )
         ax_bottom.fill_between(
-            degrees, 0, 1, where=~structural, transform=ax_bottom.get_xaxis_transform(),
-            color="#f0a800", alpha=0.16, lw=0, zorder=0,
+            degrees,
+            0,
+            1,
+            where=~structural,
+            transform=ax_bottom.get_xaxis_transform(),
+            color="#f0a800",
+            alpha=0.16,
+            lw=0,
+            zorder=0,
         )
     style = {
         "panorama": ("#d62728", 1.1, "-"),
@@ -266,9 +278,7 @@ def draw(
         if name not in curves:
             continue
         colour, width, dash = style[name]
-        ax_bottom.plot(
-            degrees, np.degrees(curves[name] - reference), dash, color=colour, lw=width
-        )
+        ax_bottom.plot(degrees, np.degrees(curves[name] - reference), dash, color=colour, lw=width)
     ax_bottom.axhline(0.0, color="k", lw=0.6)
     ax_bottom.set_xlabel("azimuth from north, deg")
     ax_bottom.set_ylabel("minus ray, deg")
@@ -346,9 +356,7 @@ def main() -> None:
         }
         panels.append((site, curves))
 
-        figure, (ax_top, ax_bottom) = plt.subplots(
-            2, 1, figsize=(7.2, 4.4), sharex=True, height_ratios=[2, 1]
-        )
+        figure, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(7.2, 4.4), sharex=True, height_ratios=[2, 1])
         draw(ax_top, ax_bottom, grid, curves, f"{site}, {folder.name}", structural)
         ax_top.legend(fontsize=7, loc="upper right", ncol=2, framealpha=0.9)
         figure.tight_layout()

@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from semantic_twin.masonry import (
+from semantic_twin.materials.masonry import (
     BONDS,
     BRICK_FORMATS,
     ENGLISH_BOND,

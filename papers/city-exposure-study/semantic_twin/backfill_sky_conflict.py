@@ -1,6 +1,6 @@
 """Compute the sky-conflict second opinion for poses that shipped without it.
 
-`semantic_twin.align_skyline` already computes `sky_conflict`, but it needs a
+`semantic_twin.vision.conflict` already computes `sky_conflict`, but it needs a
 first-hit ray cast, which needs `trimesh` with `embreex`. The GPU box's
 alignment environment does not have that extra, so every pose it produced
 carries `{"unavailable": ...}` in place of the number, and the diagnostic that
@@ -49,8 +49,10 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from semantic_twin.align_skyline import _semantic_ids, candidate_vertices, sky_conflict  # noqa: E402
-from semantic_twin.support_mesh import read_binary_ply, read_binary_ply_vertices  # noqa: E402
+from semantic_twin.vision.align import _semantic_ids  # noqa: E402
+from semantic_twin.vision.conflict import sky_conflict  # noqa: E402
+from semantic_twin.vision.register import candidate_vertices  # noqa: E402
+from semantic_twin.scene.mesh import read_binary_ply, read_binary_ply_vertices  # noqa: E402
 
 PANORAMAS = SCRIPT_DIR / "data" / "panoramas"
 GEOMETRY = SCRIPT_DIR / "data" / "geometry"

@@ -1,4 +1,4 @@
-"""Figure 16, pedestrian exposure across eleven city squares.
+"""Pedestrian exposure across eleven city squares.
 
     python FIGURES/make_eleven_cities_exposure.py [tag_suffix]
 
@@ -8,15 +8,22 @@ standpoints. The figure this replaces was copied out of a mid sweep snapshot in
 which Brussels held 3 standpoints rather than 80, and nothing on the page said
 so, so the check lives here rather than in a reviewer's eye.
 
+The refusal is no longer this script's own. It builds a
+:class:`semantic_twin.report.CrossCityTable`, and the only object the drawing
+function accepts is a :class:`~semantic_twin.report.PublishedAggregate`, which
+cannot be constructed from an incomplete or ragged set. So a future figure
+script cannot reintroduce the failure by forgetting to check.
+
 The default tag suffix is the rebuilt sweep. Pass a different one to draw an
 older run for comparison.
 
-Writes PNG for reading and PDF for the paper.
+Writes PDF for the paper and PNG for reading, both under the stem the figure
+registry assigns, plus a provenance sidecar naming the illumination law of every
+run behind it.
 """
 
 from __future__ import annotations
 
-import json
 import pathlib
 import sys
 
@@ -32,6 +39,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
+
+from semantic_twin.report import CrossCityTable, IncompleteAggregate, PublishedAggregate, drop_enclosed, read_rows  # noqa: E402
+from semantic_twin.viz import figures  # noqa: E402
+
+#: The content name. The number is the registry's business, not this script's.
+FIGURE = "eleven_cities_exposure"
 
 OUT = pathlib.Path(__file__).resolve().parent
 DATA = ROOT / "outputs" / "exposure_korenmarkt"
@@ -83,41 +96,27 @@ PRETTY = {
 }
 
 
-def load_rows(path: pathlib.Path) -> tuple[list[dict], int]:
-    """Rows, and the count of lines that did not parse.
-
-    A torn line is not a curiosity. Two sweeps writing one tag interleaved their
-    appends and left fragments mid file, so a file that looks the right length
-    can still be short of standpoints.
-    """
-    rows: list[dict] = []
-    torn = 0
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-        try:
-            rows.append(json.loads(line))
-        except json.JSONDecodeError:
-            torn += 1
-    return rows, torn
-
-
 def empirical_cdf(values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     ordered = np.sort(np.asarray(values, dtype=np.float64))
     return ordered, (np.arange(ordered.size) + 0.5) / ordered.size
 
 
-def gather(tag_suffix: str) -> dict[str, list[dict]]:
-    """Rows per site, refusing anything short, ragged or torn.
+def gather(tag_suffix: str) -> tuple[PublishedAggregate, tuple[pathlib.Path, ...]]:
+    """The eleven squares as a published aggregate, or a refusal that names them.
 
     A site may be read from a different tag than the rest. New York's file under
     the published tag lost two standpoints to interleaved writes by two sweeps
     sharing one tag, so it is read from a re-trace instead, and the override is
     named here rather than left to whoever reads the directory listing.
+
+    The expected site list is :data:`SITES`, which is a constant in this file and
+    not something counted while reading. That distinction is the whole of
+    ``AGGREGATE_REBUILD.md``: the guard it replaced derived what it expected from
+    what it had found, so the two agreed at every step of an unfinished sweep.
     """
     prefix = f"city{CROP_M}{tag_suffix}"
-    rows_by_site: dict[str, list[dict]] = {}
-    problems: list[str] = []
+    rows_by_site: dict[str, object] = {}
+    read: list[pathlib.Path] = []
     for site in SITES:
         path = DATA / f"{prefix}_{site}_{FREQ_GHZ:g}ghz_locations.jsonl"
         override = OVERRIDES.get(site)
@@ -126,30 +125,35 @@ def gather(tag_suffix: str) -> dict[str, list[dict]]:
             if candidate.exists():
                 path = candidate
         if not path.exists():
-            problems.append(f"{site}: no file {path.name}")
+            print(f"  {site:26s} <- MISSING {path.name}")
             continue
         print(f"  {site:26s} <- {path.name}")
-        rows, torn = load_rows(path)
-        if torn:
-            problems.append(f"{site}: {torn} torn lines in {path.name}")
-        # Sky fraction of zero means the standpoint is inside geometry.
-        rows = [r for r in rows if r.get("sky_fraction", 1.0) >= 1.0e-4]
-        rows_by_site[site] = rows
+        rows = read_rows(path, site=site)
+        read.append(path)
+        # Sky fraction of zero means the standpoint is inside geometry. Dropped
+        # here rather than left in, so the curve is over standpoints in the open.
+        rows_by_site[site] = rows.__class__(site=site, path=path, rows=drop_enclosed(rows.rows), torn=rows.torn)
 
-    counts = sorted({len(v) for v in rows_by_site.values()})
-    if len(rows_by_site) != len(SITES):
-        problems.append(f"aggregate holds {len(rows_by_site)} of {len(SITES)} sites")
-    if len(counts) > 1:
-        problems.append(f"ragged standpoint counts across sites: {counts}")
-    if problems:
-        for line in problems:
+    table = CrossCityTable.build(
+        rows_by_site,
+        expected=SITES,
+        frequency_hz=FREQ_GHZ * 1e9,
+        reference_s0_w_m2=REFERENCE_S0_W_M2,
+        crop_radius_m=float(CROP_M),
+        materials="geometric class prior, identical across sites",
+    )
+    try:
+        published = table.publish()
+    except IncompleteAggregate as refusal:
+        for line in table.coverage.complaints():
             print(f"[refused] {line}")
-        raise SystemExit("this sweep is not publishable, see above")
-    print(f"complete: {len(rows_by_site)} sites, {counts[0]} standpoints each")
-    return rows_by_site
+        raise SystemExit(f"this sweep is not publishable: {refusal}") from refusal
+    print(f"complete: {len(table.coverage.present)} sites, {published.locations_per_site} standpoints each")
+    return published, tuple(read)
 
 
-def draw(rows_by_site: dict[str, list[dict]], stem: str) -> None:
+def draw(published: PublishedAggregate, sources: tuple[pathlib.Path, ...]) -> None:
+    rows_by_site = {site: list(rows) for site, rows in published.rows().items()}
     # Drawn at the two column width the paper places it at, 7.16 in, so nothing
     # is scaled down on the page and the type prints at the size it is set at.
     apply_monograph_style(
@@ -232,22 +236,35 @@ def draw(rows_by_site: dict[str, list[dict]], stem: str) -> None:
     figure.tight_layout(rect=(0.0, 0.135, 1.0, 1.0))
 
     # The provenance line used to be drawn under the axes at a size no printed
-    # page could carry. It belongs in the caption, so it is reported here.
+    # page could carry. It belongs in the caption, so it is reported here and in
+    # the sidecar, which is the copy that survives being emailed.
+    standpoints = published.locations_per_site
     print(
-        f"  crop {CROP_M} m, {len(rows_by_site[order[0]])} standpoints per square, "
+        f"  crop {CROP_M} m, {standpoints} standpoints per square, "
         f"{MAX_BOUNCES} surface interactions, corrected elevation law, per site ground datum"
     )
 
-    for suffix in ("png", "pdf"):
-        path = OUT / f"{stem}.{suffix}"
-        figure.savefig(path, dpi=300)
+    record = figures.provenance_for(
+        FIGURE,
+        "FIGURES/make_eleven_cities_exposure.py",
+        sources=sources,
+        crop_radius_m=CROP_M,
+        standpoints_per_square=standpoints,
+        max_bounces=MAX_BOUNCES,
+        squares=len(rows_by_site),
+        coverage=published.coverage.as_dict(),
+        rooftop_median_order=[PRETTY[site] for site in order],
+    )
+    for path in figures.save(figure, FIGURE, record, directory=OUT):
         print(f"wrote {path}")
     plt.close(figure)
+    if record.laws and set(record.laws) != {"band"}:
+        print(f"[note] the runs behind this figure carry illumination laws {record.laws}")
 
 
 def main() -> int:
     tag_suffix = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_SUFFIX
-    draw(gather(tag_suffix), "16_eleven_cities_exposure")
+    draw(*gather(tag_suffix))
     return 0
 
 

@@ -1,0 +1,190 @@
+{
+ "kind": "next_event",
+ "payload": {
+  "estimator": "next event estimation onto an explicit skyline source set",
+  "normalisation": "the line of sight term is 1, so antenna count, transmit power and the 4 pi all cancel",
+  "note": "builders and evaluation standpoints are disjoint",
+  "question": "how much more a pedestrian gets than the rooftops they can see would give on their own",
+  "rows": [
+   {
+    "clutter": {
+     "reason": "not asked for",
+     "used": false
+    },
+    "crop_radius_m": 130,
+    "escape_surplus_db_median": 1.8836318266103955,
+    "ground_datum_m": 50.87109375,
+    "held_out": 5,
+    "held_out_warning": "5 standpoints. surplus_db_median is a median of 5, and surplus_db_p5 and surplus_db_p95 are drawn from the same 5 points. The capture route at this site is shorter than the split rule assumes, so the rule shrinks the held out set. Locked as the behaviour that exists, NOT as a converged number.",
+    "max_bounces": 3,
+    "mesh": "data/geometry/korenmarkt/inhouse_leaf_130m_f64.ply",
+    "per_point": [
+     {
+      "bounced": 8.56058683999106e-05,
+      "by_order": [
+       0.0,
+       8.23627920911952e-05,
+       2.897672196531322e-06,
+       3.4540411218395946e-07
+      ],
+      "clear_fraction": 0.5372060762788786,
+      "connections": 58391,
+      "direct": 0.0005557220772306229,
+      "escape_chi": {
+       "isotropic": 0.25971564712026524,
+       "rooftop": 0.16832650062190493
+      },
+      "escape_chi_direct": {
+       "isotropic": 0.19152853309362652,
+       "rooftop": 0.10399897130544225
+      },
+      "mean_bounces": 1.234562114785217,
+      "origin": [
+       -0.5084097161538788,
+       25.443502321686235,
+       52.512246070905654
+      ],
+      "sky_fraction": 0.1942,
+      "surplus": 1.1540443900060937,
+      "surplus_db": 0.6222251416106914,
+      "visible_fraction": 0.5815485996705108
+     },
+     {
+      "bounced": 8.339437813268587e-05,
+      "by_order": [
+       0.0,
+       8.033812591396945e-05,
+       2.718892896485596e-06,
+       3.3735932223081566e-07
+      ],
+      "clear_fraction": 0.5566201793569066,
+      "connections": 58654,
+      "direct": 0.0005661421561522615,
+      "escape_chi": {
+       "isotropic": 0.2611285677661623,
+       "rooftop": 0.17760255763758487
+      },
+      "escape_chi_direct": {
+       "isotropic": 0.193297413252328,
+       "rooftop": 0.10713963533880154
+      },
+      "mean_bounces": 1.2331568419814096,
+      "origin": [
+       -2.160403206905535,
+       22.438584364655487,
+       52.5136027112018
+      ],
+      "sky_fraction": 0.19458,
+      "surplus": 1.1473028942049976,
+      "surplus_db": 0.5967808914448274,
+      "visible_fraction": 0.6342668863261944
+     },
+     {
+      "bounced": 8.180947538495829e-05,
+      "by_order": [
+       0.0,
+       7.880338774544606e-05,
+       2.647695481579324e-06,
+       3.5839215793295095e-07
+      ],
+      "clear_fraction": 0.6207567764235037,
+      "connections": 54970,
+      "direct": 0.0006333324056398834,
+      "escape_chi": {
+       "isotropic": 0.3265758507107767,
+       "rooftop": 0.19666994098984714
+      },
+      "escape_chi_direct": {
+       "isotropic": 0.25528867695385493,
+       "rooftop": 0.12746026140079408
+      },
+      "mean_bounces": 1.0835976386155806,
+      "origin": [
+       -6.7997769716144845,
+       -1.1036325223492742,
+       52.33407886238495
+      ],
+      "sky_fraction": 0.253,
+      "surplus": 1.1291730450809676,
+      "surplus_db": 0.5276050238993802,
+      "visible_fraction": 0.7627677100494233
+     },
+     {
+      "bounced": 7.286363072698344e-05,
+      "by_order": [
+       0.0,
+       6.994554667490487e-05,
+       2.559823015178384e-06,
+       3.5826103690027514e-07
+      ],
+      "clear_fraction": 0.6113153633679398,
+      "connections": 52495,
+      "direct": 0.0005801727476471904,
+      "escape_chi": {
+       "isotropic": 0.3471608364888251,
+       "rooftop": 0.21019868698886784
+      },
+      "escape_chi_direct": {
+       "isotropic": 0.2761541969163413,
+       "rooftop": 0.14160844323341656
+      },
+      "mean_bounces": 1.0387470207694927,
+      "origin": [
+       -9.047949394509802,
+       -12.88584908831213,
+       52.310932419684235
+      ],
+      "sky_fraction": 0.27512,
+      "surplus": 1.125589543842712,
+      "surplus_db": 0.5138005006945395,
+      "visible_fraction": 0.7339373970345964
+     },
+     {
+      "bounced": 7.920949954001891e-05,
+      "by_order": [
+       0.0,
+       7.598811216183745e-05,
+       2.8615386918947293e-06,
+       3.5984868628779483e-07
+      ],
+      "clear_fraction": 0.6182138572285543,
+      "connections": 53344,
+      "direct": 0.0006192717042111188,
+      "escape_chi": {
+       "isotropic": 0.33794444654492173,
+       "rooftop": 0.20485099683278513
+      },
+      "escape_chi_direct": {
+       "isotropic": 0.2670530237523357,
+       "rooftop": 0.13574192018928374
+      },
+      "mean_bounces": 1.058599017255171,
+      "origin": [
+       -7.770581456311795,
+       -7.024573212179869,
+       52.338069698168916
+      ],
+      "sky_fraction": 0.26804,
+      "surplus": 1.1279075065135147,
+      "surplus_db": 0.5227348700744433,
+      "visible_fraction": 0.7372322899505767
+     }
+    ],
+    "rays": 50000,
+    "site": "korenmarkt",
+    "sources": {
+     "azimuths": 720,
+     "builders": 9,
+     "cell_m": 1.0,
+     "dims": 3,
+     "floor_m": 0.0,
+     "site_lift_m": 0.5,
+     "sites": 1214
+    },
+    "surplus_db_median": 0.5276050238993802,
+    "surplus_db_p5": 0.5155873745705203,
+    "surplus_db_p95": 0.6171362915775186
+   }
+  ]
+ }
+}

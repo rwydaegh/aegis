@@ -5,8 +5,8 @@ import pathlib
 import numpy as np
 import pytest
 
-from semantic_twin import evidence as evidence_module
-from semantic_twin.evidence import (
+from semantic_twin.vision import evidence as evidence_module
+from semantic_twin.vision.evidence import (
     EvidenceAccumulator,
     ObservationQuality,
     SoftAssociation,

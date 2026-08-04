@@ -33,18 +33,19 @@ from semantic_twin.propagation.closed_form import (
     ground_plane_band_average,
     ground_plane_susceptibility_te_only,
 )
-from semantic_twin.propagation.directions import (
+from semantic_twin.illumination import (
     ROOFTOP_FIXED_HEIGHT,
     ROOFTOP_PATHLOSS,
     STREET_SMALL_CELL_FIXED_HEIGHT,
     STREET_SMALL_CELL_PATHLOSS,
     VARIANTS,
+    FixedHeightLaw,
     IlluminationModel,
     elevation_band_measure,
     measure_below,
     sample_sphere,
 )
-from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces
+from semantic_twin.materials import CLASS_NAMES, classify_faces
 from semantic_twin.propagation.tracer import fresnel_power_reflectance, specular_share
 
 MODELS = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
@@ -326,9 +327,8 @@ def test_the_low_elevation_measure_is_what_section_2_7_now_reports() -> None:
     assert measure_below(ROOFTOP_FIXED_HEIGHT, 9.0) == pytest.approx(0.884, abs=0.002)
     assert measure_below(STREET_SMALL_CELL_FIXED_HEIGHT, 5.0) == pytest.approx(0.965, abs=0.002)
 
-    exact = IlluminationModel(
+    exact = FixedHeightLaw(
         name="rooftop_fixed_height_exact_edges",
-        law="uniform_sites",
         description="the same superseded law on the edges the bands imply",
         elevation_min_deg=ROOFTOP.elevation_min_deg,
         elevation_max_deg=ROOFTOP.elevation_max_deg,

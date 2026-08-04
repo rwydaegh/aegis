@@ -23,7 +23,7 @@ import numpy as np
 import pytest
 
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
-from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
+from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 from semantic_twin.propagation.geometry import PlaneGeometry
 from semantic_twin.propagation.sionna_check import (
     FULLY_DIFFUSE_RMS_HEIGHT_M,

@@ -42,7 +42,7 @@ from semantic_twin.propagation.antenna import (
     source_frame_angles,
     steering_artefact,
 )
-from semantic_twin.propagation.directions import sample_sphere
+from semantic_twin.illumination import sample_sphere
 from semantic_twin.propagation.tracer import PathRecorder, SbrTracer, TraceConfig
 
 

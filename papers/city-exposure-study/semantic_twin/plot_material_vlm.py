@@ -38,16 +38,16 @@ import matplotlib.pyplot as plt  # noqa: E402
 from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from semantic_twin.facade_vlm import (  # noqa: E402
+from semantic_twin.materials import MaterialLibrary  # noqa: E402
+from semantic_twin.materials.stack import (  # noqa: E402
     Layer,
-    _layer_permittivity,
     half_space_power_reflectance,
+    layer_permittivity,
     layered_power_reflectance,
     material_power_reflectance,
     posterior_power_reflectance,
     stack_power_reflectance,
 )
-from semantic_twin.materials import MaterialLibrary  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent
 HERO_CROP = "h+00_225_r0128_c0000"
@@ -140,17 +140,17 @@ def main() -> None:
         for t in thickness
     ]
     panel.plot(thickness, 10 * np.log10(render), linewidth=0.9, label="render on brick")
-    glass = _layer_permittivity("glass", frequency, library)
+    glass = layer_permittivity("glass", frequency, library)
     pane = [
         layered_power_reflectance(np.array([glass, complex(1.0, 0.0)]), np.array([t / 1000.0]), 1.0, frequency)
         for t in thickness
     ]
     panel.plot(thickness, 10 * np.log10(pane), linewidth=0.9, label="glass pane in air")
     for name, value, style in (
-        ("brick half space", half_space_power_reflectance(_layer_permittivity("brick", frequency, library), 1.0), ":"),
+        ("brick half space", half_space_power_reflectance(layer_permittivity("brick", frequency, library), 1.0), ":"),
         (
             "render half space",
-            half_space_power_reflectance(_layer_permittivity("plasterboard", frequency, library), 1.0),
+            half_space_power_reflectance(layer_permittivity("plasterboard", frequency, library), 1.0),
             "--",
         ),
         ("glass half space", half_space_power_reflectance(glass, 1.0), "-."),

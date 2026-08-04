@@ -29,11 +29,17 @@ import time
 
 import numpy as np
 
-from semantic_twin.kirchhoff import fresnel_reflection, kirchhoff_orders
-from semantic_twin.masonry import BONDS, BRICK_FORMATS, JointGeometry, MasonryWall, permittivity_from_evaluation
-from semantic_twin.mmwave import wavelength_m
-from semantic_twin.rcwa import harmonic_indices
-from semantic_twin.rcwa import solve as rcwa_solve
+from semantic_twin.materials.masonry import fresnel_reflection, kirchhoff_orders
+from semantic_twin.materials.masonry import (
+    BONDS,
+    BRICK_FORMATS,
+    JointGeometry,
+    MasonryWall,
+    permittivity_from_evaluation,
+)
+from semantic_twin.materials.roughness import wavelength_m
+from semantic_twin.materials.masonry import harmonic_indices
+from semantic_twin.materials.masonry import solve as rcwa_solve
 
 ROOT = pathlib.Path(__file__).resolve().parent
 OUTPUT = ROOT / "outputs" / "masonry_grating"

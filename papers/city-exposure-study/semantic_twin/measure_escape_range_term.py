@@ -61,12 +61,12 @@ import time
 
 import numpy as np
 
-from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP
+from semantic_twin.illumination import ISOTROPIC, ROOFTOP
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.route import site_walk
-from semantic_twin.propagation.scene import classify_faces, load_bindings
+from semantic_twin.walk.site import site_walk
+from semantic_twin.materials import classify_faces, load_table
 from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
-from semantic_twin.propagation.walk import measure_ground_datum
+from semantic_twin.walk.ground import measure_ground_datum
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CONFIG = ROOT / "config"
@@ -95,7 +95,7 @@ def trace_both_ways(site: str, args: argparse.Namespace) -> dict[str, object]:
     print(f"{site:24s} {points.shape[0]} standpoints on the capture route", flush=True)
 
     face_class = classify_faces(geometry.vertices, geometry.faces, datum.z_m)
-    binding = load_bindings(CONFIG, args.frequency_hz)
+    binding = load_table(CONFIG, args.frequency_hz)
     models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP}
 
     plain, charged = [], []

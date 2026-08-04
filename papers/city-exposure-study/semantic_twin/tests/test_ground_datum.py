@@ -14,13 +14,8 @@ import pathlib
 import numpy as np
 import pytest
 
-from semantic_twin.propagation.walk import (
-    SKY_PROBE,
-    build_walk,
-    ground_datum,
-    ground_height,
-    measure_ground_datum,
-)
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import SKY_PROBE, ground_datum, ground_height, measure_ground_datum
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 GEOMETRY = ROOT / "data" / "geometry"

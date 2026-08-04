@@ -8,8 +8,8 @@
       "config/itu_p2040_4.json supplies the dielectric."
     ],
     "solvers": {
-      "rigorous": "semantic_twin.rcwa, Fourier modal method on the unit cell.",
-      "cheap": "semantic_twin.kirchhoff, phase screen with the disorder averaged in closed form.",
+      "rigorous": "semantic_twin.materials.masonry.rcwa, Fourier modal method on the unit cell.",
+      "cheap": "semantic_twin.materials.masonry.kirchhoff, phase screen with the disorder averaged in closed form.",
       "sweep": "run_masonry_grating.py"
     }
   },

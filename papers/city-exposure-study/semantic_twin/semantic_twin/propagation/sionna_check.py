@@ -124,7 +124,7 @@ from typing import Any
 
 import numpy as np
 
-from .directions import IlluminationModel
+from ..illumination import IlluminationModel
 from .tracer import DEFAULT_MAX_BOUNCES
 
 SPEED_OF_LIGHT_M_S = 299_792_458.0
@@ -151,7 +151,7 @@ MODES = ("specular", "diffuse", "production")
 def conductivity_from_permittivity(permittivity: np.ndarray, frequency_hz: float) -> np.ndarray:
     """Sionna's conductivity, in S/m, from the ITU complex permittivity.
 
-    ``permittivity`` is ``eps' - j eps''`` as ``scene.load_bindings`` returns it,
+    ``permittivity`` is ``eps' - j eps''`` as ``materials.load_table`` returns it,
     and Sionna forms ``eta = eps_r - j sigma / (omega eps_0)``, so the imaginary
     part is carried as a conductivity and nothing else changes.
     """
@@ -696,7 +696,7 @@ def recorded_susceptibility(
     the flat `(4 pi / N)` form, so it reproduces the production number rather
     than an equivalent one.
     """
-    from .directions import nearest_cell
+    from ..illumination import nearest_cell
 
     offsets = np.asarray(record.offsets)
     vertices = np.asarray(record.vertices)
@@ -889,7 +889,7 @@ def load_site(site: str, crop_m: int, frequency_hz: float, *, variant: str) -> d
     import json
 
     from .geometry import MitsubaGeometry
-    from .scene import CLASS_NAMES, classify_faces, load_bindings
+    from ..materials import CLASS_NAMES, classify_faces, load_table
 
     manifest = json.loads((PRODUCTION_DIR / f"{PRODUCTION_TAG}_{site}_15ghz_manifest.json").read_text())
     rows = [
@@ -907,7 +907,7 @@ def load_site(site: str, crop_m: int, frequency_hz: float, *, variant: str) -> d
         raise ValueError("the mesh on disk is not the one the published run used")
     datum = float(manifest["ground_datum_m"])
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(ROOT / "config", frequency_hz)
+    binding = load_table(ROOT / "config", frequency_hz)
     return {
         "geometry": geometry,
         "face_class": face_class,
@@ -1016,7 +1016,7 @@ def compare(
     import json
     import time
 
-    from .directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
+    from ..illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 
     models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
     OUTPUT.mkdir(parents=True, exist_ok=True)
@@ -1183,11 +1183,11 @@ def plane_harness(*, frequency_hz: float = 15.0e9, local: bool = False, gpu: str
     import json
 
     from .closed_form import ground_plane_susceptibility
-    from .scene import load_bindings
+    from ..materials import load_table
     from .tracer import fresnel_power_reflectance
 
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    binding = load_bindings(ROOT / "config", frequency_hz)
+    binding = load_table(ROOT / "config", frequency_hz)
     permittivity = complex(binding.permittivity[0])
     half = 3.0e3
     vertices = np.array([[-half, -half, 0.0], [half, -half, 0.0], [half, half, 0.0], [-half, half, 0.0]])
@@ -1320,14 +1320,14 @@ def tessellation_experiment(
     """
     import json
 
-    from .directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
+    from ..illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
     from .geometry import MitsubaGeometry
-    from .scene import load_bindings
+    from ..materials import load_table
     from .tracer import SbrTracer, TraceConfig, fresnel_power_reflectance
 
     models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    binding = load_bindings(ROOT / "config", frequency_hz)
+    binding = load_table(ROOT / "config", frequency_hz)
     permittivity = complex(binding.permittivity[0])
     cosine = np.linspace(0.0, 1.0, 20_001)
     mean_reflectance = float(
@@ -1449,12 +1449,12 @@ def sampling_convergence(
     """
     import json
 
-    from .directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
-    from .scene import load_bindings
+    from ..illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
+    from ..materials import load_table
 
     models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    binding = load_bindings(ROOT / "config", frequency_hz)
+    binding = load_table(ROOT / "config", frequency_hz)
     permittivity = complex(binding.permittivity[0])
     sky = sample_sky(models, sky_samples, np.random.default_rng(seed))
     origin = np.array([0.0, 0.0, 1.5])
@@ -1535,7 +1535,7 @@ def convergence(
     """The two curves of MONOSTATIC_SBR.md section 11, at one site."""
     import json
 
-    from .directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
+    from ..illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 
     models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
     OUTPUT.mkdir(parents=True, exist_ok=True)

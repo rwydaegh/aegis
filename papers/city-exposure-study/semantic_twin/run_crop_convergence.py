@@ -87,11 +87,13 @@ def observers_unused(mesh, count: int, reach: float, height: float, seed: int) -
 
 def main() -> None:
     args = arguments()
-    from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
+    from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
     from semantic_twin.propagation.geometry import MitsubaGeometry
-    from semantic_twin.propagation.scene import classify_faces, load_bindings
+    from semantic_twin.materials import classify_faces, load_table
     from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
-    from semantic_twin.propagation.walk import build_walk, ground_datum, stratified_subset
+    from semantic_twin.walk.grid import build_walk
+    from semantic_twin.walk.ground import ground_datum
+    from semantic_twin.walk.model import stratified_subset
 
     meshes = candidate_meshes(args.site)
     if len(meshes) < 3:
@@ -114,7 +116,7 @@ def main() -> None:
     # Street small cells reach 150 m against the rooftop model's 250 m, so if the
     # required crop is set by the source distribution they must converge sooner.
     models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
-    binding = load_bindings(SCRIPT_DIR / "config", args.frequency_hz)
+    binding = load_table(SCRIPT_DIR / "config", args.frequency_hz)
     rows = []
     for path in meshes:
         started = time.perf_counter()

@@ -44,8 +44,8 @@ import numpy as np
 
 from run_exposure import CONFIG, MODELS, OUTPUT as EXPOSURE_OUTPUT, ROOT, SEMANTICS, site_mesh
 from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig, trace_standpoints
-from semantic_twin.propagation.scene import classify_faces, load_bindings
-from semantic_twin.propagation.semantic_binding import bind_from_walk
+from semantic_twin.materials import classify_faces, load_table
+from semantic_twin.materials import bind_walk_entities
 
 OUTPUT = ROOT / "outputs" / "mc_error"
 
@@ -102,19 +102,19 @@ def build_tracer(manifest: dict[str, Any], walk_npz: pathlib.Path | None, varian
 
     materials = manifest["semantic_binding"]["materials"]
     if materials == "geometric":
-        binding = load_bindings(CONFIG, frequency_hz)
+        binding = load_table(CONFIG, frequency_hz)
         covered = 0.0
     elif materials == "walk":
         if walk_npz is None:
             raise ValueError("a walk rung needs --walk-npz, because the published path was a scratch file")
-        semantic = bind_from_walk(
+        semantic = bind_walk_entities(
             areas,
             face_class,
             walk_npz=walk_npz,
             semantics_path=SEMANTICS,
         )
         face_class = semantic.face_class
-        binding = load_bindings(
+        binding = load_table(
             CONFIG,
             frequency_hz,
             class_names=semantic.class_names,

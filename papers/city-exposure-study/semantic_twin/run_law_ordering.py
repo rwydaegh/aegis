@@ -45,7 +45,7 @@ if str(ROOT) not in sys.path:
 
 from make_sensitivity_study import OUTPUT as SENSITIVITY_OUTPUT  # noqa: E402
 from make_sensitivity_study import Reweighter, elevation_centres, site_list  # noqa: E402
-from semantic_twin.propagation.directions import VARIANTS, IlluminationModel  # noqa: E402
+from semantic_twin.illumination import VARIANTS, IlluminationModel  # noqa: E402
 
 OUTPUT = ROOT / "outputs" / "law_comparison"
 
@@ -111,8 +111,8 @@ def quadrature_check() -> dict[str, float]:
     out = {}
     for name in [*PAIRS, *PAIRS.values()]:
         model = VARIANTS[name]
-        reference = model._normalisation(2_000_001)  # noqa: SLF001
-        out[name] = float(abs(model._normalisation(QUADRATURE) / reference - 1.0))  # noqa: SLF001
+        reference = model.integrate(2_000_001)
+        out[name] = float(abs(model.integrate(QUADRATURE) / reference - 1.0))
     return out
 
 

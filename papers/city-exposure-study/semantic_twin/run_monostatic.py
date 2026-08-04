@@ -28,8 +28,10 @@ import numpy as np
 from run_exposure import CONFIG, MODELS, REFERENCE_S0_W_M2, SITES, site_mesh, site_walk_semantics
 from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig
 from semantic_twin.propagation.monostatic import MonostaticConfig, to_db, trace_monostatic
-from semantic_twin.propagation.scene import classify_faces, load_bindings
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum, stratified_subset
+from semantic_twin.materials import classify_faces, load_table
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import measure_ground_datum
+from semantic_twin.walk.model import stratified_subset
 
 ROOT = pathlib.Path(__file__).resolve().parent
 OUTPUT = ROOT / "outputs" / "monostatic"
@@ -38,7 +40,7 @@ OUTPUT = ROOT / "outputs" / "monostatic"
 def observed_mask(site: str, crop_m: int, face_count: int) -> tuple[np.ndarray | None, dict[str, Any]]:
     """Triangles a registered panorama collected a transient free ray on.
 
-    The same mask ``semantic_binding.bind_from_walk`` calls ``covered``, read
+    The same mask ``materials.bind_walk_entities`` calls ``covered``, read
     straight off the fused walk npz. It is indexed by triangle against the mesh
     it was cast on, with no join key, so the face count is checked rather than
     assumed.
@@ -85,7 +87,7 @@ def run_site(
     geometry = MitsubaGeometry(mesh, variant=variant)
     datum = measure_ground_datum(geometry, radius_m=walk_radius_m).z_m
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(CONFIG, frequency_hz)
+    binding = load_table(CONFIG, frequency_hz)
 
     mask: np.ndarray | None = None
     evidence_provenance: dict[str, Any] = {"requested": evidence}
@@ -217,7 +219,7 @@ def run_stations(
         raise ValueError(f"{site}: walk semantics cover {clean.shape[1]} faces, the mesh has {geometry.face_count}")
     datum = measure_ground_datum(geometry, radius_m=90.0).z_m
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(CONFIG, frequency_hz)
+    binding = load_table(CONFIG, frequency_hz)
     config = TraceConfig(frequency_hz=frequency_hz, rays=rays, local_cells=512, max_bounces=max_bounces, seed=seed)
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
     monostatic = MonostaticConfig(max_order=max(4, max_bounces + 1), glint_max_range_m=float(crop_m))
@@ -332,7 +334,7 @@ def run_visibility(
     geometry = MitsubaGeometry(mesh, variant=variant)
     datum = measure_ground_datum(geometry, radius_m=walk_radius_m).z_m
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(CONFIG, frequency_hz)
+    binding = load_table(CONFIG, frequency_hz)
     walk = build_walk(geometry, ground_datum_m=datum, radius_m=walk_radius_m, spacing_m=walk_spacing_m, seed=seed)
     picks = stratified_subset(walk, locations)
     config = TraceConfig(frequency_hz=frequency_hz, rays=rays, local_cells=512, max_bounces=max_bounces, seed=seed)

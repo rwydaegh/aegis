@@ -33,7 +33,7 @@ from typing import Any
 
 import numpy as np
 
-from .directions import IlluminationModel, fibonacci_sphere, nearest_cell, sample_sphere
+from ..illumination import IlluminationModel, fibonacci_sphere, nearest_cell, sample_sphere
 
 
 #: The bounce budget of this study, and the only place it is written down.

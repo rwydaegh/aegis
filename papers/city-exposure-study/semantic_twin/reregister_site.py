@@ -103,7 +103,7 @@ def register(
     command = [
         sys.executable,
         "-m",
-        "semantic_twin.align_skyline",
+        "semantic_twin.vision.align",
         "--mesh",
         str(mesh),
         "--semantics",
@@ -140,7 +140,7 @@ def main() -> None:
         nargs=2,
         help=(
             "Vertical search bound in metres around the measured camera altitude, passed through to "
-            "align_skyline. The default there is -3 3, which permits a camera half a metre under its own "
+            "vision.align. The default there is -3 3, which permits a camera half a metre under its own "
             "pavement. Every one of the 25 poses the sky conflict test calls inside the geometry has dived "
             "more than 1.5 m and the median is 2.97 m, against a median of 0.58 m among the 41 admitted "
             "poses, so -1.5 3 keeps the rig at least a metre above the ground it is standing on and "

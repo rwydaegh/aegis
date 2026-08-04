@@ -36,13 +36,13 @@ from render_blender_alignment import (  # noqa: E402
 from semantic_twin.blender_mesh import mesh_arrays  # noqa: E402
 from semantic_twin.palette import PREFERRED_COLOURS, fallback_colour  # noqa: E402
 from semantic_twin.pano_geometry import PerspectiveView, perspective_direction_at  # noqa: E402
-from semantic_twin.pixel_projection import (  # noqa: E402
+from semantic_twin.vision.project import (  # noqa: E402
     SemanticTile,
     adaptive_semantic_tiles,
     edge_aware_smooth_depth,
     plane_fit_error,
 )
-from semantic_twin.taxonomy import is_object  # noqa: E402
+from semantic_twin.vision.vocabulary import is_object  # noqa: E402
 
 
 def arguments() -> argparse.Namespace:

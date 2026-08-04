@@ -27,7 +27,7 @@ from PIL import Image
 
 from semantic_twin.pano_geometry import PerspectiveView, inference_views, perspective_directions
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.scene import classify_faces
+from semantic_twin.materials import classify_faces
 
 ROOT = pathlib.Path(__file__).resolve().parent
 MESH = ROOT / "data" / "geometry" / "korenmarkt" / "inhouse_leaf_130m_f64.ply"
@@ -113,7 +113,7 @@ def spread_pick(
 
 
 def load_tile_surface(crop_radius_m: float) -> Any:
-    from semantic_twin.texture_evidence import read_tile_surface
+    from semantic_twin.vision.tiles import read_tile_surface
 
     matrix = np.array(json.loads(MESH_MANIFEST.read_text())["alignment"]["ecef_to_local_enu_matrix"], dtype=np.float64)
     return read_tile_surface(TILES, matrix, crop_radius_m=crop_radius_m)
@@ -227,7 +227,7 @@ def main() -> None:
     face_class = classify_faces(geometry.vertices, geometry.faces, GROUND_DATUM_M)
 
     surface = load_tile_surface(args.crop_radius_m)
-    from semantic_twin.texture_evidence import match_support_faces
+    from semantic_twin.vision.tiles import match_support_faces
 
     match = match_support_faces(geometry.vertices[geometry.faces], surface)
     print(f"tile match {match.report['matched_fraction']:.4f}, residual {match.report['median_residual_m']:.2e} m")

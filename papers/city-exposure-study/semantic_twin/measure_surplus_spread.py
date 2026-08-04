@@ -29,14 +29,14 @@ import time
 
 import numpy as np
 
-from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP
+from semantic_twin.illumination import ISOTROPIC, ROOFTOP
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.route import site_walk
-from semantic_twin.propagation.scene import classify_faces, load_bindings
-from semantic_twin.propagation.skyline import silhouette
-from semantic_twin.propagation.sources import SITE_LIFT_M, NextEventGather, build_source_set
+from semantic_twin.walk.site import site_walk
+from semantic_twin.materials import classify_faces, load_table
+from semantic_twin.illumination.roofline import silhouette
+from semantic_twin.illumination.sources import SITE_LIFT_M, NextEventGather, build_source_set
 from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
-from semantic_twin.propagation.walk import measure_ground_datum
+from semantic_twin.walk.ground import measure_ground_datum
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CONFIG = ROOT / "config"
@@ -74,7 +74,7 @@ def one_seed(site: str, seed: int, args: argparse.Namespace) -> float:
     direct, _ = sources.direct(geometry, evaluate)
 
     face_class = classify_faces(geometry.vertices, geometry.faces, datum.z_m)
-    binding = load_bindings(CONFIG, args.frequency_hz)
+    binding = load_table(CONFIG, args.frequency_hz)
     config = TraceConfig(
         frequency_hz=args.frequency_hz,
         rays=args.rays,

@@ -32,7 +32,7 @@ if str(ROOT) not in sys.path:
 
 from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig  # noqa: E402
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY  # noqa: E402
-from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL  # noqa: E402
+from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL  # noqa: E402
 
 MESH = ROOT / "data" / "geometry" / "korenmarkt" / "inhouse_leaf_130m_f64.ply"
 

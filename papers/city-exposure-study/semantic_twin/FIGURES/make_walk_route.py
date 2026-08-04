@@ -44,13 +44,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
 
 from semantic_twin.propagation.geometry import MitsubaGeometry  # noqa: E402
-from semantic_twin.propagation.route import (  # noqa: E402
-    build_panorama_route,
-    load_admitted_stations,
-    load_link_graph,
-    site_walk,
-)
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum  # noqa: E402
+from semantic_twin.walk.route import build_panorama_route, load_admitted_stations, load_link_graph  # noqa: E402
+from semantic_twin.walk.site import site_walk  # noqa: E402
+from semantic_twin.walk.grid import build_walk  # noqa: E402
+from semantic_twin.walk.ground import measure_ground_datum  # noqa: E402
 
 OUT = pathlib.Path(__file__).resolve().parent
 SITES = ("korenmarkt", "brussels_grandplace")

@@ -29,12 +29,12 @@ sys.path.insert(0, str(pathlib.Path("/home/user/aegis/theory/scripts")))
 import matplotlib.pyplot as plt  # noqa: E402
 from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
 
-from semantic_twin.kirchhoff import (  # noqa: E402
+from semantic_twin.materials.masonry import (  # noqa: E402
     DisorderModel,
     bistatic_map,
     specular_retention,
 )
-from semantic_twin.masonry import (  # noqa: E402
+from semantic_twin.materials.masonry import (  # noqa: E402
     BONDS,
     BRICK_FORMATS,
     TOLERANCE_CLASSES,

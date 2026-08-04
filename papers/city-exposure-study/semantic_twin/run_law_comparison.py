@@ -43,8 +43,9 @@ from semantic_twin.propagation import (  # noqa: E402
     SbrTracer,
     TraceConfig,
 )
-from semantic_twin.propagation.scene import classify_faces, load_bindings  # noqa: E402
-from semantic_twin.propagation.walk import build_walk, stratified_subset  # noqa: E402
+from semantic_twin.materials import classify_faces, load_table  # noqa: E402
+from semantic_twin.walk.grid import build_walk  # noqa: E402
+from semantic_twin.walk.model import stratified_subset  # noqa: E402
 
 CONFIG = SCRIPT_DIR / "config"
 OUTPUT = SCRIPT_DIR / "outputs" / "law_comparison"
@@ -66,7 +67,7 @@ def trace_site(site: str, crop_m: int, args: argparse.Namespace) -> dict[str, np
     geometry = MitsubaGeometry(mesh)
     datum = GROUND_DATUM_M if site == "korenmarkt" else ground_datum(geometry)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(CONFIG, args.frequency_hz)
+    binding = load_table(CONFIG, args.frequency_hz)
     config = TraceConfig(
         frequency_hz=args.frequency_hz,
         rays=args.rays,

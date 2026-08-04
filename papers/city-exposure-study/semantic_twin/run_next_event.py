@@ -8,7 +8,7 @@ metres away, so which rooftops are visible really does differ between the head
 and the wall the ray bounced off.
 
 This script runs the other estimator. The sources are explicit points on the
-roofline, built by `semantic_twin.propagation.sources`, and a path reaches one by
+roofline, built by `semantic_twin.illumination`, and a path reaches one by
 connecting to it. The visibility question is then answered from the point where
 it is asked.
 
@@ -40,24 +40,15 @@ import numpy as np
 
 from typing import Any
 
-from semantic_twin.propagation.directions import ISOTROPIC, ROOFTOP
+from semantic_twin.illumination import ISOTROPIC, ROOFTOP, SITE_LIFT_M, NextEventGather, build_source_set, silhouette
+from semantic_twin.materials import classify_faces, clutter_triangles, load_table
+from semantic_twin.paths import site_mesh
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.scene import classify_faces, load_bindings
-from semantic_twin.propagation.skyline import silhouette
-from semantic_twin.propagation.sources import SITE_LIFT_M, NextEventGather, build_source_set
-from semantic_twin.propagation.route import site_walk
-from semantic_twin.propagation.semantic_binding import clutter_triangles
 from semantic_twin.propagation.tracer import SbrTracer, TraceConfig
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum
+from semantic_twin.walk import build_walk, measure_ground_datum, site_walk
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CONFIG = ROOT / "config"
-
-
-def site_mesh(site: str, crop_m: int) -> pathlib.Path:
-    root = ROOT / "data" / "geometry" / site
-    precise = root / f"inhouse_leaf_{crop_m}m_f64.ply"
-    return precise if precise.exists() else root / f"inhouse_leaf_{crop_m}m.ply"
 
 
 def site_clutter(site: str, geometry: Any, args: argparse.Namespace) -> tuple[np.ndarray | None, dict[str, Any]]:
@@ -124,8 +115,9 @@ def main() -> None:
     models = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP}
     rows = []
     for site in args.sites:
-        mesh = site_mesh(site, args.crop_m)
-        if not mesh.exists():
+        try:
+            mesh = site_mesh(site, args.crop_m)
+        except FileNotFoundError:
             print(f"{site:24s} no {args.crop_m} m mesh, skipped")
             continue
 
@@ -185,7 +177,7 @@ def main() -> None:
         direct, seen = sources.direct(geometry, evaluate)
 
         face_class = classify_faces(geometry.vertices, geometry.faces, datum.z_m)
-        binding = load_bindings(CONFIG, args.frequency_hz)
+        binding = load_table(CONFIG, args.frequency_hz)
         config = TraceConfig(
             frequency_hz=args.frequency_hz,
             rays=args.rays,

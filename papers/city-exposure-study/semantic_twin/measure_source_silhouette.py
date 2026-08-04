@@ -75,9 +75,10 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.skyline import silhouette
-from semantic_twin.propagation.sources import thin
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum
+from semantic_twin.illumination.roofline import silhouette
+from semantic_twin.illumination.sources import thin
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import measure_ground_datum
 
 from source_support import direct_from_sites, silhouette_cloud
 

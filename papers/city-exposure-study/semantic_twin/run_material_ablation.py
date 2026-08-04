@@ -37,9 +37,10 @@ import numpy as np
 
 from semantic_twin.propagation import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL, MitsubaGeometry, SbrTracer, TraceConfig
 from semantic_twin.propagation.exposure import BodyCoupler, describe
-from semantic_twin.propagation.material_posterior import bind_posterior
-from semantic_twin.propagation.scene import CLASS_NAMES, classify_faces, load_bindings
-from semantic_twin.propagation.walk import build_walk, stratified_subset
+from semantic_twin.materials import bind_posterior, realised_composition
+from semantic_twin.materials import CLASS_NAMES, classify_faces, load_table
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.model import stratified_subset
 
 ROOT = pathlib.Path(__file__).resolve().parent
 MESH = ROOT / "data" / "geometry" / "korenmarkt" / "inhouse_leaf_130m_f64.ply"
@@ -111,22 +112,22 @@ def main() -> None:
             tag = name if posterior is None else f"{name}_m{material_seed}"
             started = time.perf_counter()
             if posterior is None:
-                binding = load_bindings(CONFIG, frequency)
+                binding = load_table(CONFIG, frequency)
                 face_class = geometric_class
                 realised = {"brick": float(areas[geometric_class == 1].sum() / areas.sum())}
                 drawn = 0.0
             else:
                 drawing = bind_posterior(areas, geometric_class, {"facade": posterior}, seed=1000 + material_seed)
                 face_class = drawing.face_class
-                binding = load_bindings(
+                binding = load_table(
                     CONFIG,
                     frequency,
                     class_names=drawing.class_names,
                     class_binding=drawing.class_binding,
                     class_rule="facade materials drawn per face from a posterior, other classes geometric",
                 )
-                realised = drawing.realised_composition
-                drawn = drawing.drawn_area_fraction
+                realised = realised_composition(drawing)
+                drawn = drawing.covered_fraction_by_area
             tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
             scalars: list[dict[str, float]] = []
             for index in picks:

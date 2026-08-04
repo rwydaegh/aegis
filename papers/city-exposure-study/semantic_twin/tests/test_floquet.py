@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from semantic_twin.floquet import (
+from semantic_twin.materials.masonry import (
     Lattice,
     centred_rectangular_lattice,
     diffraction_orders,
@@ -11,7 +11,7 @@ from semantic_twin.floquet import (
     incident_wavevector,
     rectangular_lattice,
 )
-from semantic_twin.mmwave import wavelength_m
+from semantic_twin.materials.roughness import wavelength_m
 
 
 def test_reciprocal_vectors_satisfy_their_defining_relation() -> None:

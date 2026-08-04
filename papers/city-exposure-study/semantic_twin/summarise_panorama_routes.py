@@ -43,12 +43,9 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from semantic_twin.propagation.route import (  # noqa: E402
-    fragments,
-    load_admitted_stations,
-    load_link_graph,
-    order_along_links,
-)
+from semantic_twin.walk.links import fragments  # noqa: E402
+from semantic_twin.walk.ordering import order_along_links  # noqa: E402
+from semantic_twin.walk.route import load_admitted_stations, load_link_graph  # noqa: E402
 
 #: The eleven crops the study ships a support mesh for.
 SITES: tuple[str, ...] = (

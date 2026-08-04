@@ -1,6 +1,6 @@
 """Build the visible surface set at one panorama centre with the fishnet cutter.
 
-This is the thin runner for ``semantic_twin/fishnet.py``.  It reads the support
+This is the thin runner for ``semantic_twin/scene/fishnet/``.  It reads the support
 mesh, the recovered pose, the perspective label and confidence maps, the mesh
 first-hit buffer from ``raycast_mesh_depth.py`` and, when available, the
 mesh-versus-monocular depth decisions from ``compare_mesh_depth.py``.  It writes
@@ -22,11 +22,10 @@ import trimesh
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from semantic_twin.fishnet import (  # noqa: E402
+from semantic_twin.pano_geometry import panorama_to_world_matrix  # noqa: E402
+from semantic_twin.scene.fishnet import (  # noqa: E402
     PAINT_REASONS,
     REJECTION_REASONS,
-    CameraPose,
-    PinholeView,
     aggregate_occlusion_budget,
     angular_tolerance_deg,
     build_fishnet,
@@ -38,8 +37,8 @@ from semantic_twin.fishnet import (  # noqa: E402
     rasterize_fishnet,
     save_fishnet,
 )
-from semantic_twin.pano_geometry import panorama_to_world_matrix  # noqa: E402
-from semantic_twin.pixel_projection import adaptive_semantic_tiles  # noqa: E402
+from semantic_twin.scene.pinhole import CameraPose, PinholeView  # noqa: E402
+from semantic_twin.vision.project import adaptive_semantic_tiles  # noqa: E402
 
 # Classes whose pixels belong to the dynamic layer.  Their depth agrees with
 # the wall behind them often enough that class, not distance, has to reject them.

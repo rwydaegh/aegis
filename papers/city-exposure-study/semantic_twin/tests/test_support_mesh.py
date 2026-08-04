@@ -5,12 +5,8 @@ import struct
 
 import numpy as np
 import pytest
-from semantic_twin.support_mesh import (
-    camera_altitude,
-    ground_elevation,
-    read_binary_ply,
-    read_binary_ply_vertices,
-)
+from semantic_twin.scene.camera_ground import camera_altitude, ground_elevation
+from semantic_twin.scene.mesh import read_binary_ply, read_binary_ply_vertices
 
 
 def _write_ply(path: pathlib.Path, vertices: np.ndarray, faces: np.ndarray) -> pathlib.Path:

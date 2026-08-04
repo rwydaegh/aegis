@@ -43,7 +43,7 @@ import sys
 
 import numpy as np
 
-from semantic_twin.foliage import (
+from semantic_twin.materials.foliage import (
     LEAF_AREA_INDEX,
     CanopyCanyonGeometry,
     FoliageMedium,
@@ -54,7 +54,7 @@ from semantic_twin.foliage import (
     ret_parameter_envelope,
     ret_parameters,
 )
-from semantic_twin.propagation.directions import MODELS
+from semantic_twin.illumination import MODELS
 
 OUTPUT = pathlib.Path("outputs/foliage_study")
 
@@ -62,7 +62,7 @@ OUTPUT = pathlib.Path("outputs/foliage_study")
 FREQUENCY_HZ = 15.0e9
 
 #: Recommendation ITU-R P.2040-4 ``wood`` row evaluated at 15 GHz, which is what
-#: ``propagation/semantic_binding.py`` substitutes for ``vegetation_effective``
+#: ``semantic_twin.materials.catalogue`` substitutes for ``vegetation_effective``
 #: today. eps_r = a = 1.99, sigma = c f_GHz^d = 0.0047 * 15^1.0718 S/m, and
 #: eps_imag = sigma / (2 pi f eps_0).
 WOOD_PERMITTIVITY_15GHZ = complex(1.99, -0.1005)

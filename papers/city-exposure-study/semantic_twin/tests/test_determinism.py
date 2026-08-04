@@ -33,12 +33,8 @@ from semantic_twin.propagation import (
     TraceConfig,
     fibonacci_sphere,
 )
-from semantic_twin.propagation.directions import (
-    ROOFTOP,
-    STREET_SMALL_CELL,
-    _brute_nearest_cell,
-    nearest_cell,
-)
+from semantic_twin.illumination import ROOFTOP, STREET_SMALL_CELL
+from semantic_twin.illumination.sphere import _brute_nearest_cell, nearest_cell
 from semantic_twin.propagation.tracer import trace_standpoints
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -188,10 +184,10 @@ def test_the_dense_block_size_does_not_reach_the_answer(block: int) -> None:
 @pytest.mark.parametrize("model", [ISOTROPIC, ROOFTOP, STREET_SMALL_CELL])
 def test_the_normalisation_memo_returns_the_quadrature(model) -> None:
     """The kept value is the value the quadrature returns, to the bit."""
-    fresh = model._normalisation(200_001)
+    fresh = model.integrate(200_001)
     assert model.normalisation() == fresh
     assert model.normalisation() == fresh
-    assert model.normalisation(50_001) == model._normalisation(50_001)
+    assert model.normalisation(50_001) == model.integrate(50_001)
     assert model.normalisation() == fresh, "a second quadrature must not evict the first answer"
 
 
@@ -208,12 +204,12 @@ def test_a_worker_pool_reproduces_the_serial_sweep_on_a_real_mesh() -> None:
     """The same again with a mesh, a Mitsuba scene and a per triangle class."""
     pytest.importorskip("mitsuba")
     from semantic_twin.propagation import MitsubaGeometry
-    from semantic_twin.propagation.scene import classify_faces, load_bindings
+    from semantic_twin.materials import classify_faces, load_table
 
     geometry = MitsubaGeometry(_site_mesh())
     datum = float(np.median(geometry.vertices[:, 2]))
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(ROOT / "config", 15.0e9)
+    binding = load_table(ROOT / "config", 15.0e9)
     config = TraceConfig(**{**PINNED, "rays": 20_000, "batch": 20_000, "local_cells": 512})
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
     centre = geometry.vertices.mean(axis=0)

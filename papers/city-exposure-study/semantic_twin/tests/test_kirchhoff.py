@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from semantic_twin.kirchhoff import (
+from semantic_twin.materials.masonry import (
     DisorderModel,
     bistatic_map,
     fresnel_reflection,
@@ -17,7 +17,7 @@ from semantic_twin.kirchhoff import (
     phase_screen_recess_limit_m,
     specular_retention,
 )
-from semantic_twin.masonry import (
+from semantic_twin.materials.masonry import (
     BRICK_FORMATS,
     JOINT_PROFILES,
     RECESSED_JOINT,
@@ -27,7 +27,7 @@ from semantic_twin.masonry import (
     JointGeometry,
     MasonryWall,
 )
-from semantic_twin.mmwave import specular_power_fraction
+from semantic_twin.materials.roughness import specular_power_fraction
 
 BRICK = BRICK_FORMATS["standard_metric"]
 HAIRLINE = JointGeometry(bed_m=2e-5, perp_m=2e-5, recess_m=0.0, profile="none")

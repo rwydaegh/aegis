@@ -46,8 +46,9 @@ import pathlib
 import numpy as np
 
 from semantic_twin.propagation.geometry import MitsubaGeometry
-from semantic_twin.propagation.skyline import silhouette
-from semantic_twin.propagation.walk import build_walk, measure_ground_datum
+from semantic_twin.illumination.roofline import silhouette
+from semantic_twin.walk.grid import build_walk
+from semantic_twin.walk.ground import measure_ground_datum
 
 from measure_source_silhouette import thin
 from source_support import silhouette_cloud

@@ -47,7 +47,7 @@ import pathlib
 import numpy as np
 from scipy.spatial import cKDTree
 
-from semantic_twin.propagation.directions import MODELS
+from semantic_twin.illumination import MODELS
 from semantic_twin.propagation.geometry import MitsubaGeometry
 
 ROOT = pathlib.Path(__file__).resolve().parent

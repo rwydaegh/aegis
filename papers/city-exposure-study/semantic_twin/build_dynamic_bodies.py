@@ -29,7 +29,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from raycast_mesh_depth import first_hit_range  # noqa: E402
-from semantic_twin.body_layer import (  # noqa: E402
+from semantic_twin.vision.bodies import (  # noqa: E402
     BodyUncertainty,
     build_dynamic_body_artifact,
     camera_basis_from_pose,

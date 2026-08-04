@@ -38,7 +38,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from semantic_twin.export import compact, write_ply  # noqa: E402
-from semantic_twin.geo import enu_rotation, llh_to_ecef  # noqa: E402
+from semantic_twin.scene.enu import enu_rotation, llh_to_ecef  # noqa: E402
 from semantic_twin.gltf import mesh_node_matrices  # noqa: E402
 
 # A tile placement that disagrees with Blender's rounded one by more than this is

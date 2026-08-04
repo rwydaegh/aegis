@@ -903,10 +903,11 @@ def run_study(
     once and reused by every density, which is what makes the paired ratio a
     paired ratio.
     """
-    from .directions import MODELS as models
-    from .scene import classify_faces, load_bindings
+    from ..illumination import MODELS as models
+    from ..materials import classify_faces, load_table
     from .tracer import SbrTracer, TraceConfig
-    from .walk import build_walk, stratified_subset
+    from ..walk.grid import build_walk
+    from ..walk.model import stratified_subset
 
     root = pathlib.Path(__file__).resolve().parents[2]
     output_dir = pathlib.Path(output_dir)
@@ -921,7 +922,7 @@ def run_study(
     geometry = MitsubaGeometry(mesh, variant=variant)
     datum = ground_datum(root, site, geometry)
     site_face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(root / "config", frequency_hz)
+    binding = load_table(root / "config", frequency_hz)
 
     body_permittivity = ABSORBER_PERMITTIVITY if body_absorber else skin_permittivity(frequency_hz)
     permittivity = np.append(binding.permittivity, body_permittivity)
@@ -1163,10 +1164,11 @@ def noise_floor(
 
     Same standpoints, same everything, empty square, only the trace seed moves.
     """
-    from .directions import MODELS as models
-    from .scene import classify_faces, load_bindings
+    from ..illumination import MODELS as models
+    from ..materials import classify_faces, load_table
     from .tracer import SbrTracer, TraceConfig
-    from .walk import build_walk, stratified_subset
+    from ..walk.grid import build_walk
+    from ..walk.model import stratified_subset
 
     root = pathlib.Path(__file__).resolve().parents[2]
     output_dir = pathlib.Path(output_dir)
@@ -1174,7 +1176,7 @@ def noise_floor(
     geometry = MitsubaGeometry(site_mesh(root, site, crop_m), variant=variant)
     datum = ground_datum(root, site, geometry)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum)
-    binding = load_bindings(root / "config", frequency_hz)
+    binding = load_table(root / "config", frequency_hz)
     walk = build_walk(geometry, ground_datum_m=datum, radius_m=90.0, spacing_m=3.0, seed=seed)
     picks = stratified_subset(walk, locations)
     config = TraceConfig(
@@ -1374,7 +1376,7 @@ def plot_mechanism(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    from .directions import MODELS, elevation_band_measure, measure_below
+    from ..illumination import MODELS, elevation_band_measure, measure_below
 
     elevation = np.concatenate([np.linspace(0.05, 5.0, 400), np.linspace(5.0, 60.0, 200)])
     directions = np.column_stack(

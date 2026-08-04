@@ -20,22 +20,24 @@ from typing import Any
 
 import numpy as np
 
-from semantic_twin.facade_vlm import (
+from semantic_twin.materials import MaterialLibrary
+from semantic_twin.materials.stack import (
     MATERIAL_VOCABULARY,
+    argmax_power_reflectance,
+    material_power_reflectance,
+    posterior_power_reflectance,
+)
+from semantic_twin.vision.vlm import (
     PERIODIC_RELIEF,
     VlmResponse,
     agreement,
-    argmax_power_reflectance,
     expected_calibration_gap,
-    material_power_reflectance,
     parse_response,
     pooled_posterior,
-    posterior_power_reflectance,
     prompt_digest,
     reliability,
     total_variation,
 )
-from semantic_twin.materials import MaterialLibrary
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CONFIG = ROOT / "config"

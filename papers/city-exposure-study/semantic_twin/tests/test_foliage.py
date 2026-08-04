@@ -12,7 +12,7 @@ renderer at all.
 import numpy as np
 import pytest
 
-from semantic_twin.foliage import (
+from semantic_twin.materials.foliage import (
     LEAF_THICKNESS_M,
     TABULATED_FREQUENCIES_GHZ,
     CanopyCanyonGeometry,
@@ -29,7 +29,7 @@ from semantic_twin.foliage import (
     slab_transmission,
 )
 from semantic_twin.propagation import PEC_PERMITTIVITY, PlaneGeometry, SbrTracer, TraceConfig
-from semantic_twin.propagation.directions import MODELS
+from semantic_twin.illumination import MODELS
 
 FIFTEEN_GHZ = 15.0e9
 
