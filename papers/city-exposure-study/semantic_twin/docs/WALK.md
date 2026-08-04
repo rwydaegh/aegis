@@ -738,3 +738,46 @@ Both runners take `--walk {route,grid}`. The default is `route`, and the choice
 is written into the payload manifest as `walk_provenance`, so a blend can be
 told apart from a grid blend without opening it. `qa_propagation_blend.py`
 asserts it.
+
+## The walk the runners use now: A to B on foot
+
+Added 2026-08-04. The link graph is where the survey car drove, and these squares
+are pedestrianised, so the car went round what a person walks across. Worse, the
+graph is a graph: a path that visits every camera has to walk up each side street
+and back out again. At Brussels that is three round trips and 284 m of walking to
+cover a square 90 m wide. Drawn, it looks like a scribble, because it is one.
+
+`route.street_path` asks Google Routes for one walking path instead, from A to B,
+where A and B are the two cameras furthest apart. Nothing in between is a
+waypoint. The answer comes off the pedestrian network and crosses the square.
+
+| Brussels Grand-Place | length | points | standpoints at 6 m | mean distance to a camera |
+|---|---|---|---|---|
+| panorama links | 284 m | ~29 | 53 | 10.2 m |
+| every camera as a waypoint | 267 m | 19 | 45 | 10.2 m |
+| **A to B** | **121 m** | **8** | **26** | **8.3 m** |
+
+The short walk samples better. The 163 m the link path spends that the A to B
+walk does not are all in side streets, where there is one camera at the dead end
+and nothing on either side of it, so every standpoint laid along the way in and
+the way out is far from any camera.
+
+Three of the eight Brussels cameras sit 20 to 38 m off the A to B walk. They are
+not thrown away. Their panoramas still label geometry through the fishnet. They
+just no longer bend the walk into a shape no pedestrian would take. A camera
+further from the path than the stride is not a standpoint, and the counts land in
+`walk_provenance` as `stations_on_path` and `stations_off_path`.
+
+At Korenmarkt the two agree exactly, 50 m either way, because all five cameras
+lie on one street and there is nothing to detour around.
+
+Both runners take `--walk-path {street,links}` and the default is `street`. The
+street path needs `GOOGLE_API_KEY` the first time a site is routed. One request
+per site, cached in `data/street_routes/`, and a rerun costs nothing. It raises
+if the key is missing rather than falling back to the links, because a walk that
+quietly changed shape is how a wrong figure survives.
+
+Coordinates need no reconciling. The meshes are built from Google 3D Tiles and
+the route comes from Google Routes, so both are WGS84, and the site anchor in the
+mesh manifest is the only thing needed to put the path in scene metres. No
+fitting, no offset.

@@ -39,6 +39,8 @@ from typing import Any
 
 import numpy as np
 
+from ..geo import EnuFrame
+from .street import cached_walking_route, polyline_enu, site_anchor
 from .walk import SKY_PROBE, Walk, clearance, ground_height, sky_visibility
 
 #: Above this many stations the shortest route is searched rather than proved.
@@ -850,6 +852,104 @@ def densify(polylines: Sequence[np.ndarray], stride_m: float) -> np.ndarray:
     return np.column_stack([np.interp(wanted, travelled, line[:, axis]) for axis in (0, 1)])
 
 
+def span_endpoints(cameras: np.ndarray) -> tuple[int, int]:
+    """The two cameras furthest apart in plan, which is the walk's A and B.
+
+    The widest pair is the diameter of the capture, so the line between them is
+    the longest walk the panoramas can speak for. At Brussels Grand-Place it is
+    88 m straight, the town hall corner to the east side, and the walking path
+    between them is the one a visitor actually takes across the square.
+    """
+    gap = np.linalg.norm(cameras[:, None, :2] - cameras[None, :, :2], axis=2)
+    return tuple(int(v) for v in np.unravel_index(int(np.argmax(gap)), gap.shape))  # type: ignore[return-value]
+
+
+def gap_to_path(points: np.ndarray, line: np.ndarray) -> np.ndarray:
+    """Shortest plan distance from each point to a polyline."""
+    start, end = line[:-1, :2], line[1:, :2]
+    segment = end - start
+    length2 = np.einsum("ij,ij->i", segment, segment)
+    length2[length2 == 0.0] = 1.0
+    along = np.clip(np.einsum("pij,ij->pi", points[:, None, :2] - start[None], segment) / length2, 0.0, 1.0)
+    foot = start[None] + along[..., None] * segment[None]
+    return np.linalg.norm(points[:, None, :2] - foot, axis=2).min(axis=1)
+
+
+def street_path(
+    site: str,
+    route: PanoramaRoute,
+    *,
+    root: pathlib.Path | None = None,
+    crop_m: int = 250,
+    endpoints: str = "span",
+) -> tuple[tuple[np.ndarray, ...], dict[str, Any]]:
+    """The walking path across the square, from the routing service.
+
+    ``endpoints="span"`` asks for one walk from A to B, where A and B are the two
+    cameras furthest apart. Nothing in between is a waypoint. This is what a
+    person walking across the square does, and it is the default.
+
+    ``endpoints="all"`` makes every camera a waypoint and lets the service
+    reorder them. That sounds better and is worse. Three of the eight Brussels
+    cameras sit up side streets, so a path that visits all of them walks in and
+    walks back out three times: 267 m against 121 m, and the extra 146 m is spent
+    in alleys where there is one camera at the dead end and nothing either side
+    of it. Measured over the standpoints laid at a 6 m stride, the mean distance
+    from a standpoint to the nearest camera is **8.3 m for the A to B walk and
+    10.2 m for the full tour**. Visiting every camera makes the sample worse by
+    the one measure that matters.
+
+    The three cameras the A to B walk passes 20 to 38 m from are not discarded.
+    Their panoramas still label the geometry through the fishnet. They just no
+    longer bend the walk into a shape no pedestrian would take.
+
+    Returned as a one element tuple so it drops straight into :func:`densify`,
+    which takes a chain of legs. The walking path is one continuous line and has
+    no legs to speak of.
+    """
+    base = root or _repository_root()
+    anchor = site_anchor(site, base, crop_m=crop_m)
+    frame = EnuFrame(anchor[0], anchor[1])
+    cameras = np.array([station.camera_enu_m for station in route.stations], dtype=float)
+    if endpoints == "span":
+        chosen = list(span_endpoints(cameras))
+    elif endpoints == "all":
+        chosen = list(range(len(cameras)))
+    else:
+        raise ValueError(f"endpoints is 'span' or 'all', not {endpoints!r}")
+
+    waypoints = [tuple(frame.to_llh(cameras[k])[:2]) for k in chosen]
+    answer = cached_walking_route(site, waypoints, root=base, optimise=len(waypoints) > 2)
+    line = polyline_enu(answer, anchor)
+    step = np.linalg.norm(np.diff(line, axis=0), axis=1) if line.shape[0] > 1 else np.zeros(0)
+    off = gap_to_path(cameras, line) if line.shape[0] > 1 else np.full(len(cameras), np.inf)
+    record = {
+        "source": answer["source"],
+        "endpoints": endpoints,
+        "waypoints": len(waypoints),
+        "endpoint_stations": chosen if endpoints == "span" else None,
+        "endpoint_separation_m": float(np.linalg.norm(cameras[chosen[0], :2] - cameras[chosen[-1], :2])),
+        "distance_m": answer["distance_m"],
+        "points": int(line.shape[0]),
+        "waypoint_order": answer.get("waypoint_order"),
+        "longest_segment_m": float(step.max()) if step.size else 0.0,
+        "measured_length_m": float(step.sum()),
+        "link_graph_length_m": float(np.sum(route.road_length_m)),
+        # How far the cameras sit from the line that was walked. A camera well
+        # off the path still labels geometry, but it no longer says where a head
+        # stood, and this is where that shows up.
+        "cameras_off_path_median_m": float(np.median(off)),
+        "cameras_off_path_max_m": float(off.max()),
+        "cameras_within_10m": int((off < 10.0).sum()),
+        "anchor_lat_lon": list(anchor),
+        # The path itself, in scene metres. It is small, it is what the walk
+        # actually used, and keeping it means a figure or a reviewer can see the
+        # line without another request.
+        "polyline_enu": [[round(float(x), 3), round(float(y), 3)] for x, y in line],
+    }
+    return (line,), record
+
+
 def site_walk(
     geometry: Any,
     site: str,
@@ -858,6 +958,9 @@ def site_walk(
     head_height_m: float = HEAD_HEIGHT_M,
     root: pathlib.Path | None = None,
     bridge_m: float = 0.0,
+    path: str = "links",
+    endpoints: str = "span",
+    crop_m: int = 250,
     **kwargs: Any,
 ) -> tuple[Walk, dict[str, Any]]:
     """The walk for one site, taken from its capture rather than from a grid.
@@ -873,6 +976,24 @@ def site_walk(
     :func:`ground_under_camera` uses, which is what keeps a head off the arcade
     roofs and doorsteps that a probe from the sky lands on.
 
+    ``path`` chooses what "between the cameras" means.
+
+    ``links`` walks the provider's own panorama links. Dense, about ten metres
+    between points, and free, but those links are where the survey car drove and
+    these squares are pedestrianised, so the car went around what a person walks
+    across.
+
+    ``street`` asks Google Routes for one walking path from A to B across the
+    square, where A and B are the two cameras furthest apart. It comes off the
+    pedestrian network, so it may cross an open square the car had to go round.
+    At Brussels it is 121 m against the links' 284 m, because the links detour up
+    three side streets and the walk does not. It costs one request per site and
+    the answer is cached on disk. See :func:`street_path`.
+
+    A camera further from that path than the stride is not on the walk, so it is
+    not a standpoint. It still labels geometry through its panorama. Dropping it
+    is what stops the walk from having orphan points hanging off it.
+
     Returns the walk and a provenance record. It raises rather than quietly
     falling back to the grid: a run that silently changed what a standpoint means
     is how a stale walk survives, and the caller should decide.
@@ -884,15 +1005,31 @@ def site_walk(
     provenance: dict[str, Any] = {
         **route.provenance,
         "builder": "panorama route",
+        "path": path,
         "stations": len(route),
         "road_length_m": float(np.sum(route.road_length_m)),
         "stride_m": stride_m,
     }
+    if path == "street":
+        legs, street = street_path(site, route, root=root, crop_m=crop_m, endpoints=endpoints)
+        provenance["street_route"] = street
+        line = np.asarray(street["polyline_enu"], dtype=float)
+        on = gap_to_path(walk.points, line) <= max(stride_m, 5.0)
+        provenance["stations_on_path"] = int(on.sum())
+        provenance["stations_off_path"] = int((~on).sum())
+        walk = Walk(
+            points=walk.points[on],
+            ground_z_m=walk.ground_z_m[on],
+            step_m=walk.step_m[on],
+            provenance={**walk.provenance, "kept_within_m": max(stride_m, 5.0)},
+        )
+    else:
+        legs = route.road_polyline
     if stride_m <= 0.0:
         provenance["standpoints"] = len(walk)
         return walk, provenance
 
-    extra = densify(route.road_polyline, stride_m)
+    extra = densify(legs, stride_m)
     if extra.shape[0] == 0:
         provenance["standpoints"] = len(walk)
         provenance["note"] = "no road between stations, so the stride added nothing"

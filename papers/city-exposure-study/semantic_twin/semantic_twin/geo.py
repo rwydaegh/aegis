@@ -35,6 +35,26 @@ def enu_rotation(lat_deg: float, lon_deg: float) -> np.ndarray:
     )
 
 
+def ecef_to_llh(point: np.ndarray) -> tuple[float, float, float]:
+    """The exact inverse of :func:`llh_to_ecef`, by Bowring's method.
+
+    Needed to ask a routing service for a path between two places the study only
+    knows in local metres. Bowring converges to under a millimetre in one pass at
+    terrestrial heights, and this iterates a few times anyway because the cost is
+    nothing next to the network call it feeds.
+    """
+    x, y, z = (float(v) for v in point)
+    lon = np.arctan2(y, x)
+    flat = np.hypot(x, y)
+    lat = np.arctan2(z, flat * (1.0 - WGS84_E2))
+    height = 0.0
+    for _ in range(6):
+        radius = WGS84_A_M / np.sqrt(1.0 - WGS84_E2 * np.sin(lat) ** 2)
+        height = flat / np.cos(lat) - radius
+        lat = np.arctan2(z, flat * (1.0 - WGS84_E2 * radius / (radius + height)))
+    return float(np.degrees(lat)), float(np.degrees(lon)), float(height)
+
+
 class EnuFrame:
     """A metric local frame with x east, y north and z up."""
 
@@ -44,3 +64,7 @@ class EnuFrame:
 
     def to_enu(self, lat_deg: float, lon_deg: float, height_m: float = 0.0) -> np.ndarray:
         return self.rotation @ (llh_to_ecef(lat_deg, lon_deg, height_m) - self.origin_ecef)
+
+    def to_llh(self, enu_m: np.ndarray) -> tuple[float, float, float]:
+        """Latitude, longitude and height of a point given in this frame."""
+        return ecef_to_llh(self.origin_ecef + self.rotation.T @ np.asarray(enu_m, dtype=float))

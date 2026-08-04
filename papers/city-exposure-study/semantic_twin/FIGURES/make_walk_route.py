@@ -8,11 +8,17 @@ method is that a photograph taken at a point sees the surfaces that scatter
 energy into that point. Past forty metres from a camera that guarantee is worth
 about a tenth.
 
-So this draws both. Grey is the grid. Blue is the capture route: the cameras
-themselves as large dots, the street between them as a line, and the standpoints
-the stride added along that street as small dots. The number under each panel is
-how far the average standpoint is from the nearest camera, which is the quantity
-the evidence argument turns on.
+Three things are drawn. Grey is the grid. Green is the panorama link path, which
+is where the survey car drove. Blue is the walking path from Google Routes, one
+line from A to B, where A and B are the two cameras furthest apart. It comes off
+the pedestrian network, so it crosses the open square the car had to go round.
+Red rings are the cameras and the two squares are A and B.
+
+The link path doubles back three times at Brussels, because three of the eight
+cameras sit up side streets and the graph goes in and comes out again. The
+walking path does not: 121 m against 284 m. The 163 m it saves were all spent in
+alleys with one camera at the dead end, which is why the shorter walk also
+stands closer to a camera on average, 8.3 m against 10.2 m.
 
 Run from the ``semantic_twin`` directory::
 
@@ -83,16 +89,28 @@ def main() -> None:
         stations = load_admitted_stations(site)
         graph = load_link_graph(site)
         route = build_panorama_route(geometry, stations, graph)
-        walk, provenance = site_walk(geometry, site, stride_m=6.0)
+        walk, provenance = site_walk(geometry, site, stride_m=6.0, path="street")
         grid = build_walk(geometry, ground_datum_m=datum.z_m, radius_m=90.0, spacing_m=3.0, seed=0)
+        street = np.asarray(provenance["street_route"]["polyline_enu"])
 
         plan = footprint(geometry, datum.z_m)
         panel.scatter(plan[:, 0], plan[:, 1], s=0.05, color="0.86", edgecolors="none", zorder=0)
         panel.scatter(grid.points[:, 0], grid.points[:, 1], s=3, color="0.55", edgecolors="none", label="grid walk")
 
+        first = True
         for leg in route.road_polyline:
             if leg is not None and len(leg) >= 2:
-                panel.plot(leg[:, 0], leg[:, 1], color="C0", lw=1.0, zorder=3)
+                panel.plot(
+                    leg[:, 0],
+                    leg[:, 1],
+                    color="C1",
+                    lw=1.4,
+                    alpha=0.8,
+                    zorder=2,
+                    label="panorama links" if first else None,
+                )
+                first = False
+        panel.plot(street[:, 0], street[:, 1], color="C0", lw=1.2, zorder=3, label="walking route")
         panel.scatter(walk.points[:, 0], walk.points[:, 1], s=6, color="C0", edgecolors="none", zorder=4)
         cameras = route.walk.points
         panel.scatter(
@@ -105,6 +123,8 @@ def main() -> None:
             zorder=5,
             label="camera",
         )
+        ends = cameras[provenance["street_route"]["endpoint_stations"]]
+        panel.scatter(ends[:, 0], ends[:, 1], s=54, marker="s", facecolors="none", edgecolors="C3", lw=0.9, zorder=6)
 
         reach = 1.15 * np.abs(np.concatenate([grid.points[:, :2].ravel(), walk.points[:, :2].ravel()])).max()
         panel.set_xlim(-reach, reach)
@@ -118,9 +138,10 @@ def main() -> None:
         panel.text(
             0.02,
             0.02,
-            f"route {len(walk)} standpoints, {near_route:.0f} m from a camera\n"
-            f"grid {len(grid)} standpoints, {near_grid:.0f} m\n"
-            f"{provenance['stations']} cameras over {provenance['road_length_m']:.0f} m of street",
+            f"walk {len(walk)} standpoints, {near_route:.1f} m from a camera\n"
+            f"grid {len(grid)} standpoints, {near_grid:.1f} m\n"
+            f"{provenance['stations']} cameras, walk {provenance['street_route']['distance_m']:.0f} m, "
+            f"links {provenance['road_length_m']:.0f} m",
             transform=panel.transAxes,
             fontsize=6,
             va="bottom",

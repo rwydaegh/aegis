@@ -101,6 +101,12 @@ def main() -> None:
     ap.add_argument("--walk-radius-m", type=float, default=90.0)
     ap.add_argument("--head-height-m", type=float, default=1.5)
     ap.add_argument("--walk", choices=["route", "grid"], default="route")
+    ap.add_argument(
+        "--walk-path",
+        choices=["street", "links"],
+        default="street",
+        help="street is one A to B walk from Google Routes, links follows the panorama link graph",
+    )
     ap.add_argument("--walk-stride-m", type=float, default=6.0)
     ap.add_argument(
         "--drop-clutter",
@@ -127,7 +133,13 @@ def main() -> None:
         geometry = MitsubaGeometry(mesh, variant=args.variant)
         datum = measure_ground_datum(geometry, radius_m=args.walk_radius_m)
         if args.walk == "route":
-            walk, provenance = site_walk(geometry, site, stride_m=args.walk_stride_m, head_height_m=args.head_height_m)
+            walk, provenance = site_walk(
+                geometry,
+                site,
+                stride_m=args.walk_stride_m,
+                head_height_m=args.head_height_m,
+                path=args.walk_path,
+            )
             print(
                 f"{site:24s} capture route, {provenance['stations']} cameras, "
                 f"{provenance['standpoints']} standpoints over {provenance['road_length_m']:.0f} m"

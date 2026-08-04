@@ -380,7 +380,7 @@ def trace_site(args: argparse.Namespace) -> dict[str, Any]:
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)
 
     if args.walk == "route":
-        walk, provenance = site_walk(geometry, args.site, stride_m=args.walk_stride_m)
+        walk, provenance = site_walk(geometry, args.site, stride_m=args.walk_stride_m, path=args.walk_path)
         print(
             f"walk: capture route, {provenance['stations']} cameras over "
             f"{provenance['road_length_m']:.0f} m of street, {provenance['standpoints']} standpoints",
@@ -1370,6 +1370,12 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         choices=["route", "grid"],
         default="route",
         help="route stands where the cameras stood, grid scatters heads over a disc",
+    )
+    parser.add_argument(
+        "--walk-path",
+        choices=["street", "links"],
+        default="street",
+        help="street is one A to B walk from Google Routes, links follows the panorama link graph",
     )
     parser.add_argument(
         "--walk-stride-m",

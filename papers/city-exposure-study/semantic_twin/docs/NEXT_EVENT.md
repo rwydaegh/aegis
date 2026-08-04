@@ -63,6 +63,11 @@ camera falls from 44.3 m to 2.8 m at Korenmarkt and from 25.6 m to 8.9 m at
 Brussels, so the newer number is measured where the panoramas can speak for the
 geometry and the older one partly was not.
 
+Those two numbers were measured on the panorama link path. The walk is now one
+A to B walking path instead (`WALK.md`), which at Brussels is 121 m rather than
+284 m and stands 8.3 m from a camera rather than 10.2. Korenmarkt is unchanged.
+The Brussels surplus above has not been re-measured on the shorter walk.
+
 ## Why they disagree, and what turned out not to be the reason
 
 The obvious explanation was a missing term. Next event divides by the range from
