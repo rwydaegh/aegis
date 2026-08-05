@@ -635,7 +635,7 @@ def _stamp_properties(target: Any, properties: Mapping[str, Any]) -> None:
         target[name] = value
 
 
-def _new_panorama_camera(collection: Any, asset: PanoramaAsset) -> Any:
+def _new_panorama_camera(collection: Any, asset: PanoramaAsset, blend_path: pathlib.Path) -> Any:
     import bpy
     from mathutils import Matrix
 
@@ -648,6 +648,20 @@ def _new_panorama_camera(collection: Any, asset: PanoramaAsset) -> Any:
     camera_data.latitude_max = math.pi / 2.0
     camera_data.clip_start = PANORAMA_DISPLAY_CLIP_START_M
     camera_data.clip_end = 2000.0
+    image = bpy.data.images.load(str(asset.image_path), check_existing=True)
+    image.name = f"Linked acquisition panorama | {asset.capture}"
+    image.colorspace_settings.name = "sRGB"
+    image.filepath = bpy.path.relpath(str(asset.image_path), start=str(blend_path.parent.resolve()))
+    if image.packed_file is not None:
+        raise RuntimeError(
+            f"source panorama {asset.image_id} is packed. Acquisition camera backgrounds must stay linked"
+        )
+    camera_data.show_background_images = True
+    background = camera_data.background_images.new()
+    background.image = image
+    background.alpha = 1.0
+    background.display_depth = "BACK"
+    background.frame_method = "FIT"
     camera = bpy.data.objects.new(camera_data.name, camera_data)
     collection.objects.link(camera)
     camera.matrix_world = Matrix(camera_matrix(asset).tolist())
@@ -658,6 +672,10 @@ def _new_panorama_camera(collection: Any, asset: PanoramaAsset) -> Any:
             "projection": "equirectangular, full longitude and latitude",
             "panorama_display_clip_start_m": PANORAMA_DISPLAY_CLIP_START_M,
             "panorama_display_clip_rule": PANORAMA_DISPLAY_CLIP_RULE,
+            "camera_background_role": "linked 2:1 source panorama shown when this acquisition camera is active",
+            "camera_background_image_path": str(asset.image_path),
+            "camera_background_image_sha256": asset.image_sha256,
+            "camera_background_packed": False,
         }
     )
     _stamp_properties(camera, properties)
@@ -817,7 +835,7 @@ def _build_acquisition_views(
     image_planes = []
     crop_paths = []
     for acquisition in acquisitions:
-        panorama_cameras.append(_new_panorama_camera(collection, acquisition))
+        panorama_cameras.append(_new_panorama_camera(collection, acquisition, blend_path))
         normal, image_plane, crop_path = _new_rectilinear_camera(collection, acquisition, blend_path)
         normal_cameras.append(normal)
         image_planes.append(image_plane)

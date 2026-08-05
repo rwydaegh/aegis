@@ -14,6 +14,7 @@ import export_propagation_payload as payload_cli
 import propagation_blender as blender_cli
 from semantic_twin.exposure.reuse import model_identity
 from semantic_twin.illumination import MODELS
+from semantic_twin.materials.atlas_binding import AtlasMaterialBinding
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.tracer import TraceConfig
 from semantic_twin.viz.blender import exporter as exporter_module
@@ -500,14 +501,30 @@ def test_real_surface_atlas_artifact_bridges_into_production_payload(tmp_path: p
             "semantic_binding": {"atlas_npz_sha256": sha256_file(atlas_path)},
         }
     )
+    atlas_probability = np.zeros((1, 2, 2, 1), dtype=np.float32)
+    atlas_probability[0, 0, 0, 0] = 1.0
+    atlas_supported = np.zeros((1, 2, 2), dtype=bool)
+    atlas_supported[0, 0, 0] = True
     material = SimpleNamespace(
-        atlas_material=SimpleNamespace(
+        atlas_material=AtlasMaterialBinding(
+            face_to_atlas_row=np.array([0], dtype=np.int32),
+            material_probability=atlas_probability,
+            supported=atlas_supported,
+            valid_texels=atlas.valid_texels,
+            material_names=("brick",),
+            material_class=np.array([1], dtype=np.int32),
             provenance={
                 "atlas_npz": str(atlas_path),
                 "atlas_npz_sha256": sha256_file(atlas_path),
                 "transport_posterior": "host-compatible joint entries only",
-            }
-        )
+                "transport_states": {
+                    "atlas_interface": 1,
+                    "nonblocking_woody_vegetation": 0,
+                    "geometric_fallback": 0,
+                },
+            },
+        ),
+        face_class=np.array([1], dtype=np.int8),
     )
     geometry = SimpleNamespace(
         vertices=np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]),
@@ -523,6 +540,9 @@ def test_real_surface_atlas_artifact_bridges_into_production_payload(tmp_path: p
     assert payload["atlas_sparse_cell"].tolist() == [0, 0]
     assert payload["atlas_texel_row"].tolist() == [0, 0]
     assert payload["atlas_texel_column"].tolist() == [0, 0]
+    assert payload["atlas_transport_state"].tolist() == [0, 0]
+    assert payload["atlas_transport_material"].tolist() == [0, 0]
+    assert payload["atlas_transport_probabilities"].tolist() == [[1.0], [1.0]]
     record = manifest["surface_atlas"]
     assert record["npz"]["sha256"] == sha256_file(atlas_path)
     assert record["manifest"]["sha256"] == sha256_file(atlas_path.with_suffix(".json"))

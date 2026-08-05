@@ -387,6 +387,9 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
     pixels[:, 48:] = (220, 220, 30)
     Image.fromarray(pixels).save(image, quality=100, subsampling=0)
     source_digest = hashlib.sha256(image.read_bytes()).hexdigest()
+    companion_image = tmp_path / "panorama_companion.jpg"
+    Image.new("RGB", (64, 32), (12, 210, 180)).save(companion_image, quality=100, subsampling=0)
+    companion_digest = hashlib.sha256(companion_image.read_bytes()).hexdigest()
     pose = tmp_path / "pose.json"
     pose.write_text("{}")
     blend = tmp_path / "panorama.blend"
@@ -448,6 +451,9 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
                         asset,
                         capture="walk_06_1419513849204492",
                         image_id="1419513849204492",
+                        image_path=pathlib.Path({str(companion_image)!r}),
+                        image_sha256={companion_digest!r},
+                        atlas_panorama_sha256={companion_digest!r},
                         position_enu_m=(-0.5, 25.4, 52.0),
                     ),
                 ),
@@ -507,6 +513,19 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
             scale = nodes["Fit panorama to render percentage"]
             support_overlay = bpy.data.collections[scene["panorama_support_overlay_collection"]]
             acquisition = bpy.data.collections[scene["panorama_acquisition_collection"]]
+            pano_backgrounds = []
+            for obj in acquisition.objects:
+                if obj.type != "CAMERA" or obj.data.type != "PANO":
+                    continue
+                pano_backgrounds.append({{
+                    "capture": obj["capture"],
+                    "show": obj.data.show_background_images,
+                    "count": len(obj.data.background_images),
+                    "fit": obj.data.background_images[0].frame_method,
+                    "path": obj.data.background_images[0].image.filepath,
+                    "packed": obj.data.background_images[0].image.packed_file is not None,
+                    "sha256": obj["source_image_sha256"],
+                }})
             normal = next(obj for obj in acquisition.objects if obj.get("view_role") == "normal camera view with linked panorama crop")
             image_plane = next(obj for obj in acquisition.objects if obj.get("role") == "projection-aligned rectilinear panorama image plane")
             background = normal.data.background_images[0]
@@ -543,6 +562,7 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
                 "acquisition_marker": acquisition["panorama_overlay_collection"],
                 "acquisition_separate_from": acquisition["separate_from"],
                 "acquisition_camera_types": sorted(obj.data.type for obj in acquisition.objects if obj.type == "CAMERA"),
+                "panorama_camera_backgrounds": sorted(pano_backgrounds, key=lambda row: row["capture"]),
                 "active_pose_role": camera["pose_role"],
                 "normal_fov_deg": normal["rectilinear_fov_deg"],
                 "normal_sensor_fit": normal.data.sensor_fit,
@@ -614,6 +634,26 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
     assert measured["acquisition_marker"]
     assert measured["acquisition_separate_from"].startswith("walk exposure standpoints")
     assert measured["acquisition_camera_types"] == ["PANO", "PANO", "PERSP", "PERSP"]
+    assert measured["panorama_camera_backgrounds"] == [
+        {
+            "capture": "walk_05_1084407470281938",
+            "show": True,
+            "count": 1,
+            "fit": "FIT",
+            "path": "//panorama_original.jpg",
+            "packed": False,
+            "sha256": source_digest,
+        },
+        {
+            "capture": "walk_06_1419513849204492",
+            "show": True,
+            "count": 1,
+            "fit": "FIT",
+            "path": "//panorama_companion.jpg",
+            "packed": False,
+            "sha256": companion_digest,
+        },
+    ]
     assert measured["active_pose_role"] == "registered panorama acquisition pose"
     assert measured["normal_fov_deg"] == pytest.approx(90.0)
     assert measured["normal_sensor_fit"] == "VERTICAL"

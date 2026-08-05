@@ -892,6 +892,110 @@ def _atlas_path(run: RunConfig, material: Any) -> pathlib.Path:
     return local if local.exists() else SCRIPT_DIR / path
 
 
+ATLAS_TRANSPORT_STATE_NAMES = (
+    "atlas_interface",
+    "nonblocking_woody_vegetation",
+    "geometric_fallback",
+)
+
+
+def atlas_transport_audit_arrays(
+    audit: dict[str, np.ndarray],
+    atlas: Any,
+    binding: Any,
+    geometric_class: np.ndarray,
+) -> tuple[dict[str, np.ndarray], dict[str, int]]:
+    """Map the production hit-position decision onto every audit triangle.
+
+    The audit mesh can use two triangles for one clipped atlas cell. The
+    returned arrays therefore have one row per audit triangle, while the count
+    summary deduplicates by ``atlas_sparse_cell`` and matches the production
+    transport manifest's cell counts.
+    """
+    required = (
+        "atlas_source_triangle",
+        "atlas_sparse_cell",
+        "atlas_texel_row",
+        "atlas_texel_column",
+    )
+    if missing := [name for name in required if name not in audit]:
+        raise ValueError(f"atlas audit mesh is missing transport indices: {missing}")
+    source = np.asarray(audit["atlas_source_triangle"], dtype=np.int64)
+    sparse = np.asarray(audit["atlas_sparse_cell"], dtype=np.int64)
+    texel_row = np.asarray(audit["atlas_texel_row"], dtype=np.int64)
+    texel_column = np.asarray(audit["atlas_texel_column"], dtype=np.int64)
+    count = source.size
+    if any(values.shape != (count,) for values in (sparse, texel_row, texel_column)):
+        raise ValueError("atlas audit transport indices must have one value per audit triangle")
+
+    face_to_row = np.asarray(binding.face_to_atlas_row, dtype=np.int64)
+    fallback = np.asarray(geometric_class)
+    if fallback.shape != face_to_row.shape:
+        raise ValueError("geometric fallback classes must match the production support faces")
+    if count and (source.min() < 0 or source.max() >= face_to_row.size):
+        raise ValueError("atlas audit source triangles leave the production support mesh")
+    row = face_to_row[source]
+    if np.any(row < 0):
+        raise ValueError("an observed atlas audit triangle maps to a support face with no atlas row")
+
+    supported_dense = np.asarray(binding.supported, dtype=bool)
+    nonblocking_dense = np.asarray(binding.nonblocking, dtype=bool)
+    probability_dense = np.asarray(binding.material_probability, dtype=np.float32)
+    if probability_dense.ndim != 4 or supported_dense.shape != probability_dense.shape[:3]:
+        raise ValueError("production atlas material probabilities and support mask disagree")
+    if nonblocking_dense.shape != supported_dense.shape:
+        raise ValueError("production atlas nonblocking and support masks disagree")
+    height, width = supported_dense.shape[1:]
+    if count and (
+        np.any((texel_row < 0) | (texel_row >= height)) or np.any((texel_column < 0) | (texel_column >= width))
+    ):
+        raise ValueError("atlas audit texel indices leave the production binding resolution")
+
+    supported = supported_dense[row, texel_row, texel_column]
+    nonblocking = nonblocking_dense[row, texel_row, texel_column]
+    if np.any(supported & nonblocking):
+        raise ValueError("an atlas audit cell cannot be both an interface and nonblocking")
+    probability = probability_dense[row, texel_row, texel_column]
+    state = np.full(count, 2, dtype=np.int8)
+    state[nonblocking] = 1
+    state[supported] = 0
+    dominant = np.full(count, -1, dtype=np.int16)
+    if np.any(supported):
+        dominant[supported] = np.argmax(probability[supported], axis=1).astype(np.int16)
+
+    atlas_source_mask = np.asarray(atlas.source_mask)
+    prior_weight = np.asarray(atlas.prior_weight, dtype=np.float32)
+    concept_weight = np.asarray(atlas.concept_weight, dtype=np.float32)
+    if any(values.ndim != 1 for values in (atlas_source_mask, prior_weight, concept_weight)):
+        raise ValueError("surface-atlas source contribution arrays must be one-dimensional")
+    if not (atlas_source_mask.size == prior_weight.size == concept_weight.size):
+        raise ValueError("surface-atlas source contribution arrays disagree on cell count")
+    if count and (sparse.min() < 0 or sparse.max() >= atlas_source_mask.size):
+        raise ValueError("atlas audit sparse-cell indices leave the canonical atlas")
+
+    unique_cells, first, inverse = np.unique(
+        sparse,
+        return_index=True,
+        return_inverse=True,
+    )
+    unique_state = state[first]
+    if np.any(state != unique_state[inverse]):
+        raise ValueError("triangles from one atlas cell disagree on final transport state")
+    counts = {
+        name: int(np.count_nonzero(unique_state == code)) for code, name in enumerate(ATLAS_TRANSPORT_STATE_NAMES)
+    }
+    arrays = {
+        "atlas_transport_state": state,
+        "atlas_transport_material": dominant,
+        "atlas_transport_probabilities": probability.astype(np.float32, copy=False),
+        "atlas_geometric_fallback_class": fallback[source].astype(np.int16, copy=False),
+        "atlas_source_mask": atlas_source_mask[sparse].astype(np.uint8, copy=False),
+        "atlas_vistas_prior_weight": prior_weight[sparse],
+        "atlas_sam3_concept_weight": concept_weight[sparse],
+    }
+    return arrays, counts
+
+
 def attach_production_surface_atlas(
     payload: dict[str, Any],
     manifest: dict[str, Any],
@@ -924,9 +1028,19 @@ def attach_production_surface_atlas(
     document = json.loads(json_path.read_text(encoding="utf-8"))
     audit = to_surface_mesh(atlas, geometry.vertices, geometry.faces)
     arrays = audit.as_arrays()
-    payload.update(arrays)
 
     transport = dict(material.atlas_material.provenance)
+    decision_arrays, state_counts = atlas_transport_audit_arrays(
+        arrays,
+        atlas,
+        material.atlas_material,
+        material.face_class,
+    )
+    arrays.update(decision_arrays)
+    expected_state_counts = transport.get("transport_states")
+    if expected_state_counts is not None and dict(expected_state_counts) != state_counts:
+        raise ValueError("surface-atlas audit transport-state counts do not match the production material binding")
+    payload.update(arrays)
     record = {
         "role": (
             "joint all-camera semantic and material evidence used by production transport. At each ray hit, "
@@ -946,6 +1060,19 @@ def attach_production_surface_atlas(
         "cameras": list(document.get("cameras", [])),
         "vocabularies": dict(document.get("vocabularies", {})),
         "transport_binding": transport,
+        "transport_audit": {
+            "state_names": list(ATLAS_TRANSPORT_STATE_NAMES),
+            "state_cell_counts": state_counts,
+            "material_names": list(material.atlas_material.material_names),
+            "source_mask_names": {
+                "1": "Vistas prior only",
+                "2": "SAM 3 concept only",
+                "3": "Vistas prior and SAM 3 concept",
+            },
+            "role": (
+                "exact production interface, nonblocking vegetation, or geometric fallback decision per atlas cell"
+            ),
+        },
         "payload_arrays": {name: _array_manifest(value) for name, value in arrays.items()},
     }
     manifest["surface_atlas"] = record
@@ -2422,6 +2549,23 @@ def _attach_monocular_depth(
     print(f"[evidence] refused monocular cloud: {cloud['points'].shape[0]} points", flush=True)
 
 
+def record_excluded_evidence_statuses(report: dict[str, Any]) -> None:
+    """Record optional evidence that was present but failed family matching."""
+    statuses = report.setdefault("layer_status", {})
+    if "depth_monocular" in statuses:
+        return
+    family = report.get("family", {})
+    excluded = family.get("excluded", {}) if isinstance(family, dict) else {}
+    reason = excluded.get("depth_ungated") if isinstance(excluded, dict) else None
+    if reason is None:
+        reason = "no mesh, pose, view-ID, and image-shape matched monocular-depth artifact was found"
+    statuses["depth_monocular"] = {
+        "status": "absent",
+        "reason": f"No matched monocular-depth layer was admitted: {reason}",
+        "evidence_policy": "only a mesh, pose, view-ID, and image-shape matched family may be displayed",
+    }
+
+
 def _attach_registration(site: str, payload: dict[str, Any], report: dict[str, Any]) -> None:
     audit_name = "outputs/registration_sky_conflict.json"
     registration = registration_layer(site)
@@ -2511,6 +2655,7 @@ def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
     _attach_support(args, payload, report, directories.get("fishnet_vistas"), taxonomies["vistas"])
     _attach_mesh_depth(args, payload, report, directories, pose)
     _attach_monocular_depth(args, payload, report, directories, pose)
+    record_excluded_evidence_statuses(report)
     _attach_registration(args.site, payload, report)
     _attach_bodies(payload, report, directories.get("bodies"))
 

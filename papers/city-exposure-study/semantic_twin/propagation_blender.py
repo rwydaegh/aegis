@@ -190,10 +190,22 @@ def main() -> int:
         scene.collection("support_extent"),
         ground_z_m=ground_z,
     )
+    atlas_audit_groups = {
+        key: scene.collection(key)
+        for key in (
+            "transport_state",
+            "transport_material",
+            "transport_fallback",
+            "vistas_contribution",
+            "sam3_contribution",
+            "source_contribution",
+        )
+    }
     fused_summary = scene.build_fused_semantic_surface(
         payload,
         manifest,
         scene.collection("fused_semantics"),
+        audit_collections=atlas_audit_groups,
     )
     rays = estimator.build_rays(
         payload,

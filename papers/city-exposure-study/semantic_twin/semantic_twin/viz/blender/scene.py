@@ -136,6 +136,12 @@ COLLECTION_NAMES: dict[str, str] = {
     "outer_support": "01B outer traced support",
     "support_extent": "01C support extent markers",
     "fused_semantics": "02A all-camera fused semantic and material evidence",
+    "transport_state": "02B final transport state per atlas cell",
+    "transport_material": "02C host-gated transport mixture",
+    "transport_fallback": "02D geometric fallback per atlas cell",
+    "vistas_contribution": "02E Vistas prior contribution",
+    "sam3_contribution": "02F SAM 3 concept contribution",
+    "source_contribution": "02G Vistas and SAM 3 source state",
     "semantics": "02 semantic surface",
     "evidence": "03 image coverage",
     "refused": "04 refused faces",
@@ -171,6 +177,18 @@ COLLECTION_DESCRIPTIONS: dict[str, str] = {
         "Display audit of the joint semantic and material atlas used at supported ray-hit positions. "
         "Its shown classes are posterior winners; transport retains the full compatible material mixture."
     ),
+    "transport_state": (
+        "Display of the exact final state at each observed atlas cell: host-gated interface mixture, "
+        "nonblocking woody vegetation, or geometric fallback."
+    ),
+    "transport_material": (
+        "Dominant channel of the exact host-gated interface posterior for display. "
+        "Transport uses the complete stored mixture."
+    ),
+    "transport_fallback": "Whole-face geometric fallback class mapped onto each observed atlas cell.",
+    "vistas_contribution": "Accumulated Mapillary Vistas material-prior weight per joint-atlas cell.",
+    "sam3_contribution": "Accumulated SAM 3 promptable material-concept weight per joint-atlas cell.",
+    "source_contribution": "Whether each joint-atlas cell carries Vistas prior evidence, SAM 3 concept evidence, or both.",
     "semantics": (
         "Legacy single-panorama fishnet surfaces for audit. They preserve the older Vistas and SAM 3 views "
         "and are separate from the joint hit-position atlas."
@@ -205,6 +223,12 @@ EVIDENCE_COLLECTIONS: tuple[str, ...] = (
     "outer_support",
     "support_extent",
     "fused_semantics",
+    "transport_state",
+    "transport_material",
+    "transport_fallback",
+    "vistas_contribution",
+    "sam3_contribution",
+    "source_contribution",
     "semantics",
     "evidence",
     "refused",
@@ -822,7 +846,210 @@ def _attach_atlas_probabilities(
         obj[f"{prefix}_values_on_faces"] = True
 
 
-def build_fused_semantic_surface(payload: Any, manifest: Mapping[str, Any], into: Any) -> dict[str, int | str]:
+TRANSPORT_STATE_NAMES = (
+    "atlas_interface",
+    "nonblocking_woody_vegetation",
+    "geometric_fallback",
+)
+SOURCE_CONTRIBUTION_MASK_NAMES = {
+    1: "Vistas prior only",
+    2: "SAM 3 concept only",
+    3: "Vistas prior and SAM 3 concept",
+}
+
+
+def _transport_material_names(manifest: Mapping[str, Any]) -> list[str]:
+    atlas = manifest.get("surface_atlas", {})
+    atlas = atlas if isinstance(atlas, Mapping) else {}
+    audit = atlas.get("transport_audit", {})
+    if isinstance(audit, Mapping) and audit.get("material_names"):
+        return [str(value) for value in audit["material_names"]]
+    binding = atlas.get("transport_binding", {})
+    if isinstance(binding, Mapping):
+        return [str(value) for value in binding.get("transport_material_names", [])]
+    return []
+
+
+def _attach_transport_audit_layers(
+    obj: Any,
+    payload: Any,
+    manifest: Mapping[str, Any],
+    *,
+    face_count: int,
+) -> bool:
+    required = (
+        "atlas_transport_state",
+        "atlas_transport_material",
+        "atlas_transport_probabilities",
+        "atlas_geometric_fallback_class",
+        "atlas_source_mask",
+        "atlas_vistas_prior_weight",
+        "atlas_sam3_concept_weight",
+    )
+    if not all(_payload_has(payload, name) for name in required):
+        return False
+
+    state = np.asarray(payload["atlas_transport_state"], dtype=np.int32)
+    dominant = np.asarray(payload["atlas_transport_material"], dtype=np.int32)
+    probability = np.asarray(payload["atlas_transport_probabilities"], dtype=np.float64)
+    fallback = np.asarray(payload["atlas_geometric_fallback_class"], dtype=np.int32)
+    source_mask = np.asarray(payload["atlas_source_mask"], dtype=np.int32)
+    vistas = np.asarray(payload["atlas_vistas_prior_weight"], dtype=np.float64)
+    sam3 = np.asarray(payload["atlas_sam3_concept_weight"], dtype=np.float64)
+    one_dimensional = (state, dominant, fallback, source_mask, vistas, sam3)
+    if any(values.shape != (face_count,) for values in one_dimensional):
+        raise ValueError("atlas transport audit arrays must have one value per atlas face")
+    if probability.ndim != 2 or probability.shape[0] != face_count:
+        raise ValueError("atlas_transport_probabilities must have shape (atlas faces, materials)")
+    if np.any((state < 0) | (state >= len(TRANSPORT_STATE_NAMES))):
+        raise ValueError("atlas transport state leaves its declared vocabulary")
+    if np.any(~np.isfinite(probability)) or np.any(probability < 0.0):
+        raise ValueError("atlas transport probabilities must be finite and nonnegative")
+    material_names = _transport_material_names(manifest)
+    if probability.shape[1] != len(material_names):
+        raise ValueError("atlas transport probability width differs from its material vocabulary")
+    supported = state == 0
+    if np.any(supported & ((dominant < 0) | (dominant >= len(material_names)))):
+        raise ValueError("supported atlas cells must name a dominant transport material")
+    if np.any(~supported & (dominant != -1)):
+        raise ValueError("non-interface atlas cells cannot name a dominant transport material")
+    totals = probability.sum(axis=1)
+    if np.any(supported & ~np.isclose(totals, 1.0, atol=2.0e-6)) or np.any(~supported & (totals != 0.0)):
+        raise ValueError("atlas transport probability rows do not match the final state")
+    class_names = [str(value) for value in manifest.get("class_names", [])]
+    if not class_names or np.any((fallback < 0) | (fallback >= len(class_names))):
+        raise ValueError("atlas geometric fallback class leaves the production class vocabulary")
+    if np.any(~np.isin(source_mask, list(SOURCE_CONTRIBUTION_MASK_NAMES))):
+        raise ValueError("atlas source contribution mask is outside Vistas, SAM 3, or both")
+    if np.any(~np.isfinite(vistas)) or np.any(vistas < 0.0) or np.any(~np.isfinite(sam3)) or np.any(sam3 < 0.0):
+        raise ValueError("atlas source contribution weights must be finite and nonnegative")
+
+    state_tint = np.asarray(
+        [
+            [0.10, 0.78, 0.98, 1.0],
+            [0.22, 0.86, 0.32, 1.0],
+            [0.96, 0.52, 0.12, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    attach_face_colour(obj, "transport_state", state_tint[state])
+    attach_values(obj, "value_transport_state", state, "FACE")
+
+    material_colour, material_legend = _class_colours(
+        np.maximum(dominant, 0),
+        material_names,
+        phase=0.31,
+    )
+    material_colour[state == 1] = (0.22, 0.86, 0.32, 1.0)
+    material_colour[state == 2] = (0.34, 0.36, 0.40, 1.0)
+    attach_face_colour(obj, "transport_posterior_dominant", material_colour)
+    attach_values(obj, "value_transport_material", dominant, "FACE")
+
+    fallback_colour, fallback_legend = _class_colours(fallback, class_names, phase=0.09)
+    attach_face_colour(obj, "geometric_fallback_class", fallback_colour)
+    attach_values(obj, "value_geometric_fallback_class", fallback, "FACE")
+
+    probability_attributes = []
+    probability_names: dict[str, str] = {}
+    for channel, name in enumerate(material_names):
+        attribute = f"transport_probability_{channel:02d}"
+        attach_values(obj, attribute, probability[:, channel], "FACE")
+        probability_attributes.append(attribute)
+        probability_names[attribute] = name
+
+    source_tint = np.asarray(
+        [
+            [0.0, 0.0, 0.0, 1.0],
+            [0.18, 0.62, 1.0, 1.0],
+            [1.0, 0.30, 0.72, 1.0],
+            [0.76, 0.42, 1.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    attach_face_colour(obj, "source_contribution_state", source_tint[source_mask])
+    attach_values(obj, "value_source_contribution_mask", source_mask, "FACE")
+    positive = np.concatenate([vistas[vistas > 0.0], sam3[sam3 > 0.0]])
+    if positive.size:
+        low = float(np.log10(positive.min())) - 0.25
+        high = max(float(np.log10(positive.max())), low + 1.0e-9)
+    else:
+        low, high = -1.0, 0.0
+    for name, values in (("vistas_prior_weight", vistas), ("sam3_concept_weight", sam3)):
+        log_values = np.full(values.shape, low)
+        present = values > 0.0
+        log_values[present] = np.log10(values[present])
+        attach_face_colour(obj, name, colour_ramp(log_values, low, high))
+        attach_values(obj, f"value_{name}", values, "FACE")
+
+    atlas = manifest.get("surface_atlas", {})
+    audit = atlas.get("transport_audit", {}) if isinstance(atlas, Mapping) else {}
+    state_counts = audit.get("state_cell_counts", {}) if isinstance(audit, Mapping) else {}
+    if not state_counts and isinstance(atlas, Mapping):
+        binding = atlas.get("transport_binding", {})
+        state_counts = binding.get("transport_states", {}) if isinstance(binding, Mapping) else {}
+    obj["transport_state_names"] = json.dumps(list(TRANSPORT_STATE_NAMES))
+    obj["transport_state_cell_counts"] = json.dumps(state_counts)
+    obj["transport_state_face_counts"] = json.dumps(
+        {name: int(np.count_nonzero(state == code)) for code, name in enumerate(TRANSPORT_STATE_NAMES)}
+    )
+    obj["transport_material_vocabulary"] = json.dumps(material_names)
+    obj["transport_material_colour_legend"] = json.dumps(material_legend)
+    obj["transport_probability_attributes"] = probability_attributes
+    obj["transport_probability_names"] = json.dumps(probability_names)
+    obj["transport_probability_values_on_faces"] = True
+    obj["transport_material_display_rule"] = (
+        "dominant host-gated posterior channel for colour only; transport uses every probability channel"
+    )
+    obj["geometric_fallback_vocabulary"] = json.dumps(class_names)
+    obj["geometric_fallback_colour_legend"] = json.dumps(fallback_legend)
+    obj["source_contribution_mask_names"] = json.dumps(SOURCE_CONTRIBUTION_MASK_NAMES)
+    obj["source_contribution_weight_log10_range"] = [low, high]
+    obj["source_contribution_weight_role"] = (
+        "accumulated atlas evidence weights; exact linear values are stored in value_* face attributes"
+    )
+    return True
+
+
+def _linked_audit_display(source: Any, name: str, channel: str, into: Any) -> Any:
+    copy = source.copy()
+    copy.data = source.data
+    copy.name = name
+    into.objects.link(copy)
+    if not copy.material_slots:
+        raise RuntimeError("atlas audit display source has no material slot")
+    copy.material_slots[0].link = "OBJECT"
+    copy.material_slots[0].material = lit_material(f"{name}_material", channel)
+    copy["display_channel"] = channel
+    copy["shared_mesh_datablock"] = source.data.name
+    copy["display_copy_only"] = True
+    return copy
+
+
+def _build_linked_atlas_audit_displays(source: Any, collections: Mapping[str, Any]) -> None:
+    specifications = (
+        ("transport_state", "atlas_final_transport_state", "transport_state"),
+        ("transport_material", "atlas_host_gated_material_mixture", "transport_posterior_dominant"),
+        ("transport_fallback", "atlas_geometric_fallback_per_cell", "geometric_fallback_class"),
+        ("vistas_contribution", "atlas_vistas_prior_contribution", "vistas_prior_weight"),
+        ("sam3_contribution", "atlas_sam3_concept_contribution", "sam3_concept_weight"),
+        ("source_contribution", "atlas_contribution_source_state", "source_contribution_state"),
+    )
+    missing = [key for key, _name, _channel in specifications if key not in collections]
+    if missing:
+        raise KeyError(f"atlas audit display collections are missing: {missing}")
+    for key, name, channel in specifications:
+        _linked_audit_display(source, name, channel, collections[key])
+        collections[key]["status"] = "built"
+        collections[key]["shared_mesh_datablock"] = source.data.name
+
+
+def build_fused_semantic_surface(
+    payload: Any,
+    manifest: Mapping[str, Any],
+    into: Any,
+    *,
+    audit_collections: Mapping[str, Any] | None = None,
+) -> dict[str, int | str]:
     """Build a display audit of the joint atlas used by hit-position transport."""
     entity_key = "atlas_entity" if _payload_has(payload, "atlas_entity") else "atlas_entity_class"
     material_key = "atlas_material" if _payload_has(payload, "atlas_material") else "atlas_material_class"
@@ -877,6 +1104,19 @@ def build_fused_semantic_surface(payload: Any, manifest: Mapping[str, Any], into
         entity_names=entity_names,
         material_names=material_names,
     )
+    has_transport_audit = _attach_transport_audit_layers(
+        obj,
+        payload,
+        manifest,
+        face_count=faces.shape[0],
+    )
+    if audit_collections is not None:
+        if has_transport_audit:
+            _build_linked_atlas_audit_displays(obj, audit_collections)
+        else:
+            for group in audit_collections.values():
+                group["status"] = "empty"
+                group["reason"] = "payload contains no exact production transport decision arrays"
     into["status"] = "built"
     into["faces"] = int(faces.shape[0])
     return {"status": "built", "faces": int(faces.shape[0])}

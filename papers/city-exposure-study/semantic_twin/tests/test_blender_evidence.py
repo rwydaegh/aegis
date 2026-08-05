@@ -213,6 +213,82 @@ def test_evidence_selection_keeps_one_mesh_pose_view_and_shape_family(tmp_path, 
     assert report["views"] == {"h+00_000": [8, 8]}
 
 
+def test_atlas_audit_arrays_expose_the_exact_transport_and_source_decisions() -> None:
+    binding = SimpleNamespace(
+        face_to_atlas_row=np.array([-1, 0, 1]),
+        supported=np.array(
+            [
+                [[True, False], [False, False]],
+                [[False, False], [False, False]],
+            ]
+        ),
+        nonblocking=np.array(
+            [
+                [[False, True], [False, False]],
+                [[False, False], [False, False]],
+            ]
+        ),
+        material_probability=np.array(
+            [
+                [[[0.25, 0.75], [0.0, 0.0]], [[0.0, 0.0], [0.0, 0.0]]],
+                [[[0.0, 0.0], [0.0, 0.0]], [[0.0, 0.0], [0.0, 0.0]]],
+            ]
+        ),
+    )
+    atlas = SimpleNamespace(
+        source_mask=np.array([3, 2, 1]),
+        prior_weight=np.array([4.0, 0.0, 2.0]),
+        concept_weight=np.array([1.5, 3.0, 0.0]),
+    )
+    audit = {
+        "atlas_source_triangle": np.array([1, 1, 2]),
+        "atlas_sparse_cell": np.array([0, 1, 2]),
+        "atlas_texel_row": np.array([0, 0, 1]),
+        "atlas_texel_column": np.array([0, 1, 1]),
+    }
+
+    arrays, counts = exporter.atlas_transport_audit_arrays(
+        audit,
+        atlas,
+        binding,
+        np.array([4, 5, 6]),
+    )
+
+    assert arrays["atlas_transport_state"].tolist() == [0, 1, 2]
+    assert arrays["atlas_transport_material"].tolist() == [1, -1, -1]
+    assert arrays["atlas_transport_probabilities"].tolist() == [[0.25, 0.75], [0.0, 0.0], [0.0, 0.0]]
+    assert arrays["atlas_geometric_fallback_class"].tolist() == [5, 5, 6]
+    assert arrays["atlas_source_mask"].tolist() == [3, 2, 1]
+    assert arrays["atlas_vistas_prior_weight"].tolist() == [4.0, 0.0, 2.0]
+    assert arrays["atlas_sam3_concept_weight"].tolist() == [1.5, 3.0, 0.0]
+    assert counts == {
+        "atlas_interface": 1,
+        "nonblocking_woody_vegetation": 1,
+        "geometric_fallback": 1,
+    }
+
+
+def test_excluded_monocular_depth_is_recorded_as_an_explicit_absence() -> None:
+    report = {
+        "family": {
+            "excluded": {
+                "depth_ungated": "view IDs or image shapes differ from the selected family",
+            }
+        },
+        "layer_status": {},
+    }
+
+    exporter.record_excluded_evidence_statuses(report)
+
+    assert report["layer_status"]["depth_monocular"] == {
+        "status": "absent",
+        "reason": (
+            "No matched monocular-depth layer was admitted: view IDs or image shapes differ from the selected family"
+        ),
+        "evidence_policy": "only a mesh, pose, view-ID, and image-shape matched family may be displayed",
+    }
+
+
 def test_unavailable_fragment_counts_reach_the_export_manifest(tmp_path, monkeypatch) -> None:
     from semantic_twin.scene.fishnet import REJECTION_REASONS
 

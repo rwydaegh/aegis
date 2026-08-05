@@ -29,6 +29,8 @@ def test_prepared_views_keep_each_question_small_and_separate() -> None:
         "08 VIEW - evidence audit",
         "09 VIEW - full traced support",
         "10 VIEW - all-camera fused surface",
+        "11 VIEW - final transport decision",
+        "12 VIEW - Vistas and SAM 3 contributions",
     ]
     assert len({view.key for view in specs}) == len(specs)
     assert next(view for view in specs if view.key == "ranked_paths").frame_range_property == "animation_path_frames"
@@ -48,6 +50,25 @@ def test_prepared_views_keep_each_question_small_and_separate() -> None:
     assert full.layers[0].show == ("twin", "outer_support", "support_extent", "walk")
     fused = next(view for view in specs if view.key == "fused_surface")
     assert fused.requires_objects == ("fused_semantics",)
+    transport = next(view for view in specs if view.key == "transport_decision")
+    assert [layer.name for layer in transport.layers] == [
+        "Final state per atlas cell",
+        "Host-gated material mixture",
+        "Geometric fallback per atlas cell",
+    ]
+    assert transport.layers[0].show == ("twin", "transport_state")
+    assert transport.requires_objects == ("transport_state", "transport_material", "transport_fallback")
+    contributions = next(view for view in specs if view.key == "model_contributions")
+    assert [layer.name for layer in contributions.layers] == [
+        "Vistas prior contribution",
+        "SAM 3 concept contribution",
+        "Contribution source state",
+    ]
+    assert contributions.requires_objects == (
+        "vistas_contribution",
+        "sam3_contribution",
+        "source_contribution",
+    )
 
 
 def test_all_camera_view_exists_only_when_the_fused_surface_has_geometry() -> None:
@@ -275,6 +296,13 @@ def test_full_support_and_fused_atlas_are_exact_separate_layers(tmp_path: pathli
                 "atlas_camera_count": np.array([4]),
                 "atlas_observation_count": np.array([12]),
                 "atlas_material_probabilities": np.array([[0.1, 0.7, 0.2]]),
+                "atlas_transport_state": np.array([0]),
+                "atlas_transport_material": np.array([1]),
+                "atlas_transport_probabilities": np.array([[0.2, 0.8]]),
+                "atlas_geometric_fallback_class": np.array([5]),
+                "atlas_source_mask": np.array([3]),
+                "atlas_vistas_prior_weight": np.array([2.0]),
+                "atlas_sam3_concept_weight": np.array([0.5]),
             }}
             manifest = {{
                 "site": "fixture",
@@ -282,12 +310,21 @@ def test_full_support_and_fused_atlas_are_exact_separate_layers(tmp_path: pathli
                 "drawn_radius_m": 1.0,
                 "traced_crop_radius_m": 3.0,
                 "hero": {{"sky_fraction": 0.5, "susceptibility": {{"rooftop": 0.25}}}},
+                "class_names": [f"surface {{index}}" for index in range(6)],
                 "surface_atlas": {{
                     "content_sha256": "a" * 64,
                     "mesh_sha256": "b" * 64,
                     "vocabularies": {{
                         "entity": [f"entity {{index}}" for index in range(8)],
                         "material": ["unknown", "brick", "glass"],
+                    }},
+                    "transport_binding": {{
+                        "transport_material_names": ["brick", "glass"],
+                        "transport_states": {{
+                            "atlas_interface": 1,
+                            "nonblocking_woody_vegetation": 0,
+                            "geometric_fallback": 0,
+                        }},
                     }},
                 }},
             }}
@@ -299,10 +336,18 @@ def test_full_support_and_fused_atlas_are_exact_separate_layers(tmp_path: pathli
                 scene.collection("support_extent"),
                 ground_z_m=0.0,
             )
+            audit_groups = {{
+                key: scene.collection(key)
+                for key in (
+                    "transport_state", "transport_material", "transport_fallback",
+                    "vistas_contribution", "sam3_contribution", "source_contribution",
+                )
+            }}
             atlas = scene.build_fused_semantic_surface(
                 payload,
                 manifest,
                 scene.collection("fused_semantics"),
+                audit_collections=audit_groups,
             )
             camera = scene.build_full_support_camera(
                 np.array([0.0, 0.0, 1.5]),
@@ -345,6 +390,12 @@ def test_full_support_and_fused_atlas_are_exact_separate_layers(tmp_path: pathli
             scene.BUILT["outer_support"] = original_outer
             outer = bpy.data.objects["support_mesh_outer"]
             fused = bpy.data.objects["all_camera_fused_surface_atlas"]
+            transport_state = bpy.data.objects["atlas_final_transport_state"]
+            transport_material = bpy.data.objects["atlas_host_gated_material_mixture"]
+            transport_fallback = bpy.data.objects["atlas_geometric_fallback_per_cell"]
+            vistas = bpy.data.objects["atlas_vistas_prior_contribution"]
+            sam3 = bpy.data.objects["atlas_sam3_concept_contribution"]
+            sources = bpy.data.objects["atlas_contribution_source_state"]
             result = {{
                 "support": support,
                 "atlas": atlas,
@@ -368,6 +419,19 @@ def test_full_support_and_fused_atlas_are_exact_separate_layers(tmp_path: pathli
                 "entity_legend": json.loads(fused["entity_colour_legend"]),
                 "material_legend": json.loads(fused["material_colour_legend"]),
                 "provenance": json.loads(fused["canonical_surface_atlas_provenance"]),
+                "audit_shared_mesh": all(
+                    obj.data == fused.data
+                    for obj in (transport_state, transport_material, transport_fallback, vistas, sam3, sources)
+                ),
+                "audit_channels": {{
+                    obj.name: obj["display_channel"]
+                    for obj in (transport_state, transport_material, transport_fallback, vistas, sam3, sources)
+                }},
+                "transport_state_names": json.loads(fused["transport_state_names"]),
+                "transport_material_names": json.loads(fused["transport_material_vocabulary"]),
+                "transport_probability_attributes": list(fused["transport_probability_attributes"]),
+                "transport_state_counts": json.loads(fused["transport_state_cell_counts"]),
+                "source_mask_names": json.loads(fused["source_contribution_mask_names"]),
                 "camera": camera.name,
                 "camera_type": camera.data.type,
                 "camera_scale": camera.data.ortho_scale,
@@ -429,6 +493,35 @@ def test_full_support_and_fused_atlas_are_exact_separate_layers(tmp_path: pathli
     assert len({tuple(item["rgba"]) for item in measured["entity_legend"]}) == 8
     assert len({tuple(item["rgba"]) for item in measured["material_legend"]}) == 3
     assert measured["provenance"]["content_sha256"] == "a" * 64
+    assert measured["audit_shared_mesh"]
+    assert measured["audit_channels"] == {
+        "atlas_final_transport_state": "transport_state",
+        "atlas_host_gated_material_mixture": "transport_posterior_dominant",
+        "atlas_geometric_fallback_per_cell": "geometric_fallback_class",
+        "atlas_vistas_prior_contribution": "vistas_prior_weight",
+        "atlas_sam3_concept_contribution": "sam3_concept_weight",
+        "atlas_contribution_source_state": "source_contribution_state",
+    }
+    assert measured["transport_state_names"] == [
+        "atlas_interface",
+        "nonblocking_woody_vegetation",
+        "geometric_fallback",
+    ]
+    assert measured["transport_material_names"] == ["brick", "glass"]
+    assert measured["transport_probability_attributes"] == [
+        "transport_probability_00",
+        "transport_probability_01",
+    ]
+    assert measured["transport_state_counts"] == {
+        "atlas_interface": 1,
+        "nonblocking_woody_vegetation": 0,
+        "geometric_fallback": 0,
+    }
+    assert measured["source_mask_names"] == {
+        "1": "Vistas prior only",
+        "2": "SAM 3 concept only",
+        "3": "Vistas prior and SAM 3 concept",
+    }
     assert measured["camera"] == "cam_full_support"
     assert measured["camera_type"] == "ORTHO"
     assert measured["camera_scale"] == pytest.approx(7.65)

@@ -151,6 +151,30 @@ def prepared_view_specs() -> tuple[PreparedView, ...]:
             ),
             requires_objects=("fused_semantics",),
         ),
+        PreparedView(
+            key="transport_decision",
+            name="11 VIEW - final transport decision",
+            purpose="the exact host-gated transport state and geometric fallback at every observed atlas cell",
+            camera="cam_evidence",
+            layers=(
+                PreparedLayer("Final state per atlas cell", ("twin", "transport_state")),
+                PreparedLayer("Host-gated material mixture", ("twin", "transport_material")),
+                PreparedLayer("Geometric fallback per atlas cell", ("twin", "transport_fallback")),
+            ),
+            requires_objects=("transport_state", "transport_material", "transport_fallback"),
+        ),
+        PreparedView(
+            key="model_contributions",
+            name="12 VIEW - Vistas and SAM 3 contributions",
+            purpose="the Vistas prior and SAM 3 concept weights kept separate on the joint atlas",
+            camera="cam_evidence",
+            layers=(
+                PreparedLayer("Vistas prior contribution", ("twin", "vistas_contribution")),
+                PreparedLayer("SAM 3 concept contribution", ("twin", "sam3_contribution")),
+                PreparedLayer("Contribution source state", ("twin", "source_contribution")),
+            ),
+            requires_objects=("vistas_contribution", "sam3_contribution", "source_contribution"),
+        ),
     )
 
 
@@ -271,6 +295,8 @@ def _write_start_here(raw_scene: Any, specs: Sequence[PreparedView]) -> None:
         "The NEE animation explains qualitative roofline visibility evidence. It supplies no production body dose.",
         "Panorama capture poses and walk exposure standpoints are separate collections and separate view layers.",
         "The all-camera fused evidence and legacy single-panorama fishnets are also separate.",
+        "Scene 11 shows the final per-cell transport state, host-gated interface mixture, and geometric fallback.",
+        "Scene 12 separates the Vistas prior weight from the SAM 3 concept weight used by the joint atlas.",
         "Arrival lobes point from the receiver toward the apparent source, the reciprocal escape direction.",
         "Physical wave travel and the body coupler use the opposite vector, k_hat = -local_grid.",
         "",
