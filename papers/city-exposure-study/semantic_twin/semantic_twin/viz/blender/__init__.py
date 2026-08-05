@@ -35,4 +35,4 @@ the rest cannot be imported without it.
 
 from __future__ import annotations
 
-__all__ = ["estimator", "evidence", "payload", "renders", "scene", "style"]
+__all__ = ["animation", "estimator", "evidence", "panorama", "payload", "renders", "scene", "style", "views"]

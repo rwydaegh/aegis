@@ -129,6 +129,8 @@ COLLECTION_NAMES: dict[str, str] = {
     "arrival": "13 arrival spectrum",
     "body": "14 body exposure",
     "cameras": "15 cameras",
+    "path_animation": "16 ranked path animation",
+    "nee_animation": "17 NEE explanation animation",
 }
 
 #: Collections that start switched off. Most of them exist only when the payload
@@ -509,7 +511,7 @@ def build_cameras(twin: Any, hero: np.ndarray, ground_z: float, into: Any) -> No
     lobe = hero + np.array([0.0, 0.0, 13.0])
     plan = (
         ("cam_rays", hero, 85.0, (28.0, 40.0, 55.0, 72.0), hero, 35.0),
-        ("cam_lobe", lobe, 30.0, (8.0, 18.0, 32.0, 55.0), lobe, 35.0),
+        ("cam_lobe", lobe, 18.0, (8.0, 18.0, 32.0, 55.0), lobe, 55.0),
         ("cam_body", eye, 4.4, (4.0, 12.0, 26.0), eye, 50.0),
     )
     for name, subject, reach, elevations, target, lens in plan:
@@ -538,7 +540,55 @@ def build_cameras(twin: Any, hero: np.ndarray, ground_z: float, into: Any) -> No
     bpy.context.scene.camera = bpy.data.objects["cam_rays"]
 
 
-def build_evidence_cameras(twin: Any, payload: Any, hero: np.ndarray, ground_z: float, into: Any) -> None:
+def build_walk_camera(twin: Any, walk_points: np.ndarray, into: Any, *, aspect: float = 16.0 / 9.0) -> Any:
+    """Frame the measured route with modest street context.
+
+    The camera looks across the route rather than along it. This places the
+    route's main axis across the wide image dimension. Orthographic projection
+    keeps every measured standpoint legible and makes the framing independent
+    of one unusually deep facade in the city mesh.
+    """
+    points = np.asarray(walk_points, dtype=np.float64)
+    if points.ndim != 2 or points.shape[0] < 2 or points.shape[1] != 3:
+        raise ValueError("walk camera needs at least two three-dimensional walk points")
+    if not np.isfinite(points).all() or not math.isfinite(aspect) or aspect <= 0.0:
+        raise ValueError("walk camera points and aspect must be finite and the aspect must be positive")
+
+    centre = points.mean(axis=0)
+    centred_xy = points[:, :2] - centre[:2]
+    _, _, axes = np.linalg.svd(centred_xy, full_matrices=False)
+    route_axis = axes[0]
+    route_span = float(np.ptp(centred_xy @ route_axis))
+    cross_axis = np.array([-route_axis[1], route_axis[0]])
+    cross_span = float(np.ptp(centred_xy @ cross_axis))
+
+    reach = 80.0
+    candidates: list[tuple[float, float, np.ndarray, bool]] = []
+    for elevation_deg in (38.0, 52.0):
+        vertical = math.sin(math.radians(elevation_deg))
+        horizontal = math.cos(math.radians(elevation_deg))
+        for sign in (1.0, -1.0):
+            direction = np.array([sign * horizontal * cross_axis[0], sign * horizontal * cross_axis[1], vertical])
+            free, blocked = free_distance(twin, centre, direction, reach)
+            candidates.append((free, -elevation_deg, direction, blocked))
+    free, _negative_elevation, direction, blocked = max(candidates, key=lambda candidate: candidate[:2])
+    distance = max(0.82 * free, 8.0) if blocked else reach
+    camera = add_camera("cam_walk", centre + distance * direction, centre, into, lens=70.0)
+    camera.data.type = "ORTHO"
+    camera.data.ortho_scale = max(24.0, 1.28 * route_span / aspect, 3.0 * cross_span)
+    camera["framing_subject"] = "exact walk_points bounds"
+    camera["walk_route_span_m"] = route_span
+    camera["walk_cross_span_m"] = cross_span
+    camera["framing_margin_fraction"] = 0.28
+    camera["orthographic_scale_m"] = camera.data.ortho_scale
+    print(
+        f"[camera] cam_walk frames {route_span:.1f} m route at {camera.data.ortho_scale:.1f} m orthographic scale",
+        flush=True,
+    )
+    return camera
+
+
+def build_evidence_cameras(twin: Any, payload: Any, hero: np.ndarray, into: Any) -> None:
     """Three more vantages, aimed at the capture point rather than the standpoint.
 
     The evidence layers are not centred where the rays are. They radiate from the
@@ -653,17 +703,17 @@ def hide_heavy_collections() -> None:
 
     Hiding is a separate question from existing. A quarter of a million depth points
     and eighteen SMPL-X bodies are worth having and are not worth waiting for on
-    every open, so the evidence layers and the bounce split start off in the
-    viewport and in the render.
+    every open, so the raw archive view layer excludes the evidence layers and the
+    bounce split. Prepared scenes set their own exclusions. Collection-wide render
+    flags are not used because the same collections are linked into every scene.
     """
     view_layer = bpy.context.view_layer
     for key in COLLECTION_NAMES:
         group = collection(key)
         if key in EVIDENCE_COLLECTIONS:
-            group.hide_render = True
             layer = view_layer.layer_collection.children.get(group.name)
             if layer is not None:
-                layer.hide_viewport = True
+                layer.exclude = True
         state = "empty" if not group.objects else f"{len(group.objects)} objects"
         switched = "off" if key in EVIDENCE_COLLECTIONS else "on"
         print(f"[collection] {group.name}: {state}, {switched} by default", flush=True)

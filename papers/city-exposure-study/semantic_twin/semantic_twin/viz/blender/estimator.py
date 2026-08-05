@@ -585,20 +585,117 @@ def build_next_event(
     }
 
 
-def build_walk(payload: Any, into: Any, model: str) -> tuple[float, float]:
-    """Every traced standpoint, coloured by susceptibility in decibels."""
+def _walk_point_kinds(count: int, provenance: dict[str, Any] | None) -> np.ndarray:
+    raw = (provenance or {}).get("point_kind")
+    if raw is None:
+        return np.full(count, "unclassified", dtype=object)
+    kinds = np.asarray(raw, dtype=object)
+    if kinds.shape != (count,):
+        raise ValueError("walk_provenance.point_kind must name every walk point")
+    allowed = {"camera_registered", "stride_interpolated", "unclassified"}
+    if unknown := sorted(set(kinds) - allowed):
+        raise ValueError(f"unsupported walk point kinds: {unknown}")
+    return kinds
+
+
+def _walk_hero_index(payload: Any, supplied: int | None, count: int) -> int:
+    hero = int(payload["hero_index"]) if supplied is None and "hero_index" in payload else supplied
+    hero = int(hero) if hero is not None else 0
+    if not 0 <= hero < count:
+        raise IndexError("hero walk index is outside the walk")
+    return hero
+
+
+def build_walk(
+    payload: Any,
+    into: Any,
+    model: str,
+    walk_provenance: dict[str, Any] | None = None,
+    *,
+    hero_index: int | None = None,
+) -> tuple[float, float]:
+    """The ordered walk, its registered points, and exact susceptibility colours.
+
+    ``walk_standpoints`` stays as the compact QA object it has always been. The
+    other objects make the route readable without changing or replacing it: one
+    straight polyline joins the points in payload order, small overlays identify
+    the registered cameras and interpolated strides, and three larger markers
+    identify the start, hero, and end.
+    """
     points = payload["walk_points"].astype(np.float64)
     chi = payload[f"walk_chi_{model}"].astype(np.float64)
+    if points.shape != (chi.size, 3):
+        raise ValueError("walk points and susceptibility must have the same length")
+    if chi.size == 0:
+        raise ValueError("the Blender walk needs at least one standpoint")
+
     db = 10.0 * np.log10(np.maximum(chi, 1.0e-12))
     low, high = float(db.min()), float(db.max())
     vertices, faces = octahedra(points, 1.0)
     obj = build_mesh("walk_standpoints", vertices, faces, into)
     attach_face_colour(obj, "chi_db", np.repeat(colour_ramp(db, low, high), 8, axis=0))
+    attach_values(obj, "value_chi", np.repeat(chi, 8), "FACE")
+    attach_values(obj, "value_chi_db", np.repeat(db, 8), "FACE")
     assign(obj, emissive_material("walk_chi", "chi_db"))
     obj["illumination_model"] = model
     obj["chi_db_range"] = [low, high]
+    obj["colour_quantity"] = f"10 log10(max(dimensionless {model} susceptibility chi, 1e-12)), in dB"
+    obj["chi_db_floor"] = -120.0
+    obj["colour_attribute"] = "chi_db"
+    obj["exact_linear_attribute"] = "value_chi"
+    obj["exact_db_attribute"] = "value_chi_db"
+    obj["marker_order"] = "eight consecutive faces per walk point, in payload order"
     if arm := _payload_text(payload, "exposure_estimator_arm"):
         obj["estimator_arm"] = arm
+
+    route = build_curves(
+        "walk_route",
+        points,
+        np.array([points.shape[0]], dtype=np.int32),
+        np.full(points.shape[0], 0.12),
+        into,
+    )
+    attach_values(route, "value_walk_index", np.arange(points.shape[0]), "POINT")
+    assign(route, emissive_material("walk_route", None, (0.82, 0.88, 0.94), strength=2.0))
+    route["reading"] = "one connected POLY route through the standpoints in payload order"
+    route["points"] = int(points.shape[0])
+    route["segments"] = int(max(points.shape[0] - 1, 0))
+    route["coordinates"] = "exact walk_points coordinates; no smoothing or display offset"
+
+    point_kinds = _walk_point_kinds(points.shape[0], walk_provenance)
+    point_styles = {
+        "camera_registered": (0.48, (0.06, 0.78, 1.0)),
+        "stride_interpolated": (0.30, (0.96, 0.98, 1.0)),
+        "unclassified": (0.30, (0.55, 0.58, 0.62)),
+    }
+    for kind, (radius, colour) in point_styles.items():
+        indices = np.flatnonzero(point_kinds == kind)
+        if not indices.size:
+            continue
+        marker_vertices, marker_faces = octahedra(points[indices], radius)
+        markers = build_mesh(f"walk_{kind}_points", marker_vertices, marker_faces, into)
+        attach_values(markers, "value_walk_index", np.repeat(indices, 8), "FACE")
+        assign(markers, emissive_material(f"walk_{kind}", None, colour, strength=2.0))
+        markers["point_kind"] = kind
+        markers["points"] = int(indices.size)
+        markers["walk_indices"] = indices.tolist()
+        markers["point_kind_source"] = "manifest.walk_provenance.point_kind"
+        markers["reading"] = "small origin marker over the larger susceptibility-coloured standpoint"
+
+    hero = _walk_hero_index(payload, hero_index, points.shape[0])
+    role_styles = (
+        ("start", 0, (0.18, 1.0, 0.28)),
+        ("hero", hero, (1.0, 0.12, 0.82)),
+        ("end", points.shape[0] - 1, (1.0, 0.12, 0.04)),
+    )
+    for role, index, colour in role_styles:
+        marker_vertices, marker_faces = octahedra(points[[index]], 1.35)
+        marker = build_mesh(f"walk_{role}_marker", marker_vertices, marker_faces, into)
+        assign(marker, emissive_material(f"walk_{role}", None, colour, strength=2.4))
+        marker["role"] = role
+        marker["walk_index"] = index
+        marker["point_kind"] = str(point_kinds[index])
+        marker["coordinates"] = "exact walk point; no display offset"
     return low, high
 
 

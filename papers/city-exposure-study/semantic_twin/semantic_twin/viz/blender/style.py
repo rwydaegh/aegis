@@ -126,6 +126,19 @@ NEE_CLEAR_COLOUR = (1.0, 0.96, 0.86)
 NEE_BLOCKED_COLOUR = (0.24, 0.05, 0.09)
 NEE_RAY_COLOUR = (0.62, 0.44, 0.22)
 
+#: The animation uses fixed colours because each one names a role rather than a
+#: measured scalar. The escaped leg is pale blue so it cannot be mistaken for a
+#: finite surface-to-surface segment. NEE origins and endpoints use different
+#: marker colours, while clear and blocked visibility lines keep the still
+#: figure's white and dark red convention.
+ANIMATION_PATH_COLOUR = (1.0, 0.57, 0.12)
+ANIMATION_PROXY_COLOUR = (0.40, 0.82, 1.0)
+ANIMATION_NEE_CHAIN_COLOUR = (0.70, 0.44, 0.16)
+ANIMATION_CLEAR_CONNECTION_COLOUR = NEE_CLEAR_COLOUR
+ANIMATION_BLOCKED_CONNECTION_COLOUR = (1.0, 0.04, 0.07)
+ANIMATION_SCATTER_COLOUR = (1.0, 0.22, 0.72)
+ANIMATION_SOURCE_COLOUR = (0.65, 1.0, 0.18)
+
 
 def colour_ramp(values: np.ndarray, low: float, high: float) -> np.ndarray:
     """Map values to inferno RGBA, clamped to ``[low, high]``."""

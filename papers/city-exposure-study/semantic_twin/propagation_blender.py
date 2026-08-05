@@ -33,10 +33,14 @@ Collections, and what each one answers:
 ``depth``      the mesh first hit, and the monocular depth the gate refused
 ``panoramas``  the registered poses, their covariance and their sky conflict verdict
 ``bodies``     the SMPL-X bystanders the dynamic layer reconstructed and placed
+``path_animation`` one ranked visual-trace sample per frame, with its full chain
+``nee_animation`` one SBR chain and its qualitative roofline connections per frame
 
-The last six are only built when the payload carries them, and all of them start
+The image evidence layers are only built when the payload carries them, and they start
 hidden, so a site with no panorama opens exactly as it did before and a site with
-one opens just as fast.
+one opens just as fast. The dense ray fan also starts hidden. It remains in the
+file as a static opt-in overview, while frame 1 opens on the strongest ranked
+visual-trace sample.
 
 A layer is a named attribute, not an object. Every object in those collections
 carries its measured quantities twice: once as a float or integer attribute
@@ -57,6 +61,7 @@ the top level holds the command line.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import pathlib
 import sys
@@ -70,7 +75,7 @@ if str(ROOT) not in sys.path:
     # imports anything heavy at module scope, which is what makes that safe.
     sys.path.insert(0, str(ROOT))
 
-from semantic_twin.viz.blender import estimator, evidence, renders, scene  # noqa: E402
+from semantic_twin.viz.blender import animation, estimator, evidence, panorama, renders, scene, views  # noqa: E402
 from semantic_twin.viz.blender.style import MODEL_NAMES  # noqa: E402
 
 
@@ -104,6 +109,24 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         default=30.0,
         help="Drawn length of the leg that left the scene, which in 09 runs to the sky sphere",
     )
+    parser.add_argument(
+        "--animation-paths",
+        type=int,
+        default=12,
+        help="Top rooftop-weighted visual-trace samples, one complete chain per frame",
+    )
+    parser.add_argument(
+        "--animation-nee-paths",
+        type=int,
+        default=12,
+        help="Stored SBR chains with qualitative roofline NEE connections, one per frame",
+    )
+    parser.add_argument(
+        "--animation-escape-leg-m",
+        type=float,
+        default=24.0,
+        help="Short display length for a final semi-infinite escaped direction",
+    )
     parser.add_argument("--point-radius-m", type=float, default=0.09, help="Drawn size of one depth cloud point")
     parser.add_argument(
         "--pose-sigma-scale",
@@ -112,6 +135,16 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="Life sizes the pose covariance ellipsoid is drawn at. One sigma here is centimetres",
     )
     parser.add_argument("--render-dir", type=pathlib.Path, help="Also render one PNG per camera")
+    parser.add_argument(
+        "--prepared-render-dir",
+        type=pathlib.Path,
+        help="Render one ready-to-read still from every prepared scene",
+    )
+    parser.add_argument(
+        "--prepared-render-layers",
+        action="store_true",
+        help="Render every audit view layer, rather than only the first layer of each prepared scene",
+    )
     parser.add_argument(
         "--gpu", action="store_true", help="Render on the accelerator, and fail loudly if there is none"
     )
@@ -181,7 +214,13 @@ def main() -> int:
         width_scale=args.rim_width_scale,
         site_step=args.rim_site_step,
     )
-    walk_range = estimator.build_walk(payload, scene.collection("walk"), args.walk_model)
+    walk_range = estimator.build_walk(
+        payload,
+        scene.collection("walk"),
+        args.walk_model,
+        manifest.get("walk_provenance"),
+        hero_index=int(payload["hero_index"]),
+    )
     sab_range = estimator.build_body(payload, hero, ground_z, scene.collection("body"))
 
     layers = evidence.build_all(
@@ -194,9 +233,28 @@ def main() -> int:
 
     cameras = scene.collection("cameras")
     scene.build_cameras(twin, hero, ground_z, cameras)
-    scene.build_evidence_cameras(twin, payload, hero, ground_z, cameras)
+    scene.build_walk_camera(
+        twin,
+        payload["walk_points"],
+        cameras,
+        aspect=bpy.context.scene.render.resolution_x / bpy.context.scene.render.resolution_y,
+    )
+    scene.build_evidence_cameras(twin, payload, hero, cameras)
     scene.build_lighting(hero)
     scene.hide_heavy_collections()
+    animation_summary = animation.build_path_animation(
+        payload,
+        manifest["terminations"],
+        path_collection=scene.collection("path_animation"),
+        nee_collection=scene.collection("nee_animation"),
+        dense_ray_collection=scene.collection("rays"),
+        dense_bounce_collection=scene.collection("bounces"),
+        drawn_radius_m=float(manifest["drawn_radius_m"]),
+        ranked_count=args.animation_paths,
+        nee_count=args.animation_nee_paths,
+        radius_m=1.45 * args.ray_radius_m,
+        escaped_proxy_m=args.animation_escape_leg_m,
+    )
     scene.frame_the_viewport(twin, hero)
 
     scene.stamp_scene(
@@ -208,10 +266,38 @@ def main() -> int:
         root=ROOT,
     )
 
+    raw_scene = bpy.context.scene
+    panorama_asset = None
+    panorama_hook = None
+    if manifest["site"] == "korenmarkt":
+        panorama_asset = panorama.select_panorama_asset(manifest, ROOT)
+        panorama_hook = functools.partial(
+            panorama.configure_panorama_scene,
+            asset=panorama_asset,
+            blend_path=args.blend,
+            support_collection_name=scene.COLLECTION_NAMES["twin"],
+        )
+    prepared = views.build_prepared_scenes(raw_scene, scene.BUILT, panorama_hook=panorama_hook)
+    views.set_default_scene(prepared)
+
     args.blend.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(args.blend.resolve()), compress=True)
 
+    if args.prepared_render_dir is not None:
+        views.render_prepared_scenes(
+            prepared,
+            args.prepared_render_dir,
+            all_layers=args.prepared_render_layers,
+            samples=args.samples,
+            resolution_scale=args.resolution_scale,
+            gpu=args.gpu,
+        )
+
     if args.render_dir is not None:
+        # The legacy figure table mutates collection render flags and material
+        # channels. Run it in the complete archive after the prepared default
+        # has been saved, so no prepared scene inherits its view-layer state.
+        views.activate_raw_scene(raw_scene, clear_root_exclusions=True)
         renders.render_every_figure(
             args.render_dir,
             args.blend.stem,
@@ -227,6 +313,13 @@ def main() -> int:
     print(f"[arrival] peak rho per sr { {k: round(v, 5) for k, v in peaks.items()} }", flush=True)
     print(f"[network] {json.dumps(sources)}", flush=True)
     print(f"[nee] {json.dumps(connections)}", flush=True)
+    print(f"[animation] {json.dumps(animation_summary)}", flush=True)
+    if panorama_asset is not None:
+        print(
+            f"[panorama] linked {panorama_asset.provider} {panorama_asset.image_id}, "
+            f"registration residual {panorama_asset.skyline_residual_deg:.3f} deg",
+            flush=True,
+        )
     print(f"[walk] chi range {walk_range[0]:.2f} to {walk_range[1]:.2f} dB", flush=True)
     print(f"[body] Sab {sab_range[0]:.4g} to {sab_range[1]:.4g} W/m2", flush=True)
     print(f"[evidence] {json.dumps(layers, default=str)}", flush=True)
