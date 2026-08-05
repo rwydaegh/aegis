@@ -32,9 +32,14 @@ from semantic_twin.materials import (
     Provenance,
     SurfaceBinding,
     SurfaceRoughnessLibrary,
+    SupportKind,
+    bind_fishnet,
     bind_walk_entities,
+    bind_walk_materials,
+    classify_faces,
     effective_rms_height,
     extend_classes,
+    entity_support_kind,
     geometric_binding,
     load_table,
     masonry_equivalent_rms_height,
@@ -48,6 +53,7 @@ from semantic_twin.materials.stack import (
     material_power_reflectance,
     posterior_power_reflectance,
 )
+from semantic_twin.scene.mesh import read_binary_ply
 from semantic_twin.transport.tracer import fresnel_power_reflectance
 
 CONFIG = pathlib.Path(__file__).resolve().parents[1] / "config"
@@ -370,6 +376,210 @@ def test_a_walk_binding_refuses_semantics_cut_against_another_mesh(tmp_path) -> 
     np.savez(walk, modal_class=np.ones((1, 5), dtype=np.int64), clean_rays=np.ones((1, 5)))
     with pytest.raises(ValueError, match="the tracer mesh has 4"):
         bind_walk_entities(np.ones(4), np.zeros(4, dtype=np.int64), walk_npz=walk, semantics_path=semantics)
+
+
+def _support_semantics(tmp_path: pathlib.Path) -> pathlib.Path:
+    semantics = tmp_path / "support_semantics.json"
+    semantics.write_text(
+        json.dumps(
+            {
+                "entity_id2label": {
+                    "1": "Road",
+                    "2": "Building",
+                    "3": "Rail Track",
+                    "4": "Ego Vehicle",
+                    "5": "Vegetation",
+                },
+                "vistas_material_prior": {
+                    "Road": {"asphalt_concrete": 1.0},
+                    "Building": {"brick": 1.0},
+                    "Rail Track": {"metal": 1.0},
+                    "Ego Vehicle": {"metal": 1.0},
+                    "Vegetation": {"vegetation_effective": 1.0},
+                },
+            }
+        )
+    )
+    return semantics
+
+
+def _write_support_walk(
+    path: pathlib.Path,
+    rows: list[tuple[str, list[int], list[float]]],
+) -> pathlib.Path:
+    np.savez(
+        path,
+        image_ids=np.asarray([row[0] for row in rows]),
+        modal_class=np.asarray([row[1] for row in rows], dtype=np.int64),
+        clean_rays=np.asarray([row[2] for row in rows], dtype=np.float64),
+    )
+    return path
+
+
+def test_host_evidence_needs_a_strict_structural_majority(tmp_path) -> None:
+    semantics = _support_semantics(tmp_path)
+    walk = _write_support_walk(
+        tmp_path / "walk.npz",
+        [
+            ("a", [1, 1, 1, 4], [6, 4, 5, 10]),
+            ("b", [2, 2, 2, 1], [4, 6, 5, 0]),
+        ],
+    )
+    geometric = np.full(4, CLASS_NAMES.index("ground"), dtype=np.int64)
+    binding = bind_walk_entities(np.ones(4), geometric, walk_npz=walk, semantics_path=semantics)
+
+    assert binding.class_names[binding.face_class[0]] == "semantic_asphalt_concrete"
+    assert np.array_equal(binding.face_class[1:], geometric[1:])
+    assert np.array_equal(binding.covered, [True, False, False, False])
+    partition = binding.provenance["support_compatibility"]["face_partition"]
+    assert partition == {
+        "unobserved": 0,
+        "observed_conflict_or_tie": 3,
+        "compatible_but_unroutable": 0,
+        "bound": 1,
+    }
+
+
+def test_embedded_rail_is_retained_without_painting_the_host_triangle(tmp_path) -> None:
+    semantics = _support_semantics(tmp_path)
+    walk = _write_support_walk(
+        tmp_path / "rail.npz",
+        [
+            ("road", [3, 1, 1], [100, 60, 40]),
+            ("rail", [3, 3, 3], [0, 40, 60]),
+        ],
+    )
+    geometric = np.full(3, CLASS_NAMES.index("ground"), dtype=np.int64)
+    binding = bind_walk_entities(np.ones(3), geometric, walk_npz=walk, semantics_path=semantics)
+
+    assert np.array_equal(binding.face_class[[0, 2]], geometric[[0, 2]])
+    assert binding.class_names[binding.face_class[1]] == "semantic_asphalt_concrete"
+    rail = binding.provenance["support_compatibility"]["embedded_subface_evidence"]["entities"]["Rail Track"]
+    assert rail == {"observations": 3, "evidence_weight": 200.0, "target_faces": 3}
+    assert entity_support_kind("Rail Track") == SupportKind.EMBEDDED_SUBFACE
+
+
+def test_structural_gate_uses_the_entity_and_not_the_material_name(tmp_path) -> None:
+    semantics = _support_semantics(tmp_path)
+    document = json.loads(semantics.read_text())
+    document["vistas_material_prior"]["Road"] = {"brick": 1.0}
+    semantics.write_text(json.dumps(document))
+    walk = _write_support_walk(
+        tmp_path / "same_material.npz",
+        [("one", [1, 2, 1, 2], [8, 8, 8, 8])],
+    )
+    ground, facade = CLASS_NAMES.index("ground"), CLASS_NAMES.index("facade")
+    geometric = np.asarray([ground, facade, facade, ground])
+    binding = bind_walk_entities(np.ones(4), geometric, walk_npz=walk, semantics_path=semantics)
+
+    assert [binding.class_names[index] for index in binding.face_class[:2]] == ["semantic_brick"] * 2
+    assert np.array_equal(binding.face_class[2:], geometric[2:])
+
+
+def test_walk_support_vote_is_invariant_to_station_row_order(tmp_path) -> None:
+    semantics = _support_semantics(tmp_path)
+    rows = [
+        ("z", [1, 2, 3], [9, 4, 3]),
+        ("a", [2, 2, 1], [4, 7, 8]),
+        ("m", [1, 1, 4], [2, 1, 2]),
+    ]
+    forward = _write_support_walk(tmp_path / "forward.npz", rows)
+    shuffled = _write_support_walk(tmp_path / "shuffled.npz", [rows[1], rows[2], rows[0]])
+    geometric = np.asarray([0, 1, 0])
+    first = bind_walk_entities(np.ones(3), geometric, walk_npz=forward, semantics_path=semantics)
+    second = bind_walk_entities(np.ones(3), geometric, walk_npz=shuffled, semantics_path=semantics)
+
+    assert np.array_equal(first.face_class, second.face_class)
+    assert np.array_equal(first.face_source, second.face_source)
+    assert first.provenance["support_compatibility"] == second.provenance["support_compatibility"]
+
+
+def test_walk_support_refuses_duplicate_station_ids(tmp_path) -> None:
+    semantics = _support_semantics(tmp_path)
+    walk = _write_support_walk(
+        tmp_path / "duplicate.npz",
+        [("same", [1], [2]), ("same", [1], [3])],
+    )
+    with pytest.raises(ValueError, match="must be unique"):
+        bind_walk_entities(np.ones(1), np.zeros(1, dtype=np.int64), walk_npz=walk, semantics_path=semantics)
+
+
+@pytest.mark.parametrize(
+    "options",
+    [{}, {"mixture": True}, {"over_entity": True}, {"facade_only": True}],
+)
+def test_walk_material_modes_refuse_independent_entity_and_material_reductions(tmp_path, options) -> None:
+    walk = tmp_path / "material.npz"
+    np.savez(
+        walk,
+        modal_class=np.asarray([[1]], dtype=np.int64),
+        modal_material=np.asarray([[0]], dtype=np.int64),
+        material_names=np.asarray(["metal"]),
+        clean_rays=np.asarray([[5]], dtype=np.int64),
+    )
+    with pytest.raises(ValueError, match="not joint entity-by-material evidence"):
+        bind_walk_materials(
+            np.ones(1),
+            np.zeros(1, dtype=np.int64),
+            walk_npz=walk,
+            semantics_path=_support_semantics(tmp_path),
+            **options,
+        )
+
+
+def test_water_is_explicitly_a_non_host_volume() -> None:
+    assert entity_support_kind("Water") == SupportKind.NON_HOST_VOLUME
+
+
+def test_fishnet_uses_the_same_structural_support_gate(tmp_path) -> None:
+    semantics = _support_semantics(tmp_path)
+    fishnet = tmp_path / "fishnet"
+    fishnet.mkdir()
+    np.savez(
+        fishnet / "view_fishnet.npz",
+        face_source_triangle=np.asarray([0, 0, 1]),
+        face_area_m2=np.asarray([6.0, 4.0, 1.0]),
+        face_class=np.asarray([1, 2, 3]),
+        face_confidence=np.ones(3),
+    )
+    vertices, faces, areas = _tetrahedron()
+    geometric = np.full(faces.shape[0], CLASS_NAMES.index("ground"), dtype=np.int64)
+    binding = bind_fishnet(
+        vertices,
+        faces,
+        areas,
+        geometric,
+        fishnet_dir=fishnet,
+        semantics_path=semantics,
+    )
+
+    assert binding.class_names[binding.face_class[0]] == "semantic_asphalt_concrete"
+    assert binding.face_class[1] == geometric[1]
+    assert (
+        binding.provenance["support_compatibility"]["embedded_subface_evidence"]["entities"]["Rail Track"][
+            "target_faces"
+        ]
+        == 1
+    )
+
+
+def test_korenmarkt_objects_and_rails_do_not_turn_ground_into_metal() -> None:
+    root = CONFIG.parent
+    mesh_path = root / "data" / "geometry" / "korenmarkt" / "inhouse_leaf_250m_f64.ply"
+    walk_path = root / "outputs" / "site_semantics" / "korenmarkt" / "walk_semantic_250m.npz"
+    semantics = root / "data" / "panoramas" / "korenmarkt" / "semantics" / "semantics.json"
+    if not (mesh_path.exists() and walk_path.exists() and semantics.exists()):
+        pytest.skip("Korenmarkt semantic binding artifacts are not installed")
+    vertices, faces = read_binary_ply(mesh_path)
+    triangle = vertices[faces]
+    areas = 0.5 * np.linalg.norm(np.cross(triangle[:, 1] - triangle[:, 0], triangle[:, 2] - triangle[:, 0]), axis=1)
+    geometric = classify_faces(vertices, faces, 50.87109375).astype(np.int64)
+    binding = bind_walk_entities(areas, geometric, walk_npz=walk_path, semantics_path=semantics)
+    metal = binding.class_names.index("semantic_metal")
+
+    assert not np.any((geometric == CLASS_NAMES.index("ground")) & (binding.face_class == metal))
+    embedded = binding.provenance["support_compatibility"]["embedded_subface_evidence"]["entities"]
+    assert embedded["Rail Track"]["target_faces"] > 0
 
 
 # --- the roughness rules --------------------------------------------------

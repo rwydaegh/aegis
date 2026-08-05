@@ -33,6 +33,7 @@ matched fraction is reported rather than assumed.
 from __future__ import annotations
 
 import json
+import hashlib
 import pathlib
 from dataclasses import dataclass
 from typing import Any
@@ -41,6 +42,12 @@ import numpy as np
 
 from .binding import CLASS_NAMES, Provenance, SurfaceBinding, extend_classes
 from .catalogue import IMAGE_MATERIALS, MATERIAL_SUBSTITUTION, VEGETATION_NOTE
+from .support import (
+    SUPPORT_COMPATIBILITY_VERSION,
+    SupportKind,
+    entity_support_kind,
+    entity_supports_geometric_class,
+)
 
 #: Prefix every evidence class name carries in the class table.
 SEMANTIC_PREFIX = "semantic_"
@@ -255,6 +262,166 @@ def _sources(count: int, covered: np.ndarray, kind: Provenance, base: np.ndarray
     return origin
 
 
+@dataclass
+class _SupportEvidence:
+    """Material votes and the structural evidence that licenses them."""
+
+    material_votes: np.ndarray
+    compatible_weight: np.ndarray
+    incompatible_weight: np.ndarray
+    observed_weight: np.ndarray
+    weight_by_kind: dict[str, float]
+    embedded: dict[str, dict[str, Any]]
+
+
+def _empty_support_evidence(face_count: int, material_count: int) -> _SupportEvidence:
+    return _SupportEvidence(
+        material_votes=np.zeros((face_count, material_count), dtype=np.float64),
+        compatible_weight=np.zeros(face_count, dtype=np.float64),
+        incompatible_weight=np.zeros(face_count, dtype=np.float64),
+        observed_weight=np.zeros(face_count, dtype=np.float64),
+        weight_by_kind={kind.value: 0.0 for kind in SupportKind},
+        embedded={},
+    )
+
+
+def _record_support(
+    evidence: _SupportEvidence,
+    face: np.ndarray,
+    entity: np.ndarray,
+    weight: np.ndarray,
+    geometric_class: np.ndarray,
+    labels: dict[int, str],
+    material_lookup: np.ndarray,
+) -> None:
+    """Add one deterministic block of entity observations to a face tally."""
+    if not (face.shape == entity.shape == weight.shape):
+        raise ValueError("support face, entity, and weight arrays have different shapes")
+    positive = np.isfinite(weight) & (weight > 0.0)
+    face = np.asarray(face[positive], dtype=np.int64)
+    entity = np.asarray(entity[positive], dtype=np.int64)
+    weight = np.asarray(weight[positive], dtype=np.float64)
+    if not face.size:
+        return
+
+    names = np.asarray([labels.get(int(identifier)) for identifier in entity], dtype=object)
+    kinds = np.asarray([entity_support_kind(name).value for name in names], dtype=object)
+    compatible = np.fromiter(
+        (
+            entity_supports_geometric_class(name, int(geometric_class[target]))
+            for name, target in zip(names, face, strict=True)
+        ),
+        dtype=bool,
+        count=face.size,
+    )
+    np.add.at(evidence.observed_weight, face, weight)
+    np.add.at(evidence.compatible_weight, face[compatible], weight[compatible])
+    np.add.at(evidence.incompatible_weight, face[~compatible], weight[~compatible])
+
+    valid_entity = (entity >= 0) & (entity < material_lookup.shape[0])
+    vote = compatible & valid_entity
+    if np.any(vote):
+        contribution = material_lookup[entity[vote]] * weight[vote, None]
+        np.add.at(evidence.material_votes, face[vote], contribution)
+
+    for kind in SupportKind:
+        selected = kinds == kind.value
+        evidence.weight_by_kind[kind.value] += float(weight[selected].sum())
+
+    embedded = kinds == SupportKind.EMBEDDED_SUBFACE.value
+    for name in sorted({str(item) for item in names[embedded]}):
+        selected = embedded & (names == name)
+        faces = np.unique(face[selected])
+        entry = evidence.embedded.setdefault(
+            name,
+            {"observations": 0, "evidence_weight": 0.0, "target_faces": set()},
+        )
+        entry["observations"] += int(np.count_nonzero(selected))
+        entry["evidence_weight"] += float(weight[selected].sum())
+        entry["target_faces"].update(int(index) for index in faces)
+
+
+def _support_decision(
+    evidence: _SupportEvidence,
+    areas: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    """Accept only a strict host-surface majority with routable material mass."""
+    accepted = evidence.compatible_weight > evidence.incompatible_weight
+    routable = evidence.material_votes.sum(axis=1) > 0.0
+    covered = accepted & routable
+    observed = evidence.observed_weight > 0.0
+    conflict = observed & ~accepted
+    compatible_unbound = accepted & ~routable
+    unobserved = ~observed
+    partitions = {
+        "unobserved": unobserved,
+        "observed_conflict_or_tie": conflict,
+        "compatible_but_unroutable": compatible_unbound,
+        "bound": covered,
+    }
+    total_area = float(np.asarray(areas, dtype=np.float64).sum())
+    structural_agreement = np.divide(
+        evidence.compatible_weight,
+        evidence.observed_weight,
+        out=np.zeros_like(evidence.compatible_weight),
+        where=evidence.observed_weight > 0.0,
+    )
+    winner_share = np.divide(
+        evidence.material_votes.max(axis=1),
+        evidence.material_votes.sum(axis=1),
+        out=np.zeros(evidence.material_votes.shape[0], dtype=np.float64),
+        where=evidence.material_votes.sum(axis=1) > 0.0,
+    )
+    embedded = {
+        name: {
+            "observations": int(entry["observations"]),
+            "evidence_weight": float(entry["evidence_weight"]),
+            "target_faces": len(entry["target_faces"]),
+        }
+        for name, entry in sorted(evidence.embedded.items())
+    }
+    return (
+        accepted,
+        covered,
+        {
+            "version": SUPPORT_COMPATIBILITY_VERSION,
+            "rule": (
+                "geometry keeps the structural class; compatible host-surface evidence must carry "
+                "strictly more weight than all incompatible, object, vegetation, void, and embedded-subface evidence"
+            ),
+            "tie": "geometric fallback",
+            "weight_by_kind": {name: float(value) for name, value in evidence.weight_by_kind.items()},
+            "face_partition": {name: int(mask.sum()) for name, mask in partitions.items()},
+            "area_fraction_partition": {
+                name: float(np.asarray(areas)[mask].sum() / total_area) if total_area else 0.0
+                for name, mask in partitions.items()
+            },
+            "structural_agreement_on_bound_faces": _finite_summary(structural_agreement[covered]),
+            "material_winner_share_on_bound_faces": _finite_summary(winner_share[covered]),
+            "embedded_subface_evidence": {
+                "policy": (
+                    "retained as evidence but excluded from host material votes until physical within-triangle "
+                    "coverage can be represented"
+                ),
+                "entities": embedded,
+            },
+        },
+    )
+
+
+def _finite_summary(values: np.ndarray) -> dict[str, float | int]:
+    values = np.asarray(values, dtype=np.float64)
+    values = values[np.isfinite(values)]
+    if not values.size:
+        return {"count": 0}
+    return {
+        "count": int(values.size),
+        "minimum": float(values.min()),
+        "median": float(np.median(values)),
+        "maximum": float(values.max()),
+    }
+
+
 def bind_fishnet(
     vertices: np.ndarray,
     faces: np.ndarray,
@@ -284,7 +451,11 @@ def bind_fishnet(
         raise FileNotFoundError(f"no fishnet npz under {fishnet_dir}")
 
     materials = sorted(IMAGE_MATERIALS)
-    votes = np.zeros((faces.shape[0], len(materials)))
+    lookup = np.zeros((max(entity_labels) + 2, len(materials)), dtype=np.float64)
+    for entity_id, name in entity_labels.items():
+        for material_index, material in enumerate(materials):
+            lookup[entity_id, material_index] = _material_weight(material_prior, name, material)
+    evidence = _empty_support_evidence(faces.shape[0], len(materials))
     per_view: list[dict[str, Any]] = []
 
     remap, match_report = _index_remap(
@@ -305,12 +476,18 @@ def bind_fishnet(
         target = source if remap is None else remap[source]
         valid = target >= 0
         unmatched = int((~valid).sum())
-        for material_index, material in enumerate(materials):
-            weight = np.array(
-                [_material_weight(material_prior, entity_labels.get(int(c)), material) for c in face_class]
-            )
-            contribution = weight * face_area * confidence
-            np.add.at(votes[:, material_index], target[valid], contribution[valid])
+        support_weight = face_area * confidence
+        selected = np.flatnonzero(valid)
+        selected = selected[np.lexsort((support_weight[selected], face_class[selected], target[selected]))]
+        _record_support(
+            evidence,
+            target[selected],
+            face_class[selected],
+            support_weight[selected],
+            np.asarray(geometric_class, dtype=np.int64),
+            entity_labels,
+            lookup,
+        )
         per_view.append(
             {
                 "file": path.name,
@@ -320,8 +497,8 @@ def bind_fishnet(
             }
         )
 
-    covered = votes.sum(axis=1) > 0.0
-    material_index = np.argmax(votes, axis=1)
+    _accepted, covered, support_report = _support_decision(evidence, areas)
+    material_index = np.argmax(evidence.material_votes, axis=1)
 
     class_names, spec = extend_classes(materials, SEMANTIC_PREFIX, IMAGE_MATERIALS)
     face_class = np.asarray(geometric_class, dtype=np.int64).copy()
@@ -353,7 +530,8 @@ def bind_fishnet(
             "vegetation_note": VEGETATION_NOTE,
             "views": per_view,
             "chosen_material_triangle_counts": chosen,
-            "fallback": "geometric orientation rule wherever no panorama saw the triangle",
+            "support_compatibility": support_report,
+            "fallback": "geometric orientation rule wherever compatible host-surface evidence did not win",
         },
     )
 
@@ -379,6 +557,23 @@ def _station_weights(
     for index, name in enumerate(image_ids[:count]):
         weights[index] = float(station_weight.get(name, 1.0))
     return weights
+
+
+def _canonical_station_order(image_ids: list[str], modal: np.ndarray, rays: np.ndarray) -> np.ndarray:
+    """Stable station order, including legacy files with no station names."""
+    if image_ids:
+        if len(image_ids) != modal.shape[0]:
+            raise ValueError(f"walk has {modal.shape[0]} station rows but {len(image_ids)} image_ids")
+        if len(set(image_ids)) != len(image_ids):
+            raise ValueError("walk image_ids must be unique for order-invariant evidence fusion")
+        return np.argsort(np.asarray(image_ids), kind="stable")
+    digest = []
+    for station in range(modal.shape[0]):
+        checksum = hashlib.sha256()
+        checksum.update(np.ascontiguousarray(modal[station]).tobytes())
+        checksum.update(np.ascontiguousarray(rays[station]).tobytes())
+        digest.append(checksum.hexdigest())
+    return np.argsort(np.asarray(digest), kind="stable")
 
 
 def bind_walk_entities(
@@ -434,19 +629,23 @@ def bind_walk_entities(
     image_ids = [str(name) for name in data["image_ids"]] if "image_ids" in data.files else []
     weights = _station_weights(image_ids, modal.shape[0], station_weight)
 
-    votes = np.zeros((areas.size, len(materials)))
-    for station in range(modal.shape[0]):
+    evidence = _empty_support_evidence(areas.size, len(materials))
+    order = _canonical_station_order(image_ids, modal, rays)
+    for station in order:
         seen = rays[station] >= min_rays
-        classes = np.clip(modal[station], 0, lookup.shape[0] - 1)
-        contribution = lookup[classes[seen]] * rays[station][seen, None]
-        # Left untouched at weight one, so the default path is the arithmetic
-        # every published number ran, to the last bit.
-        if weights[station] != 1.0:
-            contribution = contribution * weights[station]
-        votes[seen] += contribution
+        face = np.flatnonzero(seen)
+        _record_support(
+            evidence,
+            face,
+            modal[station, face],
+            rays[station, face] * weights[station],
+            np.asarray(geometric_class, dtype=np.int64),
+            entity_labels,
+            lookup,
+        )
 
-    covered = votes.sum(axis=1) > 0.0
-    material_index = np.argmax(votes, axis=1)
+    _accepted, covered, support_report = _support_decision(evidence, areas)
+    material_index = np.argmax(evidence.material_votes, axis=1)
 
     class_names, spec = extend_classes(materials, SEMANTIC_PREFIX, IMAGE_MATERIALS)
     face_class = np.asarray(geometric_class, dtype=np.int64).copy()
@@ -475,7 +674,8 @@ def bind_walk_entities(
                 f"{SEMANTIC_PREFIX}{materials[i]}": int(np.count_nonzero(material_index[covered] == i))
                 for i in range(len(materials))
             },
-            "fallback": "geometric orientation rule wherever no station saw the triangle",
+            "support_compatibility": support_report,
+            "fallback": "geometric orientation rule wherever compatible host-surface evidence did not win",
         },
     )
 
@@ -491,41 +691,13 @@ def bind_walk_materials(
     over_entity: bool = False,
     facade_only: bool = False,
 ) -> SurfaceBinding:
-    """Bind materials from the SAM 3 material axis of the same fused walk.
+    """Refuse SAM material binding until entity and material evidence is joint.
 
-    :func:`bind_walk_entities` reads the Mapillary Vistas entity raster and
-    pushes it through a fixed ``p(material | entity)`` table, so every
-    ``Building`` pixel resolves to one material whatever the photograph shows.
-    This reads the ``rf_material`` raster instead, which SAM 3 resolved inside
-    the ``Building`` class. Everything else is held identical: the same
-    stations, the same rays, the same transient mask, the same ray count
-    weighting and the same argmax, so a difference between the two runs is a
-    difference in material discrimination and nothing else.
-
-    ``mixture`` votes with the full per-face material histogram rather than each
-    station's modal material. It is a sensitivity check on the modal reduction,
-    not the primary path, because the entity binding it is compared against is
-    modal.
-
-    ``over_entity`` lays the material axis on top of the entity binding instead
-    of on top of the geometric rule, which makes the covered set identical to
-    :func:`bind_walk_entities`'s. Without it the two differ in coverage as well
-    as in material, because ``Ego Vehicle``, the capture car filling the nadir,
-    is not a transient class: the entity prior spends its non vehicle mass on
-    metal and binds those faces, while the material axis resolves them to
-    ``vehicle_composite``, which has no ITU row and is not substituted. That is
-    a real difference between the two bindings, but it is not a difference in
-    material discrimination, so the isolating comparison sets this flag and the
-    coverage difference is measured separately.
-
-    ``facade_only`` narrows that further to the faces the entity binding resolved
-    to ``brick``, which is where and only where the entity axis is degenerate:
-    ``Building`` and ``Wall`` are the two Vistas classes whose prior peaks on
-    brick, so those faces carry one material by construction whatever the
-    photograph shows. Everywhere else the entity already names the material, and
-    changing those faces measures the modal reduction rather than material
-    discrimination. This is the flag that answers the question the ladder could
-    not: does resolving brick against glass on the same facade move exposure.
+    Existing walk files store independent per-face modes and marginal material
+    counts. They cannot prove that a material pixel belongs to the compatible
+    host entity on the same face. Binding either reduction would let object
+    material repaint structural geometry, so all four material modes stop here
+    until the walk schema carries joint entity-by-material evidence.
     """
     data = np.load(walk_npz, allow_pickle=True)
     if "modal_material" not in data.files:
@@ -533,104 +705,16 @@ def bind_walk_materials(
             f"{walk_npz} carries no material axis. Re-run the panoramas with "
             "`semantic_twin.cli.panorama --backend hybrid` and rebuild the walk semantics."
         )
-    names = [str(name) for name in data["material_names"]]
-    rays = data["clean_rays"].astype(np.float64)
-    materials = sorted(IMAGE_MATERIALS)
-
-    # RF vocabulary index -> bound material index, or -1 for the labels that name
-    # no surface a tracer can bind: ``unknown`` is the deliberate residual,
-    # ``air`` is an aperture, and human tissue and vehicles are transients rather
-    # than scene. A face whose modal material is one of those is left to the
-    # geometric rule instead of being pushed onto a nearest neighbour.
-    route = np.full(len(names), -1, dtype=np.int64)
-    for index, name in enumerate(names):
-        target = MATERIAL_SUBSTITUTION.get(name, name)
-        if target in IMAGE_MATERIALS:
-            route[index] = materials.index(target)
-
-    votes = np.zeros((areas.size, len(materials)))
-    if mixture:
-        counts = data["material_counts"].astype(np.float64)
-        if counts.shape[0] != areas.size:
-            raise ValueError(f"walk semantics cover {counts.shape[0]} faces, the tracer mesh has {areas.size}")
-        for index in range(len(names)):
-            if route[index] >= 0:
-                votes[:, route[index]] += counts[:, index]
-    else:
-        modal = data["modal_material"].astype(np.int64)
-        if modal.shape[1] != areas.size:
-            raise ValueError(f"walk semantics cover {modal.shape[1]} faces, the tracer mesh has {areas.size}")
-        for station in range(modal.shape[0]):
-            seen = (rays[station] >= min_rays) & (modal[station] >= 0)
-            bound = route[modal[station][seen]]
-            face = np.nonzero(seen)[0][bound >= 0]
-            np.add.at(votes, (face, bound[bound >= 0]), rays[station][face])
-
-    covered = votes.sum(axis=1) > 0.0
-    material_index = np.argmax(votes, axis=1)
-
-    class_names, spec = extend_classes(materials, SEMANTIC_PREFIX, IMAGE_MATERIALS)
-
-    if over_entity or facade_only:
-        if semantics_path is None:
-            raise ValueError("this mode needs semantics_path, because the entity binding is the base")
-        base = bind_walk_entities(
-            areas, geometric_class, walk_npz=walk_npz, semantics_path=semantics_path, min_rays=min_rays
-        )
-        base_class = base.face_class
-        base_source = base.face_source
-        base_note = "entity binding of bind_walk_entities, itself falling back to the geometric orientation rule"
-    else:
-        base_class = np.asarray(geometric_class, dtype=np.int64)
-        base_source = None
-        base_note = "geometric orientation rule"
-
-    material_set = covered
-    if facade_only:
-        brick_class = len(CLASS_NAMES) + materials.index("brick")
-        material_set = material_set & (base_class == brick_class)
-    face_class = np.asarray(base_class, dtype=np.int64).copy()
-    face_class[material_set] = len(CLASS_NAMES) + material_index[material_set]
-
-    unroutable = [name for index, name in enumerate(names) if route[index] < 0]
-    return SurfaceBinding(
-        class_names=class_names,
-        spec=spec,
-        face_class=face_class,
-        face_source=_sources(face_class.size, material_set, Provenance.IMAGE_WALK_MATERIAL, base_source),
-        face_area_m2=np.asarray(areas, dtype=np.float64),
-        provenance={
-            "walk_npz": str(walk_npz),
-            "stations": int(rays.shape[0]),
-            "axis": "SAM 3 rf_material, the open-vocabulary material layer of the hybrid backend",
-            "join": "modal_material is already indexed on the tracer mesh, no centroid match",
-            "weight": "transient free ray count per station",
-            "vote": "per face material histogram" if mixture else "per station modal material",
-            "base": base_note,
-            "restricted_to": (
-                "faces the entity binding resolved to brick, which is Building and Wall"
-                if facade_only
-                else "every face a routable material was bound on"
-            ),
-            "min_rays": min_rays,
-            "concept_backed_ray_fraction": float(
-                data["concept_rays"].sum() / max(data["clean_rays"].sum(), 1) if "concept_rays" in data.files else 0.0
-            ),
-            "unroutable_materials": unroutable,
-            "unroutable_rule": (
-                "left to the entity binding rather than substituted"
-                if over_entity
-                else "left to the geometric orientation rule rather than substituted"
-            ),
-            "substitutions": MATERIAL_SUBSTITUTION,
-            "vegetation_note": VEGETATION_NOTE,
-            "chosen_material_triangle_counts": {
-                f"{SEMANTIC_PREFIX}{materials[i]}": int(np.count_nonzero(material_index[material_set] == i))
-                for i in range(len(materials))
-            },
-            "faces_the_material_axis_set": int(material_set.sum()),
-            "fallback": base_note,
-        },
+    modes = [
+        name
+        for name, enabled in (("mixture", mixture), ("over_entity", over_entity), ("facade_only", facade_only))
+        if enabled
+    ]
+    mode = ", ".join(modes) if modes else "modal"
+    raise ValueError(
+        f"walk material mode {mode} is unsafe: {walk_npz} stores independent entity and material reductions, "
+        f"not joint entity-by-material evidence; requested for {np.asarray(areas).size} faces with geometric "
+        f"shape {np.asarray(geometric_class).shape}, semantics {semantics_path}, and min_rays={min_rays}"
     )
 
 
