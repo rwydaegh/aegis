@@ -18,7 +18,8 @@
   "bootstrap": {
     "replicates": 20000,
     "seed": 20260805,
-    "confidence": 0.95
+    "confidence": 0.95,
+    "alpha_allocation": "equal Bonferroni allocation over formal looks 16, 24, and 32"
   },
   "body_peak": {
     "chunk_cells": 512

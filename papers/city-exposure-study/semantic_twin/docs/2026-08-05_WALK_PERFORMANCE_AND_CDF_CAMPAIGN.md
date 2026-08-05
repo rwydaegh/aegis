@@ -76,21 +76,35 @@ rule](2026-08-05_MICROENVIRONMENTS_AND_CDF_STOPPING.md).
 - The bootstrap resamples whole base-seed walks. It keeps all points and source
   laws in each selected replica together.
 
-- Simultaneous 95 percent max-t bands cover the full reported family.
+- Formal looks use one joint 98.333 percent max-t band. Equal Bonferroni alpha
+  spending over the three planned looks gives nominal 95 percent familywise
+  coverage after selecting a stopping look.
 
 - Route endpoints and their nearest neighbours are retained.
+
+The production alpha values are exact: familywise alpha is 1/20, each formal
+look receives 1/60, and each formal band targets confidence 59/60. Bonferroni
+controls selection if each per-look band attains that target. The nonparametric
+max-t bootstrap is approximate at 16 to 32 replicas, so the result is a nominal
+95 percent familywise statement rather than an exact finite-sample confidence
+sequence.
 
 The output states that the CDF is conditional on the fixed 49.2 m route. More
 ray seeds reduce tracing error. They do not create new street samples.
 
-The runner also applies the separate 0.15 dB body-peak rule. It bootstraps the
-linear mean of the peak absorbed density returned by each full replica. At the
-final look, it recomputes the body result from the ensemble-mean angular
-spectrum and records the difference between the two central estimators.
+One joint bootstrap family contains total susceptibility for all three source
+laws, rooftop peak absorbed density, and rooftop mean absorbed density. It
+covers every standpoint, route rank, and declared CDF summary. A single max-t
+critical value applies to that family at each formal look.
 
-The dotted direct-path CDFs and the rooftop mean absorbed-density CDF also get
-simultaneous seed bands. They are reported diagnostics. The formal stop uses
-total susceptibility for all three source laws and the rooftop body peak.
+The published body peak is the linear mean of the peak absorbed density from
+each full replica. This is the estimator bounded by the joint band. The peak of
+the ensemble-mean spectrum is stored under a separate field as an unbounded
+plug-in diagnostic.
+
+Direct susceptibility stays outside the confidence family and the stop. An
+exact zero remains an atom at zero in linear units. Positive direct estimates
+get dB values, while zero values get no logarithmic floor or dB interval.
 
 ## Compact output
 
@@ -109,6 +123,12 @@ enough to compute the final ensemble body result. This keeps the retained
 campaign output near a few megabytes instead of duplicating tens of megabytes
 of raw spectra.
 
+Each checkpoint records the exact deterministic Fibonacci grid and its hash.
+Resume requires byte-for-byte equality with the expected grid. The campaign
+identity also includes the exact IT'IS SQLite database bytes. If an output
+generation carries another identity, the runner moves all its managed files to
+a recoverable `quarantine/` directory before it writes a new plan.
+
 The exact-input dry-run completed locally:
 
 ```bash
@@ -122,6 +142,7 @@ It verified these frozen hashes:
 | Support mesh | `bfbdba0657a1dd4b8b819e7e611dbfd4eea919e5c08538078ff1948599957264` |
 | Joint atlas NPZ | `c452c34e1d9422022d55fc758d228c22a39b80d9a770042e89e13f9110f43a76` |
 | Duke body mesh | `781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b` |
+| IT'IS v5 database | `51dc983da2fa4e40bde9ca4e9830ecd6b41739c2b92b28b5efbdc5d5e556aa8f` |
 | Frozen standpoint arrays | `d373e65c769017c5309db17c2035adf2178641d421fc5fbbdf92356e424b6f5c` |
 | Accepted location rows | `66b4e5c70494dc653a8d99ab33d4551fac99d70029114995ef9523d831e34534` |
 | Accepted rooftop spectra | `1186e952d4edc65046e69940a54c1024cb29c1fee6e6ae72acbe95b76f59b90b` |
@@ -133,19 +154,21 @@ the production ray and cell counts. These traces do not include the other two
 source laws, so they cannot complete the new campaign. They provide a useful
 check of the analysis code.
 
-For the archived rooftop traces at seeds 7 through 14, the simultaneous 95
-percent results at the diagnostic look were:
+For the archived rooftop traces at seeds 7 through 14, one joint 95 percent
+max-t diagnostic family covered total susceptibility, body peak, and body mean.
+It contained 93 point, CDF-rank, and CDF-summary statistics. The total and body
+peak results were:
 
 | Quantity | Half-width |
 | --- | ---: |
-| Per-point p90 | 0.0079 dB |
-| Per-point maximum | 0.0086 dB |
-| Fixed-route q10 | 0.0028 dB |
-| Fixed-route q50 | 0.0060 dB |
-| Fixed-route q90 | 0.0040 dB |
-| Fixed-route minimum | 0.0042 dB |
-| Fixed-route maximum | 0.0060 dB |
-| Rooftop body-peak maximum | 0.0132 dB |
+| Per-point p90 | 0.0085 dB |
+| Per-point maximum | 0.0092 dB |
+| Fixed-route q10 | 0.0033 dB |
+| Fixed-route q50 | 0.0072 dB |
+| Fixed-route q90 | 0.0048 dB |
+| Fixed-route minimum | 0.0050 dB |
+| Fixed-route maximum | 0.0073 dB |
+| Rooftop body-peak maximum | 0.0142 dB |
 
 These values are below the planned limits. They support the expected campaign
 cost and the analysis implementation. They remain a one-law diagnostic.

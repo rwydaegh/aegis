@@ -30,7 +30,7 @@ ENDPOINT_RANKS = ("minimum", "second_lowest", "second_highest", "maximum")
 
 @dataclass(frozen=True)
 class StoppingThresholds:
-    """Maximum allowed 95 percent confidence half-widths and look shifts."""
+    """Maximum allowed confidence half-widths and look shifts."""
 
     point_p90_db: float = 0.10
     point_max_db: float = 0.15
@@ -142,6 +142,9 @@ class CdfConvergenceConfig:
                 "diagnostic_look": 8,
                 "looks": (16, 24, 32),
                 "base_seeds": tuple(range(7, 39)),
+                "bootstrap_replicates": 20_000,
+                "bootstrap_seed": 20260805,
+                "confidence": 0.95,
             }
             actual = {name: getattr(self, name) for name in expected}
             if actual != expected:
@@ -168,7 +171,10 @@ class CdfConvergenceConfig:
             "bootstrap": {
                 "replicates": self.bootstrap_replicates,
                 "seed": self.bootstrap_seed,
-                "confidence": self.confidence,
+                "planned_familywise_confidence": self.confidence,
+                "formal_look_alpha": (1.0 - self.confidence) / len(self.looks),
+                "formal_look_confidence": 1.0 - (1.0 - self.confidence) / len(self.looks),
+                "alpha_allocation": "equal Bonferroni allocation over every planned formal look",
                 "unit": "one complete base-seed walk replica",
             },
             "body_peak": {
@@ -223,6 +229,8 @@ def analyse_chi_replicas(
     previous_db: np.ndarray | None = None
     consecutive = 0
     stop_at: int | None = None
+    formal_alpha = (1.0 - confidence) / len(formal_looks) if formal_looks else 1.0 - confidence
+    formal_confidence = 1.0 - formal_alpha
     for look in looks:
         prefix = values[:look]
         rng = np.random.default_rng(np.random.SeedSequence([bootstrap_seed, look]))
@@ -231,14 +239,21 @@ def analyse_chi_replicas(
         estimate_linear = np.mean(prefix, axis=0, dtype=np.float64)
         estimate_db = _to_db(estimate_linear)
         bootstrap_db = _to_db(bootstrap_mean)
-        point_half_width = _simultaneous_half_width(bootstrap_db, estimate_db, confidence)
-
-        point_report = _point_report(point_half_width, model_names, limits)
-        cdf_report = _cdf_report(estimate_db, bootstrap_db, model_names, confidence, limits)
+        is_formal = look in formal_looks
+        per_look_confidence = formal_confidence if is_formal else confidence
+        components = _confidence_components("total", estimate_db, bootstrap_db)
+        widths, critical = _joint_simultaneous_half_widths(components, per_look_confidence)
+        point_report = _point_report(widths["total.point"], model_names, limits)
+        cdf_report = _cdf_report_from_joint(
+            estimate_db,
+            widths["total.statistics"],
+            widths["total.ordered"],
+            model_names,
+            limits,
+        )
         stability = _stability_report(previous_db, estimate_db, model_names, limits)
         uncertainty_pass = bool(point_report["pass"] and cdf_report["pass"])
-        look_pass = bool(uncertainty_pass and stability["pass"])
-        is_formal = look in formal_looks
+        look_pass = bool(is_formal and uncertainty_pass and stability["pass"])
         if is_formal:
             consecutive = consecutive + 1 if look_pass else 0
             if consecutive >= 2 and stop_at is None:
@@ -246,6 +261,12 @@ def analyse_chi_replicas(
         document = {
             "replicas": look,
             "formal_look": is_formal,
+            "coverage": {
+                "role": ("formal alpha-spent look" if is_formal else "diagnostic only, excluded from formal coverage"),
+                "per_look_confidence_nominal": per_look_confidence,
+                "per_look_alpha": 1.0 - per_look_confidence,
+                "joint_max_t_critical_value": critical,
+            },
             "point_estimate_db": {
                 name: [float(value) for value in estimate_db[:, model]] for model, name in enumerate(model_names)
             },
@@ -269,7 +290,15 @@ def analyse_chi_replicas(
             "seed": bootstrap_seed,
             "confidence": confidence,
             "resampling": "base-seed walk clusters with all standpoints and source laws kept together",
-            "simultaneous_interval": "max-t band over the complete reported family",
+            "simultaneous_interval": "one max-t band over points, CDF ranks, and CDF summaries",
+        },
+        "planned_look_coverage": {
+            "familywise_confidence_nominal": confidence,
+            "planned_formal_looks": list(formal_looks),
+            "alpha_per_formal_look": formal_alpha,
+            "confidence_per_formal_look": formal_confidence,
+            "finite_sample_exact": False,
+            "caveat": "nonparametric max-t bootstrap coverage is approximate at finite replica count",
         },
         "route_sample": {
             "standpoints": int(values.shape[1]),
@@ -282,76 +311,6 @@ def analyse_chi_replicas(
         "stop_at_replicas": stop_at,
         "cap_reached": stop_at is None and bool(formal_looks) and looks[-1] == max(formal_looks),
     }
-
-
-def analyse_body_peak_replicas(
-    peak_sab_w_m2: np.ndarray,
-    *,
-    looks: tuple[int, ...],
-    bootstrap_replicates: int,
-    bootstrap_seed: int,
-    confidence: float,
-    maximum_half_width_db: float,
-) -> dict[int, dict[str, Any]]:
-    """Measure seed error in the published rooftop body-peak CDF.
-
-    The input is the peak returned by one full trace replica.  Its seed mean is
-    formed in linear absorbed power before conversion to decibels.  This is a
-    scalar-estimator interval.  The final campaign output also recomputes body
-    exposure from the ensemble-mean angular spectrum and records the small
-    difference between the two central estimators.
-    """
-    return analyse_body_metric_replicas(
-        peak_sab_w_m2,
-        looks=looks,
-        bootstrap_replicates=bootstrap_replicates,
-        bootstrap_seed=bootstrap_seed,
-        confidence=confidence,
-        maximum_half_width_db=maximum_half_width_db,
-        estimator="linear mean of the per-replica peak absorbed power density",
-    )
-
-
-def analyse_body_metric_replicas(
-    values_w_m2: np.ndarray,
-    *,
-    looks: tuple[int, ...],
-    bootstrap_replicates: int,
-    bootstrap_seed: int,
-    confidence: float,
-    maximum_half_width_db: float,
-    estimator: str,
-) -> dict[int, dict[str, Any]]:
-    """Return simultaneous seed bands for one positive body-side scalar."""
-    values = np.asarray(values_w_m2, dtype=np.float64)
-    if values.ndim != 2 or values.shape[1] < 2:
-        raise ValueError("body metric replicas must have shape (replicas, standpoints)")
-    if np.any(values <= 0.0) or not np.all(np.isfinite(values)):
-        raise ValueError("body metric replicas must be finite and positive")
-    out: dict[int, dict[str, Any]] = {}
-    for look in looks:
-        if look > values.shape[0]:
-            raise ValueError("body peak replicas do not cover every look")
-        prefix = values[:look]
-        rng = np.random.default_rng(np.random.SeedSequence([bootstrap_seed, look, 1]))
-        indices = rng.integers(0, look, size=(bootstrap_replicates, look))
-        estimate_db = _to_db(np.mean(prefix, axis=0, dtype=np.float64))
-        bootstrap_db = _to_db(np.mean(prefix[indices], axis=1, dtype=np.float64))
-        widths = _simultaneous_half_width(bootstrap_db, estimate_db, confidence)
-        ordered = np.sort(estimate_db)
-        ordered_bootstrap = np.sort(bootstrap_db, axis=1)
-        ordered_widths = _simultaneous_half_width(ordered_bootstrap, ordered, confidence)
-        maximum = float(np.max(widths))
-        out[look] = {
-            "point_estimate_db": [float(value) for value in estimate_db],
-            "point_simultaneous_half_width_db": [float(value) for value in widths],
-            "max_half_width_db": maximum,
-            "ordered_estimate_db": [float(value) for value in ordered],
-            "ordered_simultaneous_half_width_db": [float(value) for value in ordered_widths],
-            "pass": maximum <= maximum_half_width_db,
-            "estimator": estimator,
-        }
-    return out
 
 
 @dataclass(frozen=True)
@@ -371,6 +330,350 @@ class CampaignCheckpoint:
     @property
     def replicas(self) -> int:
         return int(self.base_seeds.size)
+
+
+def analyse_joint_replicas(
+    chi: np.ndarray,
+    chi_direct: np.ndarray,
+    body_peak: np.ndarray,
+    body_mean: np.ndarray,
+    *,
+    looks: tuple[int, ...],
+    planned_formal_looks: tuple[int, ...],
+    model_names: tuple[str, ...] = MODEL_NAMES,
+    bootstrap_replicates: int = 10_000,
+    bootstrap_seed: int = 20260805,
+    familywise_confidence: float = 0.95,
+    thresholds: StoppingThresholds | None = None,
+) -> dict[str, Any]:
+    """Analyse every confidence-bounded curve with one planned-look family.
+
+    One bootstrap draw resamples complete walk replicas and is shared by total
+    susceptibility, body peak, and body mean.  One max-t critical value covers
+    every reported point, CDF rank, and CDF summary in that look.  The formal
+    look alpha is ``(1 - familywise_confidence) / len(planned_formal_looks)``.
+    Bonferroni then controls selection over the predeclared formal looks.
+
+    The max-t bands have nominal bootstrap coverage.  They are not exact
+    finite-sample confidence sequences.  The familywise statement is valid if
+    each per-look bootstrap band attains its nominal coverage.
+    """
+    total = np.asarray(chi, dtype=np.float64)
+    direct = np.asarray(chi_direct, dtype=np.float64)
+    peak = np.asarray(body_peak, dtype=np.float64)
+    mean = np.asarray(body_mean, dtype=np.float64)
+    if total.ndim != 3 or total.shape[2] != len(model_names):
+        raise ValueError("chi must have shape (replicas, standpoints, models)")
+    if direct.shape != total.shape:
+        raise ValueError("direct susceptibility must match total susceptibility")
+    if peak.shape != total.shape[:2] or mean.shape != total.shape[:2]:
+        raise ValueError("body metrics must have shape (replicas, standpoints)")
+    if total.shape[1] < 2:
+        raise ValueError("at least two standpoints are required for a route CDF")
+    if np.any(total <= 0.0) or not np.all(np.isfinite(total)):
+        raise ValueError("total susceptibility must be finite and positive")
+    if np.any(direct < 0.0) or not np.all(np.isfinite(direct)):
+        raise ValueError("direct susceptibility must be finite and nonnegative")
+    if np.any(peak <= 0.0) or not np.all(np.isfinite(peak)):
+        raise ValueError("body peak must be finite and positive")
+    if np.any(mean <= 0.0) or not np.all(np.isfinite(mean)):
+        raise ValueError("body mean must be finite and positive")
+    if not looks or tuple(sorted(set(looks))) != looks or looks[-1] > total.shape[0]:
+        raise ValueError("looks must be unique, increasing, and covered by the replicas")
+    if not planned_formal_looks or tuple(sorted(set(planned_formal_looks))) != planned_formal_looks:
+        raise ValueError("planned formal looks must be nonempty, unique, and increasing")
+    if bootstrap_replicates < 100:
+        raise ValueError("bootstrap_replicates must be at least 100")
+    if not 0.0 < familywise_confidence < 1.0:
+        raise ValueError("familywise_confidence must lie between zero and one")
+    limits = thresholds or StoppingThresholds()
+    limits.validate()
+
+    formal_alpha = (1.0 - familywise_confidence) / len(planned_formal_looks)
+    formal_confidence = 1.0 - formal_alpha
+    previous_db: np.ndarray | None = None
+    documents: list[dict[str, Any]] = []
+    consecutive = 0
+    stop_at: int | None = None
+    for look in looks:
+        is_formal = look in planned_formal_looks
+        per_look_confidence = formal_confidence if is_formal else familywise_confidence
+        rng = np.random.default_rng(np.random.SeedSequence([bootstrap_seed, look, 37]))
+        indices = rng.integers(0, look, size=(bootstrap_replicates, look))
+
+        total_estimate_db = _to_db(np.mean(total[:look], axis=0, dtype=np.float64))
+        total_bootstrap_db = _to_db(np.mean(total[:look][indices], axis=1, dtype=np.float64))
+        peak_estimate_db = _to_db(np.mean(peak[:look], axis=0, dtype=np.float64))
+        peak_bootstrap_db = _to_db(np.mean(peak[:look][indices], axis=1, dtype=np.float64))
+        mean_estimate_db = _to_db(np.mean(mean[:look], axis=0, dtype=np.float64))
+        mean_bootstrap_db = _to_db(np.mean(mean[:look][indices], axis=1, dtype=np.float64))
+
+        components = {
+            **_confidence_components("total", total_estimate_db, total_bootstrap_db),
+            **_confidence_components("body_peak", peak_estimate_db, peak_bootstrap_db),
+            **_confidence_components("body_mean", mean_estimate_db, mean_bootstrap_db),
+        }
+        widths, critical = _joint_simultaneous_half_widths(components, per_look_confidence)
+        point_report = _point_report(widths["total.point"], model_names, limits)
+        cdf_report = _cdf_report_from_joint(
+            total_estimate_db,
+            widths["total.statistics"],
+            widths["total.ordered"],
+            model_names,
+            limits,
+        )
+        peak_report = _body_report_from_joint(
+            peak_estimate_db,
+            widths["body_peak.point"],
+            widths["body_peak.statistics"],
+            widths["body_peak.ordered"],
+            maximum_half_width_db=limits.body_peak_max_db,
+            estimator="linear mean of per-replica peak absorbed power density",
+            stopping_role="enters the formal stop",
+        )
+        mean_report = _body_report_from_joint(
+            mean_estimate_db,
+            widths["body_mean.point"],
+            widths["body_mean.statistics"],
+            widths["body_mean.ordered"],
+            maximum_half_width_db=None,
+            estimator="linear mean of per-replica mean absorbed power density",
+            stopping_role="reported in the joint family but does not enter the stop",
+        )
+        stability = _stability_report(previous_db, total_estimate_db, model_names, limits)
+        uncertainty_pass = bool(point_report["pass"] and cdf_report["pass"] and peak_report["pass"])
+        look_pass = bool(is_formal and uncertainty_pass and stability["pass"])
+        if is_formal:
+            consecutive = consecutive + 1 if look_pass else 0
+            if consecutive >= 2 and stop_at is None:
+                stop_at = look
+        document = {
+            "replicas": look,
+            "formal_look": is_formal,
+            "coverage": {
+                "role": ("formal alpha-spent look" if is_formal else "diagnostic only, excluded from formal coverage"),
+                "per_look_confidence_nominal": per_look_confidence,
+                "per_look_alpha": 1.0 - per_look_confidence,
+                "joint_max_t_critical_value": critical,
+                "joint_family_statistics": int(sum(estimate.size for _bootstrap, estimate in components.values())),
+            },
+            "point_estimate_db": {
+                name: [float(value) for value in total_estimate_db[:, model]] for model, name in enumerate(model_names)
+            },
+            "endpoint_values_db": _endpoint_values(total_estimate_db, model_names),
+            "point_uncertainty": point_report,
+            "fixed_route_cdf": cdf_report,
+            "body_peak_rooftop": peak_report,
+            "body_mean_rooftop": mean_report,
+            "direct_susceptibility": _direct_zero_report(direct[:look], model_names),
+            "stability_from_previous_look": stability,
+            "uncertainty_pass": uncertainty_pass,
+            "look_pass": look_pass,
+            "consecutive_formal_passes": consecutive,
+        }
+        documents.append(document)
+        previous_db = total_estimate_db
+
+    return {
+        "schema": "fixed-walk-cdf-stopping-v2",
+        "independent_unit": "one complete base-seed walk replica",
+        "aggregation": "arithmetic mean in linear power for each fixed standpoint, then 10 log10",
+        "bootstrap": {
+            "replicates": bootstrap_replicates,
+            "seed": bootstrap_seed,
+            "resampling": "base-seed walk clusters with every standpoint and confidence-bounded metric kept together",
+            "simultaneous_interval": "one max-t band over total susceptibility and both body metrics",
+        },
+        "planned_look_coverage": {
+            "familywise_confidence_nominal": familywise_confidence,
+            "familywise_alpha": 1.0 - familywise_confidence,
+            "planned_formal_looks": list(planned_formal_looks),
+            "alpha_allocation": "equal Bonferroni allocation",
+            "alpha_per_formal_look": formal_alpha,
+            "confidence_per_formal_look": formal_confidence,
+            "production_exact_values": (
+                {
+                    "familywise_alpha": "1/20",
+                    "alpha_per_formal_look": "1/60",
+                    "confidence_per_formal_look": "59/60",
+                }
+                if familywise_confidence == 0.95 and len(planned_formal_looks) == 3
+                else None
+            ),
+            "coverage_statement": (
+                "Bonferroni limits formal-look familywise error to 0.05 if each 59/60 "
+                "max-t bootstrap band attains its nominal coverage"
+                if familywise_confidence == 0.95 and len(planned_formal_looks) == 3
+                else "Bonferroni limits familywise error to the declared alpha if each per-look band attains its nominal coverage"
+            ),
+            "finite_sample_exact": False,
+            "caveat": "nonparametric max-t bootstrap coverage is approximate at finite replica count",
+        },
+        "confidence_family": {
+            "included": [
+                "total susceptibility at every standpoint and source law",
+                "total susceptibility fixed-route CDF ranks and minimum, q10, q50, q90, maximum",
+                "linear mean of per-replica rooftop peak absorbed density at every standpoint and its fixed-route CDF",
+                "linear mean of per-replica rooftop mean absorbed density at every standpoint and its fixed-route CDF",
+            ],
+            "excluded": [
+                "direct susceptibility, whose physical zero is reported as an atom at zero without a dB confidence interval",
+                "peak absorbed density of the ensemble-mean angular spectrum, which is a separate plug-in diagnostic",
+            ],
+        },
+        "route_sample": {
+            "standpoints": int(total.shape[1]),
+            "cdf_step": float(1.0 / total.shape[1]),
+            "spatial_sampling_uncertainty_included": False,
+        },
+        "thresholds": dataclasses.asdict(limits),
+        "looks": documents,
+        "stopped": stop_at is not None,
+        "stop_at_replicas": stop_at,
+        "cap_reached": total.shape[0] >= planned_formal_looks[-1] and stop_at is None,
+    }
+
+
+def _confidence_components(
+    prefix: str,
+    estimate_db: np.ndarray,
+    bootstrap_db: np.ndarray,
+) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    quantiles = np.asarray([0.0, 0.10, 0.50, 0.90, 1.0])
+    estimate_statistics = np.quantile(estimate_db, quantiles, axis=0)
+    bootstrap_statistics = np.quantile(bootstrap_db, quantiles, axis=1).transpose((1, 0, *range(2, bootstrap_db.ndim)))
+    return {
+        f"{prefix}.point": (bootstrap_db, estimate_db),
+        f"{prefix}.statistics": (bootstrap_statistics, estimate_statistics),
+        f"{prefix}.ordered": (np.sort(bootstrap_db, axis=1), np.sort(estimate_db, axis=0)),
+    }
+
+
+def _joint_simultaneous_half_widths(
+    components: dict[str, tuple[np.ndarray, np.ndarray]],
+    confidence: float,
+) -> tuple[dict[str, np.ndarray], float]:
+    """Use one studentized maximum over every component in a reported family."""
+    if not components:
+        raise ValueError("a joint confidence family cannot be empty")
+    bootstrap_count = {bootstrap.shape[0] for bootstrap, _estimate in components.values()}
+    if len(bootstrap_count) != 1:
+        raise ValueError("joint confidence components use different bootstrap counts")
+    standardized: list[np.ndarray] = []
+    scales: dict[str, np.ndarray] = {}
+    for name, (bootstrap, estimate) in components.items():
+        if bootstrap.shape[1:] != estimate.shape:
+            raise ValueError(f"joint confidence component {name} has mismatched shapes")
+        flat = bootstrap.reshape(bootstrap.shape[0], -1)
+        center = estimate.reshape(-1)
+        scale = np.std(flat, axis=0, ddof=1)
+        nonzero = scale > 0.0
+        value = np.zeros_like(flat)
+        value[:, nonzero] = np.abs(flat[:, nonzero] - center[nonzero]) / scale[nonzero]
+        standardized.append(value)
+        scales[name] = scale.reshape(estimate.shape)
+    maximum = np.max(np.concatenate(standardized, axis=1), axis=1)
+    critical = float(np.quantile(maximum, confidence))
+    return {name: critical * scale for name, scale in scales.items()}, critical
+
+
+def _cdf_report_from_joint(
+    estimate_db: np.ndarray,
+    statistic_widths: np.ndarray,
+    ordered_widths: np.ndarray,
+    model_names: tuple[str, ...],
+    thresholds: StoppingThresholds,
+) -> dict[str, Any]:
+    quantiles = np.asarray([0.0, 0.10, 0.50, 0.90, 1.0])
+    statistics = np.quantile(estimate_db, quantiles, axis=0)
+    ordered = np.sort(estimate_db, axis=0)
+    by_model: dict[str, Any] = {}
+    for model, name in enumerate(model_names):
+        stats = {
+            statistic: {
+                "estimate_db": float(statistics[row, model]),
+                "half_width_db": float(statistic_widths[row, model]),
+            }
+            for row, statistic in enumerate(CDF_STATISTICS)
+        }
+        passed = (
+            stats["q50"]["half_width_db"] <= thresholds.cdf_q50_db
+            and max(stats["q10"]["half_width_db"], stats["q90"]["half_width_db"]) <= thresholds.cdf_q10_q90_db
+            and max(stats["minimum"]["half_width_db"], stats["maximum"]["half_width_db"]) <= thresholds.cdf_endpoint_db
+        )
+        by_model[name] = {
+            "statistics": stats,
+            "ordered_estimate_db": [float(value) for value in ordered[:, model]],
+            "ordered_simultaneous_half_width_db": [float(value) for value in ordered_widths[:, model]],
+            "cdf_probability": [float((rank + 0.5) / ordered.shape[0]) for rank in range(ordered.shape[0])],
+            "pass": passed,
+        }
+    return {"models": by_model, "pass": all(value["pass"] for value in by_model.values())}
+
+
+def _body_report_from_joint(
+    estimate_db: np.ndarray,
+    point_widths: np.ndarray,
+    statistic_widths: np.ndarray,
+    ordered_widths: np.ndarray,
+    *,
+    maximum_half_width_db: float | None,
+    estimator: str,
+    stopping_role: str,
+) -> dict[str, Any]:
+    quantiles = np.asarray([0.0, 0.10, 0.50, 0.90, 1.0])
+    statistics = np.quantile(estimate_db, quantiles)
+    ordered = np.sort(estimate_db)
+    maximum = float(np.max(point_widths))
+    return {
+        "point_estimate_db": [float(value) for value in estimate_db],
+        "point_simultaneous_half_width_db": [float(value) for value in point_widths],
+        "max_half_width_db": maximum,
+        "fixed_route_cdf": {
+            "statistics": {
+                statistic: {
+                    "estimate_db": float(statistics[row]),
+                    "half_width_db": float(statistic_widths[row]),
+                }
+                for row, statistic in enumerate(CDF_STATISTICS)
+            },
+            "ordered_estimate_db": [float(value) for value in ordered],
+            "ordered_simultaneous_half_width_db": [float(value) for value in ordered_widths],
+            "cdf_probability": [float((rank + 0.5) / ordered.size) for rank in range(ordered.size)],
+        },
+        "pass": maximum_half_width_db is None or maximum <= maximum_half_width_db,
+        "maximum_half_width_threshold_db": maximum_half_width_db,
+        "estimator": estimator,
+        "stopping_role": stopping_role,
+    }
+
+
+def _direct_zero_report(values: np.ndarray, model_names: tuple[str, ...]) -> dict[str, Any]:
+    """Keep physical direct-path zeros exact instead of inventing a dB floor."""
+    estimate = np.mean(values, axis=0, dtype=np.float64)
+    zero_counts = np.count_nonzero(values == 0.0, axis=0)
+    by_model: dict[str, Any] = {}
+    for model, name in enumerate(model_names):
+        model_estimate = estimate[:, model]
+        positive = model_estimate > 0.0
+        point_db: list[float | None] = [
+            float(10.0 * np.log10(value)) if value > 0.0 else None for value in model_estimate
+        ]
+        by_model[name] = {
+            "point_estimate_linear": [float(value) for value in model_estimate],
+            "point_estimate_db": point_db,
+            "zero_replica_count_by_standpoint": [int(value) for value in zero_counts[:, model]],
+            "zero_estimate_standpoints": int(np.count_nonzero(~positive)),
+            "cdf_atom_at_zero": float(np.count_nonzero(~positive) / model_estimate.size),
+            "positive_ordered_estimate_db": [float(value) for value in np.sort(_to_db(model_estimate[positive]))],
+        }
+    return {
+        "models": by_model,
+        "uncertainty_role": "point estimates only. Direct susceptibility is outside the simultaneous confidence family and stop",
+        "zero_policy": (
+            "exact zero remains a probability atom at zero. No logarithmic floor, pseudo-count, or dB confidence interval is used"
+        ),
+    }
 
 
 def run_campaign(
@@ -393,6 +696,8 @@ def run_campaign(
     config.output_dir.mkdir(parents=True, exist_ok=True)
     reference = load_reference(config)
     _validate_production_reference(config, reference)
+    tissue_database = _tissue_database_identity()
+    _validate_production_tissue_database(config, tissue_database)
     code = code_provenance(config.root)
     runner = config.root / "run_cdf_convergence.py"
     code = {
@@ -406,19 +711,24 @@ def run_campaign(
     }
     identity = canonical_sha256(
         {
-            "schema": "fixed-walk-cdf-campaign-v1",
+            "schema": "fixed-walk-cdf-campaign-v2",
             "config": config.scientific_config(),
             "reference": reference.as_dict(),
+            "tissue_database": {
+                "sha256": tissue_database["sha256"],
+                "bytes": tissue_database["bytes"],
+            },
             "source": numerical_code,
             "models": list(MODEL_NAMES),
         }
     )
     plan = {
-        "schema": "fixed-walk-cdf-plan-v1",
+        "schema": "fixed-walk-cdf-plan-v2",
         "created_utc": _utc_now(),
         "identity_sha256": identity,
         "scientific_config": config.scientific_config(),
         "reference": reference.as_dict(),
+        "tissue_database": tissue_database,
         "code": code,
         "identity_code_fields": numerical_code,
         "models": list(MODEL_NAMES),
@@ -428,12 +738,19 @@ def run_campaign(
             "individual replica spectra and paths are not retained"
         ),
     }
+    _quarantine_stale_generation(config.output_dir, identity)
     _write_json_atomic(config.output_dir / "plan.json", plan)
     if dry_run:
         return config.output_dir / "plan.json"
 
     checkpoint_path = config.output_dir / "checkpoint.npz"
-    checkpoint = _load_campaign_checkpoint(checkpoint_path, identity, reference, config)
+    checkpoint = _load_campaign_checkpoint(
+        checkpoint_path,
+        identity,
+        reference,
+        config,
+        tissue_database["sha256"],
+    )
     if analyse_only and checkpoint is None:
         raise RuntimeError("no valid campaign checkpoint is available to analyse")
 
@@ -452,11 +769,20 @@ def run_campaign(
             body_mass_kg=study.PHANTOM_MASS_KG,
         )
         checkpoint = _empty_checkpoint(tracer, reference) if checkpoint is None else checkpoint
-        checkpoint = _trace_until_stop(config, reference, tracer, coupler, checkpoint, checkpoint_path, identity)
+        checkpoint = _trace_until_stop(
+            config,
+            reference,
+            tracer,
+            coupler,
+            checkpoint,
+            checkpoint_path,
+            identity,
+            tissue_database["sha256"],
+        )
 
     if checkpoint is None:
         raise AssertionError("campaign checkpoint was not prepared")
-    analysis = _analyse_checkpoint(config, checkpoint)
+    analysis = _analyse_checkpoint(config, checkpoint, identity)
     ensemble = _final_ensemble(config, reference, checkpoint, analysis, study)
     analysis["ensemble"] = ensemble
     analysis["identity_sha256"] = identity
@@ -467,9 +793,75 @@ def run_campaign(
     _write_json_atomic(analysis_path, analysis)
     _write_final_rows(config.output_dir / "ensemble_locations.jsonl", ensemble["rows"])
     _plot_convergence(analysis, config.output_dir / "cdf_convergence.png")
-    manifest = _campaign_manifest(config, reference, checkpoint, identity, code, analysis_path)
+    manifest = _campaign_manifest(
+        config,
+        reference,
+        checkpoint,
+        identity,
+        code,
+        tissue_database,
+        analysis_path,
+    )
     _write_json_atomic(config.output_dir / "manifest.json", manifest)
     return analysis_path
+
+
+def _quarantine_stale_generation(output_dir: pathlib.Path, identity: str) -> pathlib.Path | None:
+    """Move an incomplete or different output generation aside before reuse."""
+    managed = [
+        output_dir / "plan.json",
+        output_dir / "checkpoint.npz",
+        output_dir / "analysis.json",
+        output_dir / "ensemble_locations.jsonl",
+        output_dir / "cdf_convergence.png",
+        output_dir / "cdf_convergence.pdf",
+        output_dir / "manifest.json",
+        *sorted(output_dir.glob("analysis_look*.json")),
+    ]
+    existing = [path for path in managed if path.exists()]
+    if not existing:
+        return None
+
+    identity_paths = [
+        path
+        for path in existing
+        if path.name in {"plan.json", "checkpoint.npz", "analysis.json", "manifest.json"}
+        or path.name.startswith("analysis_look")
+    ]
+    found: dict[str, str | None] = {}
+    for path in identity_paths:
+        try:
+            if path.suffix == ".npz":
+                with np.load(path) as artifact:
+                    found[path.name] = str(artifact["identity_sha256"])
+            else:
+                found[path.name] = str(json.loads(path.read_text())["identity_sha256"])
+        except (KeyError, OSError, TypeError, ValueError):
+            found[path.name] = None
+    if found and all(value == identity for value in found.values()):
+        return None
+
+    labels = sorted({value for value in found.values() if value})
+    old_label = labels[0][:12] if len(labels) == 1 else "mixed-or-unreadable"
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    destination = output_dir / "quarantine" / f"{stamp}-{time.time_ns() % 1_000_000_000:09d}-{old_label}"
+    destination.mkdir(parents=True, exist_ok=False)
+    moved: list[str] = []
+    for path in existing:
+        os.replace(path, destination / path.name)
+        moved.append(path.name)
+    _write_json_atomic(
+        destination / "quarantine_record.json",
+        {
+            "schema": "fixed-walk-cdf-quarantine-v1",
+            "created_utc": _utc_now(),
+            "replacement_identity_sha256": identity,
+            "found_identity_by_file": found,
+            "moved_files": moved,
+            "reason": "managed outputs did not all carry the replacement campaign identity",
+        },
+    )
+    return destination
 
 
 def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
@@ -481,7 +873,9 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
     run_root = config.root / "outputs" / "angular_convergence_4096_atlas_v2" / "runs"
     seeds = tuple(range(7, 15))
     chi_rows: list[list[float]] = []
+    direct_rows: list[list[float]] = []
     peak_rows: list[list[float]] = []
+    mean_rows: list[list[float]] = []
     inputs: list[dict[str, Any]] = []
     expected_index = [int(value) for value in reference.standpoints.index]
     for seed in seeds:
@@ -498,7 +892,9 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
         if [int(row["index"]) for row in rows] != expected_index:
             raise ValueError(f"archived rooftop seed {seed} uses a different frozen route")
         chi_rows.append([float(row["chi"]) for row in rows])
+        direct_rows.append([float(row["trace"]["chi_rooftop_direct"]) for row in rows])
         peak_rows.append([float(row["body"]["peak_sab_w_m2"]) for row in rows])
+        mean_rows.append([float(row["body"]["mean_sab_w_m2"]) for row in rows])
         inputs.append(
             {
                 "base_seed": seed,
@@ -510,30 +906,28 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
             }
         )
     chi = np.asarray(chi_rows, dtype=np.float64)[:, :, None]
+    direct = np.asarray(direct_rows, dtype=np.float64)[:, :, None]
     peak = np.asarray(peak_rows, dtype=np.float64)
-    chi_analysis = analyse_chi_replicas(
+    mean = np.asarray(mean_rows, dtype=np.float64)
+    joint_analysis = analyse_joint_replicas(
         chi,
+        direct,
+        peak,
+        mean,
         looks=(8,),
-        formal_looks=(8,),
+        planned_formal_looks=config.looks,
         model_names=("rooftop",),
         bootstrap_replicates=config.bootstrap_replicates,
         bootstrap_seed=config.bootstrap_seed,
-        confidence=config.confidence,
+        familywise_confidence=config.confidence,
         thresholds=config.thresholds,
     )
-    peak_analysis = analyse_body_peak_replicas(
-        peak,
-        looks=(8,),
-        bootstrap_replicates=config.bootstrap_replicates,
-        bootstrap_seed=config.bootstrap_seed,
-        confidence=config.confidence,
-        maximum_half_width_db=config.thresholds.body_peak_max_db,
-    )[8]
     document = {
-        "schema": "archived-rooftop-seed-diagnostic-v1",
+        "schema": "archived-rooftop-seed-diagnostic-v2",
         "created_utc": _utc_now(),
         "scope": (
-            "rooftop only. This validates the stopping analysis but cannot replace the required three-law campaign"
+            "one-look rooftop diagnostic with one joint confidence family for total susceptibility and both body metrics. "
+            "It cannot replace the required three-law planned-look campaign"
         ),
         "seeds": list(seeds),
         "standpoints": int(chi.shape[1]),
@@ -545,8 +939,7 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
         "analysis_source_sha256": file_sha256(pathlib.Path(__file__)),
         "reference": reference.as_dict(),
         "inputs": inputs,
-        "chi_analysis": chi_analysis,
-        "body_peak_analysis": peak_analysis,
+        "joint_analysis": joint_analysis,
     }
     path = config.output_dir / "existing_rooftop_diagnostic.json"
     _write_json_atomic(path, document)
@@ -610,9 +1003,42 @@ def _validate_production_reference(config: CdfConvergenceConfig, reference: Any)
         raise ValueError("production CDF base-seed mapping contains a random-stream collision")
 
 
+def _tissue_database_identity() -> dict[str, Any]:
+    """Hash the exact IT'IS SQLite file selected by AEGIS."""
+    from aegis.tissue.database import find_database
+
+    path = find_database().resolve()
+    return {
+        "path": str(path),
+        "sha256": _file_sha256(path),
+        "bytes": path.stat().st_size,
+    }
+
+
+def _validate_production_tissue_database(
+    config: CdfConvergenceConfig,
+    tissue_database: dict[str, Any],
+) -> None:
+    if config.contract != "korenmarkt_cdf_stopping_4096_v1":
+        return
+    expected = {
+        "sha256": "51dc983da2fa4e40bde9ca4e9830ecd6b41739c2b92b28b5efbdc5d5e556aa8f",
+        "bytes": 7_094_272,
+    }
+    actual = {name: tissue_database[name] for name in expected}
+    if actual != expected:
+        raise ValueError(f"production IT'IS tissue database changed: {actual} != {expected}")
+
+
 def _empty_checkpoint(tracer: Any, reference: Any) -> CampaignCheckpoint:
+    from semantic_twin.illumination import fibonacci_sphere
+
     cells = int(np.asarray(tracer.local_grid).shape[0])
     points = int(reference.standpoints.index.size)
+    local_grid = np.asarray(tracer.local_grid, dtype=np.float64)
+    expected_grid = fibonacci_sphere(cells)
+    if not np.array_equal(local_grid, expected_grid):
+        raise RuntimeError("device tracer local grid differs from the exact deterministic Fibonacci grid")
     return CampaignCheckpoint(
         base_seeds=np.empty(0, dtype=np.int64),
         chi=np.empty((0, points, len(MODEL_NAMES)), dtype=np.float64),
@@ -621,7 +1047,7 @@ def _empty_checkpoint(tracer: Any, reference: Any) -> CampaignCheckpoint:
         body_mean_rooftop=np.empty((0, points), dtype=np.float64),
         trace_seconds=np.empty((0, points), dtype=np.float64),
         rho_sum=np.zeros((points, len(MODEL_NAMES), cells), dtype=np.float64),
-        local_grid=np.asarray(tracer.local_grid, dtype=np.float64),
+        local_grid=local_grid,
         solid_angle=float(4.0 * np.pi / cells),
     )
 
@@ -634,18 +1060,25 @@ def _trace_until_stop(
     checkpoint: CampaignCheckpoint,
     checkpoint_path: pathlib.Path,
     identity: str,
+    tissue_database_sha256: str,
 ) -> CampaignCheckpoint:
     formal_targets = set(config.looks)
     if checkpoint.replicas in formal_targets and checkpoint.replicas >= config.looks[1]:
-        if _analyse_checkpoint(config, checkpoint)["stopped"]:
+        if _analyse_checkpoint(config, checkpoint, identity)["stopped"]:
             return checkpoint
     for base_seed in config.base_seeds[checkpoint.replicas :]:
         checkpoint = _trace_replica(config, reference, tracer, coupler, checkpoint, int(base_seed))
-        _write_campaign_checkpoint(checkpoint_path, checkpoint, identity, reference)
+        _write_campaign_checkpoint(
+            checkpoint_path,
+            checkpoint,
+            identity,
+            reference,
+            tissue_database_sha256,
+        )
         print(f"replica {checkpoint.replicas}/{config.looks[-1]} complete at base seed {base_seed}", flush=True)
         if checkpoint.replicas not in formal_targets:
             continue
-        analysis = _analyse_checkpoint(config, checkpoint)
+        analysis = _analyse_checkpoint(config, checkpoint, identity)
         partial = config.output_dir / f"analysis_look{checkpoint.replicas}.json"
         _write_json_atomic(partial, analysis)
         if analysis["stopped"]:
@@ -720,89 +1153,29 @@ def _illumination_models() -> dict[str, Any]:
     return dict(MODELS)
 
 
-def _analyse_checkpoint(config: CdfConvergenceConfig, checkpoint: CampaignCheckpoint) -> dict[str, Any]:
+def _analyse_checkpoint(
+    config: CdfConvergenceConfig,
+    checkpoint: CampaignCheckpoint,
+    identity: str | None = None,
+) -> dict[str, Any]:
     available_looks = tuple(look for look in config.all_looks if look <= checkpoint.replicas)
-    formal = tuple(look for look in config.looks if look <= checkpoint.replicas)
-    if not formal:
+    if not set(available_looks).intersection(config.looks):
         raise RuntimeError(f"at least {config.looks[0]} complete replicas are needed for a formal analysis")
-    chi_report = analyse_chi_replicas(
+    report = analyse_joint_replicas(
         checkpoint.chi,
-        looks=available_looks,
-        formal_looks=formal,
-        bootstrap_replicates=config.bootstrap_replicates,
-        bootstrap_seed=config.bootstrap_seed,
-        confidence=config.confidence,
-        thresholds=config.thresholds,
-    )
-    direct_report = analyse_chi_replicas(
         checkpoint.chi_direct,
-        looks=available_looks,
-        formal_looks=formal,
-        bootstrap_replicates=config.bootstrap_replicates,
-        bootstrap_seed=config.bootstrap_seed + 1,
-        confidence=config.confidence,
-        thresholds=config.thresholds,
-    )
-    body = analyse_body_peak_replicas(
         checkpoint.body_peak_rooftop,
-        looks=available_looks,
-        bootstrap_replicates=config.bootstrap_replicates,
-        bootstrap_seed=config.bootstrap_seed,
-        confidence=config.confidence,
-        maximum_half_width_db=config.thresholds.body_peak_max_db,
-    )
-    body_mean = analyse_body_metric_replicas(
         checkpoint.body_mean_rooftop,
         looks=available_looks,
+        planned_formal_looks=config.looks,
         bootstrap_replicates=config.bootstrap_replicates,
         bootstrap_seed=config.bootstrap_seed,
-        confidence=config.confidence,
-        maximum_half_width_db=config.thresholds.body_peak_max_db,
-        estimator="linear mean of the per-replica mean absorbed power density",
+        familywise_confidence=config.confidence,
+        thresholds=config.thresholds,
     )
-    consecutive = 0
-    stop_at: int | None = None
-    for look, direct_look in zip(chi_report["looks"], direct_report["looks"], strict=True):
-        replicas = int(look["replicas"])
-        if replicas != int(direct_look["replicas"]):
-            raise RuntimeError("total and direct susceptibility analyses use different looks")
-        look["direct_susceptibility"] = {
-            "point_estimate_db": direct_look["point_estimate_db"],
-            "endpoint_values_db": direct_look["endpoint_values_db"],
-            "point_uncertainty": direct_look["point_uncertainty"],
-            "fixed_route_cdf": direct_look["fixed_route_cdf"],
-            "stability_from_previous_look": direct_look["stability_from_previous_look"],
-            "stopping_role": "reported diagnostic, not part of the total-susceptibility stop",
-        }
-        look["body_peak_rooftop"] = body[replicas]
-        look["body_mean_rooftop"] = {
-            **body_mean[replicas],
-            "stopping_role": "reported diagnostic. Only body peak enters the stop",
-        }
-        look["look_pass_without_body"] = look["look_pass"]
-        look["look_pass"] = bool(look["look_pass"] and body[replicas]["pass"])
-        if look["formal_look"]:
-            consecutive = consecutive + 1 if look["look_pass"] else 0
-            if consecutive >= 2 and stop_at is None:
-                stop_at = replicas
-        look["consecutive_formal_passes"] = consecutive
-    chi_report["body_peak_rule"] = {
-        "model": "rooftop",
-        "maximum_simultaneous_half_width_db": config.thresholds.body_peak_max_db,
-        "central_estimator": "linear mean of per-replica peak absorbed power density",
-    }
-    chi_report["reported_curve_bootstraps"] = {
-        "total_susceptibility_seed": config.bootstrap_seed,
-        "direct_susceptibility_seed": config.bootstrap_seed + 1,
-        "body_scalar_seed": config.bootstrap_seed,
-        "body_seed_sequence_suffix": 1,
-        "replicates": config.bootstrap_replicates,
-        "confidence": config.confidence,
-    }
-    chi_report["stopped"] = stop_at is not None
-    chi_report["stop_at_replicas"] = stop_at
-    chi_report["cap_reached"] = checkpoint.replicas >= config.looks[-1] and stop_at is None
-    return chi_report
+    if identity is not None:
+        report["identity_sha256"] = identity
+    return report
 
 
 def _final_ensemble(
@@ -830,6 +1203,8 @@ def _final_ensemble(
         chunk_cells=config.body_chunk_cells,
     )
     direct = np.mean(checkpoint.chi_direct, axis=0, dtype=np.float64)
+    raw_peak_mean = np.mean(checkpoint.body_peak_rooftop, axis=0, dtype=np.float64)
+    raw_body_mean = np.mean(checkpoint.body_mean_rooftop, axis=0, dtype=np.float64)
     rows: list[dict[str, Any]] = []
     for point, index in enumerate(reference.standpoints.index):
         row: dict[str, Any] = {
@@ -846,20 +1221,36 @@ def _final_ensemble(
             row[f"chi_{name}_direct"] = float(direct[point, model])
             for key, value in exposure.as_dict().items():
                 row[f"{name}_{key}"] = value
+            if name == "rooftop":
+                row["rooftop_peak_of_mean_spectrum_w_m2"] = exposure.peak_sab_w_m2
+                row["rooftop_peak_sab_w_m2"] = float(raw_peak_mean[point])
         rows.append(row)
-    raw_peak_mean = np.mean(checkpoint.body_peak_rooftop, axis=0, dtype=np.float64)
-    ensemble_peak = np.asarray([row["rooftop_peak_sab_w_m2"] for row in rows])
+    plugin_peak = np.asarray([row["rooftop_peak_of_mean_spectrum_w_m2"] for row in rows])
+    plugin_mean = np.asarray([row["rooftop_mean_sab_w_m2"] for row in rows])
     return {
         "replicas": count,
         "base_seeds": [int(value) for value in checkpoint.base_seeds],
         "rows": rows,
         "rho_sum_sha256": _array_sha256(checkpoint.rho_sum),
         "local_grid_sha256": _array_sha256(checkpoint.local_grid),
-        "body_peak_central_estimator_check": {
-            "seed_mean_peak_db": [float(value) for value in _to_db(raw_peak_mean)],
-            "peak_of_seed_mean_spectrum_db": [float(value) for value in _to_db(ensemble_peak)],
-            "difference_db": [float(value) for value in _to_db(raw_peak_mean) - _to_db(ensemble_peak)],
-            "maximum_absolute_difference_db": float(np.max(np.abs(_to_db(raw_peak_mean) - _to_db(ensemble_peak)))),
+        "published_body_peak": {
+            "field": "rooftop_peak_sab_w_m2",
+            "estimator": "linear mean of the per-replica peak absorbed power density",
+            "confidence_family": "joint planned-look max-t family",
+        },
+        "body_peak_plugin_diagnostic": {
+            "field": "rooftop_peak_of_mean_spectrum_w_m2",
+            "estimator": "peak absorbed power density of the ensemble-mean angular spectrum",
+            "confidence_bounded": False,
+            "published_estimator_db": [float(value) for value in _to_db(raw_peak_mean)],
+            "plugin_estimator_db": [float(value) for value in _to_db(plugin_peak)],
+            "plugin_minus_published_db": [float(value) for value in _to_db(plugin_peak) - _to_db(raw_peak_mean)],
+            "maximum_absolute_difference_db": float(np.max(np.abs(_to_db(plugin_peak) - _to_db(raw_peak_mean)))),
+        },
+        "body_mean_linearity_check": {
+            "seed_mean_db": [float(value) for value in _to_db(raw_body_mean)],
+            "mean_spectrum_db": [float(value) for value in _to_db(plugin_mean)],
+            "maximum_absolute_difference_db": float(np.max(np.abs(_to_db(plugin_mean) - _to_db(raw_body_mean)))),
         },
     }
 
@@ -869,14 +1260,16 @@ def _write_campaign_checkpoint(
     checkpoint: CampaignCheckpoint,
     identity: str,
     reference: Any,
+    tissue_database_sha256: str,
 ) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     with temporary.open("wb") as stream:
         np.savez_compressed(
             stream,
-            schema=np.asarray("fixed-walk-cdf-checkpoint-v1"),
+            schema=np.asarray("fixed-walk-cdf-checkpoint-v2"),
             identity_sha256=np.asarray(identity),
             standpoint_array_sha256=np.asarray(reference.standpoints.sha256),
+            tissue_database_sha256=np.asarray(tissue_database_sha256),
             base_seeds=checkpoint.base_seeds,
             chi=checkpoint.chi,
             chi_direct=checkpoint.chi_direct,
@@ -885,6 +1278,7 @@ def _write_campaign_checkpoint(
             trace_seconds=checkpoint.trace_seconds,
             rho_sum=checkpoint.rho_sum,
             local_grid=checkpoint.local_grid,
+            local_grid_sha256=np.asarray(_array_sha256(checkpoint.local_grid)),
             solid_angle=np.asarray(checkpoint.solid_angle, dtype=np.float64),
             model_names=np.asarray(MODEL_NAMES),
         )
@@ -898,6 +1292,7 @@ def _load_campaign_checkpoint(
     identity: str,
     reference: Any,
     config: CdfConvergenceConfig,
+    tissue_database_sha256: str,
 ) -> CampaignCheckpoint | None:
     if not path.is_file():
         return None
@@ -906,6 +1301,8 @@ def _load_campaign_checkpoint(
             schema = str(artifact["schema"])
             saved_identity = str(artifact["identity_sha256"])
             standpoint_hash = str(artifact["standpoint_array_sha256"])
+            saved_tissue_hash = str(artifact["tissue_database_sha256"])
+            saved_grid_hash = str(artifact["local_grid_sha256"])
             model_names = tuple(str(value) for value in artifact["model_names"])
             checkpoint = CampaignCheckpoint(
                 base_seeds=np.asarray(artifact["base_seeds"], dtype=np.int64),
@@ -923,11 +1320,15 @@ def _load_campaign_checkpoint(
     replicas = checkpoint.replicas
     points = int(reference.standpoints.index.size)
     cells = int(reference.manifest["run"]["local_cells"])
+    from semantic_twin.illumination import fibonacci_sphere
+
+    expected_grid = fibonacci_sphere(cells)
     valid = all(
         (
-            schema == "fixed-walk-cdf-checkpoint-v1",
+            schema == "fixed-walk-cdf-checkpoint-v2",
             saved_identity == identity,
             standpoint_hash == reference.standpoints.sha256,
+            saved_tissue_hash == tissue_database_sha256,
             model_names == MODEL_NAMES,
             np.array_equal(checkpoint.base_seeds, np.asarray(config.base_seeds[:replicas])),
             checkpoint.chi.shape == (replicas, points, len(MODEL_NAMES)),
@@ -937,6 +1338,8 @@ def _load_campaign_checkpoint(
             checkpoint.trace_seconds.shape == (replicas, points),
             checkpoint.rho_sum.shape == (points, len(MODEL_NAMES), cells),
             checkpoint.local_grid.shape == (cells, 3),
+            saved_grid_hash == _array_sha256(checkpoint.local_grid),
+            np.array_equal(checkpoint.local_grid, expected_grid),
             checkpoint.solid_angle == 4.0 * np.pi / cells,
             replicas <= config.looks[-1],
             all(
@@ -967,8 +1370,16 @@ def _campaign_manifest(
     checkpoint: CampaignCheckpoint,
     identity: str,
     code: dict[str, Any],
+    tissue_database: dict[str, Any],
     analysis_path: pathlib.Path,
 ) -> dict[str, Any]:
+    for label, path in {
+        "plan": config.output_dir / "plan.json",
+        "analysis": analysis_path,
+    }.items():
+        document = json.loads(path.read_text())
+        if document.get("identity_sha256") != identity:
+            raise RuntimeError(f"{label} belongs to a different campaign identity")
     artifact_paths = {
         "plan": config.output_dir / "plan.json",
         "checkpoint": config.output_dir / "checkpoint.npz",
@@ -977,12 +1388,16 @@ def _campaign_manifest(
         "figure_png": config.output_dir / "cdf_convergence.png",
         "figure_pdf": config.output_dir / "cdf_convergence.pdf",
     }
-    artifact_paths.update(
-        {
-            f"formal_look_{path.stem.removeprefix('analysis_look')}": path
-            for path in sorted(config.output_dir.glob("analysis_look*.json"))
-        }
-    )
+    for look in config.looks:
+        if look > checkpoint.replicas:
+            continue
+        path = config.output_dir / f"analysis_look{look}.json"
+        if not path.is_file():
+            raise RuntimeError(f"formal look {look} analysis is missing")
+        document = json.loads(path.read_text())
+        if document.get("identity_sha256") != identity:
+            raise RuntimeError(f"formal look {look} analysis belongs to a different campaign identity")
+        artifact_paths[f"formal_look_{look}"] = path
     artifacts = {
         name: {
             "path": path.name,
@@ -992,12 +1407,13 @@ def _campaign_manifest(
         for name, path in artifact_paths.items()
     }
     return {
-        "schema": "fixed-walk-cdf-manifest-v1",
+        "schema": "fixed-walk-cdf-manifest-v2",
         "created_utc": _utc_now(),
         "identity_sha256": identity,
         "complete_replicas": checkpoint.replicas,
         "base_seeds": [int(value) for value in checkpoint.base_seeds],
         "reference": reference.as_dict(),
+        "tissue_database": tissue_database,
         "scientific_config": config.scientific_config(),
         "code": code,
         "runtime": {
@@ -1022,6 +1438,8 @@ def _plot_convergence(analysis: dict[str, Any], path: pathlib.Path) -> None:
     import matplotlib.pyplot as plt
 
     final = analysis["looks"][-1]
+    per_look = 100.0 * float(final["coverage"]["per_look_confidence_nominal"])
+    familywise = 100.0 * float(analysis["planned_look_coverage"]["familywise_confidence_nominal"])
     figure, axes = plt.subplots(1, 2, figsize=(8.5, 3.5))
     colours = {"isotropic": "#1f77b4", "rooftop": "#d62728", "street_small_cell": "#2ca02c"}
     for name in MODEL_NAMES:
@@ -1033,7 +1451,10 @@ def _plot_convergence(analysis: dict[str, Any], path: pathlib.Path) -> None:
         axes[0].fill_betweenx(probability, center - width, center + width, color=colours[name], alpha=0.15)
     axes[0].set_xlabel(r"$10\log_{10}\chi$ [dB]")
     axes[0].set_ylabel("fraction of fixed route")
-    axes[0].set_title(f"CDF and simultaneous 95% seed band, R={final['replicas']}")
+    axes[0].set_title(
+        f"CDF and joint {per_look:.2f}% look band, R={final['replicas']}\n"
+        f"planned-look familywise confidence {familywise:.0f}%"
+    )
     axes[0].legend(fontsize=7)
 
     formal = [look for look in analysis["looks"] if look["formal_look"]]
@@ -1099,24 +1520,6 @@ def _to_db(values: np.ndarray) -> np.ndarray:
     return 10.0 * np.log10(values)
 
 
-def _simultaneous_half_width(
-    bootstrap: np.ndarray,
-    estimate: np.ndarray,
-    confidence: float,
-) -> np.ndarray:
-    """Return a max-t confidence half-width for an arbitrary statistic family."""
-    if bootstrap.shape[1:] != estimate.shape:
-        raise ValueError("bootstrap and estimate shapes disagree")
-    flat = bootstrap.reshape(bootstrap.shape[0], -1)
-    center = estimate.reshape(-1)
-    scale = np.std(flat, axis=0, ddof=1)
-    nonzero = scale > 0.0
-    standardized = np.zeros_like(flat)
-    standardized[:, nonzero] = np.abs(flat[:, nonzero] - center[nonzero]) / scale[nonzero]
-    critical = float(np.quantile(np.max(standardized, axis=1), confidence))
-    return (critical * scale).reshape(estimate.shape)
-
-
 def _point_report(
     half_width: np.ndarray,
     model_names: tuple[str, ...],
@@ -1132,45 +1535,6 @@ def _point_report(
             "p90_half_width_db": p90,
             "max_half_width_db": maximum,
             "pass": p90 <= thresholds.point_p90_db and maximum <= thresholds.point_max_db,
-        }
-    return {"models": by_model, "pass": all(value["pass"] for value in by_model.values())}
-
-
-def _cdf_report(
-    estimate_db: np.ndarray,
-    bootstrap_db: np.ndarray,
-    model_names: tuple[str, ...],
-    confidence: float,
-    thresholds: StoppingThresholds,
-) -> dict[str, Any]:
-    quantiles = np.asarray([0.0, 0.10, 0.50, 0.90, 1.0])
-    estimate_stats = np.quantile(estimate_db, quantiles, axis=0)
-    bootstrap_stats = np.quantile(bootstrap_db, quantiles, axis=1).transpose(1, 0, 2)
-    statistic_widths = _simultaneous_half_width(bootstrap_stats, estimate_stats, confidence)
-
-    ordered = np.sort(estimate_db, axis=0)
-    bootstrap_ordered = np.sort(bootstrap_db, axis=1)
-    ordered_widths = _simultaneous_half_width(bootstrap_ordered, ordered, confidence)
-    by_model: dict[str, Any] = {}
-    for model, name in enumerate(model_names):
-        stats = {
-            statistic: {
-                "estimate_db": float(estimate_stats[row, model]),
-                "half_width_db": float(statistic_widths[row, model]),
-            }
-            for row, statistic in enumerate(CDF_STATISTICS)
-        }
-        passed = (
-            stats["q50"]["half_width_db"] <= thresholds.cdf_q50_db
-            and max(stats["q10"]["half_width_db"], stats["q90"]["half_width_db"]) <= thresholds.cdf_q10_q90_db
-            and max(stats["minimum"]["half_width_db"], stats["maximum"]["half_width_db"]) <= thresholds.cdf_endpoint_db
-        )
-        by_model[name] = {
-            "statistics": stats,
-            "ordered_estimate_db": [float(value) for value in ordered[:, model]],
-            "ordered_simultaneous_half_width_db": [float(value) for value in ordered_widths[:, model]],
-            "cdf_probability": [float((rank + 0.5) / ordered.shape[0]) for rank in range(ordered.shape[0])],
-            "pass": passed,
         }
     return {"models": by_model, "pass": all(value["pass"] for value in by_model.values())}
 
