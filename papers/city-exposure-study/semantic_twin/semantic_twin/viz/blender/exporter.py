@@ -1886,15 +1886,16 @@ def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
     _attach_bodies(payload, report, directories.get("bodies"))
 
 
-def reopen(args: Any) -> dict[str, Any]:
+def reopen(args: Any, *, output_stem: str | None = None) -> dict[str, Any]:
     """Load a payload that was already traced, so the evidence can be rebuilt alone.
 
     Tracing Times Square is two hours on this machine and gathering its evidence
     is seconds. When only the second half changes, and it changed twice tonight,
     retracing to pick the change up is the wrong shape of loop.
     """
-    payload_path = args.out / f"{args.site}_payload.npz"
-    manifest_path = args.out / f"{args.site}_manifest.json"
+    stem = output_stem or args.site
+    payload_path = args.out / f"{stem}_payload.npz"
+    manifest_path = args.out / f"{stem}_manifest.json"
     stored = np.load(payload_path)
     manifest = json.loads(manifest_path.read_text())
     manifest.pop("evidence", None)
@@ -1951,6 +1952,18 @@ def measure_rim(args: Any) -> dict[str, Any]:
     return bundle
 
 
+def reopen_production(args: Any, data: ProductionData, run: RunConfig) -> tuple[dict[str, Any], str]:
+    """Reopen the exact digest-named payload for a validated production run."""
+    args.site = run.site
+    output_stem = f"{run.site}_{run.frequency_ghz:g}ghz_{run.digest()}"
+    bundle = reopen(args, output_stem=output_stem)
+    recorded = bundle["manifest"].get("production_exposure")
+    expected = production_provenance(data, run)["production_exposure"]
+    if recorded != expected:
+        raise ValueError("existing visualization payload does not match the named production exposure files")
+    return bundle, output_stem
+
+
 def export(args: Any) -> int:
     """Build and serialize the payload requested by a command namespace."""
     args.out.mkdir(parents=True, exist_ok=True)
@@ -1964,7 +1977,10 @@ def export(args: Any) -> int:
             # three-file input for another city work without repeating --site.
             args.site = run.site
             output_stem = f"{run.site}_{run.frequency_ghz:g}ghz_{run.digest()}"
-            bundle = trace_production_site(args, data, run)
+            if args.evidence_only:
+                bundle, output_stem = reopen_production(args, data, run)
+            else:
+                bundle = trace_production_site(args, data, run)
         else:
             bundle = reopen(args) if args.evidence_only else trace_site(args)
         if args.evidence:

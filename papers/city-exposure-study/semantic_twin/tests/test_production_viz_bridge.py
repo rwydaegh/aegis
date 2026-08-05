@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+import export_propagation_payload as payload_cli
 from semantic_twin.exposure.reuse import model_identity
 from semantic_twin.illumination import MODELS
 from semantic_twin.runconfig import RunConfig
@@ -161,6 +162,18 @@ def test_named_production_stem_and_exact_paths_are_unambiguous(tmp_path: pathlib
             manifest=tmp_path / "manifest.json",
             default_directory=tmp_path,
         )
+
+
+def test_cli_accepts_evidence_only_with_a_production_stem(tmp_path: pathlib.Path) -> None:
+    stem = tmp_path / "production_walk"
+    args = payload_cli.arguments(["--production-stem", str(stem), "--evidence-only", "--out", str(tmp_path)])
+
+    assert args.evidence_only is True
+    assert args.production_files == ProductionFiles(
+        tmp_path / "production_walk_locations.jsonl",
+        tmp_path / "production_walk_spectra.npz",
+        tmp_path / "production_walk_manifest.json",
+    )
 
 
 def test_production_run_loads_exact_arrays_and_hashes_all_inputs(tmp_path: pathlib.Path) -> None:
@@ -400,6 +413,68 @@ def test_production_export_uses_a_digest_qualified_name(
     assert (args.out / f"{stem}_payload.npz").is_file()
     assert (args.out / f"{stem}_manifest.json").is_file()
     assert not (args.out / f"{run.site}_payload.npz").exists()
+
+
+def test_evidence_only_reopens_digest_qualified_production_payload_without_tracing(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    files = _files(tmp_path)
+    data, run = load_production_run(files)
+    output = tmp_path / "viz"
+    output.mkdir()
+    stem = f"{run.site}_{run.frequency_ghz:g}ghz_{run.digest()}"
+    payload_path = output / f"{stem}_payload.npz"
+    manifest_path = output / f"{stem}_manifest.json"
+    traced = np.array([3.0, 1.0, 4.0], dtype=np.float32)
+    np.savez_compressed(
+        payload_path,
+        traced_result=traced,
+        fishnet_vistas_faces=np.array([[0, 1, 2]], dtype=np.int32),
+    )
+    original_provenance = production_provenance(data, run)["production_exposure"]
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "site": run.site,
+                "production_exposure": original_provenance,
+                "evidence": {"old": "discard me"},
+            }
+        )
+    )
+
+    monkeypatch.setattr(exporter_module, "load_production_run", lambda unused: (data, run))
+
+    def fail_trace(*unused: object) -> None:
+        raise AssertionError("evidence-only export must not initialize or run the production tracer")
+
+    monkeypatch.setattr(exporter_module, "trace_production_site", fail_trace)
+
+    def attach_local_evidence(args: object, bundle: dict[str, object]) -> None:
+        payload = bundle["payload"]
+        manifest = bundle["manifest"]
+        assert isinstance(payload, dict)
+        assert isinstance(manifest, dict)
+        payload["fishnet_sam3_faces"] = np.array([[2, 1, 0]], dtype=np.int32)
+        manifest["evidence"] = {"new": "local"}
+
+    monkeypatch.setattr(exporter_module, "attach_evidence", attach_local_evidence)
+    args = SimpleNamespace(
+        out=output,
+        site="wrong-default-site",
+        rim_only=False,
+        evidence_only=True,
+        evidence=True,
+        production_files=files,
+    )
+
+    assert export(args) == 0
+    with np.load(payload_path) as reopened:
+        assert np.array_equal(reopened["traced_result"], traced)
+        assert "fishnet_vistas_faces" not in reopened.files
+        assert np.array_equal(reopened["fishnet_sam3_faces"], np.array([[2, 1, 0]], dtype=np.int32))
+    rebuilt_manifest = json.loads(manifest_path.read_text())
+    assert rebuilt_manifest["production_exposure"] == original_provenance
+    assert rebuilt_manifest["evidence"] == {"new": "local"}
 
 
 @pytest.mark.parametrize("bad_manifest", [[], {"transport": []}])

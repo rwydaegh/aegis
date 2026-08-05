@@ -96,8 +96,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         )
     except ValueError as error:
         parser.error(str(error))
-    if args.production_files is not None and (args.evidence_only or args.rim_only):
-        parser.error("production input cannot be combined with --evidence-only or --rim-only")
+    if args.production_files is not None and args.rim_only:
+        parser.error("production input cannot be combined with --rim-only")
     return args
 
 
