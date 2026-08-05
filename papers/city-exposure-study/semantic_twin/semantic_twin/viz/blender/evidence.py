@@ -76,6 +76,40 @@ REFUSAL_TINT: dict[str, tuple[float, float, float]] = {
 #: Verdict colours for a registered pose, in the order of the exporter's codes.
 VERDICT_TINT = np.array([[0.10, 0.80, 0.40], [0.98, 0.72, 0.15], [0.95, 0.18, 0.18]])
 
+#: Manifest evidence records represented by each Blender collection. The
+#: collection names stay stable across sites, including sites where a source
+#: artifact was missing at export time.
+COLLECTION_LAYERS: dict[str, tuple[str, ...]] = {
+    "semantics": ("fishnet_vistas", "fishnet_sam3"),
+    "evidence": ("support_evidence",),
+    "refused": ("rejected",),
+    "depth": ("depth_mesh", "depth_monocular"),
+    "panoramas": ("registration",),
+    "bodies": ("bodies",),
+}
+
+
+def annotate_collection_status(groups: dict[str, Any], manifest: dict) -> None:
+    """Put an explicit build result on every optional evidence collection."""
+    statuses = manifest.get("evidence", {}).get("layer_status", {})
+    for key, layer_names in COLLECTION_LAYERS.items():
+        group = groups[key]
+        records = {name: statuses[name] for name in layer_names if name in statuses}
+        populated = len(group.objects) > 0
+        incomplete = any(record.get("status") != "built" for record in records.values())
+        if populated and incomplete:
+            group["status"] = "built_partial"
+        elif populated:
+            group["status"] = "built"
+        else:
+            group["status"] = "empty"
+        group["layers"] = json.dumps(records, default=str)
+        reasons = [str(record["reason"]) for record in records.values() if record.get("reason")]
+        if reasons:
+            group["reason"] = "; ".join(reasons)
+        elif not populated:
+            group["reason"] = "payload contains no drawable arrays for this evidence collection"
+
 
 def build_fishnet(payload: Any, manifest: dict, taxonomy: str, into: Any) -> dict[str, int] | None:
     """One surface set per taxonomy, carrying what the segmenter said about each face.
@@ -341,18 +375,20 @@ def build_all(
     carries reads as a list of what is in the file.
     """
     built: dict[str, object] = {}
-    semantics = collection("semantics")
+    groups = {key: collection(key) for key in COLLECTION_LAYERS}
+    semantics = groups["semantics"]
     for taxonomy in ("vistas", "sam3"):
         made = build_fishnet(payload, manifest, taxonomy, semantics)
         if made is not None:
             built[f"fishnet_{taxonomy}"] = made
     for key, value in (
-        ("support_evidence", build_support_evidence(payload, manifest, collection("evidence"))),
-        ("refused", build_refused(payload, manifest, collection("refused"))),
-        ("depth", build_depth(payload, manifest, collection("depth"), radius=point_radius_m)),
-        ("panoramas", build_panoramas(payload, manifest, collection("panoramas"), sigma_scale=pose_sigma_scale)),
-        ("bodies", build_bodies(payload, manifest, collection("bodies"))),
+        ("support_evidence", build_support_evidence(payload, manifest, groups["evidence"])),
+        ("refused", build_refused(payload, manifest, groups["refused"])),
+        ("depth", build_depth(payload, manifest, groups["depth"], radius=point_radius_m)),
+        ("panoramas", build_panoramas(payload, manifest, groups["panoramas"], sigma_scale=pose_sigma_scale)),
+        ("bodies", build_bodies(payload, manifest, groups["bodies"])),
     ):
         if value is not None:
             built[key] = value
+    annotate_collection_status(groups, manifest)
     return built

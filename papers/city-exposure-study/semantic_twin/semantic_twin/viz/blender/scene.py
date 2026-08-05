@@ -204,14 +204,29 @@ def build_curves(name: str, points: np.ndarray, lengths: np.ndarray, radius: np.
     column in the spreadsheet, which is the convention the rest of this file uses
     everywhere else.
     """
+    if len(lengths) == 0:
+        # Blender 4.5 crashes when an empty Hair Curves datablock reaches the
+        # dependency graph. Some ray bundles are legitimately empty, so keep an
+        # empty mesh placeholder with the same point-attribute API instead.
+        mesh = bpy.data.meshes.new(name)
+        obj = bpy.data.objects.new(name, mesh)
+        into.objects.link(obj)
+        obj["curve_type"] = "POLY"
+        obj["empty_curve_placeholder"] = True
+        return obj
+
     curves = bpy.data.hair_curves.new(name)
     curves.add_curves([int(value) for value in lengths])
+    # Hair Curves with no curve_type attribute evaluate as Catmull-Rom. That
+    # smooth default can overshoot far beyond recorded bounce points.
+    curves.set_types(type="POLY")
     curves.attributes["position"].data.foreach_set("vector", points.astype(np.float32).ravel())
     if "radius" not in curves.attributes:
         curves.attributes.new("radius", "FLOAT", "POINT")
     curves.attributes["radius"].data.foreach_set("value", radius.astype(np.float32))
     obj = bpy.data.objects.new(name, curves)
     into.objects.link(obj)
+    obj["curve_type"] = "POLY"
     return obj
 
 

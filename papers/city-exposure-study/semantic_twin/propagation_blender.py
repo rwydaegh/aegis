@@ -141,13 +141,24 @@ def main() -> int:
 
     twin = estimator.build_twin(payload, manifest["class_names"], scene.collection("twin"))
     rays = estimator.build_rays(
-        payload, manifest["terminations"], scene.collection("rays"), base_radius=args.ray_radius_m
+        payload,
+        manifest["terminations"],
+        scene.collection("rays"),
+        base_radius=args.ray_radius_m,
+        drawn_radius_m=float(manifest["drawn_radius_m"]),
     )
-    legs = estimator.build_ray_depth(payload, scene.collection("bounces"), base_radius=args.ray_radius_m)
+    legs = estimator.build_ray_depth(
+        payload,
+        manifest["terminations"],
+        scene.collection("bounces"),
+        base_radius=args.ray_radius_m,
+        drawn_radius_m=float(manifest["drawn_radius_m"]),
+    )
     connections: dict[str, object] = {}
     if "nee_origin_m" in payload.files:
         connections = estimator.build_next_event(
             payload,
+            manifest["terminations"],
             scene.collection("nee"),
             drawn_radius_m=float(manifest["drawn_radius_m"]),
             ray_radius=args.nee_ray_radius_m,

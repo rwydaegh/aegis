@@ -22,7 +22,11 @@ import bpy
 
 from .payload import connection_render_layers
 from .scene import BUILT, COLLECTION_NAMES, show_layer, use_gpu
-from .style import MODEL_NAMES, RAY_STYLE
+from .style import MODEL_NAMES, RAY_STYLE, angular_law_sample_object_name
+
+HIDDEN_ANGULAR_LAW_SAMPLES = tuple(
+    name for model in MODEL_NAMES for name in (f"sources_{model}", angular_law_sample_object_name(model))
+)
 
 FIGURE_VIEWS: tuple[dict[str, object], ...] = (
     {"name": "01_the_square", "camera": "cam_overview", "show": ("twin",)},
@@ -34,7 +38,7 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
         "name": "02_where_the_sources_are",
         "camera": "cam_overview",
         "show": ("twin", "network"),
-        "hide": ("skyline_rim_beyond_the_drawn_mesh", *(f"sources_{name}" for name in MODEL_NAMES)),
+        "hide": ("skyline_rim_beyond_the_drawn_mesh", *HIDDEN_ANGULAR_LAW_SAMPLES),
         "layers": {"skyline_rim": "direct_flux"},
     },
     {"name": "03_exposure_along_the_walk", "camera": "cam_overview", "show": ("twin", "walk")},
@@ -110,7 +114,7 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
         "name": "21_next_event_estimation",
         "camera": "cam_rays",
         "show": ("twin", "network", "nee", "body"),
-        "hide": ("skyline_sites", "skyline_rim_beyond_the_drawn_mesh", *(f"sources_{name}" for name in MODEL_NAMES)),
+        "hide": ("skyline_sites", "skyline_rim_beyond_the_drawn_mesh", *HIDDEN_ANGULAR_LAW_SAMPLES),
         "layers": {"estimator_connections": "visibility", "skyline_rim": "direct_flux"},
     },
     {
@@ -120,7 +124,7 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
         "name": "22_the_skyline_from_the_standpoint",
         "camera": "cam_pedestrian",
         "show": ("twin", "network"),
-        "hide": ("skyline_rim_beyond_the_drawn_mesh", *(f"sources_{name}" for name in MODEL_NAMES)),
+        "hide": ("skyline_rim_beyond_the_drawn_mesh", *HIDDEN_ANGULAR_LAW_SAMPLES),
         "layers": {"skyline_rim": "direct_flux"},
     },
     {
@@ -166,7 +170,7 @@ FIGURE_VIEWS: tuple[dict[str, object], ...] = (
             "depth_monocular",
             "fishnet_sam3",
             "skyline_rim_beyond_the_drawn_mesh",
-            *(f"sources_{name}" for name in MODEL_NAMES),
+            *HIDDEN_ANGULAR_LAW_SAMPLES,
         ),
         "layers": {"fishnet_vistas": "class", "depth_mesh": "decision"},
     },

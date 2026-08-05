@@ -7,6 +7,11 @@ recorder is asserted there to leave every traced number bit identical.
 
 from __future__ import annotations
 
+import json
+import pathlib
+import subprocess
+import textwrap
+
 import numpy as np
 import pytest
 
@@ -21,13 +26,36 @@ from semantic_twin.viz.blender.exporter import (
 )
 from semantic_twin.illumination import MODELS, elevation_band_measure, fibonacci_sphere
 from semantic_twin.propagation.geometry import INFINITY
-from semantic_twin.viz.blender.payload import camera_rotation, octahedra, ray_bundles
-from semantic_twin.viz.blender.style import RAY_STYLE, colour_ramp
+from semantic_twin.viz.blender.payload import (
+    camera_rotation,
+    drawable_ray_legs,
+    octahedra,
+    ray_bundles,
+    shorten_sky_legs,
+    supported_live_scattering_vertices,
+)
+from semantic_twin.viz.blender.style import (
+    RAY_STYLE,
+    angular_law_sample_metadata,
+    angular_law_sample_object_name,
+    colour_ramp,
+)
 
 #: Integrated per band, never sampled at the midpoint. The reason lives in the
 #: docstring of the library function, which this file used to carry its own copy
 #: of and now shares with the tests of the law itself.
 band_measure = elevation_band_measure
+
+
+def test_hidden_angular_law_samples_cannot_read_as_counted_source_sites() -> None:
+    name = angular_law_sample_object_name("rooftop")
+    record = angular_law_sample_metadata("rooftop")
+
+    assert name == "angular_law_samples_rooftop_not_counted_sites"
+    assert record["marker_points_used_in_exposure"] is False
+    assert record["analytic_population_defines_scored_angular_law"] is True
+    assert "Monte Carlo" in record["role"]
+    assert "superseded" not in " ".join(str(value) for value in record.values())
 
 
 def marker_elevation(name: str, count: int, seed: int) -> np.ndarray:
@@ -409,6 +437,145 @@ def test_ray_bundles_are_exclusive_and_exhaustive() -> None:
     stacked = np.stack(list(bundles.values()))
     assert np.array_equal(stacked.sum(axis=0), np.ones(count, dtype=int))
     assert set(bundles) == set(RAY_STYLE)
+
+
+def ray_leg_payload() -> dict[str, np.ndarray]:
+    """Five paths covering sky, bounce, absorption, crop and duplicate endpoints."""
+    paths = [
+        [[0.0, 0.0, 1.0], [200.0, 0.0, 1.0]],
+        [[0.0, 0.0, 1.0], [10.0, 0.0, 1.0], [200.0, 20.0, 50.0]],
+        [[0.0, 0.0, 1.0], [5.0, 0.0, 0.0], [10.0, 0.0, 10.0]],
+        [[0.0, 0.0, 1.0], [111.0, 0.0, 1.0], [200.0, 0.0, 20.0]],
+        [[0.0, 0.0, 1.0], [4.0, 0.0, 1.0], [4.0, 0.0, 1.0]],
+    ]
+    power = [[1.0, 1.0], [1.0, 0.25, 0.25], [1.0, 0.0, 0.0], [1.0, 0.5, 0.5], [1.0, 0.5, 0.5]]
+    return {
+        "path_vertices": np.concatenate(paths),
+        "path_offsets": np.concatenate([[0], np.cumsum([len(path) for path in paths])]),
+        "path_throughput": np.concatenate(power),
+        "path_bounces": np.array([0, 1, 1, 1, 1]),
+        "path_termination": np.array([0, 0, 0, 0, 1]),
+        "path_exit_direction": np.array(
+            [[1.0, 0.0, 0.0], [0.9, 0.1, 0.3], [0.7, 0.0, 0.7], [1.0, 0.0, 0.1], [1.0, 0.0, 0.0]]
+        ),
+    }
+
+
+def test_recorded_paths_become_constant_physical_legs_with_honest_endpoints() -> None:
+    payload = ray_leg_payload()
+    legs = drawable_ray_legs(payload, np.arange(5), ["sky", "roulette", "truncated"], drawn_radius_m=110.0)
+
+    assert legs.lengths.tolist() == [2, 2, 2, 2, 2]
+    assert legs.leg_throughput.tolist() == [1.0, 1.0, 0.25, 1.0, 1.0]
+    assert legs.path_index.tolist() == [0, 1, 1, 2, 4]
+    assert legs.leg_index.tolist() == [0, 0, 1, 0, 0]
+    assert legs.escaped_final.tolist() == [True, False, True, False, False]
+    assert legs.paths_left_out_beyond_drawn_support.tolist() == [3]
+    assert legs.paths_trimmed_at_zero_throughput.tolist() == [2]
+    assert legs.outgoing_legs_after_zero_left_out == 1
+    assert legs.degenerate_legs_left_out == 1
+
+    pairs = legs.points.reshape(-1, 2, 3)
+    assert np.array_equal(pairs[1, 1], pairs[2, 0]), "a bounce is duplicated rather than smoothed through"
+    point_power = np.repeat(legs.leg_throughput, 2).reshape(-1, 2)
+    assert np.array_equal(point_power[:, 0], point_power[:, 1]), "each physical leg has one constant throughput"
+    assert np.linalg.norm(pairs[0, 1, :2]) > 110.0, "a direct sky proxy may extend beyond the support"
+    assert not np.any(legs.path_index == 3), "a path may not turn beyond the displayed support"
+    assert not np.any((legs.path_index == 2) & (legs.leg_index > 0)), "no leg leaves a zero-throughput vertex"
+
+
+def test_zero_throughput_escape_is_sorted_as_stopped_in_the_scene() -> None:
+    payload = ray_leg_payload()
+    bundles = ray_bundles(payload, ["sky", "roulette", "truncated"])
+    assert bundles["stopped_in_the_scene"][2]
+    assert not any(bundle[2] for name, bundle in bundles.items() if name != "stopped_in_the_scene")
+
+
+def test_only_the_escaped_display_proxy_is_shortened() -> None:
+    points = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [5.0, 0.0, 0.0],
+            [5.0, 0.0, 0.0],
+            [105.0, 0.0, 0.0],
+        ]
+    )
+    moved = shorten_sky_legs(points, np.array([2, 2]), reach=30.0, escaped_final=np.array([False, True]))
+    assert np.array_equal(moved[:2], points[:2])
+    assert np.array_equal(moved[2], points[2])
+    assert np.linalg.norm(moved[3] - moved[2]) == pytest.approx(30.0)
+
+
+def test_next_event_keeps_a_live_terminal_scattering_vertex_without_an_outgoing_leg() -> None:
+    payload = ray_leg_payload()
+    keep = supported_live_scattering_vertices(
+        payload,
+        np.array([4, 2, 3]),
+        np.array([1, 1, 1]),
+        np.array([3]),
+    )
+    assert keep.tolist() == [True, False, False]
+
+    with pytest.raises(ValueError, match="terminal marker"):
+        supported_live_scattering_vertices(payload, np.array([0]), np.array([1]), np.zeros(0, dtype=int))
+
+
+BLENDER = pathlib.Path.home() / "blender-4.5" / "blender"
+
+
+@pytest.mark.skipif(not BLENDER.is_file(), reason="Blender is not installed at the default location")
+def test_hair_curves_are_poly_and_evaluated_bounds_do_not_overshoot(tmp_path: pathlib.Path) -> None:
+    """Exercise Blender's evaluated geometry, where the old Catmull curve failed."""
+    study = pathlib.Path(__file__).resolve().parents[1]
+    report = tmp_path / "curves.json"
+    script = tmp_path / "curve_probe.py"
+    script.write_text(
+        textwrap.dedent(
+            f"""
+            import json
+            import pathlib
+            import sys
+
+            import bpy
+            import numpy as np
+
+            sys.path.insert(0, {str(study)!r})
+            from semantic_twin.viz.blender.scene import build_curves
+
+            bpy.ops.wm.read_factory_settings(use_empty=True)
+            collection = bpy.data.collections.new("probe")
+            bpy.context.scene.collection.children.link(collection)
+            points = np.array([[0.0, 0.0, 0.0], [4.0, 0.0, 0.0], [4.0, 0.0, 4.0], [8.0, 0.0, 4.0]])
+            obj = build_curves("probe", points, np.array([4]), np.full(4, 0.1), collection)
+            empty = build_curves("empty", np.zeros((0, 3)), np.zeros(0, dtype=int), np.zeros(0), collection)
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            depsgraph.update()
+            evaluated = obj.evaluated_get(depsgraph)
+            bounds = np.asarray(evaluated.bound_box)
+            curve_type = obj.data.attributes["curve_type"]
+            pathlib.Path({str(report)!r}).write_text(json.dumps({{
+                "curve_type": [item.value for item in curve_type.data],
+                "minimum": bounds.min(axis=0).tolist(),
+                "maximum": bounds.max(axis=0).tolist(),
+                "empty_type": empty.type,
+                "empty_placeholder": bool(empty.get("empty_curve_placeholder")),
+            }}))
+            """
+        )
+    )
+    result = subprocess.run(
+        [str(BLENDER), "--background", "--factory-startup", "--python", str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stdout[-3000:] + result.stderr[-3000:]
+    measured = json.loads(report.read_text())
+    assert measured["curve_type"] == [1]
+    assert measured["empty_type"] == "MESH"
+    assert measured["empty_placeholder"]
+    assert np.all(np.asarray(measured["minimum"]) >= np.array([-0.11, -0.11, -0.11]))
+    assert np.all(np.asarray(measured["maximum"]) <= np.array([8.11, 0.11, 4.11]))
 
 
 def test_octahedra_build_one_closed_marker_per_centre() -> None:

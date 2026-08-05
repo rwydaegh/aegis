@@ -962,6 +962,8 @@ REJECTION_GROUPS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+FISHNET_SURFACE_GLOB = "*_fishnet.npz"
+
 
 def evidence_directories(site: str) -> dict[str, pathlib.Path]:
     """Which evidence products exist for a site, by convention on the name.
@@ -1083,7 +1085,7 @@ def evidence_pose(site: str, directories: dict[str, pathlib.Path]) -> dict[str, 
     source = "pose file, no surface set to read a camera centre from"
     fishnet = directories.get("fishnet_vistas")
     if fishnet is not None:
-        views = sorted(fishnet.glob("*_fishnet.npz"))
+        views = sorted(fishnet.glob(FISHNET_SURFACE_GLOB))
         if views:
             recorded = np.load(views[0])["camera_position"].astype(np.float64)
             source = f"camera centre recorded in {views[0].name}"
@@ -1104,7 +1106,7 @@ def fishnet_layer(directory: pathlib.Path, class_count: int) -> dict[str, Any]:
     the file and no shader can read it, so it is reduced here to the two numbers
     a reader needs, the winning probability and the entropy of the whole row.
     """
-    files = sorted(directory.glob("*_fishnet.npz"))
+    files = sorted(directory.glob(FISHNET_SURFACE_GLOB))
     vertices: list[np.ndarray] = []
     faces: list[np.ndarray] = []
     columns: dict[str, list[np.ndarray]] = {name: [] for name in FISHNET_FACE_COLUMNS}
@@ -1233,7 +1235,7 @@ def support_evidence_layer(directory: pathlib.Path, class_count: int) -> dict[st
     groups = {name: np.zeros(count) for name in REJECTION_GROUPS}
     codes = {name: {REJECTION_REASONS[reason] for reason in reasons} for name, reasons in REJECTION_GROUPS.items()}
 
-    for path in sorted(directory.glob("*_fishnet.npz")):
+    for path in sorted(directory.glob(FISHNET_SURFACE_GLOB)):
         surface = np.load(path)
         source = surface["face_source_triangle"].astype(np.int64)
         support = surface["face_pixel_support"].astype(np.float64)
@@ -1283,7 +1285,7 @@ def rejected_layer(directory: pathlib.Path) -> dict[str, Any] | None:
         return None
     mesh = trimesh.load(support, process=False, force="mesh")
     pairs: dict[tuple[int, int], float] = {}
-    for path in sorted(directory.glob("*_fishnet.npz")):
+    for path in sorted(directory.glob(FISHNET_SURFACE_GLOB)):
         surface = np.load(path)
         for triangle, reason, area in zip(
             surface["rejected_source_triangle"].astype(int),
@@ -1483,10 +1485,11 @@ def body_layer(directory: pathlib.Path) -> dict[str, Any] | None:
         return None
     manifest = json.loads(manifest_path.read_text())
     bodies = manifest.get("bodies", [])
-    vertices, faces = [], None
+    vertices, accepted, missing, faces = [], [], [], None
     for body in bodies:
         path = directory / f"{body['body_id']}.npz"
         if not path.exists():
+            missing.append(body["body_id"])
             continue
         data = np.load(path, allow_pickle=True)
         if faces is None:
@@ -1497,12 +1500,14 @@ def body_layer(directory: pathlib.Path) -> dict[str, Any] | None:
                 "array cannot stand for all of them. Store them separately or fix the reconstruction."
             )
         vertices.append(data["vertices_enu_m"])
+        accepted.append(body)
     if not vertices or faces is None:
         return None
     return {
         "vertices": np.stack(vertices).astype(np.float32),
         "faces": np.asarray(faces, dtype=np.int32),
-        "records": bodies[: len(vertices)],
+        "records": accepted,
+        "missing_body_ids": missing,
     }
 
 
@@ -1542,188 +1547,343 @@ def surface_offset_to_drawn_mesh(
     }
 
 
-def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
-    """Add every evidence layer that exists for this site to the payload.
+def _store_array_fields(payload: dict[str, Any], prefix: str, layer: dict[str, Any]) -> None:
+    for name, value in layer.items():
+        if isinstance(value, np.ndarray):
+            payload[f"{prefix}_{name}"] = value
 
-    Kept out of :func:`trace_site` on purpose. None of this is traced, none of it
-    changes a traced number, and a site with no panorama still gets a blend.
-    """
+
+def _optional_directory_manifest(directory: pathlib.Path | None) -> tuple[dict[str, Any] | None, str | None]:
+    if directory is None:
+        return None, None
+    path = directory / "manifest.json"
+    if not path.exists():
+        return None, f"auxiliary manifest is missing: {path.relative_to(SCRIPT_DIR)}"
+    return json.loads(path.read_text()), None
+
+
+def _attach_evidence_pose(
+    site: str, payload: dict[str, Any], report: dict[str, Any], directories: dict[str, pathlib.Path]
+) -> dict[str, Any] | None:
+    pose = evidence_pose(site, directories)
+    if pose is None:
+        return None
+    report["camera"] = {
+        "position_enu_m": pose["position"].tolist(),
+        "position_source": pose["position_source"],
+        "pose_file": pose["pose_file"],
+        "pose_file_position_enu_m": pose["pose_file_position_enu_m"],
+        "drift_since_evidence_m": pose["drift_since_evidence_m"],
+    }
+    payload["evidence_camera"] = pose["position"].astype(np.float32)
+    return pose
+
+
+def _attach_one_fishnet(
+    site: str,
+    kind: str,
+    directory: pathlib.Path,
+    taxonomy: pathlib.Path | None,
+    payload: dict[str, Any],
+    report: dict[str, Any],
+) -> None:
+    source = str(directory.relative_to(SCRIPT_DIR))
+    status = report["layer_status"]
+    if taxonomy is None or not taxonomy.exists():
+        wanted = (
+            f"data/panoramas/{site}/semantics/semantics.json or a per-capture copy"
+            if kind == "vistas"
+            else f"outputs/{site}_sam3_projection_inputs/semantics.json"
+        )
+        reason = f"taxonomy sidecar is missing: {wanted}"
+        status[f"fishnet_{kind}"] = {"status": "skipped", "directory": source, "reason": reason}
+        print(f"[evidence] skipped fishnet {kind}: {reason}", flush=True)
+        return
+    if not any(directory.glob(FISHNET_SURFACE_GLOB)):
+        reason = "directory contains no top-level *_fishnet.npz surfaces"
+        status[f"fishnet_{kind}"] = {"status": "skipped", "directory": source, "reason": reason}
+        print(f"[evidence] skipped fishnet {kind}: {reason} under {directory.name}", flush=True)
+        return
+    names = read_taxonomy(taxonomy)
+    count = max(names) + 1
+    layer = fishnet_layer(directory, count)
+    _store_array_fields(payload, f"fishnet_{kind}", layer)
+    report[f"fishnet_{kind}"] = {
+        "directory": source,
+        "views": layer["views"],
+        "faces": int(layer["faces"].shape[0]),
+        "class_names": [names.get(index, f"class {index}") for index in range(count)],
+        "median_confidence": float(np.median(layer["confidence"])),
+        "confidence_p05": float(np.percentile(layer["confidence"], 5.0)),
+        "faces_dropped_as_degenerate_or_duplicate": layer["dropped_faces"],
+        "faces_with_a_mixed_posterior": int((layer["entropy_bits"] > 0.05).sum()),
+        "max_entropy_bits": float(layer["entropy_bits"].max()),
+        "faces_below_half_visible": int((layer["visible_fraction"] < 0.5).sum()),
+    }
+    status[f"fishnet_{kind}"] = {"status": "built", "directory": source, "faces": int(layer["faces"].shape[0])}
+    print(f"[evidence] fishnet {kind}: {layer['faces'].shape[0]} faces over {len(layer['views'])} views", flush=True)
+
+
+def _support_skip_reason(vistas: pathlib.Path, taxonomy: pathlib.Path | None, report: dict[str, Any]) -> str:
+    fishnet_status = report["layer_status"].get("fishnet_vistas", {})
+    if fishnet_status.get("status") == "skipped":
+        return f"Vistas fishnet was skipped: {fishnet_status['reason']}"
+    if taxonomy is None or not taxonomy.exists():
+        return "Vistas taxonomy sidecar is missing"
+    if support_mesh_of(vistas) is None:
+        return "fishnet manifest does not resolve to an existing support mesh"
+    return "fishnet produced no drawable support evidence"
+
+
+def _attach_support(
+    args: Any,
+    payload: dict[str, Any],
+    report: dict[str, Any],
+    vistas: pathlib.Path | None,
+    taxonomy: pathlib.Path | None,
+) -> None:
+    if vistas is None:
+        return
+    support = None
+    if taxonomy is not None and taxonomy.exists() and "fishnet_vistas_vertices" in payload:
+        support = support_evidence_layer(vistas, max(read_taxonomy(taxonomy)) + 1)
+    if support is None:
+        reason = _support_skip_reason(vistas, taxonomy, report)
+        for name in ("support_evidence", "rejected"):
+            report["layer_status"][name] = {
+                "status": "skipped",
+                "directory": str(vistas.relative_to(SCRIPT_DIR)),
+                "reason": reason,
+            }
+        print(f"[evidence] skipped support and refused layers: {reason}", flush=True)
+        return
+    refused = rejected_layer(vistas)
+    if refused is None:
+        raise RuntimeError("support evidence resolved but its refused-face layer did not")
+    _store_array_fields(payload, "support_evidence", support)
+    _store_array_fields(payload, "rejected", refused)
+    report["rejected"] = {
+        "reason_names": refused["reason_names"],
+        "reason_codes": refused["reason_codes"],
+        "triangles": int(refused["faces"].shape[0]),
+        "image_area_px_by_reason": {
+            refused["reason_names"][code - 1]: float(refused["image_area_px"][refused["reason"] == code].sum())
+            for code in np.unique(refused["reason"])
+        },
+    }
+    report["support_evidence"] = {
+        "triangles": int(support["faces"].shape[0]),
+        "clean_px": float(support["clean_px"].sum()),
+        **{f"{name}_px": float(support[f"{name}_px"].sum()) for name in REJECTION_GROUPS},
+        "grouping": {name: list(reasons) for name, reasons in REJECTION_GROUPS.items()},
+    }
+    source = str(vistas.relative_to(SCRIPT_DIR))
+    for name, layer in (("support_evidence", support), ("rejected", refused)):
+        report["layer_status"][name] = {
+            "status": "built",
+            "directory": source,
+            "triangles": int(layer["faces"].shape[0]),
+        }
+    centroids = payload["fishnet_vistas_vertices"][payload["fishnet_vistas_faces"]].mean(axis=1)
+    report["semantic_surface_offset_from_drawn_mesh"] = surface_offset_to_drawn_mesh(
+        payload, centroids.astype(np.float64), float(args.draw_radius_m)
+    )
+    print(
+        f"[evidence] refused {refused['faces'].shape[0]} support triangles, {support['faces'].shape[0]} touched",
+        flush=True,
+    )
+
+
+def _attach_mesh_depth(
+    args: Any,
+    payload: dict[str, Any],
+    report: dict[str, Any],
+    directories: dict[str, pathlib.Path],
+    pose: dict[str, Any] | None,
+) -> None:
+    directory = directories.get("mesh_depth")
+    if directory is None:
+        return
+    cloud = None
+    if pose is not None:
+        cloud = depth_cloud(
+            directory, "range_m", pose, stride=args.depth_stride, decision_directory=directories.get("depth_gated")
+        )
+    if cloud is None:
+        reason = "no evidence camera pose is available" if pose is None else "no NPZ contains a drawable range_m array"
+        report["layer_status"]["depth_mesh"] = {
+            "status": "skipped",
+            "directory": str(directory.relative_to(SCRIPT_DIR)),
+            "reason": reason,
+        }
+        print(f"[evidence] skipped mesh depth cloud: {reason}", flush=True)
+        return
+    _store_array_fields(payload, "depth_mesh", cloud)
+    gated = directories.get("depth_gated")
+    gated_manifest, gated_problem = _optional_directory_manifest(gated)
+    report["depth_mesh"] = {
+        "points": int(cloud["points"].shape[0]),
+        "stride_px": args.depth_stride,
+        "meaning": "the mesh first hit the twin actually uses, coloured by the fused depth decision",
+        "decisions": gated_manifest.get("decisions") if gated_manifest else None,
+    }
+    report["layer_status"]["depth_mesh"] = {
+        "status": "built_partial" if gated_problem else "built",
+        "directory": str(directory.relative_to(SCRIPT_DIR)),
+        "points": int(cloud["points"].shape[0]),
+    }
+    if gated_problem:
+        report["layer_status"]["depth_mesh"]["reason"] = gated_problem
+    print(f"[evidence] mesh first hit cloud: {cloud['points'].shape[0]} points", flush=True)
+
+
+def _attach_monocular_depth(
+    args: Any,
+    payload: dict[str, Any],
+    report: dict[str, Any],
+    directories: dict[str, pathlib.Path],
+    pose: dict[str, Any] | None,
+) -> None:
+    directory = directories.get("depth_ungated")
+    if directory is None:
+        return
+    cloud = None
+    if pose is not None:
+        cloud = depth_cloud(
+            directory,
+            "unidepth_scaled_range_m",
+            pose,
+            stride=args.depth_stride,
+            decision_directory=directory,
+            extra=("z_score", "mesh_range_m"),
+        )
+    if cloud is None:
+        reason = (
+            "no evidence camera pose is available"
+            if pose is None
+            else "no NPZ contains a drawable unidepth_scaled_range_m array"
+        )
+        report["layer_status"]["depth_monocular"] = {
+            "status": "skipped",
+            "directory": str(directory.relative_to(SCRIPT_DIR)),
+            "reason": reason,
+        }
+        print(f"[evidence] skipped monocular depth cloud: {reason}", flush=True)
+        return
+    _store_array_fields(payload, "depth_monocular", cloud)
+    gated = directories.get("depth_gated")
+    gated_manifest, gated_problem = _optional_directory_manifest(gated)
+    plausibility = gated_manifest.get("scale_plausibility") if gated_manifest else None
+    report["depth_monocular"] = {
+        "points": int(cloud["points"].shape[0]),
+        "stride_px": args.depth_stride,
+        "meaning": (
+            "the monocular surface at its per view fitted scale, which is the surface the "
+            "plausibility gate refused. It is drawn so the refusal can be seen rather than "
+            "taken on trust, and it is not evidence the twin uses."
+        ),
+        "scale_plausibility": plausibility,
+    }
+    report["layer_status"]["depth_monocular"] = {
+        "status": "built_partial" if gated_problem else "built",
+        "directory": str(directory.relative_to(SCRIPT_DIR)),
+        "points": int(cloud["points"].shape[0]),
+    }
+    if gated_problem:
+        report["layer_status"]["depth_monocular"]["reason"] = gated_problem
+    print(f"[evidence] refused monocular cloud: {cloud['points'].shape[0]} points", flush=True)
+
+
+def _attach_registration(site: str, payload: dict[str, Any], report: dict[str, Any]) -> None:
+    audit_name = "outputs/registration_sky_conflict.json"
+    registration = registration_layer(site)
+    if registration is None:
+        reason = (
+            "audit contains no usable pose files registered against this site's mesh"
+            if (OUTPUTS / "registration_sky_conflict.json").exists()
+            else f"registration audit is missing: {audit_name}"
+        )
+        report["layer_status"]["registration"] = {"status": "skipped", "audit": audit_name, "reason": reason}
+        print(f"[evidence] skipped panorama captures: {reason}", flush=True)
+        return
+    for name in ("position", "rotation", "sigma_vectors", "verdict", "residual_deg", "sky_conflict"):
+        payload[f"pano_{name}"] = registration[name]
+    report["registration"] = {
+        "poses": registration["records"],
+        "verdict_codes": VERDICT_CODES,
+        "reading": registration["reading"],
+        "audit": audit_name,
+    }
+    report["layer_status"]["registration"] = {
+        "status": "built",
+        "audit": audit_name,
+        "poses": len(registration["records"]),
+    }
+    print(f"[evidence] {len(registration['records'])} registered poses", flush=True)
+
+
+def _attach_bodies(payload: dict[str, Any], report: dict[str, Any], directory: pathlib.Path | None) -> None:
+    if directory is None:
+        return
+    bodies = body_layer(directory)
+    source = str(directory.relative_to(SCRIPT_DIR))
+    if bodies is None:
+        reason = (
+            "dynamic body manifest is missing"
+            if not (directory / "dynamic_bodies_manifest.json").exists()
+            else "dynamic body manifest names no existing body NPZ files"
+        )
+        report["layer_status"]["bodies"] = {"status": "skipped", "directory": source, "reason": reason}
+        print(f"[evidence] skipped bystander bodies: {reason}", flush=True)
+        return
+    payload["body_layer_vertices"] = bodies["vertices"]
+    payload["body_layer_faces"] = bodies["faces"]
+    report["bodies"] = {
+        "count": int(bodies["vertices"].shape[0]),
+        "triangles_each": int(bodies["faces"].shape[0]),
+        "statures_m": [record["stature_m"] for record in bodies["records"]],
+        "placed_range_m": [record["placed_range_m"] for record in bodies["records"]],
+        "records": bodies["records"],
+    }
+    missing = bodies["missing_body_ids"]
+    status = {
+        "status": "built_partial" if missing else "built",
+        "directory": source,
+        "count": int(bodies["vertices"].shape[0]),
+        "missing_body_ids": missing,
+    }
+    if missing:
+        status["reason"] = "body NPZ files are missing for the listed IDs"
+    report["layer_status"]["bodies"] = status
+    print(f"[evidence] {bodies['vertices'].shape[0]} SMPL-X bystanders", flush=True)
+
+
+def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
+    """Add every evidence layer that exists for this site to the payload."""
     payload, manifest = bundle["payload"], bundle["manifest"]
     directories = evidence_directories(args.site)
     report: dict[str, Any] = {
         "found": {key: str(path.relative_to(SCRIPT_DIR)) for key, path in sorted(directories.items())},
+        "layer_status": {},
         "note": "layers here are read from disk, not recomputed; see PAYLOAD.md",
     }
     manifest["evidence"] = report
     if not directories:
         print("[evidence] nothing on disk for this site", flush=True)
         return
-
-    pose = evidence_pose(args.site, directories)
-    if pose is not None:
-        report["camera"] = {
-            "position_enu_m": pose["position"].tolist(),
-            "position_source": pose["position_source"],
-            "pose_file": pose["pose_file"],
-            "pose_file_position_enu_m": pose["pose_file_position_enu_m"],
-            "drift_since_evidence_m": pose["drift_since_evidence_m"],
-        }
-        payload["evidence_camera"] = pose["position"].astype(np.float32)
-
+    pose = _attach_evidence_pose(args.site, payload, report, directories)
     taxonomies = {
         "vistas": taxonomy_file(args.site),
         "sam3": OUTPUTS / f"{args.site}_sam3_projection_inputs" / "semantics.json",
     }
     for kind, key in (("vistas", "fishnet_vistas"), ("sam3", "fishnet_sam3")):
-        directory = directories.get(key)
-        if directory is None or taxonomies[kind] is None or not taxonomies[kind].exists():
-            continue
-        if not any(directory.glob("*_fishnet.npz")):
-            # A fishnet directory can hold a manifest and no surfaces, because
-            # the manifest is written whether or not the build succeeded. Tokyo
-            # is the case on disk: four panoramas present, zero built. That is a
-            # recorded failure rather than a programming error, so it is skipped
-            # and named instead of reaching np.concatenate with nothing.
-            print(f"no fishnet surfaces under {directory.name}, skipping the {kind} layer")
-            continue
-        names = read_taxonomy(taxonomies[kind])
-        count = max(names) + 1
-        layer = fishnet_layer(directory, count)
-        for name, value in layer.items():
-            if isinstance(value, np.ndarray):
-                payload[f"fishnet_{kind}_{name}"] = value
-        report[f"fishnet_{kind}"] = {
-            "directory": str(directory.relative_to(SCRIPT_DIR)),
-            "views": layer["views"],
-            "faces": int(layer["faces"].shape[0]),
-            "class_names": [names.get(index, f"class {index}") for index in range(count)],
-            "median_confidence": float(np.median(layer["confidence"])),
-            "confidence_p05": float(np.percentile(layer["confidence"], 5.0)),
-            "faces_dropped_as_degenerate_or_duplicate": layer["dropped_faces"],
-            "faces_with_a_mixed_posterior": int((layer["entropy_bits"] > 0.05).sum()),
-            "max_entropy_bits": float(layer["entropy_bits"].max()),
-            "faces_below_half_visible": int((layer["visible_fraction"] < 0.5).sum()),
-        }
-        print(
-            f"[evidence] fishnet {kind}: {layer['faces'].shape[0]} faces over {len(layer['views'])} views", flush=True
-        )
-
-    vistas = directories.get("fishnet_vistas")
-    taxonomy = taxonomies["vistas"]
-    support = None
-    if vistas is not None and taxonomy is not None and taxonomy.exists():
-        support = support_evidence_layer(vistas, max(read_taxonomy(taxonomy)) + 1)
-    if support is not None:
-        for name, value in support.items():
-            if isinstance(value, np.ndarray):
-                payload[f"support_evidence_{name}"] = value
-        refused = rejected_layer(vistas)
-        for name, value in (refused or {}).items():
-            if isinstance(value, np.ndarray):
-                payload[f"rejected_{name}"] = value
-        report["rejected"] = {
-            "reason_names": refused["reason_names"],
-            "reason_codes": refused["reason_codes"],
-            "triangles": int(refused["faces"].shape[0]),
-            "image_area_px_by_reason": {
-                refused["reason_names"][code - 1]: float(refused["image_area_px"][refused["reason"] == code].sum())
-                for code in np.unique(refused["reason"])
-            },
-        }
-        report["support_evidence"] = {
-            "triangles": int(support["faces"].shape[0]),
-            "clean_px": float(support["clean_px"].sum()),
-            **{f"{name}_px": float(support[f"{name}_px"].sum()) for name in REJECTION_GROUPS},
-            "grouping": {name: list(reasons) for name, reasons in REJECTION_GROUPS.items()},
-        }
-        centroids = payload["fishnet_vistas_vertices"][payload["fishnet_vistas_faces"]].mean(axis=1)
-        report["semantic_surface_offset_from_drawn_mesh"] = surface_offset_to_drawn_mesh(
-            payload, centroids.astype(np.float64), float(args.draw_radius_m)
-        )
-        print(
-            f"[evidence] refused {refused['faces'].shape[0]} support triangles, {support['faces'].shape[0]} touched",
-            flush=True,
-        )
-
-    cloud = (
-        depth_cloud(
-            directories["mesh_depth"],
-            "range_m",
-            pose,
-            stride=args.depth_stride,
-            decision_directory=directories.get("depth_gated"),
-        )
-        if pose is not None and "mesh_depth" in directories
-        else None
-    )
-    if cloud is not None:
-        for name, value in cloud.items():
-            payload[f"depth_mesh_{name}"] = value
-        gated = directories.get("depth_gated")
-        report["depth_mesh"] = {
-            "points": int(cloud["points"].shape[0]),
-            "stride_px": args.depth_stride,
-            "meaning": "the mesh first hit the twin actually uses, coloured by the fused depth decision",
-            "decisions": json.loads((gated / "manifest.json").read_text())["decisions"] if gated else None,
-        }
-        print(f"[evidence] mesh first hit cloud: {cloud['points'].shape[0]} points", flush=True)
-
-    cloud = (
-        depth_cloud(
-            directories["depth_ungated"],
-            "unidepth_scaled_range_m",
-            pose,
-            stride=args.depth_stride,
-            decision_directory=directories["depth_ungated"],
-            extra=("z_score", "mesh_range_m"),
-        )
-        if pose is not None and "depth_ungated" in directories
-        else None
-    )
-    if cloud is not None:
-        for name, value in cloud.items():
-            payload[f"depth_monocular_{name}"] = value
-        gated = directories.get("depth_gated")
-        plausibility = None
-        if gated is not None:
-            plausibility = json.loads((gated / "manifest.json").read_text()).get("scale_plausibility")
-        report["depth_monocular"] = {
-            "points": int(cloud["points"].shape[0]),
-            "stride_px": args.depth_stride,
-            "meaning": (
-                "the monocular surface at its per view fitted scale, which is the surface the "
-                "plausibility gate refused. It is drawn so the refusal can be seen rather than "
-                "taken on trust, and it is not evidence the twin uses."
-            ),
-            "scale_plausibility": plausibility,
-        }
-        print(f"[evidence] refused monocular cloud: {cloud['points'].shape[0]} points", flush=True)
-
-    registration = registration_layer(args.site)
-    if registration is not None:
-        for name in ("position", "rotation", "sigma_vectors", "verdict", "residual_deg", "sky_conflict"):
-            payload[f"pano_{name}"] = registration[name]
-        report["registration"] = {
-            "poses": registration["records"],
-            "verdict_codes": VERDICT_CODES,
-            "reading": registration["reading"],
-            "audit": "outputs/registration_sky_conflict.json",
-        }
-        print(f"[evidence] {len(registration['records'])} registered poses", flush=True)
-
-    if "bodies" in directories:
-        bodies = body_layer(directories["bodies"])
-        if bodies is not None:
-            payload["body_layer_vertices"] = bodies["vertices"]
-            payload["body_layer_faces"] = bodies["faces"]
-            report["bodies"] = {
-                "count": int(bodies["vertices"].shape[0]),
-                "triangles_each": int(bodies["faces"].shape[0]),
-                "statures_m": [record["stature_m"] for record in bodies["records"]],
-                "placed_range_m": [record["placed_range_m"] for record in bodies["records"]],
-                "records": bodies["records"],
-            }
-            print(f"[evidence] {bodies['vertices'].shape[0]} SMPL-X bystanders", flush=True)
+        if directory := directories.get(key):
+            _attach_one_fishnet(args.site, kind, directory, taxonomies[kind], payload, report)
+    _attach_support(args, payload, report, directories.get("fishnet_vistas"), taxonomies["vistas"])
+    _attach_mesh_depth(args, payload, report, directories, pose)
+    _attach_monocular_depth(args, payload, report, directories, pose)
+    _attach_registration(args.site, payload, report)
+    _attach_bodies(payload, report, directories.get("bodies"))
 
 
 def reopen(args: Any) -> dict[str, Any]:

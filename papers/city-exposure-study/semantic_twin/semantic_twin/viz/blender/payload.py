@@ -92,6 +92,43 @@ class ProductionData:
     solid_angle: float
 
 
+@dataclass(frozen=True)
+class DrawableRayLegs:
+    """Straight display legs derived from recorded transport paths.
+
+    Each row in ``points`` is one endpoint and every pair is one physical leg.
+    ``leg_throughput`` belongs to the whole leg. It is never interpolated across
+    a reflection. An escaped last leg is still a ray to infinity in the model.
+    Its recorded endpoint is only a finite display proxy.
+    """
+
+    points: np.ndarray
+    lengths: np.ndarray
+    leg_throughput: np.ndarray
+    path_index: np.ndarray
+    leg_index: np.ndarray
+    escaped_final: np.ndarray
+    paths_requested: int
+    paths_drawn: int
+    paths_left_out_beyond_drawn_support: np.ndarray
+    paths_trimmed_at_zero_throughput: np.ndarray
+    outgoing_legs_after_zero_left_out: int
+    degenerate_legs_left_out: int
+
+
+@dataclass(frozen=True)
+class _DrawablePath:
+    """One path after applying only display-domain filters."""
+
+    points: np.ndarray
+    power: np.ndarray
+    depth: np.ndarray
+    outside_support: bool
+    trimmed_at_zero: bool
+    zero_legs_left_out: int
+    degenerate_legs_left_out: int
+
+
 def production_files(
     *,
     stem: pathlib.Path | None,
@@ -298,6 +335,14 @@ def ray_bundles(payload: Any, terminations: Sequence[str]) -> dict[str, np.ndarr
     """
     sky = list(terminations).index("sky")
     escaped = payload["path_termination"] == sky
+    keys = payload.files if hasattr(payload, "files") else payload
+    if "path_offsets" in keys and "path_throughput" in keys:
+        offsets = np.asarray(payload["path_offsets"], dtype=np.int64)
+        throughput = np.asarray(payload["path_throughput"], dtype=np.float64)
+        absorbed = np.array(
+            [np.any(np.equal(throughput[offsets[i] : offsets[i + 1] - 1], 0.0)) for i in range(offsets.size - 1)]
+        )
+        escaped = escaped & ~absorbed
     bounced = payload["path_bounces"] > 0
     low, high = MODEL_BANDS["rooftop"]
     exit_elevation = elevation_deg(payload["path_exit_direction"])
@@ -323,6 +368,169 @@ def path_slice(offsets: np.ndarray, indices: np.ndarray) -> np.ndarray:
     if indices.size == 0:
         return np.zeros(0, dtype=np.int64)
     return np.concatenate([np.arange(offsets[i], offsets[i + 1]) for i in indices])
+
+
+def _validate_ray_record(
+    vertices: np.ndarray,
+    offsets: np.ndarray,
+    throughput: np.ndarray,
+    bounces: np.ndarray,
+    termination: np.ndarray,
+    selected: np.ndarray,
+    drawn_radius_m: float,
+) -> None:
+    if offsets.ndim != 1 or offsets.size != bounces.size + 1:
+        raise ValueError("path offsets must contain one start per path and one final stop")
+    if vertices.shape != (throughput.size, 3) or offsets[-1] != vertices.shape[0]:
+        raise ValueError("path vertices and throughput must match the recorded offsets")
+    if termination.shape != bounces.shape:
+        raise ValueError("path termination must contain one value per path")
+    if np.any((selected < 0) | (selected >= bounces.size)):
+        raise IndexError("selected path index is outside the recorded path table")
+    if drawn_radius_m <= 0.0:
+        raise ValueError("drawn_radius_m must be positive")
+
+
+def _drawable_path(
+    path_points: np.ndarray,
+    path_power: np.ndarray,
+    bounce_count: int,
+    drawn_radius_m: float,
+) -> _DrawablePath:
+    if path_points.shape[0] < 2 or bounce_count < 0 or bounce_count > path_points.shape[0] - 2:
+        raise ValueError("path has an invalid vertex or bounce count")
+    bounce_points = path_points[1 : bounce_count + 1]
+    outside = bool(bounce_points.size and np.any(np.linalg.norm(bounce_points[:, :2], axis=1) > drawn_radius_m))
+    if outside:
+        return _DrawablePath(np.zeros((0, 3)), np.zeros(0), np.zeros(0, dtype=np.int64), True, False, 0, 0)
+
+    total = path_points.shape[0] - 1
+    zero = np.flatnonzero(np.equal(path_power[:total], 0.0))
+    stop = int(zero[0]) if zero.size else total
+    pairs = np.stack([path_points[:stop], path_points[1 : stop + 1]], axis=1)
+    live = np.linalg.norm(pairs[:, 1] - pairs[:, 0], axis=1) > 1.0e-12
+    return _DrawablePath(
+        points=pairs[live].reshape(-1, 3),
+        power=path_power[:stop][live],
+        depth=np.arange(stop, dtype=np.int64)[live],
+        outside_support=False,
+        trimmed_at_zero=bool(zero.size),
+        zero_legs_left_out=total - stop,
+        degenerate_legs_left_out=int(np.count_nonzero(~live)),
+    )
+
+
+def drawable_ray_legs(
+    payload: Any,
+    indices: np.ndarray,
+    terminations: Sequence[str],
+    *,
+    drawn_radius_m: float,
+) -> DrawableRayLegs:
+    """Turn recorded paths into straight, constant-throughput display legs.
+
+    A recorded surface vertex separates two physical legs. Duplicating that
+    vertex gives each leg one constant radius and makes the power loss at the
+    reflection discontinuous, as it is in the transport record. The final leg
+    of a sky path is marked as a finite display proxy for a semi-infinite ray.
+
+    The displayed support mesh is smaller than the mesh used for transport.
+    Paths with a reflection outside that displayed disc are left out in full,
+    otherwise they appear to turn in empty space. This is a display filter only.
+
+    Throughput is stored on the segment leaving a vertex. Once an exact zero is
+    reached, that vertex remains as the end of the incoming leg and no outgoing
+    leg is drawn. Duplicate terminal vertices used to record roulette and
+    truncation are also left out because they have no physical length.
+    """
+    vertices = np.asarray(payload["path_vertices"], dtype=np.float64)
+    offsets = np.asarray(payload["path_offsets"], dtype=np.int64)
+    throughput = np.asarray(payload["path_throughput"], dtype=np.float64)
+    bounces = np.asarray(payload["path_bounces"], dtype=np.int64)
+    termination = np.asarray(payload["path_termination"], dtype=np.int64)
+    selected = np.asarray(indices, dtype=np.int64)
+    sky = list(terminations).index("sky")
+
+    _validate_ray_record(vertices, offsets, throughput, bounces, termination, selected, drawn_radius_m)
+
+    points: list[np.ndarray] = []
+    leg_power: list[float] = []
+    path_index: list[int] = []
+    leg_index: list[int] = []
+    escaped_final: list[bool] = []
+    drawn_paths: set[int] = set()
+    outside: list[int] = []
+    zero_trimmed: list[int] = []
+    zero_legs = 0
+    degenerate = 0
+
+    for index in selected:
+        path = int(index)
+        start, stop = int(offsets[path]), int(offsets[path + 1])
+        selected_path = _drawable_path(
+            vertices[start:stop],
+            throughput[start:stop],
+            int(bounces[path]),
+            drawn_radius_m,
+        )
+        if selected_path.outside_support:
+            outside.append(path)
+            continue
+        if selected_path.trimmed_at_zero:
+            zero_trimmed.append(path)
+        zero_legs += selected_path.zero_legs_left_out
+        degenerate += selected_path.degenerate_legs_left_out
+        if selected_path.power.size:
+            points.extend(selected_path.points)
+            leg_power.extend(selected_path.power.tolist())
+            path_index.extend([path] * selected_path.power.size)
+            leg_index.extend(selected_path.depth.tolist())
+            final_depth = stop - start - 2
+            escaped_final.extend((termination[path] == sky) & (selected_path.depth == final_depth))
+            drawn_paths.add(path)
+
+    count = len(leg_power)
+    return DrawableRayLegs(
+        points=np.asarray(points, dtype=np.float64).reshape(-1, 3),
+        lengths=np.full(count, 2, dtype=np.int32),
+        leg_throughput=np.asarray(leg_power, dtype=np.float64),
+        path_index=np.asarray(path_index, dtype=np.int64),
+        leg_index=np.asarray(leg_index, dtype=np.int64),
+        escaped_final=np.asarray(escaped_final, dtype=bool),
+        paths_requested=int(selected.size),
+        paths_drawn=len(drawn_paths),
+        paths_left_out_beyond_drawn_support=np.asarray(outside, dtype=np.int64),
+        paths_trimmed_at_zero_throughput=np.asarray(zero_trimmed, dtype=np.int64),
+        outgoing_legs_after_zero_left_out=zero_legs,
+        degenerate_legs_left_out=degenerate,
+    )
+
+
+def supported_live_scattering_vertices(
+    payload: Any,
+    path_index: np.ndarray,
+    vertex_index: np.ndarray,
+    unsupported_paths: np.ndarray,
+) -> np.ndarray:
+    """Which next-event origins still have power and visible bounce support.
+
+    A truncated path may end with a duplicate terminal marker and therefore have
+    no drawable outgoing leg. Its last scattering vertex is still a valid
+    next-event origin when its throughput is positive.
+    """
+    path_index = np.asarray(path_index, dtype=np.int64)
+    vertex_index = np.asarray(vertex_index, dtype=np.int64)
+    offsets = np.asarray(payload["path_offsets"], dtype=np.int64)
+    throughput = np.asarray(payload["path_throughput"], dtype=np.float64)
+    if path_index.shape != vertex_index.shape:
+        raise ValueError("next-event path and vertex indices must have the same shape")
+    if np.any((path_index < 0) | (path_index >= offsets.size - 1) | (vertex_index < 0)):
+        raise IndexError("next-event origin is outside the recorded path table")
+    record_index = offsets[path_index] + vertex_index
+    if np.any(record_index >= offsets[path_index + 1] - 1):
+        raise ValueError("next-event origin must be a scattering vertex, not a terminal marker")
+    supported = ~np.isin(path_index, np.asarray(unsupported_paths, dtype=np.int64))
+    return supported & ~np.equal(throughput[record_index], 0.0)
 
 
 def octahedra(centres: np.ndarray, radius: np.ndarray | float) -> tuple[np.ndarray, np.ndarray]:
@@ -446,7 +654,13 @@ def rim_polylines(found: np.ndarray, offset: np.ndarray, *, break_fraction: floa
     return pieces
 
 
-def shorten_sky_legs(points: np.ndarray, lengths: np.ndarray, *, reach: float) -> np.ndarray:
+def shorten_sky_legs(
+    points: np.ndarray,
+    lengths: np.ndarray,
+    *,
+    reach: float,
+    escaped_final: np.ndarray | None = None,
+) -> np.ndarray:
     """Pull the last vertex of each polyline back to ``reach`` metres.
 
     Only the last one, and only along its own direction. A recorded path that
@@ -456,6 +670,13 @@ def shorten_sky_legs(points: np.ndarray, lengths: np.ndarray, *, reach: float) -
     """
     moved = np.array(points, dtype=np.float64, copy=True)
     end = np.cumsum(lengths) - 1
+    if escaped_final is not None:
+        escaped_final = np.asarray(escaped_final, dtype=bool)
+        if escaped_final.shape != end.shape:
+            raise ValueError("escaped_final must contain one flag per polyline")
+        end = end[escaped_final]
+    if end.size == 0:
+        return moved
     span = moved[end] - moved[end - 1]
     distance = np.linalg.norm(span, axis=1)
     live = distance > 1.0e-9

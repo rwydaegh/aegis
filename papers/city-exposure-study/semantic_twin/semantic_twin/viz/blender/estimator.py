@@ -19,19 +19,19 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-import bpy
 import numpy as np
 
 from .payload import (
     available_spectrum_models,
+    drawable_ray_legs,
     octahedra,
-    path_slice,
     place_body,
     ray_bundles,
     rim_polylines,
     rim_shading,
     rim_tube,
     shorten_sky_legs,
+    supported_live_scattering_vertices,
 )
 from .scene import (
     assign,
@@ -57,6 +57,8 @@ from .style import (
     RIM_EMISSION_STRENGTH,
     RIM_RAMP_FLOOR,
     RIM_SITE_RADII,
+    angular_law_sample_metadata,
+    angular_law_sample_object_name,
     colour_ramp,
 )
 
@@ -77,36 +79,84 @@ def build_twin(payload: Any, class_names: Sequence[str], into: Any) -> Any:
     return obj
 
 
-def build_rays(payload: Any, terminations: Sequence[str], into: Any, *, base_radius: float) -> dict[str, int]:
-    """One curves object per bundle, carrying throughput as thickness and as a layer.
+def _stamp_ray_leg_record(
+    obj: Any,
+    legs: Any,
+    drawn_radius_m: float,
+    leg_mask: np.ndarray | None = None,
+) -> None:
+    """Record every display-only decision made while drawing ray legs."""
+    keep = np.ones(legs.lengths.size, dtype=bool) if leg_mask is None else np.asarray(leg_mask, dtype=bool)
+    obj["paths_requested"] = legs.paths_requested
+    obj["paths_drawn"] = int(np.unique(legs.path_index[keep]).size)
+    obj["physical_legs_drawn"] = int(np.count_nonzero(keep))
+    obj["escaped_final_legs_drawn"] = int(np.count_nonzero(legs.escaped_final[keep]))
+    obj["escaped_final_leg_representation"] = (
+        "finite display proxy for a semi-infinite ray; direction is recorded and endpoint is not physical"
+    )
+    obj["paths_left_out_beyond_drawn_support"] = int(legs.paths_left_out_beyond_drawn_support.size)
+    obj["drawn_support_radius_m"] = drawn_radius_m
+    obj["why_paths_are_left_out"] = (
+        "at least one recorded reflection lies outside the displayed support disc, so drawing it would turn in empty space"
+    )
+    obj["paths_trimmed_at_exact_zero_throughput"] = int(legs.paths_trimmed_at_zero_throughput.size)
+    obj["outgoing_legs_after_zero_throughput_left_out"] = legs.outgoing_legs_after_zero_left_out
+    obj["zero_length_terminal_markers_left_out"] = legs.degenerate_legs_left_out
+    obj["why_zero_length_markers_are_left_out"] = (
+        "roulette and truncated path records can end with a duplicate marker; it records termination and is not a leg"
+    )
 
-    Throughput spans several decades along a multi bounce path, so the radius is the
-    cube root of it. That keeps a fourth bounce visible instead of vanishing, and it
-    is monotone, so thicker still means more power. The same number is on the points
-    twice more, as an exact ``value_throughput`` and as a ``power_db`` colour over
-    the decades it actually spans, so the fan can be shaded by power rather than
-    only thickened by it. The default layer is ``fate``, the constant colour of the
-    bundle, so nothing about the existing reading changes until it is asked to.
+
+def build_rays(
+    payload: Any,
+    terminations: Sequence[str],
+    into: Any,
+    *,
+    base_radius: float,
+    drawn_radius_m: float,
+) -> dict[str, int]:
+    """One straight, constant-throughput curve per physical ray leg.
+
+    A reflection duplicates its support point between two curves. The incoming
+    leg keeps its old radius to the surface and the outgoing leg starts at its
+    new radius, so no taper is invented between them. Escaped final legs keep
+    their recorded direction and finite display endpoint, while the object says
+    clearly that the physical ray continues to infinity.
     """
-    vertices = payload["path_vertices"]
-    offsets = payload["path_offsets"].astype(np.int64)
-    throughput = np.clip(payload["path_throughput"].astype(np.float64), 1.0e-9, None)
-    decibels = 10.0 * np.log10(throughput)
-    span = (float(np.quantile(decibels, 0.02)), float(decibels.max()))
+    raw_throughput = payload["path_throughput"].astype(np.float64)
+    positive = raw_throughput[raw_throughput > 0.0]
+    decibels = 10.0 * np.log10(positive)
+    span = (float(np.quantile(decibels, 0.02)), float(decibels.max())) if positive.size else (-90.0, 0.0)
     counts: dict[str, int] = {}
     for name, mask in ray_bundles(payload, terminations).items():
         indices = np.flatnonzero(mask)
-        counts[name] = int(indices.size)
-        keep = path_slice(offsets, indices)
-        lengths = offsets[indices + 1] - offsets[indices]
-        obj = build_curves(name, vertices[keep], lengths, base_radius * np.cbrt(throughput[keep]), into)
+        legs = drawable_ray_legs(payload, indices, terminations, drawn_radius_m=drawn_radius_m)
+        counts[name] = legs.paths_drawn
+        point_throughput = np.repeat(legs.leg_throughput, 2)
+        point_path = np.repeat(legs.path_index, 2)
+        point_depth = np.repeat(legs.leg_index, 2)
+        point_proxy = np.repeat(legs.escaped_final.astype(np.int32), 2)
+        point_db = 10.0 * np.log10(np.maximum(point_throughput, np.finfo(np.float64).tiny))
+        obj = build_curves(
+            name,
+            legs.points,
+            legs.lengths,
+            base_radius * np.cbrt(np.maximum(point_throughput, 0.0)),
+            into,
+        )
         colour, visible = RAY_STYLE[name]
-        attach_point_colour(obj, "fate", np.tile((*colour, 1.0), (keep.size, 1)), byte=False)
-        attach_point_colour(obj, "power_db", colour_ramp(decibels[keep], *span))
-        attach_values(obj, "value_throughput", throughput[keep], "POINT")
+        attach_point_colour(obj, "fate", np.tile((*colour, 1.0), (legs.points.shape[0], 1)), byte=False)
+        attach_point_colour(obj, "power_db", colour_ramp(point_db, *span))
+        attach_values(obj, "value_throughput", point_throughput, "POINT")
+        attach_values(obj, "value_path_index", point_path, "POINT")
+        attach_values(obj, "value_leg_index", point_depth, "POINT")
+        attach_values(obj, "value_is_escaped_display_proxy", point_proxy, "POINT")
         obj["colour_layers"] = ["fate", "power_db"]
         obj["power_db_range"] = list(span)
-        obj["reading"] = "thickness is the cube root of throughput, and power_db is the same number as a colour"
+        obj["reading"] = (
+            "each straight leg has one constant throughput and radius; power changes discontinuously at a reflection"
+        )
+        _stamp_ray_leg_record(obj, legs, drawn_radius_m)
         if role := _payload_text(payload, "visible_path_role"):
             obj["role"] = role
         assign(obj, emissive_material(f"ray_{name}", "fate"))
@@ -115,7 +165,14 @@ def build_rays(payload: Any, terminations: Sequence[str], into: Any, *, base_rad
     return counts
 
 
-def build_ray_depth(payload: Any, into: Any, *, base_radius: float) -> dict[str, int]:
+def build_ray_depth(
+    payload: Any,
+    terminations: Sequence[str],
+    into: Any,
+    *,
+    base_radius: float,
+    drawn_radius_m: float,
+) -> dict[str, int]:
     """The same paths again, cut at the bounces, one object per leg index.
 
     The five bundles answer where a ray ended. They do not answer how deep it went,
@@ -125,38 +182,41 @@ def build_ray_depth(payload: Any, into: Any, *, base_radius: float) -> dict[str,
     leg two is what carried on after the second surface. Switching the last object
     off shows exactly how much of the fan lives past what the evidence supports.
     """
-    vertices = payload["path_vertices"]
-    offsets = payload["path_offsets"].astype(np.int64)
-    throughput = payload["path_throughput"]
-    lengths = np.diff(offsets)
+    legs = drawable_ray_legs(
+        payload,
+        np.arange(payload["path_bounces"].size),
+        terminations,
+        drawn_radius_m=drawn_radius_m,
+    )
+    paired = legs.points.reshape(-1, 2, 3)
     counts: dict[str, int] = {}
     for depth, (colour, name) in enumerate(BOUNCE_STYLE):
         last = depth == len(BOUNCE_STYLE) - 1
-        curve = bpy.data.curves.new(name, type="CURVE")
-        curve.dimensions = "3D"
-        curve.bevel_depth = base_radius
-        curve.bevel_resolution = 1
-        curve.use_fill_caps = True
-        drawn = 0
-        for index in np.flatnonzero(lengths > depth + 1):
-            start, stop = int(offsets[index]), int(offsets[index + 1])
-            first = start + depth
-            points = vertices[first : stop if last else first + 2]
-            if points.shape[0] < 2:
-                continue
-            spline = curve.splines.new("POLY")
-            spline.points.add(points.shape[0] - 1)
-            homogeneous = np.column_stack([points, np.ones(points.shape[0])]).astype(np.float32)
-            spline.points.foreach_set("co", homogeneous.ravel())
-            radius = np.cbrt(np.clip(throughput[first : first + points.shape[0]], 1.0e-6, None)).astype(np.float32)
-            spline.points.foreach_set("radius", radius)
-            drawn += 1
-        counts[name] = drawn
-        obj = bpy.data.objects.new(name, curve)
-        into.objects.link(obj)
+        keep = legs.leg_index >= depth if last else legs.leg_index == depth
+        power = legs.leg_throughput[keep]
+        points = paired[keep].reshape(-1, 3)
+        point_power = np.repeat(power, 2)
+        counts[name] = int(np.count_nonzero(keep))
+        obj = build_curves(
+            name,
+            points,
+            np.full(power.size, 2, dtype=np.int32),
+            base_radius * np.cbrt(np.maximum(point_power, 0.0)),
+            into,
+        )
+        attach_values(obj, "value_throughput", point_power, "POINT")
+        attach_values(obj, "value_path_index", np.repeat(legs.path_index[keep], 2), "POINT")
+        attach_values(obj, "value_leg_index", np.repeat(legs.leg_index[keep], 2), "POINT")
+        attach_values(
+            obj,
+            "value_is_escaped_display_proxy",
+            np.repeat(legs.escaped_final[keep].astype(np.int32), 2),
+            "POINT",
+        )
         assign(obj, emissive_material(f"bounce_{name}", None, colour))
-        obj["legs_drawn"] = drawn
+        obj["legs_drawn"] = counts[name]
         obj["reading"] = f"path segments at leg index {depth}" + (" and past it" if last else "")
+        _stamp_ray_leg_record(obj, legs, drawn_radius_m, keep)
     return counts
 
 
@@ -277,12 +337,12 @@ def build_rim(
 
     obj, runs = rim_object("skyline_rim", inside)
     far, far_runs = rim_object("skyline_rim_beyond_the_drawn_mesh", ~inside)
+    source_arm = _payload_text(payload, "source_estimator_arm")
     if far is not None:
         far.hide_render = True
         far.hide_viewport = True
         far["why_it_is_hidden"] = (
-            "these tips are further out than the mesh this file draws, so nothing holds them up "
-            "here. They are measured the same way and they count the same in the law."
+            "these tips are further out than the mesh this file draws, so nothing holds them up here"
         )
         far["polylines"] = len(far_runs)
         far["azimuths"] = beyond
@@ -299,6 +359,8 @@ def build_rim(
     assign(sites, emissive_material("skyline_sites", "direct_flux", strength=RIM_EMISSION_STRENGTH))
 
     law = "a site stands on the facade tip, one per azimuth, at the elevation and range of the tip"
+    if source_arm:
+        law = "roofline source evidence sampled by azimuth; separate from the stored exposure calculation"
     for drawn in (obj, far, sites):
         if drawn is None:
             continue
@@ -312,6 +374,9 @@ def build_rim(
         drawn["azimuths_with_no_tip"] = int(np.count_nonzero(~found))
         drawn["tips_outside_the_drawn_mesh"] = beyond
         drawn["measured_from"] = "the hero standpoint, so it is the skyline that pedestrian sees"
+        if source_arm:
+            drawn["estimator_arm"] = source_arm
+            drawn["supplies_exposure_values"] = False
     if obj is not None:
         obj["polylines"] = len(runs)
         obj["cut_where_the_tip_steps_by"] = RIM_BREAK_FRACTION
@@ -344,11 +409,10 @@ def build_network(
     elevation and the range of the tip visible along it, and what that draws is a
     rim of light along the rooflines.
 
-    The band population is still built and starts hidden. A height band and a range
-    band draw a shell of points floating in the air, which is not where a base
-    station is, and it is the geometry the trace in this same payload integrated, so
-    dropping it would leave the picture and the numbers with nothing connecting them.
-    Each cloud says on itself which of the two it is.
+    The band population is still built and starts hidden. Its points are Monte
+    Carlo samples used only to picture the analytic law. The exact points are not
+    counted sites and are not passed to the exposure calculation. The population
+    they sample does define the analytic law, so each cloud records both facts.
     """
     counts: dict[str, object] = {}
     if "rim_offset_m" in payload.files:
@@ -366,11 +430,11 @@ def build_network(
         if positions.shape[0] == 0:
             continue
         vertices, faces = octahedra(hero + positions, 1.6)
-        obj = build_mesh(f"sources_{name}", vertices, faces, into)
-        assign(obj, emissive_material(f"sources_{name}", None, (0.95, 0.85, 0.25)))
-        obj["model"] = name
-        obj["drawn_from"] = "a height band and a range band, uniform in azimuth"
-        obj["superseded_by"] = "skyline_rim, which puts the sources on the facade tips instead"
+        object_name = angular_law_sample_object_name(name)
+        obj = build_mesh(object_name, vertices, faces, into)
+        assign(obj, emissive_material(object_name, None, (0.95, 0.85, 0.25)))
+        for key, value in angular_law_sample_metadata(name).items():
+            obj[key] = value
         obj.hide_render = True
         obj.hide_viewport = True
     return counts
@@ -378,6 +442,7 @@ def build_network(
 
 def build_next_event(
     payload: Any,
+    terminations: Sequence[str],
     into: Any,
     *,
     drawn_radius_m: float,
@@ -409,7 +474,16 @@ def build_next_event(
     blocked = payload["nee_blocked"].astype(bool)
     weight = payload["nee_weight"].astype(np.float64)
     depth = payload["nee_vertex_index"].astype(np.int64)
+    connection_path = payload["nee_path_index"].astype(np.int64)
     picked = payload["nee_paths"].astype(np.int64)
+
+    legs = drawable_ray_legs(payload, picked, terminations, drawn_radius_m=drawn_radius_m)
+    supported_live_origin = supported_live_scattering_vertices(
+        payload,
+        connection_path,
+        depth,
+        legs.paths_left_out_beyond_drawn_support,
+    )
 
     # A connection is drawn only when the site it lands on is drawn. The tips beyond
     # the crop this file holds are hidden, and a line running out to one of them ends
@@ -419,30 +493,45 @@ def build_next_event(
     # the mesh, so the two cannot disagree.
     on_the_drawn_mesh = np.linalg.norm(site[:, :2], axis=1) <= drawn_radius_m
     left_out = int(np.count_nonzero(~on_the_drawn_mesh))
-    if on_the_drawn_mesh.any():
-        origin = origin[on_the_drawn_mesh]
-        site = site[on_the_drawn_mesh]
-        blocked = blocked[on_the_drawn_mesh]
-        weight = weight[on_the_drawn_mesh]
-        depth = depth[on_the_drawn_mesh]
+    connection_without_supported_live_origin = int(np.count_nonzero(~supported_live_origin))
+    keep_connection = on_the_drawn_mesh & supported_live_origin
+    origin = origin[keep_connection]
+    site = site[keep_connection]
+    blocked = blocked[keep_connection]
+    weight = weight[keep_connection]
+    depth = depth[keep_connection]
 
-    vertices = payload["path_vertices"].astype(np.float64)
-    offsets = payload["path_offsets"].astype(np.int64)
-    keep = path_slice(offsets, picked)
-    lengths = offsets[picked + 1] - offsets[picked]
-    drawn = shorten_sky_legs(vertices[keep], lengths, reach=sky_leg_m)
-    rays = build_curves(f"{object_prefix}_rays", drawn, lengths, np.full(keep.size, ray_radius), into)
-    attach_point_colour(rays, "ray", np.tile((*NEE_RAY_COLOUR, 1.0), (keep.size, 1)), byte=False)
+    drawn = shorten_sky_legs(
+        legs.points,
+        legs.lengths,
+        reach=sky_leg_m,
+        escaped_final=legs.escaped_final,
+    )
+    rays = build_curves(
+        f"{object_prefix}_rays",
+        drawn,
+        legs.lengths,
+        np.full(drawn.shape[0], ray_radius),
+        into,
+    )
+    attach_point_colour(rays, "ray", np.tile((*NEE_RAY_COLOUR, 1.0), (drawn.shape[0], 1)), byte=False)
+    attach_values(rays, "value_path_index", np.repeat(legs.path_index, 2), "POINT")
+    attach_values(rays, "value_leg_index", np.repeat(legs.leg_index, 2), "POINT")
+    attach_values(
+        rays,
+        "value_is_escaped_display_proxy",
+        np.repeat(legs.escaped_final.astype(np.int32), 2),
+        "POINT",
+    )
     assign(rays, emissive_material(f"{object_prefix}_rays", "ray"))
-    rays["paths_drawn"] = int(picked.size)
-    rays["reading"] = "the same recorded paths as 09, thinned to a readable few dozen"
+    _stamp_ray_leg_record(rays, legs, drawn_radius_m)
+    rays["reading"] = "the same straight physical legs as 09, thinned to a readable few dozen"
     if role := _payload_text(payload, "visible_path_role"):
         rays["role"] = role
     rays["last_leg_shortened_to_m"] = sky_leg_m
     rays["what_that_changes"] = (
-        "only the drawn length of the leg that left the scene. In 09 it runs to the sky sphere "
-        "176 m out, which here would push every ray past the frame and hide the connections. "
-        "Its direction is untouched and no other vertex moves."
+        "only the finite display proxy for a semi-infinite escaped leg. Its direction is untouched "
+        "and no surface-to-surface leg moves."
     )
 
     # Two points per connection, so one curves object holds them all and each end
@@ -481,16 +570,18 @@ def build_next_event(
     if source_arm:
         lines["evidence_arm"] = source_arm
     lines["connections_left_out"] = left_out
+    lines["connections_left_out_at_zero_throughput_or_beyond_support"] = connection_without_supported_live_origin
     lines["why_they_are_left_out"] = (
-        "the site they reached is further out than the mesh this file draws, so the line would "
-        "end in empty air. They were cast and counted the same as the rest."
+        "the roofline site lies beyond the displayed mesh, or the connection leaves a zero-throughput "
+        "vertex or a path whose reflection lies beyond the displayed support. All were still cast and counted."
     )
     return {
-        "paths": int(picked.size),
+        "paths": legs.paths_drawn,
         "connections": int(origin.shape[0]),
         "blocked": int(np.count_nonzero(blocked)),
         "blocked_from_the_head": int(np.count_nonzero(blocked & (depth == 0))),
         "left_out_beyond_the_drawn_mesh": left_out,
+        "left_out_at_zero_throughput_or_beyond_support": connection_without_supported_live_origin,
     }
 
 

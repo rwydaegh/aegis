@@ -15,6 +15,27 @@ import numpy as np
 #: The three illumination models a trace is scored under.
 MODEL_NAMES: tuple[str, ...] = ("isotropic", "rooftop", "street_small_cell")
 
+
+def angular_law_sample_object_name(model: str) -> str:
+    """A Blender name that cannot be mistaken for a counted transmitter set."""
+    return f"angular_law_samples_{model}_not_counted_sites"
+
+
+def angular_law_sample_metadata(model: str) -> dict[str, str | bool]:
+    """Reading notes for the hidden point sample used to picture one law."""
+    return {
+        "model": model,
+        "role": "hidden Monte Carlo picture of the analytic angular illumination law",
+        "marker_points_used_in_exposure": False,
+        "analytic_population_defines_scored_angular_law": True,
+        "placement": "sampled from the stated height and range bands, not fitted to the city mesh",
+        "roofline_evidence_relation": (
+            "separate geometry evidence; in a production blend it supplies no exposure value"
+        ),
+        "why_hidden": "these samples float in the model bands rather than marking mapped transmitter sites",
+    }
+
+
 #: Elevation support of each directional model, degrees. Only used to sort the
 #: recorded rays into the bundle that carries that model's power, so a reader can
 #: see which escapes matter and which merely escape.
