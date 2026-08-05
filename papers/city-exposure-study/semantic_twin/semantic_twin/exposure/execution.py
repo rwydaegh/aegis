@@ -732,13 +732,28 @@ def _result_row(
     if point_kind is not None:
         row["point_kind"] = point_kind[index]
     row.update(result.scalars())
-    for name in models:
-        exposure = coupler.couple(
+    names = tuple(models)
+    couple_many = getattr(coupler, "couple_many", None)
+    if callable(couple_many):
+        exposures = couple_many(
             result.local_grid,
-            result.rho[name],
+            np.stack([result.rho[name] for name in names]),
             result.local_solid_angle,
             environment.reference_s0_w_m2,
         )
+    else:
+        exposures = tuple(
+            coupler.couple(
+                result.local_grid,
+                result.rho[name],
+                result.local_solid_angle,
+                environment.reference_s0_w_m2,
+            )
+            for name in names
+        )
+    if len(exposures) != len(names):
+        raise RuntimeError(f"body coupler returned {len(exposures)} results for {len(names)} illumination models")
+    for name, exposure in zip(names, exposures, strict=True):
         for key, value in exposure.as_dict().items():
             row[f"{name}_{key}"] = value
     return row

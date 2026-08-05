@@ -1,0 +1,348 @@
+{
+  "analysis_source_sha256": "3aa20a3e412b07dfb60e5ba23e47c97bc7c8bd74af40e7c6841288718f6246c6",
+  "body_peak_analysis": {
+    "estimator": "linear mean of the per-replica peak absorbed power density",
+    "max_half_width_db": 0.013210333707707635,
+    "ordered_estimate_db": [
+      -13.261042886083118,
+      -13.24538994357874,
+      -13.132641213209755,
+      -13.113272462473454,
+      -13.106808587384297,
+      -12.982993843082504,
+      -12.912812094004781,
+      -12.896110002809154,
+      -12.812494908756287,
+      -12.810527724824679,
+      -12.805762414973954,
+      -12.779741180470946,
+      -12.760362954467661
+    ],
+    "ordered_simultaneous_half_width_db": [
+      0.007130751450308609,
+      0.0068194629589957145,
+      0.009549280103653841,
+      0.005540974296646609,
+      0.0067750060308028005,
+      0.008128234472155703,
+      0.006946894426375493,
+      0.007504513256063725,
+      0.0044594141572098876,
+      0.006129807172481002,
+      0.011777774972039624,
+      0.005389064582273602,
+      0.005790818790456189
+    ],
+    "pass": true,
+    "point_estimate_db": [
+      -13.24538994357874,
+      -13.106808587384297,
+      -13.113272462473454,
+      -12.982993843082504,
+      -12.896110002809154,
+      -12.779741180470946,
+      -12.760362954467661,
+      -12.810527724824679,
+      -12.812494908756287,
+      -12.805762414973954,
+      -12.912812094004781,
+      -13.261042886083118,
+      -13.132641213209755
+    ],
+    "point_simultaneous_half_width_db": [
+      0.006671985113361287,
+      0.006960041916135882,
+      0.005723852104050827,
+      0.007952453106970086,
+      0.007345705627165381,
+      0.005272520561233044,
+      0.005665586424680334,
+      0.006886573127684158,
+      0.004259953909956958,
+      0.013210333707707635,
+      0.006800066567525153,
+      0.006976541673384921,
+      0.009342767176534142
+    ]
+  },
+  "bootstrap": {
+    "confidence": 0.95,
+    "replicates": 20000,
+    "seed": 20260805
+  },
+  "chi_analysis": {
+    "aggregation": "arithmetic mean in linear power for each fixed standpoint, then 10 log10",
+    "bootstrap": {
+      "confidence": 0.95,
+      "replicates": 20000,
+      "resampling": "base-seed walk clusters with all standpoints and source laws kept together",
+      "seed": 20260805,
+      "simultaneous_interval": "max-t band over the complete reported family"
+    },
+    "cap_reached": true,
+    "independent_unit": "one complete base-seed walk replica",
+    "looks": [
+      {
+        "consecutive_formal_passes": 0,
+        "endpoint_values_db": {
+          "rooftop": {
+            "maximum": -7.1123576515069376,
+            "minimum": -7.72963171349549,
+            "second_highest": -7.218944449053647,
+            "second_lowest": -7.684903066308893
+          }
+        },
+        "fixed_route_cdf": {
+          "models": {
+            "rooftop": {
+              "cdf_probability": [
+                0.038461538461538464,
+                0.11538461538461539,
+                0.19230769230769232,
+                0.2692307692307692,
+                0.34615384615384615,
+                0.4230769230769231,
+                0.5,
+                0.5769230769230769,
+                0.6538461538461539,
+                0.7307692307692307,
+                0.8076923076923077,
+                0.8846153846153846,
+                0.9615384615384616
+              ],
+              "ordered_estimate_db": [
+                -7.72963171349549,
+                -7.684903066308893,
+                -7.679762463022466,
+                -7.629686492921045,
+                -7.574326073429374,
+                -7.533074214746883,
+                -7.519125314610583,
+                -7.402058587582232,
+                -7.38144557344813,
+                -7.348501444115389,
+                -7.339280492112975,
+                -7.218944449053647,
+                -7.1123576515069376
+              ],
+              "ordered_simultaneous_half_width_db": [
+                0.0046600716380371665,
+                0.0033058316043228864,
+                0.007027804839067002,
+                0.00792970546872075,
+                0.002653706314321553,
+                0.004879205134630847,
+                0.006641998866560856,
+                0.006204846644159836,
+                0.004091019959657114,
+                0.008490215892028082,
+                0.006629173533649437,
+                0.005652668975065529,
+                0.006677004361134765
+              ],
+              "pass": true,
+              "statistics": {
+                "maximum": {
+                  "estimate_db": -7.1123576515069376,
+                  "half_width_db": 0.006034405408290907
+                },
+                "minimum": {
+                  "estimate_db": -7.72963171349549,
+                  "half_width_db": 0.004211583514798731
+                },
+                "q10": {
+                  "estimate_db": -7.683874945651607,
+                  "half_width_db": 0.00275168374596863
+                },
+                "q50": {
+                  "estimate_db": -7.519125314610583,
+                  "half_width_db": 0.006002768863764094
+                },
+                "q90": {
+                  "estimate_db": -7.243011657665512,
+                  "half_width_db": 0.003984941120820576
+                }
+              }
+            }
+          },
+          "pass": true
+        },
+        "formal_look": true,
+        "look_pass": false,
+        "point_estimate_db": {
+          "rooftop": [
+            -7.348501444115389,
+            -7.38144557344813,
+            -7.402058587582232,
+            -7.339280492112975,
+            -7.519125314610583,
+            -7.533074214746883,
+            -7.684903066308893,
+            -7.72963171349549,
+            -7.574326073429374,
+            -7.629686492921045,
+            -7.679762463022466,
+            -7.218944449053647,
+            -7.1123576515069376
+          ]
+        },
+        "point_uncertainty": {
+          "models": {
+            "rooftop": {
+              "half_width_db": [
+                0.008598866489434845,
+                0.004143373370721383,
+                0.00628425102012374,
+                0.006714008086021703,
+                0.006727052307589624,
+                0.004941682882742912,
+                0.0033492818709576154,
+                0.00471970729087215,
+                0.0026876662018037855,
+                0.008031183128110443,
+                0.007483457911288886,
+                0.005725007048548467,
+                0.006762451011956214
+              ],
+              "max_half_width_db": 0.008598866489434845,
+              "p90_half_width_db": 0.007921638084746132,
+              "pass": true
+            }
+          },
+          "pass": true
+        },
+        "replicas": 8,
+        "stability_from_previous_look": {
+          "available": false,
+          "models": {},
+          "pass": false
+        },
+        "uncertainty_pass": true
+      }
+    ],
+    "route_sample": {
+      "cdf_step": 0.07692307692307693,
+      "spatial_sampling_uncertainty_included": false,
+      "standpoints": 13
+    },
+    "schema": "fixed-walk-cdf-stopping-v1",
+    "stop_at_replicas": null,
+    "stopped": false,
+    "thresholds": {
+      "body_peak_max_db": 0.15,
+      "cdf_endpoint_db": 0.15,
+      "cdf_q10_q90_db": 0.1,
+      "cdf_q50_db": 0.05,
+      "point_max_db": 0.15,
+      "point_p90_db": 0.1,
+      "stability_endpoint_db": 0.1,
+      "stability_q10_q90_db": 0.05,
+      "stability_q50_db": 0.03,
+      "stability_wasserstein_db": 0.03
+    }
+  },
+  "created_utc": "2026-08-05T23:10:57Z",
+  "inputs": [
+    {
+      "base_seed": 7,
+      "identity_sha256": "0788541d89f10d4754f64fc2c1627625b50a475ded88ae002158e0f6309a9590",
+      "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed7/manifest.json",
+      "manifest_sha256": "7fbee2a4aaa9c13f73151be8c0be08443c56bc4f945cd233f12b3b9574b68926",
+      "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed7/metrics.json",
+      "metrics_sha256": "826a9f0137f72a05e727a247a973d614ad192fda7f7e8ad54cccb73cfbe3e74a"
+    },
+    {
+      "base_seed": 8,
+      "identity_sha256": "93155770044aa729f5b0860489684863e760f00dd3fd1c3034b3062d66d37154",
+      "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed8/manifest.json",
+      "manifest_sha256": "e72cd6d181b90e2bb02335a5470284fe6a9fee005951eeaedb79cee77f06a345",
+      "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed8/metrics.json",
+      "metrics_sha256": "14f1397e2309d5a7c8546f4704e03bb7cc69526aa0caf27b7e812bc16f3a3ba4"
+    },
+    {
+      "base_seed": 9,
+      "identity_sha256": "d74e37501593d5689efb163188c20d164c2d809bc8cc8d69c0402486776de6d2",
+      "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed9/manifest.json",
+      "manifest_sha256": "988dd3bfe542f76a0cd5d12f3d5d98fd27bee4726b0ad67cfa3b45f18518dca8",
+      "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed9/metrics.json",
+      "metrics_sha256": "71c4defff022180b03a192c73c6a69c60b0b8188cc3ce84a4fc4e5e6df743e85"
+    },
+    {
+      "base_seed": 10,
+      "identity_sha256": "83115f61f9eee63e9dfb87f4bbc9decd089e5f09dab664b0a817c7e9bc0ca7b5",
+      "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed10/manifest.json",
+      "manifest_sha256": "3116303fd4664ab7e4ce316cf3e56e796fc936ec87306b1011c610646d9409ba",
+      "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed10/metrics.json",
+      "metrics_sha256": "b892a080ec720dc85bb908e4d3b97e9e5acd31e680b1e4d85af49d172d9a0fee"
+    },
+    {
+      "base_seed": 11,
+      "identity_sha256": "f0c8db0d5020b4b48f81706e79261495973d6abaa5cfcfbae0297d77433d53b2",
+      "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed11/manifest.json",
+      "manifest_sha256": "977d1c42ac08d75449cbaab185b29c9cd723093e8b8c8a015b3a79aae1b0da14",
+      "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed11/metrics.json",
+      "metrics_sha256": "f5907fe17a6bec21501b120ac99ab5196c3a971b1e971609aecaf611f9d9620c"
+    },
+    {
+      "base_seed": 12,
+      "identity_sha256": "e6942fee782a118e68160edd7e55de957e01a3f2f0dc791e4d7e157f40731792",
+      "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed12/manifest.json",
+      "manifest_sha256": "be939daac88d58be19a7e1e280947b519ae6c5c5dccb81fab6c74ebf73bcbdf1",
+      "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed12/metrics.json",
+      "metrics_sha256": "11028f76a232758e3d493fbeb424bcfbf760ec9cd0cb11c3d68ed1592a256fc4"
+    },
+    {
+      "base_seed": 13,
+      "identity_sha256": "708d4bacdf1eefa6386bb9743b64b3dd4a8e594aa45dc0ca13dab8246515f494",
+      "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed13/manifest.json",
+      "manifest_sha256": "759e1b0f6b89c5349a92696dbb12b5de1d8a1128f495fb4fbc0d8e567010f317",
+      "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed13/metrics.json",
+      "metrics_sha256": "7b90cec971737ac9135565714380cf98ca4a5372f9fce9013fa084717165fe23"
+    },
+    {
+      "base_seed": 14,
+      "identity_sha256": "95c5674d6ce336847f45b9ab79d028ae2dd2bd9c4686e17a1ec74cb4848fb990",
+      "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed14/manifest.json",
+      "manifest_sha256": "8bd7840cd1a48dce8f2542842d4b433e1e91d58d4fc2d6a9cae38fd7df84707d",
+      "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed14/metrics.json",
+      "metrics_sha256": "442d5c8c959a901da4ec5358280e9b78a92cb803eaf907ab427cbad337d6c4fb"
+    }
+  ],
+  "reference": {
+    "body_sha256": "781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b",
+    "material_evidence_role": "joint_surface_atlas",
+    "material_evidence_sha256": "c452c34e1d9422022d55fc758d228c22a39b80d9a770042e89e13f9110f43a76",
+    "mesh_sha256": "bfbdba0657a1dd4b8b819e7e611dbfd4eea919e5c08538078ff1948599957264",
+    "reference_files": {
+      "locations": {
+        "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/exposure_korenmarkt/final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz_locations.jsonl",
+        "sha256": "66b4e5c70494dc653a8d99ab33d4551fac99d70029114995ef9523d831e34534"
+      },
+      "manifest": {
+        "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/exposure_korenmarkt/final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz_manifest.json",
+        "sha256": "e87bd8e5db0308cfa9ad445c179a8464b19a7aaa8eaf2242fb1492c0eee75a9d"
+      },
+      "spectra": {
+        "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/exposure_korenmarkt/final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz_spectra.npz",
+        "sha256": "1186e952d4edc65046e69940a54c1024cb29c1fee6e6ae72acbe95b76f59b90b"
+      }
+    },
+    "reference_run_digest": "af8b9fc7cf3e",
+    "standpoint_array_sha256": "d373e65c769017c5309db17c2035adf2178641d421fc5fbbdf92356e424b6f5c",
+    "standpoints": 13,
+    "surface_binding_sha256": "2441abf4bc3e9d7190e45ef3de154fbc7507e82cf5d5f64f77f4320e58b9a0aa"
+  },
+  "schema": "archived-rooftop-seed-diagnostic-v1",
+  "scope": "rooftop only. This validates the stopping analysis but cannot replace the required three-law campaign",
+  "seeds": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "standpoints": 13
+}

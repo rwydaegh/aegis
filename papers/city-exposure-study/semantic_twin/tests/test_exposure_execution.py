@@ -19,6 +19,7 @@ from semantic_twin.exposure.execution import (
     _build_walk,
     _manifest,
     _prepare_scene,
+    _result_row,
     _trace_config,
     _trace_rows,
     _transport_provenance,
@@ -515,6 +516,60 @@ def test_standpoint_seed_row_and_spectrum_order_are_kept(tmp_path):
     saved = np.load(files.spectra)
     assert saved["index"].tolist() == [2, 0]
     assert saved["rho_rooftop"].tolist() == [[10.0, 11.0], [20.0, 21.0]]
+
+
+def test_result_row_couples_all_illumination_models_in_one_body_pass():
+    captured = {}
+
+    class Coupler:
+        def couple_many(self, grid, spectra, solid_angle, reference):
+            captured.update(
+                grid=grid.copy(),
+                spectra=spectra.copy(),
+                solid_angle=solid_angle,
+                reference=reference,
+            )
+            return tuple(
+                SimpleNamespace(as_dict=lambda value=value: {"peak_sab_w_m2": value}) for value in (0.11, 0.22, 0.33)
+            )
+
+        def couple(self, *_args):
+            pytest.fail("the production body coupler supports batched model coupling")
+
+    result = SimpleNamespace(
+        local_grid=np.array([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
+        local_solid_angle=2.0 * np.pi,
+        rho={
+            "isotropic": np.array([1.0, 2.0]),
+            "rooftop": np.array([3.0, 4.0]),
+            "street_small_cell": np.array([5.0, 6.0]),
+        },
+        seconds=1.5,
+        scalars=lambda: {"chi_rooftop": 0.4},
+    )
+    walk = SimpleNamespace(
+        points=np.array([[2.0, 3.0, 4.0]]),
+        ground_z_m=np.array([2.5]),
+        provenance={"point_kind": ["camera_registered"]},
+    )
+    names = ("isotropic", "rooftop", "street_small_cell")
+
+    row = _result_row(
+        SimpleNamespace(reference_s0_w_m2=0.7),
+        Coupler(),
+        walk,
+        0,
+        result,
+        dict.fromkeys(names),
+    )
+
+    assert captured["spectra"].tolist() == [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
+    assert captured["grid"].tolist() == result.local_grid.tolist()
+    assert captured["solid_angle"] == 2.0 * np.pi
+    assert captured["reference"] == 0.7
+    assert row["isotropic_peak_sab_w_m2"] == 0.11
+    assert row["rooftop_peak_sab_w_m2"] == 0.22
+    assert row["street_small_cell_peak_sab_w_m2"] == 0.33
 
 
 def test_device_execute_selects_resident_tracer_and_keeps_output_contract(tmp_path, monkeypatch):

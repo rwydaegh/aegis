@@ -208,6 +208,16 @@ PY
       --exclude '*' \
       "$LOCAL_STUDY/outputs/$sub" "$HOST:$REMOTE_STUDY/outputs/"
   done
+  # The sequential CDF campaign freezes this sealed production generation as
+  # an input. Copy only its three numerical files. The rest of
+  # exposure_korenmarkt is 182 MB of older results that the GPU does not read.
+  local cdf_reference="final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz"
+  rsh "mkdir -p $(printf '%q' "$REMOTE_STUDY/outputs/exposure_korenmarkt")"
+  rs \
+    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_manifest.json" \
+    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_locations.jsonl" \
+    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_spectra.npz" \
+    "$HOST:$REMOTE_STUDY/outputs/exposure_korenmarkt/"
   echo "blgpu: sync done"
 }
 
