@@ -44,7 +44,7 @@ import numpy as np
 
 from semantic_twin import paths
 from semantic_twin.exposure.study import CONFIG, MODELS, SEMANTICS, site_mesh
-from semantic_twin.materials import bind_walk_entities, classify_faces, load_table
+from semantic_twin.materials import HOST_SURFACE_CLASS_RULE, bind_walk_entities, classify_faces, load_table
 from semantic_twin.propagation import MitsubaGeometry, SbrTracer, TraceConfig, trace_standpoints
 
 EXPOSURE_OUTPUT = paths.legacy_exposure_dir()
@@ -136,10 +136,7 @@ def build_tracer(manifest: dict[str, Any], walk_npz: pathlib.Path | None, varian
             frequency_hz,
             class_names=semantic.class_names,
             class_binding=semantic.class_binding,
-            class_rule=(
-                "fused multi station walk semantic posterior where any station saw "
-                "the triangle, geometric orientation rule everywhere else"
-            ),
+            class_rule=HOST_SURFACE_CLASS_RULE,
         )
         covered = float(semantic.covered_fraction_by_area)
         published = float(manifest["semantic_binding"]["covered_fraction_by_area"])

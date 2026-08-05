@@ -72,6 +72,7 @@ from semantic_twin.exposure.study import (
 )
 from semantic_twin.materials import (
     CLASS_NAMES,
+    HOST_SURFACE_CLASS_RULE,
     bind_fishnet,
     bind_walk_entities,
     bind_walk_materials,
@@ -261,7 +262,10 @@ def evidence_masks(site: str, crop_m: int, geometry: Any, areas: np.ndarray, fac
         binding = bind_walk_entities(areas, face_class, walk_npz=walk_npz, semantics_path=SEMANTICS)
         masks["walk"] = {
             "mask": binding.face_class >= len(CLASS_NAMES),
-            "definition": "and the entity class it collected carries a material in vistas_material_prior",
+            "definition": (
+                "compatible host-surface evidence strictly outweighs all incompatible evidence and carries "
+                "a routable material prior"
+            ),
             "stations": int(binding.provenance["stations"]),
             "covered_fraction_by_area": binding.covered_fraction_by_area,
         }
@@ -281,7 +285,10 @@ def evidence_masks(site: str, crop_m: int, geometry: Any, areas: np.ndarray, fac
         )
         masks["fishnet"] = {
             "mask": binding.face_class >= len(CLASS_NAMES),
-            "definition": "the per view fishnet cut surfaces, joined on triangle centroids",
+            "definition": (
+                "the per-view fishnet pieces, joined on triangle centroids, whose compatible host-surface "
+                "weight strictly outweighs all incompatible evidence"
+            ),
             "covered_fraction_by_area": binding.covered_fraction_by_area,
         }
     for entry in masks.values():
@@ -316,10 +323,7 @@ def bind_materials(
             walk_npz=site_walk_semantics(site, crop_m),
             semantics_path=SEMANTICS,
         )
-        rule = (
-            "fused multi station walk semantic posterior where any station saw the triangle, "
-            "geometric orientation rule everywhere else"
-        )
+        rule = HOST_SURFACE_CLASS_RULE
     elif materials == "semantic":
         fishnet = safe_fishnet(site)
         if fishnet is None:
@@ -336,9 +340,7 @@ def bind_materials(
             source_ply_vertices=source.vertices,
             source_ply_faces=source.faces,
         )
-        rule = (
-            "panorama semantic posterior where a panorama saw the triangle, geometric orientation rule everywhere else"
-        )
+        rule = HOST_SURFACE_CLASS_RULE
     elif materials in (
         "walk_material",
         "walk_material_mixture",
@@ -354,10 +356,7 @@ def bind_materials(
             over_entity=materials == "walk_material_over_entity",
             facade_only=materials == "walk_material_facade_only",
         )
-        rule = (
-            "fused multi station walk SAM 3 material posterior where any station bound the triangle, "
-            "geometric orientation rule everywhere else"
-        )
+        rule = HOST_SURFACE_CLASS_RULE
     else:
         raise ValueError(f"unknown materials mode {materials!r}")
     binding = load_table(

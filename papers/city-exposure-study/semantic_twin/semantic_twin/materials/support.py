@@ -16,6 +16,11 @@ from enum import StrEnum
 from .binding import CLASS_NAMES
 
 SUPPORT_COMPATIBILITY_VERSION = "v1-host-surface-majority"
+HOST_SURFACE_CLASS_RULE = (
+    "image material posterior only where compatible host-surface evidence strictly outweighs all "
+    "incompatible, object, volume, void, and embedded-subface evidence; geometric orientation rule on ties "
+    "and everywhere else"
+)
 
 
 class SupportKind(StrEnum):

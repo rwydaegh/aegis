@@ -15,6 +15,7 @@ from semantic_twin.exposure.execution import (
     PreparedRun,
     PreparedScene,
     _build_walk,
+    _bind_materials,
     _manifest,
     _prepare_scene,
     _transport_provenance,
@@ -25,6 +26,7 @@ from semantic_twin.exposure.execution import (
     execute,
 )
 from semantic_twin.exposure.sweeps import LadderSweepConfig, SweepEnvironment, run_coverage_ladder
+from semantic_twin.materials import HOST_SURFACE_CLASS_RULE
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.tracer import TraceConfig
 
@@ -41,6 +43,47 @@ def escape_config(**changes) -> RunConfig:
         tag="trial",
     )
     return config.replace(**changes)
+
+
+def test_walk_material_manifest_rule_describes_structural_support_majority(tmp_path):
+    captured = {}
+    semantic = SimpleNamespace(
+        class_names=("ground", "semantic_asphalt_concrete"),
+        class_binding={},
+        face_class=np.array([1]),
+        covered_fraction_by_face=1.0,
+        covered_fraction_by_area=1.0,
+        provenance={"support_compatibility": {"version": "test"}},
+    )
+
+    def load_table(_config, _frequency, **options):
+        captured.update(options)
+        return object()
+
+    environment = SimpleNamespace(
+        site_walk_semantics=lambda _site, _crop: tmp_path / "walk.npz",
+        site_fishnet=lambda _site: None,
+        bind_walk_entities=lambda *_args, **_kwargs: semantic,
+        bind_walk_materials=None,
+        bind_fishnet=None,
+        semantics=tmp_path / "semantics.json",
+        material_config=tmp_path / "materials",
+        load_table=load_table,
+    )
+    scene = PreparedScene(
+        mesh=tmp_path / "mesh.ply",
+        geometry=object(),
+        datum=0.0,
+        datum_provenance={},
+        face_class=np.array([0]),
+        areas=np.array([1.0]),
+    )
+
+    result = _bind_materials(escape_config(materials="walk"), scene, environment)
+
+    assert result.face_class.tolist() == [1]
+    assert captured["class_rule"] == HOST_SURFACE_CLASS_RULE
+    assert "strictly outweighs" in captured["class_rule"]
 
 
 def test_the_legacy_driver_builds_the_live_run_config_without_changing_its_defaults():

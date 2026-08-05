@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 
+from semantic_twin.materials import HOST_SURFACE_CLASS_RULE
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.device_tracer import DeviceEscapeTracer
 
@@ -235,11 +236,14 @@ def _bind_materials(run: RunConfig, scene: PreparedScene, environment: StudyEnvi
             walk_npz=walk_binding,
             semantics_path=environment.semantics,
         )
-        rule = (
-            "fused multi station walk semantic posterior where any station saw "
-            "the triangle, geometric orientation rule everywhere else"
+        return _bound_material(
+            run,
+            semantic,
+            provenance,
+            HOST_SURFACE_CLASS_RULE,
+            "walk semantic",
+            environment,
         )
-        return _bound_material(run, semantic, provenance, rule, "walk semantic", environment)
     if run.materials.startswith("walk_material"):
         semantic = environment.bind_walk_materials(
             scene.areas,
@@ -250,11 +254,14 @@ def _bind_materials(run: RunConfig, scene: PreparedScene, environment: StudyEnvi
             over_entity=run.materials == "walk_material_over_entity",
             facade_only=run.materials == "walk_material_facade_only",
         )
-        rule = (
-            "fused multi station walk SAM 3 material posterior where any station bound "
-            "the triangle, geometric orientation rule everywhere else"
+        return _bound_material(
+            run,
+            semantic,
+            provenance,
+            HOST_SURFACE_CLASS_RULE,
+            "walk material binding",
+            environment,
         )
-        return _bound_material(run, semantic, provenance, rule, "walk material binding", environment)
     if run.materials == "geometric":
         table = environment.load_table(environment.material_config, run.frequency_hz)
         provenance.update({"covered_fraction_by_face": 0.0, "covered_fraction_by_area": 0.0})
@@ -301,8 +308,14 @@ def _bind_fishnet(
         source_ply_vertices=source.vertices,
         source_ply_faces=source.faces,
     )
-    rule = "panorama semantic posterior where a panorama saw the triangle, geometric orientation rule everywhere else"
-    return _bound_material(run, semantic, provenance, rule, "semantic binding", environment)
+    return _bound_material(
+        run,
+        semantic,
+        provenance,
+        HOST_SURFACE_CLASS_RULE,
+        "semantic binding",
+        environment,
+    )
 
 
 def _bound_material(
