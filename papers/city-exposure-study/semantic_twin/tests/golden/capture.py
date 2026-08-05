@@ -129,7 +129,7 @@ THIN_STATISTICS = {
         "records the behaviour as it stands."
     ),
     "next_event_korenmarkt_130m_fast:korenmarkt": (
-        "Five held out standpoints, for the same reason and to a lesser degree."
+        "Four held out standpoints, for the same reason and to a lesser degree."
     ),
     "coverage_ladder_korenmarkt_130m:paired_median_shift_db": (
         "Locked at eight standpoints, where the published ladder used 120. The paired "

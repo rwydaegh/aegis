@@ -1,5 +1,5 @@
 {
- "captured_utc": "2026-08-05T08:21:01Z",
+ "captured_utc": "2026-08-05T09:04:34Z",
  "cases": {
   "cities_250m_all_sites": {
    "argv": [
@@ -409,10 +409,10 @@
    "command": "python run_next_event.py --sites korenmarkt --crop-m 130 --rays 50000 --builders 32 --held-out 16 --azimuths 720 --elevations 300 --cell-m 1.0 --dims 3 --connections 1 --frequency-hz 15000000000.0 --max-bounces 3 --walk route --walk-path links --walk-stride-m 6.0 --seed 7 --tag golden_ne_km130_fast",
    "driver": "run_next_event.py",
    "fixture": "next_event_korenmarkt_130m_fast.json",
-   "fixture_bytes": 5508,
+   "fixture_bytes": 4699,
    "prerequisites": [],
    "tier": "fast",
-   "wall_seconds": 2.18,
+   "wall_seconds": 1.95,
    "what_it_locks": "The second estimator: skyline extraction, the explicit source set on facade tips, the exact line of sight term, and next event connection at every path vertex. Also carries the escape estimator's own surplus for the same points, so the factor of three gap between the two is locked as a number.",
    "writes": [
     "outputs/next_event/golden_ne_km130_fast_130m.json"
@@ -430,7 +430,7 @@
  },
  "git_branch": "feature/coherent-exposure-studio",
  "git_dirty": true,
- "git_sha": "1d0e7dd084a97f78d2548c282b5b7635b28205b5",
+ "git_sha": "1ceedaaa546b0d797d8dd1ba3da48d526489bf35",
  "machine": {
   "cpu_count": 4,
   "env": {
@@ -631,7 +631,7 @@
  "thin_statistics": {
   "coverage_ladder_korenmarkt_130m:paired_median_shift_db": "Locked at eight standpoints, where the published ladder used 120. The paired median shift for the fishnet rung comes out near 1e-7 dB, and that is arithmetic rather than physics: only two of the eight standpoints see any bound triangle, so the middle two of the eight paired ratios are both exactly 1. The same run's distribution_median_shift_db is +0.11 dB and its max_absolute_change is +4.66 %, which is the honest size of the effect. run_exposure.py already carries both statistics and says in a comment that the shift is concentrated in a minority of locations. Read the pair, never the paired median alone at this standpoint count.",
   "next_event_250m_default:korenmarkt": "The published median at Korenmarkt is a median of TWO standpoints. run_next_event.py at its own defaults asks for 16 held out of 144, the capture route there is 49 m long and yields 14 standpoints, and the shrink rule held_out * points / (held_out + builders) rounds 14 * 16 / 144 down to 2. The p5 and p95 either side of it are therefore the two points themselves. Escalated as a paper question. The rule was not changed and this fixture records the behaviour as it stands.",
-  "next_event_korenmarkt_130m_fast:korenmarkt": "Five held out standpoints, for the same reason and to a lesser degree."
+  "next_event_korenmarkt_130m_fast:korenmarkt": "Four held out standpoints, for the same reason and to a lesser degree."
  },
  "what": "reference outputs captured before the semantic_twin refactor"
 }

@@ -12,162 +12,132 @@
      "used": false
     },
     "crop_radius_m": 130,
-    "escape_surplus_db_median": 1.9104412301910312,
+    "escape_surplus_db_median": 1.8424877719068364,
     "ground_datum_m": 50.87109375,
-    "held_out": 5,
-    "held_out_warning": "5 standpoints. surplus_db_median is a median of 5, and surplus_db_p5 and surplus_db_p95 are drawn from the same 5 points. The capture route at this site is shorter than the split rule assumes, so the rule shrinks the held out set. Locked as the behaviour that exists, NOT as a converged number.",
+    "held_out": 4,
+    "held_out_warning": "4 standpoints. surplus_db_median is a median of 4, and surplus_db_p5 and surplus_db_p95 are drawn from the same 4 points. The capture route at this site is shorter than the split rule assumes, so the rule shrinks the held out set. Locked as the behaviour that exists, NOT as a converged number.",
     "max_bounces": 3,
     "mesh": "data/geometry/korenmarkt/inhouse_leaf_130m_f64.ply",
     "per_point": [
      {
-      "bounced": 8.174666498183885e-05,
+      "bounced": 9.618213190713603e-05,
       "by_order": [
        0.0,
-       7.832154945774573e-05,
-       3.041042154013145e-06,
-       3.8407337007976437e-07
+       9.254171273341605e-05,
+       3.1330258396343397e-06,
+       5.073933340854839e-07
       ],
-      "clear_fraction": 0.633267208144627,
-      "connections": 53434,
-      "direct": 0.0006768293615932575,
+      "clear_fraction": 0.5893832943013271,
+      "connections": 57645,
+      "direct": 0.0006613220682623782,
       "escape_chi": {
-       "isotropic": 0.33676623408792294,
-       "rooftop": 0.20527263141780625
+       "isotropic": 0.2823263526286432,
+       "rooftop": 0.17265103090818293
       },
       "escape_chi_direct": {
-       "isotropic": 0.26616938998606504,
-       "rooftop": 0.13573146389676158
+       "isotropic": 0.21447714462440345,
+       "rooftop": 0.11275012726184462
       },
-      "mean_bounces": 1.0576194605449318,
+      "mean_bounces": 1.1791094189703692,
       "origin": [
-       -7.770581456311795,
-       -7.024573212179869,
-       52.338069698168916
+       -1.8384443328976225,
+       14.73731971888908,
+       52.39223659817721
       ],
-      "sky_fraction": 0.26982,
-      "surplus": 1.1207788397202614,
-      "surplus_db": 0.4951992288489431,
-      "visible_fraction": 0.7617866004962779
+      "sky_fraction": 0.21734,
+      "surplus": 1.1454391687848167,
+      "surplus_db": 0.5897202991775029,
+      "visible_fraction": 0.6702702702702703
      },
      {
-      "bounced": 8.533993470688197e-05,
+      "bounced": 9.427582993466739e-05,
       "by_order": [
        0.0,
-       8.226517835153185e-05,
-       2.751459771477823e-06,
-       3.232965838721e-07
+       9.053202697439712e-05,
+       3.3272106621550223e-06,
+       4.1659229811522885e-07
       ],
-      "clear_fraction": 0.5311811674008811,
-      "connections": 58112,
-      "direct": 0.0005476742643158923,
+      "clear_fraction": 0.5701356694845923,
+      "connections": 58672,
+      "direct": 0.0006152213044471381,
       "escape_chi": {
-       "isotropic": 0.261093533032868,
-       "rooftop": 0.169792774657834
+       "isotropic": 0.26451286726423084,
+       "rooftop": 0.17016164187082153
       },
       "escape_chi_direct": {
-       "isotropic": 0.19315306801599405,
-       "rooftop": 0.10538104665159977
+       "isotropic": 0.19703371401864295,
+       "rooftop": 0.1075918955711885
       },
-      "mean_bounces": 1.235002223626618,
+      "mean_bounces": 1.2293671005470665,
       "origin": [
-       -0.5331808583030988,
-       28.21371617511737,
-       52.51097344520351
+       -1.0848837615663274,
+       20.689164707457046,
+       52.51446698946651
       ],
-      "sky_fraction": 0.19478,
-      "surplus": 1.1558224299867026,
-      "surplus_db": 0.6289111816716476,
-      "visible_fraction": 0.5748552522746071
+      "sky_fraction": 0.19882,
+      "surplus": 1.1532388902224173,
+      "surplus_db": 0.6191927950545949,
+      "visible_fraction": 0.6288288288288288
      },
      {
-      "bounced": 9.183560372407052e-05,
+      "bounced": 6.928279342605797e-05,
       "by_order": [
        0.0,
-       8.845666640735555e-05,
-       3.0052581040754002e-06,
-       3.736792126392646e-07
+       6.609250653445097e-05,
+       2.815871484150056e-06,
+       3.744154074574137e-07
       ],
-      "clear_fraction": 0.5810049104364063,
-      "connections": 57836,
-      "direct": 0.0006264804115307533,
+      "clear_fraction": 0.5682464545437194,
+      "connections": 52391,
+      "direct": 0.0005613060068499268,
       "escape_chi": {
-       "isotropic": 0.28102674648039383,
-       "rooftop": 0.17112099501751027
+       "isotropic": 0.35023330129031693,
+       "rooftop": 0.1952543368801626
       },
       "escape_chi_direct": {
-       "isotropic": 0.21168694693952514,
-       "rooftop": 0.11021968711557736
+       "isotropic": 0.27948566721863277,
+       "rooftop": 0.13127606862852786
       },
-      "mean_bounces": 1.1852315689981097,
+      "mean_bounces": 1.0339483059886083,
+      "origin": [
+       -6.4231959398242084,
+       -14.907748511581786,
+       52.1987624674858
+      ],
+      "sky_fraction": 0.27754,
+      "surplus": 1.1234314127776326,
+      "surplus_db": 0.5054656321579969,
+      "visible_fraction": 0.6792792792792792
+     },
+     {
+      "bounced": 9.453123061930645e-05,
+      "by_order": [
+       0.0,
+       9.064374107716438e-05,
+       3.460971004728029e-06,
+       4.265185374143729e-07
+      ],
+      "clear_fraction": 0.5856217482686146,
+      "connections": 58046,
+      "direct": 0.0006446516117431183,
+      "escape_chi": {
+       "isotropic": 0.28038178883092124,
+       "rooftop": 0.17210018823812023
+      },
+      "escape_chi_direct": {
+       "isotropic": 0.21165868045342318,
+       "rooftop": 0.11280696789560506
+      },
+      "mean_bounces": 1.1905550560734397,
       "origin": [
        -1.7237906595261325,
        15.419926445763057,
        52.378664674389526
       ],
-      "sky_fraction": 0.21016,
-      "surplus": 1.1465897449206397,
-      "surplus_db": 0.5940805313349811,
-      "visible_fraction": 0.6575682382133995
-     },
-     {
-      "bounced": 8.859320367191971e-05,
-      "by_order": [
-       0.0,
-       8.542799606587393e-05,
-       2.788088284195809e-06,
-       3.771193218497174e-07
-      ],
-      "clear_fraction": 0.6191146594432761,
-      "connections": 56114,
-      "direct": 0.000647529093815396,
-      "escape_chi": {
-       "isotropic": 0.3105831356903306,
-       "rooftop": 0.18774109206592585
-      },
-      "escape_chi_direct": {
-       "isotropic": 0.2400606399768956,
-       "rooftop": 0.1213919414699289
-      },
-      "mean_bounces": 1.1183580493700898,
-      "origin": [
-       -5.74348884405273,
-       4.801934694571921,
-       52.32983719206923
-      ],
-      "sky_fraction": 0.23784,
-      "surplus": 1.1368173330250033,
-      "surplus_db": 0.5569068664682932,
-      "visible_fraction": 0.7510339123242349
-     },
-     {
-      "bounced": 8.961283208126092e-05,
-      "by_order": [
-       0.0,
-       8.592744556721929e-05,
-       3.284070082361015e-06,
-       4.013164316803414e-07
-      ],
-      "clear_fraction": 0.6134252793296089,
-      "connections": 57280,
-      "direct": 0.0006605518556955556,
-      "escape_chi": {
-       "isotropic": 0.29419978520450074,
-       "rooftop": 0.1794006572943696
-      },
-      "escape_chi_direct": {
-       "isotropic": 0.22476914330609102,
-       "rooftop": 0.11517243787238537
-      },
-      "mean_bounces": 1.1562543904837728,
-      "origin": [
-       -4.590527739330862,
-       10.69011613632442,
-       52.38572274013506
-      ],
-      "sky_fraction": 0.2253,
-      "surplus": 1.1356635838785123,
-      "surplus_db": 0.5524969994621778,
-      "visible_fraction": 0.7328370554177006
+      "sky_fraction": 0.20942,
+      "surplus": 1.146639252733266,
+      "surplus_db": 0.5942680483239958,
+      "visible_fraction": 0.6594594594594595
      }
     ],
     "rays": 50000,
@@ -179,11 +149,11 @@
      "dims": 3,
      "floor_m": 0.0,
      "site_lift_m": 0.5,
-     "sites": 1209
+     "sites": 1110
     },
-    "surplus_db_median": 0.5569068664682932,
-    "surplus_db_p5": 0.5066587829715901,
-    "surplus_db_p95": 0.6219450516043143
+    "surplus_db_median": 0.5919941737507494,
+    "surplus_db_p5": 0.5181038322109228,
+    "surplus_db_p95": 0.615454083045005
    }
   ]
  }
