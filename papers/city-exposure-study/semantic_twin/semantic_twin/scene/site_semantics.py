@@ -93,12 +93,6 @@ TRANSIENT_CLASSES = (
     "Wheeled Slow",
 )
 
-#: The panorama whose ``semantics.json`` supplies ``vistas_material_prior``.
-#: Eleven others carry an identical copy, all of them at Korenmarkt, and any of
-#: them would do. This one is named so the provenance of every site's prior is a
-#: single path rather than whichever file happened to be read first.
-PRIOR_SEMANTICS = paths.panorama_semantics(Site.get("korenmarkt").stations()[0])
-
 DEFAULT_OUT = paths.outputs_dir() / "site_semantics"
 
 #: Sites whose panoramas were acquired in more than one campaign, and where the
@@ -143,6 +137,19 @@ def _relative(path: pathlib.Path) -> str:
         return str(path.relative_to(paths.root()))
     except ValueError:
         return str(path)
+
+
+def _prior_semantics() -> pathlib.Path:
+    """The Korenmarkt panorama that supplies ``vistas_material_prior``.
+
+    Eleven other panorama files carry the same prior. Resolving the chosen one
+    here keeps module import independent of the ignored panorama data while
+    preserving the original source when that data is present.
+    """
+    stations = Site.get("korenmarkt").stations()
+    if not stations:
+        raise FileNotFoundError("no Korenmarkt station is available to supply the material prior")
+    return paths.panorama_semantics(stations[0])
 
 
 def site_mesh(site: str, crop_m: int) -> pathlib.Path:
@@ -537,7 +544,8 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
         max_sky_conflict=options.max_sky_conflict,
         min_conflict_range_m=options.min_conflict_range_m,
     )
-    prior = json.loads(PRIOR_SEMANTICS.read_text())
+    prior_semantics = _prior_semantics()
+    prior = json.loads(prior_semantics.read_text())
     report: dict[str, Any] = {
         "site": site,
         "crop_radius_m": options.crop_m,
@@ -556,7 +564,7 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
         },
         "stations_admitted": admitted,
         "stations_refused": refused,
-        "material_prior": _relative(PRIOR_SEMANTICS),
+        "material_prior": _relative(prior_semantics),
     }
     if not admitted:
         report["result"] = "no admitted station, nothing written"

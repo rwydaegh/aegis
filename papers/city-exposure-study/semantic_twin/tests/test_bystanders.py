@@ -11,10 +11,12 @@ face class of a hit must come back as the body class and not as a wall.
 from __future__ import annotations
 
 import pathlib
+import sys
 
 import numpy as np
 import pytest
 
+import semantic_twin.propagation.bystander_geometry as bystander_geometry
 from semantic_twin.propagation import PlaneGeometry, SphereGeometry, fibonacci_sphere
 from semantic_twin.propagation.bystanders import (
     ARMS,
@@ -331,6 +333,33 @@ def test_simplify_leaves_a_mesh_already_under_target_alone():
     out_v, out_f = simplify(vertices, faces, 100)
     assert out_f.shape == faces.shape
     assert np.array_equal(out_v, vertices)
+
+
+def test_simplify_requires_the_named_quadric_decimator(monkeypatch: pytest.MonkeyPatch):
+    vertices, faces = _box()
+    monkeypatch.setitem(sys.modules, "fast_simplification", None)
+    with pytest.raises(ModuleNotFoundError, match="fast-simplification is required"):
+        simplify(vertices, faces, 8)
+
+
+def test_body_library_records_the_decimator_and_version(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
+    vertices, faces = _box()
+    np.savez(tmp_path / "body.npz", vertices_enu_m=vertices, faces=faces)
+
+    class FakeDecimator:
+        @staticmethod
+        def simplify(vertices, faces, *, target_count):  # noqa: ANN001, ANN202
+            assert target_count == 8
+            return vertices, faces[:target_count]
+
+    monkeypatch.setattr(bystander_geometry, "_load_decimator", lambda: (FakeDecimator, "1.2.3"))
+    library = load_body_library(tmp_path, target_faces=8)
+    assert library.provenance["decimator"] == {
+        "name": "fast_simplification",
+        "version": "1.2.3",
+        "algorithm": "quadric",
+        "bodies_decimated": 1,
+    }
 
 
 # ---------------------------------------------------------------------------

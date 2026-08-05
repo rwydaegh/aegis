@@ -113,8 +113,9 @@ def test_dense_backend_loads_processor_and_weights_from_one_local_snapshot(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import huggingface_hub
-    import transformers
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+    transformers = pytest.importorskip("transformers")
+    pytest.importorskip("torch")
 
     path = snapshot_path(tmp_path, PRODUCTION_REVISION)
     calls: list[tuple[str, str, dict[str, object]]] = []

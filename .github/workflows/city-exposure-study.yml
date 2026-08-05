@@ -4,12 +4,11 @@ name: City exposure study
 # pyproject and its own test suite. The main ci.yml does not cover it, so this
 # runs the part of it that can run anywhere.
 #
-# Scope is deliberate. The golden fixtures under tests/golden/ pin real traced
-# numbers, but they read meshes, fishnets and the fused walk out of outputs/ and
-# data/, which are 8.4 GB and gitignored. Those cases cannot run on a clean
-# checkout and are not attempted here. What does run is the numeric tier, which
-# needs no mesh and finishes in about six seconds, plus lint. That is enough to
-# catch an import break, a lint regression, or a change that moves a closed form.
+# Scope is deliberate. Most tests build small fixtures in temporary directories
+# and can run on a clean checkout. Tests marked ``local_data`` inspect the full
+# panorama, mesh, fishnet, or published-output archive, which is gitignored and
+# stays on the study machine. Tests marked ``slow`` run the production drivers
+# against city geometry. CI runs every other test, plus lint.
 #
 # Pull requests only. This is a private repository and a push trigger on a
 # directory this active would burn minutes for no extra signal.
@@ -40,26 +39,17 @@ jobs:
           cache: pip
 
       - name: Install
-        run: pip install -e ".[test]"
+        run: pip install -e ../../.. -e ".[test]"
 
       - name: Lint
         run: |
           python -m ruff check .
           python -m ruff format --check .
 
-      - name: Numeric tier
-        # Everything that needs no mesh: closed forms, illumination quadrature
-        # identities, material rows, and the physics invariants.
-        #
-        # Two explicit deselects, both because the thing they read is gitignored
-        # and cannot exist on a clean checkout:
-        #   test_golden_fast          traces rays against a city mesh
-        #   ..._record_of_the_superseded_law   reads a published outputs/ file
-        # The slow marker covers the rest.
-        run: |
-          python -m pytest tests/ -m "not slow" -q \
-            --deselect tests/test_golden_regression.py::test_golden_fast \
-            --deselect "tests/test_golden_regression.py::test_the_published_validation_file_is_a_record_of_the_superseded_law"
+      - name: Portable non-slow suite
+        # Keep the broad unit and numeric suite. Capability-dependent tests use
+        # their own skip guards, while local_data and slow are explicit scopes.
+        run: python -m pytest tests/ -m "not slow and not local_data" -q
 
       - name: Confirm the golden fixtures are still readable
         # Cheap guard. The fixtures cannot be regenerated here, but a truncated

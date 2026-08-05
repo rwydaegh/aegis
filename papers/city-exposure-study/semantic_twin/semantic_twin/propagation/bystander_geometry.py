@@ -41,6 +41,7 @@ street column many decibels and the rooftop column very little.
 from __future__ import annotations
 
 import gc
+import importlib.metadata
 import json
 import pathlib
 from dataclasses import dataclass, field
@@ -147,8 +148,32 @@ def mean_silhouette_width_m(vertices: np.ndarray) -> float:
     return perimeter / np.pi
 
 
+def _load_decimator() -> tuple[Any, str]:
+    """Load the one mesh decimator used by the bystander study."""
+    try:
+        import fast_simplification
+    except ImportError as error:
+        raise ModuleNotFoundError(
+            "fast-simplification is required for body mesh decimation; "
+            "the former voxel fallback did not preserve silhouette area"
+        ) from error
+    return fast_simplification, importlib.metadata.version("fast-simplification")
+
+
+def _quadric_decimate(
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    target_faces: int,
+    decimator: Any,
+) -> tuple[np.ndarray, np.ndarray]:
+    out_v, out_f = decimator.simplify(
+        vertices.astype(np.float32), faces.astype(np.int32), target_count=int(target_faces)
+    )
+    return np.asarray(out_v, dtype=np.float64), np.asarray(out_f, dtype=np.int64)
+
+
 def simplify(vertices: np.ndarray, faces: np.ndarray, target_faces: int) -> tuple[np.ndarray, np.ndarray]:
-    """Quadric decimation, falling back to vertex clustering without the wheel.
+    """Decimate a body with the study's explicit quadric implementation.
 
     Blockage is a silhouette quantity, and the silhouette survives decimation
     far better than the surface does. Measured on the Korenmarkt bodies, going
@@ -161,44 +186,8 @@ def simplify(vertices: np.ndarray, faces: np.ndarray, target_faces: int) -> tupl
     faces = np.asarray(faces, dtype=np.int64)
     if faces.shape[0] <= target_faces:
         return vertices, faces
-    try:
-        import fast_simplification
-    except ImportError:
-        return _cluster_decimate(vertices, faces, target_faces)
-    out_v, out_f = fast_simplification.simplify(
-        vertices.astype(np.float32), faces.astype(np.int32), target_count=int(target_faces)
-    )
-    return np.asarray(out_v, dtype=np.float64), np.asarray(out_f, dtype=np.int64)
-
-
-def _cluster_decimate(vertices: np.ndarray, faces: np.ndarray, target_faces: int) -> tuple[np.ndarray, np.ndarray]:
-    """Voxel clustering, the dependency free fallback.
-
-    Vertices are snapped to a grid whose pitch is chosen so the face count lands
-    near the target, and degenerate faces are dropped. Cruder than a quadric,
-    but it can only move a vertex by half a voxel, so the silhouette error is
-    bounded by the pitch.
-    """
-    extent = float(np.ptp(vertices, axis=0).max())
-    pitch = extent * np.sqrt(4.0 / max(target_faces, 4))
-    inverse = np.arange(vertices.shape[0])
-    counts = np.ones(vertices.shape[0], dtype=np.int64)
-    kept = faces
-    for _ in range(24):
-        keys = np.round((vertices - vertices.min(axis=0)) / pitch).astype(np.int64)
-        _, inverse, counts = np.unique(keys, axis=0, return_inverse=True, return_counts=True)
-        remapped = inverse[faces]
-        distinct = (
-            (remapped[:, 0] != remapped[:, 1]) & (remapped[:, 1] != remapped[:, 2]) & (remapped[:, 0] != remapped[:, 2])
-        )
-        kept = remapped[distinct]
-        if kept.shape[0] <= target_faces:
-            break
-        pitch *= 1.25
-    centres = np.zeros((counts.size, 3))
-    np.add.at(centres, inverse, vertices)
-    centres /= counts[:, None]
-    return centres, kept
+    decimator, _ = _load_decimator()
+    return _quadric_decimate(vertices, faces, target_faces, decimator)
 
 
 @dataclass(frozen=True)
@@ -273,6 +262,9 @@ def load_body_library(
     full_faces = 0
     silhouette_before: list[float] = []
     silhouette_after: list[float] = []
+    decimator: Any | None = None
+    decimator_version: str | None = None
+    decimated_bodies = 0
     for path in paths:
         with np.load(path, allow_pickle=False) as document:
             if "vertices_enu_m" not in document.files:
@@ -284,7 +276,11 @@ def load_body_library(
             continue
         full_faces += f.shape[0]
         silhouette_before.append(projected_area_m2(v, f))
-        v, f = simplify(v, f, target_faces)
+        if f.shape[0] > target_faces:
+            if decimator is None:
+                decimator, decimator_version = _load_decimator()
+            v, f = _quadric_decimate(v, f, target_faces, decimator)
+            decimated_bodies += 1
         v = v - np.array([v[:, 0].mean(), v[:, 1].mean(), v[:, 2].min()])
         silhouette_after.append(projected_area_m2(v, f))
         ids.append(path.stem)
@@ -302,6 +298,12 @@ def load_body_library(
         "faces_before_decimation": full_faces,
         "faces_after_decimation": int(sum(f.shape[0] for f in faces)),
         "target_faces_per_body": int(target_faces),
+        "decimator": {
+            "name": "fast_simplification" if decimated_bodies else "none",
+            "version": decimator_version,
+            "algorithm": "quadric" if decimated_bodies else "none",
+            "bodies_decimated": decimated_bodies,
+        },
         "silhouette_area_change_max_abs_fraction": float(np.max(np.abs(after / before - 1.0))),
         "mean_silhouette_width_m": float(np.mean(widths)),
         "stature_m": {

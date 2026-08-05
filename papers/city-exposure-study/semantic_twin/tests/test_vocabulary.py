@@ -93,6 +93,7 @@ def test_the_gate_skips_facade_prompts_on_a_view_with_no_building() -> None:
     assert set(sky_only.prompts) | set(sky_only.skipped) == set(loaded.prompts)
 
 
+@pytest.mark.local_data
 def test_the_bridge_names_exactly_the_classes_the_checkpoint_emits() -> None:
     # Pinned from a real run's manifest. A typo in a Vistas class name silently
     # collapses that class's prior onto unknown and makes every concept routed

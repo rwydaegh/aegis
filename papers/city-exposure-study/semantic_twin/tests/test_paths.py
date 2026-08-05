@@ -41,6 +41,7 @@ def test_korenmarkt_at_130_m_resolves_to_the_double_precision_rebuild():
     assert json.loads(paths.mesh_manifest(mesh).read_text())["format_version"] >= 3
 
 
+@pytest.mark.local_data
 def test_times_square_resolves_although_it_has_no_double_precision_file():
     """The case a suffix-only rule loses.
 
@@ -52,6 +53,7 @@ def test_times_square_resolves_although_it_has_no_double_precision_file():
     assert not mesh.name.endswith("_f64.ply")
 
 
+@pytest.mark.local_data
 def test_every_configured_site_has_a_mesh_at_250_m():
     """250 m is the radius the cross city sweep runs at, so all eleven must have one."""
     for name in sorted(path.stem for path in paths.config_dir().glob("*.json")):
@@ -145,6 +147,7 @@ def test_the_disk_is_read_again_after_a_mesh_is_written(tmp_path):
     assert paths.site_mesh("somewhere", 250, root_dir=tmp_path) == mesh
 
 
+@pytest.mark.local_data
 def test_the_two_panorama_layouts_both_yield_camera_directories():
     """Nested and flat, and both have to answer the same question.
 
@@ -162,6 +165,7 @@ def test_the_two_panorama_layouts_both_yield_camera_directories():
     assert paths.panorama_semantics(flat[0]).exists()
 
 
+@pytest.mark.local_data
 def test_the_korenmarkt_walk_is_a_separate_set_from_the_korenmarkt_capture():
     """Twelve Mapillary stations against one Street View camera, same square."""
     walk = paths.panorama_stations("korenmarkt_walk", "walk_")
@@ -169,6 +173,7 @@ def test_the_korenmarkt_walk_is_a_separate_set_from_the_korenmarkt_capture():
     assert paths.panorama_set("korenmarkt") not in walk
 
 
+@pytest.mark.local_data
 def test_a_fishnet_directory_names_the_mesh_it_was_cut_against():
     """The mesh in the manifest, not the mesh of the run.
 
@@ -185,6 +190,7 @@ def test_a_fishnet_directory_names_the_mesh_it_was_cut_against():
         assert f"_{expected_crop}m" in mesh.name
 
 
+@pytest.mark.local_data
 def test_the_suffixed_fishnet_directory_is_the_wider_cut():
     directory = paths.fishnet_dir("korenmarkt", 250)
     assert directory.name.endswith("_250m")
@@ -192,6 +198,7 @@ def test_the_suffixed_fishnet_directory_is_the_wider_cut():
     assert any(directory.glob("*_fishnet.npz"))
 
 
+@pytest.mark.local_data
 def test_the_fused_station_binding_is_on_disk_for_the_sites_that_have_one():
     assert paths.site_semantics("korenmarkt", 250).exists()
     assert paths.site_semantics("korenmarkt", 250, ".json").exists()
@@ -210,6 +217,7 @@ def test_atlas_artifact_path_refuses_an_empty_surface_grid():
         paths.joint_atlas("korenmarkt", 250, resolution=0)
 
 
+@pytest.mark.local_data
 def test_the_exposure_directory_is_named_honestly_and_still_reads_the_old_one():
     """The published runs sit under a directory named for one of eleven cities.
 
@@ -231,6 +239,7 @@ def test_an_unwritten_exposure_file_resolves_to_the_honest_directory():
     assert missing.parent == paths.exposure_dir()
 
 
+@pytest.mark.local_data
 def test_one_run_resolves_to_its_whole_family_of_files():
     run = paths.exposure_run("city250_L3_korenmarkt_15ghz")
     assert run.complete
@@ -256,6 +265,7 @@ def test_a_run_is_read_out_of_one_directory_and_never_out_of_two():
     assert {path.parent for path in (absent.locations, absent.manifest)} == {paths.exposure_dir()}
 
 
+@pytest.mark.local_data
 def test_the_eleven_city_sweep_left_one_run_per_city_on_disk():
     """The sweep is a real thing on disk, and this is the shape of it."""
     stems = paths.exposure_stems("city250_L3_*")
@@ -272,6 +282,7 @@ def test_a_street_route_is_cached_under_its_request_key():
         assert paths.street_route("korenmarkt", key) == path
 
 
+@pytest.mark.local_data
 def test_the_tile_caches_are_two_roots_and_the_wide_one_is_partial():
     """Eight sites have a wide pull and the rest do not, which is a fact not a bug."""
     assert paths.tiles_dir("korenmarkt").is_dir()

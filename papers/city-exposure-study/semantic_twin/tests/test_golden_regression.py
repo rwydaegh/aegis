@@ -521,6 +521,7 @@ FAST = tuple(case for case in CASES if case.tier == "fast")
 SLOW = tuple(case for case in CASES if case.tier == "slow")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", FAST, ids=_ids(FAST))
 def test_golden_fast(case: Case) -> None:
     """The cheap end to end lock. Real mesh, real Fresnel, real phantom."""

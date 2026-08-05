@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Panorama-driven semantic reconstruction for radio digital twins"
 requires-python = ">=3.12"
 dependencies = [
+  "fast-simplification==0.1.13",
   "mapbox-earcut>=1.0",
   "numpy>=2.0",
   "pillow>=11",
@@ -24,7 +25,16 @@ baseline = [
   "torchvision>=0.22",
   "transformers>=4.57,<5",
 ]
-test = ["pytest>=8", "ruff==0.15.16"]
+test = [
+  "embreex>=2.17",
+  "matplotlib>=3.10",
+  "mitsuba>=3.8,<4",
+  "pytest>=8",
+  "rtree>=1.4",
+  "ruff==0.15.16",
+  "sionna-rt>=2.0.1,<3.0",
+  "trimesh>=4",
+]
 raycast = ["embreex>=2.17", "trimesh>=4"]
 
 [tool.setuptools.packages.find]
@@ -39,5 +49,6 @@ line-length = 120
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
+  "local_data: reads ignored study artifacts that are unavailable on a clean checkout",
   "slow: runs a driver end to end on a city mesh, minutes rather than seconds",
 ]

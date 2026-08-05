@@ -53,6 +53,7 @@ def only_walk(monkeypatch, *, walk: bool = True, fishnet: bool = True) -> None:
     monkeypatch.setattr(run_exposure, "site_fishnet", lambda site: ("dir", "mesh") if fishnet else None)
 
 
+@pytest.mark.local_data
 def test_the_published_korenmarkt_stems_survive_the_generalisation():
     # These three names are quoted in the paper and in half a dozen working
     # documents. Renaming them would orphan every one of those references.

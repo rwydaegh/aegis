@@ -84,6 +84,7 @@ def test_milan_is_out_of_alphabetical_order_because_it_joins_the_sweep_late():
 # ------------------------------------------------------------------ the subsets
 
 
+@pytest.mark.local_data
 def test_the_site_builders_derive_their_site_sets_from_the_registry():
     """Eight of eleven, and the eight are derivable rather than chosen.
 
@@ -118,6 +119,7 @@ def test_the_fishnet_builder_keeps_support_for_an_arbitrary_mesh_filename(tmp_pa
     assert site_fishnets.site_mesh("korenmarkt", mesh.name) == mesh
 
 
+@pytest.mark.local_data
 def test_the_station_calibration_lists_are_the_sites_with_a_fused_binding_at_250_m():
     """Two files carry these seven and only one of them says why."""
     expected = {site.name for site in sites.with_station_binding(250)}
@@ -126,6 +128,7 @@ def test_the_station_calibration_lists_are_the_sites_with_a_fused_binding_at_250
     assert len(expected) == 7
 
 
+@pytest.mark.local_data
 def test_the_walk_cities_figure_is_a_subset_of_the_sites_with_a_binding():
     """Six of the seven, and the missing one is not derivable from anything here.
 
@@ -138,6 +141,7 @@ def test_the_walk_cities_figure_is_a_subset_of_the_sites_with_a_binding():
     assert "milan_duomo" not in figure
 
 
+@pytest.mark.local_data
 def test_the_cross_city_sweep_gate_drops_milan_at_130_m_and_nobody_at_250_m():
     assert len(sites.with_mesh(250)) == 11
     assert {site.name for site in sites.with_mesh(130)} == set(Site.names()) - {"milan_duomo"}
@@ -324,6 +328,7 @@ def test_the_squares_and_countries_are_what_the_screener_proposed():
 # ------------------------------------------------------------------ the imagery
 
 
+@pytest.mark.local_data
 def test_korenmarkt_is_the_only_site_with_two_providers():
     """The undocumented fact this registry exists to write down.
 
@@ -339,6 +344,7 @@ def test_korenmarkt_is_the_only_site_with_two_providers():
     assert len(Site.get("korenmarkt").stations("walk")) == 12
 
 
+@pytest.mark.local_data
 def test_every_declared_imagery_set_is_on_disk_and_its_provider_matches_the_metadata():
     """The declaration is checked against the evidence rather than believed.
 
@@ -373,6 +379,7 @@ def test_the_bare_fishnet_directory_belongs_to_the_sites_first_build():
     assert Site.get("milan_duomo").fishnet_dir(250).name.endswith("_250m")
 
 
+@pytest.mark.local_data
 def test_korenmarkt_keeps_its_mapillary_binding_at_its_first_crop():
     """Every published walk number was measured on that file, so it wins at 130 m."""
     assert Site.get("korenmarkt").station_binding(130) == paths.walk_semantics()

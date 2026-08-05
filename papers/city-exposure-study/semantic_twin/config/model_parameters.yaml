@@ -305,9 +305,9 @@ parameters:
       affects_published_results: true
       conflicts: "source geometry and computed response diagnostics share one file"
     crowd_and_body:
-      value: {clothing_rms_height_m: 0.002, minimum_separation_m: 0.45, exclusion_radius_m: 0.6, max_radius_m: 30.0, datum_tolerance_m: 2.5, min_up_cosine: 0.85, projected_area_samples: 64, remesh_target_faces: 600, remesh_min_stature_m: 1.0}
-      units: "m except cosine/samples/faces"
-      source: semantic_twin/propagation/bystander_geometry.py:97-107,253-254,330,350-364
+      value: {clothing_rms_height_m: 0.002, minimum_separation_m: 0.45, exclusion_radius_m: 0.6, max_radius_m: 30.0, datum_tolerance_m: 2.5, min_up_cosine: 0.85, projected_area_samples: 64, remesh_target_faces: 600, remesh_min_stature_m: 1.0, remesh_backend: fast_simplification, remesh_backend_version: 0.1.13}
+      units: "m except cosine/samples/faces and the backend identity"
+      source: semantic_twin/propagation/bystander_geometry.py and pyproject.toml
       scope: bystander geometry
       status: default
       affects_published_results: true

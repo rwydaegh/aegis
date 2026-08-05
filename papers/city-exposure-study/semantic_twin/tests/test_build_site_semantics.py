@@ -1,14 +1,32 @@
 from __future__ import annotations
 
+import importlib
 import json
+import types
 
 import numpy as np
 import pytest
 
 import build_site_semantics
-from semantic_twin.scene.site_semantics import _modal_class, station_verdict, stations
+import semantic_twin.scene.site_semantics as site_semantics
+from semantic_twin.scene.site_semantics import _modal_class, _prior_semantics, station_verdict, stations
 
 GATE = {"max_residual_deg": 4.0, "max_sky_conflict": 0.5, "min_conflict_range_m": 2.0}
+
+
+def test_module_import_does_not_require_ignored_station_data(monkeypatch):
+    monkeypatch.setattr(site_semantics.paths, "panorama_stations", lambda *_args, **_kwargs: ())
+
+    imported = importlib.reload(site_semantics)
+
+    assert imported.SITES
+
+
+def test_material_prior_keeps_the_original_korenmarkt_source(tmp_path, monkeypatch):
+    site = types.SimpleNamespace(stations=lambda: (tmp_path / "korenmarkt",))
+    monkeypatch.setattr(site_semantics.Site, "get", lambda name: site)
+
+    assert _prior_semantics() == tmp_path / "korenmarkt" / "semantics" / "semantics.json"
 
 
 def pose(residual: float, sky_hit: float | None = 0.02, conflict_range: float = 30.0) -> dict:
