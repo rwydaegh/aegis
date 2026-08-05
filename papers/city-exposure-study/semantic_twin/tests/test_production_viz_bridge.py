@@ -30,6 +30,7 @@ from semantic_twin.viz.blender.payload import (
     available_spectrum_models,
     connection_render_layers,
     production_files,
+    production_scene_properties,
 )
 
 
@@ -199,6 +200,52 @@ def test_production_run_loads_exact_arrays_and_hashes_all_inputs(tmp_path: pathl
         "body dose",
         "walk exposure",
     ]
+    assert provenance["estimator_arms"]["exposure"]["transport"] == {
+        "kernel": "drjit",
+        "variant": "cuda_ad_rgb",
+    }
+
+
+def test_production_scene_properties_flatten_exact_run_and_transport_identity() -> None:
+    manifest = {
+        "production_exposure": {
+            "run_digest": "abc123",
+            "inputs": {
+                "locations_jsonl": {"sha256": "a" * 64},
+                "spectra_npz": {"sha256": "b" * 64},
+                "manifest_json": {"sha256": "c" * 64},
+            },
+        },
+        "estimator_arms": {
+            "exposure": {
+                "transport": {
+                    "kernel": "drjit",
+                    "variant": "cuda_ad_rgb",
+                    "floating_point": "float32",
+                    "rng": {"family": "counter", "algorithm": "tea32"},
+                    "versions": {"mitsuba": "3.8.0", "drjit": "1.3.1"},
+                }
+            }
+        },
+    }
+
+    assert production_scene_properties(manifest) == {
+        "production_run_digest": "abc123",
+        "production_locations_sha256": "a" * 64,
+        "production_spectra_sha256": "b" * 64,
+        "production_manifest_sha256": "c" * 64,
+        "transport_kernel": "drjit",
+        "transport_variant": "cuda_ad_rgb",
+        "transport_floating_point": "float32",
+        "transport_rng_family": "counter",
+        "transport_rng_algorithm": "tea32",
+        "mitsuba_version": "3.8.0",
+        "drjit_version": "1.3.1",
+    }
+
+
+def test_standalone_scene_properties_remain_empty() -> None:
+    assert production_scene_properties({"site": "korenmarkt"}) == {}
 
 
 @pytest.mark.parametrize(

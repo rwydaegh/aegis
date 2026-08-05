@@ -24,7 +24,7 @@ from typing import Any, Mapping, Sequence
 import bpy
 import numpy as np
 
-from .payload import builder_fingerprint, camera_rotation
+from .payload import builder_fingerprint, camera_rotation, production_scene_properties
 from .style import colour_ramp
 
 
@@ -50,6 +50,8 @@ def stamp_scene(
     current["ray_leg_counts"] = json.dumps(legs)
     current["next_event_counts"] = json.dumps(connections)
     current["evidence_layers"] = json.dumps(layers, default=str)
+    for name, value in production_scene_properties(manifest).items():
+        current[name] = value
     current["reading_note"] = (
         "Every object here is measured. Ray thickness is the cube root of throughput. "
         "The lobes are normalised by their own peak so their shapes compare and their "

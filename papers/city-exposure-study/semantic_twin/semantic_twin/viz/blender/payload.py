@@ -184,6 +184,67 @@ def builder_fingerprint(root: pathlib.Path | None = None) -> str:
     return digest.hexdigest()[:16]
 
 
+def production_scene_properties(manifest: Mapping[str, Any]) -> dict[str, str]:
+    """Flatten production identity into Blender-supported scene properties.
+
+    Blender custom properties cannot hold nested dictionaries. The production
+    visualization manifest keeps the complete nested record, while the scene
+    receives the fields needed to identify the exact exposure run without
+    opening a second file. Standalone visualization manifests have no
+    ``production_exposure`` block and therefore receive no production fields.
+    """
+    production = manifest.get("production_exposure")
+    if not isinstance(production, Mapping):
+        return {}
+
+    properties: dict[str, str] = {}
+    run_digest = production.get("run_digest")
+    if isinstance(run_digest, str):
+        properties["production_run_digest"] = run_digest
+
+    inputs = production.get("inputs")
+    if isinstance(inputs, Mapping):
+        for source, property_name in (
+            ("locations_jsonl", "production_locations_sha256"),
+            ("spectra_npz", "production_spectra_sha256"),
+            ("manifest_json", "production_manifest_sha256"),
+        ):
+            identity = inputs.get(source)
+            digest = identity.get("sha256") if isinstance(identity, Mapping) else None
+            if isinstance(digest, str):
+                properties[property_name] = digest
+
+    arms = manifest.get("estimator_arms")
+    exposure = arms.get("exposure") if isinstance(arms, Mapping) else None
+    transport = exposure.get("transport") if isinstance(exposure, Mapping) else None
+    if not isinstance(transport, Mapping):
+        return properties
+
+    for key, property_name in (
+        ("kernel", "transport_kernel"),
+        ("variant", "transport_variant"),
+        ("floating_point", "transport_floating_point"),
+    ):
+        value = transport.get(key)
+        if isinstance(value, str):
+            properties[property_name] = value
+
+    rng = transport.get("rng")
+    if isinstance(rng, Mapping):
+        for key, property_name in (("family", "transport_rng_family"), ("algorithm", "transport_rng_algorithm")):
+            value = rng.get(key)
+            if isinstance(value, str):
+                properties[property_name] = value
+
+    versions = transport.get("versions")
+    if isinstance(versions, Mapping):
+        for key, property_name in (("mitsuba", "mitsuba_version"), ("drjit", "drjit_version")):
+            value = versions.get(key)
+            if isinstance(value, str):
+                properties[property_name] = value
+    return properties
+
+
 def has(payload: Any, prefix: str) -> bool:
     """Does the payload carry any array whose name starts with this?
 

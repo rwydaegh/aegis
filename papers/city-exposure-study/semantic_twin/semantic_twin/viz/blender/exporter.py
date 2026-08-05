@@ -689,6 +689,8 @@ def _body_from_row(row: dict[str, Any], model: str) -> dict[str, float]:
 
 def production_provenance(data: ProductionData, run: RunConfig) -> dict[str, Any]:
     """The exact source and estimator boundary stamped into a production blend."""
+    transport = dict(data.manifest["transport"])
+    transport["variant"] = run.variant
     return {
         "production_exposure": {
             "run_digest": run.digest(),
@@ -704,7 +706,7 @@ def production_provenance(data: ProductionData, run: RunConfig) -> dict[str, Any
             "exposure": {
                 "label": "GPU escape transport and rooftop body exposure",
                 "estimator": "escape",
-                "transport": data.manifest["transport"],
+                "transport": transport,
                 "produces": ["walk susceptibility", "rooftop rho", "body exposure"],
             },
             "source_evidence": {
