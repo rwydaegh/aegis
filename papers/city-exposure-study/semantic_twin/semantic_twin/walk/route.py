@@ -33,7 +33,7 @@ from .links import (
     link_graph_from_screening,
     link_graph_from_sequences,
 )
-from .model import PANORAMA_LINKS, Walk
+from .model import CAMERA_REGISTERED, PANORAMA_LINKS, REGISTERED_ROAD_V1, Walk
 from .ordering import order_along_links
 
 #: Pedestrian head height above the ground under the camera. The camera itself
@@ -97,6 +97,36 @@ class PanoramaRoute:
         if len(self.walk.points) < 2:
             return 0.0
         return float(np.linalg.norm(self.walk.points[-1, :2] - self.walk.points[0, :2]))
+
+
+def register_road_leg(raw: np.ndarray, start_xy: np.ndarray, end_xy: np.ndarray) -> np.ndarray:
+    """Move a provider road leg into the registered camera frame.
+
+    Registration gives an exact position at each camera but no transform for
+    the frames between them. The provider road supplies that missing shape. At
+    each end, measure the displacement from the provider position to the
+    registered camera, then interpolate that displacement by distance travelled
+    along the raw leg. This keeps the provider's bends while making both ends
+    agree exactly with the registered cameras.
+    """
+    line = np.asarray(raw, dtype=float)[:, :2].copy()
+    if line.shape[0] < 2:
+        raise ValueError("a road leg needs at least two points")
+    start = np.asarray(start_xy, dtype=float)[:2]
+    end = np.asarray(end_xy, dtype=float)[:2]
+    step = np.linalg.norm(np.diff(line, axis=0), axis=1)
+    travelled = np.concatenate([[0.0], np.cumsum(step)])
+    if travelled[-1] > 0.0:
+        fraction = travelled / travelled[-1]
+    else:
+        fraction = np.linspace(0.0, 1.0, line.shape[0])
+    start_shift = start - line[0]
+    end_shift = end - line[-1]
+    shift = start_shift[None] + fraction[:, None] * (end_shift - start_shift)[None]
+    corrected = line + shift
+    corrected[0] = start
+    corrected[-1] = end
+    return corrected
 
 
 def _admit(
@@ -257,7 +287,24 @@ def build_panorama_route(
     straight = np.zeros(len(kept))
     if len(kept) > 1:
         straight[1:] = np.linalg.norm(np.diff(xy, axis=0), axis=1)
-    road = np.asarray(ordering["road_m"], dtype=float)
+    raw_road = np.asarray(ordering["road_m"], dtype=float)
+    raw_polyline = tuple(
+        np.repeat(np.asarray(graph.position[road_nodes[0]], dtype=float)[None, :2], 2, axis=0)
+        if len(road_nodes) == 1
+        else np.array([graph.position[n] for n in road_nodes])
+        for road_nodes in ordering["roads"][: max(len(kept) - 1, 0)]
+    )
+    polyline = tuple(register_road_leg(line, xy[leg], xy[leg + 1]) for leg, line in enumerate(raw_polyline))
+    endpoint_shift = [
+        {
+            "start_xy_m": [float(value) for value in xy[leg] - line[0]],
+            "end_xy_m": [float(value) for value in xy[leg + 1] - line[-1]],
+        }
+        for leg, line in enumerate(raw_polyline)
+    ]
+    road = np.zeros(len(kept), dtype=float)
+    if polyline:
+        road[1:] = [float(np.linalg.norm(np.diff(line, axis=0), axis=1).sum()) for line in polyline]
     off_datum = (
         [kept[i]["name"] for i in np.flatnonzero(np.abs(ground - ground_datum_m) > datum_tolerance_m)]
         if ground_datum_m is not None
@@ -285,9 +332,6 @@ def build_panorama_route(
         for i, record in enumerate(kept)
     )
 
-    polyline = tuple(
-        np.array([graph.position[n] for n in road_nodes]) for road_nodes in ordering["roads"] if len(road_nodes) > 1
-    )
     walk = Walk(
         points=heads,
         ground_z_m=ground,
@@ -301,6 +345,12 @@ def build_panorama_route(
             "stations": [r.name for r in route_stations],
             "ordering": ordering["method"],
             "road_length_m": float(np.sum(road)),
+            "raw_link_graph_length_m": float(np.sum(raw_road)),
+            "road_frame_rule": (
+                "provider road shape with endpoint displacement interpolated by raw distance between registered cameras"
+            ),
+            "route_geometry": REGISTERED_ROAD_V1,
+            "road_registration_endpoint_shift_m": endpoint_shift,
             "straight_length_m": float(np.sum(straight)),
             "road_step_m": [float(v) for v in road],
             "fragment": fragment,
@@ -316,6 +366,7 @@ def build_panorama_route(
             "min_sky_fraction": min_sky_fraction,
             "clearance_m": [float(v) for v in free],
             "sky_fraction": [float(v) for v in sky],
+            "point_kind": [CAMERA_REGISTERED] * len(route_stations),
             "link_graph": graph.provenance,
             "seed": seed,
         },

@@ -32,9 +32,9 @@ class LinkGraph:
     ``position`` is in the scene ENU frame, x east and y north, and holds the
     provider's published position rather than the registered one. The two are
     different quantities and the difference is the point of the registration:
-    at Brussels the fit moves a camera 0.65 to 5.63 m. The graph is used for
-    topology and for road distance only, and every standpoint the route builder
-    emits comes from the registered pose.
+    at Brussels the fit moves a camera 0.65 to 5.63 m. The graph supplies the
+    route topology and road shape. The route builder moves each road leg into
+    the registered camera frame before it adds standpoints along that leg.
     """
 
     position: dict[str, np.ndarray]

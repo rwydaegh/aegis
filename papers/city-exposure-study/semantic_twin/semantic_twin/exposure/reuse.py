@@ -13,6 +13,7 @@ from typing import Any
 import numpy as np
 
 from semantic_twin.runconfig import MATERIALS, RunConfig
+from semantic_twin.walk.model import CAMERA_REGISTERED, REGISTERED_ROAD_V1, STRIDE_INTERPOLATED
 
 
 _COMMON_ROW_KEYS = frozenset(
@@ -74,7 +75,8 @@ def complete_output(
         if expected != _intended_locations(manifest, config):
             raise ValueError("locations_traced does not cover the requested walk")
         required_keys = _required_row_keys(config.models)
-        row_indices = _read_row_indices(rows_path, required_keys)
+        rows = _read_rows(rows_path, required_keys)
+        row_indices = [row["index"] for row in rows]
         spectrum_indices, rho, local_grid, solid_angle = _read_spectra(spectra_path)
     except (EOFError, KeyError, OSError, TypeError, ValueError, zipfile.BadZipFile):
         return False
@@ -82,6 +84,8 @@ def complete_output(
         len(row_indices) == expected,
         len(set(row_indices)) == expected,
         all(left < right for left, right in zip(row_indices, row_indices[1:], strict=False)),
+        _indices_fit_walk(manifest, row_indices),
+        _valid_route_rows(manifest, config, rows),
         spectrum_indices.ndim == 1,
         np.issubdtype(spectrum_indices.dtype, np.integer),
         spectrum_indices.tolist() == row_indices,
@@ -120,7 +124,7 @@ def _required_row_keys(models: tuple[str, ...]) -> frozenset[str]:
     return _COMMON_ROW_KEYS | model_keys
 
 
-def _read_row_indices(rows_path: pathlib.Path, required_keys: frozenset[str]) -> list[int]:
+def _read_rows(rows_path: pathlib.Path, required_keys: frozenset[str]) -> list[dict[str, Any]]:
     text = rows_path.read_text()
     if text and not text.endswith("\n"):
         raise ValueError("the final JSON row is incomplete")
@@ -133,7 +137,29 @@ def _read_row_indices(rows_path: pathlib.Path, required_keys: frozenset[str]) ->
     indices = [row["index"] for row in rows]
     if any(type(index) is not int or index < 0 for index in indices):
         raise ValueError("row indices must be nonnegative integers")
-    return indices
+    return rows
+
+
+def _indices_fit_walk(manifest: dict[str, Any], indices: list[int]) -> bool:
+    walk = manifest.get("walk")
+    candidates = walk.get("candidates_after_clearance") if isinstance(walk, dict) else None
+    return candidates is None or all(index < candidates for index in indices)
+
+
+def _valid_route_rows(manifest: dict[str, Any], config: RunConfig, rows: list[dict[str, Any]]) -> bool:
+    if config.walk != "route":
+        return True
+    walk = manifest.get("walk")
+    if not isinstance(walk, dict) or walk.get("route_geometry") != REGISTERED_ROAD_V1:
+        return False
+    candidates = walk.get("candidates_after_clearance")
+    point_kind = walk.get("point_kind")
+    allowed = {CAMERA_REGISTERED, STRIDE_INTERPOLATED}
+    if type(candidates) is not int or not isinstance(point_kind, list) or len(point_kind) != candidates:
+        return False
+    if any(kind not in allowed for kind in point_kind):
+        return False
+    return all(row["index"] < candidates and row.get("point_kind") == point_kind[row["index"]] for row in rows)
 
 
 def _read_spectra(

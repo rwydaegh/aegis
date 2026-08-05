@@ -23,7 +23,13 @@ from semantic_twin.walk.links import (
     link_graph_from_sequences,
 )
 from semantic_twin.walk.ordering import EXACT_ORDER_LIMIT, _held_karp, _nearest_neighbour_two_opt, order_along_links
-from semantic_twin.walk.route import HEAD_HEIGHT_M, PanoramaRoute, build_panorama_route, panorama_walk
+from semantic_twin.walk.route import (
+    HEAD_HEIGHT_M,
+    PanoramaRoute,
+    build_panorama_route,
+    panorama_walk,
+    register_road_leg,
+)
 from semantic_twin.walk.site import densify
 from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.ground import ground_height
@@ -380,6 +386,51 @@ def test_the_two_probes_agree_where_nothing_is_overhead():
 
 
 # --- the route ---------------------------------------------------------------
+
+
+def test_registered_road_leg_matches_both_cameras_and_keeps_the_provider_bend():
+    raw = np.array([[0.0, 0.0], [3.0, 0.0], [3.0, 4.0]])
+    corrected = register_road_leg(raw, np.array([10.0, 2.0]), np.array([17.0, 9.0]))
+
+    assert corrected[0] == pytest.approx([10.0, 2.0])
+    assert corrected[-1] == pytest.approx([17.0, 9.0])
+    assert corrected[1] == pytest.approx([3.0 + 10.0 + 12.0 / 7.0, 2.0 + 9.0 / 7.0])
+
+
+def test_route_road_uses_registered_endpoints_instead_of_raw_graph_endpoints():
+    graph = LinkGraph(
+        position={"a": np.array([0.0, 0.0]), "bend": np.array([5.0, 2.0]), "b": np.array([10.0, 0.0])},
+        neighbours={"a": ("bend",), "bend": ("a", "b"), "b": ("bend",)},
+        provenance={},
+    )
+    cameras = [station("a", "a", (100.0, 50.0)), station("b", "b", (110.0, 50.0))]
+    route = build_panorama_route(Boxes(), cameras, graph, clearance_samples=16)
+
+    assert route.road_polyline[0][0] == pytest.approx(cameras[0]["camera_enu_m"][:2])
+    assert route.road_polyline[0][-1] == pytest.approx(cameras[1]["camera_enu_m"][:2])
+    assert route.road_polyline[0][1] == pytest.approx([105.0, 52.0])
+    assert route.provenance["raw_link_graph_length_m"] == pytest.approx(2.0 * np.hypot(5.0, 2.0))
+    assert route.provenance["point_kind"] == ["camera_registered", "camera_registered"]
+
+
+def test_two_registered_cameras_on_one_provider_node_keep_their_own_leg():
+    graph = LinkGraph(
+        position={"a": np.array([0.0, 0.0]), "b": np.array([10.0, 0.0])},
+        neighbours={"a": ("b",), "b": ("a",)},
+        provenance={},
+    )
+    cameras = [
+        station("a1", "a", (100.0, 0.0)),
+        station("a2", "a", (101.0, 0.0)),
+        station("b", "b", (110.0, 0.0)),
+    ]
+    route = build_panorama_route(Boxes(), cameras, graph, clearance_samples=16)
+
+    assert len(route.road_polyline) == 2
+    assert route.road_m == pytest.approx([0.0, 1.0, 9.0])
+    for leg, line in enumerate(route.road_polyline):
+        assert line[0] == pytest.approx(route.walk.points[leg, :2])
+        assert line[-1] == pytest.approx(route.walk.points[leg + 1, :2])
 
 
 def open_street_case():

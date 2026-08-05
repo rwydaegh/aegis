@@ -340,6 +340,39 @@ def test_a_run_already_on_disk_at_the_same_settings_is_not_retraced(ledger):
     assert run_exposure.reusable(replay_config())
 
 
+def test_a_legacy_route_without_registered_point_provenance_is_not_reused(ledger):
+    config = replay_config().replace(walk="route", locations=3)
+    complete_identified_run(run_exposure.OUTPUT, config)
+
+    assert not run_exposure.reusable(config)
+
+
+def test_a_registered_route_reuses_only_rows_with_the_aligned_point_kind(ledger):
+    config = replay_config().replace(walk="route", locations=3)
+    complete_identified_run(run_exposure.OUTPUT, config)
+    stem = run_exposure.OUTPUT / "korenmarkt_walk_15ghz"
+    manifest_path = stem.with_name(f"{stem.name}_manifest.json")
+    document = json.loads(manifest_path.read_text())
+    document["walk"].update(
+        {
+            "route_geometry": "registered_road_v1",
+            "point_kind": ["camera_registered", "stride_interpolated", "camera_registered", "stride_interpolated"]
+            + ["camera_registered"] * 19,
+        }
+    )
+    manifest_path.write_text(json.dumps(document))
+    rows_path = stem.with_name(f"{stem.name}_locations.jsonl")
+    rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+    for row in rows:
+        row["point_kind"] = document["walk"]["point_kind"][row["index"]]
+    rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+
+    assert run_exposure.reusable(config)
+    rows[1]["point_kind"] = "camera_registered"
+    rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    assert not run_exposure.reusable(config)
+
+
 def complete_identified_run(output, recorded: RunConfig, *, path_config: RunConfig | None = None):
     path_config = path_config or recorded
     stem = f"{path_config.tag}_{path_config.frequency_ghz:g}ghz"

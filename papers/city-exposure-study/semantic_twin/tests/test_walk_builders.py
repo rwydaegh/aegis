@@ -250,6 +250,37 @@ def test_densified_route_is_returned_in_path_order(monkeypatch: pytest.MonkeyPat
     assert provenance["standpoint_ordering"] == "increasing distance travelled along the selected path"
 
 
+def test_densified_route_stays_in_the_registered_frame_and_labels_every_point(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    graph = straight_graph(3, step=10.0)
+    cameras = [station(f"pano_{i}", f"n{i}", (100.0 + float(i) * 10.0, 0.0)) for i in range(3)]
+    monkeypatch.setattr(site_module, "load_admitted_stations", lambda site, root=None: cameras)
+    monkeypatch.setattr(site_module, "load_link_graph", lambda site, root=None, bridge_m=0.0: graph)
+
+    walk, provenance = site_module.site_walk(
+        open_square(),
+        "nowhere",
+        stride_m=6.0,
+        path="links",
+        clearance_samples=16,
+    )
+
+    assert walk.points[:, 0] == pytest.approx([100.0, 106.0, 110.0, 112.0, 118.0, 120.0])
+    assert walk.step_m.max() <= 6.0 + 1.0e-12
+    assert np.all(np.diff(walk.points[:, 0]) > 0.0)
+    assert not np.isin(walk.points[:, 0], [0.0, 10.0, 20.0]).any()
+    assert provenance["point_kind"] == [
+        "camera_registered",
+        "stride_interpolated",
+        "camera_registered",
+        "stride_interpolated",
+        "stride_interpolated",
+        "camera_registered",
+    ]
+    assert walk.provenance["point_kind"] == provenance["point_kind"]
+
+
 def test_the_grid_ordering_is_fixed_by_the_geometry_and_not_by_the_seed() -> None:
     """Standpoint selection order is what the golden lock is most sensitive to.
 

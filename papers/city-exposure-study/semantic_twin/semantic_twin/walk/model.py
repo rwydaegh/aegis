@@ -42,6 +42,13 @@ NEAREST_OF = "nearest_of"
 #: A walk built before the identity existed, or assembled by hand in a test.
 UNRECORDED = "unrecorded"
 
+#: Versioned identity for link roads corrected into the registered camera
+#: frame. Production reuse checks this before accepting a stored route.
+REGISTERED_ROAD_V1 = "registered_road_v1"
+
+CAMERA_REGISTERED = "camera_registered"
+STRIDE_INTERPOLATED = "stride_interpolated"
+
 #: One sentence per kind, so a report can print the rule rather than the label.
 KIND_RULE = {
     GRID: "a three metre grid over walkable ground, chained nearest neighbour",

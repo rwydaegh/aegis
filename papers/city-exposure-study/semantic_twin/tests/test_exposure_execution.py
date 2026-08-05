@@ -311,7 +311,7 @@ def test_route_walk_failure_is_not_replaced_by_the_grid():
 
 
 @pytest.mark.slow
-def test_korenmarkt_route_pilot_is_the_actual_fourteen_point_capture_walk():
+def test_korenmarkt_route_pilot_is_the_registered_capture_walk():
     from semantic_twin.exposure import study
 
     run = escape_config(
@@ -332,29 +332,46 @@ def test_korenmarkt_route_pilot_is_the_actual_fourteen_point_capture_walk():
     walk = _build_walk(run, LegacyReplay(), scene, environment)
     picks = environment.stratified_subset(walk, run.locations)
 
-    assert len(walk) == 14
-    assert picks.tolist() == list(range(14))
+    assert len(walk) == 13
+    assert picks.tolist() == list(range(13))
     assert walk.provenance["path"] == "links"
     assert walk.provenance["stations"] == 5
-    assert walk.provenance["added_along_the_road"] == 9
-    assert walk.provenance["road_length_m"] == pytest.approx(49.13658180700937)
+    assert walk.provenance["added_along_the_road"] == 8
+    assert walk.provenance["road_length_m"] == pytest.approx(49.20198618693214)
+    assert walk.provenance["raw_link_graph_length_m"] == pytest.approx(49.13658180700937)
     assert walk.provenance["standpoint_ordering"] == "increasing distance travelled along the selected path"
     assert walk.step_m.max() == pytest.approx(6.0)
-    assert _walk_provenance(run, walk)["candidates_after_clearance"] == 14
+    assert _walk_provenance(run, walk)["candidates_after_clearance"] == 13
+    assert walk.provenance["point_kind"] == [
+        "camera_registered",
+        "stride_interpolated",
+        "camera_registered",
+        "stride_interpolated",
+        "stride_interpolated",
+        "stride_interpolated",
+        "stride_interpolated",
+        "camera_registered",
+        "stride_interpolated",
+        "camera_registered",
+        "stride_interpolated",
+        "stride_interpolated",
+        "camera_registered",
+    ]
+    assert len(np.unique(np.round(walk.points[:, :2], 6), axis=0)) == len(walk)
+    assert not np.any(np.all(np.isclose(walk.points[:, :2], [-10.368615, -18.738698]), axis=1))
     assert np.round(walk.points[:, :2], 6).tolist() == [
-        [-10.368615, -18.738698],
         [-6.423196, -14.907749],
-        [-9.047949, -12.885849],
-        [-7.770581, -7.024573],
+        [-5.47615, -8.982961],
         [-4.767796, -4.551447],
-        [-6.799777, -1.103633],
-        [-5.743489, 4.801935],
-        [-4.590528, 10.690116],
+        [-4.563154, -3.053128],
+        [-3.751207, 2.89168],
+        [-2.832309, 8.820206],
+        [-1.838444, 14.73732],
         [-1.723791, 15.419926],
-        [-3.416997, 16.574222],
-        [-2.160403, 22.438584],
+        [-1.084884, 20.689165],
         [-0.50841, 25.443502],
-        [-0.533181, 28.213716],
+        [-0.059753, 26.568154],
+        [2.163448, 32.141069],
         [2.608824, 33.257496],
     ]
 
@@ -601,7 +618,11 @@ end_header
         def couple(self, *_args):
             return SimpleNamespace(as_dict=lambda: {"peak_sab_w_m2": 0.1})
 
-    walk = SimpleNamespace(points=np.array([[0.0, 0.0, 1.0]]), ground_z_m=np.array([0.0]))
+    walk = SimpleNamespace(
+        points=np.array([[0.0, 0.0, 1.0]]),
+        ground_z_m=np.array([0.0]),
+        provenance={"point_kind": ["camera_registered"]},
+    )
     environment = SimpleNamespace(
         models={"rooftop": MODELS["rooftop"]},
         trace_standpoints=trace_standpoints,
@@ -624,6 +645,7 @@ end_header
 
     row = json.loads(files.rows.read_text())
     assert row["index"] == 0
+    assert row["point_kind"] == "camera_registered"
     assert row["chi_rooftop"] > 0.0
     assert row["rooftop_peak_sab_w_m2"] == 0.1
     saved = np.load(files.spectra)

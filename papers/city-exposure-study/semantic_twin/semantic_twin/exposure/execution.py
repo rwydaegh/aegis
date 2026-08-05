@@ -524,6 +524,9 @@ def _result_row(
         "ground_z_m": float(walk.ground_z_m[index]),
         "seconds": result.seconds,
     }
+    point_kind = getattr(walk, "provenance", {}).get("point_kind")
+    if point_kind is not None:
+        row["point_kind"] = point_kind[index]
     row.update(result.scalars())
     for name in models:
         exposure = coupler.couple(

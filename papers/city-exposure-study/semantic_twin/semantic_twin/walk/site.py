@@ -37,7 +37,7 @@ from .. import paths
 from ..acquire.routes import cached_walking_route, polyline_enu, site_anchor
 from ..scene.enu import EnuFrame
 from .ground import ground_under_camera
-from .model import PANORAMA_LINKS, STREET_ROUTE, Walk
+from .model import CAMERA_REGISTERED, PANORAMA_LINKS, STREET_ROUTE, STRIDE_INTERPOLATED, Walk
 from .route import HEAD_HEIGHT_M, PanoramaRoute, build_panorama_route, load_admitted_stations, load_link_graph
 
 #: What ``path`` may be, and which walk kind each one produces. ``closest``
@@ -230,11 +230,16 @@ def _keep_near_the_street(
             f"no camera lies within {within:.0f} m of the walking path, "
             f"nearest is {gap_to_path(walk.points, line).min():.0f} m off"
         )
+    point_kind = walk.provenance.get("point_kind")
+    kept_kind = [kind for kind, keep in zip(point_kind, on, strict=True) if keep] if point_kind is not None else None
+    walk_provenance = {**walk.provenance, "kept_within_m": within}
+    if kept_kind is not None:
+        walk_provenance["point_kind"] = kept_kind
     return Walk(
         points=walk.points[on],
         ground_z_m=walk.ground_z_m[on],
         step_m=walk.step_m[on],
-        provenance={**walk.provenance, "kept_within_m": within},
+        provenance=walk_provenance,
         kind=STREET_ROUTE,
         site=site,
     )
@@ -248,7 +253,7 @@ def _stride_along(
     *,
     stride_m: float,
     head_height_m: float,
-) -> tuple[np.ndarray, np.ndarray] | None:
+) -> tuple[np.ndarray, np.ndarray, list[str]] | None:
     """Extra standpoints along the road, or ``None`` when there is no road.
 
     The camera height is interpolated along the road so the downward probe
@@ -269,12 +274,14 @@ def _stride_along(
     good = np.isfinite(z)
     points = np.concatenate([walk.points, np.column_stack([extra[good], z[good] + head_height_m])], axis=0)
     ground = np.concatenate([walk.ground_z_m, z[good]])
+    point_kind = [CAMERA_REGISTERED] * len(walk) + [STRIDE_INTERPOLATED] * int(good.sum())
     seen = np.round(points[:, :2], 2)
     _, unique = np.unique(seen, axis=0, return_index=True)
     unique = np.sort(unique)
     points, ground = points[unique], ground[unique]
+    point_kind = [point_kind[i] for i in unique]
     order = _order_along_path(points, legs)
-    return points[order], ground[order]
+    return points[order], ground[order], [point_kind[i] for i in order]
 
 
 def _order_along_path(points: np.ndarray, polylines: Sequence[np.ndarray]) -> np.ndarray:
@@ -383,6 +390,8 @@ def site_walk(
         walk = _keep_near_the_street(walk, provenance, street, site=site, stride_m=stride_m)
     else:
         legs = route.road_polyline
+    provenance["point_kind"] = list(walk.provenance.get("point_kind", [CAMERA_REGISTERED] * len(walk)))
+    walk = dataclasses.replace(walk, provenance=provenance)
     if stride_m <= 0.0:
         provenance["standpoints"] = len(walk)
         return walk, provenance
@@ -393,11 +402,12 @@ def site_walk(
         provenance["note"] = "no road between stations, so the stride added nothing"
         return walk, provenance
 
-    points, ground = strode
+    points, ground, point_kind = strode
     step = np.concatenate([[0.0], np.linalg.norm(np.diff(points[:, :2], axis=0), axis=1)])
     provenance["standpoints"] = int(points.shape[0])
     provenance["added_along_the_road"] = int(points.shape[0] - len(walk))
     provenance["standpoint_ordering"] = "increasing distance travelled along the selected path"
+    provenance["point_kind"] = point_kind
     return (
         Walk(
             points=points,
