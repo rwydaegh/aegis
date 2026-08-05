@@ -93,9 +93,28 @@ GROUNDED_TOLERANCE_M = 1.5
 #: nothing. Evidence layers overhang by about a tenth, so this sits above that.
 OUTSIDE_RATIO = 1.35
 
+#: Numerical slack around a Hair Curves radius when comparing evaluated and
+#: control-point bounds. The datablock stores float32 values, so exact equality
+#: would turn ordinary rounding at city-scale coordinates into a QA failure.
+CURVE_BOUND_TOLERANCE_M = 1.0e-3
+
 DUMP = r"""
 import bpy, json, sys, numpy as np
 out = {"objects": {}, "collections": {}, "scene": {}}
+depsgraph = bpy.context.evaluated_depsgraph_get()
+depsgraph.update()
+
+def world_points(values, matrix):
+    if not values.size:
+        return values.reshape(0, 3)
+    homogeneous = np.column_stack([values, np.ones(values.shape[0])])
+    return (homogeneous @ matrix.T)[:, :3]
+
+def bounds(values):
+    if not values.size or not np.isfinite(values).all():
+        return None, None
+    return values.min(axis=0).tolist(), values.max(axis=0).tolist()
+
 for key in bpy.context.scene.keys():
     value = bpy.context.scene[key]
     out["scene"][key] = value if isinstance(value, (str, int, float, bool)) else str(value)
@@ -103,10 +122,60 @@ for c in bpy.data.collections:
     out["collections"][c.name] = [o.name for o in c.objects]
 for o in bpy.data.objects:
     m = o.data
+    w = np.array(o.matrix_world, dtype=float)
+    if o.type == "CURVES":
+        positions = np.empty((len(m.points), 3), dtype=float)
+        m.attributes["position"].data.foreach_get("vector", positions.ravel())
+        positions = world_points(positions, w)
+        radii = np.empty(len(m.points), dtype=float)
+        radius_attribute = m.attributes.get("radius")
+        if radius_attribute is None:
+            radii.fill(np.nan)
+        else:
+            radius_attribute.data.foreach_get("value", radii)
+        curve_type_attribute = m.attributes.get("curve_type")
+        curve_types = None
+        if curve_type_attribute is not None:
+            values = np.empty(len(m.curves), dtype=np.int8)
+            curve_type_attribute.data.foreach_get("value", values)
+            curve_types = sorted(set(int(value) for value in values))
+        display_proxy_attribute = m.attributes.get("value_is_escaped_display_proxy")
+        support_positions = positions
+        display_proxy_points = 0
+        if display_proxy_attribute is not None:
+            display_proxy = np.empty(len(m.points), dtype=np.int32)
+            display_proxy_attribute.data.foreach_get("value", display_proxy)
+            display_proxy_points = int(np.count_nonzero(display_proxy))
+            support_positions = positions[display_proxy == 0]
+        evaluated = o.evaluated_get(depsgraph)
+        evaluated_bounds = world_points(np.asarray(evaluated.bound_box, dtype=float), np.array(evaluated.matrix_world))
+        control_min, control_max = bounds(positions)
+        support_min, support_max = bounds(support_positions)
+        evaluated_min, evaluated_max = bounds(evaluated_bounds)
+        linear_scale = float(np.linalg.norm(w[:3, :3], ord=2))
+        out["objects"][o.name] = {
+            "kind": "curves",
+            "hidden": bool(o.hide_render and o.hide_viewport),
+            "points": int(len(m.points)),
+            "curves": int(len(m.curves)),
+            "control_positions_finite": bool(np.isfinite(positions).all()),
+            "radii_finite": bool(np.isfinite(radii).all()),
+            "finite": bool(np.isfinite(positions).all() and np.isfinite(radii).all()),
+            "curve_types": curve_types,
+            "min": control_min,
+            "max": control_max,
+            "support_min": support_min,
+            "support_max": support_max,
+            "escaped_display_proxy_points": display_proxy_points,
+            "max_radius": float(radii.max() * linear_scale) if radii.size and np.isfinite(radii).all() else None,
+            "evaluated_bounds_finite": bool(np.isfinite(evaluated_bounds).all()),
+            "evaluated_min": evaluated_min,
+            "evaluated_max": evaluated_max,
+        }
+        continue
     if not hasattr(m, "vertices"):
         out["objects"][o.name] = {"kind": type(m).__name__}
         continue
-    w = np.array(o.matrix_world)
     v = np.array([list(vv.co) + [1.0] for vv in m.vertices], dtype=float)
     v = (v @ w.T)[:, :3] if v.size else v.reshape(0, 3)
     out["objects"][o.name] = {
@@ -200,7 +269,47 @@ def check_populated(summary: dict) -> list[str]:
 
 
 def check_finite(summary: dict) -> list[str]:
-    return [f"non finite vertices: {name}" for name, o in summary["objects"].items() if o.get("finite") is False]
+    problems = []
+    for name, obj in summary["objects"].items():
+        if obj.get("kind") == "curves":
+            if obj.get("control_positions_finite") is False:
+                problems.append(f"non finite curve control positions: {name}")
+            if obj.get("radii_finite") is False:
+                problems.append(f"non finite curve radii: {name}")
+            if obj.get("evaluated_bounds_finite") is False:
+                problems.append(f"non finite evaluated curve bounds: {name}")
+        elif obj.get("finite") is False:
+            problems.append(f"non finite vertices: {name}")
+    return problems
+
+
+def check_hair_curves(summary: dict) -> list[str]:
+    """Hair Curves are straight, finite tubes around their recorded points."""
+    problems = []
+    for name, obj in summary["objects"].items():
+        if obj.get("kind") != "curves":
+            continue
+        curve_types = obj.get("curve_types")
+        if curve_types != [1]:
+            rendered = "missing" if curve_types is None else repr(curve_types)
+            problems.append(f"non-POLY Hair Curves: {name} has curve types {rendered}")
+        control_min = obj.get("min")
+        control_max = obj.get("max")
+        evaluated_min = obj.get("evaluated_min")
+        evaluated_max = obj.get("evaluated_max")
+        radius = obj.get("max_radius")
+        if None in (control_min, control_max, evaluated_min, evaluated_max, radius):
+            continue
+        lower = np.asarray(control_min, dtype=float) - float(radius) - CURVE_BOUND_TOLERANCE_M
+        upper = np.asarray(control_max, dtype=float) + float(radius) + CURVE_BOUND_TOLERANCE_M
+        below = np.maximum(lower - np.asarray(evaluated_min, dtype=float), 0.0)
+        above = np.maximum(np.asarray(evaluated_max, dtype=float) - upper, 0.0)
+        overshoot = float(max(below.max(), above.max()))
+        if overshoot > 0.0:
+            problems.append(
+                f"evaluated Hair Curves overshoot: {name} reaches {overshoot:.3f} m beyond its controls and radius"
+            )
+    return problems
 
 
 def check_standpoints(summary: dict, payload: pathlib.Path) -> list[str]:
@@ -270,7 +379,11 @@ def check_inside(summary: dict, city: str) -> list[str]:
     for name, o in summary["objects"].items():
         if name == city or o.get("max") is None or o.get("hidden"):
             continue
-        out = max(abs(v) for v in (o["min"][0], o["max"][0], o["min"][1], o["max"][1]))
+        lower = o.get("support_min", o["min"])
+        upper = o.get("support_max", o["max"])
+        if lower is None or upper is None:
+            continue
+        out = max(abs(v) for v in (lower[0], upper[0], lower[1], upper[1]))
         if out > OUTSIDE_RATIO * reach:
             problems.append(
                 f"outside the drawn mesh: {name} reaches {out:.0f} m, "
@@ -306,6 +419,7 @@ def audit(site: str, scratch: pathlib.Path) -> list[str]:
     problems = check_stale(blend, summary, last_builder_commit())
     problems += check_populated(summary)
     problems += check_finite(summary)
+    problems += check_hair_curves(summary)
     problems += check_standpoints(summary, VIZ / f"{site}_payload.npz")
     problems += check_walk_builder(VIZ / f"{site}_manifest.json")
     if city:
