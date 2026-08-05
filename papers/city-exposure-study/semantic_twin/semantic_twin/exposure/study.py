@@ -29,6 +29,7 @@ from semantic_twin.exposure.reuse import reusable as reusable_output
 from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 from semantic_twin.materials import (
     bind_fishnet,
+    bind_surface_atlas,
     bind_walk_entities,
     bind_walk_materials,
     classify_faces,
@@ -69,6 +70,7 @@ from semantic_twin.transport.tracer import (
 )
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.walk import build_walk, ground_datum, measure_ground_datum, site_walk, stratified_subset
+from semantic_twin.vision.surface_atlas import load_surface_atlas
 
 #: ``ground_datum`` lives beside the walk it feeds, in ``semantic_twin.walk``.
 #: It is re-exported because the ablation and
@@ -142,6 +144,12 @@ def site_walk_semantics(site: str, crop_m: int) -> pathlib.Path | None:
     if site == "korenmarkt" and crop_m == 130 and WALK_SEMANTIC.exists():
         return WALK_SEMANTIC
     path = SITE_SEMANTICS / site / f"walk_semantic_{crop_m}m.npz"
+    return path if path.exists() else None
+
+
+def site_surface_atlas(site: str, crop_m: int) -> pathlib.Path | None:
+    """The default joint barycentric atlas for one exact support mesh."""
+    path = paths.joint_atlas(site, crop_m, resolution=8)
     return path if path.exists() else None
 
 
@@ -304,6 +312,9 @@ def _execution_environment() -> StudyEnvironment:
         body_coupler_type=BodyCoupler,
         describe_body=describe,
         report=report,
+        site_surface_atlas=site_surface_atlas,
+        load_surface_atlas=load_surface_atlas,
+        bind_surface_atlas=bind_surface_atlas,
     )
 
 

@@ -19,7 +19,9 @@ from __future__ import annotations
 import json
 import math
 import pathlib
-from typing import Any, Mapping, Sequence
+import colorsys
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import bpy
 import numpy as np
@@ -52,11 +54,27 @@ def stamp_scene(
     current["evidence_layers"] = json.dumps(layers, default=str)
     for name, value in production_scene_properties(manifest).items():
         current[name] = value
+    atlas = manifest.get("surface_atlas")
+    if isinstance(atlas, Mapping):
+        current["surface_atlas_provenance"] = json.dumps(atlas, default=str)
+        vocabularies = atlas.get("vocabularies", {})
+        if isinstance(vocabularies, Mapping):
+            current["surface_atlas_entity_vocabulary"] = json.dumps(vocabularies.get("entity", []))
+            current["surface_atlas_material_vocabulary"] = json.dumps(vocabularies.get("material", []))
+    outer = BUILT.get("outer_support")
+    outer_built = outer is not None and len(outer.objects) > 0
+    if outer_built:
+        support_note = "The exact traced support is split into a strong inner view and a muted outer annulus. "
+    elif (
+        outer is not None and outer.get("reason") == "the exact full support has no faces outside the close-view radius"
+    ):
+        support_note = "The exact full support fits inside the close-view radius, so its outer annulus is empty. "
+    else:
+        support_note = "This legacy payload contains only the close-view support. The trace radius remains recorded. "
     current["reading_note"] = (
         "Every object here is measured. Ray thickness is the cube root of throughput. "
         "The lobes are normalised by their own peak so their shapes compare and their "
-        "levels do not. The drawn mesh is smaller than the traced mesh, see "
-        "drawn_radius_m against traced_crop_radius_m. The evidence collections start "
+        f"levels do not. {support_note}The evidence collections start "
         "hidden and each of their objects carries several colour layers, listed on the "
         "object as colour_layers. PAYLOAD.md says what each one means."
     )
@@ -115,6 +133,9 @@ def use_gpu() -> str:
 #: that is the order they appear in.
 COLLECTION_NAMES: dict[str, str] = {
     "twin": "01 city mesh",
+    "outer_support": "01B outer traced support",
+    "support_extent": "01C support extent markers",
+    "fused_semantics": "02A all-camera fused semantic and material evidence",
     "semantics": "02 semantic surface",
     "evidence": "03 image coverage",
     "refused": "04 refused faces",
@@ -133,6 +154,45 @@ COLLECTION_NAMES: dict[str, str] = {
     "nee_animation": "17 NEE explanation animation",
 }
 
+COLLECTION_DESCRIPTIONS: dict[str, str] = {
+    "twin": (
+        "Exact inner propagation support with the whole-face geometric fallback classes. "
+        "On atlas runs, supported ray hits use the joint atlas at the hit position."
+    ),
+    "outer_support": (
+        "Exact outer part of the traced support mesh, from the close-view radius to the trace radius. "
+        "It is muted for display and carries whole-face geometric fallback classes."
+    ),
+    "support_extent": (
+        "Reference rings for the close-view radius and the full transport trace radius. "
+        "The rings mark XY limits and are not propagation surfaces."
+    ),
+    "fused_semantics": (
+        "Display audit of the joint semantic and material atlas used at supported ray-hit positions. "
+        "Its shown classes are posterior winners; transport retains the full compatible material mixture."
+    ),
+    "semantics": (
+        "Legacy single-panorama fishnet surfaces for audit. They preserve the older Vistas and SAM 3 views "
+        "and are separate from the joint hit-position atlas."
+    ),
+    "evidence": "Image coverage and support-surface admission decisions.",
+    "refused": "Image fragments refused by the support binding rules, grouped by exact refusal reason.",
+    "depth": "Depth evidence used to test image-to-support agreement.",
+    "panoramas": (
+        "Registered panorama capture poses and their registration uncertainty. "
+        "These are source-image locations, not exposure standpoints."
+    ),
+    "bodies": "Image-reconstructed transient bystanders. They are not the exposure phantom.",
+    "walk": (
+        "Exposure standpoints along the registered walk. Each point is a separate receiver position "
+        "on the shared city twin."
+    ),
+    "arrival": (
+        "Source-bearing angular power at the receiver. A lobe points along the reciprocal escape direction "
+        "+local_grid; physical wave travel and the body coupler use k_hat = -local_grid."
+    ),
+}
+
 #: Collections that start switched off. Most of them exist only when the payload
 #: carries them and are dropped when it does not. A quarter of a million points and
 #: eighteen SMPL-X bodies are worth having and are not worth waiting for on every
@@ -142,6 +202,9 @@ COLLECTION_NAMES: dict[str, str] = {
 EVIDENCE_COLLECTIONS: tuple[str, ...] = (
     "bounces",
     "nee",
+    "outer_support",
+    "support_extent",
+    "fused_semantics",
     "semantics",
     "evidence",
     "refused",
@@ -167,6 +230,12 @@ def collection(key: str) -> Any:
         return BUILT[key]
     made = bpy.data.collections.new(COLLECTION_NAMES.get(key, key))
     bpy.context.scene.collection.children.link(made)
+    if key in COLLECTION_DESCRIPTIONS:
+        made["description"] = COLLECTION_DESCRIPTIONS[key]
+    if key == "semantics":
+        made["legacy_display_layer"] = True
+    if key == "fused_semantics":
+        made["production_evidence_layer"] = True
     BUILT[key] = made
     return made
 
@@ -350,7 +419,7 @@ def show_layer(obj: Any, channel: str) -> None:
         if node is not None:
             node.attribute_name = channel
     colours = obj.data.color_attributes
-    if channel in colours.keys() and hasattr(colours, "active_color_index"):
+    if channel in colours and hasattr(colours, "active_color_index"):
         colours.active_color_index = colours.keys().index(channel)
 
 
@@ -423,6 +492,394 @@ def lit_material(name: str, channel: str) -> Any:
 
 def assign(obj: Any, material: Any) -> None:
     obj.data.materials.append(material)
+
+
+def _payload_has(payload: Any, key: str) -> bool:
+    keys = payload.files if hasattr(payload, "files") else payload
+    return key in keys
+
+
+def _compact_faces(vertices: np.ndarray, faces: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    used, remapped = np.unique(np.asarray(faces, dtype=np.int64), return_inverse=True)
+    return np.asarray(vertices)[used], remapped.reshape((-1, 3))
+
+
+def _stamp_inner_support(payload: Any, inner: Any, drawn_radius: float, traced_radius: float) -> int:
+    inner["support_role"] = "exact inner propagation support and whole-face geometric fallback"
+    inner["atlas_hit_rule"] = "supported observed hits use the joint atlas at the hit position"
+    inner["whole_face_class_role"] = "fallback for unsupported atlas texels, or production binding on non-atlas runs"
+    inner["display_radius_m"] = drawn_radius
+    inner["transport_radius_m"] = traced_radius
+    inner["muted_for_display"] = False
+    face_count = len(inner.data.polygons)
+    for key, attribute_name in (
+        ("mesh_face_class", "surface_class_id"),
+        ("mesh_face_source", "material_source_id"),
+        ("mesh_face_index", "full_support_face_index"),
+    ):
+        if not _payload_has(payload, key):
+            continue
+        values = np.asarray(payload[key])
+        if values.shape != (face_count,):
+            raise ValueError(f"{key} must have one value per inner support face")
+        attach_values(inner, attribute_name, values, "FACE")
+    for payload_key, attribute_name in (
+        ("mesh_face_index", "source_face_index"),
+        ("mesh_face_source", "source_mesh_id"),
+    ):
+        if not _payload_has(payload, payload_key):
+            continue
+        values = np.asarray(payload[payload_key])
+        if values.shape == (face_count,) and np.issubdtype(values.dtype, np.number):
+            attach_values(inner, attribute_name, values, "FACE")
+    return face_count
+
+
+def _build_support_extent_markers(
+    extent_collection: Any,
+    drawn_radius: float,
+    traced_radius: float,
+    ground_z_m: float,
+) -> None:
+    angles = np.linspace(0.0, 2.0 * math.pi, 257)
+    z = ground_z_m + 0.08
+    for name, radius, colour in (
+        ("close_view_boundary", drawn_radius, (0.20, 0.85, 1.00)),
+        ("trace_support_boundary", traced_radius, (1.00, 0.58, 0.16)),
+    ):
+        points = np.column_stack([radius * np.cos(angles), radius * np.sin(angles), np.full(angles.size, z)])
+        ring = build_curves(
+            name,
+            points,
+            np.array([angles.size], dtype=np.int32),
+            np.full(angles.size, 0.16, dtype=np.float64),
+            extent_collection,
+        )
+        assign(ring, emissive_material(f"{name}_material", None, colour, strength=2.2))
+        ring["radius_m"] = radius
+        ring["boundary_role"] = "XY reference marker only; not a propagation surface"
+    extent_collection["status"] = "built"
+    extent_collection["close_view_radius_m"] = drawn_radius
+    extent_collection["trace_radius_m"] = traced_radius
+
+
+def _full_support_arrays(payload: Any) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    required = ("support_full_vertices", "support_full_faces", "support_full_face_class")
+    if not all(_payload_has(payload, key) for key in required):
+        return None
+    vertices = np.asarray(payload["support_full_vertices"], dtype=np.float64)
+    faces = np.asarray(payload["support_full_faces"], dtype=np.int64)
+    face_class = np.asarray(payload["support_full_face_class"], dtype=np.int32)
+    if vertices.ndim != 2 or vertices.shape[1] != 3 or faces.ndim != 2 or faces.shape[1] != 3:
+        raise ValueError("full support vertices and faces must have shapes (V, 3) and (F, 3)")
+    if face_class.shape != (faces.shape[0],):
+        raise ValueError("support_full_face_class must have one value per full support face")
+    return vertices, faces, face_class
+
+
+def _support_face_radii(
+    payload: Any,
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    *,
+    inner_faces: int,
+    drawn_radius: float,
+    traced_radius: float,
+) -> np.ndarray:
+    radius = np.linalg.norm(vertices[faces].mean(axis=1)[:, :2], axis=1)
+    full_inner_faces = int(np.count_nonzero(radius <= drawn_radius))
+    if full_inner_faces != inner_faces:
+        raise ValueError(
+            "cropped inner support does not match the full support at the recorded display radius: "
+            f"{inner_faces} cropped faces against {full_inner_faces} full-mesh faces"
+        )
+    if np.any(radius > traced_radius + 1.0e-6):
+        raise ValueError("full support payload contains face centroids beyond the recorded trace radius")
+    if _payload_has(payload, "mesh_face_index"):
+        supplied_inner = np.asarray(payload["mesh_face_index"], dtype=np.int64)
+        expected_inner = np.flatnonzero(radius <= drawn_radius)
+        if not np.array_equal(supplied_inner, expected_inner):
+            raise ValueError("inner support face indices do not match the full support at the display radius")
+    return radius
+
+
+def _build_outer_support_object(
+    payload: Any,
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    face_class: np.ndarray,
+    outer_indices: np.ndarray,
+    outer_collection: Any,
+    *,
+    drawn_radius: float,
+    traced_radius: float,
+) -> None:
+    outer_vertices, outer_faces = _compact_faces(vertices, faces[outer_indices])
+    obj = build_mesh("support_mesh_outer", outer_vertices, outer_faces, outer_collection)
+    muted = np.tile(np.array([[0.115, 0.135, 0.165, 1.0]], dtype=np.float64), (outer_indices.size, 1))
+    attach_face_colour(obj, "muted_support", muted)
+    attach_values(obj, "full_support_face_index", outer_indices, "FACE")
+    attach_values(obj, "surface_class_id", face_class[outer_indices], "FACE")
+    for key, attribute_name in (
+        ("support_full_face_index", "source_face_index"),
+        ("support_full_face_source", "material_source_id"),
+    ):
+        if not _payload_has(payload, key):
+            continue
+        supplied = np.asarray(payload[key])
+        if supplied.shape == (faces.shape[0],) and np.issubdtype(supplied.dtype, np.number):
+            attach_values(obj, attribute_name, supplied[outer_indices], "FACE")
+    assign(obj, lit_material("outer_support_muted", "muted_support"))
+    obj["support_role"] = "exact traced support outside the close-view, with whole-face geometric fallback classes"
+    obj["inner_radius_exclusive_m"] = drawn_radius
+    obj["outer_radius_inclusive_m"] = traced_radius
+    obj["muted_for_display"] = True
+    obj["geometry_is_exact"] = True
+    outer_collection["status"] = "built"
+    outer_collection["faces"] = int(outer_indices.size)
+    outer_collection["display_note"] = "Muted only by colour. Geometry is unchanged."
+
+
+def build_support_display(
+    payload: Any,
+    manifest: Mapping[str, Any],
+    inner: Any,
+    outer_collection: Any,
+    extent_collection: Any,
+    *,
+    ground_z_m: float,
+) -> dict[str, int | float | str]:
+    """Add the exact outer trace support and mark both support radii.
+
+    ``inner`` is the existing close-view support and fallback display. The full arrays are
+    optional so older payloads still open. When they are present, this function
+    takes outer faces straight from that mesh. It never stretches or invents a
+    shell at the trace boundary.
+    """
+    drawn_radius = float(manifest["drawn_radius_m"])
+    traced_radius = float(manifest["traced_crop_radius_m"])
+    if not (0.0 < drawn_radius <= traced_radius):
+        raise ValueError("support radii must satisfy 0 < drawn radius <= traced radius")
+    inner_faces = _stamp_inner_support(payload, inner, drawn_radius, traced_radius)
+    _build_support_extent_markers(extent_collection, drawn_radius, traced_radius, ground_z_m)
+
+    full_support = _full_support_arrays(payload)
+    if full_support is None:
+        outer_collection["status"] = "empty"
+        outer_collection["reason"] = (
+            "legacy payload has no support_full_* arrays; rebuild the payload to display the exact outer support"
+        )
+        return {
+            "inner_faces": inner_faces,
+            "outer_faces": 0,
+            "status": "legacy payload has inner support only",
+            "drawn_radius_m": drawn_radius,
+            "traced_radius_m": traced_radius,
+        }
+
+    vertices, faces, face_class = full_support
+    radius = _support_face_radii(
+        payload,
+        vertices,
+        faces,
+        inner_faces=inner_faces,
+        drawn_radius=drawn_radius,
+        traced_radius=traced_radius,
+    )
+    outer_mask = radius > drawn_radius
+    outer_indices = np.flatnonzero(outer_mask)
+    if outer_indices.size == 0:
+        outer_collection["status"] = "empty"
+        outer_collection["reason"] = "the exact full support has no faces outside the close-view radius"
+        outer_collection["faces"] = 0
+        return {
+            "inner_faces": inner_faces,
+            "outer_faces": 0,
+            "full_faces": int(faces.shape[0]),
+            "status": "full traced support displayed; outer annulus is empty",
+            "drawn_radius_m": drawn_radius,
+            "traced_radius_m": traced_radius,
+        }
+    _build_outer_support_object(
+        payload,
+        vertices,
+        faces,
+        face_class,
+        outer_indices,
+        outer_collection,
+        drawn_radius=drawn_radius,
+        traced_radius=traced_radius,
+    )
+    return {
+        "inner_faces": inner_faces,
+        "outer_faces": int(outer_indices.size),
+        "full_faces": int(faces.shape[0]),
+        "status": "full traced support displayed",
+        "drawn_radius_m": drawn_radius,
+        "traced_radius_m": traced_radius,
+    }
+
+
+def _class_colours(
+    values: np.ndarray,
+    names: Sequence[str],
+    *,
+    phase: float = 0.0,
+) -> tuple[np.ndarray, list[dict[str, Any]]]:
+    """Give every vocabulary entry a unique colour and return its named legend."""
+    classes = np.asarray(values, dtype=np.int64)
+    labels = [str(name) for name in names]
+    if not labels:
+        raise ValueError("atlas class vocabulary cannot be empty")
+    if classes.size and (classes.min() < 0 or classes.max() >= len(labels)):
+        raise ValueError("atlas class winner leaves its declared vocabulary")
+
+    # The golden-ratio hue step keeps adjacent vocabulary IDs far apart. Three
+    # saturation/value bands prevent a 65-class entity axis from repeating hues.
+    palette = np.empty((len(labels), 3), dtype=np.float64)
+    for index in range(len(labels)):
+        hue = (phase + index * 0.6180339887498949) % 1.0
+        saturation = (0.70, 0.88, 0.58)[index % 3]
+        value = (0.96, 0.82, 0.72)[(index // 3) % 3]
+        palette[index] = colorsys.hsv_to_rgb(hue, saturation, value)
+    rgba = np.column_stack([palette[classes], np.ones(classes.size)])
+    present = set(int(value) for value in np.unique(classes))
+    legend = [
+        {"id": index, "name": name, "rgba": [*palette[index].tolist(), 1.0], "present": index in present}
+        for index, name in enumerate(labels)
+    ]
+    return rgba, legend
+
+
+def _atlas_vocabularies(
+    manifest: Mapping[str, Any],
+    entity: np.ndarray,
+    material: np.ndarray,
+) -> tuple[Mapping[str, Any], list[str], list[str]]:
+    atlas = manifest.get("surface_atlas", {})
+    atlas = atlas if isinstance(atlas, Mapping) else {}
+    vocabularies = atlas.get("vocabularies", {})
+    vocabularies = vocabularies if isinstance(vocabularies, Mapping) else {}
+    entity_names = [str(value) for value in vocabularies.get("entity", [])]
+    material_names = [str(value) for value in vocabularies.get("material", [])]
+    if not entity_names:
+        entity_names = [f"entity class {index}" for index in range(int(entity.max(initial=-1)) + 1)]
+    if not material_names:
+        material_names = [f"material class {index}" for index in range(int(material.max(initial=-1)) + 1)]
+    return atlas, entity_names, material_names
+
+
+def _atlas_scalar_columns(
+    payload: Any, face_count: int
+) -> tuple[dict[str, np.ndarray], dict[str, tuple[float, float]]]:
+    columns: dict[str, np.ndarray] = {}
+    ranges: dict[str, tuple[float, float]] = {}
+    for key, output_name in (
+        ("atlas_confidence", "confidence"),
+        ("atlas_camera_count", "camera_count"),
+        ("atlas_observation_count", "observation_count"),
+    ):
+        if not _payload_has(payload, key):
+            continue
+        values = np.asarray(payload[key])
+        if values.shape != (face_count,):
+            raise ValueError(f"{key} must have one value per atlas face")
+        columns[output_name] = values
+    if "confidence" in columns:
+        ranges["confidence"] = (0.0, 1.0)
+    return columns, ranges
+
+
+def _attach_atlas_probabilities(
+    obj: Any,
+    payload: Any,
+    *,
+    face_count: int,
+    entity_names: Sequence[str],
+    material_names: Sequence[str],
+) -> None:
+    for key, prefix, names in (
+        ("atlas_entity_probabilities", "entity_probability", entity_names),
+        ("atlas_material_probabilities", "material_probability", material_names),
+    ):
+        if not _payload_has(payload, key):
+            continue
+        probabilities = np.asarray(payload[key], dtype=np.float64)
+        if probabilities.ndim != 2 or probabilities.shape[0] != face_count:
+            raise ValueError(f"{key} must have shape (atlas faces, classes)")
+        if probabilities.shape[1] != len(names):
+            raise ValueError(f"{key} width must match the canonical atlas vocabulary")
+        attributes = []
+        attribute_names: dict[str, str] = {}
+        for channel, class_name in enumerate(names):
+            name = f"{prefix}_{channel:02d}"
+            attach_values(obj, name, probabilities[:, channel], "FACE")
+            attributes.append(name)
+            attribute_names[name] = class_name
+        obj[f"{prefix}_channels"] = int(probabilities.shape[1])
+        obj[f"{prefix}_attributes"] = attributes
+        obj[f"{prefix}_names"] = json.dumps(attribute_names)
+        obj[f"{prefix}_values_on_faces"] = True
+
+
+def build_fused_semantic_surface(payload: Any, manifest: Mapping[str, Any], into: Any) -> dict[str, int | str]:
+    """Build a display audit of the joint atlas used by hit-position transport."""
+    entity_key = "atlas_entity" if _payload_has(payload, "atlas_entity") else "atlas_entity_class"
+    material_key = "atlas_material" if _payload_has(payload, "atlas_material") else "atlas_material_class"
+    required = ("atlas_vertices", "atlas_faces", entity_key, material_key)
+    if not all(_payload_has(payload, key) for key in required):
+        into["status"] = "empty"
+        into["reason"] = "payload contains no all-camera fused atlas geometry"
+        return {"status": "omitted", "faces": 0}
+
+    vertices = np.asarray(payload["atlas_vertices"], dtype=np.float64)
+    faces = np.asarray(payload["atlas_faces"], dtype=np.int64)
+    entity = np.asarray(payload[entity_key], dtype=np.int32)
+    material = np.asarray(payload[material_key], dtype=np.int32)
+    if entity.shape != (faces.shape[0],) or material.shape != (faces.shape[0],):
+        raise ValueError("atlas entity and material class arrays must have one value per atlas face")
+    atlas_manifest, entity_names, material_names = _atlas_vocabularies(manifest, entity, material)
+    entity_rgba, entity_legend = _class_colours(entity, entity_names)
+    material_rgba, material_legend = _class_colours(material, material_names, phase=0.17)
+
+    obj = build_mesh("all_camera_fused_surface_atlas", vertices, faces, into)
+    attach_face_colour(obj, "entity_posterior_winner", entity_rgba)
+    attach_face_colour(obj, "material_posterior_winner", material_rgba)
+    attach_values(obj, "entity_class_id", entity, "FACE")
+    attach_values(obj, "material_class_id", material, "FACE")
+    scalar_columns, ranges = _atlas_scalar_columns(payload, faces.shape[0])
+    if scalar_columns:
+        scalar_layers(obj, scalar_columns, "FACE", ranges=ranges)
+    assign(obj, lit_material("all_camera_fused_atlas", "material_posterior_winner"))
+    layered(
+        obj,
+        ("material_posterior_winner", "entity_posterior_winner", *scalar_columns),
+        "material_posterior_winner",
+    )
+    obj["surface_role"] = "display audit of joint all-camera entity and material atlas"
+    obj["display_class_rule"] = "argmax posterior winner for colour only"
+    obj["transport_role"] = "full compatible material posterior is evaluated at supported ray-hit positions"
+    obj["atlas_drives_supported_hit_transport"] = True
+    obj["display_winner_changes_transport"] = False
+    obj["changes_transport"] = True
+    obj["is_transport_geometry"] = False
+    obj["whole_face_fallback_collection"] = COLLECTION_NAMES["twin"]
+    obj["entity_vocabulary"] = json.dumps(entity_names)
+    obj["material_vocabulary"] = json.dumps(material_names)
+    obj["entity_colour_legend"] = json.dumps(entity_legend)
+    obj["material_colour_legend"] = json.dumps(material_legend)
+    if atlas_manifest:
+        obj["canonical_surface_atlas_provenance"] = json.dumps(atlas_manifest, default=str)
+    _attach_atlas_probabilities(
+        obj,
+        payload,
+        face_count=faces.shape[0],
+        entity_names=entity_names,
+        material_names=material_names,
+    )
+    into["status"] = "built"
+    into["faces"] = int(faces.shape[0])
+    return {"status": "built", "faces": int(faces.shape[0])}
 
 
 # ---------------------------------------------------------------------------
@@ -588,6 +1045,33 @@ def build_walk_camera(twin: Any, walk_points: np.ndarray, into: Any, *, aspect: 
     return camera
 
 
+def build_full_support_camera(
+    hero: np.ndarray,
+    traced_radius_m: float,
+    into: Any,
+) -> Any:
+    """Add an overhead camera for the full trace support without changing close views."""
+    if not math.isfinite(traced_radius_m) or traced_radius_m <= 0.0:
+        raise ValueError("full support camera radius must be finite and positive")
+    centre = np.asarray(hero, dtype=np.float64).copy()
+    centre[:2] = 0.0
+    reach = max(1.45 * traced_radius_m, 90.0)
+    camera = add_camera(
+        "cam_full_support",
+        centre + np.array([0.0, -0.65 * reach, reach]),
+        centre,
+        into,
+        lens=42.0,
+    )
+    camera.data.type = "ORTHO"
+    camera.data.ortho_scale = 2.55 * traced_radius_m
+    camera["framing_subject"] = "full traced support and both exact XY extent markers"
+    camera["trace_radius_m"] = traced_radius_m
+    camera["orthographic_scale_m"] = camera.data.ortho_scale
+    camera["preserves_close_view_cameras"] = True
+    return camera
+
+
 def build_evidence_cameras(twin: Any, payload: Any, hero: np.ndarray, into: Any) -> None:
     """Three more vantages, aimed at the capture point rather than the standpoint.
 
@@ -693,6 +1177,23 @@ def build_lighting(hero: np.ndarray) -> None:
     sun.rotation_euler = (math.radians(48.0), 0.0, math.radians(-35.0))
 
 
+def _exclude_heavy_collection(view_layer: Any, key: str, group: Any) -> None:
+    if key not in EVIDENCE_COLLECTIONS:
+        return
+    layer = view_layer.layer_collection.children.get(group.name)
+    if layer is not None:
+        layer.exclude = True
+
+
+def _stamp_collection_status(group: Any) -> str:
+    state = "empty" if not group.objects else f"{len(group.objects)} objects"
+    if "status" not in group:
+        group["status"] = "empty" if not group.objects else "built"
+    if not group.objects and "reason" not in group:
+        group["reason"] = "the payload contains no objects for this optional layer"
+    return state
+
+
 def hide_heavy_collections() -> None:
     """Start the heavy layers switched off, and leave the empty ones in place.
 
@@ -710,10 +1211,7 @@ def hide_heavy_collections() -> None:
     view_layer = bpy.context.view_layer
     for key in COLLECTION_NAMES:
         group = collection(key)
-        if key in EVIDENCE_COLLECTIONS:
-            layer = view_layer.layer_collection.children.get(group.name)
-            if layer is not None:
-                layer.exclude = True
-        state = "empty" if not group.objects else f"{len(group.objects)} objects"
+        _exclude_heavy_collection(view_layer, key, group)
+        state = _stamp_collection_status(group)
         switched = "off" if key in EVIDENCE_COLLECTIONS else "on"
         print(f"[collection] {group.name}: {state}, {switched} by default", flush=True)

@@ -37,8 +37,11 @@ trained at, not a config accident, so it is recorded rather than overridden.
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import pathlib
+import re
+import subprocess
 import time
 from contextlib import nullcontext
 from dataclasses import dataclass, field
@@ -50,9 +53,19 @@ from PIL import Image
 from .vocabulary import ConceptCatalog
 
 MODEL = "facebook/sam3"
+CHECKPOINT_FILENAME = "sam3.pt"
 DEFAULT_RESOLUTION = 1008
 DEFAULT_THRESHOLD = 0.35
 DEFAULT_PROMPT_BATCH = 32
+PRODUCTION_CONCEPT_ID_COUNT = 61
+# Reviewed, immutable SAM 3 weights and source used by this study. Production
+# evidence accepts only this pair. Development runs may use another revision,
+# but their provenance records that it is outside the reviewed production pair.
+PRODUCTION_REVISION = "3c879f39826c281e95690f02c7821c4de09afae7"
+PRODUCTION_REPOSITORY_COMMIT = "96914d2425f90a64f45ca977c2b5165418099543"
+# SHA-256 of the parsed, canonically serialized semantic catalogue reviewed for
+# this study. JSON whitespace and object-key order do not affect this identity.
+PRODUCTION_CATALOGUE_SEMANTIC_SHA256 = "66d0dfefba87bde5081cfa82108ca60d47c79cf641df3ec44129ec20bb90453b"
 
 
 @dataclass(frozen=True)
@@ -86,6 +99,7 @@ def cache_key(
     threshold: float,
     view_size: int,
     catalog: ConceptCatalog,
+    model_revision: str | None = None,
 ) -> str:
     """Identity of everything that changes the prediction, as one short digest.
 
@@ -101,6 +115,7 @@ def cache_key(
     payload = json.dumps(
         {
             "model": model,
+            "model_revision": model_revision,
             "resolution": int(resolution),
             "threshold": round(float(threshold), 6),
             "view_size": int(view_size),
@@ -109,6 +124,204 @@ def cache_key(
         sort_keys=True,
     )
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+def _is_commit(value: str | None) -> bool:
+    return bool(value and re.fullmatch(r"[0-9a-fA-F]{40}", value.strip()))
+
+
+def _sha256_file(path: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def semantic_catalogue_identity(path: pathlib.Path, *, production: bool) -> dict[str, Any]:
+    """Return the semantic catalogue identity and enforce the production pin.
+
+    The byte digest remains useful for reproducing the exact file. Production
+    acceptance uses a canonical digest of the parsed JSON, so harmless
+    whitespace or object-key ordering changes do not invalidate the reviewed
+    semantics.
+    """
+    document = json.loads(path.read_text())
+    canonical = json.dumps(
+        document,
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    semantic_sha256 = hashlib.sha256(canonical).hexdigest()
+    matches_reviewed = semantic_sha256 == PRODUCTION_CATALOGUE_SEMANTIC_SHA256
+    identity = {
+        "catalogue_sha256": _sha256_file(path),
+        "catalogue_semantic_sha256": semantic_sha256,
+        "matches_reviewed_production_catalogue": matches_reviewed,
+        "required_production_catalogue_semantic_sha256": PRODUCTION_CATALOGUE_SEMANTIC_SHA256,
+        "production_mode": production,
+    }
+    if production and not matches_reviewed:
+        raise ValueError(
+            "production SAM 3 inference requires the reviewed semantic catalogue "
+            f"{PRODUCTION_CATALOGUE_SEMANTIC_SHA256}; received {semantic_sha256}"
+        )
+    return identity
+
+
+def _snapshot_commit(path: pathlib.Path) -> str | None:
+    """Read the resolved Hub commit from a standard Hugging Face cache path."""
+    parts = path.absolute().parts
+    try:
+        index = parts.index("snapshots")
+    except ValueError:
+        return None
+    candidate = parts[index + 1] if index + 1 < len(parts) else None
+    return candidate.lower() if _is_commit(candidate) else None
+
+
+def resolve_sam3_snapshot(
+    revision: str | None,
+    *,
+    production: bool,
+    downloader: Any | None = None,
+) -> tuple[pathlib.Path | None, dict[str, Any]]:
+    """Download and verify one immutable Hugging Face SAM 3 snapshot.
+
+    A branch or tag is never treated as a pin. Development runs may keep the
+    old mutable loader, but their manifest says that exact weights are
+    unresolved. Production runs require the reviewed Hub commit.
+    """
+    requested = revision.strip() if revision is not None else None
+    if production and (requested is None or requested.lower() != PRODUCTION_REVISION):
+        raise ValueError(
+            "production SAM 3 inference requires --sam-revision with the reviewed "
+            f"40-character Hub commit {PRODUCTION_REVISION}; received {requested!r}"
+        )
+    if not _is_commit(requested):
+        record = {
+            "status": "unresolved",
+            "repository": MODEL,
+            "requested_revision": requested,
+            "resolved_revision": None,
+            "checkpoint_filename": CHECKPOINT_FILENAME,
+            "checkpoint_sha256": None,
+            "matches_reviewed_production_snapshot": False,
+            "required_production_revision": PRODUCTION_REVISION,
+            "production_mode": production,
+            "note": "No immutable 40-character Hugging Face commit was supplied.",
+        }
+        return None, record
+
+    if downloader is None:
+        from huggingface_hub import hf_hub_download
+
+        downloader = hf_hub_download
+    checkpoint = pathlib.Path(downloader(repo_id=MODEL, filename=CHECKPOINT_FILENAME, revision=requested))
+    config = pathlib.Path(downloader(repo_id=MODEL, filename="config.json", revision=requested))
+    checkpoint_commit = _snapshot_commit(checkpoint)
+    config_commit = _snapshot_commit(config)
+    expected = requested.lower()
+    if checkpoint_commit != expected or config_commit != expected:
+        raise RuntimeError(
+            "Hugging Face returned files outside the requested SAM 3 snapshot: "
+            f"checkpoint={checkpoint_commit}, config={config_commit}, requested={expected}"
+        )
+    return checkpoint, {
+        "status": "resolved",
+        "repository": MODEL,
+        "requested_revision": requested,
+        "resolved_revision": expected,
+        "checkpoint_filename": CHECKPOINT_FILENAME,
+        "checkpoint_sha256": _sha256_file(checkpoint),
+        "config_sha256": _sha256_file(config),
+        "matches_reviewed_production_snapshot": expected == PRODUCTION_REVISION,
+        "required_production_revision": PRODUCTION_REVISION,
+        "production_mode": production,
+    }
+
+
+def _installed_repository_commit(module_file: pathlib.Path) -> str | None:
+    """Find the commit of the installed SAM 3 source tree when it is available."""
+    # The package directory and its direct parent cover an editable source
+    # checkout. Walking higher can reach an unrelated project repository when
+    # SAM 3 was copied into that project's virtual environment.
+    for folder in (module_file.parent, module_file.parent.parent):
+        if not (folder / ".git").exists():
+            continue
+        result = subprocess.run(
+            ["git", "-C", str(folder), "rev-parse", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        value = result.stdout.strip().lower()
+        if result.returncode == 0 and _is_commit(value):
+            return value
+    try:
+        direct_url = importlib.metadata.distribution("sam3").read_text("direct_url.json")
+    except importlib.metadata.PackageNotFoundError:
+        return None
+    if direct_url:
+        commit = json.loads(direct_url).get("vcs_info", {}).get("commit_id")
+        if _is_commit(commit):
+            return str(commit).lower()
+    return None
+
+
+def verify_sam3_repository(
+    expected_commit: str | None,
+    actual_commit: str | None,
+    *,
+    production: bool,
+) -> dict[str, Any]:
+    """Verify and describe the source commit used by the installed SAM 3 code."""
+    expected = expected_commit.strip().lower() if expected_commit is not None else None
+    actual = actual_commit.strip().lower() if actual_commit is not None else None
+    if production and expected != PRODUCTION_REPOSITORY_COMMIT:
+        raise ValueError(
+            "production SAM 3 inference requires --sam-repository-commit with the reviewed "
+            f"source commit {PRODUCTION_REPOSITORY_COMMIT}; received {expected!r}"
+        )
+    if production and actual != PRODUCTION_REPOSITORY_COMMIT:
+        raise RuntimeError(
+            "production SAM 3 inference requires the installed source at reviewed commit "
+            f"{PRODUCTION_REPOSITORY_COMMIT}; resolved {actual!r}"
+        )
+    if expected is not None and not _is_commit(expected):
+        return {
+            "status": "unresolved",
+            "expected_commit": expected_commit,
+            "resolved_commit": actual if _is_commit(actual) else None,
+            "matches_reviewed_production_source": actual == PRODUCTION_REPOSITORY_COMMIT,
+            "required_production_commit": PRODUCTION_REPOSITORY_COMMIT,
+            "production_mode": production,
+            "note": "The requested SAM 3 repository revision is mutable or malformed.",
+        }
+    if expected is not None and actual != expected:
+        raise RuntimeError(f"installed SAM 3 repository commit {actual!r} does not match requested {expected!r}")
+    if actual is None or not _is_commit(actual):
+        if production:
+            raise RuntimeError("production SAM 3 inference could not resolve the installed repository commit")
+        return {
+            "status": "unresolved",
+            "expected_commit": expected,
+            "resolved_commit": None,
+            "matches_reviewed_production_source": False,
+            "required_production_commit": PRODUCTION_REPOSITORY_COMMIT,
+            "production_mode": production,
+            "note": "The installed SAM 3 package has no verifiable Git commit metadata.",
+        }
+    return {
+        "status": "resolved",
+        "expected_commit": expected,
+        "resolved_commit": actual,
+        "matches_reviewed_production_source": actual == PRODUCTION_REPOSITORY_COMMIT,
+        "required_production_commit": PRODUCTION_REPOSITORY_COMMIT,
+        "production_mode": production,
+    }
 
 
 def save_prediction(path: pathlib.Path, prediction: ConceptPrediction, *, key: str) -> None:
@@ -198,6 +411,9 @@ class Sam3ConceptBackend:
         resolution: int = DEFAULT_RESOLUTION,
         threshold: float = DEFAULT_THRESHOLD,
         prompt_batch: int = DEFAULT_PROMPT_BATCH,
+        revision: str | None = None,
+        repository_commit: str | None = None,
+        production: bool = False,
     ) -> None:
         try:
             import torch
@@ -214,6 +430,10 @@ class Sam3ConceptBackend:
         if prompt_batch < 1:
             raise ValueError("prompt_batch must be at least one")
 
+        checkpoint_path, snapshot = resolve_sam3_snapshot(revision, production=production)
+        source_commit = _installed_repository_commit(pathlib.Path(__import__("sam3").__file__))
+        repository = verify_sam3_repository(repository_commit, source_commit, production=production)
+
         self.torch = torch
         self._find_stage = FindStage
         self.catalog = catalog
@@ -221,9 +441,14 @@ class Sam3ConceptBackend:
         self.resolution = int(resolution)
         self.threshold = float(threshold)
         self.prompt_batch = int(prompt_batch)
+        self.snapshot = snapshot
+        self.repository = repository
         self.kind_by_prompt = {concept.prompt: concept.kind for concept in catalog.concepts}
         with self._context():
-            self.model = build_sam3_image_model()
+            if checkpoint_path is None:
+                self.model = build_sam3_image_model()
+            else:
+                self.model = build_sam3_image_model(checkpoint_path=str(checkpoint_path), load_from_HF=False)
         self.processor = Sam3Processor(self.model, resolution=self.resolution, confidence_threshold=self.threshold)
         # Read back rather than echoed from the module constant, so the manifest
         # records what this install of SAM 3 would have used unprompted.
@@ -363,6 +588,11 @@ class Sam3ConceptBackend:
     def manifest(self) -> dict[str, Any]:
         return {
             "model": MODEL,
+            "revision": self.snapshot["resolved_revision"],
+            "checkpoint_sha256": self.snapshot["checkpoint_sha256"],
+            "repository_commit": self.repository["resolved_commit"],
+            "huggingface_snapshot": self.snapshot,
+            "sam3_repository": self.repository,
             "model_role": "open-vocabulary promptable concept segmentation for independent panorama views",
             "sam3_1_note": (
                 "SAM 3.1 Object Multiplex is a video tracker and is not applied to discontinuous perspective views."
@@ -392,10 +622,18 @@ class PromptedRunConfig:
     prompt_batch: int
     limit_views: int | None
     force: bool
+    sam_revision: str | None = None
+    sam_repository_commit: str | None = None
+    production: bool = False
 
 
 def run_prompted(config: PromptedRunConfig) -> None:
+    catalogue_identity = semantic_catalogue_identity(config.concepts, production=config.production)
     catalog = ConceptCatalog.load(config.concepts)
+    if config.production and len(catalog.id2label()) != PRODUCTION_CONCEPT_ID_COUNT:
+        raise ValueError(
+            f"production SAM 3 inference requires the fixed {PRODUCTION_CONCEPT_ID_COUNT}-ID concept vocabulary"
+        )
     config.out.mkdir(parents=True, exist_ok=True)
     image_paths = [path for path in sorted(config.views.glob("*.jpg")) if not path.stem.endswith("_key")]
     if config.limit_views is not None:
@@ -413,12 +651,16 @@ def run_prompted(config: PromptedRunConfig) -> None:
         threshold=config.threshold,
         view_size=view_size,
         catalog=catalog,
+        model_revision=config.sam_revision if _is_commit(config.sam_revision) else None,
     )
     backend = Sam3ConceptBackend(
         catalog,
         resolution=config.resolution,
         threshold=config.threshold,
         prompt_batch=config.prompt_batch,
+        revision=config.sam_revision,
+        repository_commit=config.sam_repository_commit,
+        production=config.production,
     )
     elapsed = 0.0
     for image_path in image_paths:
@@ -441,5 +683,8 @@ def run_prompted(config: PromptedRunConfig) -> None:
         "concepts": list(catalog.prompts),
         "views": len(image_paths),
         "inference_seconds": round(elapsed, 3),
+        "concept_id_count": len(catalog.id2label()),
+        "concept_catalogue_sha256": catalogue_identity["catalogue_sha256"],
+        "concept_catalogue_identity": catalogue_identity,
     }
     (config.out / "manifest.json").write_text(json.dumps(manifest, indent=2))

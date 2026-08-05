@@ -307,6 +307,18 @@ def test_a_connection_leaves_every_vertex_except_the_one_that_left_the_scene() -
     assert np.allclose(drawn["weight"], rim["weight"][drawn["azimuth_index"]])
 
 
+def test_empty_skyline_produces_an_empty_connection_layer() -> None:
+    rim = facade_tip_rim(NothingGeometry(), np.zeros(3), azimuths=90, elevations=200)
+    vertices, offsets = straight_paths(4)
+
+    drawn = next_event_connections(NothingGeometry(), vertices, offsets, rim, np.zeros(3), paths=4, seed=0)
+
+    assert drawn["origin"].shape == (0, 3)
+    assert drawn["site"].shape == (0, 3)
+    assert drawn["summary"]["connections"] == 0
+    assert "no facade tips" in drawn["summary"]["what_it_is"]
+
+
 def test_nothing_blocks_a_connection_from_the_standpoint_the_rim_was_measured_at() -> None:
     """The tip is the silhouette from the head, so the head can always see it.
 
@@ -385,6 +397,52 @@ def scene_module():
         stub.types = types.SimpleNamespace(Object=object, Collection=object, Material=object)
         sys.modules["bpy"] = stub
     return importlib.import_module("semantic_twin.viz.blender.scene")
+
+
+def estimator_module():
+    """Import the estimator after installing the same small Blender stub."""
+    scene_module()
+    import importlib
+
+    return importlib.import_module("semantic_twin.viz.blender.estimator")
+
+
+def test_arrival_display_uses_a_fixed_decibel_floor_without_changing_rho() -> None:
+    estimator = estimator_module()
+    rho = np.array([1.0, 1.0e-2, 1.0e-8, 0.0])
+    original = rho.copy()
+
+    radius, relative_db, peak = estimator._display_lobe_field(rho, -40.0)
+
+    assert np.array_equal(rho, original)
+    assert peak == 1.0
+    assert np.allclose(relative_db, np.array([0.0, -20.0, -40.0, -40.0]))
+    assert np.allclose(radius, np.array([1.0, 0.5, 0.0, 0.0]))
+
+
+def test_arrival_display_subdivision_keeps_the_source_samples_and_closed_surface() -> None:
+    estimator = estimator_module()
+    grid = fibonacci_sphere(64)
+    faces = sphere_triangulation(grid)
+    values = np.linspace(-40.0, 0.0, grid.shape[0])
+
+    fine_grid, fine_faces, fine_values = estimator._subdivide_spherical_field(grid, faces, values, 2)
+
+    assert fine_faces.shape[0] == faces.shape[0] * 16
+    assert np.allclose(fine_grid[: grid.shape[0]], grid)
+    assert np.array_equal(fine_values[: values.size], values)
+    assert np.allclose(np.linalg.norm(fine_grid, axis=1), 1.0)
+    assert fine_values.min() >= values.min()
+    assert fine_values.max() <= values.max()
+    edges = np.sort(
+        np.concatenate(
+            [fine_faces[:, [0, 1]], fine_faces[:, [1, 2]], fine_faces[:, [2, 0]]],
+            axis=0,
+        ),
+        axis=1,
+    )
+    _, counts = np.unique(edges, axis=0, return_counts=True)
+    assert np.all(counts == 2)
 
 
 def test_camera_rotation_actually_points_at_the_target() -> None:
@@ -521,6 +579,179 @@ def test_next_event_keeps_a_live_terminal_scattering_vertex_without_an_outgoing_
 
 
 BLENDER = pathlib.Path.home() / "blender-4.5" / "blender"
+
+
+@pytest.mark.skipif(not BLENDER.is_file(), reason="Blender is not installed at the default location")
+def test_arrival_build_separates_raw_data_from_the_smooth_display(tmp_path: pathlib.Path) -> None:
+    study = pathlib.Path(__file__).resolve().parents[1]
+    report = tmp_path / "arrival.json"
+    script = tmp_path / "arrival_probe.py"
+    script.write_text(
+        textwrap.dedent(
+            f"""
+            import json
+            import pathlib
+            import sys
+
+            import bpy
+            import numpy as np
+
+            sys.path.insert(0, {str(study)!r})
+            from semantic_twin.viz.blender.estimator import build_arrival
+
+            bpy.ops.wm.read_factory_settings(use_empty=True)
+            collection = bpy.data.collections.new("arrival")
+            bpy.context.scene.collection.children.link(collection)
+            grid = np.array([
+                [1.0, 0.0, 0.0], [-1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0], [0.0, -1.0, 0.0],
+                [0.0, 0.0, 1.0], [0.0, 0.0, -1.0],
+            ])
+            faces = np.array([
+                [0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4],
+                [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5],
+            ])
+            rho = np.array([1.0, 0.1, 0.01, 0.001, 0.5, 0.0])
+            original = rho.copy()
+            build_arrival(
+                {{"local_grid": grid, "local_grid_faces": faces, "rho_rooftop": rho}},
+                np.zeros(3),
+                collection,
+                scale_m=7.0,
+                offset_m=13.0,
+                floor=0.14,
+            )
+            raw = bpy.data.objects["arrival_rooftop_raw_scientific"]
+            display = bpy.data.objects["arrival_rooftop_display_only_smooth"]
+            stored = np.empty(len(raw.data.vertices), dtype=np.float32)
+            raw.data.attributes["value_rho_per_sr"].data.foreach_get("value", stored)
+            pathlib.Path({str(report)!r}).write_text(json.dumps({{
+                "rho_unchanged": bool(np.array_equal(rho, original)),
+                "rho_stored": stored.tolist(),
+                "raw_faces": len(raw.data.polygons),
+                "display_faces": len(display.data.polygons),
+                "raw_smooth": [polygon.use_smooth for polygon in raw.data.polygons],
+                "display_smooth": [polygon.use_smooth for polygon in display.data.polygons],
+                "raw_role": raw["role"],
+                "display_role": display["role"],
+                "display_floor_db": display["display_db_floor_below_peak"],
+                "display_levels": display["display_subdivision_levels"],
+                "source_directions": display["source_direction_count"],
+                "display_directions": display["display_direction_count"],
+                "source_resolution": display["source_grid_resolution"],
+                "triangles_per_source": display["display_triangles_per_source_triangle"],
+                "adds_samples": display["display_adds_scientific_angular_samples"],
+                "integrated_rho_sr": raw["integrated_rho_sr"],
+                "values_changed": raw["scientific_values_changed_for_display"],
+                "supplies_estimator_values": display["supplies_estimator_values"],
+                "direction_convention": raw["direction_convention"],
+                "physical_wave_direction": raw["physical_wave_travel_direction"],
+                "raw_farthest_x": float(raw.data.vertices[max(
+                    range(len(raw.data.vertices)),
+                    key=lambda index: np.linalg.norm(np.asarray(raw.data.vertices[index].co) - np.array([0.0, 0.0, 13.0])),
+                )].co.x),
+            }}))
+            """
+        )
+    )
+    result = subprocess.run(
+        [str(BLENDER), "--background", "--factory-startup", "--python", str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stdout[-3000:] + result.stderr[-3000:]
+    measured = json.loads(report.read_text())
+    assert measured["rho_unchanged"]
+    assert np.allclose(measured["rho_stored"], [1.0, 0.1, 0.01, 0.001, 0.5, 0.0])
+    assert measured["display_faces"] == measured["raw_faces"] * 16
+    assert not any(measured["raw_smooth"])
+    assert all(measured["display_smooth"])
+    assert measured["raw_role"] == "raw scientific angular spectrum"
+    assert measured["display_role"].startswith("display-only")
+    assert measured["display_floor_db"] == -40.0
+    assert measured["display_levels"] == 2
+    assert measured["source_directions"] == 6
+    assert measured["display_directions"] > measured["source_directions"]
+    assert measured["source_resolution"] == "6 measured angular cells on 8 source triangles"
+    assert measured["triangles_per_source"] == 16
+    assert measured["adds_samples"] is False
+    assert measured["integrated_rho_sr"] == pytest.approx(sum([1.0, 0.1, 0.01, 0.001, 0.5, 0.0]) * 4.0 * np.pi / 6.0)
+    assert measured["values_changed"] is False
+    assert measured["supplies_estimator_values"] is False
+    assert measured["direction_convention"] == "+local_grid points from the receiver toward the apparent source"
+    assert measured["physical_wave_direction"].startswith("k_hat = -local_grid")
+    assert measured["raw_farthest_x"] == pytest.approx(7.0)
+
+
+@pytest.mark.skipif(not BLENDER.is_file(), reason="Blender is not installed at the default location")
+def test_body_keeps_exact_payload_sab_on_each_face(tmp_path: pathlib.Path) -> None:
+    study = pathlib.Path(__file__).resolve().parents[1]
+    report = tmp_path / "body.json"
+    script = tmp_path / "body_probe.py"
+    script.write_text(
+        textwrap.dedent(
+            f"""
+            import json
+            import pathlib
+            import sys
+
+            import bpy
+            import numpy as np
+
+            sys.path.insert(0, {str(study)!r})
+            from semantic_twin.viz.blender.estimator import build_body
+
+            bpy.ops.wm.read_factory_settings(use_empty=True)
+            collection = bpy.data.collections.new("body")
+            bpy.context.scene.collection.children.link(collection)
+            sab = np.array([0.125, 0.75], dtype=np.float32)
+            payload = {{
+                "body_vertices": np.array([
+                    [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0],
+                ], dtype=np.float32),
+                "body_faces": np.array([[0, 1, 2], [3, 4, 5]], dtype=np.int32),
+                "body_sab_w_m2": sab,
+            }}
+            build_body(payload, np.array([2.0, 3.0, 1.5]), 0.25, collection)
+            body = bpy.data.objects["phantom_sab"]
+            exact = body.data.attributes["value_sab_w_m2"]
+            stored = np.empty(2, dtype=np.float32)
+            exact.data.foreach_get("value", stored)
+            pathlib.Path({str(report)!r}).write_text(json.dumps({{
+                "stored": stored.tolist(),
+                "domain": exact.domain,
+                "data_type": exact.data_type,
+                "faces": len(body.data.polygons),
+                "colour_domain": body.data.color_attributes["sab"].domain,
+                "colour_values": len(body.data.color_attributes["sab"].data),
+                "exact_attribute": body["exact_linear_attribute"],
+                "quantity": body["colour_quantity"],
+                "value_domain": body["value_domain"],
+                "field_provenance": body["field_provenance"],
+            }}))
+            """
+        )
+    )
+    result = subprocess.run(
+        [str(BLENDER), "--background", "--factory-startup", "--python", str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stdout[-3000:] + result.stderr[-3000:]
+    measured = json.loads(report.read_text())
+    assert measured["stored"] == pytest.approx([0.125, 0.75])
+    assert measured["domain"] == "FACE"
+    assert measured["data_type"] == "FLOAT"
+    assert measured["faces"] == 2
+    assert measured["colour_domain"] == "CORNER"
+    assert measured["colour_values"] == 6
+    assert measured["exact_attribute"] == "value_sab_w_m2"
+    assert measured["quantity"] == "absorbed power density Sab, W/m2"
+    assert measured["value_domain"].startswith("one payload value per body triangle")
+    assert measured["field_provenance"] == "recomputed by AEGIS from the stored rooftop angular spectrum"
 
 
 @pytest.mark.skipif(not BLENDER.is_file(), reason="Blender is not installed at the default location")

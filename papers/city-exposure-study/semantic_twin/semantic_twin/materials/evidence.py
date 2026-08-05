@@ -41,10 +41,11 @@ from typing import Any
 import numpy as np
 
 from .binding import CLASS_NAMES, Provenance, SurfaceBinding, extend_classes
-from .catalogue import IMAGE_MATERIALS, MATERIAL_SUBSTITUTION, VEGETATION_NOTE
+from .catalogue import IMAGE_MATERIALS, MATERIAL_SUBSTITUTION, VEGETATION_NOTE, load_table
 from .support import (
     SUPPORT_COMPATIBILITY_VERSION,
     SupportKind,
+    entity_supports_atlas_cell,
     entity_support_kind,
     entity_supports_geometric_class,
 )
@@ -98,6 +99,165 @@ class VegetationBinding:
     def covered_fraction_by_area(self) -> float:
         total = float(self.face_area_m2.sum())
         return float(self.face_area_m2[self.resolved].sum() / total) if total else 0.0
+
+
+JOINT_ATLAS_FALLBACK_NAMES = (
+    "bound",
+    "unobserved",
+    "conflict_or_tie",
+    "compatible_but_unroutable",
+)
+
+
+@dataclass(frozen=True)
+class JointAtlasMaterialEvidence:
+    """Safe material evidence for every observed cell of a joint atlas.
+
+    The three posterior arrays deliberately answer different questions.
+    ``raw_material_posterior`` is the material marginal of every stored joint
+    observation. ``host_material_posterior`` keeps only entries whose entity
+    can live on the geometric support surface. ``transport_posterior`` also
+    applies the declared entity-to-material vocabulary and is normalised over
+    the material mass that the tracer can route. Keeping all three prevents an
+    object material from disappearing merely because it was refused.
+
+    ``transport_label`` is a deterministic convenience label. It uses the
+    lowest material index on an exact tie and is ``-1`` wherever the geometric
+    fallback must remain in force. Scientific uncertainty consumers should use
+    ``transport_posterior`` rather than this reduction.
+    """
+
+    triangle_id: np.ndarray
+    texel_row: np.ndarray
+    texel_column: np.ndarray
+    input_material_names: tuple[str, ...]
+    transport_material_names: tuple[str, ...]
+    raw_material_posterior: np.ndarray
+    host_material_posterior: np.ndarray
+    transport_posterior: np.ndarray
+    observed_weight: np.ndarray
+    host_compatible_weight: np.ndarray
+    host_incompatible_weight: np.ndarray
+    routable_weight: np.ndarray
+    unroutable_weight: np.ndarray
+    fallback_state: np.ndarray
+    transport_label: np.ndarray
+    provenance: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        cells = self.triangle_id.size
+        vectors = (
+            self.texel_row,
+            self.texel_column,
+            self.observed_weight,
+            self.host_compatible_weight,
+            self.host_incompatible_weight,
+            self.routable_weight,
+            self.unroutable_weight,
+            self.fallback_state,
+            self.transport_label,
+        )
+        if any(np.asarray(value).shape != (cells,) for value in vectors):
+            raise ValueError("joint atlas material evidence arrays disagree on cell count")
+        if self.raw_material_posterior.shape != (cells, len(self.input_material_names)):
+            raise ValueError("raw material posterior does not match the atlas material vocabulary")
+        if self.host_material_posterior.shape != self.raw_material_posterior.shape:
+            raise ValueError("host material posterior must preserve the full input vocabulary")
+        if self.transport_posterior.shape != (cells, len(self.transport_material_names)):
+            raise ValueError("transport posterior does not match the routable material vocabulary")
+        if cells and (self.fallback_state.min() < 0 or self.fallback_state.max() >= len(JOINT_ATLAS_FALLBACK_NAMES)):
+            raise ValueError("joint atlas fallback state is outside its declared vocabulary")
+        if cells and (
+            self.transport_label.min() < -1 or self.transport_label.max() >= len(self.transport_material_names)
+        ):
+            raise ValueError("joint atlas transport label is outside its declared vocabulary")
+        if np.any(self.transport_posterior < 0.0) or np.any(self.raw_material_posterior < 0.0):
+            raise ValueError("joint atlas material posterior cannot be negative")
+        bound = self.fallback_state == JOINT_ATLAS_FALLBACK_NAMES.index("bound")
+        if np.any(self.transport_label[bound] < 0) or np.any(self.transport_label[~bound] != -1):
+            raise ValueError("only bound atlas cells may carry a transport label")
+        if not self.provenance:
+            raise ValueError("joint atlas material evidence must retain provenance")
+
+    @property
+    def bound(self) -> np.ndarray:
+        """Cells whose paired entity and material evidence passed every gate."""
+        return self.fallback_state == JOINT_ATLAS_FALLBACK_NAMES.index("bound")
+
+    def class_names_and_spec(self) -> tuple[tuple[str, ...], dict[str, Any]]:
+        """Return the stable tracer class namespace for the central labels."""
+        return extend_classes(list(self.transport_material_names), SEMANTIC_PREFIX, IMAGE_MATERIALS)
+
+    @property
+    def class_names(self) -> tuple[str, ...]:
+        """Tracer namespace indexed by :attr:`tracer_posterior`."""
+        return self.class_names_and_spec()[0]
+
+    @property
+    def tracer_posterior(self) -> np.ndarray:
+        """Cell posterior padded into the tracer's complete class namespace."""
+        posterior = np.zeros((self.triangle_id.size, len(self.class_names)), dtype=np.float64)
+        posterior[:, len(CLASS_NAMES) :] = self.transport_posterior
+        return posterior
+
+    @property
+    def support_weight(self) -> np.ndarray:
+        """Absolute fused image support carried by each atlas cell."""
+        return self.observed_weight
+
+    @property
+    def confidence(self) -> np.ndarray:
+        """Largest safe transport posterior mass, zero on fallback cells."""
+        confidence = np.zeros(self.triangle_id.size, dtype=np.float64)
+        if self.transport_posterior.shape[1]:
+            confidence[self.bound] = self.transport_posterior[self.bound].max(axis=1)
+        return confidence
+
+    def central_cells(self, resolution: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
+        """Return the cell nearest the barycentre of each observed triangle.
+
+        Distance is measured in canonical barycentric UV. Equal distances use
+        the lowest row, then the lowest column. This label exists for compact
+        summaries only. The complete cell posterior remains the transport and
+        subdivision input.
+        """
+        height, width = (int(resolution[0]), int(resolution[1]))
+        if height < 2 or width < 2:
+            raise ValueError("atlas resolution must be at least 2 by 2")
+        if not self.triangle_id.size:
+            return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
+        distance = np.square(self.texel_row / (height - 1) - 1.0 / 3.0) + np.square(
+            self.texel_column / (width - 1) - 1.0 / 3.0
+        )
+        index = np.arange(self.triangle_id.size, dtype=np.int64)
+        order = np.lexsort((index, self.texel_column, self.texel_row, distance, self.triangle_id))
+        ordered_triangle = self.triangle_id[order]
+        first = np.concatenate(([True], ordered_triangle[1:] != ordered_triangle[:-1]))
+        return ordered_triangle[first], order[first]
+
+
+@dataclass(frozen=True, kw_only=True)
+class JointAtlasSurfaceBinding(SurfaceBinding):
+    """A normal surface binding plus the mixture behind every emitted face."""
+
+    posterior_names: tuple[str, ...]
+    face_material_posterior: np.ndarray
+    face_atlas_cell: np.ndarray
+    face_parent_triangle: np.ndarray
+    face_fallback_state: np.ndarray
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        count = self.face_class.size
+        if self.face_material_posterior.shape != (count, len(self.posterior_names)):
+            raise ValueError("face material posterior does not match the emitted surface")
+        if any(
+            np.asarray(value).shape != (count,)
+            for value in (self.face_atlas_cell, self.face_parent_triangle, self.face_fallback_state)
+        ):
+            raise ValueError("joint atlas face mapping does not match the emitted surface")
+        if np.any(self.face_material_posterior < 0.0):
+            raise ValueError("face material posterior cannot be negative")
 
 
 def _vegetation_names(data: Any, key: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
@@ -715,6 +875,354 @@ def bind_walk_materials(
         f"walk material mode {mode} is unsafe: {walk_npz} stores independent entity and material reductions, "
         f"not joint entity-by-material evidence; requested for {np.asarray(areas).size} faces with geometric "
         f"shape {np.asarray(geometric_class).shape}, semantics {semantics_path}, and min_rays={min_rays}"
+    )
+
+
+_JOINT_ATLAS_KEYS = frozenset(
+    {
+        "resolution",
+        "triangle_count",
+        "entity_names",
+        "material_names",
+        "triangle_ids",
+        "texel_offsets",
+        "texel_row",
+        "texel_column",
+        "joint_offsets",
+        "joint_entity",
+        "joint_material",
+        "joint_weight",
+        "support_weight",
+    }
+)
+
+
+def _routed_material(name: str) -> str | None:
+    routed = MATERIAL_SUBSTITUTION.get(name, name)
+    return routed if routed in IMAGE_MATERIALS else None
+
+
+def material_table_for_names(
+    names: tuple[str, ...] | list[str] | np.ndarray,
+    config_dir: pathlib.Path,
+    frequency_hz: float,
+) -> tuple[Any, np.ndarray]:
+    """Build the canonical tracer table and map raw material names into it.
+
+    Unknown names map to ``-1``. Substituted names map to the declared target
+    in :data:`MATERIAL_SUBSTITUTION`. The table always uses the same sorted RF
+    material namespace, so a refined mesh sidecar cannot change class indices
+    by omitting a material that happened not to appear in one scene.
+
+    Structural compatibility still needs a paired entity and geometric host.
+    It is applied by :func:`bind_joint_atlas_materials`, before this material
+    mapping is allowed to decide a face class.
+    """
+    raw_names = tuple(str(name) for name in names)
+    materials = tuple(sorted(IMAGE_MATERIALS))
+    class_names, spec = extend_classes(list(materials), SEMANTIC_PREFIX, IMAGE_MATERIALS)
+    table = load_table(
+        pathlib.Path(config_dir),
+        float(frequency_hz),
+        class_names=class_names,
+        class_binding=spec,
+        class_rule="joint semantic-material atlas with host-surface compatibility",
+    )
+    index = {name: len(CLASS_NAMES) + position for position, name in enumerate(materials)}
+    raw_to_table = np.asarray(
+        [index.get(_routed_material(name), -1) for name in raw_names],
+        dtype=np.int64,
+    )
+    return table, raw_to_table
+
+
+def bind_joint_atlas_materials(
+    geometric_class: np.ndarray,
+    *,
+    atlas_npz: pathlib.Path,
+    semantics_path: pathlib.Path,
+) -> JointAtlasMaterialEvidence:
+    """Reduce only proven joint entity-material atlas entries for transport.
+
+    Every joint entry is checked while its entity and material are still
+    paired. The entity first has to agree with the geometric host. The material
+    must then be a routable material that the declared Vistas prior permits for
+    that entity. A strict majority of all joint mass must pass both gates. This
+    makes ``Road + asphalt_concrete`` eligible on ground while ``Road + metal``
+    remains visible in the raw posterior and leaves the geometric fallback.
+
+    The return value is cell-level evidence. It deliberately does not collapse
+    the atlas back to one material per source triangle. A subdivision stage can
+    map each emitted child face to ``triangle_id``, ``texel_row`` and
+    ``texel_column``, then freeze the selected class and complete posterior in
+    its refined-surface sidecar.
+    """
+    geometric = np.asarray(geometric_class, dtype=np.int64)
+    if geometric.ndim != 1:
+        raise ValueError("geometric_class must be one-dimensional")
+    if geometric.size and (geometric.min() < 0 or geometric.max() >= len(CLASS_NAMES)):
+        raise ValueError("geometric_class leaves the structural class vocabulary")
+
+    document = json.loads(pathlib.Path(semantics_path).read_text())
+    material_prior = document.get("vistas_material_prior")
+    if not isinstance(material_prior, dict):
+        raise ValueError("semantics file carries no vistas_material_prior for joint pair licensing")
+
+    with np.load(atlas_npz, allow_pickle=False) as data:
+        missing = sorted(_JOINT_ATLAS_KEYS - set(data.files))
+        if missing:
+            raise ValueError(f"joint atlas schema is incomplete; missing {missing}")
+        if "format" in data.files:
+            atlas_format = str(np.asarray(data["format"]).item())
+            if "joint" not in atlas_format or "v1" not in atlas_format:
+                raise ValueError(f"unsupported joint atlas format {atlas_format!r}")
+        else:
+            raise ValueError("joint atlas carries no explicit format identifier")
+
+        resolution_value = np.asarray(data["resolution"], dtype=np.int64).reshape(-1)
+        if resolution_value.size == 1:
+            resolution = (int(resolution_value[0]), int(resolution_value[0]))
+        elif resolution_value.size == 2:
+            resolution = (int(resolution_value[0]), int(resolution_value[1]))
+        else:
+            raise ValueError("joint atlas resolution must be a scalar or (height, width)")
+        triangle_count = int(np.asarray(data["triangle_count"]).item())
+        entity_names = tuple(str(name) for name in data["entity_names"])
+        input_material_names = tuple(str(name) for name in data["material_names"])
+        triangle_ids = data["triangle_ids"].astype(np.int64)
+        texel_offsets = data["texel_offsets"].astype(np.int64)
+        texel_row = data["texel_row"].astype(np.int64)
+        texel_column = data["texel_column"].astype(np.int64)
+        joint_offsets = data["joint_offsets"].astype(np.int64)
+        joint_entity = data["joint_entity"].astype(np.int64)
+        joint_material = data["joint_material"].astype(np.int64)
+        joint_weight = data["joint_weight"].astype(np.float64)
+        support_weight = data["support_weight"].astype(np.float64)
+
+    if triangle_count != geometric.size:
+        raise ValueError(f"joint atlas names {triangle_count} support triangles, geometric_class has {geometric.size}")
+    if triangle_ids.ndim != 1 or np.any(np.diff(triangle_ids) <= 0):
+        raise ValueError("joint atlas triangle_ids must be strictly increasing")
+    if np.any((triangle_ids < 0) | (triangle_ids >= triangle_count)):
+        raise ValueError("joint atlas triangle_ids leave the declared support mesh")
+    if texel_offsets.shape != (triangle_ids.size + 1,) or texel_offsets[0] != 0:
+        raise ValueError("joint atlas texel_offsets do not index triangle_ids")
+    if np.any(np.diff(texel_offsets) < 0) or texel_offsets[-1] != texel_row.size:
+        raise ValueError("joint atlas texel_offsets do not cover its cells")
+    cells = texel_row.size
+    if texel_column.shape != (cells,) or support_weight.shape != (cells,):
+        raise ValueError("joint atlas cell arrays disagree on cell count")
+    if np.any((texel_row < 0) | (texel_row >= resolution[0])) or np.any(
+        (texel_column < 0) | (texel_column >= resolution[1])
+    ):
+        raise ValueError("joint atlas cell coordinates leave its resolution")
+    if joint_offsets.shape != (cells + 1,) or joint_offsets[0] != 0:
+        raise ValueError("joint atlas joint_offsets do not index its cells")
+    if np.any(np.diff(joint_offsets) < 0) or joint_offsets[-1] != joint_weight.size:
+        raise ValueError("joint atlas joint_offsets do not cover joint entries")
+    joints = joint_weight.size
+    if joint_entity.shape != (joints,) or joint_material.shape != (joints,):
+        raise ValueError("joint atlas entry arrays disagree on joint count")
+    if np.any((joint_entity < 0) | (joint_entity >= len(entity_names))):
+        raise ValueError("joint atlas entity index leaves entity_names")
+    if np.any((joint_material < 0) | (joint_material >= len(input_material_names))):
+        raise ValueError("joint atlas material index leaves material_names")
+    if not np.all(np.isfinite(joint_weight)) or np.any(joint_weight < 0.0):
+        raise ValueError("joint atlas weights must be finite and nonnegative")
+    if not np.all(np.isfinite(support_weight)) or np.any(support_weight < 0.0):
+        raise ValueError("joint atlas support weights must be finite and nonnegative")
+
+    cell_triangle = np.repeat(triangle_ids, np.diff(texel_offsets))
+    cell_index = np.repeat(np.arange(cells, dtype=np.int64), np.diff(joint_offsets))
+    joint_sum = np.zeros(cells, dtype=np.float64)
+    np.add.at(joint_sum, cell_index, joint_weight)
+    observed = support_weight > 0.0
+    if np.any(observed & ~np.isclose(joint_sum, 1.0, atol=2e-6, rtol=2e-6)):
+        raise ValueError("each observed joint atlas cell posterior must sum to one")
+    if np.any(~observed & (joint_sum > 0.0)):
+        raise ValueError("an unobserved joint atlas cell cannot carry posterior mass")
+
+    raw = np.zeros((cells, len(input_material_names)), dtype=np.float64)
+    if joints:
+        np.add.at(raw, (cell_index, joint_material), joint_weight)
+
+    entity_name = np.asarray([entity_names[index] for index in joint_entity], dtype=object)
+    host = np.fromiter(
+        (
+            entity_supports_atlas_cell(str(name), int(geometric[cell_triangle[cell]]))
+            for name, cell in zip(entity_name, cell_index, strict=True)
+        ),
+        dtype=bool,
+        count=joints,
+    )
+    host_raw = np.zeros_like(raw)
+    if np.any(host):
+        np.add.at(host_raw, (cell_index[host], joint_material[host]), joint_weight[host])
+
+    transport_names = tuple(sorted(IMAGE_MATERIALS))
+    transport_index = {name: index for index, name in enumerate(transport_names)}
+    routed_name = np.asarray([_routed_material(name) for name in input_material_names], dtype=object)
+    routed_index = np.asarray(
+        [transport_index.get(name, -1) if name is not None else -1 for name in routed_name],
+        dtype=np.int64,
+    )
+    joint_route = routed_index[joint_material]
+    pair_licensed = np.fromiter(
+        (
+            route >= 0 and _material_weight(material_prior, str(name), transport_names[route]) > 0.0
+            for name, route in zip(entity_name, joint_route, strict=True)
+        ),
+        dtype=bool,
+        count=joints,
+    )
+    routable_joint = host & pair_licensed
+    transport_mass = np.zeros((cells, len(transport_names)), dtype=np.float64)
+    if np.any(routable_joint):
+        np.add.at(
+            transport_mass,
+            (cell_index[routable_joint], joint_route[routable_joint]),
+            joint_weight[routable_joint],
+        )
+
+    host_mass = host_raw.sum(axis=1)
+    routed_mass = transport_mass.sum(axis=1)
+    host_posterior = np.divide(
+        host_raw,
+        host_mass[:, None],
+        out=np.zeros_like(host_raw),
+        where=host_mass[:, None] > 0.0,
+    )
+    transport_posterior = np.divide(
+        transport_mass,
+        routed_mass[:, None],
+        out=np.zeros_like(transport_mass),
+        where=routed_mass[:, None] > 0.0,
+    )
+
+    fallback = np.full(cells, JOINT_ATLAS_FALLBACK_NAMES.index("unobserved"), dtype=np.uint8)
+    host_majority = host_mass > 0.5
+    pair_majority = routed_mass > 0.5
+    conflict = observed & ~host_majority
+    compatible_unroutable = observed & host_majority & ~pair_majority
+    bound = observed & host_majority & pair_majority
+    fallback[conflict] = JOINT_ATLAS_FALLBACK_NAMES.index("conflict_or_tie")
+    fallback[compatible_unroutable] = JOINT_ATLAS_FALLBACK_NAMES.index("compatible_but_unroutable")
+    fallback[bound] = JOINT_ATLAS_FALLBACK_NAMES.index("bound")
+    label = np.full(cells, -1, dtype=np.int64)
+    if np.any(bound):
+        label[bound] = np.argmax(transport_posterior[bound], axis=1)
+
+    semantic_hash = hashlib.sha256(pathlib.Path(semantics_path).read_bytes()).hexdigest()
+    return JointAtlasMaterialEvidence(
+        triangle_id=cell_triangle,
+        texel_row=texel_row,
+        texel_column=texel_column,
+        input_material_names=input_material_names,
+        transport_material_names=transport_names,
+        raw_material_posterior=raw,
+        host_material_posterior=host_posterior,
+        transport_posterior=transport_posterior,
+        observed_weight=support_weight,
+        host_compatible_weight=support_weight * host_mass,
+        host_incompatible_weight=support_weight * (joint_sum - host_mass),
+        routable_weight=support_weight * routed_mass,
+        unroutable_weight=support_weight * (joint_sum - routed_mass),
+        fallback_state=fallback,
+        transport_label=label,
+        provenance={
+            "atlas_npz": str(atlas_npz),
+            "semantics": str(semantics_path),
+            "semantics_sha256": semantic_hash,
+            "resolution": list(resolution),
+            "triangle_count": triangle_count,
+            "cells": cells,
+            "joint_entries": joints,
+            "support_compatibility_version": SUPPORT_COMPATIBILITY_VERSION,
+            "host_rule": "paired entity must support the source triangle's geometric class",
+            "pair_rule": (
+                "paired material must route to IMAGE_MATERIALS and have positive mass in the declared "
+                "vistas_material_prior for that same entity"
+            ),
+            "acceptance_rule": "routable paired joint mass must be a strict majority of all cell mass",
+            "tie": "geometric fallback; material argmax ties use the lowest canonical material index",
+            "fallback_names": list(JOINT_ATLAS_FALLBACK_NAMES),
+            "material_substitution": dict(MATERIAL_SUBSTITUTION),
+            "posterior_policy": (
+                "raw, host-compatible, and routed posteriors are all retained; transport uses the routed "
+                "posterior only after pair acceptance"
+            ),
+        },
+    )
+
+
+def bind_refined_atlas_faces(
+    areas: np.ndarray,
+    geometric_class: np.ndarray,
+    evidence: JointAtlasMaterialEvidence,
+    *,
+    face_atlas_cell: np.ndarray,
+    face_parent_triangle: np.ndarray,
+) -> JointAtlasSurfaceBinding:
+    """Freeze safe joint-atlas evidence onto emitted propagation faces.
+
+    ``face_atlas_cell`` is the exact sparse cell selected from each child face's
+    centroid. ``-1`` means that the atlas had no evidence at that point. The
+    explicit map keeps binding independent of floating-point point-in-triangle
+    reconstruction during later exposure runs.
+    """
+    areas = np.asarray(areas, dtype=np.float64)
+    geometric = np.asarray(geometric_class, dtype=np.int64)
+    cell = np.asarray(face_atlas_cell, dtype=np.int64)
+    parent = np.asarray(face_parent_triangle, dtype=np.int64)
+    count = areas.size
+    if any(value.shape != (count,) for value in (geometric, cell, parent)):
+        raise ValueError("refined face areas, classes, cells, and parents must have the same length")
+    if count and (geometric.min() < 0 or geometric.max() >= len(CLASS_NAMES)):
+        raise ValueError("refined geometric class leaves the structural vocabulary")
+    if np.any((cell < -1) | (cell >= evidence.triangle_id.size)):
+        raise ValueError("refined face atlas cell leaves the joint material evidence")
+    mapped = cell >= 0
+    if np.any(evidence.triangle_id[cell[mapped]] != parent[mapped]):
+        raise ValueError("refined face parent does not match its selected atlas cell")
+
+    class_names, spec = evidence.class_names_and_spec()
+    face_class = geometric.copy()
+    fallback = np.full(
+        count,
+        JOINT_ATLAS_FALLBACK_NAMES.index("unobserved"),
+        dtype=np.uint8,
+    )
+    posterior = np.zeros((count, len(class_names)), dtype=np.float64)
+    if np.any(mapped):
+        fallback[mapped] = evidence.fallback_state[cell[mapped]]
+        posterior[mapped] = evidence.tracer_posterior[cell[mapped]]
+    bound = mapped & (fallback == JOINT_ATLAS_FALLBACK_NAMES.index("bound"))
+    face_class[bound] = len(CLASS_NAMES) + evidence.transport_label[cell[bound]]
+    source = _sources(count, bound, Provenance.IMAGE_WALK_MATERIAL)
+    return JointAtlasSurfaceBinding(
+        class_names=class_names,
+        spec=spec,
+        face_class=face_class,
+        face_source=source,
+        face_area_m2=areas,
+        provenance={
+            "class_rule": "joint semantic-material atlas bound after physical support subdivision",
+            "joint_atlas": evidence.provenance,
+            "face_mapping": "explicit child face to sparse atlas cell and source support triangle",
+            "face_count": count,
+            "bound_faces": int(bound.sum()),
+            "fallback_faces": int((~bound).sum()),
+            "fallback_face_counts": {
+                name: int(np.count_nonzero(fallback == index)) for index, name in enumerate(JOINT_ATLAS_FALLBACK_NAMES)
+            },
+            "fallback": "child geometric class wherever paired evidence does not pass a strict majority",
+            "posterior": "complete routed material mixture retained per child face",
+        },
+        posterior_names=class_names,
+        face_material_posterior=posterior,
+        face_atlas_cell=cell,
+        face_parent_triangle=parent,
+        face_fallback_state=fallback,
     )
 
 

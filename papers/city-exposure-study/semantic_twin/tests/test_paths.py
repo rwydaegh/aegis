@@ -199,6 +199,17 @@ def test_the_fused_station_binding_is_on_disk_for_the_sites_that_have_one():
     assert not paths.site_semantics("krakow_rynek", 250).exists()
 
 
+def test_joint_atlas_has_one_explicit_resolution():
+    atlas = paths.joint_atlas("korenmarkt", 250, resolution=8)
+
+    assert atlas.name == "joint_atlas_250m_r8.npz"
+
+
+def test_atlas_artifact_path_refuses_an_empty_surface_grid():
+    with pytest.raises(ValueError, match="at least 1"):
+        paths.joint_atlas("korenmarkt", 250, resolution=0)
+
+
 def test_the_exposure_directory_is_named_honestly_and_still_reads_the_old_one():
     """The published runs sit under a directory named for one of eleven cities.
 

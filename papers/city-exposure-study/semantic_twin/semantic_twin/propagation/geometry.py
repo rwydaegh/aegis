@@ -29,6 +29,7 @@ class DeviceIntersection:
     distance: Any
     normal: Any
     face: Any
+    barycentric_uv: Any
 
 
 class MitsubaGeometry:
@@ -132,7 +133,37 @@ class MitsubaGeometry:
         face = dr.select(hit, preliminary.prim_index, 0)
         normal = dr.gather(mi.Vector3f, self._device_normals, face, hit)
         distance = dr.select(hit, preliminary.t, INFINITY)
-        return DeviceIntersection(hit, distance, normal, face)
+        barycentric_uv = dr.select(hit, preliminary.prim_uv, mi.Point2f(0.0))
+        return DeviceIntersection(hit, distance, normal, face, barycentric_uv)
+
+    def barycentric_uv(self, face: np.ndarray, point: np.ndarray) -> np.ndarray:
+        """Map mesh hit points to ``(w1, w2)`` in their face triangles."""
+        face = np.asarray(face, dtype=np.int64)
+        point = np.asarray(point, dtype=np.float64)
+        if face.ndim != 1 or point.shape != (face.size, 3):
+            raise ValueError("face and point must have shapes (hits,) and (hits, 3)")
+        if np.any(face < 0) or np.any(face >= self.face_count):
+            raise ValueError("face contains an index outside the support mesh")
+        triangle = self.vertices[self.faces[face]]
+        edge1 = triangle[:, 1] - triangle[:, 0]
+        edge2 = triangle[:, 2] - triangle[:, 0]
+        offset = point - triangle[:, 0]
+        d11 = np.einsum("ij,ij->i", edge1, edge1)
+        d12 = np.einsum("ij,ij->i", edge1, edge2)
+        d22 = np.einsum("ij,ij->i", edge2, edge2)
+        q1 = np.einsum("ij,ij->i", offset, edge1)
+        q2 = np.einsum("ij,ij->i", offset, edge2)
+        determinant = d11 * d22 - d12 * d12
+        if np.any(determinant <= 1.0e-24):
+            raise ValueError("support mesh contains a degenerate hit triangle")
+        w1 = (d22 * q1 - d12 * q2) / determinant
+        w2 = (d11 * q2 - d12 * q1) / determinant
+        # Mitsuba intersections are float32 and the support mesh is often far
+        # from the local origin. Snap only the small numerical spill at edges.
+        uv = np.column_stack((w1, w2))
+        uv[np.abs(uv) < 1.0e-6] = 0.0
+        uv[np.abs(uv - 1.0) < 1.0e-6] = 1.0
+        return uv
 
     def prepare_device(self) -> None:
         """Upload the face-normal lookup before a timed device trace."""

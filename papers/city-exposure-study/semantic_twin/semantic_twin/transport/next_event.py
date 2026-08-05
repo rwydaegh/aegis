@@ -185,6 +185,7 @@ class NextEventEstimator:
     sources: PlacedIllumination
     samples: int = 1
     max_order: int | None = None
+    connection_lift_m: float = 1.0e-2
     diagnostic_models: Mapping[str, AngularIllumination] = field(default_factory=dict)
 
     name: ClassVar[str] = "next_event"
@@ -215,6 +216,7 @@ class NextEventEstimator:
             rng=np.random.default_rng(trace_seed + self.gather_seed_offset),
             samples=self.samples,
             max_order=self.tracer.config.max_bounces if self.max_order is None else self.max_order,
+            lift_m=self.connection_lift_m,
         )
         point = self.tracer.trace(
             origin,

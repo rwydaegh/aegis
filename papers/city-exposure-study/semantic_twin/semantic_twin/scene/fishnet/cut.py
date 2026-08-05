@@ -29,7 +29,7 @@ from shapely.ops import polygonize, unary_union
 from ..pinhole import CameraPose, PinholeView, image_to_view_directions, view_to_image, view_to_world, world_to_view
 from ..planar import clip_near_plane, clip_to_rect, fan_triangles, rasterize_convex, signed_area, triangle_solid_angle
 from .regions import PAINT_REASONS, RegionMap, boundary_chains
-from .surface import REJECTION_REASONS, FishnetSurface
+from .surface import FISHNET_FORMAT_VERSION, REJECTED_GEOMETRY_KINDS, REJECTION_REASONS, FishnetSurface
 
 _PAINT_TO_REJECTION = {
     PAINT_REASONS["transient_object"]: REJECTION_REASONS["transient_object"],
@@ -262,6 +262,14 @@ class _SurfaceBuilder:
         self.rejected_source: list[int] = []
         self.rejected_reason: list[int] = []
         self.rejected_area: list[float] = []
+        self.rejected_vertices: list[np.ndarray] = []
+        self.rejected_faces: list[np.ndarray] = []
+        self.rejected_face_image: list[np.ndarray] = []
+        self.rejected_face_record: list[np.ndarray] = []
+        self.rejected_vertex_count = 0
+        self.rejected_face_count = 0
+        self.rejected_face_offsets: list[int] = [0]
+        self.rejected_geometry_kind: list[int] = []
 
     def begin_group(self, pixels: np.ndarray) -> int:
         group = len(self.pixel_offsets) - 1
@@ -272,10 +280,42 @@ class _SurfaceBuilder:
             self.pixel_offsets.append(self.pixel_offsets[-1])
         return group
 
-    def reject(self, source: int, reason: int, area_px: float) -> None:
+    def reject(
+        self,
+        source: int,
+        reason: int,
+        area_px: float,
+        *,
+        image_triangles: np.ndarray | None = None,
+        world_triangles: np.ndarray | None = None,
+        geometry_kind: int = REJECTED_GEOMETRY_KINDS["unavailable"],
+    ) -> None:
+        record = len(self.rejected_source)
         self.rejected_source.append(int(source))
         self.rejected_reason.append(int(reason))
         self.rejected_area.append(float(area_px))
+        if image_triangles is None or world_triangles is None:
+            self.rejected_face_offsets.append(self.rejected_face_count)
+            self.rejected_geometry_kind.append(REJECTED_GEOMETRY_KINDS["unavailable"])
+            return
+        image_triangles = np.asarray(image_triangles, dtype=np.float64).reshape(-1, 3, 2)
+        world_triangles = np.asarray(world_triangles, dtype=np.float64).reshape(-1, 3, 3)
+        if image_triangles.shape[0] != world_triangles.shape[0]:
+            raise ValueError("rejected image and world triangles must have equal length")
+        if image_triangles.shape[0] == 0:
+            self.rejected_face_offsets.append(self.rejected_face_count)
+            self.rejected_geometry_kind.append(REJECTED_GEOMETRY_KINDS["unavailable"])
+            return
+        start = self.rejected_vertex_count
+        vertices = world_triangles.reshape(-1, 3)
+        self.rejected_vertex_count += int(vertices.shape[0])
+        self.rejected_vertices.append(vertices)
+        self.rejected_faces.append(np.arange(start, start + vertices.shape[0], dtype=np.int64).reshape(-1, 3))
+        self.rejected_face_image.append(image_triangles)
+        self.rejected_face_record.append(np.full(image_triangles.shape[0], record, dtype=np.int64))
+        self.rejected_face_count += int(image_triangles.shape[0])
+        self.rejected_face_offsets.append(self.rejected_face_count)
+        self.rejected_geometry_kind.append(int(geometry_kind))
 
     def add(
         self,
@@ -306,7 +346,7 @@ class _SurfaceBuilder:
                 self.face_material.append(evidence.material_probability)
 
     def _vertex(self, point: np.ndarray) -> int:
-        key = (int(round(point[0] * 1e4)), int(round(point[1] * 1e4)), int(round(point[2] * 1e4)))
+        key = (round(point[0] * 1e4), round(point[1] * 1e4), round(point[2] * 1e4))
         found = self.index.get(key)
         if found is None:
             found = len(self.vertices)
@@ -339,7 +379,22 @@ class _SurfaceBuilder:
             np.concatenate(self.pixel_indices).astype(np.int64) if self.pixel_indices else np.zeros(0, dtype=np.int64)
         )
         rejected_reason = np.asarray(self.rejected_reason, dtype=np.int64)
+        rejected_vertices = (
+            np.concatenate(self.rejected_vertices) if self.rejected_vertices else np.zeros((0, 3), dtype=np.float64)
+        )
+        rejected_faces = (
+            np.concatenate(self.rejected_faces) if self.rejected_faces else np.zeros((0, 3), dtype=np.int64)
+        )
+        rejected_face_image = (
+            np.concatenate(self.rejected_face_image)
+            if self.rejected_face_image
+            else np.zeros((0, 3, 2), dtype=np.float64)
+        )
+        rejected_face_record = (
+            np.concatenate(self.rejected_face_record) if self.rejected_face_record else np.zeros(0, dtype=np.int64)
+        )
         report = dict(report)
+        report["fishnet_format_version"] = float(FISHNET_FORMAT_VERSION)
         report["rejected_candidates"] = float(rejected_reason.size)
         report["rejected_area_px"] = float(np.sum(self.rejected_area))
         for name, code in REJECTION_REASONS.items():
@@ -369,6 +424,12 @@ class _SurfaceBuilder:
             rejected_reason=rejected_reason,
             rejected_image_area_px=np.asarray(self.rejected_area, dtype=np.float64),
             camera_position=np.asarray(pose.position, dtype=np.float64),
+            rejected_vertices=rejected_vertices,
+            rejected_faces=rejected_faces,
+            rejected_face_image=rejected_face_image,
+            rejected_face_record=rejected_face_record,
+            rejected_face_offsets=np.asarray(self.rejected_face_offsets, dtype=np.int64),
+            rejected_geometry_kind=np.asarray(self.rejected_geometry_kind, dtype=np.uint8),
             report=report,
         )
 
@@ -409,12 +470,20 @@ def _footprint(
 
     rows, columns = rasterize_convex(polygon, view.width, view.height)
     area_px = abs(signed_area(polygon))
+    shape = _Footprint(
+        polygon,
+        area_px,
+        _Pixels(rows, columns, np.zeros(rows.size, dtype=bool)),
+        normal,
+        offset,
+    )
     if rows.size == 0:
-        builder.reject(triangle, REJECTION_REASONS["subpixel_footprint"], area_px)
+        _reject_projected(cut, triangle, REJECTION_REASONS["subpixel_footprint"], area_px, shape)
         return None
     owned = face_ids[rows, columns] == triangle
     if not owned.any():
-        builder.reject(triangle, REJECTION_REASONS["occluded_by_support_mesh"], area_px)
+        shape = _Footprint(polygon, area_px, _Pixels(rows, columns, owned), normal, offset)
+        _reject_projected(cut, triangle, REJECTION_REASONS["occluded_by_support_mesh"], area_px, shape)
         return None
     return _Footprint(polygon, area_px, _Pixels(rows, columns, owned), normal, offset)
 
@@ -435,10 +504,25 @@ def _process_triangle(
 
     report["clipped_source_area_px"] += shape.area_px
     present = np.unique(cut.regions.region[pixels.rows, pixels.columns])
+    if present.size == 1 and present[0] < 0 and pixels.owned.mean() >= cut.limits.full_visibility_fraction:
+        _reject_projected(
+            cut,
+            triangle,
+            _support_rejection(cut.regions, pixels),
+            shape.area_px,
+            shape,
+        )
+        return
     if present.size == 1 and present[0] >= 0 and pixels.owned.mean() >= cut.limits.full_visibility_fraction:
         evidence = _face_evidence(cut, pixels)
         if evidence is None:
-            cut.builder.reject(triangle, _support_rejection(cut.regions, pixels), shape.area_px)
+            _reject_projected(
+                cut,
+                triangle,
+                _support_rejection(cut.regions, pixels),
+                shape.area_px,
+                shape,
+            )
             return
         _emit(cut, fan_triangles(shape.polygon), shape, evidence, triangle, pixels)
         report["emitted_whole"] += 1.0
@@ -465,21 +549,49 @@ def _process_piece(
     """Accept or reject one face of the arrangement, on four tests in order."""
     area = piece.area
     pixels = shape.pixels.select(assignment == piece_index)
+    triangles = _triangulate(piece)
     if area < cut.limits.min_piece_area_px:
-        cut.builder.reject(triangle, REJECTION_REASONS["below_minimum_area"], area)
+        _reject_projected(
+            cut,
+            triangle,
+            REJECTION_REASONS["below_minimum_area"],
+            area,
+            shape,
+            triangles,
+        )
         return
     if pixels.rows.size == 0 or not pixels.owned.any() or pixels.owned.mean() < cut.limits.piece_visibility_fraction:
-        cut.builder.reject(triangle, REJECTION_REASONS["occluded_by_support_mesh"], area)
+        _reject_projected(
+            cut,
+            triangle,
+            REJECTION_REASONS["occluded_by_support_mesh"],
+            area,
+            shape,
+            triangles,
+        )
         return
     supported = cut.regions.region[pixels.rows, pixels.columns] >= 0
     if np.mean(supported[pixels.owned]) < cut.limits.piece_support_fraction:
-        cut.builder.reject(triangle, _support_rejection(cut.regions, pixels), area)
+        _reject_projected(
+            cut,
+            triangle,
+            _support_rejection(cut.regions, pixels),
+            area,
+            shape,
+            triangles,
+        )
         return
     evidence = _face_evidence(cut, pixels)
     if evidence is None:
-        cut.builder.reject(triangle, _support_rejection(cut.regions, pixels), area)
+        _reject_projected(
+            cut,
+            triangle,
+            _support_rejection(cut.regions, pixels),
+            area,
+            shape,
+            triangles,
+        )
         return
-    triangles = _triangulate(piece)
     if triangles.size == 0:
         cut.report["arrangement_fallbacks"] += 1.0
         cut.builder.reject(triangle, REJECTION_REASONS["degenerate_triangle"], area)
@@ -496,26 +608,74 @@ def _emit(
     pixels: _Pixels,
 ) -> None:
     """Send image triangles back to their supporting plane and into the builder."""
-    view, builder, normal = cut.view, cut.builder, shape.normal
-    flat = triangles.reshape(-1, 2)
-    directions = image_to_view_directions(flat, view)
-    denominator = directions @ normal
-    if np.any(np.abs(denominator) < 1e-9):
-        builder.reject(triangle, REJECTION_REASONS["grazing_plane"], 0.0)
+    view, builder = cut.view, cut.builder
+    projected = _unproject_triangles(cut, shape, triangles, apply_surface_offset=True)
+    if projected is None:
+        flat = triangles.reshape(-1, 2)
+        denominator = image_to_view_directions(flat, view) @ shape.normal
+        reason = "grazing_plane" if np.any(np.abs(denominator) < 1e-9) else "behind_near_plane"
+        builder.reject(triangle, REJECTION_REASONS[reason], 0.0)
         return
-    distance = shape.offset / denominator
-    if np.any(distance <= 0.0):
-        builder.reject(triangle, REJECTION_REASONS["behind_near_plane"], 0.0)
-        return
-    points = directions * distance[:, None]
-    if builder.surface_offset_m:
-        points = points - builder.surface_offset_m * points / np.linalg.norm(points, axis=1, keepdims=True)
-    view_triangles = points.reshape(-1, 3, 3)
-    world_triangles = view_to_world(points, cut.pose, view).reshape(-1, 3, 3)
+    view_triangles, world_triangles = projected
     owned = pixels.owned
     group = builder.begin_group((pixels.rows[owned] * view.width + pixels.columns[owned]).astype(np.int64))
     builder.add(triangles, view_triangles, world_triangles, evidence, triangle, group)
     cut.report["emitted_area_px"] += float(sum(abs(signed_area(item)) for item in triangles))
+
+
+def _reject_projected(
+    cut: _Cut,
+    triangle: int,
+    reason: int,
+    area_px: float,
+    shape: _Footprint,
+    image_triangles: np.ndarray | None = None,
+) -> None:
+    """Record the clipped candidate itself, mapped back to its support plane."""
+    geometry_kind = REJECTED_GEOMETRY_KINDS["exact_cut_piece"]
+    if image_triangles is None:
+        image_triangles = fan_triangles(shape.polygon)
+        geometry_kind = REJECTED_GEOMETRY_KINDS["clipped_footprint"]
+    projected = _unproject_triangles(cut, shape, image_triangles, apply_surface_offset=False)
+    if projected is None:
+        cut.builder.reject(triangle, reason, area_px)
+        return
+    _view_triangles, world_triangles = projected
+    cut.builder.reject(
+        triangle,
+        reason,
+        area_px,
+        image_triangles=image_triangles,
+        world_triangles=world_triangles,
+        geometry_kind=geometry_kind,
+    )
+
+
+def _unproject_triangles(
+    cut: _Cut,
+    shape: _Footprint,
+    image_triangles: np.ndarray,
+    *,
+    apply_surface_offset: bool,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Map projected triangles to their source plane, if the inverse is finite."""
+    image_triangles = np.asarray(image_triangles, dtype=np.float64).reshape(-1, 3, 2)
+    if image_triangles.shape[0] == 0:
+        return None
+    flat = image_triangles.reshape(-1, 2)
+    directions = image_to_view_directions(flat, cut.view)
+    denominator = directions @ shape.normal
+    if np.any(np.abs(denominator) < 1e-9):
+        return None
+    distance = shape.offset / denominator
+    if np.any(distance <= 0.0) or not np.all(np.isfinite(distance)):
+        return None
+    points = directions * distance[:, None]
+    if apply_surface_offset and cut.builder.surface_offset_m:
+        points = points - cut.builder.surface_offset_m * points / np.linalg.norm(points, axis=1, keepdims=True)
+    view_triangles = points.reshape(-1, 3, 3)
+    world_triangles = view_to_world(points, cut.pose, cut.view).reshape(-1, 3, 3)
+    return view_triangles, world_triangles
 
 
 def _face_evidence(cut: _Cut, pixels: _Pixels) -> _Evidence | None:

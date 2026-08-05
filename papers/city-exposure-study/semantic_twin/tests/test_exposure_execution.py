@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
+from typing import ClassVar
 
 import numpy as np
 import pytest
@@ -14,21 +15,23 @@ from semantic_twin.exposure.execution import (
     OutputFiles,
     PreparedRun,
     PreparedScene,
-    _build_walk,
     _bind_materials,
+    _build_walk,
     _manifest,
     _prepare_scene,
-    _transport_provenance,
     _trace_config,
     _trace_rows,
+    _transport_provenance,
     _validate_run,
     _walk_provenance,
     execute,
 )
+from semantic_twin.exposure.reuse import same_output_generation
 from semantic_twin.exposure.sweeps import LadderSweepConfig, SweepEnvironment, run_coverage_ladder
-from semantic_twin.materials import HOST_SURFACE_CLASS_RULE
+from semantic_twin.materials import HOST_SURFACE_CLASS_RULE, Provenance
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.tracer import TraceConfig
+from semantic_twin.vision.surface_atlas import load_surface_atlas
 
 
 def escape_config(**changes) -> RunConfig:
@@ -51,6 +54,7 @@ def test_walk_material_manifest_rule_describes_structural_support_majority(tmp_p
         class_names=("ground", "semantic_asphalt_concrete"),
         class_binding={},
         face_class=np.array([1]),
+        face_source=np.array([int(Provenance.IMAGE_WALK_ENTITY)], dtype=np.int8),
         covered_fraction_by_face=1.0,
         covered_fraction_by_area=1.0,
         provenance={"support_compatibility": {"version": "test"}},
@@ -82,8 +86,44 @@ def test_walk_material_manifest_rule_describes_structural_support_majority(tmp_p
     result = _bind_materials(escape_config(materials="walk"), scene, environment)
 
     assert result.face_class.tolist() == [1]
+    assert result.face_source.tolist() == [int(Provenance.IMAGE_WALK_ENTITY)]
     assert captured["class_rule"] == HOST_SURFACE_CLASS_RULE
     assert "strictly outweighs" in captured["class_rule"]
+
+
+@pytest.mark.parametrize(
+    ("sidecar_text", "message"),
+    [
+        (None, "no canonical JSON sidecar"),
+        ("{broken", "failed canonical provenance validation"),
+    ],
+)
+def test_atlas_binding_requires_a_readable_canonical_sidecar(tmp_path, sidecar_text, message):
+    mesh = tmp_path / "mesh.ply"
+    mesh.write_bytes(b"mesh")
+    atlas = tmp_path / "atlas.npz"
+    atlas.write_bytes(b"atlas")
+    if sidecar_text is not None:
+        atlas.with_suffix(".json").write_text(sidecar_text)
+    scene = PreparedScene(
+        mesh=mesh,
+        geometry=object(),
+        datum=0.0,
+        datum_provenance={},
+        face_class=np.array([0]),
+        areas=np.array([1.0]),
+    )
+    environment = SimpleNamespace(
+        site_walk_semantics=lambda _site, _crop: None,
+        site_fishnet=lambda _site: None,
+        site_surface_atlas=lambda _site, _crop: atlas,
+        load_surface_atlas=load_surface_atlas,
+        semantics=tmp_path / "semantics.json",
+        material_config=tmp_path / "materials",
+    )
+
+    with pytest.raises(ValueError, match=message):
+        _bind_materials(escape_config(materials="atlas"), scene, environment)
 
 
 def test_the_legacy_driver_builds_the_live_run_config_without_changing_its_defaults():
@@ -518,16 +558,34 @@ def test_device_execute_selects_resident_tracer_and_keeps_output_contract(tmp_pa
             self.rho = {"rooftop": np.array([value, value + 1.0])}
 
         def scalars(self):
-            return {"chi_rooftop": 0.4, "sky_fraction": 0.3}
+            return {
+                "chi_rooftop": 0.4,
+                "chi_rooftop_direct": 0.2,
+                "sky_fraction": 0.3,
+                "mean_bounces": 0.5,
+                "mean_excess_delay_ns": 1.0,
+                "escaped_fraction": 0.4,
+                "truncated_throughput_share": 0.0,
+            }
 
     class Coupler:
         def couple(self, *_args):
-            return SimpleNamespace(as_dict=lambda: {"peak_sab_w_m2": 0.2})
+            return SimpleNamespace(
+                as_dict=lambda: {
+                    "reference_s0_w_m2": 1.0,
+                    "arriving_power_density_w_m2": 0.4,
+                    "susceptibility": 0.5,
+                    "peak_sab_w_m2": 0.2,
+                    "mean_sab_w_m2": 0.1,
+                    "absorbed_power_w": 0.01,
+                    "sar_wb_w_kg": 0.001,
+                }
+            )
 
     class Walk:
         points = np.array([[1.0, 0.0, 1.5], [2.0, 0.0, 1.5], [3.0, 0.0, 1.5]])
         ground_z_m = np.zeros(3)
-        provenance = {"rule": "test walk"}
+        provenance: ClassVar[dict[str, str]] = {"rule": "test walk"}
 
         def __len__(self):
             return len(self.points)
@@ -570,7 +628,7 @@ def test_device_execute_selects_resident_tracer_and_keeps_output_contract(tmp_pa
             columns=1,
             band_fraction=1.0,
         ),
-        stratified_subset=lambda _walk, _locations: np.array([2, 0]),
+        stratified_subset=lambda _walk, _locations: np.array([0, 2]),
         trace_config_type=TraceConfig,
         tracer_type=lambda *_args: pytest.fail("NumPy tracer was selected for a Dr.Jit run"),
         trace_standpoints=trace_standpoints,
@@ -599,15 +657,21 @@ def test_device_execute_selects_resident_tracer_and_keeps_output_contract(tmp_pa
     assert trace_config.rays == run.rays
     assert captured["workers"] == 1
     assert captured["models"] == ("rooftop",)
-    assert [seed for _point, _ground, seed in captured["standpoints"]] == [2011, 11]
+    assert [seed for _point, _ground, seed in captured["standpoints"]] == [11, 2011]
     documents = [json.loads(line) for line in rows.read_text().splitlines()]
-    assert [document["index"] for document in documents] == [2, 0]
+    assert [document["index"] for document in documents] == [0, 2]
     assert all("rooftop_peak_sab_w_m2" in document for document in documents)
     saved = np.load(environment.output / "trial_15ghz_spectra.npz")
     assert saved["rho_rooftop"].tolist() == [[10.0, 11.0], [20.0, 21.0]]
-    assert saved["index"].tolist() == [2, 0]
+    assert saved["index"].tolist() == [0, 2]
     manifest = json.loads((environment.output / "trial_15ghz_manifest.json").read_text())
     assert manifest["transport"]["kernel"] == "drjit"
+    assert same_output_generation(
+        manifest,
+        environment.output / "trial_15ghz_locations.jsonl",
+        environment.output / "trial_15ghz_spectra.npz",
+    )
+    assert not list(environment.output.glob(".*trial_15ghz*"))
 
 
 def test_llvm_device_trace_writes_one_production_location(tmp_path):
@@ -727,7 +791,12 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
         escape_config(locations=1),
         environment,
         scene,
-        MaterialBinding(np.array([0]), table, {"materials": "geometric"}),
+        MaterialBinding(
+            np.array([0]),
+            np.array([int(Provenance.GEOMETRIC)], dtype=np.int8),
+            table,
+            {"materials": "geometric"},
+        ),
         SimpleNamespace(provenance={"rule": "grid"}),
         np.array([0]),
         TraceConfig(),
@@ -753,6 +822,7 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
         "surface_binding",
         "semantic_binding",
         "class_area_fractions",
+        "class_area_fraction_basis",
         "frequency_note",
         "crop_bound_note",
         "walk",
@@ -774,6 +844,14 @@ def test_manifest_keys_keep_the_published_insertion_order(tmp_path):
     assert manifest["mesh_sha256"] == "d30ca7a7a32bf5772dc5eb2a2e7bd35737eff795ad74f2479b359716b59abdfa"
     assert manifest["semantic_binding"]["face_class_sha256"] == (
         "ba553f9413e2fef99c0d1c2ad6c5d34ab435aef491a26c047ef48231c1631b75"
+    )
+    assert manifest["semantic_binding"]["face_source_sha256"] == (
+        "825d834a7d540dbc5fce75660f794c43d4109a8086b9a6c74fab01ed0cb09119"
+    )
+    assert manifest["semantic_binding"]["face_source_labels"]["0"] == "GEOMETRIC"
+    assert manifest["semantic_binding"]["face_source_area_fractions"] == {"GEOMETRIC": 1.0}
+    assert manifest["class_area_fraction_basis"] == (
+        "area-weighted material class assigned to each complete support-mesh face"
     )
 
 

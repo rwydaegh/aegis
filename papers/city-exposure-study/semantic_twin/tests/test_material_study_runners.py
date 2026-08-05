@@ -15,6 +15,7 @@ import run_masonry_grating
 import run_masonry_spectrum
 from semantic_twin import paths
 from semantic_twin.materials import foliage_study
+from semantic_twin.materials.foliage import POWER_DB_PER_NEPER
 from semantic_twin.materials.masonry import grating_study, spectrum_study
 from semantic_twin.propagation import diffraction_bound
 
@@ -172,6 +173,25 @@ def test_foliage_leaf_output_is_deterministic_and_keeps_its_schema(monkeypatch, 
     ]
     assert list(document["curves"]) == ["7", "15", "28"]
     assert len(document["curves"]["15"]["incidence_deg"]) == 86
+
+
+def test_foliage_sweep_converts_figure_two_power_loss_to_optical_depth(monkeypatch, tmp_path):
+    monkeypatch.setattr(foliage_study, "OUTPUT", tmp_path)
+    monkeypatch.setattr(foliage_study, "HALF_WIDTHS_M", (0.0,))
+    monkeypatch.setattr(foliage_study, "OPTICAL_DEPTHS", (1.0,))
+    monkeypatch.setattr(
+        foliage_study,
+        "_trace",
+        lambda *args, **kwargs: {"canopy_solid_angle_fraction": 0.0, "susceptibility": {"isotropic": 1.0}},
+    )
+
+    foliage_study.stage_sweep(rays=1, seed=0)
+
+    document = json.loads((tmp_path / "sensitivity.json").read_text())
+    gamma = document["figure2_specific_attenuation_db_per_m"]
+    assert document["figure2_implied_optical_depth_over_canopy_depth"] == pytest.approx(
+        gamma / POWER_DB_PER_NEPER * foliage_study.CANOPY_DEPTH_M
+    )
 
 
 def test_masonry_census_output_keeps_its_exact_contents(monkeypatch, tmp_path):

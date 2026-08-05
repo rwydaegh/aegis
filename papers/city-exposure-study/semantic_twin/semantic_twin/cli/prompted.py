@@ -9,6 +9,8 @@ from semantic_twin.vision.prompted import (
     DEFAULT_PROMPT_BATCH,
     DEFAULT_RESOLUTION,
     DEFAULT_THRESHOLD,
+    PRODUCTION_REPOSITORY_COMMIT,
+    PRODUCTION_REVISION,
     PromptedRunConfig,
     run_prompted,
 )
@@ -23,6 +25,19 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--resolution", type=int, default=DEFAULT_RESOLUTION)
     parser.add_argument("--prompt-batch", type=int, default=DEFAULT_PROMPT_BATCH)
     parser.add_argument("--limit-views", type=int)
+    parser.add_argument(
+        "--sam-revision",
+        help=f"Hugging Face revision for facebook/sam3. Production requires {PRODUCTION_REVISION}.",
+    )
+    parser.add_argument(
+        "--sam-repository-commit",
+        help=f"installed SAM 3 source commit. Production requires {PRODUCTION_REPOSITORY_COMMIT}.",
+    )
+    parser.add_argument(
+        "--production",
+        action="store_true",
+        help="refuse inference unless both SAM 3 weights and source are pinned and verified",
+    )
     parser.add_argument("--force", action="store_true")
     return parser.parse_args(argv)
 

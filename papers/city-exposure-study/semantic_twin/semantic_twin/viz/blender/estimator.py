@@ -16,6 +16,7 @@ says about itself.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from typing import Any
 
@@ -63,19 +64,28 @@ from .style import (
 )
 
 
+ARRIVAL_DISPLAY_FLOOR_DB = -40.0
+ARRIVAL_DISPLAY_SUBDIVISIONS = 2
+
+
 def _payload_text(payload: Any, key: str) -> str | None:
     keys = payload.files if hasattr(payload, "files") else payload
     return str(np.asarray(payload[key]).item()) if key in keys else None
 
 
 def build_twin(payload: Any, class_names: Sequence[str], into: Any) -> Any:
-    """The support mesh, tinted by the surface class that set each triangle's material."""
+    """The support mesh, tinted by its whole-face geometric fallback class."""
     face_class = payload["mesh_face_class"]
     tint = np.array([CLASS_TINT.get(name, (0.4, 0.4, 0.4)) for name in class_names])
     rgba = np.column_stack([tint[face_class], np.ones(face_class.size)])
     obj = build_mesh("support_mesh", payload["mesh_vertices"], payload["mesh_faces"], into)
     attach_face_colour(obj, "surface_class", rgba)
     assign(obj, lit_material("twin_surface", "surface_class"))
+    obj["surface_class_role"] = (
+        "whole-face geometric fallback for unsupported atlas texels, or the production binding on non-atlas runs"
+    )
+    obj["atlas_hit_rule"] = "supported atlas texels use the joint material posterior at the exact hit position"
+    obj["surface_class_vocabulary"] = json.dumps(list(class_names))
     return obj
 
 
@@ -220,6 +230,99 @@ def build_ray_depth(
     return counts
 
 
+def _display_lobe_field(rho: np.ndarray, floor_db: float) -> tuple[np.ndarray, np.ndarray, float]:
+    """Map a non-negative spectrum to a clipped decibel display radius.
+
+    The returned values are for drawing only. The input remains the scientific
+    spectrum and is put on a separate mesh by :func:`build_arrival`.
+    """
+    values = np.asarray(rho, dtype=np.float64)
+    if values.ndim != 1 or not np.all(np.isfinite(values)) or np.any(values < 0.0):
+        raise ValueError("the arrival spectrum must be one-dimensional, finite, and non-negative")
+    if not np.isfinite(floor_db) or floor_db >= 0.0:
+        raise ValueError("the arrival display floor must be a finite negative decibel value")
+    peak = float(values.max(initial=0.0))
+    if peak == 0.0:
+        relative_db = np.full(values.shape, floor_db)
+    else:
+        relative_db = np.full(values.shape, floor_db)
+        positive = values > 0.0
+        relative_db[positive] = np.maximum(10.0 * np.log10(values[positive] / peak), floor_db)
+    radial_position = (relative_db - floor_db) / -floor_db
+    return radial_position, relative_db, peak
+
+
+def _subdivide_spherical_field(
+    directions: np.ndarray,
+    faces: np.ndarray,
+    values: np.ndarray,
+    levels: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Subdivide a spherical triangle field with shared, projected edge midpoints."""
+    points = np.asarray(directions, dtype=np.float64)
+    triangles = np.asarray(faces, dtype=np.int64)
+    field = np.asarray(values, dtype=np.float64)
+    if points.ndim != 2 or points.shape[1] != 3:
+        raise ValueError("arrival directions must have shape (n, 3)")
+    if triangles.ndim != 2 or triangles.shape[1] != 3:
+        raise ValueError("arrival faces must have shape (m, 3)")
+    if field.shape != (points.shape[0],):
+        raise ValueError("arrival field length must match the direction count")
+    if levels < 0:
+        raise ValueError("arrival display subdivision levels must be non-negative")
+
+    lengths = np.linalg.norm(points, axis=1)
+    if np.any(lengths == 0.0):
+        raise ValueError("arrival directions must be non-zero")
+    points = points / lengths[:, None]
+    for _ in range(levels):
+        edges = np.sort(
+            np.concatenate(
+                [triangles[:, [0, 1]], triangles[:, [1, 2]], triangles[:, [2, 0]]],
+                axis=0,
+            ),
+            axis=1,
+        )
+        unique_edges, inverse = np.unique(edges, axis=0, return_inverse=True)
+        midpoint = points[unique_edges].sum(axis=1)
+        midpoint /= np.linalg.norm(midpoint, axis=1)[:, None]
+        midpoint_field = field[unique_edges].mean(axis=1)
+        first_new = points.shape[0]
+        points = np.vstack([points, midpoint])
+        field = np.concatenate([field, midpoint_field])
+
+        edge_index = first_new + inverse.reshape(3, triangles.shape[0]).T
+        ab, bc, ca = edge_index[:, 0], edge_index[:, 1], edge_index[:, 2]
+        a, b, c = triangles[:, 0], triangles[:, 1], triangles[:, 2]
+        triangles = np.vstack(
+            [
+                np.column_stack([a, ab, ca]),
+                np.column_stack([ab, b, bc]),
+                np.column_stack([ca, bc, c]),
+                np.column_stack([ab, bc, ca]),
+            ]
+        )
+    return points, triangles, field
+
+
+def _arrival_provenance(
+    obj: Any,
+    *,
+    peak: float,
+    source_directions: int,
+    source_faces: int,
+) -> None:
+    obj["peak_rho_per_sr"] = peak
+    obj["source_direction_count"] = source_directions
+    obj["source_triangle_count"] = source_faces
+    obj["source_grid_solid_angle_sr"] = 4.0 * np.pi / source_directions
+    obj["source_grid_resolution"] = f"{source_directions} measured angular cells on {source_faces} source triangles"
+    obj["direction_convention"] = "+local_grid points from the receiver toward the apparent source"
+    obj["reciprocal_trace_direction"] = "+local_grid is the outward escape direction launched from the receiver"
+    obj["physical_wave_travel_direction"] = "k_hat = -local_grid, toward the receiver and body"
+    obj["lobe_tip_meaning"] = "source bearing and reciprocal escape direction, not physical wave travel direction"
+
+
 def build_arrival(
     payload: Any,
     hero: np.ndarray,
@@ -229,42 +332,104 @@ def build_arrival(
     offset_m: float,
     floor: float,
 ) -> dict[str, float]:
-    """One lobe per illumination model: the angular power spectrum as a surface.
+    """Build an exact source-bearing angular mesh and one smooth display mesh per model.
 
-    Radius is `rho(u)` normalised by the model's own maximum, so the three lobes are
-    shape comparable rather than level comparable. Their levels differ by two orders
-    of magnitude and drawing that faithfully would leave two of them invisible. The
-    level is on the object as a custom property and in the manifest instead.
+    The raw mesh uses the stored direction grid, faces, and ``rho`` values. A
+    lobe points from the receiver toward the apparent source, which is the
+    reciprocal escape direction. Physical wave travel uses the opposite vector.
+    Its
+    radius is linear in ``rho`` and it receives no interpolation or smooth shading.
+    The second mesh is a labelled display aid. It clips the radius at a fixed
+    decibel floor, subdivides the stored triangles, interpolates that clipped
+    decibel field, and uses smooth normals. It supplies no value to the estimator.
 
-    The lobe belongs at the standpoint and is drawn ``offset_m`` above it, or it
-    would enclose the phantom standing there and neither would be readable. Only the
-    centre moves. Every direction and every radius is unchanged, and the offset is
-    recorded on the object.
+    Both meshes are normalised by their model's own peak so shapes can be compared.
+    The physical peak and the source grid resolution remain explicit properties.
+    The centre is moved ``offset_m`` above the standpoint only for readability.
     """
     grid = payload["local_grid"].astype(np.float64)
-    faces = payload["local_grid_faces"]
+    faces = payload["local_grid_faces"].astype(np.int64)
     centre = hero + np.array([0.0, 0.0, offset_m])
     peaks: dict[str, float] = {}
     for name in available_spectrum_models(payload, MODEL_NAMES):
         rho = payload[f"rho_{name}"].astype(np.float64)
-        peak = float(rho.max())
+        _, display_db, peak = _display_lobe_field(rho, ARRIVAL_DISPLAY_FLOOR_DB)
         peaks[name] = peak
-        # A directional model puts almost all of its measure in a narrow elevation
-        # band, so the bare lobe is a pancake a few centimetres thick at this scale,
-        # which is correct and unreadable. The floor keeps the surface closed and
-        # turns the lobe into a bulge on a small sphere, the way an antenna pattern
-        # is normally drawn. It compresses the low end and nothing else: the
-        # ordering and the peak direction are untouched.
-        shape = rho / peak if peak > 0.0 else rho
-        radius = scale_m * (floor + (1.0 - floor) * shape)
-        obj = build_mesh(f"arrival_{name}", centre + radius[:, None] * grid, faces, into)
+
+        raw_shape = rho / peak if peak > 0.0 else rho
+        raw = build_mesh(
+            f"arrival_{name}_raw_scientific",
+            centre + scale_m * raw_shape[:, None] * grid,
+            faces,
+            into,
+        )
+        raw.data.polygons.foreach_set("use_smooth", np.zeros(faces.shape[0], dtype=bool))
+        attach_values(raw, "value_rho_per_sr", rho, "POINT")
+        attach_face_colour(raw, "power", colour_ramp(rho[faces].mean(axis=1), 0.0, peak))
+        assign(raw, emissive_material(f"arrival_{name}_raw_scientific", "power"))
+        _arrival_provenance(
+            raw,
+            peak=peak,
+            source_directions=grid.shape[0],
+            source_faces=faces.shape[0],
+        )
+        raw["role"] = "raw scientific angular spectrum"
+        raw["radius_mapping"] = "linear rho / peak; no radial floor"
+        raw["interpolation"] = "none"
+        raw["surface_normals"] = "flat per source triangle"
+        raw["drawn_metres_above_the_standpoint"] = offset_m
+        raw["integrated_rho_sr"] = float(rho.sum() * 4.0 * np.pi / grid.shape[0])
+        raw["integral_definition"] = "sum(value_rho_per_sr) * 4 pi / source_direction_count"
+        raw["scientific_values_changed_for_display"] = False
+        raw["normalised_by"] = "its own peak, so shape is comparable across models and level is not"
+        raw.hide_render = True
+        raw.hide_viewport = True
+
+        smooth_grid, smooth_faces, smooth_db = _subdivide_spherical_field(
+            grid,
+            faces,
+            display_db,
+            ARRIVAL_DISPLAY_SUBDIVISIONS,
+        )
+        smooth_shape = (smooth_db - ARRIVAL_DISPLAY_FLOOR_DB) / -ARRIVAL_DISPLAY_FLOOR_DB
+        smooth_radius = scale_m * (floor + (1.0 - floor) * smooth_shape)
+        obj = build_mesh(
+            f"arrival_{name}_display_only_smooth",
+            centre + smooth_radius[:, None] * smooth_grid,
+            smooth_faces,
+            into,
+        )
+        obj.data.polygons.foreach_set("use_smooth", np.ones(smooth_faces.shape[0], dtype=bool))
+        attach_values(obj, "display_db_below_peak", smooth_db, "POINT")
+        attach_values(obj, "display_radial_position", smooth_shape, "POINT")
+        display_face_db = smooth_db[smooth_faces].mean(axis=1)
+        attach_face_colour(
+            obj,
+            "power",
+            colour_ramp(display_face_db, ARRIVAL_DISPLAY_FLOOR_DB, 0.0),
+        )
+        assign(obj, emissive_material(f"arrival_{name}_display_only_smooth", "power"))
+        _arrival_provenance(
+            obj,
+            peak=peak,
+            source_directions=grid.shape[0],
+            source_faces=faces.shape[0],
+        )
+        obj["role"] = "display-only smooth view of the raw scientific angular spectrum"
+        obj["supplies_estimator_values"] = False
+        obj["display_db_floor_below_peak"] = ARRIVAL_DISPLAY_FLOOR_DB
+        obj["display_radius_floor_fraction"] = floor
+        obj["display_subdivision_levels"] = ARRIVAL_DISPLAY_SUBDIVISIONS
+        obj["display_direction_count"] = smooth_grid.shape[0]
+        obj["display_triangle_count"] = smooth_faces.shape[0]
+        obj["display_triangles_per_source_triangle"] = 4**ARRIVAL_DISPLAY_SUBDIVISIONS
+        obj["display_adds_scientific_angular_samples"] = False
+        obj["display_interpolation"] = "linear in clipped dB on subdivided source triangles"
+        obj["surface_normals"] = "smooth display normals"
         obj["drawn_metres_above_the_standpoint"] = offset_m
-        obj["radius_floor_fraction"] = floor
-        attach_face_colour(obj, "power", colour_ramp(rho[faces].mean(axis=1), 0.0, peak))
-        assign(obj, emissive_material(f"arrival_{name}", "power"))
-        obj["peak_rho_per_sr"] = peak
         obj["normalised_by"] = "its own peak, so shape is comparable across models and level is not"
         if arm := _payload_text(payload, "exposure_estimator_arm"):
+            raw["estimator_arm"] = arm
             obj["estimator_arm"] = arm
         obj.hide_render = name != "rooftop"
     return peaks
@@ -706,8 +871,14 @@ def build_body(payload: Any, hero: np.ndarray, ground_z: float, into: Any) -> tu
     obj = build_mesh("phantom_sab", placed, payload["body_faces"], into)
     low, high = float(sab.min()), float(sab.max())
     attach_face_colour(obj, "sab", colour_ramp(sab, low, high))
+    attach_values(obj, "value_sab_w_m2", sab, "FACE")
     assign(obj, emissive_material("phantom_sab", "sab"))
     obj["sab_w_m2_range"] = [low, high]
+    obj["colour_quantity"] = "absorbed power density Sab, W/m2"
+    obj["colour_attribute"] = "sab"
+    obj["exact_linear_attribute"] = "value_sab_w_m2"
+    obj["value_domain"] = "one payload value per body triangle, in body_faces order"
+    obj["field_provenance"] = "recomputed by AEGIS from the stored rooftop angular spectrum"
     obj["phantom"] = "duke, IT'IS adult male"
     if arm := _payload_text(payload, "exposure_estimator_arm"):
         obj["estimator_arm"] = arm

@@ -651,11 +651,22 @@ def test_every_case_has_a_fixture_and_a_manifest_entry() -> None:
     manifest_path = pathlib.Path(__file__).resolve().parent / "golden" / "MANIFEST.json"
     assert manifest_path.exists(), "tests/golden/MANIFEST.json is missing"
     manifest = json.loads(manifest_path.read_text())
+    provenance_fields = {"captured_utc", "git_sha", "git_dirty"}
+    legacy_provenance = provenance_fields <= manifest.keys()
     for case in CASES:
         assert case.fixture.exists(), f"{case.ident} has no fixture"
         assert case.ident in manifest["cases"], f"{case.ident} is not in the manifest"
-        recorded = manifest["cases"][case.ident]["argv"]
+        entry = manifest["cases"][case.ident]
+        recorded = entry["argv"]
         assert recorded == list(case.argv), (
             f"{case.ident}: the fixture was captured with a different command.\n"
             f"  captured: {recorded}\n  now:      {list(case.argv)}"
         )
+        present = provenance_fields & entry.keys()
+        assert present in (set(), provenance_fields), f"{case.ident}: partial per-case provenance {sorted(present)}"
+        if not present:
+            assert legacy_provenance, f"{case.ident}: no per-case provenance and no complete legacy provenance"
+        else:
+            assert isinstance(entry["captured_utc"], str) and entry["captured_utc"].endswith("Z")
+            assert isinstance(entry["git_sha"], str) and entry["git_sha"]
+            assert isinstance(entry["git_dirty"], bool)

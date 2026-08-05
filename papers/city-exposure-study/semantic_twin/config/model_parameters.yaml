@@ -1,0 +1,728 @@
+# Inventory only. This file does not supply defaults to executable code yet.
+# Sources use repository-relative paths and 1-based line numbers.
+inventory:
+  status: proposed_authoritative_inventory
+  generated_from: manual read-only audit, 2026-08-05
+  scope: configuration-like scientific and pipeline numbers, excluding generated measurement payloads
+  source_coverage:
+    basis: "targeted inventory assembled from earlier audits, not a claim that every current source file was manually reviewed"
+    earlier_audit_record: {python_files_reported: 214, config_json_files_reported: 19}
+    sionna_workstream_files_reviewed: 12
+    sionna_scope: "two transport modules, four CLI modules, and five figure scripts, plus the final sealed exposure manifest"
+    manifest_and_provenance_files_sampled: true
+  fields:
+    value: current executable or configuration value
+    units: SI unless stated otherwise
+    source: current owner, symbol, class field, JSON path, or CLI option
+    scope: pipeline stage
+    status: canonical | default | diagnostic | legacy
+    affects_published_results: true | false | conditional
+    conflicts: known duplicate or competing setting, or none
+  entry_convention:
+    conflicts: "Every entry must state a duplicate or say none."
+    notes: "Per-entry explanatory notes live only in the companion Markdown review index. Notes are not YAML entry fields."
+
+parameters:
+  study_transport:
+    crop_radius_m:
+      value: 250
+      units: m
+      source: semantic_twin/runconfig.py:153 RunConfig.crop_m
+      scope: production trace crop
+      status: canonical
+      affects_published_results: true
+      conflicts: "CLI defaults also use 130 m, 200 m, and 250 m for different stages"
+    frequency_hz:
+      value: 15000000000.0
+      units: Hz
+      source: semantic_twin/runconfig.py:179 RunConfig.frequency_hz
+      scope: propagation
+      status: canonical
+      affects_published_results: true
+      conflicts: none
+    maximum_bounces:
+      value: 3
+      units: interactions
+      source: semantic_twin/runconfig.py:180 RunConfig.max_bounces; semantic_twin/transport/tracer.py:64 DEFAULT_MAX_BOUNCES
+      scope: propagation
+      status: canonical
+      affects_published_results: true
+      conflicts: "illumination sensitivity study uses 4; next-event and monostatic accumulators permit order 8"
+    roulette_floor:
+      value: 0.05
+      units: probability
+      source: semantic_twin/runconfig.py:192 RunConfig.roulette_floor; semantic_twin/transport/tracer.py:85 TraceConfig.roulette_floor
+      scope: transport variance control
+      status: canonical
+      affects_published_results: conditional
+      conflicts: "inert when roulette_start is one past the bounce budget"
+    ray_epsilon_m:
+      value: 0.001
+      units: m
+      source: semantic_twin/runconfig.py:199 RunConfig.ray_epsilon_m; semantic_twin/transport/tracer.py:86 TraceConfig.ray_epsilon_m
+      scope: ray relaunch
+      status: canonical
+      affects_published_results: true
+      conflicts: none
+    rays:
+      value: 200000
+      units: rays per standpoint
+      source: semantic_twin/runconfig.py:209 RunConfig.rays
+      scope: production Monte Carlo
+      status: canonical
+      affects_published_results: true
+      conflicts: "TraceConfig defaults 400000; foliage 400000; sub-street study 120000"
+    batch:
+      value: 400000
+      units: rays
+      source: semantic_twin/runconfig.py:222 RunConfig.batch; semantic_twin/transport/tracer.py:104 TraceConfig.batch
+      scope: deterministic sampling sequence
+      status: canonical
+      affects_published_results: true
+      conflicts: "not merely runtime because changing batches changes seeded draws"
+    local_cells:
+      value: 512
+      units: angular cells
+      source: semantic_twin/runconfig.py:223 RunConfig.local_cells
+      scope: local transfer estimator
+      status: canonical
+      affects_published_results: true
+      conflicts: "GPU parity configuration uses 256"
+    exit_bands:
+      value: 18
+      units: elevation bands
+      source: semantic_twin/runconfig.py:224 RunConfig.exit_bands; semantic_twin/transport/tracer.py:74 TraceConfig.exit_bands
+      scope: escape histogram
+      status: canonical
+      affects_published_results: true
+      conflicts: none
+    seed:
+      value: 7
+      units: PRNG seed
+      source: semantic_twin/runconfig.py:225 RunConfig.seed
+      scope: production Monte Carlo
+      status: canonical
+      affects_published_results: true
+      conflicts: "TraceConfig default is 0; study scripts also use 0, 7, 11, 17, and fixed parity seed 20260804"
+    atlas_interface_posterior_threshold:
+      value: 0.5
+      units: posterior probability
+      source: semantic_twin/materials/atlas_binding.py:MIN_INTERFACE_POSTERIOR
+      scope: atlas material transport
+      status: canonical
+      affects_published_results: true
+      conflicts: "strict greater-than comparison; an exact 0.5 tie uses geometric fallback"
+    trace_config_legacy_defaults:
+      value: {frequency_hz: 15000000000.0, rays: 400000, local_cells: 512, exit_bands: 18, max_bounces: 3, seed: 0, batch: 400000}
+      units: mixed
+      source: semantic_twin/transport/tracer.py:68-104 TraceConfig
+      scope: direct tracer API
+      status: default
+      affects_published_results: true
+      conflicts: "diverges from RunConfig.rays and RunConfig.seed"
+    next_event_gather:
+      value: {min_connect_m: 0.5, samples: 1, max_order: 8, epsilon_m: 0.001, lift_m: 0.01, gather_seed_offset: 1000}
+      units: "m except count/order/seed"
+      source: semantic_twin/transport/next_event.py:19,50-55,186-191
+      scope: next-event connection estimator
+      status: default
+      affects_published_results: true
+      conflicts: "max_order differs from production max_bounces; lift differs from ray_epsilon_m"
+    monostatic:
+      value: {max_order: 8, range_bin_m: 2.0, max_two_way_range_m: 600.0, receive_gain: 1.0, shadow_epsilon_m: 0.002, glint_max_range_m: 400.0, angular_samples: 20001}
+      units: "mixed, ranges in m"
+      source: semantic_twin/transport/monostatic.py:67-85,145-166
+      scope: monostatic study
+      status: default
+      affects_published_results: true
+      conflicts: none
+
+  source_construction:
+    production_next_event:
+      value: {builders: 128, held_out: 16, azimuths: 1440, elevations: 600, cell_m: 1.0, dims: 3, site_lift_m: 0.5, connections: 1}
+      units: "m for cell_m/site_lift_m; otherwise counts"
+      source: semantic_twin/runconfig.py:111-129 NextEventConfig
+      scope: source construction
+      status: canonical
+      affects_published_results: true
+      conflicts: "skyline uses 720x400; diffraction uses 720x600; silhouette study sweeps 360/720/1440x600"
+    skyline_measurement:
+      value: {crop_m: 250, standpoints: 24, azimuths: 720, elevations: 400, walk_radius_m: 90.0, head_height_m: 1.5, seed: 7}
+      units: "m where named; otherwise counts"
+      source: measure_skyline.py:13-19 CLI defaults
+      scope: skyline study
+      status: default
+      affects_published_results: true
+      conflicts: none
+    diffraction_bound:
+      value: {standpoints: 20, azimuths: 720, elevations: 600, elevation_floor_deg: 0.05}
+      units: "degrees for elevation_floor_deg"
+      source: bound_diffraction.py:19-22 CLI defaults
+      scope: diffraction bound
+      status: default
+      affects_published_results: true
+      conflicts: none
+    source_silhouette_sweep:
+      value: {cell_m: [8.0, 4.0, 2.0, 1.0, 0.5], builders: [4, 8, 16, 32], azimuths: [360, 720, 1440], elevations: 600, held_out: 8, dimensions: 2}
+      units: "m for cell_m; otherwise counts"
+      source: measure_source_silhouette.py:14-17,24,39-40 CLI defaults
+      scope: source-construction convergence study
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: none
+
+  walk_and_observers:
+    production_walk:
+      value: {radius_m: 90.0, spacing_m: 3.0, route_stride_m: 6.0, head_height_m: 1.5, locations: 0}
+      units: "m except locations"
+      source: semantic_twin/runconfig.py:169-176 RunConfig
+      scope: observation walk
+      status: canonical
+      affects_published_results: true
+      conflicts: "some visual/export paths use 60 m; sub-street uses 60 m"
+    path_recorder:
+      value: {capacity: 2000, sky_distance_m: 400.0}
+      units: "rays and m"
+      source: semantic_twin/transport/observers.py:62 PathRecorder
+      scope: visual evidence
+      status: diagnostic
+      affects_published_results: false
+      conflicts: none
+
+  illumination_and_antenna:
+    source_bands:
+      value: {rooftop_height_m: [13.5, 43.5], rooftop_range_m: [25.0, 250.0], street_height_m: [2.5, 6.5], street_range_m: [10.0, 150.0]}
+      units: m
+      source: semantic_twin/illumination/catalogue.py:18-21
+      scope: illumination model
+      status: canonical
+      affects_published_results: true
+      conflicts: none
+    elevation_model:
+      value: {quadrature: 200001, elevation_support_deg: [-90.0, 90.0]}
+      units: "samples and degrees"
+      source: semantic_twin/illumination/model.py:69,202-203
+      scope: illumination normalisation
+      status: default
+      affects_published_results: true
+      conflicts: none
+    roofline_geometry:
+      value: {elevation_min_deg: 0.05, elevation_max_deg: 85.0, up_epsilon_m: 0.05, edge_radius_m: 2.0, edge_drop_m: 3.0, edge_rise_m: 0.5}
+      units: "degrees or m"
+      source: semantic_twin/illumination/roofline.py:61-79
+      scope: roofline source model
+      status: default
+      affects_published_results: true
+      conflicts: none
+    element_pattern:
+      value: {theta_3db_deg: 65.0, phi_3db_deg: 65.0, vertical_sidelobe_db: 30.0, front_back_db: 30.0, gain_dbi: 8.0}
+      units: "degrees or dB/dBi"
+      source: semantic_twin/propagation/antenna.py:85-98
+      scope: 3GPP element pattern
+      status: canonical
+      affects_published_results: true
+      conflicts: none
+    planar_array:
+      value: {rows: 8, columns: 8, row_spacing_wavelengths: 0.5, column_spacing_wavelengths: 0.5, sectors_deg: [0.0, 120.0, 240.0]}
+      units: "elements, wavelengths, degrees"
+      source: semantic_twin/propagation/antenna.py:184-187,289
+      scope: antenna gain
+      status: canonical
+      affects_published_results: true
+      conflicts: none
+    antenna_numerics:
+      value: {interpolation_elevation_nodes: 1201, interpolation_azimuth_nodes: 361, interpolation_chunk: 65536, user_elevation_nodes: 24, user_azimuth_nodes: 13, user_chunk: 2048, normalisation_azimuth_nodes: 360, gain_nodes: 4097, loaded_table_nodes: [121, 61]}
+      units: samples
+      source: semantic_twin/propagation/antenna.py:439-445,514-521,609-618,962
+      scope: antenna integration
+      status: default
+      affects_published_results: true
+      conflicts: none
+    antenna_scenarios:
+      value: {macro_tilt_deg: 102.0, micro_tilt_deg: 96.0, offset_sweep_deg: [0.0, 2.0, 5.0, 10.0, 20.0, 45.0], grid_rotation_sweep_deg: [0.0, 40.0, 80.0]}
+      units: degrees
+      source: semantic_twin/propagation/antenna.py:957-978
+      scope: antenna study scenarios
+      status: default
+      affects_published_results: true
+      conflicts: none
+
+  materials:
+    itu_p2040:
+      value: "all material a,b,c,d coefficients, frequency validity intervals, eps_fractional_std, and sigma_log_std"
+      units: "model-specific: GHz, S/m, dimensionless"
+      source: config/itu_p2040_4.json:12-26 JSON paths materials[*].{a,b,c,d,f_ghz,eps_fractional_std,sigma_log_std}
+      scope: dielectric and conductivity model
+      status: canonical
+      affects_published_results: true
+      conflicts: none
+    foliage_p833:
+      value: "all ITU table frequencies, species parameters, study bands, and envelope values"
+      units: "GHz, m, dB/m, dimensionless"
+      source: config/vegetation_p833.json:12-67 JSON numeric leaves; semantic_twin/materials/foliage.py:192-204
+      scope: vegetation attenuation and dielectric proxy
+      status: canonical
+      affects_published_results: true
+      conflicts: "the diagnostic foliage study can select a nearest table row outside the RET extent; exact-chord transport refuses that extrapolation by default"
+    vegetation_surface_policy:
+      value: {decision_threshold: 0.5, comparison: strict_greater_than, grass: geometric_ground_fallback, woody_canopy: nonblocking_until_closed_volume_geometry}
+      units: policy
+      source: semantic_twin/materials/atlas_binding.py:ATLAS_MATERIAL_RULE; semantic_twin/materials/vegetation_transport.py:GROUND_SURFACE_POLICY,WOODY_VOLUME_POLICY
+      scope: atlas vegetation routing
+      status: canonical
+      affects_published_results: true
+      conflicts: "grass has no validated layer model; woody evidence cannot become wood, vacuum, or a support-surface blocker"
+    p833_chord_transport:
+      value: {recommendation_scope_hz: [30000000.0, 100000000000.0], ret_table_extent_hz: [1300000000.0, 61500000000.0], geometry_sha256_chars: 64, watertight_required: true, positive_chord_required: true, allow_ret_extrapolation: false, species_reduction: none}
+      units: "Hz, digest characters, and policy"
+      source: semantic_twin/materials/vegetation_transport.py:P833_RECOMMENDATION_MIN_HZ,P833_RECOMMENDATION_MAX_HZ,P833_RET_MIN_HZ,P833_RET_MAX_HZ,VegetationPathSegments,evaluate_p833_segments
+      scope: participating-volume vegetation transport
+      status: canonical
+      affects_published_results: true
+      conflicts: "requires registered entry and exit points through hashed closed canopy geometry; the current atlas alone supplies no usable chord"
+    foliage_core:
+      value: {leaf_thickness_m: 0.0002, wood_dielectric_table: [[1.0, 7.2, 0.29], [2.4, 6.2, 0.30], [5.8, 6.0, 0.37], [30.0, 5.3, 0.43]]}
+      units: "m; GHz, relative permittivity, loss tangent"
+      source: semantic_twin/materials/foliage.py:189-204
+      scope: foliage model
+      status: canonical
+      affects_published_results: true
+      conflicts: none
+    surface_roughness:
+      value: "all per-class rms_height_mm, plausible ranges, log standard deviations, correlation lengths, periodic geometry, and retained-power diagnostics"
+      units: "mm and dimensionless"
+      source: config/surface_roughness.json:113-848 JSON numeric leaves
+      scope: scattering material prior
+      status: canonical
+      affects_published_results: true
+      conflicts: "some values are explicitly engineering priors, not measured constants"
+    masonry:
+      value: "all preset geometry, frequency-band response, recess limits, incidence limits, retention values, orders, and spacing values"
+      units: "mm, GHz, degrees, dimensionless"
+      source: config/masonry_scattering.json:47-end JSON numeric leaves
+      scope: masonry scattering study
+      status: canonical
+      affects_published_results: true
+      conflicts: "source geometry and computed response diagnostics share one file"
+    crowd_and_body:
+      value: {clothing_rms_height_m: 0.002, minimum_separation_m: 0.45, exclusion_radius_m: 0.6, max_radius_m: 30.0, datum_tolerance_m: 2.5, min_up_cosine: 0.85, projected_area_samples: 64, remesh_target_faces: 600, remesh_min_stature_m: 1.0}
+      units: "m except cosine/samples/faces"
+      source: semantic_twin/propagation/bystander_geometry.py:97-107,253-254,330,350-364
+      scope: bystander geometry
+      status: default
+      affects_published_results: true
+      conflicts: none
+
+  evidence_and_geometry:
+    panorama_screening:
+      value: {earth_radius_m: 6371008.8, screen_radius_m: 60.0, max_panoramas: 400, probe_search_radius_m: 25.0, rings: [0.55, 0.95], probes_per_ring: 8, coverage_radius_m: 20.0, recency_years: 6, azimuth_bins: 16, azimuth_min_radius_m: 5.0}
+      units: "m except counts, fractions, years"
+      source: semantic_twin/screening.py:37-75
+      scope: site admission
+      status: default
+      affects_published_results: true
+      conflicts: none
+    tile_acquisition:
+      value: {max_radius_m: 2000.0, max_requests: 2000, max_bytes: 1000000000, vertical_half_extent_m: 3000.0, building_headroom_m: 300.0, max_bbox_degrees: 0.01}
+      units: "m, bytes, degrees, requests"
+      source: semantic_twin/acquire/tiles.py:60-77; semantic_twin/acquire/mapillary.py:85
+      scope: geometry acquisition
+      status: default
+      affects_published_results: conditional
+      conflicts: none
+    mesh_and_remesh:
+      value: {match_tolerance_m: 2.0, solidify_m: 0.3, solidify_offset_m: 0.0, collapse_ratio: 0.0, adaptivity: 0.0, planar_angle_deg: 1.0}
+      units: "m, ratio, degrees"
+      source: semantic_twin/scene/inhouse_mesh_build.py:39; semantic_twin/scene/support_remesh.py:43-53
+      scope: support geometry
+      status: default
+      affects_published_results: true
+      conflicts: "2 m match tolerance duplicated in viz/blender/showcase_scene.py:46"
+    camera_crops:
+      value: {yaws_deg: [0, 90, 180, 270], pitch_deg: 0.0, fov_deg: 90.0, semantic_crop_size_px: 1536, dense_inference_size_px: 1536, minimum_dense_gate_pixels: 256}
+      units: "degrees or pixels"
+      source: raycast_mesh_depth.py:19-21; crop_fused_semantics.py:16-19; semantic_twin/vision/dense.py:50-57; semantic_twin/vision/views.py:35
+      scope: evidence projection
+      status: default
+      affects_published_results: true
+      conflicts: none
+    fishnet:
+      value: {subcell_review_fraction: 0.05, min_confidence: 0.35, boundary_tolerance_px: 1.5, min_region_pixels: 64, depth_break_ratio: 0.15, min_piece_area_px: 1.0}
+      units: "fraction or pixels"
+      source: semantic_twin/scene/fishnet_build.py:86,98-103
+      scope: semantic surface fusion
+      status: default
+      affects_published_results: true
+      conflicts: none
+    facade_crops:
+      value: {size_px: 384, stride_px: 128, min_building_fraction: 0.9, per_view: 4, per_wall: 5, per_patch: 2, patch_separation_m: 6.0, crop_radius_m: 130.0, max_range_m: 90.0}
+      units: "pixels, m, fraction, counts"
+      source: build_facade_crops.py:16-24 CLI defaults
+      scope: material evidence
+      status: default
+      affects_published_results: true
+      conflicts: none
+    texture_evidence:
+      value: {crop_radius_m: 140.0, grid_height_px: 1536, block_m: 12.0, folds: 5, min_texels: 8, min_purity: 0.7, collapse_threshold: 0.55, l2: 3.0, seed: 7}
+      units: "m, pixels, fraction, counts"
+      source: build_texture_evidence.py:22-30 CLI defaults; semantic_twin/vision/texture.py:296
+      scope: texture material evidence
+      status: default
+      affects_published_results: true
+      conflicts: none
+
+  registration_and_depth_qa:
+    prompted_segmentation:
+      value: {resolution_px: 1008, threshold: 0.35, prompt_batch: 32}
+      units: "pixels, probability, prompts"
+      source: semantic_twin/vision/prompted.py:55-59
+      scope: open-vocabulary semantics
+      status: default
+      affects_published_results: true
+      conflicts: "0.35 equals fishnet confidence but has a different meaning"
+    production_semantic_identity:
+      value: {concept_prompts: 60, raster_ids: 61, unlabelled_id: 0, immutable_commit_hex_chars: 40, separately_verified_sam_revisions: 2, sam_repository: facebook/sam3, sam3_weights_production_revision: 3c879f39826c281e95690f02c7821c4de09afae7, sam3_source_production_commit: 96914d2425f90a64f45ca977c2b5165418099543, production_catalogue_semantic_sha256: 66d0dfefba87bde5081cfa82108ca60d47c79cf641df3ec44129ec20bb90453b, reject_other_immutable_sam_pair: true, reject_same_count_catalogue_mutation: true, mask2former_repository: facebook/mask2former-swin-large-mapillary-vistas-semantic, mask2former_production_revision: 4772b6bf101d91f2534c106dc524d906aeb3c68a, mask2former_processor_and_weights_local_files_only: true, atlas_semantics_directory: explicit_relative_versioned_name}
+      units: "prompts, raster IDs, digest characters, and policy"
+      source: config/semantic_concepts.json concepts; semantic_twin/vision/vocabulary.py:ConceptCatalog.concept_ids; semantic_twin/vision/prompted.py:PRODUCTION_REVISION,PRODUCTION_REPOSITORY_COMMIT,PRODUCTION_CATALOGUE_SEMANTIC_SHA256,semantic_catalogue_identity,resolve_sam3_snapshot,verify_sam3_repository,run_prompted; semantic_twin/vision/dense.py:MODEL,PRODUCTION_REVISION,resolve_mask2former_snapshot,Mask2FormerBackend; build_surface_atlas.py:--semantics-dirname
+      scope: production Mask2Former, SAM 3, and atlas evidence identity
+      status: canonical
+      affects_published_results: true
+      conflicts: "production rejects any other immutable SAM 3 weights/source pair and any semantic catalogue mutation even when it keeps 61 IDs; Mask2Former also accepts only its reviewed repository and exact commit"
+    skyline_registration:
+      value: {seeds: [714261, 1, 2, 3, 5, 8, 13, 21], bins: 1024, minimum_distance_m: 8.0, smoothing_size: 11, smoothing_percentile: 90.0, robust_quantile: 0.8, orientation_prior_weight: 0.001}
+      units: "m, bins, fraction, dimensionless"
+      source: semantic_twin/vision/register.py:53,71-76
+      scope: panorama registration
+      status: default
+      affects_published_results: true
+      conflicts: none
+    station_admission:
+      value: {max_residual_deg: 4.0, max_sky_conflict: 0.5, min_conflict_range_m: 2.0}
+      units: "degrees, fraction, m"
+      source: build_site_semantics.py:33-35 CLI defaults
+      scope: station admission
+      status: default
+      affects_published_results: true
+      conflicts: "4 degree residual gate is repeated by build_walk_twin.py:21"
+    depth_fusion:
+      value: {plausible_scale_band: [0.5, 2.0], max_cross_view_scale_spread: 1.5, reference_log_sigma: 0.15, min_disagreement_log_sigma: 0.15, blocker_z: 3.0, agreement_z: 2.0, reliable_static_percentile: 60.0, min_calibration_pixels: 100, mesh_log_sigma: 0.35}
+      units: "ratios, log sigma, sigma, pixels"
+      source: semantic_twin/vision/depth_comparison.py:79-95,131-142,209-211; semantic_twin/vision/depth_models.py:43
+      scope: mesh/depth admission
+      status: default
+      affects_published_results: true
+      conflicts: none
+
+  study_cli_profiles:
+    main_exposure:
+      value: {locations: 0, rays: 200000, frequency_ghz: 15.0, local_cells: 512, seed: 7, walk_radius_m: 90.0, walk_spacing_m: 3.0, walk_stride_m: 6.0, crop_m: 250}
+      units: "mixed"
+      source: run_exposure.py:173-223 CLI defaults
+      scope: main study entry point
+      status: default
+      affects_published_results: true
+      conflicts: none
+    next_event:
+      value: {crop_m: 250, rays: 200000, builders: 128, held_out: 16, azimuths: 1440, elevations: 600, cell_m: 1.0, dims: 3, connections: 1, frequency_hz: 15000000000.0, max_bounces: 3, walk_radius_m: 90.0, head_height_m: 1.5, walk_stride_m: 6.0, seed: 7}
+      units: mixed
+      source: run_next_event.py:14-41 CLI defaults
+      scope: next-event study entry point
+      status: default
+      affects_published_results: true
+      conflicts: none
+    crop_convergence:
+      value: {locations: 24, rays: 200000, observer_radius_m: 40.0, frequency_hz: 15000000000.0, seed: 11}
+      units: mixed
+      source: run_crop_convergence.py:17-22 CLI defaults
+      scope: crop convergence diagnostic
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: none
+    bounce_evidence:
+      value: {crop_m: [130, 250], locations: 24, rays: 200000, local_cells: 512, walk_radius_m: 90.0, walk_spacing_m: 3.0, frequency_hz: 15000000000.0, seed: 7, variance_seeds: 8, variance_standpoints: 4}
+      units: mixed
+      source: measure_bounce_evidence.py:14-24 CLI defaults
+      scope: bounce evidence diagnostic
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: none
+    monostatic:
+      value: {locations: 80, rays: 200000, max_bounces: 3, crop_m: 250, frequency_ghz: 15.0, seed: 7, walk_radius_m: 90.0, walk_spacing_m: 3.0}
+      units: mixed
+      source: run_monostatic.py:14-22 CLI defaults
+      scope: monostatic diagnostic
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: none
+    substreet_ablation:
+      value: {crop_m: 250, locations: 40, walk_radius_m: 60.0, rays: 120000, floor_below_datum_m: 8.0, seed: 0}
+      units: mixed
+      source: run_substreet_ablation.py:15-20 CLI defaults
+      scope: ablation
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: none
+    foliage:
+      value: {rays: 400000, seed: 17}
+      units: "rays and PRNG seed"
+      source: run_foliage_study.py:13-14 CLI defaults
+      scope: foliage study
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: none
+    angular_convergence:
+      value:
+        artifact_schemas: [angular-convergence-plan-v2, angular-convergence-run-v2, angular-convergence-checkpoint-v2, angular-convergence-metrics-v2, angular-convergence-ensemble-v2, angular-convergence-aggregate-v2]
+        seed_namespaces: [initial_seeds, extended_seeds]
+        shared_raw_run_directory: runs
+        reference_stem: pilot_korenmarkt_walk_drjit_atlas_v2_15ghz
+        reference_state: sealed_generation_present_and_hash_verified
+        reference_generation:
+          created_utc: "2026-08-05T15:46:57Z"
+          run_digest: 6020e8d74e9c
+          format_version: 1
+          generation_id: 9d5600364cae4a0b937e5c36e74e2b8b
+          manifest_sha256: 15b06e1a5952de41c0ccb5dd33216bd9fec06eb682a3f63aa79a2f45d249f0ae
+          manifest_bytes: 28490
+          locations_sha256: 59875937573fdd8b597be25760e67f7cea216bcb5c414be169e8bfe255527934
+          locations_bytes: 24159
+          spectra_sha256: b9b611e179e2784620dab4a47db8ac5fddc56e063670659ae5aa006adcc81d88
+          spectra_bytes: 58658
+          atlas_npz_sha256: c452c34e1d9422022d55fc758d228c22a39b80d9a770042e89e13f9110f43a76
+          atlas_manifest_sha256: 80d8f0bb448d6677fc29c9c51e81036e9b54913d52f1480030095ac16f08d783
+          mesh_sha256: bfbdba0657a1dd4b8b819e7e611dbfd4eea919e5c08538078ff1948599957264
+          locations_traced: 13
+          rays: 200000
+          local_cells: 512
+        output_directories: [outputs/angular_convergence_4096_atlas_v2, outputs/angular_convergence_atlas_quick_v2]
+        production: {cells: [512, 1024, 2048, 4096], cell_sweep_rays: 1600000, rays: [200000, 400000, 800000, 1600000], ray_sweep_cells: 4096, initial_seeds: [7, 8, 9, 10], extended_seeds: [7, 8, 9, 10, 11, 12, 13, 14], body_chunk_cells: 512, azimuth_ranges_deg: [[0, 45], [45, 90], [90, 135], [135, 180], [180, 225], [225, 270], [270, 315], [315, 0]], elevation_ranges_deg: [[-90, -30], [-30, 0], [0, 30], [30, 90]]}
+        quick: {cells: [32, 64], cell_sweep_rays: 2000, rays: [1000, 2000], ray_sweep_cells: 64, initial_seeds: [7, 8], extended_seeds: [7, 8], body_chunk_cells: 64, azimuth_ranges_deg: [[315, 45], [45, 135], [135, 225], [225, 315]], elevation_ranges_deg: [[-90, 90]]}
+      units: "rays, angular cells, PRNG seeds, and degrees"
+      source: config/angular_convergence_4096.json; config/angular_convergence_quick.json; semantic_twin/exposure/angular_convergence.py:run_study,_trace_one,aggregate_runs
+      scope: atlas-bound angular convergence study
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: "the sealed atlas_v2 reference is the 512-cell, 200000-ray input to the convergence study, not the separately sealed 4096-cell, 1600000-ray final production run; old root-level schema-v1 outputs are historical, while v2 writes separate initial_seeds and extended_seeds analyses over one shared raw run directory"
+    sionna_matched_transport:
+      value:
+        material: {permittivity: [1.0, -1000000000000.0], rms_height_m: 1.0, scattering_coefficient: 1.0}
+        sionna: {max_depth: 3, samples_per_source: 200000, maximum_paths_per_source: 4000000, source_chunk: 16, seed: 1, ensemble_seeds: [1, 2, 3, 4], synthetic_array: true, subprocess_workers: 1}
+        adjoint: {frequency_hz: 15000000000.0, max_depth: 3, rays: 200000, connections: 1, seeds: [1, 2, 3, 4], connection_lift_m: 0.01}
+        path_switches: {line_of_sight: true, diffuse_reflection: true, specular_reflection: false, refraction: false, diffraction: false, edge_diffraction: false}
+        transmitted_polarisation_average: 0.5
+      units: "Hz, m, rays, paths, sources per chunk, and dimensionless shares"
+      source: semantic_twin/transport/sionna_forward.py:44-45,187-281,339-425; semantic_twin/propagation/closed_form.py:71 PEC_PERMITTIVITY
+      scope: matched forward-versus-adjoint propagation validation
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: "the forward CLI uses source chunk 8 and different seed namespaces; the scaling CLI uses a 1000000-path buffer"
+    sionna_open_square:
+      value:
+        ground_extent_xy_m: [-100.0, 100.0]
+        wall_coordinates_m: 40.0
+        wall_half_width_m: 40.0
+        wall_height_m: 20.0
+        source_height_m: 20.5
+        source_along_wall_m: [-32.0, 32.0]
+        default_sources: 27
+        receivers_m: [[0.0, 0.0, 1.5], [0.0, 28.0, 1.5], [-28.0, -10.0, 1.5], [28.0, 15.0, 1.5], [0.0, -55.0, 1.5], [0.0, 55.0, 1.5]]
+      units: "m and counts"
+      source: semantic_twin/transport/sionna_forward.py:123-184 open_square_environment
+      scope: controlled Sionna validation geometry
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: "the city validation uses real support meshes and defaults to 32 sources and 4 receivers"
+    sionna_forward_cli:
+      value:
+        environment: open-square
+        city: {site: korenmarkt, crop_m: 250, sources: 32, receivers: 4, builders: 128, azimuths: 1440, elevations: 600, cell_m: 1.0, site_lift_m: 0.5, walk: route, walk_path: links, walk_stride_m: 6.0, walk_radius_m: 90.0, head_height_m: 1.5}
+        solver: {frequency_hz: 15000000000.0, max_depth: 3, adjoint_rays: 200000, adjoint_connections: 1, adjoint_seeds: 8, validation_rms_height_m: 1.0, connection_lift_m: 0.01, sionna_samples_per_source: 200000, sionna_seeds: 4, source_chunk: 8, maximum_paths_per_source: 4000000, seed: 7}
+        seed_offsets: {source_subset: 2000, sionna_base: 10000, sionna_stride: 1000}
+      units: "Hz, m, rays, paths, angular samples, counts, and PRNG offsets"
+      source: semantic_twin/cli/sionna_forward.py:27-59,91-113,130-184
+      scope: forward validation command defaults
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: "open-square defaults to 27 sources and all 6 fixed receivers; source chunk 8 overrides the transport helper's default 16"
+    sionna_scaling_cli:
+      value: {source_counts: [3, 9, 27, 81, 243, 729], receivers: 6, frequency_hz: 15000000000.0, max_depth: 3, adjoint_rays: 50000, adjoint_seeds: 8, validation_rms_height_m: 1.0, connection_lift_m: 0.01, sionna_seeds: 6, fixed_samples_per_source: 20000, fixed_total_samples: 1350000, minimum_samples_per_source: 256, source_chunk: 16, maximum_paths_per_source: 1000000, seed: 7, unmeasured_adjoint_warmups: 1, warmed_seed_drop: 1}
+      units: "Hz, m, rays, samples, paths, sources, receivers, and PRNG seeds"
+      source: semantic_twin/cli/sionna_scaling.py:37-57,72,90-169
+      scope: controlled source-count scaling diagnostic
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: "the fixed-total protocol floors samples per source at 256; the forward CLI instead uses a 4000000-path buffer"
+    adjoint_budget_cli:
+      value: {sources: 2187, receivers: 6, frequency_hz: 15000000000.0, ray_budgets: [5000, 10000, 20000, 50000, 100000], seeds: 8, connections: 1, max_depth: 3, connection_lift_m: 0.01, validation_rms_height_m: 1.0, seed: 7}
+      units: "m, rays, sources, receivers, connections, interactions, and PRNG seeds"
+      source: semantic_twin/cli/adjoint_budget.py:17-29
+      scope: adjoint ray-budget diagnostic at a production-like source ratio
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: "the main forward validation defaults to 200000 adjoint rays"
+    deterministic_first_bounce:
+      value: {kernel_subdivisions: 64, cli_subdivision_sweep: [16, 32, 64, 128], sources: 27, receivers: 6, frequency_hz: 15000000000.0, rms_height_m: 1.0, ray_epsilon_m: 0.001, connection_lift_m: 0.01, minimum_source_range_m: 0.5}
+      units: "Hz, m, equal-area subdivisions per triangle edge, sources, and receivers"
+      source: semantic_twin/transport/deterministic_reference.py:64-134 first_bounce_reference; semantic_twin/cli/deterministic_first_bounce.py:25-54
+      scope: deterministic one-bounce validation reference
+      status: diagnostic
+      affects_published_results: conditional
+      conflicts: "the CLI sweep overrides the kernel's single default subdivision count; the reference covers one interaction only"
+    sionna_figure_selection:
+      value:
+        controlled_sample_budgets: [50000, 100000]
+        controlled_interaction_depths: [1, 2, 3]
+        city_interaction_depths: [1, 2, 3]
+        city_sample_budget: 200000
+        connection_lift_sweep_m: [0.001, 0.01, 0.03, 0.1]
+        source_annotations: [5002, 9668, 25782]
+        convergence_rule_db: 0.1
+        full_city_sionna_samples_per_source: [3000, 6000]
+        full_city_error_rule: "absolute residual greater than 0.1 dB plus three combined standard errors"
+        warmed_seed_drop: 1
+        equal_accuracy_score: "warmed time times median single-run variance"
+      units: "samples, interactions, m, dB, standard errors, sources, and seeds"
+      source: FIGURES/make_sionna_forward_performance.py:28-31,40-101; FIGURES/make_sionna_forward_validation.py:31-36; FIGURES/make_sionna_validation_ladder.py:55-94; FIGURES/make_sionna_source_scaling.py:54-96; FIGURES/make_sionna_full_city.py:23-24,42-90
+      scope: Sionna validation figure input selection and runtime reduction
+      status: diagnostic
+      affects_published_results: false
+      conflicts: "these values select and reduce generated experiments for figures; they are not solver defaults or generated measurements"
+    final_blender_production_source:
+      value:
+        stem: final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz
+        state: sealed_generation_present_and_hash_verified
+        created_utc: "2026-08-05T16:03:35Z"
+        run_digest: af8b9fc7cf3e
+        format_version: 1
+        generation_id: 2a77cecc897f4177b1c5938866a26264
+        manifest_sha256: e87bd8e5db0308cfa9ad445c179a8464b19a7aaa8eaf2242fb1492c0eee75a9d
+        manifest_bytes: 28511
+        locations_sha256: 66b4e5c70494dc653a8d99ab33d4551fac99d70029114995ef9523d831e34534
+        locations_bytes: 24176
+        spectra_sha256: 1186e952d4edc65046e69940a54c1024cb29c1fee6e6ae72acbe95b76f59b90b
+        spectra_bytes: 457258
+        atlas_npz_sha256: c452c34e1d9422022d55fc758d228c22a39b80d9a770042e89e13f9110f43a76
+        atlas_manifest_sha256: 80d8f0bb448d6677fc29c9c51e81036e9b54913d52f1480030095ac16f08d783
+        mesh_sha256: bfbdba0657a1dd4b8b819e7e611dbfd4eea919e5c08538078ff1948599957264
+        locations_traced: 13
+        frequency_hz: 15000000000.0
+        rays_per_standpoint: 1600000
+        batch: 400000
+        local_cells: 4096
+        seed: 7
+        variant: cuda_ad_rgb
+        transport_kernel: drjit
+        blender_input_state: "sealed high-resolution spectrum available; exporter selection requires this production stem or the three exact paths"
+      units: "Hz, bytes, angular cells, rays, PRNG seed, hashes, and generation identifiers"
+      source: outputs/exposure_korenmarkt/final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz_manifest.json; semantic_twin/viz/blender/payload.py:207-249; semantic_twin/viz/blender/exporter.py:608-610
+      scope: final production walk and available Blender input
+      status: canonical
+      affects_published_results: true
+      conflicts: "the separate convergence reference generation uses 512 cells and 200000 rays; historical Blender inputs also use the older low-resolution walk"
+
+  runtime_and_visualisation:
+    sealed_exposure_generation:
+      value: {format_version: 1, generation_id_hex_chars: 32, sealed_artifacts: [locations, spectra], manifest_commit_record: true, same_generation_required: true, required_by: [reuse, angular_convergence, blender_export]}
+      units: "format version, digest characters, and policy"
+      source: semantic_twin/exposure/execution.py:execute,_output_generation,_publish_generation; semantic_twin/exposure/reuse.py:same_output_generation; semantic_twin/exposure/angular_convergence.py:load_reference; semantic_twin/viz/blender/exporter.py:_production_run_config
+      scope: exposure artifact publication and reuse
+      status: canonical
+      affects_published_results: false
+      conflicts: "older or mixed-generation exposure triples are historical; reuse, angular convergence, and Blender export all reject them"
+    gpu_parity:
+      value: {rays: 200000, repeats: 3, seed: 20260804, epsilon: 0.00001, max_hit_mismatch_fraction: 0.0, max_material_mismatch_fraction: 0.0005, max_distance_error_m: 0.00005, max_scientific_error_db: 0.0001, max_device_error: 0.001, ray_epsilon_m: 0.001, frequency_hz: 15000000000.0, local_cells: 256, exit_bands: 18, max_bounces: 3, permittivity: [5.31, -0.4], rms_height_m: 0.0}
+      units: mixed
+      source: semantic_twin/transport/gpu_parity.py:57-74
+      scope: implementation parity
+      status: diagnostic
+      affects_published_results: false
+      conflicts: none
+    network:
+      value: {mapillary_attempts: 4, mapillary_timeout_s: 60.0}
+      units: "attempts and seconds"
+      source: semantic_twin/acquire/mapillary.py:138,159,227
+      scope: data acquisition runtime
+      status: default
+      affects_published_results: conditional
+      conflicts: none
+    masonry_runtime_budget:
+      value: {memory_budget_gib: 18.0, time_budget_s: 2400.0, multiplier: 1.5}
+      units: "GiB, seconds, ratio"
+      source: run_masonry_spectrum.py:13-15 CLI defaults
+      scope: masonry solver runtime
+      status: default
+      affects_published_results: conditional
+      conflicts: none
+    propagation_blender:
+      value: {lobe_scale_m: 7.0, lobe_offset_m: 13.0, lobe_floor: 0.14, ray_radius_m: 0.11, nee_stride: 10, nee_ray_radius_m: 0.09, nee_line_radius_m: 0.05, samples: 64, resolution_scale: 1.0}
+      units: "m, samples, ratios"
+      source: propagation_blender.py:88-105,156-157 CLI defaults
+      scope: presentation render
+      status: default
+      affects_published_results: false
+      conflicts: none
+    blender_bundle_identity:
+      value: {schema: semantic-twin-blender-bundle-v1, sha256_chars: 64, paired_artifacts: [payload_npz, manifest_json], crossed_pair_policy: reject}
+      units: "digest characters and policy"
+      source: semantic_twin/viz/blender/payload.py:BUNDLE_SCHEMA,stamp_bundle_identity,verify_bundle_identity; semantic_twin/viz/blender/exporter.py:publish_bundle
+      scope: Blender payload publication
+      status: canonical
+      affects_published_results: false
+      conflicts: "existing unstamped propagation payloads and manifests are historical and cannot be reopened as a checked pair"
+    blender_evidence_family:
+      value: {vistas_directory_order: [_250m_v2, _fused, unversioned], selection_rule: first_existing_must_validate, required_shared_identity: [mesh, pose, view_ids, image_shapes], optional_sam3_requires_match: true, optional_depth_requires_match: true}
+      units: policy
+      source: semantic_twin/viz/blender/exporter.py:_select_vistas_family,select_evidence_family
+      scope: Blender evidence selection
+      status: canonical
+      affects_published_results: false
+      conflicts: "the first existing Vistas family must be complete; the exporter does not hide an incomplete 250 m v2 family by falling back, and incompatible optional layers are excluded"
+    city_gallery:
+      value: {crop_radius_m: 130.0, samples: 96, width_px: 1600, height_px: 1000, azimuth_deg: 215.0, elevation_deg: 30.0, fov_deg: 46.0, margin: 1.12}
+      units: "m, pixels, degrees, ratio"
+      source: render_city_gallery.py:19-26 CLI defaults
+      scope: presentation render
+      status: default
+      affects_published_results: false
+      conflicts: none
+
+  site_scenarios:
+    value: "all numeric leaves under location, enu_origin, camera, frequencies, geometry_selection, framing, and screening provenance"
+    units: "degrees, m, Hz, counts, bytes, years"
+    source: "config/{korenmarkt,brussels_grandplace,krakow_rynek,london_trafalgar,madrid_plazamayor,mexico_zocalo,milan_duomo,newyork_timessquare,prague_staromestske,tokyo_hachiko,toulouse_capitole}.json:1-end"
+    scope: per-site scenario and provenance
+    status: canonical
+    affects_published_results: true
+    conflicts: "site-specific acquisition/support/trace crop radii must not be conflated"
+  semantic_catalogue:
+    value: "all numeric material priors, concept posteriors, and attributes"
+    units: probabilities
+    source: config/semantic_concepts.json:68-end JSON numeric leaves
+    scope: semantic-to-material binding
+    status: canonical
+    affects_published_results: true
+    conflicts: "probabilities are configuration priors, not model confidence scores"
+  production_recorded_provenance:
+    value: {crop_radius_m: 250, frequency_hz: 15000000000.0, rays: 200000, local_cells: 512, exit_bands: 18, max_bounces: 3, seed: 7, head_height_m: 1.5, route_stride_m: 6.0, locations_requested: 0, locations_traced: 13, atlas_resolution: [8, 8]}
+    units: "m, Hz, rays, cells, bands, interactions, PRNG seed"
+    source: "outputs/site_semantics/korenmarkt/joint_atlas_250m_r8.{npz,json}; outputs/exposure_korenmarkt/pilot_korenmarkt_walk_drjit_atlas_v1_15ghz_{manifest.json,locations.jsonl,spectra.npz}"
+    scope: historical pre-seal atlas production run provenance
+    status: legacy
+    affects_published_results: conditional
+    conflicts: "the atlas predates pinned versioned semantic evidence and the exposure triple predates output_generation; rebuild both before current reuse, convergence, or Blender work"
+  golden_fast_recorded_provenance:
+    value: {crop_radius_m: 130, locations: 8, rays: 50000, local_cells: 512, frequency_hz: 15000000000.0, seed: 7}
+    units: "m, Hz, rays, cells, locations, and PRNG seed"
+    source: tests/golden/MANIFEST.json cases.exposure_korenmarkt_130m_geometric_fast.argv
+    scope: regression provenance
+    status: legacy
+    affects_published_results: conditional
+    conflicts: "the golden fast profile is a regression case, not the accepted atlas production run"
+
+known_conflicts:
+  - "Crop radius: 130 m facade/gallery/site assets, 140 m texture evidence, 200 m Milan support, 250 m production trace, plus acquisition radii. Give each purpose a separate field."
+  - "Rays: RunConfig 200000, TraceConfig 400000, foliage 400000, sub-street 120000. Use named sampling profiles."
+  - "Bounces: main production 3, sensitivity study 4, next-event and monostatic order caps 8. Keep transport and diagnostic caps separate."
+  - "Resolution: prompted SAM 1008 px, semantic and dense views 1536 px, facade crop 384 px. These are distinct stages but should be named in one schema."
+  - "Residual gate: 4 degrees is repeated in more than one CLI. Make station admission a shared object."
+  - "The numbers in generated geometry manifests, golden output files, and figure provenance are records of runs, not candidates for executable configuration."

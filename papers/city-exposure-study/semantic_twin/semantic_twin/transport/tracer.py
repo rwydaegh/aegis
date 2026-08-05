@@ -222,6 +222,21 @@ def specular_share(rms_height_m: np.ndarray, cos_incidence: np.ndarray, waveleng
     return np.exp(-np.minimum(g * g, 60.0))
 
 
+def _integral_face_class(face_class: np.ndarray) -> np.ndarray:
+    """Validate the shared material-table index without silent truncation."""
+    raw = np.asarray(face_class)
+    if raw.ndim != 1:
+        raise ValueError("face_class must be one-dimensional")
+    if not (np.issubdtype(raw.dtype, np.integer) or np.issubdtype(raw.dtype, np.floating)):
+        raise ValueError("face_class must contain finite integer material indices")
+    numeric = raw.astype(np.float64)
+    if np.any(~np.isfinite(numeric)) or np.any(numeric != np.floor(numeric)):
+        raise ValueError("face_class must contain finite integer material indices")
+    if np.any(numeric < 0):
+        raise ValueError("face_class cannot contain negative material indices")
+    return numeric.astype(np.int64)
+
+
 class SbrTracer:
     """Holds the accelerated geometry and the per class material parameters.
 
@@ -238,12 +253,36 @@ class SbrTracer:
         permittivity: np.ndarray,
         rms_height_m: np.ndarray,
         config: TraceConfig,
+        *,
+        atlas_material: Any = None,
     ) -> None:
         self.geometry = geometry
-        self.face_class = face_class
+        self.face_class = None if face_class is None else _integral_face_class(face_class)
         self.permittivity = np.asarray(permittivity, dtype=np.complex128)
         self.rms_height_m = np.asarray(rms_height_m, dtype=np.float64)
         self.config = config
+        self.atlas_material = atlas_material
+        if self.permittivity.ndim != 1 or self.rms_height_m.shape != self.permittivity.shape:
+            raise ValueError("permittivity and rms_height_m must be one-dimensional arrays with the same shape")
+        if self.permittivity.size == 0:
+            raise ValueError("at least one material class is required")
+        if self.face_class is not None:
+            face_count = getattr(geometry, "face_count", None)
+            if face_count is not None and self.face_class.shape != (int(face_count),):
+                raise ValueError(f"face_class has shape {self.face_class.shape}, expected ({int(face_count)},)")
+            if self.face_class.size and int(self.face_class.max()) >= self.permittivity.size:
+                raise ValueError("face_class contains a material index outside the material tables")
+        if self.atlas_material is not None:
+            face_count = getattr(geometry, "face_count", None)
+            if face_count is None or not hasattr(geometry, "barycentric_uv"):
+                raise TypeError("atlas materials require indexed mesh geometry with barycentric_uv()")
+            if self.atlas_material.face_count != int(face_count):
+                raise ValueError(
+                    f"atlas material binding has {self.atlas_material.face_count} faces, "
+                    f"but geometry has {int(face_count)}"
+                )
+            if np.any(self.atlas_material.material_class >= self.permittivity.size):
+                raise ValueError("atlas material classes leave the material table")
         self.wavelength_m = 299_792_458.0 / config.frequency_hz
         self.local_grid = fibonacci_sphere(config.local_cells)
         self.exit_sin_edges = np.linspace(-1.0, 1.0, config.exit_bands + 1)
@@ -262,6 +301,68 @@ class SbrTracer:
 
     def _specular_share(self, rms_height_m: np.ndarray, cos_incidence: np.ndarray) -> np.ndarray:
         return specular_share(rms_height_m, cos_incidence, self.wavelength_m)
+
+    def _surface_response(
+        self,
+        cos_incidence: np.ndarray,
+        fallback_class: np.ndarray,
+        face: np.ndarray | None,
+        position: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return reflected power, specular share, and non-blocking state.
+
+        The first two arrays are meaningful only for blocking surface hits.
+        :mod:`.trace_kernel` uses the third array to pass through woody canopy
+        evidence without changing power, direction, or bounce count.
+        """
+        reflectance = self._fresnel_power_reflectance(cos_incidence, self.permittivity[fallback_class])
+        share = self._specular_share(self.rms_height_m[fallback_class], cos_incidence)
+        nonblocking = np.zeros(cos_incidence.size, dtype=bool)
+        if self.atlas_material is None:
+            return reflectance, share, nonblocking
+        if face is None:
+            raise TypeError("atlas materials require face identifiers at every hit")
+
+        uv = self.geometry.barycentric_uv(face, position)
+        posterior, supported, nonblocking = self.atlas_material.lookup(face, uv)
+        if not np.any(supported):
+            return reflectance, share, nonblocking
+        classes = self.atlas_material.material_class
+        component_reflectance = self._fresnel_power_reflectance(
+            cos_incidence[:, None],
+            self.permittivity[classes][None, :],
+        )
+        component_share = self._specular_share(
+            self.rms_height_m[classes][None, :],
+            cos_incidence[:, None],
+        )
+        mixed_reflectance = np.sum(posterior * component_reflectance, axis=1)
+        numerator = np.sum(posterior * component_reflectance * component_share, axis=1)
+        mixed_share = np.divide(
+            numerator,
+            mixed_reflectance,
+            out=np.zeros_like(numerator),
+            where=mixed_reflectance > 0.0,
+        )
+        reflectance[supported] = mixed_reflectance[supported]
+        share[supported] = mixed_share[supported]
+        return reflectance, share, nonblocking
+
+    def _surface_nonblocking(
+        self,
+        face: np.ndarray | None,
+        position: np.ndarray,
+    ) -> np.ndarray:
+        """Return the atlas pass-through state without evaluating Fresnel terms."""
+        if face is None:
+            if self.atlas_material is not None:
+                raise TypeError("atlas materials require face identifiers at every hit")
+            return np.zeros(position.shape[0], dtype=bool)
+        if self.atlas_material is None:
+            return np.zeros(np.asarray(face).size, dtype=bool)
+        uv = self.geometry.barycentric_uv(face, position)
+        _posterior, _supported, nonblocking = self.atlas_material.lookup(face, uv)
+        return nonblocking
 
     def trace(
         self,

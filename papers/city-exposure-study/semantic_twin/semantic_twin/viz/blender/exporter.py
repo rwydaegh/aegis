@@ -1,17 +1,10 @@
-"""Stage one of the propagation walkthrough blend: trace, and write a payload.
+"""Stage one of the propagation walkthrough blend: assemble and write a payload.
 
-This produces the numbers a Blender scene needs to show how the estimator
-works at one site, plus the image side evidence the twin was built from. It
-runs the same tracer, the same walk builder, the same surface binding and the
-same body coupler as ``run_exposure.py``, so what the blend draws is what the
-study computed rather than an illustration of it.
-
-Two things are traced per site. Every walk location is traced at production ray
-count and reduced to its scalars, which is what colours the walk. One hero
-location is traced again with a :class:`PathRecorder` attached, which keeps the
-polyline of a capped number of rays. The recorder is a passive observer and the
-test suite asserts that attaching it returns a bit identical result, so the rays
-in the blend are the rays that were integrated.
+For a production-backed export, the walk, angular spectrum, and body exposure
+come from the exact checked production files. One hero location also gets a
+separate bounded host trace, normally 1,200 rays. Those polylines explain the
+path geometry. They are not production MPCs and supply no exposure value. The
+payload and manifest state this boundary and carry one shared checked identity.
 
 Nothing above sees a photograph. The second half of this module collects what
 does: the fishnet surface sets and their rejected tables, the mesh first hit and
@@ -40,7 +33,9 @@ Then hand the payload to Blender::
 from __future__ import annotations
 
 import json
+import os
 import pathlib
+import tempfile
 import time
 from dataclasses import replace
 from typing import Any
@@ -49,8 +44,19 @@ import numpy as np
 
 from semantic_twin.exposure import BodyCoupler
 from semantic_twin.exposure import study as exposure_study
-from semantic_twin.exposure.execution import PreparedScene, _array_sha256, _bind_materials, _file_sha256
-from semantic_twin.exposure.reuse import complete_output, same_models, same_run_identity
+from semantic_twin.exposure.execution import (
+    PreparedScene,
+    _array_sha256,
+    _bind_materials,
+    _face_source_area_fractions,
+    _file_sha256,
+)
+from semantic_twin.exposure.reuse import (
+    complete_output,
+    same_models,
+    same_output_generation,
+    same_run_identity,
+)
 from semantic_twin.exposure.study import (
     MODELS,
     PHANTOM,
@@ -60,7 +66,7 @@ from semantic_twin.exposure.study import (
     site_mesh,
 )
 from semantic_twin.illumination.roofline import silhouette as skyline
-from semantic_twin.materials import CLASS_NAMES, classify_faces, load_table
+from semantic_twin.materials import CLASS_NAMES, Provenance, classify_faces, load_table
 from semantic_twin.propagation import (
     TERMINATIONS,
     MitsubaGeometry,
@@ -69,11 +75,12 @@ from semantic_twin.propagation import (
     TraceConfig,
 )
 from semantic_twin.runconfig import RunConfig
+from semantic_twin.vision.surface_atlas import load_surface_atlas, sha256_file, to_surface_mesh
 from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.model import stratified_subset
 from semantic_twin.walk.site import site_walk
 
-from .payload import ProductionData, read_production_data
+from .payload import ProductionData, read_production_data, stamp_bundle_identity, verify_bundle_identity
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parents[3]
 
@@ -207,7 +214,7 @@ def facade_tip_rim(
         "distance_m_median": float(np.median(distance[good])) if good.any() else float("nan"),
         "distance_m_p95": float(np.percentile(distance[good], 95)) if good.any() else float("nan"),
         "weight_p05": float(np.percentile(weight[good], 5)) if good.any() else float("nan"),
-        "weight_max": float(weight.max()),
+        "weight_max": float(weight.max()) if weight.size else 0.0,
     }
     return {
         "offset": offset,
@@ -254,16 +261,44 @@ def next_event_connections(
     offsets = np.asarray(path_offsets, dtype=np.int64)
     vertices = np.asarray(path_vertices, dtype=np.float64)
     lengths = np.diff(offsets)
+    tip = standpoint + rim["offset"]
+    available = np.flatnonzero(rim["found"])
+    rng = np.random.default_rng(seed)
+
+    def empty(reason: str) -> dict[str, Any]:
+        return {
+            "path_index": np.zeros(0, dtype=np.int32),
+            "vertex_index": np.zeros(0, dtype=np.int32),
+            "origin": np.zeros((0, 3), dtype=np.float64),
+            "site": np.zeros((0, 3), dtype=np.float64),
+            "azimuth_index": np.zeros(0, dtype=np.int64),
+            "weight": np.zeros(0, dtype=np.float64),
+            "blocked": np.zeros(0, dtype=bool),
+            "paths": np.zeros(0, dtype=np.int32),
+            "summary": {
+                "what_it_is": "no source connections; " + reason,
+                "paths_drawn": 0,
+                "connections": 0,
+                "blocked_fraction": float("nan"),
+                "blocked_fraction_from_the_head": float("nan"),
+                "median_length_m": float("nan"),
+                "surface_standoff_m": 0.02,
+            },
+        }
+
+    if paths <= 0:
+        return empty("zero paths were requested")
+    if available.size == 0:
+        return empty("no facade tips were found")
+    if lengths.size == 0:
+        return empty("no recorded paths were available")
+
     # Paths that bounced at least once, so the picture shows the connections a
     # ray makes after it has left the head and not only the fan from the head.
     pool = np.flatnonzero(lengths >= 3)
     if pool.size < paths:
         pool = np.arange(lengths.size)
     pick = np.unique(pool[np.linspace(0, pool.size - 1, min(paths, pool.size)).round().astype(int)])
-
-    tip = standpoint + rim["offset"]
-    available = np.flatnonzero(rim["found"])
-    rng = np.random.default_rng(seed)
 
     path_index, vertex_index, origin, azimuth = [], [], [], []
     for index in pick:
@@ -275,6 +310,8 @@ def next_event_connections(
             azimuth.append(int(rng.choice(available)))
     origin = np.asarray(origin, dtype=np.float64).reshape(-1, 3)
     azimuth = np.asarray(azimuth, dtype=np.int64)
+    if origin.size == 0:
+        return empty("recorded paths contain no connectable vertices")
     site = tip[azimuth]
 
     span = site - origin
@@ -570,6 +607,8 @@ def _production_run_config(data: ProductionData) -> RunConfig:
         raise ValueError("production exposure manifest run_digest does not match its RunConfig")
     if not complete_output(data.manifest, run, data.files.locations, data.files.spectra):
         raise ValueError("production exposure files are incomplete or their indices and shapes do not align")
+    if not same_output_generation(data.manifest, data.files.locations, data.files.spectra):
+        raise ValueError("production exposure files are not one sealed output generation")
     if not same_run_identity(data.manifest, run, MODELS) or not same_models(data.manifest, run, MODELS):
         raise ValueError("production exposure manifest does not match the recorded run or illumination models")
     if data.files.hashes() != data.input_identity:
@@ -634,19 +673,40 @@ def validate_face_class_digest(face_class: np.ndarray, manifest: dict[str, Any])
         raise ValueError("current semantic face classes do not match the production exposure manifest")
 
 
+def validate_face_source_digest(face_source: np.ndarray, manifest: dict[str, Any]) -> bool:
+    """Validate per-face material provenance when the production run recorded it.
+
+    Older production manifests predate ``face_source_sha256``. Their material
+    source can still be rebuilt deterministically, but it cannot be claimed as
+    byte-verified against the original run. The return value preserves that
+    distinction in the visualization manifest.
+    """
+    recorded = manifest.get("semantic_binding", {}).get("face_source_sha256")
+    if recorded is None:
+        return False
+    if _array_sha256(face_source) != recorded:
+        raise ValueError("current per-face material sources do not match the production exposure manifest")
+    return True
+
+
 def validate_mesh_digest(mesh: pathlib.Path, manifest: dict[str, Any]) -> None:
     """Require the hero trace mesh bytes to equal the production trace input."""
     if _file_sha256(mesh) != manifest.get("mesh_sha256"):
         raise ValueError("current mesh bytes do not match the production exposure manifest")
 
 
-def _production_scene(data: ProductionData, run: RunConfig) -> tuple[Any, Any, Any]:
+def _production_scene(
+    data: ProductionData,
+    run: RunConfig,
+    *,
+    intersection_variant: str | None = None,
+) -> tuple[Any, Any, Any, bool]:
     """Rebuild the exact mesh and material binding named by the production run."""
     mesh = _recorded_mesh(data.manifest)
     if not mesh.is_file():
         raise FileNotFoundError(f"production mesh does not exist: {mesh}")
     validate_mesh_digest(mesh, data.manifest)
-    geometry = MitsubaGeometry(mesh, variant=run.variant)
+    geometry = MitsubaGeometry(mesh, variant=intersection_variant or run.variant)
     datum = float(data.manifest["ground_datum_m"])
     geometric_class = classify_faces(geometry.vertices, geometry.faces, datum)
     scene = PreparedScene(
@@ -661,11 +721,22 @@ def _production_scene(data: ProductionData, run: RunConfig) -> tuple[Any, Any, A
     if material.table.as_dict() != data.manifest.get("surface_binding"):
         raise ValueError("current surface table does not match the production exposure manifest")
     recorded_binding = dict(data.manifest.get("semantic_binding", {}))
-    recorded_binding.pop("face_class_sha256", None)
+    for derived in (
+        "face_class_sha256",
+        "face_source_sha256",
+        "face_source_labels",
+        "face_source_area_fractions",
+    ):
+        recorded_binding.pop(derived, None)
     if material.provenance != recorded_binding:
         raise ValueError("current semantic face binding does not match the production exposure manifest")
     validate_face_class_digest(material.face_class, data.manifest)
-    return geometry, material, mesh
+    source_verified = validate_face_source_digest(material.face_source, data.manifest)
+    recorded_source_fractions = data.manifest.get("semantic_binding", {}).get("face_source_area_fractions")
+    current_source_fractions = _face_source_area_fractions(material.face_source, scene.areas)
+    if recorded_source_fractions is not None and recorded_source_fractions != current_source_fractions:
+        raise ValueError("current per-face material source areas do not match the production exposure manifest")
+    return geometry, material, mesh, source_verified
 
 
 def _body_from_row(row: dict[str, Any], model: str) -> dict[str, float]:
@@ -734,10 +805,168 @@ def production_role_payload() -> dict[str, np.ndarray]:
     }
 
 
+SUPPORT_FALLBACK_FIELDS = (
+    "support_full_vertices",
+    "support_full_faces",
+    "support_full_face_class",
+    "support_full_face_source",
+    "support_full_face_index",
+)
+
+
+def _array_manifest(array: np.ndarray) -> dict[str, Any]:
+    """JSON-safe identity of one payload array."""
+    value = np.asarray(array)
+    return {
+        "dtype": value.dtype.str,
+        "shape": list(value.shape),
+        "sha256": _array_sha256(value),
+    }
+
+
+def support_surface_fallback_manifest(
+    payload: dict[str, Any],
+    data: ProductionData,
+    material: Any,
+    areas: np.ndarray,
+    *,
+    source_verified: bool,
+) -> dict[str, Any]:
+    """Describe the whole-face fallback arrays sent to Blender.
+
+    Atlas production runs resolve a material mixture at each ray hit. These
+    per-face arrays remain useful as the geometric support and as the fallback
+    for an unobserved or incompatible atlas texel. They are not a final
+    hit-position material map.
+    """
+    semantic = dict(data.manifest.get("semantic_binding", {}))
+    class_digest = _array_sha256(material.face_class)
+    source_digest = _array_sha256(material.face_source)
+    if class_digest != semantic.get("face_class_sha256"):
+        raise ValueError("support-surface fallback class digest is not the production digest")
+    return {
+        "role": "whole-face geometric support and transport fallback",
+        "is_final_hit_position_material_map": False,
+        "fallback_rule": (
+            "Used when the production material mode has no supported atlas texel at a hit. "
+            "For non-atlas runs, these whole-face classes are the production binding."
+        ),
+        "mesh_sha256": data.manifest["mesh_sha256"],
+        "face_class_sha256": class_digest,
+        "face_source_sha256": source_digest,
+        "face_source_production_verified": source_verified,
+        "face_source_verification": (
+            "matched production manifest"
+            if source_verified
+            else "rebuilt from the recorded deterministic binding; legacy production manifest has no source hash"
+        ),
+        "face_class_area_fractions": dict(data.manifest.get("class_area_fractions", {})),
+        "face_source_area_fractions": _face_source_area_fractions(material.face_source, areas),
+        "face_source_labels": {str(int(source)): source.name for source in Provenance},
+        "face_index_rule": "zero-based triangle index in the exact production support mesh",
+        "binding_provenance": {
+            key: value
+            for key, value in semantic.items()
+            if key
+            not in {
+                "face_class_sha256",
+                "face_source_sha256",
+                "face_source_labels",
+                "face_source_area_fractions",
+            }
+        },
+        "payload_arrays": {name: _array_manifest(payload[name]) for name in SUPPORT_FALLBACK_FIELDS},
+    }
+
+
+def _atlas_path(run: RunConfig, material: Any) -> pathlib.Path:
+    """Resolve the exact atlas path already named by the production binding."""
+    recorded = getattr(material.atlas_material, "provenance", {}).get("atlas_npz")
+    candidate = run.atlas_npz or recorded
+    if not isinstance(candidate, str) or not candidate:
+        raise ValueError("atlas production run does not identify its atlas NPZ")
+    path = pathlib.Path(candidate)
+    if path.is_absolute():
+        return path
+    local = pathlib.Path.cwd() / path
+    return local if local.exists() else SCRIPT_DIR / path
+
+
+def attach_production_surface_atlas(
+    payload: dict[str, Any],
+    manifest: dict[str, Any],
+    data: ProductionData,
+    run: RunConfig,
+    material: Any,
+    geometry: Any,
+) -> None:
+    """Bridge the run's verified atlas artifact into its Blender payload."""
+    if material.atlas_material is None:
+        return
+    npz_path = _atlas_path(run, material)
+    json_path = npz_path.with_suffix(".json")
+    if not npz_path.is_file() or not json_path.is_file():
+        raise FileNotFoundError(f"production atlas needs its NPZ and sibling JSON: {npz_path}")
+
+    semantic = dict(data.manifest.get("semantic_binding", {}))
+    expected_npz_sha256 = semantic.get("atlas_npz_sha256")
+    if not isinstance(expected_npz_sha256, str) or len(expected_npz_sha256) != 64:
+        raise ValueError("atlas production binding does not record the exact atlas NPZ SHA-256")
+    actual_npz_sha256 = sha256_file(npz_path)
+    if expected_npz_sha256 != actual_npz_sha256:
+        raise ValueError("surface atlas NPZ differs from the production material binding")
+
+    atlas = load_surface_atlas(
+        npz_path,
+        json_path,
+        expected_mesh_sha256=data.manifest["mesh_sha256"],
+    )
+    document = json.loads(json_path.read_text(encoding="utf-8"))
+    audit = to_surface_mesh(atlas, geometry.vertices, geometry.faces)
+    arrays = audit.as_arrays()
+    payload.update(arrays)
+
+    transport = dict(material.atlas_material.provenance)
+    record = {
+        "role": (
+            "joint all-camera semantic and material evidence used by production transport. At each ray hit, "
+            "transport derives the host-compatible material posterior from this atlas."
+        ),
+        "display_role": (
+            "triangulated audit view of observed atlas cells; display winners do not replace the stored posteriors"
+        ),
+        "npz": {"path": str(npz_path.resolve()), "sha256": actual_npz_sha256},
+        "manifest": {"path": str(json_path.resolve()), "sha256": sha256_file(json_path)},
+        "content_sha256": atlas.content_digest(),
+        "mesh_sha256": atlas.mesh_sha256,
+        "resolution": atlas.atlas_resolution,
+        "observed_triangle_count": atlas.observed_triangle_count,
+        "sparse_texel_count": atlas.cell_count,
+        "camera_ids": [str(value) for value in atlas.station_ids],
+        "cameras": list(document.get("cameras", [])),
+        "vocabularies": dict(document.get("vocabularies", {})),
+        "transport_binding": transport,
+        "payload_arrays": {name: _array_manifest(value) for name, value in arrays.items()},
+    }
+    manifest["surface_atlas"] = record
+    # The scene builder uses this narrow key for object provenance. Keep it an
+    # explicit reference to the canonical record rather than a second contract.
+    manifest["all_camera_fused_atlas"] = {
+        "record": "surface_atlas",
+        "content_sha256": record["content_sha256"],
+        "mesh_sha256": record["mesh_sha256"],
+        "display_role": record["display_role"],
+    }
+
+
 def trace_production_site(args: Any, data: ProductionData, run: RunConfig) -> dict[str, Any]:
-    """Build a visualization payload from production results and one visible ray trace."""
+    """Combine production exposure results with one bounded display-only trace."""
     started = time.perf_counter()
-    geometry, material, mesh = _production_scene(data, run)
+    geometry, material, mesh, source_verified = _production_scene(
+        data,
+        run,
+        intersection_variant=args.variant,
+    )
     rows = data.rows
     points = np.array([[row[axis] for axis in ("x", "y", "z")] for row in rows], dtype=np.float64)
     datums = np.array([row["ground_z_m"] for row in rows], dtype=np.float64)
@@ -756,6 +985,7 @@ def trace_production_site(args: Any, data: ProductionData, run: RunConfig) -> di
         material.table.permittivity,
         material.table.rms_height_m,
         visual_config,
+        atlas_material=material.atlas_material,
     )
     recorder = PathRecorder(capacity=args.paths, sky_distance_m=args.draw_radius_m * 1.6)
     tracer.trace(
@@ -789,11 +1019,23 @@ def trace_production_site(args: Any, data: ProductionData, run: RunConfig) -> di
     network = {name: network_markers(name, args.sources, rng) for name in MODELS}
     rim = facade_tip_rim(geometry, points[hero])
     vertices, faces, kept = crop_for_drawing(geometry.vertices, geometry.faces, args.draw_radius_m)
+    support_full_vertices = np.asarray(geometry.vertices, dtype=np.float32)
+    support_full_faces = np.asarray(geometry.faces, dtype=np.int32)
+    support_full_face_class = np.asarray(material.face_class).copy()
+    support_full_face_source = np.asarray(material.face_source).copy()
+    support_full_face_index = np.arange(geometry.face_count, dtype=np.int32)
 
     payload: dict[str, Any] = {
         "mesh_vertices": vertices.astype(np.float32),
         "mesh_faces": faces.astype(np.int32),
         "mesh_face_class": material.face_class[kept].astype(np.int8),
+        "mesh_face_source": material.face_source[kept].astype(np.int8),
+        "mesh_face_index": kept.astype(np.int32),
+        "support_full_vertices": support_full_vertices,
+        "support_full_faces": support_full_faces,
+        "support_full_face_class": support_full_face_class,
+        "support_full_face_source": support_full_face_source,
+        "support_full_face_index": support_full_face_index,
         "walk_points": points.astype(np.float32),
         "walk_ground_z_m": datums.astype(np.float32),
         "path_vertices": record.vertices.astype(np.float32),
@@ -837,6 +1079,8 @@ def trace_production_site(args: Any, data: ProductionData, run: RunConfig) -> di
         "walk_provenance": data.manifest.get("walk", {}),
         "trace_config": data.manifest["trace_config"],
         "surface_binding": data.manifest["surface_binding"],
+        "semantic_binding": data.manifest["semantic_binding"],
+        "admitted_captures": list(data.manifest.get("semantic_binding", {}).get("image_ids", [])),
         "illumination_models": data.manifest["illumination_models"],
         "hero": {
             "index": hero,
@@ -848,10 +1092,17 @@ def trace_production_site(args: Any, data: ProductionData, run: RunConfig) -> di
             "susceptibility": {name: float(rows[hero][f"chi_{name}"]) for name in run.models},
             "susceptibility_direct": {name: float(rows[hero][f"chi_{name}_direct"]) for name in run.models},
             "body": hero_body,
+            "body_surface_field": {
+                "role": "exact AEGIS absorbed power density, one value per body triangle",
+                "vertices": _array_manifest(payload["body_vertices"]),
+                "faces": _array_manifest(payload["body_faces"]),
+                "sab_w_m2": _array_manifest(payload["body_sab_w_m2"]),
+                "face_value_rule": "body_sab_w_m2[i] belongs exactly to body_faces[i]",
+            },
             "visible_path_trace": {
                 "role": "bounded visualization trace only",
                 "transport_kernel": "numpy",
-                "intersection_variant": run.variant,
+                "intersection_variant": args.variant,
                 "frequency_hz": run.frequency_hz,
                 "rays_cast": visual_config.rays,
                 "seed": hero_seed,
@@ -876,6 +1127,23 @@ def trace_production_site(args: Any, data: ProductionData, run: RunConfig) -> di
             "A separate bounded host trace supplied visible path polylines only."
         ),
     }
+    manifest["support_display"] = {
+        "full_vertices": int(support_full_vertices.shape[0]),
+        "full_faces": int(support_full_faces.shape[0]),
+        "inner_faces": int(faces.shape[0]),
+        "outer_faces": int(support_full_faces.shape[0] - faces.shape[0]),
+        "drawn_radius_m": float(args.draw_radius_m),
+        "traced_radius_m": float(run.crop_m),
+        "inner_face_index_sha256": _array_sha256(kept.astype(np.int32)),
+    }
+    manifest["support_surface_fallback"] = support_surface_fallback_manifest(
+        payload,
+        data,
+        material,
+        geometry.face_areas(),
+        source_verified=source_verified,
+    )
+    attach_production_surface_atlas(payload, manifest, data, run, material, geometry)
     bundle = {"payload": payload, "manifest": manifest}
     store_rim(bundle, rim)
     connections = next_event_connections(
@@ -920,10 +1188,13 @@ def body_field_from_spectrum(
     dosimetry = coupler.engine.compute(coupler.body, paths, level=coupler.level, body_mass=coupler.body_mass_kg)
     corners = np.asarray(coupler.body.vertices, dtype=np.float64)
     count = corners.shape[0]
+    sab = np.asarray(dosimetry.sab, dtype=np.float64)
+    if sab.shape != (count,):
+        raise ValueError("AEGIS body Sab must contain exactly one value per body triangle")
     return {
         "vertices": corners.reshape(-1, 3),
         "faces": np.arange(3 * count, dtype=np.int64).reshape(count, 3),
-        "sab": np.asarray(dosimetry.sab, dtype=np.float64),
+        "sab": sab,
     }
 
 
@@ -963,31 +1234,241 @@ REJECTION_GROUPS: dict[str, tuple[str, ...]] = {
 }
 
 FISHNET_SURFACE_GLOB = "*_fishnet.npz"
+FISHNET_SURFACE_SUFFIX = "_fishnet.npz"
+FISHNET_MANIFEST = "fishnet_manifest.json"
+NPZ_GLOB = "*.npz"
+REJECTED_V2_FIELDS = frozenset(
+    {
+        "rejected_vertices",
+        "rejected_faces",
+        "rejected_face_image",
+        "rejected_face_record",
+        "rejected_face_offsets",
+        "rejected_geometry_kind",
+    }
+)
+
+
+def _manifest_views(document: dict[str, Any], path: pathlib.Path) -> dict[str, tuple[int, int]]:
+    """Return the exact view IDs and image shapes named by one artifact."""
+    rows = document.get("views")
+    if not isinstance(rows, list):
+        raise ValueError(f"evidence manifest has no view table: {path}")
+    views: dict[str, tuple[int, int]] = {}
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("view"), str):
+            raise ValueError(f"evidence manifest has an invalid view row: {path}")
+        shape = row.get("shape")
+        if not isinstance(shape, list) or len(shape) != 2 or any(int(value) <= 0 for value in shape):
+            raise ValueError(f"evidence manifest has an invalid image shape: {path}")
+        name = row["view"]
+        if name in views:
+            raise ValueError(f"evidence manifest repeats view {name}: {path}")
+        views[name] = (int(shape[0]), int(shape[1]))
+    return views
+
+
+def _artifact_path(value: Any) -> pathlib.Path | None:
+    if not isinstance(value, str) or not value:
+        return None
+    path = pathlib.Path(value)
+    return path if path.is_absolute() else SCRIPT_DIR / path
+
+
+def _validate_fishnet_file(path: pathlib.Path, shape: tuple[int, int]) -> np.ndarray:
+    with np.load(path) as surface:
+        needed = {
+            "vertices",
+            "faces",
+            "face_image",
+            "face_class",
+            "face_class_probability",
+            "camera_position",
+        }
+        missing = needed.difference(surface.files)
+        if missing:
+            raise ValueError(f"fishnet {path.name} is missing arrays: {sorted(missing)}")
+        vertices = surface["vertices"]
+        faces = surface["faces"]
+        face_count = faces.shape[0] if faces.ndim == 2 else -1
+        valid_geometry = (
+            vertices.ndim == 2 and vertices.shape[1:] == (3,) and faces.ndim == 2 and faces.shape[1:] == (3,)
+        )
+        if not valid_geometry:
+            raise ValueError(f"fishnet geometry has invalid shapes: {path}")
+        if surface["face_image"].shape != (face_count, 3, 2):
+            raise ValueError(f"fishnet image triangles have the wrong shape: {path}")
+        if surface["face_class"].shape != (face_count,) or surface["face_class_probability"].shape[0] != face_count:
+            raise ValueError(f"fishnet face arrays disagree: {path}")
+        camera = np.asarray(surface["camera_position"], dtype=np.float64)
+        if camera.shape != (3,) or not np.isfinite(camera).all():
+            raise ValueError(f"fishnet camera position is invalid: {path}")
+        image = np.asarray(surface["face_image"])
+        outside = image.size and (np.nanmax(image[..., 0]) > shape[1] + 1 or np.nanmax(image[..., 1]) > shape[0] + 1)
+        if outside:
+            raise ValueError(f"fishnet image coordinates exceed its manifest shape: {path}")
+        return camera
+
+
+def _validate_fishnet_directory(directory: pathlib.Path) -> dict[str, Any]:
+    manifest_path = directory / FISHNET_MANIFEST
+    if not manifest_path.is_file():
+        raise ValueError(f"fishnet manifest is missing: {manifest_path}")
+    document = json.loads(manifest_path.read_text())
+    views = _manifest_views(document, manifest_path)
+    files = {path.name.removesuffix(FISHNET_SURFACE_SUFFIX): path for path in directory.glob(FISHNET_SURFACE_GLOB)}
+    if set(files) != set(views):
+        raise ValueError(f"fishnet files and manifest view IDs disagree: {directory}")
+    cameras = [_validate_fishnet_file(files[name], shape) for name, shape in views.items()]
+    if cameras and not np.allclose(cameras, cameras[0], rtol=0.0, atol=1.0e-6):
+        raise ValueError(f"fishnet views disagree on the camera position: {directory}")
+    mesh = _artifact_path(document.get("mesh"))
+    pose = _artifact_path(document.get("pose"))
+    depth = _artifact_path(document.get("mesh_depth"))
+    if mesh is None or pose is None or depth is None:
+        raise ValueError(f"fishnet manifest does not identify mesh, pose, and mesh depth: {manifest_path}")
+    if not mesh.is_file() or not pose.is_file() or not depth.is_dir():
+        raise ValueError(f"fishnet manifest resolves to a missing mesh, pose, or mesh-depth directory: {manifest_path}")
+    return {
+        "directory": directory,
+        "manifest": manifest_path,
+        "mesh": mesh.resolve(),
+        "pose": pose.resolve(),
+        "mesh_depth": depth.resolve(),
+        "views": views,
+        "camera": cameras[0] if cameras else None,
+    }
+
+
+def _validate_mesh_depth_directory(directory: pathlib.Path, fishnet: dict[str, Any]) -> None:
+    manifest_path = directory / "manifest.json"
+    if not manifest_path.is_file():
+        raise ValueError(f"mesh-depth manifest is missing: {manifest_path}")
+    document = json.loads(manifest_path.read_text())
+    mesh = _artifact_path(document.get("mesh"))
+    pose = _artifact_path(document.get("pose"))
+    if mesh is None or mesh.resolve() != fishnet["mesh"]:
+        raise ValueError(f"fishnet and mesh depth use different support meshes: {directory}")
+    if pose is None or pose.resolve() != fishnet["pose"]:
+        raise ValueError(f"fishnet and mesh depth use different camera poses: {directory}")
+    views = _manifest_views(document, manifest_path)
+    if views != fishnet["views"]:
+        raise ValueError(f"fishnet and mesh depth use different view IDs or image shapes: {directory}")
+    files = {path.stem: path for path in directory.glob(NPZ_GLOB)}
+    if set(files) != set(views):
+        raise ValueError(f"mesh-depth files and manifest view IDs disagree: {directory}")
+    for name, shape in views.items():
+        _validate_mesh_depth_file(files[name], shape)
+    recorded = document.get("camera_position_enu_m")
+    if recorded is not None and fishnet["camera"] is not None:
+        camera = np.asarray(recorded, dtype=np.float64)
+        if camera.shape != (3,) or not np.allclose(camera, fishnet["camera"], rtol=0.0, atol=1.0e-6):
+            raise ValueError(f"fishnet and mesh depth record different camera positions: {directory}")
+
+
+def _validate_mesh_depth_file(path: pathlib.Path, shape: tuple[int, int]) -> None:
+    with np.load(path) as depth:
+        if "range_m" not in depth.files or "face_ids" not in depth.files:
+            raise ValueError(f"mesh-depth file is incomplete: {path}")
+        if depth["range_m"].shape != shape or depth["face_ids"].shape != shape:
+            raise ValueError(f"mesh-depth arrays disagree with the manifest shape: {path}")
+
+
+def _image_directory_matches(directory: pathlib.Path, views: dict[str, tuple[int, int]]) -> bool:
+    """Whether an optional per-view depth product belongs to this family."""
+    files = {path.stem: path for path in directory.glob(NPZ_GLOB)}
+    if set(files) != set(views):
+        return False
+    for name, shape in views.items():
+        with np.load(files[name]) as saved:
+            arrays = [saved[key] for key in saved.files if np.asarray(saved[key]).ndim == 2]
+            if not arrays or any(array.shape != shape for array in arrays):
+                return False
+    return True
+
+
+def _select_vistas_family(site: str) -> tuple[dict[str, pathlib.Path], dict[str, Any] | None, dict[str, Any]]:
+    names = (
+        f"{site}_fishnet_vistas_250m_v2",
+        f"{site}_fishnet_vistas_fused",
+        f"{site}_fishnet_vistas",
+    )
+    report: dict[str, Any] = {"selection": "none", "excluded": {}}
+    for directory in (OUTPUTS / name for name in names):
+        if not directory.is_dir():
+            continue
+        manifest_path = directory / FISHNET_MANIFEST
+        if not manifest_path.exists() or not any(directory.glob(FISHNET_SURFACE_GLOB)):
+            report["selection"] = "incomplete Vistas artifact"
+            return {"fishnet_vistas": directory}, None, report
+        selected = _validate_fishnet_directory(directory)
+        depth = pathlib.Path(selected["mesh_depth"])
+        _validate_mesh_depth_directory(depth, selected)
+        report.update(
+            selection="validated coherent family",
+            mesh=str(selected["mesh"]),
+            pose=str(selected["pose"]),
+            views={name: list(shape) for name, shape in selected["views"].items()},
+        )
+        return {"fishnet_vistas": directory, "mesh_depth": depth}, selected, report
+    return {}, None, report
+
+
+def _sam3_compatibility(sam3: pathlib.Path, selected: dict[str, Any]) -> tuple[bool, str | None]:
+    try:
+        candidate = _validate_fishnet_directory(sam3)
+    except (OSError, ValueError, KeyError) as error:
+        return False, str(error)
+    compatible = all(candidate[key] == selected[key] for key in ("mesh", "pose", "views"))
+    return compatible, None if compatible else "mesh, pose, views, or image shapes differ from Vistas"
+
+
+def _attach_optional_depth_products(
+    site: str,
+    found: dict[str, pathlib.Path],
+    report: dict[str, Any],
+    views: dict[str, tuple[int, int]],
+) -> None:
+    for key, name in (
+        ("depth_gated", f"{site}_depth_fused"),
+        ("depth_ungated", f"{site}_depth_consistency_two_models"),
+    ):
+        directory = OUTPUTS / name
+        if not directory.is_dir():
+            continue
+        if _image_directory_matches(directory, views):
+            found[key] = directory
+        else:
+            report["excluded"][key] = "view IDs or image shapes differ from the selected family"
+
+
+def select_evidence_family(site: str) -> tuple[dict[str, pathlib.Path], dict[str, Any]]:
+    """Select one mesh, pose, view, and image-shape compatible evidence family."""
+    found, selected, report = _select_vistas_family(site)
+
+    sam3 = OUTPUTS / f"{site}_fishnet_sam3"
+    if sam3.is_dir():
+        if selected is None:
+            found["fishnet_sam3"] = sam3
+        else:
+            compatible, reason = _sam3_compatibility(sam3, selected)
+            if compatible:
+                found["fishnet_sam3"] = sam3
+            else:
+                report["excluded"]["fishnet_sam3"] = reason
+
+    if selected is not None:
+        _attach_optional_depth_products(site, found, report, selected["views"])
+
+    bodies = OUTPUTS / f"{site}_dynamic_bodies"
+    if bodies.is_dir():
+        found["bodies"] = bodies
+    return found, report
 
 
 def evidence_directories(site: str) -> dict[str, pathlib.Path]:
-    """Which evidence products exist for a site, by convention on the name.
-
-    The fused fishnet is preferred over the unfused one because it is built from
-    the gated depth decisions, which is what the gate produces at a site whose
-    monocular scale was refused. A site with none of these directories exports
-    the propagation layers alone and nothing here raises.
-    """
-    candidates = {
-        "fishnet_vistas": (f"{site}_fishnet_vistas_fused", f"{site}_fishnet_vistas"),
-        "fishnet_sam3": (f"{site}_fishnet_sam3",),
-        "mesh_depth": (f"{site}_mesh_depth",),
-        "depth_gated": (f"{site}_depth_fused",),
-        "depth_ungated": (f"{site}_depth_consistency_two_models",),
-        "bodies": (f"{site}_dynamic_bodies",),
-    }
-    found: dict[str, pathlib.Path] = {}
-    for key, names in candidates.items():
-        for name in names:
-            if (OUTPUTS / name).is_dir():
-                found[key] = OUTPUTS / name
-                break
-    return found
+    """Return only directories from one validated evidence family."""
+    return select_evidence_family(site)[0]
 
 
 def read_taxonomy(path: pathlib.Path) -> dict[int, str]:
@@ -1140,7 +1621,7 @@ def fishnet_layer(directory: pathlib.Path, class_count: int) -> dict[str, Any]:
     }
     for name, dtype in FISHNET_FACE_COLUMNS.items():
         layer[name] = np.concatenate(columns[name])[keep].astype(dtype)
-    layer["views"] = [path.name.replace("_fishnet.npz", "") for path in files]
+    layer["views"] = [path.name.removesuffix(FISHNET_SURFACE_SUFFIX) for path in files]
     layer["dropped_faces"] = int(keep.size - keep.sum())
     return layer
 
@@ -1190,14 +1671,14 @@ def support_mesh_of(directory: pathlib.Path) -> pathlib.Path | None:
     ``inhouse_leaf_130m.ply`` belongs to is how you cut one square's semantics
     against another square's geometry.
     """
-    for name in ("fishnet_manifest.json", "site_fishnet_manifest.json"):
+    for name in (FISHNET_MANIFEST, "site_fishnet_manifest.json"):
         path = directory / name
         if not path.exists():
             continue
         stated = SCRIPT_DIR / json.loads(path.read_text())["mesh"]
         if stated.exists():
             return stated
-    for path in sorted(directory.glob("*/fishnet_manifest.json")):
+    for path in sorted(directory.glob(f"*/{FISHNET_MANIFEST}")):
         stated = SCRIPT_DIR / json.loads(path.read_text())["mesh"]
         if stated.exists():
             return stated
@@ -1271,41 +1752,171 @@ def support_evidence_layer(directory: pathlib.Path, class_count: int) -> dict[st
 def rejected_layer(directory: pathlib.Path) -> dict[str, Any] | None:
     """The candidate surface the cutter refused, as geometry, with the reason.
 
-    Deduplicated on the pair of source triangle and reason, because one triangle
-    is refused once per view and often in several pieces within a view, and
-    drawing it once per row would put ten coincident copies of the same wall in
-    the scene. The image area is summed over the rows that were merged.
+    Version two fishnets carry each rejected fragment's own triangulation. Those
+    fragments are kept one by one because their shape is the evidence. Version
+    one files only name a source triangle. They retain the old deduplicated
+    support-triangle drawing as an explicitly marked legacy fallback.
     """
-    import trimesh
-
     from semantic_twin.scene.fishnet import REJECTION_REASONS
+    from semantic_twin.scene.fishnet.surface import REJECTED_GEOMETRY_KINDS
 
-    support = support_mesh_of(directory)
-    if support is None:
+    vertices_parts: list[np.ndarray] = []
+    faces_parts: list[np.ndarray] = []
+    reasons_parts: list[np.ndarray] = []
+    areas_parts: list[np.ndarray] = []
+    sources_parts: list[np.ndarray] = []
+    views_parts: list[np.ndarray] = []
+    fragments_parts: list[np.ndarray] = []
+    geometry_source_parts: list[np.ndarray] = []
+    geometry_kind_parts: list[np.ndarray] = []
+    image_triangle_parts: list[np.ndarray] = []
+    legacy_pairs: dict[tuple[int, int], float] = {}
+    format_versions: set[int] = set()
+    unavailable_rows_by_reason: dict[int, int] = {}
+    unavailable_area_by_reason: dict[int, float] = {}
+    saw_version_two = False
+    vertex_offset = 0
+    fragment_offset = 0
+
+    for view_index, path in enumerate(sorted(directory.glob(FISHNET_SURFACE_GLOB))):
+        with np.load(path) as surface:
+            format_version = int(surface["fishnet_format_version"]) if "fishnet_format_version" in surface.files else 1
+            format_versions.add(format_version)
+            exact = format_version >= 2 and REJECTED_V2_FIELDS.issubset(surface.files)
+            if format_version >= 2 and not exact:
+                missing = sorted(REJECTED_V2_FIELDS.difference(surface.files))
+                raise ValueError(f"format-v2 rejected geometry is incomplete in {path.name}; missing {missing}")
+            if not exact:
+                for triangle, reason, area in zip(
+                    surface["rejected_source_triangle"].astype(int),
+                    surface["rejected_reason"].astype(int),
+                    surface["rejected_image_area_px"].astype(float),
+                    strict=True,
+                ):
+                    key = (int(triangle), int(reason))
+                    legacy_pairs[key] = legacy_pairs.get(key, 0.0) + float(area)
+                continue
+
+            saw_version_two = True
+            rejected_faces = surface["rejected_faces"].astype(np.int64)
+            record_reason = surface["rejected_reason"].astype(np.int64)
+            record_source = surface["rejected_source_triangle"].astype(np.int64)
+            record_area = surface["rejected_image_area_px"].astype(np.float64)
+            record = surface["rejected_face_record"].astype(np.int64)
+            rejected_vertices = surface["rejected_vertices"].astype(np.float64)
+            image = surface["rejected_face_image"].astype(np.float64)
+            kind = surface["rejected_geometry_kind"].astype(np.uint8)
+            if record_source.shape != record_reason.shape or record_area.shape != record_reason.shape:
+                raise ValueError(f"rejected record columns disagree in {path.name}")
+            if rejected_faces.ndim != 2 or rejected_faces.shape[1:] != (3,):
+                raise ValueError(f"rejected_faces has the wrong shape in {path.name}")
+            if image.shape != (rejected_faces.shape[0], 3, 2) or record.shape != (rejected_faces.shape[0],):
+                raise ValueError(f"rejected face columns disagree in {path.name}")
+            if kind.shape != record_reason.shape or np.any((kind < 0) | (kind > max(REJECTED_GEOMETRY_KINDS.values()))):
+                raise ValueError(f"rejected_geometry_kind is invalid in {path.name}")
+            if rejected_faces.size and (
+                np.any(rejected_faces < 0)
+                or np.any(rejected_faces >= rejected_vertices.shape[0])
+                or np.any(record < 0)
+                or np.any(record >= record_reason.shape[0])
+            ):
+                raise ValueError(f"rejected geometry has an out-of-range index in {path.name}")
+            offsets = surface["rejected_face_offsets"].astype(np.int64)
+            expected = np.concatenate([[0], np.cumsum(np.bincount(record, minlength=record_reason.shape[0]))])
+            if not np.array_equal(offsets, expected):
+                raise ValueError(f"rejected_face_offsets disagrees with face records in {path.name}")
+            available = np.zeros(record_reason.shape[0], dtype=bool)
+            available[np.unique(record)] = True
+            for reason in np.unique(record_reason[~available]):
+                mask = (~available) & (record_reason == reason)
+                code = int(reason)
+                unavailable_rows_by_reason[code] = unavailable_rows_by_reason.get(code, 0) + int(mask.sum())
+                unavailable_area_by_reason[code] = unavailable_area_by_reason.get(code, 0.0) + float(
+                    record_area[mask].sum()
+                )
+            fragment_offset += int(record_reason.shape[0])
+            if rejected_faces.shape[0] == 0:
+                continue
+
+            signed_twice = (image[:, 1, 0] - image[:, 0, 0]) * (image[:, 2, 1] - image[:, 0, 1]) - (
+                image[:, 2, 0] - image[:, 0, 0]
+            ) * (image[:, 1, 1] - image[:, 0, 1])
+            triangle_area = 0.5 * np.abs(signed_twice)
+            total = np.zeros(record_reason.shape[0], dtype=np.float64)
+            np.add.at(total, record, triangle_area)
+            face_area = np.divide(
+                record_area[record] * triangle_area,
+                total[record],
+                out=np.zeros(triangle_area.shape[0]),
+                where=total[record] > 0.0,
+            )
+
+            vertices_parts.append(rejected_vertices)
+            faces_parts.append(rejected_faces + vertex_offset)
+            reasons_parts.append(record_reason[record].astype(np.int16))
+            areas_parts.append(face_area.astype(np.float32))
+            sources_parts.append(record_source[record].astype(np.int32))
+            views_parts.append(np.full(record.shape[0], view_index, dtype=np.int16))
+            fragments_parts.append((record + fragment_offset - record_reason.shape[0]).astype(np.int32))
+            geometry_source_parts.append(np.ones(record.shape[0], dtype=np.uint8))
+            geometry_kind_parts.append(kind[record])
+            image_triangle_parts.append(image.reshape(-1, 6).astype(np.float32))
+            vertex_offset += int(rejected_vertices.shape[0])
+
+    if legacy_pairs:
+        import trimesh
+
+        support = support_mesh_of(directory)
+        if support is None:
+            if faces_parts:
+                raise ValueError("legacy rejected rows need the support mesh for their explicit fallback")
+            return None
+        mesh = trimesh.load(support, process=False, force="mesh")
+        ordered = sorted(legacy_pairs)
+        triangles = np.array([pair[0] for pair in ordered], dtype=np.int64)
+        fallback_vertices, fallback_faces = triangle_soup(np.asarray(mesh.vertices), np.asarray(mesh.faces), triangles)
+        count = fallback_faces.shape[0]
+        vertices_parts.append(fallback_vertices)
+        faces_parts.append(fallback_faces + vertex_offset)
+        reasons_parts.append(np.array([pair[1] for pair in ordered], dtype=np.int16))
+        areas_parts.append(np.array([legacy_pairs[pair] for pair in ordered], dtype=np.float32))
+        sources_parts.append(triangles.astype(np.int32))
+        views_parts.append(np.full(count, -1, dtype=np.int16))
+        fragments_parts.append(np.arange(fragment_offset, fragment_offset + count, dtype=np.int32))
+        geometry_source_parts.append(np.zeros(count, dtype=np.uint8))
+        geometry_kind_parts.append(np.full(count, 3, dtype=np.uint8))
+        image_triangle_parts.append(np.full((count, 6), np.nan, dtype=np.float32))
+
+    if not faces_parts and not saw_version_two:
         return None
-    mesh = trimesh.load(support, process=False, force="mesh")
-    pairs: dict[tuple[int, int], float] = {}
-    for path in sorted(directory.glob(FISHNET_SURFACE_GLOB)):
-        surface = np.load(path)
-        for triangle, reason, area in zip(
-            surface["rejected_source_triangle"].astype(int),
-            surface["rejected_reason"].astype(int),
-            surface["rejected_image_area_px"].astype(float),
-            strict=True,
-        ):
-            pairs[(int(triangle), int(reason))] = pairs.get((int(triangle), int(reason)), 0.0) + area
-    ordered = sorted(pairs)
-    triangles = np.array([pair[0] for pair in ordered], dtype=np.int64)
-    reasons = np.array([pair[1] for pair in ordered], dtype=np.int16)
-    areas = np.array([pairs[pair] for pair in ordered], dtype=np.float32)
-    vertices, faces = triangle_soup(np.asarray(mesh.vertices), np.asarray(mesh.faces), triangles)
+    empty_vertices = np.zeros((0, 3), dtype=np.float32)
+    empty_faces = np.zeros((0, 3), dtype=np.int32)
+    empty_i16 = np.zeros(0, dtype=np.int16)
+    empty_i32 = np.zeros(0, dtype=np.int32)
+    empty_u8 = np.zeros(0, dtype=np.uint8)
+    empty_f32 = np.zeros(0, dtype=np.float32)
+    empty_image = np.zeros((0, 6), dtype=np.float32)
     return {
-        "vertices": vertices.astype(np.float32),
-        "faces": faces,
-        "reason": reasons,
-        "image_area_px": areas,
+        "vertices": np.concatenate(vertices_parts).astype(np.float32) if vertices_parts else empty_vertices,
+        "faces": np.concatenate(faces_parts).astype(np.int32) if faces_parts else empty_faces,
+        "reason": np.concatenate(reasons_parts) if reasons_parts else empty_i16,
+        "image_area_px": np.concatenate(areas_parts) if areas_parts else empty_f32,
+        "source_triangle": np.concatenate(sources_parts) if sources_parts else empty_i32,
+        "view": np.concatenate(views_parts) if views_parts else empty_i16,
+        "fragment": np.concatenate(fragments_parts) if fragments_parts else empty_i32,
+        "geometry_source": np.concatenate(geometry_source_parts) if geometry_source_parts else empty_u8,
+        "geometry_kind": np.concatenate(geometry_kind_parts) if geometry_kind_parts else empty_u8,
+        "image_triangle_px": np.concatenate(image_triangle_parts) if image_triangle_parts else empty_image,
         "reason_names": [name for name, _ in sorted(REJECTION_REASONS.items(), key=lambda item: item[1])],
         "reason_codes": [code for _, code in sorted(REJECTION_REASONS.items(), key=lambda item: item[1])],
+        "geometry_source_names": ["legacy_source_triangle_fallback", "exact_rejected_fragment"],
+        "geometry_kind_names": ["unavailable", "exact_cut_piece", "clipped_footprint", "legacy_source_triangle"],
+        "fishnet_format_versions": sorted(format_versions),
+        "view_names": [
+            path.name.removesuffix(FISHNET_SURFACE_SUFFIX) for path in sorted(directory.glob(FISHNET_SURFACE_GLOB))
+        ],
+        "unavailable_rows_by_reason": unavailable_rows_by_reason,
+        "unavailable_image_area_px_by_reason": unavailable_area_by_reason,
     }
 
 
@@ -1666,6 +2277,19 @@ def _attach_support(
         "reason_names": refused["reason_names"],
         "reason_codes": refused["reason_codes"],
         "triangles": int(refused["faces"].shape[0]),
+        "geometry_source_names": refused["geometry_source_names"],
+        "geometry_kind_names": refused["geometry_kind_names"],
+        "fishnet_format_versions": refused["fishnet_format_versions"],
+        "views": refused["view_names"],
+        "exact_fragment_triangles": int(np.count_nonzero(refused["geometry_source"] == 1)),
+        "legacy_source_triangle_fallbacks": int(np.count_nonzero(refused["geometry_source"] == 0)),
+        "unavailable_rows_by_reason": {
+            refused["reason_names"][code - 1]: count for code, count in refused["unavailable_rows_by_reason"].items()
+        },
+        "unavailable_image_area_px_by_reason": {
+            refused["reason_names"][code - 1]: area
+            for code, area in refused["unavailable_image_area_px_by_reason"].items()
+        },
         "image_area_px_by_reason": {
             refused["reason_names"][code - 1]: float(refused["image_area_px"][refused["reason"] == code].sum())
             for code in np.unique(refused["reason"])
@@ -1724,7 +2348,11 @@ def _attach_mesh_depth(
     report["depth_mesh"] = {
         "points": int(cloud["points"].shape[0]),
         "stride_px": args.depth_stride,
-        "meaning": "the mesh first hit the twin actually uses, coloured by the fused depth decision",
+        "meaning": (
+            "the mesh first hit the twin actually uses, coloured by the compatible fused depth decision"
+            if gated is not None
+            else "the mesh first hit the twin actually uses; no image-shape-compatible fused decision map exists"
+        ),
         "decisions": gated_manifest.get("decisions") if gated_manifest else None,
     }
     report["layer_status"]["depth_mesh"] = {
@@ -1861,9 +2489,10 @@ def _attach_bodies(payload: dict[str, Any], report: dict[str, Any], directory: p
 def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
     """Add every evidence layer that exists for this site to the payload."""
     payload, manifest = bundle["payload"], bundle["manifest"]
-    directories = evidence_directories(args.site)
+    directories, family = select_evidence_family(args.site)
     report: dict[str, Any] = {
         "found": {key: str(path.relative_to(SCRIPT_DIR)) for key, path in sorted(directories.items())},
+        "family": family,
         "layer_status": {},
         "note": "layers here are read from disk, not recomputed; see PAYLOAD.md",
     }
@@ -1896,10 +2525,13 @@ def reopen(args: Any, *, output_stem: str | None = None) -> dict[str, Any]:
     stem = output_stem or args.site
     payload_path = args.out / f"{stem}_payload.npz"
     manifest_path = args.out / f"{stem}_manifest.json"
-    stored = np.load(payload_path)
     manifest = json.loads(manifest_path.read_text())
+    with np.load(payload_path) as stored:
+        verify_bundle_identity(stored, manifest)
+        payload = {
+            name: np.array(stored[name], copy=True) for name in stored.files if not name.startswith(EVIDENCE_PREFIXES)
+        }
     manifest.pop("evidence", None)
-    payload = {name: stored[name] for name in stored.files if not name.startswith(EVIDENCE_PREFIXES)}
     print(f"[reopen] {payload_path.name}, {len(payload)} traced arrays kept", flush=True)
     return {"payload": payload, "manifest": manifest}
 
@@ -1914,10 +2546,12 @@ def measure_rim(args: Any) -> dict[str, Any]:
     """
     payload_path = args.out / f"{args.site}_payload.npz"
     manifest_path = args.out / f"{args.site}_manifest.json"
-    stored = np.load(payload_path)
     manifest = json.loads(manifest_path.read_text())
+    with np.load(payload_path) as stored:
+        verify_bundle_identity(stored, manifest)
+        payload = {name: np.array(stored[name], copy=True) for name in stored.files}
     bundle: dict[str, Any] = {
-        "payload": {name: stored[name] for name in stored.files},
+        "payload": payload,
         "manifest": manifest,
     }
     geometry = MitsubaGeometry(SCRIPT_DIR / manifest["mesh"], variant=args.variant)
@@ -1964,6 +2598,40 @@ def reopen_production(args: Any, data: ProductionData, run: RunConfig) -> tuple[
     return bundle, output_stem
 
 
+def publish_bundle(
+    payload_path: pathlib.Path,
+    manifest_path: pathlib.Path,
+    payload: dict[str, Any],
+    manifest: dict[str, Any],
+) -> str:
+    """Stamp and safely replace both files of one checked visualization bundle."""
+    identity = stamp_bundle_identity(payload, manifest)
+    payload_fd, payload_name = tempfile.mkstemp(prefix=f".{payload_path.name}.", suffix=".tmp", dir=payload_path.parent)
+    manifest_fd, manifest_name = tempfile.mkstemp(
+        prefix=f".{manifest_path.name}.", suffix=".tmp", dir=manifest_path.parent
+    )
+    try:
+        with os.fdopen(payload_fd, "wb") as handle:
+            np.savez_compressed(handle, **payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        with os.fdopen(manifest_fd, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(manifest, indent=2, default=float) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        # Each rename is atomic. A reader that lands between them rejects the
+        # crossed pair through verify_bundle_identity instead of building it.
+        os.replace(payload_name, payload_path)
+        os.replace(manifest_name, manifest_path)
+    finally:
+        for temporary in (payload_name, manifest_name):
+            try:
+                pathlib.Path(temporary).unlink()
+            except FileNotFoundError:
+                pass
+    return identity
+
+
 def export(args: Any) -> int:
     """Build and serialize the payload requested by a command namespace."""
     args.out.mkdir(parents=True, exist_ok=True)
@@ -1986,9 +2654,8 @@ def export(args: Any) -> int:
         if args.evidence:
             attach_evidence(args, bundle)
     payload_path = args.out / f"{output_stem}_payload.npz"
-    np.savez_compressed(payload_path, **bundle["payload"])
     manifest_path = args.out / f"{output_stem}_manifest.json"
-    manifest_path.write_text(json.dumps(bundle["manifest"], indent=2, default=float) + "\n")
+    identity = publish_bundle(payload_path, manifest_path, bundle["payload"], bundle["manifest"])
     size_mb = payload_path.stat().st_size / 1e6
-    print(f"[done] {payload_path} ({size_mb:.1f} MB) and {manifest_path.name}")
+    print(f"[done] {payload_path} ({size_mb:.1f} MB) and {manifest_path.name}, bundle {identity[:12]}")
     return 0

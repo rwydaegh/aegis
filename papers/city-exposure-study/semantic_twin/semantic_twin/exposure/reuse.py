@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import pathlib
@@ -12,6 +13,7 @@ from typing import Any
 
 import numpy as np
 
+from semantic_twin import paths
 from semantic_twin.runconfig import MATERIALS, RunConfig
 from semantic_twin.walk.model import CAMERA_REGISTERED, REGISTERED_ROAD_V1, STRIDE_INTERPOLATED
 
@@ -52,13 +54,131 @@ def reusable(config: RunConfig, output: pathlib.Path, models: Mapping[str, Any])
         return False
     try:
         manifest = json.loads(manifest_path.read_text())
+        mesh_path = paths.site_mesh(config.site, config.crop_m)
     except (OSError, TypeError, ValueError):
         return False
     return (
         complete_output(manifest, config, rows_path, spectra_path)
+        and same_output_generation(manifest, rows_path, spectra_path)
         and same_run_identity(manifest, config, models)
         and same_models(manifest, config, models)
+        and same_support_mesh(manifest, mesh_path)
+        and same_atlas_artifact(manifest, config, mesh_path)
     )
+
+
+def same_support_mesh(manifest: dict[str, Any], mesh_path: pathlib.Path) -> bool:
+    """Require reuse to resolve to the exact support-mesh bytes that were traced."""
+    recorded = manifest.get("mesh_sha256")
+    if not _valid_sha256(recorded):
+        return False
+    try:
+        return _file_sha256(mesh_path) == recorded
+    except OSError:
+        return False
+
+
+def same_atlas_artifact(
+    manifest: dict[str, Any],
+    config: RunConfig,
+    mesh_path: pathlib.Path,
+) -> bool:
+    """Require an atlas and its canonical sidecar to remain the traced pair."""
+    if config.materials != "atlas":
+        return True
+    atlas_path = (
+        pathlib.Path(config.atlas_npz)
+        if config.atlas_npz is not None
+        else paths.joint_atlas(config.site, config.crop_m, resolution=8)
+    )
+    binding = manifest.get("semantic_binding")
+    if not isinstance(binding, dict):
+        return False
+    recorded_npz = binding.get("atlas_npz_sha256")
+    recorded_manifest = binding.get("atlas_manifest_sha256")
+    if not _valid_sha256(recorded_npz) or not _valid_sha256(recorded_manifest):
+        return False
+    atlas_manifest = atlas_path.with_suffix(".json")
+    try:
+        current_npz = _file_sha256(atlas_path)
+        current_manifest = _file_sha256(atlas_manifest)
+        sidecar = json.loads(atlas_manifest.read_text(encoding="utf-8"))
+        mesh_sha256 = _file_sha256(mesh_path)
+    except (OSError, TypeError, ValueError):
+        return False
+    artifact = sidecar.get("artifact")
+    atlas_mesh = sidecar.get("mesh")
+    return (
+        current_npz == recorded_npz
+        and current_manifest == recorded_manifest
+        and sidecar.get("schema") == "aegis.joint_semantic_material_atlas"
+        and sidecar.get("format_version") == 1
+        and isinstance(artifact, dict)
+        and artifact.get("path") == atlas_path.name
+        and artifact.get("sha256") == current_npz
+        and _valid_sha256(artifact.get("content_sha256"))
+        and isinstance(atlas_mesh, dict)
+        and atlas_mesh.get("sha256") == mesh_sha256
+    )
+
+
+def same_output_generation(
+    manifest: dict[str, Any],
+    rows_path: pathlib.Path,
+    spectra_path: pathlib.Path,
+    *,
+    require_published_names: bool = True,
+) -> bool:
+    """Verify that rows and spectra are the one generation committed by the manifest."""
+    generation = manifest.get("output_generation")
+    if not isinstance(generation, dict) or generation.get("format_version") != 1:
+        return False
+    generation_id = generation.get("id")
+    if (
+        not isinstance(generation_id, str)
+        or len(generation_id) != 32
+        or any(character not in "0123456789abcdef" for character in generation_id.lower())
+    ):
+        return False
+    artifacts = generation.get("artifacts")
+    if not isinstance(artifacts, dict) or set(artifacts) != {"locations", "spectra"}:
+        return False
+    try:
+        return _same_artifact(artifacts["locations"], rows_path, require_published_names) and _same_artifact(
+            artifacts["spectra"], spectra_path, require_published_names
+        )
+    except OSError:
+        return False
+
+
+def _same_artifact(record: Any, path: pathlib.Path, require_name: bool) -> bool:
+    if not isinstance(record, dict) or set(record) != {"path", "sha256", "bytes"}:
+        return False
+    size = record.get("bytes")
+    return (
+        (not require_name or record.get("path") == path.name)
+        and _valid_sha256(record.get("sha256"))
+        and type(size) is int
+        and size >= 0
+        and path.stat().st_size == size
+        and _file_sha256(path) == record["sha256"]
+    )
+
+
+def _valid_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value.lower())
+    )
+
+
+def _file_sha256(path: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def complete_output(

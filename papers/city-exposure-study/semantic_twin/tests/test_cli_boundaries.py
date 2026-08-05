@@ -12,7 +12,7 @@ from semantic_twin.cli import panorama as panorama_cli
 from semantic_twin.cli import prompted as prompted_cli
 from semantic_twin.cli import streetview as streetview_cli
 from semantic_twin.vision.align import AlignmentConfig
-from semantic_twin.vision.dense import DEFAULT_GATE_MIN_PIXELS, DEFAULT_INFERENCE_SIZE, MODEL
+from semantic_twin.vision.dense import DEFAULT_GATE_MIN_PIXELS, DEFAULT_INFERENCE_SIZE, MODEL, PRODUCTION_REVISION
 from semantic_twin.vision.layers import LayerFusionConfig
 from semantic_twin.vision.panorama import PanoramaRunConfig
 from semantic_twin.vision.prompted import (
@@ -113,6 +113,9 @@ def test_prompted_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
         "prompt_batch": DEFAULT_PROMPT_BATCH,
         "limit_views": None,
         "force": False,
+        "sam_revision": None,
+        "sam_repository_commit": None,
+        "production": False,
     }
     received: list[PromptedRunConfig] = []
     monkeypatch.setattr(prompted_cli, "run_prompted", received.append)
@@ -133,6 +136,11 @@ def test_prompted_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
             "--limit-views",
             "4",
             "--force",
+            "--sam-revision",
+            "1" * 40,
+            "--sam-repository-commit",
+            "2" * 40,
+            "--production",
         ]
     )
     assert received == [
@@ -145,6 +153,9 @@ def test_prompted_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
             prompt_batch=9,
             limit_views=4,
             force=True,
+            sam_revision="1" * 40,
+            sam_repository_commit="2" * 40,
+            production=True,
         )
     ]
 
@@ -195,6 +206,7 @@ def test_panorama_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
         "panorama": pathlib.Path("pano.jpg"),
         "out": pathlib.Path("result"),
         "model": MODEL,
+        "dense_revision": None,
         "device": "auto",
         "backend": "mask2former",
         "concepts": None,
@@ -206,6 +218,9 @@ def test_panorama_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
         "gate_min_pixels": DEFAULT_GATE_MIN_PIXELS,
         "output_width": 8192,
         "force": False,
+        "sam_revision": None,
+        "sam_repository_commit": None,
+        "production": False,
     }
     received: list[PanoramaRunConfig] = []
     monkeypatch.setattr(panorama_cli, "run", received.append)
@@ -217,6 +232,8 @@ def test_panorama_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
             "custom_out",
             "--model",
             "checkpoint",
+            "--dense-revision",
+            PRODUCTION_REVISION,
             "--device",
             "cuda",
             "--backend",
@@ -238,6 +255,11 @@ def test_panorama_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
             "--output-width",
             "4096",
             "--force",
+            "--sam-revision",
+            "3" * 40,
+            "--sam-repository-commit",
+            "4" * 40,
+            "--production",
         ]
     )
     assert received == [
@@ -245,6 +267,7 @@ def test_panorama_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
             panorama=pathlib.Path("custom.jpg"),
             out=pathlib.Path("custom_out"),
             model="checkpoint",
+            dense_revision=PRODUCTION_REVISION,
             device="cuda",
             backend="hybrid",
             concepts=pathlib.Path("concepts.json"),
@@ -256,6 +279,9 @@ def test_panorama_defaults_and_forwarding(monkeypatch: pytest.MonkeyPatch) -> No
             gate_min_pixels=321,
             output_width=4096,
             force=True,
+            sam_revision="3" * 40,
+            sam_repository_commit="4" * 40,
+            production=True,
         )
     ]
 

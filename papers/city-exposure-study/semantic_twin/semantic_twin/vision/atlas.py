@@ -131,7 +131,7 @@ def rasterize_triangle_evidence(
     if class_count:
         active = labelled & (confidence > 0.0)
         if np.any(active):
-            rows, columns = _texel_indices(barycentric[active, 2], barycentric[active, 1], height, width)
+            rows, columns = triangle_texel_indices(barycentric[active], (height, width))
             np.add.at(
                 weights,
                 (atlas_row[active], rows, columns, labels[active]),
@@ -163,6 +163,28 @@ def rasterize_triangle_evidence(
         invalid_label,
         declared_triangle_count,
     )
+
+
+def triangle_texel_indices(
+    barycentric: np.ndarray,
+    resolution: int | tuple[int, int],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Map full barycentric coordinates to canonical triangle texels.
+
+    This is the common image-to-atlas discretisation used by both the small
+    categorical rasteriser above and the all-camera joint material atlas.  A
+    public helper keeps the two artifacts from acquiring slightly different
+    seam coordinates.
+    """
+    height, width = _resolution(resolution)
+    barycentric = np.asarray(barycentric, dtype=np.float64)
+    if barycentric.ndim != 2 or barycentric.shape[1] != 3:
+        raise ValueError("barycentric must have shape (observations, 3)")
+    if not np.all(np.isfinite(barycentric)):
+        raise ValueError("barycentric coordinates must be finite")
+    if np.any(barycentric < -1e-6) or not np.allclose(barycentric.sum(axis=1), 1.0, atol=1e-6):
+        raise ValueError("barycentric coordinates must be nonnegative and sum to one")
+    return _texel_indices(barycentric[:, 2], barycentric[:, 1], height, width)
 
 
 def conservative_simplify_contour(points: np.ndarray, tolerance: float) -> np.ndarray:

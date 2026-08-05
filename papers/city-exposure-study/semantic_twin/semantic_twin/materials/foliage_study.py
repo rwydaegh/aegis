@@ -44,6 +44,7 @@ import numpy as np
 from semantic_twin import paths
 from semantic_twin.illumination import MODELS
 from semantic_twin.materials.foliage import (
+    POWER_DB_PER_NEPER,
     LEAF_AREA_INDEX,
     CanopyCanyonGeometry,
     FoliageMedium,
@@ -263,7 +264,7 @@ def stage_sweep(rays: int, seed: int) -> None:
             envelope["sigma_tau_per_m"][1] * CANOPY_DEPTH_M,
         ],
         "figure2_specific_attenuation_db_per_m": gamma,
-        "figure2_implied_optical_depth_over_canopy_depth": gamma / 8.685889638065035 * CANOPY_DEPTH_M,
+        "figure2_implied_optical_depth_over_canopy_depth": gamma / POWER_DB_PER_NEPER * CANOPY_DEPTH_M,
         "site_canopy_fraction": SITE_CANOPY_FRACTION,
         "records": records,
     }

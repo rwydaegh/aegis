@@ -301,8 +301,9 @@ def interact_with_surface(
         klass = tracer.face_class[hit.face]
     else:
         klass = np.zeros(state.alive.size, dtype=np.int64)
-    reflectance = tracer._fresnel_power_reflectance(cos_i, tracer.permittivity[klass])
-    share = tracer._specular_share(tracer.rms_height_m[klass], cos_i)
+    reflectance, share, nonblocking = tracer._surface_response(cos_i, klass, hit.face, position)
+    if np.any(nonblocking):
+        raise AssertionError("non-blocking hits must be removed before surface interaction")
 
     if observers.tally is not None and hit.face is not None:
         observers.tally.record(depth, hit.face, hit.throughput)
@@ -332,6 +333,67 @@ def interact_with_surface(
     return SurfaceInteraction(
         state.alive, position, incoming, normal, throughput, bounces, hit.face, share, new_direction
     )
+
+
+def _slice_intersection(hit: Intersection, keep: np.ndarray) -> Intersection:
+    """Select hit rows without changing their original ray order."""
+    return Intersection(
+        hit.index[keep],
+        hit.position[keep],
+        hit.direction[keep],
+        hit.throughput[keep],
+        hit.bounces[keep],
+        hit.hit[keep],
+        hit.distance[keep],
+        hit.normal[keep],
+        hit.face[keep] if hit.face is not None else None,
+    )
+
+
+def partition_nonblocking_hits(
+    tracer: Any,
+    state: BatchState,
+    hit: Intersection,
+) -> tuple[Intersection, np.ndarray]:
+    """Advance false canopy surfaces and return the blocking hit subset.
+
+    A non-blocking cell is image evidence for a woody volume on geometry that
+    is not a registered canopy boundary. The ray crosses it in the same
+    direction with the same power and bounce count. The travelled distance is
+    still physical path length. Repeated intersections are resolved inside the
+    same bounce slot by :func:`run_batch`.
+    """
+    if hit.index.size == 0:
+        return hit, np.zeros(0, dtype=np.int64)
+    position = hit.position + (hit.distance + tracer.config.ray_epsilon_m)[:, None] * hit.direction
+    nonblocking = tracer._surface_nonblocking(hit.face, position)
+    if nonblocking.shape != (hit.index.size,):
+        raise ValueError("surface non-blocking state must have one value per hit")
+    pass_index = hit.index[nonblocking]
+    if pass_index.size:
+        state.position[pass_index] = position[nonblocking]
+        state.path_length[pass_index] += hit.distance[nonblocking]
+        state.last_vertex[pass_index] = position[nonblocking]
+    return _slice_intersection(hit, ~nonblocking), pass_index
+
+
+def _nonblocking_crossing_limit(tracer: Any) -> int:
+    """Bound straight-line canopy crossings by the support-mesh face count.
+
+    A ray that only advances cannot cross one triangle more than once. The
+    support mesh therefore gives a conservative hard limit even when every
+    face carries a non-blocking atlas cell. Atlas transport already requires
+    indexed mesh geometry, but the face-class length remains a useful fallback
+    for small test geometries that expose the same contract.
+    """
+    face_count = getattr(tracer.geometry, "face_count", None)
+    if face_count is None and tracer.face_class is not None:
+        face_count = tracer.face_class.size
+    if face_count is None or int(face_count) < 1:
+        raise RuntimeError(
+            "non-blocking canopy transport needs a positive support-mesh face count to bound pass-through intersections"
+        )
+    return int(face_count)
 
 
 def apply_roulette(
@@ -376,17 +438,39 @@ def run_batch(
     for depth in range(tracer.config.max_bounces + 1):
         if state.alive.size == 0:
             break
-        intersection = intersect_live(state, tracer.geometry, tracer.config.ray_epsilon_m)
-        deposit_escapes(tracer, origin, state, intersection, models, accumulators, observers.recorder)
-        hit = select_surface_hits(state, intersection)
-        if state.alive.size == 0:
-            break
-        if depth == tracer.config.max_bounces:
-            truncate_hits(state, hit, accumulators.totals, observers.recorder)
-            break
-        interaction = interact_with_surface(tracer, depth, state, hit, rng, observers)
-        if depth + 1 >= tracer.config.roulette_start:
-            apply_roulette(state, interaction, rng, tracer.config.roulette_floor, observers.recorder)
+        searching = state.alive
+        reflected: list[np.ndarray] = []
+        canopy_crossings = 0
+        crossing_limit: int | None = None
+        while searching.size:
+            state.alive = searching
+            intersection = intersect_live(state, tracer.geometry, tracer.config.ray_epsilon_m)
+            deposit_escapes(tracer, origin, state, intersection, models, accumulators, observers.recorder)
+            hit = select_surface_hits(state, intersection)
+            if state.alive.size == 0:
+                break
+            blocking, searching = partition_nonblocking_hits(tracer, state, hit)
+            if searching.size:
+                canopy_crossings += 1
+                if crossing_limit is None:
+                    crossing_limit = _nonblocking_crossing_limit(tracer)
+                if canopy_crossings > crossing_limit:
+                    raise RuntimeError(
+                        f"{searching.size} rays exceeded the support-mesh face count "
+                        f"({crossing_limit}) while crossing non-blocking canopy cells at bounce {depth}; "
+                        "the mesh likely contains a repeated self-intersection"
+                    )
+            if blocking.index.size == 0:
+                continue
+            state.alive = blocking.index
+            if depth == tracer.config.max_bounces:
+                truncate_hits(state, blocking, accumulators.totals, observers.recorder)
+                continue
+            interaction = interact_with_surface(tracer, depth, state, blocking, rng, observers)
+            if depth + 1 >= tracer.config.roulette_start:
+                apply_roulette(state, interaction, rng, tracer.config.roulette_floor, observers.recorder)
+            reflected.append(state.alive.copy())
+        state.alive = np.sort(np.concatenate(reflected), kind="stable") if reflected else np.zeros(0, dtype=np.int64)
 
 
 def range_to_source_shell(

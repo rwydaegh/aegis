@@ -17,9 +17,9 @@ from .binding import CLASS_NAMES
 
 SUPPORT_COMPATIBILITY_VERSION = "v1-host-surface-majority"
 HOST_SURFACE_CLASS_RULE = (
-    "image material posterior only where compatible host-surface evidence strictly outweighs all "
-    "incompatible, object, volume, void, and embedded-subface evidence; geometric orientation rule on ties "
-    "and everywhere else"
+    "image material posterior only where compatible host-surface and spatially resolved embedded-surface "
+    "evidence strictly outweighs incompatible object, volume, void, and unresolved evidence; geometric "
+    "orientation rule on ties and everywhere else"
 )
 
 
@@ -144,4 +144,19 @@ def entity_supports_geometric_class(entity: str | None, geometric_class: int) ->
     kind = entity_support_kind(entity)
     if CLASS_NAMES[int(geometric_class)] == "ground":
         return kind == SupportKind.GROUND_HOST
+    return kind == SupportKind.BUILT_HOST
+
+
+def entity_supports_atlas_cell(entity: str | None, geometric_class: int) -> bool:
+    """Whether a spatially resolved atlas cell can refine its host surface.
+
+    Unlike the legacy whole-face products, the joint atlas retains the
+    position of each observation within a support triangle. Ground inserts
+    such as rails and lane markings can therefore affect only their own cells.
+    """
+    if not 0 <= int(geometric_class) < len(CLASS_NAMES):
+        raise ValueError(f"geometric class {geometric_class} leaves {CLASS_NAMES}")
+    kind = entity_support_kind(entity)
+    if CLASS_NAMES[int(geometric_class)] == "ground":
+        return kind in {SupportKind.GROUND_HOST, SupportKind.EMBEDDED_SUBFACE}
     return kind == SupportKind.BUILT_HOST

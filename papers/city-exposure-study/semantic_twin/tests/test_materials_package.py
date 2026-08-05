@@ -45,6 +45,12 @@ from semantic_twin.materials import (
     masonry_equivalent_rms_height,
 )
 from semantic_twin.materials.foliage import FoliageMedium, medium_for_spec
+from semantic_twin.materials.evidence import (
+    JOINT_ATLAS_FALLBACK_NAMES,
+    bind_joint_atlas_materials,
+    bind_refined_atlas_faces,
+    material_table_for_names,
+)
 from semantic_twin.materials.stack import (
     argmax_power_reflectance,
     half_space_power_reflectance,
@@ -525,6 +531,147 @@ def test_walk_material_modes_refuse_independent_entity_and_material_reductions(t
             semantics_path=_support_semantics(tmp_path),
             **options,
         )
+
+
+def _write_joint_atlas(tmp_path: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
+    semantics = _support_semantics(tmp_path)
+    document = json.loads(semantics.read_text())
+    document["vistas_material_prior"]["Building"] = {"brick": 0.6, "glass": 0.4}
+    semantics.write_text(json.dumps(document))
+    atlas = tmp_path / "joint_atlas.npz"
+    np.savez(
+        atlas,
+        format=np.asarray("joint_semantic_material_atlas_v1"),
+        resolution=np.asarray([4, 4], dtype=np.int16),
+        triangle_count=np.asarray(2, dtype=np.int64),
+        entity_names=np.asarray(["Road", "Building", "Car"]),
+        material_names=np.asarray(["unknown", "asphalt_concrete", "metal", "brick", "glass"]),
+        triangle_ids=np.asarray([0, 1], dtype=np.int64),
+        texel_offsets=np.asarray([0, 2, 3], dtype=np.int64),
+        texel_row=np.asarray([1, 0, 1], dtype=np.int16),
+        texel_column=np.asarray([1, 0, 1], dtype=np.int16),
+        joint_offsets=np.asarray([0, 1, 3, 5], dtype=np.int64),
+        joint_entity=np.asarray([0, 0, 2, 1, 1], dtype=np.int16),
+        joint_material=np.asarray([2, 1, 2, 3, 4], dtype=np.int16),
+        joint_weight=np.asarray([1.0, 0.7, 0.3, 0.6, 0.4], dtype=np.float32),
+        support_weight=np.asarray([10.0, 8.0, 5.0], dtype=np.float32),
+    )
+    return atlas, semantics
+
+
+def test_joint_material_binding_gates_pairs_before_reducing_materials(tmp_path) -> None:
+    atlas, semantics = _write_joint_atlas(tmp_path)
+    ground, facade = CLASS_NAMES.index("ground"), CLASS_NAMES.index("facade")
+    evidence = bind_joint_atlas_materials(
+        np.asarray([ground, facade]),
+        atlas_npz=atlas,
+        semantics_path=semantics,
+    )
+
+    metal = evidence.input_material_names.index("metal")
+    asphalt = evidence.transport_material_names.index("asphalt_concrete")
+    brick = evidence.transport_material_names.index("brick")
+    glass = evidence.transport_material_names.index("glass")
+    bound = JOINT_ATLAS_FALLBACK_NAMES.index("bound")
+    unroutable = JOINT_ATLAS_FALLBACK_NAMES.index("compatible_but_unroutable")
+
+    # The first cell retains the Road + metal observation for audit but cannot
+    # use it to repaint a ground support face.
+    assert evidence.raw_material_posterior[0, metal] == pytest.approx(1.0)
+    assert evidence.host_material_posterior[0, metal] == pytest.approx(1.0)
+    assert evidence.transport_posterior[0].sum() == 0.0
+    assert evidence.fallback_state[0] == unroutable
+    assert evidence.transport_label[0] == -1
+
+    # The Road + asphalt mass survives while the paired Car + metal mass does
+    # not cross into the transport posterior.
+    assert evidence.raw_material_posterior[1, metal] == pytest.approx(0.3)
+    assert evidence.transport_posterior[1, asphalt] == pytest.approx(1.0)
+    assert evidence.fallback_state[1] == bound
+
+    # A true facade mixture remains a mixture. The discrete class is only its
+    # stable, lowest-index argmax convenience label.
+    assert evidence.transport_posterior[2, brick] == pytest.approx(0.6)
+    assert evidence.transport_posterior[2, glass] == pytest.approx(0.4)
+    assert evidence.transport_label[2] == brick
+    assert evidence.fallback_state[2] == bound
+
+
+def test_joint_atlas_central_cell_requires_exact_barycentre_evidence(tmp_path) -> None:
+    atlas, semantics = _write_joint_atlas(tmp_path)
+    evidence = bind_joint_atlas_materials(
+        np.asarray([CLASS_NAMES.index("ground"), CLASS_NAMES.index("facade")]),
+        atlas_npz=atlas,
+        semantics_path=semantics,
+    )
+    triangles, cells = evidence.central_cells((4, 4))
+    np.testing.assert_array_equal(triangles, [0, 1])
+    np.testing.assert_array_equal(cells, [0, 2])
+
+
+def test_refined_faces_keep_safe_classes_full_posterior_and_fallback(tmp_path) -> None:
+    atlas, semantics = _write_joint_atlas(tmp_path)
+    ground, facade = CLASS_NAMES.index("ground"), CLASS_NAMES.index("facade")
+    evidence = bind_joint_atlas_materials(
+        np.asarray([ground, facade]),
+        atlas_npz=atlas,
+        semantics_path=semantics,
+    )
+    binding = bind_refined_atlas_faces(
+        np.asarray([4.0, 3.0, 2.0, 1.0]),
+        np.asarray([ground, ground, facade, facade]),
+        evidence,
+        face_atlas_cell=np.asarray([0, 1, 2, -1]),
+        face_parent_triangle=np.asarray([0, 0, 1, 1]),
+    )
+
+    assert binding.class_names[binding.face_class[0]] == "ground"
+    assert binding.class_names[binding.face_class[1]] == "semantic_asphalt_concrete"
+    assert binding.class_names[binding.face_class[2]] == "semantic_brick"
+    assert binding.class_names[binding.face_class[3]] == "facade"
+    np.testing.assert_array_equal(
+        binding.face_source,
+        [
+            Provenance.GEOMETRIC,
+            Provenance.IMAGE_WALK_MATERIAL,
+            Provenance.IMAGE_WALK_MATERIAL,
+            Provenance.GEOMETRIC,
+        ],
+    )
+    brick = binding.class_names.index("semantic_brick")
+    glass = binding.class_names.index("semantic_glass")
+    assert binding.face_material_posterior[2, brick] == pytest.approx(0.6)
+    assert binding.face_material_posterior[2, glass] == pytest.approx(0.4)
+    assert binding.covered_fraction_by_area == pytest.approx(0.5)
+
+
+def test_refined_binding_refuses_a_child_cell_from_another_parent(tmp_path) -> None:
+    atlas, semantics = _write_joint_atlas(tmp_path)
+    evidence = bind_joint_atlas_materials(
+        np.asarray([CLASS_NAMES.index("ground"), CLASS_NAMES.index("facade")]),
+        atlas_npz=atlas,
+        semantics_path=semantics,
+    )
+    with pytest.raises(ValueError, match="parent does not match"):
+        bind_refined_atlas_faces(
+            np.ones(1),
+            np.asarray([CLASS_NAMES.index("ground")]),
+            evidence,
+            face_atlas_cell=np.asarray([2]),
+            face_parent_triangle=np.asarray([0]),
+        )
+
+
+def test_raw_material_names_map_to_one_stable_tracer_namespace() -> None:
+    table, mapping = material_table_for_names(
+        ("unknown", "ceramic", "brick", "metal"),
+        CONFIG,
+        CARRIER_HZ,
+    )
+    assert mapping[0] == -1
+    assert table.class_names[mapping[1]] == "semantic_marble"
+    assert table.class_names[mapping[2]] == "semantic_brick"
+    assert table.class_names[mapping[3]] == "semantic_metal"
 
 
 def test_water_is_explicitly_a_non_host_volume() -> None:

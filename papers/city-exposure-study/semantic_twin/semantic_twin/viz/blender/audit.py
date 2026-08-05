@@ -86,6 +86,11 @@ REQUIRED = (
 #: and a rename that misses one of them is the fault above all over again.
 SOURCES = "11 sources on the facade tips"
 
+#: The exact support outside the close-view mesh. New builds split the support
+#: at the display radius so the central mesh stays legible, but both parts are
+#: present in the file and together cover the full traced area.
+OUTER_SUPPORT = "01B outer traced support"
+
 #: How far a thing that sits on a surface may sit off it before it is floating.
 GROUNDED_TOLERANCE_M = 1.5
 
@@ -392,6 +397,25 @@ def check_inside(summary: dict, city: str) -> list[str]:
     return problems
 
 
+def select_inside_support(summary: dict, city: str) -> str:
+    """Choose the displayed support object with the greatest XY reach.
+
+    Current blends split exact support geometry between the strong inner city
+    mesh and a muted outer annulus. The inside check must therefore use the
+    outer annulus when it extends farther. Legacy blends have no such
+    collection and continue to use the inner city mesh.
+    """
+    candidates = [city, *(summary.get("collections", {}).get(OUTER_SUPPORT) or [])]
+
+    def displayed_reach(name: str) -> float:
+        obj = summary.get("objects", {}).get(name, {})
+        if obj.get("hidden") or obj.get("min") is None or obj.get("max") is None:
+            return -1.0
+        return max(abs(v) for v in (obj["min"][0], obj["max"][0], obj["min"][1], obj["max"][1]))
+
+    return max(candidates, key=displayed_reach)
+
+
 def check_walk_builder(manifest: pathlib.Path) -> list[str]:
     """The standpoints came from the capture route, not from the disc of grid squares.
 
@@ -424,7 +448,7 @@ def audit(site: str, scratch: pathlib.Path) -> list[str]:
     problems += check_walk_builder(VIZ / f"{site}_manifest.json")
     if city:
         problems += check_grounded(summary, city)
-        problems += check_inside(summary, city)
+        problems += check_inside(summary, select_inside_support(summary, city))
     return problems
 
 

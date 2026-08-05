@@ -49,6 +49,7 @@ BUILDER_SOURCES: tuple[str, ...] = (
     "semantic_twin/viz/blender/views.py",
     "semantic_twin/viz/blender/evidence.py",
     "semantic_twin/viz/blender/renders.py",
+    "semantic_twin/vision/surface_atlas.py",
     "semantic_twin/walk/__init__.py",
     "semantic_twin/walk/builders.py",
     "semantic_twin/walk/grid.py",
@@ -59,6 +60,73 @@ BUILDER_SOURCES: tuple[str, ...] = (
     "semantic_twin/walk/route.py",
     "semantic_twin/walk/site.py",
 )
+
+
+BUNDLE_SCHEMA = "semantic-twin-blender-bundle-v1"
+BUNDLE_ARRAY = "bundle_identity_sha256"
+
+
+def payload_content_sha256(payload: Mapping[str, Any]) -> str:
+    """Hash all payload arrays except the identity stamp itself.
+
+    The hash is over names, types, shapes, and values. It does not depend on the
+    ZIP metadata in an NPZ file, so it is stable across safe rewrites.
+    """
+    digest = hashlib.sha256()
+    for name in sorted(key for key in payload if key != BUNDLE_ARRAY):
+        value = np.asarray(payload[name])
+        if value.dtype.hasobject:
+            raise TypeError(f"payload array {name!r} has object dtype and cannot receive a stable bundle hash")
+        digest.update(name.encode("utf-8") + b"\0")
+        digest.update(value.dtype.str.encode("ascii") + b"\0")
+        digest.update(json.dumps(list(value.shape), separators=(",", ":")).encode("ascii") + b"\0")
+        digest.update(np.ascontiguousarray(value).tobytes())
+    return digest.hexdigest()
+
+
+def manifest_content_sha256(manifest: Mapping[str, Any]) -> str:
+    """Hash a manifest without its bundle stamp."""
+    content = {key: value for key, value in manifest.items() if key != "bundle"}
+    encoded = json.dumps(content, sort_keys=True, separators=(",", ":"), default=float).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def stamp_bundle_identity(payload: dict[str, Any], manifest: dict[str, Any]) -> str:
+    """Give a payload and manifest one checked identity before publication."""
+    payload.pop(BUNDLE_ARRAY, None)
+    manifest.pop("bundle", None)
+    payload_hash = payload_content_sha256(payload)
+    manifest_hash = manifest_content_sha256(manifest)
+    identity = hashlib.sha256(f"{BUNDLE_SCHEMA}\0{payload_hash}\0{manifest_hash}".encode()).hexdigest()
+    payload[BUNDLE_ARRAY] = np.array(identity)
+    manifest["bundle"] = {
+        "schema": BUNDLE_SCHEMA,
+        "identity_sha256": identity,
+        "payload_content_sha256": payload_hash,
+        "manifest_content_sha256": manifest_hash,
+    }
+    return identity
+
+
+def verify_bundle_identity(payload: Mapping[str, Any], manifest: Mapping[str, Any]) -> str:
+    """Reject a missing, partial, or crossed payload and manifest pair."""
+    record = manifest.get("bundle")
+    if not isinstance(record, Mapping) or record.get("schema") != BUNDLE_SCHEMA:
+        raise ValueError("payload and manifest do not carry a supported shared bundle identity")
+    if BUNDLE_ARRAY not in payload:
+        raise ValueError("payload is missing the shared bundle identity")
+    stamped = str(np.asarray(payload[BUNDLE_ARRAY]).item())
+    expected = record.get("identity_sha256")
+    payload_hash = payload_content_sha256(payload)
+    manifest_hash = manifest_content_sha256(manifest)
+    if payload_hash != record.get("payload_content_sha256"):
+        raise ValueError("payload content does not match its manifest bundle hash")
+    if manifest_hash != record.get("manifest_content_sha256"):
+        raise ValueError("manifest content does not match its bundle hash")
+    identity = hashlib.sha256(f"{BUNDLE_SCHEMA}\0{payload_hash}\0{manifest_hash}".encode()).hexdigest()
+    if stamped != expected or identity != expected:
+        raise ValueError("payload and manifest bundle identities disagree")
+    return identity
 
 
 @dataclass(frozen=True)
@@ -251,6 +319,52 @@ def _production_input_hashes(production: Mapping[str, Any]) -> dict[str, str]:
     }
 
 
+def _surface_hashes(manifest: Mapping[str, Any]) -> dict[str, str]:
+    """Flatten the canonical hit atlas and its whole-face fallback separately."""
+    fallback = _mapping_at(manifest, "support_surface_fallback")
+    atlas = _mapping_at(manifest, "surface_atlas")
+    properties = _named_strings(
+        fallback,
+        (
+            ("mesh_sha256", "support_mesh_sha256"),
+            ("face_class_sha256", "support_fallback_face_class_sha256"),
+            ("face_source_sha256", "support_fallback_face_source_sha256"),
+        ),
+    )
+    properties.update(
+        _named_strings(
+            atlas,
+            (
+                ("content_sha256", "surface_atlas_content_sha256"),
+                ("mesh_sha256", "surface_atlas_mesh_sha256"),
+            ),
+        )
+    )
+    for source_name, property_name in (
+        ("npz", "surface_atlas_npz_sha256"),
+        ("manifest", "surface_atlas_manifest_sha256"),
+    ):
+        digest = _mapping_at(atlas, source_name).get("sha256")
+        if isinstance(digest, str):
+            properties[property_name] = digest
+
+    # Read old visualization manifests without preserving their false claim
+    # that one whole-face class map was the final hit-position atlas.
+    if not properties:
+        legacy = _mapping_at(manifest, "final_surface_atlas")
+        properties.update(
+            _named_strings(
+                legacy,
+                (
+                    ("mesh_sha256", "support_mesh_sha256"),
+                    ("face_class_sha256", "support_fallback_face_class_sha256"),
+                    ("face_source_sha256", "support_fallback_face_source_sha256"),
+                ),
+            )
+        )
+    return properties
+
+
 def _production_transport(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
     arms = _mapping_at(manifest, "estimator_arms")
     exposure = _mapping_at(arms, "exposure")
@@ -264,15 +378,19 @@ def production_scene_properties(manifest: Mapping[str, Any]) -> dict[str, str]:
     visualization manifest keeps the complete nested record, while the scene
     receives the fields needed to identify the exact exposure run without
     opening a second file. Standalone visualization manifests have no
-    ``production_exposure`` block and therefore receive no production fields.
+    ``production_exposure`` block and therefore receive only the shared bundle
+    identity when one is present.
     """
+    bundle = _mapping_at(manifest, "bundle")
+    properties = _named_strings(bundle, (("identity_sha256", "visualization_bundle_sha256"),))
     production = _mapping_at(manifest, "production_exposure")
     if not production:
-        return {}
+        return properties
 
     transport = _production_transport(manifest)
-    properties = _named_strings(production, (("run_digest", "production_run_digest"),))
+    properties.update(_named_strings(production, (("run_digest", "production_run_digest"),)))
     properties.update(_production_input_hashes(production))
+    properties.update(_surface_hashes(manifest))
     properties.update(
         _named_strings(
             transport,

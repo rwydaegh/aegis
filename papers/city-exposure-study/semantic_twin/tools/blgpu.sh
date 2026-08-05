@@ -46,6 +46,45 @@ SSH_OPTS=(-o ControlMaster=auto -o "ControlPath=$SSH_CTL_DIR/%r@%h:%p" -o Contro
 rsh() { ssh "${SSH_OPTS[@]}" "$HOST" "$@"; }
 die() { echo "blgpu: $*" >&2; exit 1; }
 
+# Fresh images log in as `admin`, while the reproducible mirror deliberately
+# lives below /home/user. Create only the exact directories this helper owns.
+# In the common case no sudo is used. On a blank image sudo creates a directory
+# and ownership is changed on that directory alone, never recursively and never
+# on /home or /home/user.
+ensure_remote_layout() {
+  rsh bash -s -- "$REMOTE_REPO" "$REMOTE_STUDY" "$JOBS_DIR" <<'REMOTE'
+set -euo pipefail
+remote_uid="$(id -u)"
+remote_gid="$(id -g)"
+
+ensure_owned_dir() {
+  dir="$1"
+  if ! mkdir -p "$dir" 2>/dev/null; then
+    command -v sudo >/dev/null 2>&1 || {
+      echo "blgpu: cannot create $dir and passwordless sudo is unavailable" >&2
+      exit 1
+    }
+    sudo -n mkdir -p "$dir"
+  fi
+  if [ ! -w "$dir" ]; then
+    command -v sudo >/dev/null 2>&1 || {
+      echo "blgpu: $dir is not writable and passwordless sudo is unavailable" >&2
+      exit 1
+    }
+    sudo -n chown "$remote_uid:$remote_gid" "$dir"
+  fi
+  [ -d "$dir" ] && [ -w "$dir" ] || {
+    echo "blgpu: failed to prepare writable directory $dir" >&2
+    exit 1
+  }
+}
+
+ensure_owned_dir "$1"
+ensure_owned_dir "$2"
+ensure_owned_dir "$3"
+REMOTE
+}
+
 # About ten agents write into this tree at once, so a file disappearing between
 # rsync's scan and its transfer is routine rather than a failure. That is exit
 # 24, and only that one is forgiven.
@@ -88,7 +127,7 @@ cmd_sync() {
   local all_meshes=0
   [[ "${1:-}" == "--all-meshes" ]] && all_meshes=1
 
-  rsh "mkdir -p '$REMOTE_STUDY' '$JOBS_DIR'"
+  ensure_remote_layout
 
   # 1. the AEGIS package itself plus the three data files its tissue and mesh
   #    code opens. The rest of aegis/data is 77 GB of unrelated study output.
@@ -176,6 +215,7 @@ PY
 # default sync leaves behind, such as outputs/bystander_study.
 cmd_push() {
   [[ $# -ge 1 ]] || die "push needs at least one path relative to the study directory"
+  ensure_remote_layout
   for sub in "$@"; do
     sub="${sub%/}"
     echo "blgpu: push $sub"
@@ -190,6 +230,7 @@ cmd_push() {
 cmd_setup() {
   local ver
   ver="$("$LOCAL_REPO/.venv/bin/python" -c 'import aegis;print(aegis.__version__)' 2>/dev/null || echo 0.0.0)"
+  ensure_remote_layout
   rsh AEGIS_VERSION="$ver" bash -s <<'REMOTE'
 set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"
@@ -425,7 +466,23 @@ cmd_verify() {
 
 cmd_sh() {
   [[ $# -ge 1 ]] || die "sh needs a command"
-  rsh "cd '$REMOTE_STUDY' && export PATH=$VENV/bin:\$PATH VIRTUAL_ENV=$VENV PYTHONUNBUFFERED=1 PYTHONPATH=$REMOTE_STUDY && bash -lc $(printf '%q' "$1")"
+  local b64
+  b64="$(printf '%s' "$1" | base64 -w0)"
+  rsh "CMD_B64=$b64 bash -s" <<'REMOTE'
+set -euo pipefail
+REPO=/home/user/aegis
+STUDY=$REPO/papers/city-exposure-study/semantic_twin
+VENV=$REPO/.venv
+cd "$STUDY"
+export PATH="$VENV/bin:$PATH"
+export VIRTUAL_ENV="$VENV"
+export PYTHONUNBUFFERED=1
+export PYTHONNOUSERSITE=1
+export PYTHONPATH="$STUDY"
+# Use a plain non-login shell. A login shell may prepend ~/.local/bin after the
+# venv and silently select the image's Python instead.
+bash -c "$(printf '%s' "$CMD_B64" | base64 -d)"
+REMOTE
 }
 
 # --------------------------------------------------------------------------- main

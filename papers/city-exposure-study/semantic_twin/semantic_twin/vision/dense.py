@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import pathlib
+import re
 from typing import Any
 
 import numpy as np
@@ -27,6 +28,7 @@ from PIL import Image
 
 MODEL = "facebook/mask2former-swin-large-mapillary-vistas-semantic"
 BRIDGE = "mask2former_mapillary_vistas"
+PRODUCTION_REVISION = "4772b6bf101d91f2534c106dc524d906aeb3c68a"
 
 # The processor saved with the Mapillary Vistas checkpoint carries
 # ``{"height": 384, "width": 384}`` with ``do_resize`` on, so an unmodified
@@ -66,6 +68,8 @@ class Mask2FormerBackend:
         device: str = "auto",
         *,
         inference_size: int = DEFAULT_INFERENCE_SIZE,
+        revision: str | None = None,
+        production: bool = False,
     ) -> None:
         try:
             import torch
@@ -81,14 +85,28 @@ class Mask2FormerBackend:
         self.device = device
         self.model_name = model_name
         self.inference_size = int(inference_size)
-        self.processor = AutoImageProcessor.from_pretrained(model_name)
+        snapshot, revision_identity = resolve_mask2former_snapshot(
+            model_name,
+            revision,
+            production=production,
+        )
+        source = model_name if snapshot is None else str(snapshot)
+        load_options: dict[str, Any] = {}
+        if snapshot is not None:
+            load_options["local_files_only"] = True
+        elif revision is not None:
+            load_options["revision"] = revision
+        self.processor = AutoImageProcessor.from_pretrained(source, **load_options)
         self.processor_saved_size = dict(getattr(self.processor, "size", {}) or {})
-        self.model = Mask2FormerForUniversalSegmentation.from_pretrained(model_name, use_safetensors=True).to(device)
+        self.model = Mask2FormerForUniversalSegmentation.from_pretrained(
+            source,
+            use_safetensors=True,
+            **load_options,
+        ).to(device)
         self.model.eval()
         self.id2label = {int(k): str(v) for k, v in self.model.config.id2label.items()}
-        # The Hub revision the weights actually came from. A model name alone
-        # does not pin a checkpoint, because the same name can be re-uploaded.
-        self.checkpoint_digest = getattr(self.model.config, "_commit_hash", None)
+        self.revision_identity = revision_identity
+        self.checkpoint_digest = revision_identity["resolved_revision"]
 
     def predict(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray]:
         import torch.nn.functional as functional
@@ -117,6 +135,73 @@ class Mask2FormerBackend:
         )
 
 
+def _is_commit(value: str | None) -> bool:
+    return bool(value and re.fullmatch(r"[0-9a-fA-F]{40}", value.strip()))
+
+
+def _snapshot_commit(path: pathlib.Path) -> str | None:
+    parts = path.absolute().parts
+    try:
+        index = parts.index("snapshots")
+    except ValueError:
+        return None
+    candidate = parts[index + 1] if index + 1 < len(parts) else None
+    return candidate.lower() if _is_commit(candidate) else None
+
+
+def resolve_mask2former_snapshot(
+    model_name: str,
+    revision: str | None,
+    *,
+    production: bool,
+    downloader: Any | None = None,
+) -> tuple[pathlib.Path, dict[str, Any]]:
+    """Resolve both dense processor and weights through one verified snapshot.
+
+    Development may resolve a branch or the repository default. The resulting
+    commit is still recorded, but the manifest says that the request itself was
+    mutable. Production accepts only the reviewed repository and commit.
+    """
+    requested = revision.strip() if revision is not None else None
+    expected = PRODUCTION_REVISION
+    if production and model_name != MODEL:
+        raise ValueError(f"production dense inference requires model {MODEL}")
+    if production and (requested is None or requested.lower() != expected):
+        raise ValueError(f"production dense inference requires --dense-revision {expected}")
+
+    if downloader is None:
+        from huggingface_hub import snapshot_download
+
+        downloader = snapshot_download
+    snapshot = pathlib.Path(downloader(repo_id=model_name, revision=requested))
+    resolved = _snapshot_commit(snapshot)
+    if resolved is None:
+        raise RuntimeError(f"Hugging Face returned an unverifiable Mask2Former snapshot path: {snapshot}")
+    if _is_commit(requested) and resolved != requested.lower():
+        raise RuntimeError(
+            "Hugging Face returned a different Mask2Former snapshot: "
+            f"resolved={resolved}, requested={requested.lower()}"
+        )
+    if production and resolved != expected:
+        raise RuntimeError(f"Hugging Face resolved production Mask2Former to {resolved}, expected {expected}")
+    immutable_request = _is_commit(requested)
+    return snapshot, {
+        "status": "resolved",
+        "repository": model_name,
+        "requested_revision": requested,
+        "resolved_revision": resolved,
+        "request_is_immutable": immutable_request,
+        "matches_reviewed_production_snapshot": model_name == MODEL and resolved == expected,
+        "production_mode": bool(production),
+        "required_production_revision": expected,
+        "note": (
+            "The requested revision was immutable and the returned snapshot matched it."
+            if immutable_request
+            else "A mutable or default reference was resolved for this development run; use the recorded commit to reproduce it."
+        ),
+    }
+
+
 def file_digest(path: pathlib.Path, *, chunk: int = 1 << 22) -> str:
     """Content digest of a source file, streamed so a 22 MB panorama is cheap."""
     sha = hashlib.sha256()
@@ -136,6 +221,7 @@ def dense_cache_settings(backend: Any, view_size: int, panorama: pathlib.Path | 
     return {
         "model": getattr(backend, "model_name", MODEL),
         "checkpoint": getattr(backend, "checkpoint_digest", None),
+        "model_revision": getattr(backend, "revision_identity", None),
         "inference_size": int(getattr(backend, "inference_size", DEFAULT_INFERENCE_SIZE)),
         "view_size": int(view_size),
         "panorama": file_digest(panorama) if panorama is not None else None,

@@ -34,6 +34,14 @@ REJECTION_REASONS: dict[str, int] = {
     "mesh_or_pose_conflict": 12,
 }
 
+FISHNET_FORMAT_VERSION = 2
+
+REJECTED_GEOMETRY_KINDS: dict[str, int] = {
+    "unavailable": 0,
+    "exact_cut_piece": 1,
+    "clipped_footprint": 2,
+}
+
 
 @dataclass(frozen=True)
 class FishnetSurface:
@@ -48,6 +56,15 @@ class FishnetSurface:
     it.  Provenance is a compressed row structure: face ``i`` was built from the
     source pixels ``pixel_indices[pixel_offsets[g] : pixel_offsets[g + 1]]``
     with ``g = face_group[i]``, given as flat row-major image indices.
+
+    Rejected candidates remain one row each in ``rejected_*``. Version two adds
+    their exact triangle soup. ``rejected_face_record`` maps each rejected face
+    back to its row, while ``rejected_face_offsets`` exposes the same relation as
+    a compact row index. Faces are stored in record order, so record ``i`` owns
+    exactly the block ``offsets[i] : offsets[i + 1]``. A row with no reliable
+    inverse projection has no faces.
+    ``rejected_geometry_kind`` is 0 for unavailable geometry, 1 for a cut piece,
+    and 2 for a clipped source footprint.
     """
 
     vertices: np.ndarray
@@ -72,7 +89,74 @@ class FishnetSurface:
     rejected_reason: np.ndarray
     rejected_image_area_px: np.ndarray
     camera_position: np.ndarray
+    rejected_vertices: np.ndarray = field(default_factory=lambda: np.zeros((0, 3), dtype=np.float64))
+    rejected_faces: np.ndarray = field(default_factory=lambda: np.zeros((0, 3), dtype=np.int64))
+    rejected_face_image: np.ndarray = field(default_factory=lambda: np.zeros((0, 3, 2), dtype=np.float64))
+    rejected_face_record: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.int64))
+    rejected_face_offsets: np.ndarray = field(default_factory=lambda: np.zeros(1, dtype=np.int64))
+    rejected_geometry_kind: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.uint8))
+    format_version: int = FISHNET_FORMAT_VERSION
     report: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        records = int(self.rejected_reason.shape[0])
+        if self.rejected_source_triangle.shape != (records,) or self.rejected_image_area_px.shape != (records,):
+            raise ValueError("rejected record columns must have equal length")
+        if self.rejected_geometry_kind.shape != (records,):
+            raise ValueError("rejected_geometry_kind must have one value per rejected record")
+        if not np.issubdtype(self.rejected_geometry_kind.dtype, np.integer):
+            raise ValueError("rejected_geometry_kind must contain integer codes")
+        if np.any(
+            (self.rejected_geometry_kind < 0) | (self.rejected_geometry_kind > max(REJECTED_GEOMETRY_KINDS.values()))
+        ):
+            raise ValueError("rejected_geometry_kind contains an unknown code")
+        if self.rejected_vertices.ndim != 2 or self.rejected_vertices.shape[1:] != (3,):
+            raise ValueError("rejected_vertices must have shape (n, 3)")
+        if not np.issubdtype(self.rejected_vertices.dtype, np.number) or not np.all(
+            np.isfinite(self.rejected_vertices)
+        ):
+            raise ValueError("rejected_vertices must contain finite numbers")
+        if self.rejected_faces.ndim != 2 or self.rejected_faces.shape[1:] != (3,):
+            raise ValueError("rejected_faces must have shape (n, 3)")
+        if not np.issubdtype(self.rejected_faces.dtype, np.integer):
+            raise ValueError("rejected_faces must contain integer vertex indices")
+        faces = int(self.rejected_faces.shape[0])
+        if self.rejected_face_image.shape != (faces, 3, 2):
+            raise ValueError("rejected_face_image must have shape (n_faces, 3, 2)")
+        if not np.issubdtype(self.rejected_face_image.dtype, np.number) or not np.all(
+            np.isfinite(self.rejected_face_image)
+        ):
+            raise ValueError("rejected_face_image must contain finite numbers")
+        if self.rejected_face_record.shape != (faces,):
+            raise ValueError("rejected_face_record must have one value per rejected face")
+        if not np.issubdtype(self.rejected_face_record.dtype, np.integer):
+            raise ValueError("rejected_face_record must contain integer record indices")
+        if faces and (
+            np.any(self.rejected_faces < 0)
+            or np.any(self.rejected_faces >= self.rejected_vertices.shape[0])
+            or np.any(self.rejected_face_record < 0)
+            or np.any(self.rejected_face_record >= records)
+        ):
+            raise ValueError("rejected face geometry contains an out-of-range index")
+        if self.rejected_face_offsets.shape != (records + 1,):
+            raise ValueError("rejected_face_offsets must have one boundary per rejected record")
+        if not np.issubdtype(self.rejected_face_offsets.dtype, np.integer):
+            raise ValueError("rejected_face_offsets must contain integer boundaries")
+        if self.rejected_face_offsets[0] != 0:
+            raise ValueError("rejected_face_offsets must start at zero")
+        face_counts = np.diff(self.rejected_face_offsets)
+        if np.any(face_counts < 0):
+            raise ValueError("rejected_face_offsets must be nondecreasing")
+        if self.rejected_face_offsets[-1] != faces:
+            raise ValueError("rejected_face_offsets must end at the rejected face count")
+        expected_records = np.repeat(np.arange(records, dtype=np.int64), face_counts)
+        if not np.array_equal(self.rejected_face_record, expected_records):
+            raise ValueError("rejected_face_record must follow rejected_face_offsets record order")
+        unavailable = self.rejected_geometry_kind == REJECTED_GEOMETRY_KINDS["unavailable"]
+        if np.any(unavailable & (face_counts != 0)):
+            raise ValueError("unavailable rejected geometry records must not own faces")
+        if np.any(~unavailable & (face_counts == 0)):
+            raise ValueError("exact rejected geometry records must own at least one face")
 
     @property
     def triangle_count(self) -> int:
@@ -102,6 +186,13 @@ def save_fishnet(surface: FishnetSurface, path: str | pathlib.Path) -> None:
     }
     if surface.face_material is not None:
         arrays["face_material"] = surface.face_material
+    arrays["rejected_vertices"] = surface.rejected_vertices.astype(np.float32)
+    arrays["rejected_faces"] = surface.rejected_faces.astype(np.int32)
+    arrays["rejected_face_image"] = surface.rejected_face_image.astype(np.float32)
+    arrays["rejected_face_record"] = surface.rejected_face_record.astype(np.int32)
+    arrays["rejected_face_offsets"] = surface.rejected_face_offsets.astype(np.int32)
+    arrays["rejected_geometry_kind"] = surface.rejected_geometry_kind.astype(np.uint8)
+    arrays["fishnet_format_version"] = np.asarray(surface.format_version, dtype=np.int16)
     arrays["report_keys"] = np.asarray(list(surface.report), dtype=np.str_)
     arrays["report_values"] = np.asarray(list(surface.report.values()), dtype=np.float64)
     np.savez_compressed(path, **arrays)
@@ -115,5 +206,15 @@ def load_fishnet(path: str | pathlib.Path) -> FishnetSurface:
         str(key): float(value)
         for key, value in zip(stored.pop("report_keys"), stored.pop("report_values"), strict=True)
     }
+    format_version = int(stored.pop("fishnet_format_version", 1))
     stored.setdefault("face_material", None)
-    return FishnetSurface(report=report, **stored)
+    stored.setdefault("rejected_vertices", np.zeros((0, 3), dtype=np.float64))
+    stored.setdefault("rejected_faces", np.zeros((0, 3), dtype=np.int64))
+    stored.setdefault("rejected_face_image", np.zeros((0, 3, 2), dtype=np.float64))
+    stored.setdefault("rejected_face_record", np.zeros(0, dtype=np.int64))
+    stored.setdefault(
+        "rejected_face_offsets",
+        np.zeros(stored["rejected_reason"].shape[0] + 1, dtype=np.int64),
+    )
+    stored.setdefault("rejected_geometry_kind", np.zeros(stored["rejected_reason"].shape[0], dtype=np.uint8))
+    return FishnetSurface(format_version=format_version, report=report, **stored)

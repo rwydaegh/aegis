@@ -11,25 +11,37 @@ import numpy as np
 import pytest
 
 import export_propagation_payload as payload_cli
+import propagation_blender as blender_cli
 from semantic_twin.exposure.reuse import model_identity
 from semantic_twin.illumination import MODELS
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.tracer import TraceConfig
 from semantic_twin.viz.blender import exporter as exporter_module
 from semantic_twin.viz.blender.exporter import (
+    attach_production_surface_atlas,
     export,
     load_production_run,
     production_provenance,
     production_role_payload,
     store_connections,
+    support_surface_fallback_manifest,
     validate_face_class_digest,
+    validate_face_source_digest,
     validate_mesh_digest,
     visible_path_config,
+)
+from semantic_twin.vision.surface_atlas import (
+    CameraSurfaceObservations,
+    fuse_surface_observations,
+    save_surface_atlas,
+    sha256_file,
 )
 from semantic_twin.viz.blender.payload import (
     ProductionFiles,
     available_spectrum_models,
     connection_render_layers,
+    stamp_bundle_identity,
+    verify_bundle_identity,
     production_files,
     production_scene_properties,
 )
@@ -89,6 +101,7 @@ def _row(index: int) -> dict[str, float | int]:
 
 def _files(tmp_path: pathlib.Path, run: RunConfig | None = None) -> ProductionFiles:
     run = run or _run()
+    tmp_path.mkdir(parents=True, exist_ok=True)
     files = ProductionFiles(
         tmp_path / "acceptance_locations.jsonl",
         tmp_path / "acceptance_spectra.npz",
@@ -131,6 +144,22 @@ def _files(tmp_path: pathlib.Path, run: RunConfig | None = None) -> ProductionFi
         "transport": {"kernel": "drjit"},
         "run_digest": run.digest(),
         "run": run.as_dict(),
+    }
+    manifest["output_generation"] = {
+        "format_version": 1,
+        "id": "1" * 32,
+        "artifacts": {
+            "locations": {
+                "path": files.locations.name,
+                "sha256": hashlib.sha256(files.locations.read_bytes()).hexdigest(),
+                "bytes": files.locations.stat().st_size,
+            },
+            "spectra": {
+                "path": files.spectra.name,
+                "sha256": hashlib.sha256(files.spectra.read_bytes()).hexdigest(),
+                "bytes": files.spectra.stat().st_size,
+            },
+        },
     }
     files.manifest.write_text(json.dumps(manifest))
     return files
@@ -219,8 +248,25 @@ def test_production_run_loads_exact_arrays_and_hashes_all_inputs(tmp_path: pathl
     }
 
 
+def test_production_run_refuses_unsealed_and_mixed_output_generations(tmp_path: pathlib.Path) -> None:
+    unsealed = _files(tmp_path / "unsealed")
+    document = json.loads(unsealed.manifest.read_text())
+    del document["output_generation"]
+    unsealed.manifest.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="sealed output generation"):
+        load_production_run(unsealed)
+
+    mixed = _files(tmp_path / "mixed")
+    rows = [json.loads(line) for line in mixed.locations.read_text().splitlines()]
+    rows[0]["x"] = 99.0
+    mixed.locations.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    with pytest.raises(ValueError, match="sealed output generation"):
+        load_production_run(mixed)
+
+
 def test_production_scene_properties_flatten_exact_run_and_transport_identity() -> None:
     manifest = {
+        "bundle": {"identity_sha256": "9" * 64},
         "production_exposure": {
             "run_digest": "abc123",
             "inputs": {
@@ -228,6 +274,17 @@ def test_production_scene_properties_flatten_exact_run_and_transport_identity() 
                 "spectra_npz": {"sha256": "b" * 64},
                 "manifest_json": {"sha256": "c" * 64},
             },
+        },
+        "support_surface_fallback": {
+            "mesh_sha256": "d" * 64,
+            "face_class_sha256": "e" * 64,
+            "face_source_sha256": "f" * 64,
+        },
+        "surface_atlas": {
+            "npz": {"sha256": "1" * 64},
+            "manifest": {"sha256": "2" * 64},
+            "content_sha256": "3" * 64,
+            "mesh_sha256": "d" * 64,
         },
         "estimator_arms": {
             "exposure": {
@@ -243,10 +300,18 @@ def test_production_scene_properties_flatten_exact_run_and_transport_identity() 
     }
 
     assert production_scene_properties(manifest) == {
+        "visualization_bundle_sha256": "9" * 64,
         "production_run_digest": "abc123",
         "production_locations_sha256": "a" * 64,
         "production_spectra_sha256": "b" * 64,
         "production_manifest_sha256": "c" * 64,
+        "support_mesh_sha256": "d" * 64,
+        "support_fallback_face_class_sha256": "e" * 64,
+        "support_fallback_face_source_sha256": "f" * 64,
+        "surface_atlas_npz_sha256": "1" * 64,
+        "surface_atlas_manifest_sha256": "2" * 64,
+        "surface_atlas_content_sha256": "3" * 64,
+        "surface_atlas_mesh_sha256": "d" * 64,
         "transport_kernel": "drjit",
         "transport_variant": "cuda_ad_rgb",
         "transport_floating_point": "float32",
@@ -321,6 +386,161 @@ def test_rebuilt_face_classes_must_match_the_production_digest() -> None:
     validate_face_class_digest(face_class, manifest)
     with pytest.raises(ValueError, match="face classes"):
         validate_face_class_digest(face_class[::-1], manifest)
+
+
+def test_rebuilt_face_sources_validate_new_manifests_and_mark_legacy_ones() -> None:
+    face_source = np.array([0, 2, 2], dtype=np.int8)
+    digest = hashlib.sha256()
+    digest.update(face_source.dtype.str.encode())
+    digest.update(str(face_source.shape).encode())
+    digest.update(face_source.tobytes())
+    manifest = {"semantic_binding": {"face_source_sha256": digest.hexdigest()}}
+
+    assert validate_face_source_digest(face_source, manifest) is True
+    assert validate_face_source_digest(face_source, {"semantic_binding": {}}) is False
+    with pytest.raises(ValueError, match="material sources"):
+        validate_face_source_digest(face_source[::-1], manifest)
+
+
+def test_support_surface_fallback_records_exact_full_payload_and_provenance() -> None:
+    face_class = np.array([0, 4], dtype=np.int8)
+    face_source = np.array([0, 2], dtype=np.int8)
+
+    def digest(value: np.ndarray) -> str:
+        hashed = hashlib.sha256()
+        hashed.update(value.dtype.str.encode())
+        hashed.update(str(value.shape).encode())
+        hashed.update(value.tobytes())
+        return hashed.hexdigest()
+
+    payload = {
+        "support_full_vertices": np.array([[0.0, 0.0, 0.0]], dtype=np.float32),
+        "support_full_faces": np.array([[0, 0, 0], [0, 0, 0]], dtype=np.int32),
+        "support_full_face_class": face_class,
+        "support_full_face_source": face_source,
+        "support_full_face_index": np.array([0, 1], dtype=np.int32),
+    }
+    data = SimpleNamespace(
+        manifest={
+            "mesh_sha256": "b" * 64,
+            "class_area_fractions": {"ground": 0.25, "semantic_brick": 0.75},
+            "semantic_binding": {
+                "materials": "walk",
+                "image_ids": ["capture-a", "capture-b"],
+                "face_class_sha256": digest(face_class),
+                "face_source_sha256": digest(face_source),
+            },
+        }
+    )
+    material = SimpleNamespace(face_class=face_class, face_source=face_source)
+
+    fallback = support_surface_fallback_manifest(
+        payload,
+        data,
+        material,
+        np.array([1.0, 3.0]),
+        source_verified=True,
+    )
+
+    assert fallback["role"] == "whole-face geometric support and transport fallback"
+    assert fallback["is_final_hit_position_material_map"] is False
+    assert fallback["face_class_sha256"] == digest(face_class)
+    assert fallback["face_source_sha256"] == digest(face_source)
+    assert fallback["face_source_production_verified"] is True
+    assert fallback["face_source_area_fractions"] == {"GEOMETRIC": 0.25, "IMAGE_WALK_ENTITY": 0.75}
+    assert fallback["binding_provenance"]["image_ids"] == ["capture-a", "capture-b"]
+    assert set(fallback["payload_arrays"]) == {
+        "support_full_vertices",
+        "support_full_faces",
+        "support_full_face_class",
+        "support_full_face_source",
+        "support_full_face_index",
+    }
+
+
+def test_real_surface_atlas_artifact_bridges_into_production_payload(tmp_path: pathlib.Path) -> None:
+    mesh_sha256 = "d" * 64
+    atlas = fuse_surface_observations(
+        (
+            CameraSurfaceObservations(
+                camera_id="capture-a",
+                triangle_id=np.array([0], dtype=np.int32),
+                barycentric=np.array([[1.0, 0.0, 0.0]], dtype=np.float32),
+                entity=np.array([0], dtype=np.int16),
+                entity_confidence=np.array([0.9], dtype=np.float32),
+                rf_material=np.array([1], dtype=np.int16),
+                material_prior_mass=np.array([1.0], dtype=np.float32),
+                material_concept=np.array([0], dtype=np.int16),
+                material_confidence=np.array([0.0], dtype=np.float32),
+                material_source=np.array([0], dtype=np.uint8),
+            ),
+        ),
+        triangle_count=1,
+        atlas_resolution=2,
+        entity_names=("Building",),
+        material_names=("unknown", "brick"),
+        concept_names=("unlabelled",),
+        material_prior=np.array([[0.0, 1.0]], dtype=np.float32),
+        concept_material=np.array([[1.0, 0.0]], dtype=np.float32),
+        mesh_sha256=mesh_sha256,
+    )
+    atlas_path = tmp_path / "joint_atlas_250m_r2.npz"
+    save_surface_atlas(
+        atlas,
+        atlas_path,
+        metadata={
+            "vocabularies": {"material_concept": ["unlabelled"]},
+            "cameras": [{"camera_id": "capture-a", "panorama": "capture-a.png"}],
+        },
+    )
+    run = _run(materials="atlas", atlas_npz=str(atlas_path))
+    data = SimpleNamespace(
+        manifest={
+            "mesh_sha256": mesh_sha256,
+            "semantic_binding": {"atlas_npz_sha256": sha256_file(atlas_path)},
+        }
+    )
+    material = SimpleNamespace(
+        atlas_material=SimpleNamespace(
+            provenance={
+                "atlas_npz": str(atlas_path),
+                "atlas_npz_sha256": sha256_file(atlas_path),
+                "transport_posterior": "host-compatible joint entries only",
+            }
+        )
+    )
+    geometry = SimpleNamespace(
+        vertices=np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]),
+        faces=np.array([[0, 1, 2]], dtype=np.int32),
+    )
+    payload: dict[str, object] = {}
+    manifest: dict[str, object] = {}
+
+    attach_production_surface_atlas(payload, manifest, data, run, material, geometry)
+
+    assert payload["atlas_faces"].shape == (2, 3)
+    assert payload["atlas_material"].tolist() == [1, 1]
+    assert payload["atlas_sparse_cell"].tolist() == [0, 0]
+    assert payload["atlas_texel_row"].tolist() == [0, 0]
+    assert payload["atlas_texel_column"].tolist() == [0, 0]
+    record = manifest["surface_atlas"]
+    assert record["npz"]["sha256"] == sha256_file(atlas_path)
+    assert record["manifest"]["sha256"] == sha256_file(atlas_path.with_suffix(".json"))
+    assert record["content_sha256"] == atlas.content_digest()
+    assert record["camera_ids"] == ["capture-a"]
+    assert record["cameras"] == [{"camera_id": "capture-a", "panorama": "capture-a.png"}]
+    assert record["vocabularies"]["entity"] == ["Building"]
+    assert record["vocabularies"]["material"] == ["unknown", "brick"]
+    assert record["transport_binding"]["transport_posterior"] == "host-compatible joint entries only"
+    assert manifest["all_camera_fused_atlas"]["record"] == "surface_atlas"
+    assert "final_surface_atlas" not in manifest
+
+    sibling = atlas_path.with_suffix(".json")
+    tampered = json.loads(sibling.read_text())
+    tampered["artifact"]["sha256"] = "0" * 64
+    sibling.write_text(json.dumps(tampered))
+    with pytest.raises(ValueError, match="artifact differs"):
+        attach_production_surface_atlas({}, {}, data, run, material, geometry)
 
 
 def test_hero_mesh_must_match_the_production_bytes(tmp_path: pathlib.Path) -> None:
@@ -413,6 +633,46 @@ def test_production_export_uses_a_digest_qualified_name(
     assert (args.out / f"{stem}_payload.npz").is_file()
     assert (args.out / f"{stem}_manifest.json").is_file()
     assert not (args.out / f"{run.site}_payload.npz").exists()
+    manifest = json.loads((args.out / f"{stem}_manifest.json").read_text())
+    with np.load(args.out / f"{stem}_payload.npz") as payload:
+        verify_bundle_identity(payload, manifest)
+
+
+@pytest.mark.parametrize("option", ["--animation-ranked-paths", "--animation-nee-paths"])
+def test_blender_cli_rejects_negative_animation_counts(option: str, tmp_path: pathlib.Path) -> None:
+    with pytest.raises(SystemExit):
+        blender_cli.arguments(
+            ["--payload", str(tmp_path / "a.npz"), "--blend", str(tmp_path / "a.blend"), option, "-1"]
+        )
+
+
+def test_blender_cli_accepts_zero_animation_counts(tmp_path: pathlib.Path) -> None:
+    args = blender_cli.arguments(
+        [
+            "--payload",
+            str(tmp_path / "a.npz"),
+            "--blend",
+            str(tmp_path / "a.blend"),
+            "--animation-ranked-paths",
+            "0",
+            "--animation-nee-paths",
+            "0",
+        ]
+    )
+    assert args.animation_paths == 0
+    assert args.animation_nee_paths == 0
+
+
+def test_crossed_payload_and_manifest_bundle_is_rejected() -> None:
+    first_payload = {"value": np.array([1], dtype=np.int16)}
+    first_manifest: dict[str, object] = {"site": "first"}
+    second_payload = {"value": np.array([2], dtype=np.int16)}
+    second_manifest: dict[str, object] = {"site": "second"}
+    stamp_bundle_identity(first_payload, first_manifest)
+    stamp_bundle_identity(second_payload, second_manifest)
+
+    with pytest.raises(ValueError, match="payload content"):
+        verify_bundle_identity(second_payload, first_manifest)
 
 
 def test_evidence_only_reopens_digest_qualified_production_payload_without_tracing(
@@ -426,21 +686,19 @@ def test_evidence_only_reopens_digest_qualified_production_payload_without_traci
     payload_path = output / f"{stem}_payload.npz"
     manifest_path = output / f"{stem}_manifest.json"
     traced = np.array([3.0, 1.0, 4.0], dtype=np.float32)
-    np.savez_compressed(
-        payload_path,
-        traced_result=traced,
-        fishnet_vistas_faces=np.array([[0, 1, 2]], dtype=np.int32),
-    )
+    original_payload = {
+        "traced_result": traced,
+        "fishnet_vistas_faces": np.array([[0, 1, 2]], dtype=np.int32),
+    }
     original_provenance = production_provenance(data, run)["production_exposure"]
-    manifest_path.write_text(
-        json.dumps(
-            {
-                "site": run.site,
-                "production_exposure": original_provenance,
-                "evidence": {"old": "discard me"},
-            }
-        )
-    )
+    original_manifest = {
+        "site": run.site,
+        "production_exposure": original_provenance,
+        "evidence": {"old": "discard me"},
+    }
+    stamp_bundle_identity(original_payload, original_manifest)
+    np.savez_compressed(payload_path, **original_payload)
+    manifest_path.write_text(json.dumps(original_manifest))
 
     monkeypatch.setattr(exporter_module, "load_production_run", lambda unused: (data, run))
 
@@ -473,8 +731,43 @@ def test_evidence_only_reopens_digest_qualified_production_payload_without_traci
         assert "fishnet_vistas_faces" not in reopened.files
         assert np.array_equal(reopened["fishnet_sam3_faces"], np.array([[2, 1, 0]], dtype=np.int32))
     rebuilt_manifest = json.loads(manifest_path.read_text())
+    with np.load(payload_path) as rebuilt_payload:
+        verify_bundle_identity(rebuilt_payload, rebuilt_manifest)
     assert rebuilt_manifest["production_exposure"] == original_provenance
     assert rebuilt_manifest["evidence"] == {"new": "local"}
+
+
+def test_evidence_only_refuses_an_unchecked_existing_pair_without_overwriting(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    files = _files(tmp_path)
+    data, run = load_production_run(files)
+    output = tmp_path / "viz"
+    output.mkdir()
+    stem = f"{run.site}_{run.frequency_ghz:g}ghz_{run.digest()}"
+    payload_path = output / f"{stem}_payload.npz"
+    manifest_path = output / f"{stem}_manifest.json"
+    np.savez_compressed(payload_path, traced_result=np.array([9], dtype=np.int8))
+    manifest_path.write_text(
+        json.dumps({"production_exposure": production_provenance(data, run)["production_exposure"]})
+    )
+    before_payload = payload_path.read_bytes()
+    before_manifest = manifest_path.read_bytes()
+    monkeypatch.setattr(exporter_module, "load_production_run", lambda unused: (data, run))
+    args = SimpleNamespace(
+        out=output,
+        site=run.site,
+        rim_only=False,
+        evidence_only=True,
+        evidence=True,
+        production_files=files,
+    )
+
+    with pytest.raises(ValueError, match="shared bundle identity"):
+        export(args)
+
+    assert payload_path.read_bytes() == before_payload
+    assert manifest_path.read_bytes() == before_manifest
 
 
 @pytest.mark.parametrize("bad_manifest", [[], {"transport": []}])

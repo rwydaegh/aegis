@@ -53,6 +53,9 @@ EXPECTED_PROMPTS = (
     "tram rail",
     "water",
     "foliage",
+    "shrub foliage",
+    "tree canopy",
+    "forest canopy",
     "wooden door",
     "metal door",
     "concrete surface",
@@ -86,12 +89,12 @@ def test_the_vegetation_binding_is_part_of_the_public_materials_api() -> None:
     assert bind_walk_vegetation.__module__ == "semantic_twin.materials.evidence"
 
 
-def test_vegetation_metadata_does_not_change_prompt_order_or_cache_identity() -> None:
+def test_vegetation_prompt_order_and_cache_identity_are_pinned() -> None:
     catalog = _catalog()
 
     assert catalog.prompts == EXPECTED_PROMPTS
     assert cache_key(model=MODEL, resolution=1008, threshold=0.35, view_size=1536, catalog=catalog) == (
-        "5471008704478c0d"
+        "f9db3e260983ebc9"
     )
 
 
@@ -124,6 +127,36 @@ def test_grass_and_woody_foliage_survive_the_independent_panorama_layer() -> Non
     assert resolved_confidence[0, 2] == 0.0
 
 
+def test_grass_shrub_tree_and_forest_keep_distinct_subtypes() -> None:
+    catalog = _catalog()
+    prompts = np.asarray(["grass lawn", "shrub foliage", "tree canopy", "forest canopy"])
+    masks = np.eye(4, dtype=bool)[:, None, :]
+    layers = view_layers(
+        masks,
+        prompts,
+        np.asarray(["surface"] * 4),
+        np.asarray([0.9] * 4, dtype=np.float32),
+        catalog.concept_ids(),
+        layer_rules(catalog),
+    )
+
+    concept, confidence = layers["vegetation"]
+    form, subtype, _resolved_confidence = vegetation_from_concepts(concept, confidence, catalog)
+
+    assert [catalog.vegetation_forms[index] for index in form[0]] == [
+        "ground_vegetation",
+        "woody_canopy",
+        "woody_canopy",
+        "woody_canopy",
+    ]
+    assert [catalog.vegetation_subtypes[index] for index in subtype[0]] == [
+        "grass",
+        "shrub",
+        "tree",
+        "forest",
+    ]
+
+
 def test_dense_only_vegetation_stays_unresolved() -> None:
     catalog = _catalog()
     form, subtype, confidence = vegetation_from_concepts(
@@ -148,6 +181,16 @@ def test_tree_trunk_stays_wood_and_never_routes_to_canopy() -> None:
     assert subtype_table[trunk_id] == 0
     vegetation_rule = {rule.name: rule for rule in layer_rules(catalog)}["vegetation"]
     assert trunk.prompt not in vegetation_rule.labels
+
+
+def test_foliage_never_routes_to_the_wood_interface() -> None:
+    catalog = _catalog()
+    for prompt in ("foliage", "shrub foliage", "tree canopy", "forest canopy"):
+        concept = catalog.by_prompt[prompt]
+        assert "wood" not in concept.material
+        assert max(concept.material, key=concept.material.get) == "vegetation_effective"
+    vistas = catalog.bridges["mask2former_mapillary_vistas"]
+    assert "wood" not in vistas.material_prior["Vegetation"]
 
 
 @pytest.mark.parametrize("subtype", ["shrub", "tree", "forest"])

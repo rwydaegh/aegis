@@ -7,11 +7,9 @@ Every case names its own ``--tag``, so nothing here can overwrite a published
 run. The tags all begin with ``golden_``.
 
 Sizing rule for the cases: each one must be cheap enough to run on a four vCPU
-box with no GPU, and must still move if the physics moves. The smallest real
-physics effect measured while these were chosen is the material binding, which
-shifts ``chi_rooftop`` by 0.34 % at the least affected standpoint and by 12.7 %
-at the most affected one. Every tolerance below sits many orders of magnitude
-under that.
+box with no GPU, and must still move if the physics moves. The fused walk
+binding changes ``chi_rooftop`` by -0.29 % to +1.30 % across the eight locked
+standpoints. Every tolerance below sits many orders of magnitude under that.
 """
 
 from __future__ import annotations
@@ -130,6 +128,7 @@ def reduce_exposure(case: Case) -> dict[str, Any]:
     stem = f"{tag}_{ghz:g}ghz"
     rows_path = EXPOSURE_OUT / f"{stem}_locations.jsonl"
     manifest = json.loads((EXPOSURE_OUT / f"{stem}_manifest.json").read_text())
+    semantic_binding = manifest["semantic_binding"]
     rows = [json.loads(line) for line in rows_path.read_text().splitlines() if line.strip()]
     for row in rows:
         row.pop("seconds", None)
@@ -151,8 +150,13 @@ def reduce_exposure(case: Case) -> dict[str, Any]:
             "ground_datum_band_fraction": manifest["ground_datum"].get("band_fraction"),
             "reference_s0_w_m2": manifest["reference_s0_w_m2"],
             "class_area_fractions": manifest["class_area_fractions"],
-            "semantic_covered_fraction_by_face": manifest["semantic_binding"].get("covered_fraction_by_face"),
-            "semantic_covered_fraction_by_area": manifest["semantic_binding"].get("covered_fraction_by_area"),
+            "semantic_covered_fraction_by_face": semantic_binding.get("covered_fraction_by_face"),
+            "semantic_covered_fraction_by_area": semantic_binding.get("covered_fraction_by_area"),
+            **(
+                {"semantic_support_compatibility": semantic_binding["support_compatibility"]}
+                if "support_compatibility" in semantic_binding
+                else {}
+            ),
             # How the fishnet faces were matched back onto the tracer mesh. This
             # is the provenance the SurfaceBinding wave is meant to make
             # mandatory, and it is the field that says whether a run joined two
@@ -161,13 +165,13 @@ def reduce_exposure(case: Case) -> dict[str, Any]:
             # match keeps 86.65 % of the source triangles at a median centroid
             # distance of 0.249 m. Prague cuts and traces the same file and
             # matches 100 % at zero distance.
-            "semantic_mesh_match": manifest["semantic_binding"].get("mesh_match"),
+            "semantic_mesh_match": semantic_binding.get("mesh_match"),
             # Triangles per material class, as integers. The area fractions above
-            # can be reproduced by an accident of arithmetic; a count of 3,271
-            # triangles at Korenmarkt and 38,222 at Prague, split across eleven
+            # can be reproduced by an accident of arithmetic; a count of 2,770
+            # accepted triangles at Korenmarkt and 29,738 at Prague, split across eleven
             # classes, cannot.
-            "chosen_material_triangle_counts": manifest["semantic_binding"].get("chosen_material_triangle_counts"),
-            "materials": manifest["semantic_binding"]["materials"],
+            "chosen_material_triangle_counts": semantic_binding.get("chosen_material_triangle_counts"),
+            "materials": semantic_binding["materials"],
             "surface_binding_classes": manifest["surface_binding"]["classes"],
             "walk_candidates": manifest["walk"].get("count"),
             "walk_provenance": manifest["walk"],
@@ -301,14 +305,18 @@ def reduce_coverage_ladder(case: Case) -> dict[str, Any]:
             for tag, materials, _description in run_exposure.coverage_ladder(site, crop, seed):
                 stem = f"{tag}{suffix}_{ghz:g}ghz"
                 manifest = json.loads((EXPOSURE_OUT / f"{stem}_manifest.json").read_text())
+                semantic_binding = manifest["semantic_binding"]
                 rungs[stem] = {
                     "materials": materials,
-                    "covered_fraction_by_face": manifest["semantic_binding"].get("covered_fraction_by_face"),
-                    "covered_fraction_by_area": manifest["semantic_binding"].get("covered_fraction_by_area"),
-                    "mesh_match": manifest["semantic_binding"].get("mesh_match"),
-                    "chosen_material_triangle_counts": manifest["semantic_binding"].get(
-                        "chosen_material_triangle_counts"
+                    "covered_fraction_by_face": semantic_binding.get("covered_fraction_by_face"),
+                    "covered_fraction_by_area": semantic_binding.get("covered_fraction_by_area"),
+                    **(
+                        {"support_compatibility": semantic_binding["support_compatibility"]}
+                        if "support_compatibility" in semantic_binding
+                        else {}
                     ),
+                    "mesh_match": semantic_binding.get("mesh_match"),
+                    "chosen_material_triangle_counts": semantic_binding.get("chosen_material_triangle_counts"),
                     "class_area_fractions": manifest["class_area_fractions"],
                     "surface_binding_classes": manifest["surface_binding"]["classes"],
                     "rows": _rows_of(stem),
@@ -465,11 +473,10 @@ CASES: tuple[Case, ...] = (
         ),
         tier="slow",
         what_it_locks=(
-            "The image evidence arm. Korenmarkt at 130 m is the only place the fused "
-            "Mapillary station binding reaches the mesh, 6.88 % of faces and 10.57 % of "
-            "area. Against the geometric case at the same eight standpoints it moves "
-            "chi_rooftop between +0.00 % and +12.69 %, so this fixture is what stops a "
-            "refactor from silently disconnecting the materials."
+            "The fused image evidence arm at Korenmarkt. It covers 4.79 % of faces and "
+            "6.95 % of area. Against the geometric case at the same eight standpoints, "
+            "it changes chi_rooftop by -0.29 % to +1.30 %. This fixture catches a "
+            "refactor that disconnects the fused materials."
         ),
         writes=("outputs/exposure_korenmarkt/golden_km130_walk_15ghz_*",),
     ),
@@ -549,7 +556,8 @@ CASES: tuple[Case, ...] = (
         tier="slow",
         what_it_locks=(
             "run_next_event.py on every one of its own defaults, at both pilot squares. "
-            "This is the configuration behind the +0.30 to +0.57 dB multipath surplus."
+            "Its routes are aligned with the registered camera endpoints. The measured "
+            "multipath surplus is +0.57 to +0.59 dB."
         ),
         writes=("outputs/next_event/golden_ne_250m_250m.json",),
     ),
@@ -580,16 +588,11 @@ CASES: tuple[Case, ...] = (
         ),
         tier="slow",
         what_it_locks=(
-            "The fishnet binding route through bind(), which is the one physics path that "
-            "had no lock at all. Korenmarkt is the site: outputs/korenmarkt_fishnet_vistas "
-            "holds four per view surface sets cut against inhouse_leaf_130m.ply, and the "
-            "run traces the f64 rebuild, so this also locks the cross mesh join that "
-            "site_fishnet() passes through: 86.65 % of source triangles matched, 13.32 % "
-            "refused on the normal test, median centroid distance 0.249 m. It reaches "
-            "2.07 % of faces and 3.13 % of area and adds eleven semantic_* material "
-            "classes, so class_area_fractions and the 3,271 triangle chosen counts are a "
-            "fingerprint of bind() itself. Waves 2 and 3 restructure this into "
-            "SurfaceBinding with mandatory provenance, and mesh_match is that provenance."
+            "The per-view fishnet binding route through bind() at Korenmarkt. It covers "
+            "1.75 % of faces and 2.63 % of area. The support check accepts 2,770 faces "
+            "and records 501 faces with a conflict or tie. The coverage, class area "
+            "fractions, accepted counts, and support report form a fingerprint of the "
+            "binding. The fixture also locks its mesh provenance."
         ),
         writes=("outputs/exposure_korenmarkt/golden_km130_semantic_15ghz_*",),
     ),
@@ -620,18 +623,11 @@ CASES: tuple[Case, ...] = (
         ),
         tier="slow",
         what_it_locks=(
-            "The fishnet binding again, where it actually reaches the mesh. Korenmarkt "
-            "binds 3.13 % of area and Prague binds 32.95 %, from 52 per view surface sets, "
-            "so this is the case in which a broken bind() shows up as a large number "
-            "rather than a small one. Measured against the same run with geometric "
-            "materials, the binding moves chi_rooftop here by +2.2 % to +59.1 % per "
-            "standpoint and +0.45 dB on the median. "
-            "It is also the clean half of the mesh join. Prague cuts and traces the same "
-            "file, inhouse_leaf_130m.ply, and matches 100 % of source triangles at zero "
-            "distance. Korenmarkt cuts against inhouse_leaf_130m.ply and traces the f64 "
-            "rebuild, so it matches 86.65 % at a median centroid distance of 0.249 m. "
-            "Holding both sides means a refactor that breaks the join fails in a way that "
-            "says which half broke."
+            "The per-view fishnet binding at Prague, where the evidence covers much more "
+            "of the mesh. It covers 17.315 % of faces and 27.294 % of area. The support "
+            "check accepts 29,738 faces and records 8,484 faces with a conflict or tie. "
+            "Prague cuts and traces the same mesh, so this case also locks the direct mesh "
+            "join."
         ),
         writes=("outputs/exposure_korenmarkt/golden_prague130_semantic_15ghz_*",),
     ),
@@ -723,7 +719,9 @@ CASES: tuple[Case, ...] = (
             "The evidence ladder, which is the experiment that says whether the material "
             "assignment matters. Three rungs at one site and one seed: orientation rule, "
             "fishnet surfaces, fused stations, with everything but the binding held fixed. "
-            "It locks the three runs, the per site ladder report and the cross site report. "
+            "The distribution median moves by 0.011749 dB and the largest absolute change "
+            "is 0.459 %. The paired median is 3.6e-8 dB across eight standpoints. It locks "
+            "the three runs, the per site ladder report and the cross site report. "
             "The tag suffix is mandatory here and the driver enforces it: without one the "
             "sweep would overwrite the published korenmarkt_geometric, korenmarkt_semantic "
             "and korenmarkt_walk stems, which hold 120 standpoint runs made under the "

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
+import os
 import pathlib
 import platform
 import time
+import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from importlib import metadata
@@ -14,7 +16,7 @@ from typing import Any
 
 import numpy as np
 
-from semantic_twin.materials import HOST_SURFACE_CLASS_RULE
+from semantic_twin.materials import HOST_SURFACE_CLASS_RULE, Provenance
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.device_tracer import DeviceEscapeTracer
 
@@ -70,6 +72,9 @@ class StudyEnvironment:
     body_coupler_type: Any
     describe_body: Callable[[Any], dict[str, Any]]
     report: Callable[[str], pathlib.Path]
+    site_surface_atlas: Callable[[str, int], pathlib.Path | None]
+    load_surface_atlas: Callable[..., Any]
+    bind_surface_atlas: Callable[..., tuple[Any, Any]]
 
 
 @dataclass(frozen=True)
@@ -85,8 +90,20 @@ class PreparedScene:
 @dataclass(frozen=True)
 class MaterialBinding:
     face_class: np.ndarray
+    face_source: np.ndarray
     table: Any
     provenance: dict[str, Any]
+    atlas_material: Any = field(default=None, compare=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.face_source.shape != self.face_class.shape:
+            raise ValueError(
+                f"face_class shape {self.face_class.shape} does not match face_source shape {self.face_source.shape}"
+            )
+        known = {int(source) for source in Provenance}
+        unknown = sorted(set(np.unique(self.face_source).tolist()) - known)
+        if unknown:
+            raise ValueError(f"face_source carries values {unknown} that name no Provenance member")
 
 
 @dataclass(frozen=True)
@@ -110,7 +127,7 @@ class OutputFiles:
 
 
 def execute(run: RunConfig, execution: ExecutionConfig, environment: StudyEnvironment) -> pathlib.Path:
-    """Trace one site's walk and stream reduced results to the fixed study output."""
+    """Trace one site's walk and publish one sealed output generation."""
     _validate_run(run, environment.models)
     _validate_execution(run, execution)
     environment.output.mkdir(parents=True, exist_ok=True)
@@ -130,12 +147,14 @@ def execute(run: RunConfig, execution: ExecutionConfig, environment: StudyEnviro
 
     trace_config = _trace_config(run, environment)
     tracer_type = DeviceEscapeTracer if run.transport_kernel == "drjit" else environment.tracer_type
+    tracer_options = {} if material.atlas_material is None else {"atlas_material": material.atlas_material}
     tracer = tracer_type(
         scene.geometry,
         material.face_class,
         material.table.permittivity,
         material.table.rms_height_m,
         trace_config,
+        **tracer_options,
     )
     coupler = execution.coupler
     if coupler is None:
@@ -146,12 +165,18 @@ def execute(run: RunConfig, execution: ExecutionConfig, environment: StudyEnviro
         )
 
     prepared = PreparedRun(run, environment, scene, material, walk, picks, trace_config, tracer, coupler)
+    generation_id = uuid.uuid4().hex
+    staged = _staging_files(files, generation_id)
     manifest = _manifest(prepared)
-    files.manifest.write_text(json.dumps(manifest, indent=2))
-    _trace_rows(prepared, execution, files)
-
-    manifest["wall_seconds"] = time.perf_counter() - started
-    files.manifest.write_text(json.dumps(manifest, indent=2))
+    try:
+        _trace_rows(prepared, execution, staged)
+        manifest["wall_seconds"] = time.perf_counter() - started
+        manifest["output_generation"] = _output_generation(generation_id, staged, files)
+        _write_json(staged.manifest, manifest)
+        _validate_generation(manifest, run, staged)
+        _publish_generation(staged, files)
+    finally:
+        _remove_staging_files(staged)
     print(f"wrote {files.rows}")
     environment.report(stem)
     return files.rows
@@ -225,7 +250,15 @@ def _bind_materials(run: RunConfig, scene: PreparedScene, environment: StudyEnvi
     provenance: dict[str, Any] = {"materials": run.materials}
     walk_binding = pathlib.Path(run.walk_npz) if run.walk_npz else environment.site_walk_semantics(run.site, run.crop_m)
     fishnet = environment.site_fishnet(run.site)
-    _require_material_evidence(run, walk_binding, fishnet)
+    atlas_path = None
+    if run.materials == "atlas":
+        atlas_path = (
+            pathlib.Path(run.atlas_npz) if run.atlas_npz else environment.site_surface_atlas(run.site, run.crop_m)
+        )
+    _require_material_evidence(run, walk_binding, fishnet, atlas_path)
+
+    if run.materials == "atlas":
+        return _bind_atlas(run, scene, provenance, atlas_path, environment)
 
     if run.materials == "semantic":
         return _bind_fishnet(run, scene, fishnet, provenance, environment)
@@ -265,14 +298,61 @@ def _bind_materials(run: RunConfig, scene: PreparedScene, environment: StudyEnvi
     if run.materials == "geometric":
         table = environment.load_table(environment.material_config, run.frequency_hz)
         provenance.update({"covered_fraction_by_face": 0.0, "covered_fraction_by_area": 0.0})
-        return MaterialBinding(scene.face_class, table, provenance)
+        face_source = np.full(scene.face_class.shape, int(Provenance.GEOMETRIC), dtype=np.int8)
+        return MaterialBinding(scene.face_class, face_source, table, provenance)
     raise ValueError(f"unknown materials mode {run.materials!r}")
+
+
+def _bind_atlas(
+    run: RunConfig,
+    scene: PreparedScene,
+    provenance: dict[str, Any],
+    atlas_path: pathlib.Path | None,
+    environment: StudyEnvironment,
+) -> MaterialBinding:
+    """Validate the canonical atlas pair and bind it to the traced mesh."""
+    if atlas_path is None:
+        raise AssertionError("surface atlas was checked before binding")
+    atlas_manifest = atlas_path.with_suffix(".json")
+    if not atlas_manifest.is_file():
+        raise ValueError(f"surface atlas has no canonical JSON sidecar: {atlas_manifest}")
+    mesh_sha256 = _file_sha256(scene.mesh)
+    try:
+        atlas = environment.load_surface_atlas(
+            atlas_path,
+            atlas_manifest,
+            expected_mesh_sha256=mesh_sha256,
+        )
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        raise ValueError(f"surface atlas failed canonical provenance validation: {error}") from error
+    atlas_mesh_sha256 = getattr(atlas, "mesh_sha256", None)
+    if atlas_mesh_sha256 is None:
+        raise ValueError("surface atlas does not record the exact support-mesh SHA-256")
+    if str(atlas_mesh_sha256).lower() != mesh_sha256:
+        raise ValueError("surface atlas belongs to a different support mesh")
+    table, atlas_material = environment.bind_surface_atlas(
+        atlas,
+        environment.material_config,
+        run.frequency_hz,
+        geometric_class=scene.face_class,
+        source_npz=atlas_path,
+        source_manifest=atlas_manifest,
+    )
+    provenance.update(atlas_material.provenance)
+    face_source = np.full(scene.face_class.shape, int(Provenance.GEOMETRIC), dtype=np.int8)
+    print(
+        f"surface atlas: {atlas_material.provenance['observed_faces']} observed faces, "
+        f"{atlas_material.provenance['supported_texels']} supported texels",
+        flush=True,
+    )
+    return MaterialBinding(scene.face_class, face_source, table, provenance, atlas_material=atlas_material)
 
 
 def _require_material_evidence(
     run: RunConfig,
     walk_binding: pathlib.Path | None,
     fishnet: tuple[pathlib.Path, pathlib.Path] | None,
+    atlas_path: pathlib.Path | None,
 ) -> None:
     if run.materials.startswith("walk") and walk_binding is None:
         raise ValueError(
@@ -284,6 +364,11 @@ def _require_material_evidence(
         raise ValueError(
             f"no fishnet surface set for {run.site} at {run.crop_m} m, so there is nothing to bind. "
             "Use --materials walk if the site has a fused station binding, or --materials geometric."
+        )
+    if run.materials == "atlas" and atlas_path is None:
+        raise ValueError(
+            f"no joint surface atlas for {run.site} at {run.crop_m} m. Build one with "
+            f"`build_surface_atlas.py --site {run.site} --crop-m {run.crop_m}`, or provide --atlas-npz."
         )
 
 
@@ -344,7 +429,7 @@ def _bound_material(
         f"{label}: {semantic.covered_fraction_by_face:.4f} of faces, {semantic.covered_fraction_by_area:.4f} of area",
         flush=True,
     )
-    return MaterialBinding(semantic.face_class, table, provenance)
+    return MaterialBinding(semantic.face_class, semantic.face_source, table, provenance)
 
 
 def _build_walk(run: RunConfig, replay: LegacyReplay, scene: PreparedScene, environment: StudyEnvironment) -> Any:
@@ -394,7 +479,7 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
     scene = prepared.scene
     material = prepared.material
     environment = prepared.environment
-    return {
+    document = {
         "generator": "run_exposure.py",
         "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "site": run.site,
@@ -411,11 +496,22 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
         "semantic_binding": {
             **material.provenance,
             "face_class_sha256": _array_sha256(material.face_class),
+            "face_source_sha256": _array_sha256(material.face_source),
+            "face_source_labels": {str(int(source)): source.name for source in Provenance},
+            "face_source_area_fractions": _face_source_area_fractions(
+                material.face_source,
+                scene.areas,
+            ),
         },
         "class_area_fractions": {
             name: float(scene.areas[material.face_class == i].sum() / scene.areas.sum())
             for i, name in enumerate(material.table.class_names)
         },
+        "class_area_fraction_basis": (
+            "geometric fallback face classes; atlas transport uses hit-position material posteriors"
+            if material.atlas_material is not None
+            else "area-weighted material class assigned to each complete support-mesh face"
+        ),
         "frequency_note": environment.frequency_note,
         "crop_bound_note": environment.crop_bound_note,
         "walk": _walk_provenance(run, prepared.walk),
@@ -440,6 +536,7 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
         "run_digest": run.digest(),
         "run": run.as_dict(),
     }
+    return document
 
 
 def _walk_provenance(run: RunConfig, walk: Any) -> dict[str, Any]:
@@ -476,6 +573,21 @@ def _array_sha256(array: np.ndarray) -> str:
     return digest.hexdigest()
 
 
+def _face_source_area_fractions(
+    face_source: np.ndarray,
+    areas: np.ndarray,
+) -> dict[str, float]:
+    """Area share decided by each per-face material source."""
+    source = np.asarray(face_source)
+    area = np.asarray(areas, dtype=np.float64)
+    if source.shape != area.shape:
+        raise ValueError(f"face_source shape {source.shape} does not match face areas {area.shape}")
+    total = float(area.sum())
+    if not np.isfinite(total) or total <= 0.0:
+        raise ValueError("face areas must have a finite positive total")
+    return {Provenance(int(value)).name: float(area[source == value].sum() / total) for value in np.unique(source)}
+
+
 def _file_sha256(path: pathlib.Path) -> str:
     """Hash the exact bytes from which the production geometry was loaded."""
     digest = hashlib.sha256()
@@ -505,7 +617,7 @@ def _trace_rows(prepared: PreparedRun, execution: ExecutionConfig, files: Output
         results = environment.trace_standpoints(prepared.tracer, standpoints, models, workers=workers)
         for row_index, result in results:
             index = picks[row_index]
-            row = _result_row(run, environment, prepared.coupler, walk, index, result, models)
+            row = _result_row(environment, prepared.coupler, walk, index, result, models)
             spectra[row_index] = result.rho["rooftop"]
             handle.write(json.dumps(row) + "\n")
             handle.flush()
@@ -519,8 +631,87 @@ def _trace_rows(prepared: PreparedRun, execution: ExecutionConfig, files: Output
             )
 
 
+def _staging_files(files: OutputFiles, generation_id: str) -> OutputFiles:
+    """Give one in-progress generation private names in the output directory."""
+
+    def staged(path: pathlib.Path) -> pathlib.Path:
+        return path.with_name(f".{path.stem}.{generation_id}{path.suffix}")
+
+    return OutputFiles(staged(files.rows), staged(files.spectra), staged(files.manifest))
+
+
+def _output_generation(
+    generation_id: str,
+    staged: OutputFiles,
+    published: OutputFiles,
+) -> dict[str, Any]:
+    """Seal the two numerical artifacts that one manifest commits."""
+    return {
+        "format_version": 1,
+        "id": generation_id,
+        "artifacts": {
+            "locations": _artifact_record(staged.rows, published.rows),
+            "spectra": _artifact_record(staged.spectra, published.spectra),
+        },
+        "publication_rule": (
+            "locations and spectra are written under private names, validated, and replaced before this "
+            "manifest is replaced as the generation commit record"
+        ),
+    }
+
+
+def _artifact_record(staged: pathlib.Path, published: pathlib.Path) -> dict[str, Any]:
+    stat = staged.stat()
+    return {
+        "path": published.name,
+        "sha256": _file_sha256(staged),
+        "bytes": stat.st_size,
+    }
+
+
+def _write_json(path: pathlib.Path, document: Mapping[str, Any]) -> None:
+    """Write and sync a JSON commit record before it becomes visible."""
+    with path.open("w", encoding="utf-8") as stream:
+        json.dump(document, stream, indent=2)
+        stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def _validate_generation(manifest: dict[str, Any], run: RunConfig, staged: OutputFiles) -> None:
+    """Refuse to publish a generation whose three staged files disagree."""
+    from semantic_twin.exposure.reuse import complete_output, same_output_generation
+
+    if not complete_output(manifest, run, staged.rows, staged.spectra):
+        raise RuntimeError("staged exposure generation is incomplete or internally inconsistent")
+    if not same_output_generation(manifest, staged.rows, staged.spectra, require_published_names=False):
+        raise RuntimeError("staged exposure generation differs from its artifact seal")
+
+
+def _publish_generation(staged: OutputFiles, published: OutputFiles) -> None:
+    """Publish data first and the manifest commit record last."""
+    os.replace(staged.rows, published.rows)
+    os.replace(staged.spectra, published.spectra)
+    os.replace(staged.manifest, published.manifest)
+    try:
+        directory = os.open(published.manifest.parent, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        try:
+            os.fsync(directory)
+        except OSError:
+            pass
+    finally:
+        os.close(directory)
+
+
+def _remove_staging_files(files: OutputFiles) -> None:
+    for path in (files.rows, files.spectra, files.manifest):
+        path.unlink(missing_ok=True)
+
+
 def _result_row(
-    run: RunConfig,
     environment: StudyEnvironment,
     coupler: Any,
     walk: Any,

@@ -14,6 +14,7 @@ import pytest
 
 from semantic_twin.materials.foliage import (
     LEAF_THICKNESS_M,
+    POWER_DB_PER_NEPER,
     TABULATED_FREQUENCIES_GHZ,
     CanopyCanyonGeometry,
     FoliageMedium,
@@ -80,22 +81,22 @@ def test_nearest_is_taken_in_log_frequency_not_linear():
 
 def test_sigma_tau_reads_as_nepers_per_metre():
     p = ret_parameters(11.0e9, species="london_plane", leaf_state="in_leaf")
-    assert p.specific_attenuation_db_per_m == pytest.approx(0.750 * 8.6858896, rel=1e-6)
+    assert p.specific_attenuation_db_per_m == pytest.approx(0.750 * POWER_DB_PER_NEPER, rel=1e-6)
 
 
 def test_the_recommendation_disagrees_with_itself_at_eleven_gigahertz():
-    """Two P.833-10 models, one recommendation, a factor of three apart.
+    """Two P.833-10 models, one recommendation, about 50 percent apart.
 
-    Table 8 read as nepers per metre gives 6.5 dB/m for London plane in leaf at
+    Table 8 read as power nepers per metre gives 3.3 dB/m for London plane in leaf at
     11 GHz. Figure 2, the recommendation's own specific attenuation curve for
-    woodland, gives about 2.2 dB/m at the same frequency. Neither is wrong
-    against the other because they were never reconciled, and that gap is the
-    reason this study sweeps optical depth rather than quoting one.
+    woodland, gives about 2.2 dB/m at the same frequency. They were never
+    reconciled, which is why this study carries a species ensemble instead of
+    quoting one optical depth.
     """
     table = ret_parameters(11.0e9, species="london_plane", leaf_state="in_leaf").specific_attenuation_db_per_m
     figure = float(figure2_specific_attenuation_db_per_m(11.0e9))
-    assert table / figure > 2.5
-    assert table / figure < 3.5
+    assert table / figure > 1.25
+    assert table / figure < 1.75
 
 
 def test_parameter_envelope_spans_the_whole_species_disagreement():

@@ -89,6 +89,7 @@ if TYPE_CHECKING:
     from .catalogue import MaterialSpec
 
 SPEED_OF_LIGHT = 299_792_458.0
+POWER_DB_PER_NEPER = 10.0 / np.log(10.0)
 
 #: Recommendation ITU-R P.833-10 (09/2021), Tables 4 to 8, transcribed from the
 #: in force PDF. One record per (species, leaf state, frequency) cell that has
@@ -237,20 +238,13 @@ class RetParameters:
 
     @property
     def specific_attenuation_db_per_m(self) -> float:
-        """``sigma_tau`` read as nepers per metre and converted to dB per metre.
+        """``sigma_tau`` converted from power nepers per metre to dB per metre.
 
-        The constant here is the amplitude conversion, ``20 / ln 10``, and it is
-        finding 4 in ``docs/BUGS.md``. Equation (12) of the recommendation reads
-        ``Lscat = -10 log10 { e^-tau ... }``, so ``e^-tau`` is a power
-        transmittance and the right constant is ``10 / ln 10 = 4.343``. The same
-        sigma through :func:`slab_transmission` gives exactly half of what this
-        returns, so the module contradicts itself.
-
-        Left wrong on purpose. The fix is its own commit with its own before and
-        after number, because ``FOLIAGE.md`` quotes a whole crossing table at
-        the doubled optical depth this feeds.
+        P.833 equation (12) uses ``exp(-tau)`` as a power transmittance. Its
+        loss is therefore ``-10 log10(exp(-tau))``, or ``10 / ln(10)`` dB per
+        neper. This is the same convention used by :func:`slab_transmission`.
         """
-        return float(8.685889638065035 * self.sigma_tau_per_m)
+        return float(POWER_DB_PER_NEPER * self.sigma_tau_per_m)
 
     def provenance(self) -> dict[str, Any]:
         return {
@@ -331,6 +325,23 @@ def ret_parameter_envelope(frequency_hz: float, *, leaf_state: str = "in_leaf") 
         "albedo": (min(p.albedo for p in keep), max(p.albedo for p in keep)),
         "sigma_tau_per_m": (min(p.sigma_tau_per_m for p in keep), max(p.sigma_tau_per_m for p in keep)),
     }
+
+
+def ret_parameter_candidates(
+    frequency_hz: float,
+    *,
+    leaf_state: str = "in_leaf",
+) -> tuple[RetParameters, ...]:
+    """Nearest complete RET row for every available species.
+
+    The image labels ``shrub``, ``tree``, and ``forest`` do not identify any of
+    the species in P.833 Tables 5 to 8. Production transport must therefore
+    retain the species spread instead of silently selecting the first matching
+    table row. Candidates are ordered by species name for stable manifests.
+    Every candidate records its own frequency gap and table provenance.
+    """
+    species = sorted({row[1] for row in _RET_ROWS if row[2] == leaf_state})
+    return tuple(ret_parameters(frequency_hz, species=name, leaf_state=leaf_state) for name in species)
 
 
 def figure2_specific_attenuation_db_per_m(frequency_hz: float | np.ndarray) -> np.ndarray:
@@ -501,8 +512,8 @@ def canopy_boundary_reflectance(
     has ``eps_eff = 1 + 3 f_v (eps_l - 1)/(eps_l + 2)`` to first order in
     ``f_v``, and with the LAI and leaf thickness the recommendation prints,
     ``f_v`` is of order 1e-4. The resulting normal incidence power reflectance
-    is of order 1e-9, that is roughly 90 dB below the reflectance the pipeline
-    currently gives a tree by substituting the P.2040-4 wood row.
+    is of order 1e-9, roughly 90 dB below the reflectance the retired surface
+    treatment gave a tree by substituting the P.2040-4 wood row.
 
     So there is no interface. Putting a Fresnel surface on the canopy hull
     invents a reflection that the medium does not have, and that is the single
@@ -953,14 +964,13 @@ def medium_for_spec(
     interface, and it resolves to a P.833 medium here; every other spec returns
     ``None`` and stays a surface.
 
-    What it does not do is make the tracer use it. ``SbrTracer`` reflects off
-    every face it hits, so the vegetation faces of a live run still take the
-    P.2040 vacuum row that :data:`~.catalogue.IMAGE_MATERIALS` gives them. What
-    this closes is the gap that made that unavoidable: a transport estimator can
-    now ask a binding which of its classes are media, through
-    :attr:`~.catalogue.MaterialTable.media`, instead of the fact living in a
-    comment. :class:`FoliageTracer` is the estimator that already carries the
-    volume, on analytic geometry.
+    ``SbrTracer`` now passes through woody atlas evidence when the support mesh
+    does not provide a registered canopy volume. It never evaluates this
+    placeholder as a reflecting face. Once watertight canopy geometry provides
+    exact chords, :func:`~.vegetation_transport.evaluate_p833_segments` exposes
+    the direct, scattered, and absorbed energy budget. :class:`FoliageTracer`
+    remains the analytic Monte Carlo estimator for the full participating
+    medium.
     """
     from .catalogue import P833_CANOPY
 

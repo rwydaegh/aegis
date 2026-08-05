@@ -389,6 +389,18 @@ def site_semantics(site: str, crop_m: int, suffix: str = ".npz") -> pathlib.Path
     return outputs_dir() / "site_semantics" / site / f"walk_semantic_{crop_m}m{suffix}"
 
 
+def joint_atlas(site: str, crop_m: int, resolution: int = 8, suffix: str = ".npz") -> pathlib.Path:
+    """The joint entity and material atlas over one support mesh.
+
+    ``resolution`` is the number of cells along a source triangle edge. It is
+    part of the file name because changing it changes the retained seams and
+    the hit-position material posterior.
+    """
+    if resolution < 1:
+        raise ValueError(f"atlas resolution must be at least 1, got {resolution}")
+    return outputs_dir() / "site_semantics" / site / f"joint_atlas_{crop_m}m_r{resolution}{suffix}"
+
+
 def walk_semantics(suffix: str = ".npz") -> pathlib.Path:
     """Korenmarkt's Mapillary walk binding, the only multi station Mapillary set.
 

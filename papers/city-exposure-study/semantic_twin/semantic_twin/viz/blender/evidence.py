@@ -96,18 +96,22 @@ def annotate_collection_status(groups: dict[str, Any], manifest: dict) -> None:
         group = groups[key]
         records = {name: statuses[name] for name in layer_names if name in statuses}
         populated = len(group.objects) > 0
-        incomplete = any(record.get("status") != "built" for record in records.values())
-        if populated and incomplete:
+        locally_incomplete = bool(group.get("incomplete_evidence", False))
+        represented = populated or int(group.get("evidence_records", 0)) > 0 or locally_incomplete
+        incomplete = locally_incomplete or any(record.get("status") != "built" for record in records.values())
+        if represented and incomplete:
             group["status"] = "built_partial"
-        elif populated:
+        elif represented:
             group["status"] = "built"
         else:
             group["status"] = "empty"
         group["layers"] = json.dumps(records, default=str)
         reasons = [str(record["reason"]) for record in records.values() if record.get("reason")]
+        if group.get("status_detail"):
+            reasons.append(str(group["status_detail"]))
         if reasons:
             group["reason"] = "; ".join(reasons)
-        elif not populated:
+        elif not represented:
             group["reason"] = "payload contains no drawable arrays for this evidence collection"
 
 
@@ -183,41 +187,92 @@ def build_support_evidence(payload: Any, manifest: dict, into: Any) -> dict[str,
     return {"triangles": int(payload["support_evidence_faces"].shape[0])}
 
 
-def build_refused(payload: Any, manifest: dict, into: Any) -> dict[str, int] | None:
-    """The candidate surface the cutter refused, one object per reason.
+def _unavailable_refusal_summary(record: dict, into: Any) -> dict[str, object]:
+    """Keep refusals without drawable geometry in collection and scene metadata."""
+    rows = {str(name): int(count) for name, count in record.get("unavailable_rows_by_reason", {}).items()}
+    areas = {str(name): float(area) for name, area in record.get("unavailable_image_area_px_by_reason", {}).items()}
+    row_total = sum(rows.values())
+    area_total = sum(areas.values())
+    if row_total:
+        row_text = ", ".join(f"{name}: {count}" for name, count in sorted(rows.items()))
+        area_text = ", ".join(f"{name}: {area:g}" for name, area in sorted(areas.items())) or "not recorded"
+        detail = (
+            f"{row_total} format-v2 rejected rows have no drawable geometry ({row_text}); "
+            f"withheld image area {area_total:g} px ({area_text})"
+        )
+        into["incomplete_evidence"] = True
+        into["evidence_records"] = row_total
+        into["status_detail"] = detail
+        into["unavailable_rows_total"] = row_total
+        into["unavailable_image_area_px_total"] = area_total
+        into["unavailable_rows_by_reason"] = json.dumps(rows, sort_keys=True)
+        into["unavailable_image_area_px_by_reason"] = json.dumps(areas, sort_keys=True)
+    return {
+        "unavailable_rows_by_reason": rows,
+        "unavailable_image_area_px_by_reason": areas,
+        "unavailable_rows": row_total,
+        "unavailable_image_area_px": area_total,
+    }
+
+
+def build_refused(payload: Any, manifest: dict, into: Any) -> dict[str, object] | None:
+    """The candidate fragments the cutter refused, one object per reason.
 
     Separate objects rather than one object with a reason layer, because the
     question a reader has is what a single reason removed, and that is answered by
-    switching an object off. The transient set and the clutter set are the two that
-    matter: one comes back as a body and the other never comes back.
+    switching an object off. Exact fragments and legacy whole-source fallbacks are
+    also separate objects, so the fallback cannot look like measured geometry.
     """
-    if not has(payload, "rejected_vertices"):
-        return None
     record = manifest.get("evidence", {}).get("rejected", {})
+    unavailable = _unavailable_refusal_summary(record, into)
+    if not has(payload, "rejected_vertices"):
+        return unavailable if unavailable["unavailable_rows"] else None
     names = record.get("reason_names", [])
     reasons = payload["rejected_reason"]
     faces = payload["rejected_faces"]
     vertices = payload["rejected_vertices"]
     areas = payload["rejected_image_area_px"]
+    geometry_source = (
+        payload["rejected_geometry_source"]
+        if "rejected_geometry_source" in payload.files
+        else np.zeros(reasons.shape[0], dtype=np.uint8)
+    )
     counts: dict[str, int] = {}
     for code in np.unique(reasons):
         label = names[int(code) - 1] if 0 < int(code) <= len(names) else f"reason_{int(code)}"
-        keep = np.flatnonzero(reasons == code)
-        kept = faces[keep]
-        used, remapped = np.unique(kept, return_inverse=True)
-        obj = build_mesh(f"refused_{label}", vertices[used], remapped.reshape(kept.shape), into)
-        rgba, low, high = log_ramp(areas[keep])
-        attach_face_colour(obj, "image_area_px", rgba)
-        attach_values(obj, "value_image_area_px", areas[keep], "FACE")
-        tint = REFUSAL_TINT.get(label, (0.5, 0.5, 0.5))
-        attach_face_colour(obj, "reason", np.tile((*tint, 1.0), (kept.shape[0], 1)))
-        assign(obj, emissive_material(f"refused_{label}", "reason"))
-        obj["reason"] = label
-        obj["image_area_px_total"] = float(areas[keep].sum())
-        obj["image_area_px_log10_range"] = [low, high]
-        layered(obj, ("reason", "image_area_px"), "reason")
-        counts[label] = int(kept.shape[0])
-    return counts
+        for source_code in np.unique(geometry_source[reasons == code]):
+            fallback = int(source_code) == 0
+            suffix = "_legacy_source_triangle_fallback" if fallback else ""
+            object_name = f"refused_{label}{suffix}"
+            keep = np.flatnonzero((reasons == code) & (geometry_source == source_code))
+            kept = faces[keep]
+            used, remapped = np.unique(kept, return_inverse=True)
+            obj = build_mesh(object_name, vertices[used], remapped.reshape(kept.shape), into)
+            rgba, low, high = log_ramp(areas[keep])
+            attach_face_colour(obj, "image_area_px", rgba)
+            attach_values(obj, "value_image_area_px", areas[keep], "FACE")
+            for field in ("source_triangle", "view", "fragment", "geometry_kind"):
+                key = f"rejected_{field}"
+                if key in payload.files:
+                    attach_values(obj, f"value_{field}", payload[key][keep], "FACE")
+            tint = REFUSAL_TINT.get(label, (0.5, 0.5, 0.5))
+            attach_face_colour(obj, "reason", np.tile((*tint, 1.0), (kept.shape[0], 1)))
+            assign(obj, emissive_material(object_name, "reason"))
+            obj["reason"] = label
+            obj["geometry_source"] = "legacy source triangle fallback" if fallback else "exact rejected fragment"
+            obj["fishnet_format_versions"] = json.dumps(record.get("fishnet_format_versions", []))
+            obj["geometry_kind_names"] = json.dumps(record.get("geometry_kind_names", []))
+            obj["image_area_px_total"] = float(areas[keep].sum())
+            obj["image_area_px_log10_range"] = [low, high]
+            layered(obj, ("reason", "image_area_px"), "reason")
+            counts[object_name.removeprefix("refused_")] = int(kept.shape[0])
+    drawn = sum(counts.values())
+    into["evidence_records"] = drawn + int(unavailable["unavailable_rows"])
+    return {
+        "drawn_triangles_by_reason": counts,
+        "drawn_triangles": drawn,
+        **unavailable,
+    }
 
 
 def build_depth(payload: Any, manifest: dict, into: Any, *, radius: float) -> dict[str, int] | None:
@@ -261,17 +316,58 @@ def build_depth(payload: Any, manifest: dict, into: Any, *, radius: float) -> di
     return made or None
 
 
-def build_panoramas(payload: Any, manifest: dict, into: Any, *, sigma_scale: float) -> int | None:
-    """Every registered pose, as a camera you can look through, a marker and an ellipsoid.
+def _aligned_panorama_array(
+    payload: Any,
+    name: str,
+    count: int,
+    trailing_shape: tuple[int, ...],
+    *,
+    fill: float | int,
+    dtype: np.dtype,
+) -> tuple[np.ndarray, np.ndarray, dict[str, object]]:
+    """Align one optional panorama column without hiding missing or extra rows."""
+    target = np.full((count, *trailing_shape), fill, dtype=dtype)
+    available = np.zeros(count, dtype=bool)
+    key = f"pano_{name}"
+    if key not in payload.files:
+        return target, available, {"missing_rows": list(range(count)), "source": "array is absent"}
+    source = np.asarray(payload[key])
+    expected_ndim = len(trailing_shape) + 1
+    if source.ndim != expected_ndim or source.shape[1:] != trailing_shape:
+        return (
+            target,
+            available,
+            {
+                "missing_rows": list(range(count)),
+                "source_shape": list(source.shape),
+                "expected_trailing_shape": list(trailing_shape),
+            },
+        )
+    take = min(count, source.shape[0])
+    if take:
+        finite = (
+            np.all(np.isfinite(source[:take]), axis=tuple(range(1, source.ndim)))
+            if trailing_shape
+            else np.isfinite(source[:take])
+        )
+        available[:take] = finite
+        target_indices = np.flatnonzero(available[:take])
+        target[target_indices] = source[target_indices].astype(dtype, copy=False)
+    problem: dict[str, object] = {}
+    missing = np.flatnonzero(~available).tolist()
+    if missing:
+        problem["missing_rows"] = missing
+    if source.shape[0] > count:
+        problem["extra_rows"] = int(source.shape[0] - count)
+    return target, available, problem
 
-    The camera is a real Blender camera at the solved rotation, so the view it saw is
-    reproducible from inside the blend. The marker carries the verdict the sky
-    conflict audit reached, which at Korenmarkt is three cameras standing inside the
-    geometry out of thirteen, and no residual would have said so. The ellipsoid is
-    the position block of the seed study covariance at one sigma, scaled by
-    ``sigma_scale`` because one sigma here is a few centimetres and a few centimetres
-    in a two hundred metre scene is nothing. The scale is on every ellipsoid as a
-    property, so nobody reads it as a metre.
+
+def build_panoramas(payload: Any, manifest: dict, into: Any, *, sigma_scale: float) -> dict[str, object] | None:
+    """Build every valid registered pose and report incomplete companion metadata.
+
+    Positions and rotations define cameras. Registration records, verdicts and
+    uncertainty describe them, but never decide how many cameras are built. This
+    keeps a short manifest or uncertainty array from silently dropping valid poses.
     """
     # Imported here rather than at module level: mathutils ships inside Blender and
     # is absent from the venv, and the pure geometry in this package is tested
@@ -280,42 +376,138 @@ def build_panoramas(payload: Any, manifest: dict, into: Any, *, sigma_scale: flo
 
     if "pano_position" not in payload.files:
         return None
-    positions = payload["pano_position"].astype(np.float64)
-    rotations = payload["pano_rotation"].astype(np.float64)
-    sigmas = payload["pano_sigma_vectors"].astype(np.float64)
-    verdict = payload["pano_verdict"]
-    records = manifest.get("evidence", {}).get("registration", {}).get("poses", [])
-    markers, faces = octahedra(positions, 0.9)
-    marker = build_mesh("pano_markers", markers, faces, into)
-    attach_face_colour(marker, "verdict", np.repeat(categorical_colours(verdict, VERDICT_TINT), 8, axis=0))
-    attach_face_colour(
-        marker, "sky_conflict", np.repeat(colour_ramp(payload["pano_sky_conflict"], 0.0, 1.0), 8, axis=0)
-    )
-    attach_face_colour(
-        marker, "skyline_residual_deg", np.repeat(colour_ramp(payload["pano_residual_deg"], 0.0, 8.0), 8, axis=0)
-    )
-    assign(marker, emissive_material("pano_markers", "verdict"))
-    marker["reading"] = manifest.get("evidence", {}).get("registration", {}).get("reading", "")
-    marker["captures"] = [record.get("capture", "") for record in records]
-    layered(marker, ("verdict", "sky_conflict", "skyline_residual_deg"), "verdict")
+    positions = np.asarray(payload["pano_position"], dtype=np.float64)
+    if positions.ndim != 2 or positions.shape[1:] != (3,):
+        detail = f"pano_position has shape {list(positions.shape)}, expected [poses, 3]"
+        into["incomplete_evidence"] = True
+        into["evidence_records"] = int(positions.shape[0]) if positions.ndim else 1
+        into["status_detail"] = detail
+        return {"pose_rows": 0, "cameras": 0, "markers": 0, "uncertainty_ellipsoids": 0, "problem": detail}
 
-    sphere, sphere_faces = unit_sphere()
-    blobs = [position + sigma_scale * (sphere @ sigmas[index].T) for index, position in enumerate(positions)]
-    ellipsoid = build_mesh(
-        "pano_uncertainty",
-        np.concatenate(blobs),
-        np.concatenate([sphere_faces + index * sphere.shape[0] for index in range(len(blobs))]),
-        into,
+    count = int(positions.shape[0])
+    position_valid = np.all(np.isfinite(positions), axis=1)
+    registration = manifest.get("evidence", {}).get("registration", {})
+    raw_records = registration.get("poses", []) if isinstance(registration, dict) else []
+    records = raw_records if isinstance(raw_records, list) else []
+    missing: dict[str, object] = {}
+    invalid_positions = np.flatnonzero(~position_valid).tolist()
+    if invalid_positions:
+        missing["position"] = {"missing_rows": invalid_positions}
+    if len(records) != count:
+        record_problem: dict[str, object] = {}
+        if len(records) < count:
+            record_problem["missing_rows"] = list(range(len(records), count))
+        else:
+            record_problem["extra_rows"] = len(records) - count
+        missing["registration_records"] = record_problem
+    invalid_records = [index for index, record in enumerate(records[:count]) if not isinstance(record, dict)]
+    if invalid_records:
+        missing.setdefault("registration_records", {})["invalid_rows"] = invalid_records
+    record_fields = (
+        "capture",
+        "skyline_residual_deg",
+        "sky_with_mesh_hit_fraction",
+        "position_sigma_m",
+        "verdict",
     )
-    attach_face_colour(
-        ellipsoid, "verdict", np.repeat(categorical_colours(verdict, VERDICT_TINT), sphere_faces.shape[0], axis=0)
-    )
-    assign(ellipsoid, emissive_material("pano_uncertainty", "verdict"))
-    ellipsoid["sigma_multiple_drawn"] = sigma_scale
-    ellipsoid["reading"] = f"one sigma of the pose position, drawn {sigma_scale:g} times life size"
-    layered(ellipsoid, ("verdict",), "verdict")
+    missing_record_fields = {
+        field: [
+            index
+            for index in range(count)
+            if index >= len(records) or not isinstance(records[index], dict) or records[index].get(field) is None
+        ]
+        for field in record_fields
+    }
+    missing_record_fields = {field: indices for field, indices in missing_record_fields.items() if indices}
+    if missing_record_fields:
+        missing["registration_record_fields"] = missing_record_fields
 
-    for index, record in enumerate(records):
+    rotations, rotation_valid, problem = _aligned_panorama_array(
+        payload, "rotation", count, (3, 3), fill=0.0, dtype=np.dtype(np.float64)
+    )
+    for index in np.flatnonzero(rotation_valid):
+        rotation = rotations[index]
+        if not np.allclose(rotation.T @ rotation, np.eye(3), atol=1.0e-5) or np.linalg.det(rotation) <= 0.0:
+            rotation_valid[index] = False
+    invalid_rotation = np.flatnonzero(~rotation_valid).tolist()
+    if invalid_rotation:
+        problem["missing_rows"] = invalid_rotation
+    if problem:
+        missing["rotation"] = problem
+    sigmas, sigma_valid, problem = _aligned_panorama_array(
+        payload, "sigma_vectors", count, (3, 3), fill=0.0, dtype=np.dtype(np.float64)
+    )
+    if problem:
+        missing["sigma_vectors"] = problem
+    verdict, verdict_valid, problem = _aligned_panorama_array(
+        payload, "verdict", count, (), fill=-1, dtype=np.dtype(np.int32)
+    )
+    verdict_valid &= (verdict >= 0) & (verdict < VERDICT_TINT.shape[0])
+    invalid_verdict = np.flatnonzero(~verdict_valid).tolist()
+    if invalid_verdict:
+        problem["missing_rows"] = invalid_verdict
+    if problem:
+        missing["verdict"] = problem
+    residual, _residual_valid, problem = _aligned_panorama_array(
+        payload, "residual_deg", count, (), fill=0.0, dtype=np.dtype(np.float64)
+    )
+    if problem:
+        missing["residual_deg"] = problem
+    sky_conflict, _conflict_valid, problem = _aligned_panorama_array(
+        payload, "sky_conflict", count, (), fill=0.0, dtype=np.dtype(np.float64)
+    )
+    if problem:
+        missing["sky_conflict"] = problem
+
+    marker_indices = np.flatnonzero(position_valid)
+    if marker_indices.size:
+        markers, faces = octahedra(positions[marker_indices], 0.9)
+        marker = build_mesh("pano_markers", markers, faces, into)
+        marker_verdict = verdict[marker_indices]
+        attach_face_colour(marker, "verdict", np.repeat(categorical_colours(marker_verdict, VERDICT_TINT), 8, axis=0))
+        attach_face_colour(
+            marker,
+            "sky_conflict",
+            np.repeat(colour_ramp(sky_conflict[marker_indices], 0.0, 1.0), 8, axis=0),
+        )
+        attach_face_colour(
+            marker,
+            "skyline_residual_deg",
+            np.repeat(colour_ramp(residual[marker_indices], 0.0, 8.0), 8, axis=0),
+        )
+        assign(marker, emissive_material("pano_markers", "verdict"))
+        marker["reading"] = registration.get("reading", "") if isinstance(registration, dict) else ""
+        marker["captures"] = [
+            records[index].get("capture", "") if index < len(records) and isinstance(records[index], dict) else ""
+            for index in marker_indices
+        ]
+        marker["pose_indices"] = marker_indices.tolist()
+        layered(marker, ("verdict", "sky_conflict", "skyline_residual_deg"), "verdict")
+
+    ellipsoid_indices = np.flatnonzero(position_valid & sigma_valid)
+    if ellipsoid_indices.size:
+        sphere, sphere_faces = unit_sphere()
+        blobs = [positions[index] + sigma_scale * (sphere @ sigmas[index].T) for index in ellipsoid_indices]
+        ellipsoid = build_mesh(
+            "pano_uncertainty",
+            np.concatenate(blobs),
+            np.concatenate([sphere_faces + index * sphere.shape[0] for index in range(len(blobs))]),
+            into,
+        )
+        attach_face_colour(
+            ellipsoid,
+            "verdict",
+            np.repeat(categorical_colours(verdict[ellipsoid_indices], VERDICT_TINT), sphere_faces.shape[0], axis=0),
+        )
+        assign(ellipsoid, emissive_material("pano_uncertainty", "verdict"))
+        ellipsoid["sigma_multiple_drawn"] = sigma_scale
+        ellipsoid["reading"] = f"one sigma of the pose position, drawn {sigma_scale:g} times life size"
+        ellipsoid["pose_indices"] = ellipsoid_indices.tolist()
+        layered(ellipsoid, ("verdict",), "verdict")
+
+    camera_indices = np.flatnonzero(position_valid & rotation_valid)
+    for index in camera_indices:
+        record = records[index] if index < len(records) and isinstance(records[index], dict) else {}
         rotation = rotations[index]
         # The pose rotation takes panorama-local right, forward and up to world. A
         # Blender camera looks down its own -Z with +Y up, so its columns are right,
@@ -331,10 +523,38 @@ def build_panoramas(payload: Any, manifest: dict, into: Any, *, sigma_scale: flo
         placed[:3, :3] = basis
         placed[:3, 3] = positions[index]
         obj.matrix_world = mathutils.Matrix([[float(value) for value in row] for row in placed])
-        for field in ("capture", "skyline_residual_deg", "sky_with_mesh_hit_fraction", "position_sigma_m", "verdict"):
+        for field in record_fields:
             if record.get(field) is not None:
                 obj[field] = record[field]
-    return int(positions.shape[0])
+        absent = []
+        absent_record_fields = [field for field in record_fields if record.get(field) is None]
+        if absent_record_fields:
+            absent.append(f"registration fields ({', '.join(absent_record_fields)})")
+        if not sigma_valid[index]:
+            absent.append("position_uncertainty")
+        if not verdict_valid[index]:
+            absent.append("verdict")
+        obj["metadata_status"] = "complete" if not absent else f"missing: {', '.join(absent)}"
+        obj["pose_index"] = int(index)
+
+    report = {
+        "pose_rows": count,
+        "markers": int(marker_indices.size),
+        "cameras": int(camera_indices.size),
+        "uncertainty_ellipsoids": int(ellipsoid_indices.size),
+        "registration_records": len(records),
+        "missing_metadata": missing,
+    }
+    into["evidence_records"] = count
+    into["pose_rows"] = count
+    into["camera_count"] = int(camera_indices.size)
+    into["uncertainty_ellipsoid_count"] = int(ellipsoid_indices.size)
+    into["registration_record_count"] = len(records)
+    if missing:
+        into["incomplete_evidence"] = True
+        into["missing_metadata"] = json.dumps(missing, sort_keys=True)
+        into["status_detail"] = "panorama pose companion metadata is incomplete; see missing_metadata"
+    return report
 
 
 def build_bodies(payload: Any, manifest: dict, into: Any) -> int | None:

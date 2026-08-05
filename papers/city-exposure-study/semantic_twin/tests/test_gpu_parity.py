@@ -10,7 +10,10 @@ import numpy as np
 import pytest
 
 from semantic_twin.cli import gpu_parity as parity_cli
-from semantic_twin.illumination import sample_sphere
+from semantic_twin.illumination import MODELS, sample_sphere
+from semantic_twin.materials import AtlasMaterialBinding
+from semantic_twin.propagation.geometry import MitsubaGeometry
+from semantic_twin.transport.device_kernel import DeviceSbrKernel
 from semantic_twin.transport import gpu_parity
 from semantic_twin.transport import gpu_parity_orchestration
 from semantic_twin.transport.gpu_parity import (
@@ -20,6 +23,7 @@ from semantic_twin.transport.gpu_parity import (
     fixed_rays,
     run_harness,
 )
+from semantic_twin.transport.tracer import SbrTracer, TraceConfig, fresnel_power_reflectance, specular_share
 
 
 def config(tmp_path: pathlib.Path, **updates: object) -> ParityConfig:
@@ -451,3 +455,195 @@ def test_public_cli_returns_acceptance_status(tmp_path: pathlib.Path, monkeypatc
 def test_config_rejects_invalid_comparisons(tmp_path: pathlib.Path, updates: dict[str, object], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         config(tmp_path, **updates).validate()
+
+
+def _write_atlas_triangle(path: pathlib.Path) -> pathlib.Path:
+    path.write_text(
+        """ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property list uchar int vertex_indices
+end_header
+0 0 0
+10 0 0
+0 10 0
+3 0 1 2
+"""
+    )
+    return path
+
+
+def _write_atlas_plane(path: pathlib.Path) -> pathlib.Path:
+    path.write_text(
+        """ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+property float z
+element face 2
+property list uchar int vertex_indices
+end_header
+-100 -100 0
+100 -100 0
+100 100 0
+-100 100 0
+3 0 1 2
+3 0 2 3
+"""
+    )
+    return path
+
+
+def _atlas_binding_for_three_hit_rules() -> AtlasMaterialBinding:
+    valid = np.array([[True, True], [True, False]])
+    probability = np.zeros((1, 2, 2, 2), dtype=np.float32)
+    probability[0, 0, 0] = (0.25, 0.75)
+    supported = np.zeros((1, 2, 2), dtype=bool)
+    supported[0, 0, 0] = True
+    nonblocking = np.zeros_like(supported)
+    nonblocking[0, 1, 0] = True
+    return AtlasMaterialBinding(
+        face_to_atlas_row=np.array([0], dtype=np.int32),
+        material_probability=probability,
+        supported=supported,
+        valid_texels=valid,
+        material_names=("brick", "metal"),
+        material_class=np.array([1, 2], dtype=np.int32),
+        provenance={
+            "rule": "mixed interface, unsupported fallback, and woody-canopy pass-through test",
+            "nonblocking_rule": "the third texel represents woody vegetation without canopy chords",
+        },
+        nonblocking=nonblocking,
+    )
+
+
+@pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
+def test_real_atlas_hit_rules_match_numpy_and_pass_through_vegetation(
+    tmp_path: pathlib.Path,
+    variant: str,
+) -> None:
+    """Cover real barycentric lookup and transport on both device backends."""
+    mi = pytest.importorskip("mitsuba")
+    dr = pytest.importorskip("drjit")
+    try:
+        mi.set_variant(variant)
+    except ImportError as error:
+        pytest.skip(f"{variant} is unavailable: {error}")
+
+    geometry = MitsubaGeometry(_write_atlas_triangle(tmp_path / f"triangle_{variant}.ply"), variant=variant)
+    binding = _atlas_binding_for_three_hit_rules()
+    permittivity = np.array([2.5 - 0.05j, 4.2 - 0.15j, 7.0 - 0.4j])
+    rms_height_m = np.array([0.001, 0.0, 0.006])
+    trace_config = TraceConfig(rays=3)
+    fallback_class = np.zeros(3, dtype=np.int64)
+    points = np.array([[0.1, 0.1, 0.0], [9.8, 0.1, 0.0], [0.1, 9.8, 0.0]])
+    cosine = np.array([0.37, 0.71, 0.53])
+    cpu_uv = geometry.barycentric_uv(np.zeros(3, dtype=np.int64), points)
+    posterior, supported, nonblocking = binding.lookup(np.zeros(3, dtype=np.int64), cpu_uv)
+    np.testing.assert_array_equal(supported, [True, False, False])
+    np.testing.assert_array_equal(nonblocking, [False, False, True])
+    np.testing.assert_array_equal(posterior, [[0.25, 0.75], [0.0, 0.0], [0.0, 0.0]])
+
+    cpu = SbrTracer(
+        geometry,
+        fallback_class[:1],
+        permittivity,
+        rms_height_m,
+        trace_config,
+        atlas_material=binding,
+    )
+    expected_reflectance, expected_share, expected_nonblocking = cpu._surface_response(
+        cosine,
+        fallback_class,
+        np.zeros(3, dtype=np.int64),
+        points,
+    )
+
+    origins = mi.Point3f(mi.Float(points[:, 0]), mi.Float(points[:, 1]), mi.Float([1.0, 1.0, 1.0]))
+    directions = mi.Vector3f(
+        mi.Float([0.0, 0.0, 0.0]),
+        mi.Float([0.0, 0.0, 0.0]),
+        mi.Float([-1.0, -1.0, -1.0]),
+    )
+    intersection = geometry.intersect_device(origins, directions, mi.Bool([True, True, True]))
+    kernel = DeviceSbrKernel(
+        geometry,
+        fallback_class[:1],
+        permittivity,
+        rms_height_m,
+        trace_config,
+        atlas_material=binding,
+    )
+    actual_reflectance, actual_share, actual_nonblocking = kernel._surface_response(
+        mi.Float(cosine),
+        mi.UInt32(fallback_class),
+        intersection,
+        intersection.hit,
+    )
+    dr.eval(actual_reflectance, actual_share, actual_nonblocking, intersection.barycentric_uv)
+
+    np.testing.assert_allclose(np.asarray(intersection.barycentric_uv).T, points[:, :2] / 10.0, atol=2e-7)
+    np.testing.assert_array_equal(expected_nonblocking, [False, False, True])
+    np.testing.assert_array_equal(np.asarray(actual_nonblocking), expected_nonblocking)
+    np.testing.assert_allclose(np.asarray(actual_reflectance), expected_reflectance, rtol=3e-6, atol=2e-7)
+    np.testing.assert_allclose(np.asarray(actual_share), expected_share, rtol=3e-6, atol=2e-7)
+
+    component_r = fresnel_power_reflectance(cosine[0], permittivity[[1, 2]])
+    component_s = specular_share(rms_height_m[[1, 2]], cosine[0], cpu.wavelength_m)
+    expected_mixed_r = 0.25 * component_r[0] + 0.75 * component_r[1]
+    expected_mixed_s = (
+        0.25 * component_r[0] * component_s[0] + 0.75 * component_r[1] * component_s[1]
+    ) / expected_mixed_r
+    assert expected_reflectance[0] == pytest.approx(expected_mixed_r)
+    assert expected_share[0] == pytest.approx(expected_mixed_s)
+    assert expected_reflectance[1] == pytest.approx(fresnel_power_reflectance(cosine[1], permittivity[0]))
+    assert expected_share[1] == pytest.approx(specular_share(rms_height_m[0], cosine[1], cpu.wavelength_m))
+
+    plane = MitsubaGeometry(_write_atlas_plane(tmp_path / f"plane_{variant}.ply"), variant=variant)
+    valid = np.array([[True, True], [True, False]])
+    pass_through_binding = AtlasMaterialBinding(
+        face_to_atlas_row=np.array([0, 1], dtype=np.int32),
+        material_probability=np.zeros((2, 2, 2, 1), dtype=np.float32),
+        supported=np.zeros((2, 2, 2), dtype=bool),
+        valid_texels=valid,
+        material_names=("brick",),
+        material_class=np.array([1], dtype=np.int32),
+        provenance={"rule": "all valid texels are woody vegetation without canopy chords"},
+        nonblocking=np.broadcast_to(valid, (2, 2, 2)).copy(),
+    )
+    pass_config = TraceConfig(rays=4096, max_bounces=1, roulette_start=2, seed=73)
+    cpu_pass = SbrTracer(
+        plane,
+        np.zeros(2, dtype=np.int64),
+        permittivity,
+        rms_height_m,
+        pass_config,
+        atlas_material=pass_through_binding,
+    ).trace(np.array([0.0, 0.0, 1.0]), MODELS)
+    assert cpu_pass.escaped_fraction == 1.0
+    assert cpu_pass.mean_bounces == 0.0
+    assert cpu_pass.susceptibility == cpu_pass.susceptibility_direct
+
+    device_pass = DeviceSbrKernel(
+        plane,
+        np.zeros(2, dtype=np.int64),
+        permittivity,
+        rms_height_m,
+        pass_config,
+        atlas_material=pass_through_binding,
+    ).trace_escape_records(np.array([0.0, 0.0, 1.0]))
+    launch = device_pass.all_launch_direction
+    hit, *_rest = plane.intersect(
+        np.array([0.0, 0.0, 1.0]) + pass_config.ray_epsilon_m * launch,
+        launch,
+    )
+    assert hit.any()
+    np.testing.assert_array_equal(device_pass.ray_index, np.arange(pass_config.rays, dtype=np.uint32))
+    np.testing.assert_array_equal(device_pass.bounces, np.zeros(pass_config.rays, dtype=np.uint32))
+    np.testing.assert_array_equal(device_pass.throughput, np.ones(pass_config.rays, dtype=np.float32))
+    np.testing.assert_array_equal(device_pass.exit_direction, launch)

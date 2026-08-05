@@ -276,6 +276,16 @@ def test_the_pinned_digests_are_four_different_runs_and_not_four_copies():
     assert len(digests) == len(PINNED_DIGESTS)
 
 
+def test_atlas_materials_are_opt_in_and_identify_their_atlas():
+    legacy = escape()
+    first = legacy.replace(materials="atlas", atlas_npz="outputs/site_semantics/site/joint_atlas_250m_r8.npz")
+    second = first.replace(atlas_npz="outputs/site_semantics/site/joint_atlas_250m_r16.npz")
+
+    assert legacy.digest() == PINNED_DIGESTS["escape headline"][1]
+    assert first.digest() != legacy.digest()
+    assert second.digest() != first.digest()
+
+
 # ---------------------------------------------------------------- validation
 
 

@@ -28,8 +28,17 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 # root and do not need it.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 
-from golden.cases import CASES, CASES_BY_ID, GOLDEN_DIR, ROOT, Case  # noqa: E402
+from golden.cases import CASES, CASES_BY_ID, GOLDEN_DIR, ROOT, Case
 
+
+SOURCE_PATHSPECS = (
+    ":(top)papers/city-exposure-study/semantic_twin",
+    ":(top)src/aegis",
+    ":(top,exclude,glob)papers/city-exposure-study/semantic_twin/tests/golden/*.json",
+    ":(top,exclude)papers/city-exposure-study/semantic_twin/CODEX_PROMPT.md",
+    ":(top,exclude)papers/city-exposure-study/semantic_twin/HANDOFF.md",
+    ":(top,exclude,glob)papers/city-exposure-study/semantic_twin/docs/HANDOFF_*.md",
+)
 
 #: What the lock deliberately does not cover, and why. A hole nobody wrote down
 #: reads later as a hole nobody noticed.
@@ -133,13 +142,9 @@ THIN_STATISTICS = {
     ),
     "coverage_ladder_korenmarkt_130m:paired_median_shift_db": (
         "Locked at eight standpoints, where the published ladder used 120. The paired "
-        "median shift for the fishnet rung comes out near 1e-7 dB, and that is arithmetic "
-        "rather than physics: only two of the eight standpoints see any bound triangle, so "
-        "the middle two of the eight paired ratios are both exactly 1. The same run's "
-        "distribution_median_shift_db is +0.11 dB and its max_absolute_change is +4.66 %, "
-        "which is the honest size of the effect. run_exposure.py already carries both "
-        "statistics and says in a comment that the shift is concentrated in a minority of "
-        "locations. Read the pair, never the paired median alone at this standpoint count."
+        "median shift for the fishnet rung is 3.6e-8 dB. The distribution median shift is "
+        "0.011749 dB and the largest absolute change is 0.459 %. The paired median alone "
+        "hides the small changes at this standpoint count, so read all three statistics."
     ),
 }
 
@@ -149,6 +154,24 @@ def _git(*args: str) -> str:
         return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "unknown"
+
+
+def _git_dirty(cwd: pathlib.Path, pathspecs: tuple[str, ...] = ()) -> bool:
+    """Return Git dirty state, failing closed when status cannot be read."""
+    command = ["git", "status", "--porcelain=v1", "--untracked-files=all"]
+    if pathspecs:
+        command.extend(("--", *pathspecs))
+    try:
+        status = subprocess.run(
+            command,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return True
+    return bool(status)
 
 
 def _versions() -> dict[str, str]:
@@ -177,6 +200,25 @@ def machine() -> dict[str, object]:
     }
 
 
+def source_provenance() -> dict[str, object]:
+    """Describe the source tree before fixture writes can make it dirty."""
+    return {
+        "git_sha": _git("rev-parse", "HEAD"),
+        "git_dirty": _git_dirty(ROOT),
+        "source_dirty": _git_dirty(ROOT, SOURCE_PATHSPECS),
+    }
+
+
+def case_provenance(source: dict[str, object]) -> dict[str, object]:
+    """Return provenance for one fixture captured from ``source``."""
+    return {
+        "captured_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "git_sha": source["git_sha"],
+        "git_dirty": source["git_dirty"],
+        "source_dirty": source["source_dirty"],
+    }
+
+
 def run_case(case: Case, python: str, *, ran: set[str] | None = None) -> float:
     """Run the case's command as a subprocess. Returns wall seconds.
 
@@ -197,7 +239,7 @@ def run_case(case: Case, python: str, *, ran: set[str] | None = None) -> float:
     command = [python, *case.command()]
     print(f"\n$ {' '.join(command)}", flush=True)
     started = time.perf_counter()
-    proc = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+    proc = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
     seconds = time.perf_counter() - started
     if proc.returncode != 0:
         sys.stderr.write(proc.stdout[-4000:])
@@ -294,10 +336,10 @@ def seed_spread(python: str, seeds: tuple[int, ...] = (7, 8, 9, 10, 11)) -> dict
 def monte_carlo(seeds: int = 8) -> dict[str, object]:
     """Monte Carlo noise alone: one fixed standpoint, one fixed walk, eight trace seeds."""
     import numpy as np
-
-    from semantic_twin.propagation import MODELS, MitsubaGeometry, SbrTracer, TraceConfig
     from semantic_twin.propagation.scene import classify_faces, load_bindings
     from semantic_twin.propagation.walk import build_walk, measure_ground_datum
+
+    from semantic_twin.propagation import MODELS, MitsubaGeometry, SbrTracer, TraceConfig
 
     mesh = ROOT / "data" / "geometry" / "korenmarkt" / "inhouse_leaf_130m_f64.ply"
     geometry = MitsubaGeometry(mesh, variant="llvm_ad_rgb")
@@ -356,28 +398,29 @@ def main() -> int:
     GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
     manifest_path = GOLDEN_DIR / "MANIFEST.json"
     manifest: dict[str, object] = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
-    manifest.update(
-        {
-            "what": "reference outputs captured before the semantic_twin refactor",
-            "captured_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "git_sha": _git("rev-parse", "HEAD"),
-            "git_branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
-            "git_dirty": bool(_git("status", "--porcelain")),
-            "study_root": str(ROOT),
-            "machine": machine(),
-        }
+    manifest.setdefault("what", "reference outputs captured before the semantic_twin refactor")
+    manifest.setdefault("study_root", str(ROOT))
+    if "machine" not in manifest:
+        manifest["machine"] = machine()
+    manifest["provenance_rule"] = (
+        "Each cases entry records the capture time and source state for that fixture. "
+        "source_dirty covers executable study inputs and src/aegis while excluding golden JSON and local handoffs. "
+        "The top-level captured_utc, git_sha, and git_dirty fields are a legacy fallback "
+        "only for entries which have not yet been recaptured with per-case provenance."
     )
     cases_block: dict[str, object] = dict(manifest.get("cases", {}))  # type: ignore[arg-type]
     manifest["deliberate_holes"] = DELIBERATE_HOLES
     manifest["thin_statistics"] = THIN_STATISTICS
     manifest["reproducibility"] = REPRODUCIBILITY
 
+    source = source_provenance()
     ran: set[str] = set()
     for case in selected:
         seconds = run_case(case, args.python, ran=ran)
         ran.add(case.ident)
         payload = case.reduce()
         case.fixture.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
+        provenance = case_provenance(source)
         cases_block[case.ident] = {
             "tier": case.tier,
             "driver": case.driver,
@@ -390,6 +433,7 @@ def main() -> int:
             "wall_seconds": round(seconds, 2),
             "fixture": case.fixture.name,
             "fixture_bytes": case.fixture.stat().st_size,
+            **provenance,
         }
         print(f"  wrote {case.fixture.name} ({case.fixture.stat().st_size / 1024:.1f} kB)", flush=True)
 

@@ -82,6 +82,10 @@ class PanoramaRunConfig:
     gate_min_pixels: int
     output_width: int
     force: bool
+    dense_revision: str | None = None
+    sam_revision: str | None = None
+    sam_repository_commit: str | None = None
+    production: bool = False
 
 
 @dataclass
@@ -253,17 +257,35 @@ def run(config: PanoramaRunConfig) -> None:
     views_dir = out / "views"
     views_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
-    backend = Mask2FormerBackend(config.model, config.device, inference_size=config.inference_size)
+    backend = Mask2FormerBackend(
+        config.model,
+        config.device,
+        inference_size=config.inference_size,
+        revision=config.dense_revision,
+        production=config.production,
+    )
 
     concepts: ConceptPass | None = None
     catalog: ConceptCatalog | None = None
+    catalogue_identity: dict[str, Any] | None = None
     if config.backend == "hybrid":
         from .prompted import MODEL as SAM3_MODEL
-        from .prompted import Sam3ConceptBackend, cache_key
+        from .prompted import (
+            PRODUCTION_CONCEPT_ID_COUNT,
+            Sam3ConceptBackend,
+            _is_commit,
+            cache_key,
+            semantic_catalogue_identity,
+        )
 
         if config.concepts is None:
             raise SystemExit("--backend hybrid needs --concepts pointing at the concept catalogue")
+        catalogue_identity = semantic_catalogue_identity(config.concepts, production=config.production)
         catalog = ConceptCatalog.load(config.concepts)
+        if config.production and len(catalog.id2label()) != PRODUCTION_CONCEPT_ID_COUNT:
+            raise ValueError(
+                f"production hybrid inference requires the fixed {PRODUCTION_CONCEPT_ID_COUNT}-ID concept vocabulary"
+            )
         if BRIDGE not in catalog.bridges:
             raise SystemExit(f"the catalogue has no {BRIDGE} bridge, so prompts cannot be gated or fused")
         concept_dir = out / "concepts"
@@ -276,6 +298,9 @@ def run(config: PanoramaRunConfig) -> None:
                 resolution=config.concept_resolution,
                 threshold=config.concept_threshold,
                 prompt_batch=config.prompt_batch,
+                revision=config.sam_revision,
+                repository_commit=config.sam_repository_commit,
+                production=config.production,
             ),
             cache_dir=concept_dir,
             cache_key=cache_key(
@@ -284,6 +309,7 @@ def run(config: PanoramaRunConfig) -> None:
                 threshold=config.concept_threshold,
                 view_size=config.view_size,
                 catalog=catalog,
+                model_revision=config.sam_revision if _is_commit(config.sam_revision) else None,
             ),
             minimum_pixels=config.gate_min_pixels,
         )
@@ -327,6 +353,7 @@ def run(config: PanoramaRunConfig) -> None:
         "inference_size": backend.inference_size,
         "processor_saved_size": backend.processor_saved_size,
         "checkpoint": backend.checkpoint_digest,
+        "model_revision": backend.revision_identity,
         "inference_size_status": "set explicitly, not inherited from the checkpoint processor",
         "shape": [output_height, output_width],
         "output_width": output_width,
@@ -421,6 +448,12 @@ def run(config: PanoramaRunConfig) -> None:
                 "tree_trunk": "an object with wood material evidence, never a woody canopy volume",
             },
             concept_seconds=round(concepts.elapsed_s, 2),
+            concept_vocabulary={
+                "id_count": len(catalog.id2label()),
+                "prompt_count": len(catalog.concepts),
+                "catalogue_path": str(config.concepts),
+                **catalogue_identity,
+            },
         )
 
     np.savez_compressed(out / "panorama_semantics.npz", **arrays)

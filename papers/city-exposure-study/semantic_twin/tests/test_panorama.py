@@ -17,7 +17,11 @@ from semantic_twin.vision.vocabulary import ConceptCatalog
 from semantic_twin.vision.dense import (
     BRIDGE,
     DEFAULT_INFERENCE_SIZE,
+    MODEL,
+    PRODUCTION_REVISION,
+    Mask2FormerBackend,
     dense_cache_settings,
+    resolve_mask2former_snapshot,
     reusable_dense_cache,
 )
 from semantic_twin.vision.fuse import fuse_layers, fuse_predictions
@@ -26,6 +30,135 @@ from semantic_twin.vision.panorama import predict_views
 from semantic_twin.vision.views import DEFAULT_VIEW_SIZE, perspective_crop, present_classes
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+def snapshot_path(root: pathlib.Path, revision: str) -> pathlib.Path:
+    path = root / "models--facebook--mask2former" / "snapshots" / revision
+    path.mkdir(parents=True)
+    return path
+
+
+def test_production_dense_snapshot_is_exactly_pinned_and_recorded(tmp_path) -> None:
+    calls: list[tuple[str, str | None]] = []
+    path = snapshot_path(tmp_path, PRODUCTION_REVISION)
+
+    def download(*, repo_id: str, revision: str | None) -> str:
+        calls.append((repo_id, revision))
+        return str(path)
+
+    resolved, identity = resolve_mask2former_snapshot(
+        MODEL,
+        PRODUCTION_REVISION,
+        production=True,
+        downloader=download,
+    )
+
+    assert resolved == path
+    assert calls == [(MODEL, PRODUCTION_REVISION)]
+    assert identity == {
+        "status": "resolved",
+        "repository": MODEL,
+        "requested_revision": PRODUCTION_REVISION,
+        "resolved_revision": PRODUCTION_REVISION,
+        "request_is_immutable": True,
+        "matches_reviewed_production_snapshot": True,
+        "production_mode": True,
+        "required_production_revision": PRODUCTION_REVISION,
+        "note": "The requested revision was immutable and the returned snapshot matched it.",
+    }
+
+
+@pytest.mark.parametrize("revision", [None, "main", "4772b6b", "1" * 40])
+def test_production_dense_snapshot_refuses_any_other_revision(revision: str | None) -> None:
+    with pytest.raises(ValueError, match="production dense inference requires --dense-revision"):
+        resolve_mask2former_snapshot(MODEL, revision, production=True)
+
+
+def test_production_dense_snapshot_refuses_another_repository() -> None:
+    with pytest.raises(ValueError, match="production dense inference requires model"):
+        resolve_mask2former_snapshot("someone/another-model", PRODUCTION_REVISION, production=True)
+
+
+def test_development_dense_snapshot_resolves_a_mutable_reference_honestly(tmp_path) -> None:
+    path = snapshot_path(tmp_path, PRODUCTION_REVISION)
+    resolved, identity = resolve_mask2former_snapshot(
+        MODEL,
+        "main",
+        production=False,
+        downloader=lambda **unused: str(path),
+    )
+
+    assert resolved == path
+    assert identity["requested_revision"] == "main"
+    assert identity["resolved_revision"] == PRODUCTION_REVISION
+    assert identity["request_is_immutable"] is False
+    assert identity["matches_reviewed_production_snapshot"] is True
+    assert identity["production_mode"] is False
+    assert "mutable" in identity["note"]
+
+
+def test_dense_snapshot_rejects_a_hub_response_from_the_wrong_commit(tmp_path) -> None:
+    requested = "1" * 40
+    wrong = snapshot_path(tmp_path, "2" * 40)
+    with pytest.raises(RuntimeError, match="returned a different Mask2Former snapshot"):
+        resolve_mask2former_snapshot(
+            MODEL,
+            requested,
+            production=False,
+            downloader=lambda **unused: str(wrong),
+        )
+
+
+def test_dense_backend_loads_processor_and_weights_from_one_local_snapshot(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import huggingface_hub
+    import transformers
+
+    path = snapshot_path(tmp_path, PRODUCTION_REVISION)
+    calls: list[tuple[str, str, dict[str, object]]] = []
+
+    class Processor:
+        size = {"height": 384, "width": 384}
+
+    class Model:
+        config = type("Config", (), {"id2label": {0: "Sky"}})()
+
+        def to(self, device: str):
+            calls.append(("device", device, {}))
+            return self
+
+        def eval(self) -> None:
+            calls.append(("eval", "", {}))
+
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", lambda **unused: str(path))
+    monkeypatch.setattr(
+        transformers.AutoImageProcessor,
+        "from_pretrained",
+        classmethod(lambda cls, source, **options: (calls.append(("processor", source, options)), Processor())[1]),
+    )
+    monkeypatch.setattr(
+        transformers.Mask2FormerForUniversalSegmentation,
+        "from_pretrained",
+        classmethod(lambda cls, source, **options: (calls.append(("model", source, options)), Model())[1]),
+    )
+
+    backend = Mask2FormerBackend(
+        MODEL,
+        "cpu",
+        revision=PRODUCTION_REVISION,
+        production=True,
+    )
+
+    assert ("processor", str(path), {"local_files_only": True}) in calls
+    assert (
+        "model",
+        str(path),
+        {"use_safetensors": True, "local_files_only": True},
+    ) in calls
+    assert backend.checkpoint_digest == PRODUCTION_REVISION
+    assert backend.revision_identity["production_mode"] is True
 
 
 def panorama_image(width: int = 256, height: int = 128) -> Image.Image:

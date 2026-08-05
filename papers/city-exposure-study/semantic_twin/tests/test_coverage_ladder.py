@@ -10,7 +10,9 @@ survive the coverage ledger's own admission rule.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import pathlib
 from dataclasses import fields
 from types import SimpleNamespace
 
@@ -300,6 +302,28 @@ def write_complete_spectra(path, indices, local_cells):
     )
 
 
+def seal_output_generation(output, stem, manifest, config):
+    rows = output / f"{stem}_locations.jsonl"
+    spectra = output / f"{stem}_spectra.npz"
+    mesh = pathlib.Path(run_exposure.site_mesh(config.site, config.crop_m))
+
+    def artifact(path):
+        return {
+            "path": path.name,
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "bytes": path.stat().st_size,
+        }
+
+    manifest["mesh"] = str(mesh)
+    manifest["mesh_sha256"] = hashlib.sha256(mesh.read_bytes()).hexdigest()
+    manifest["output_generation"] = {
+        "format_version": 1,
+        "id": "0123456789abcdef0123456789abcdef",
+        "artifacts": {"locations": artifact(rows), "spectra": artifact(spectra)},
+    }
+    (output / f"{stem}_manifest.json").write_text(json.dumps(manifest))
+
+
 def complete_run(output, stem, **overrides):
     rows = "".join(json.dumps(complete_result_row(index, run_exposure.MODELS)) + "\n" for index in range(80))
     (output / f"{stem}_locations.jsonl").write_text(rows)
@@ -313,7 +337,7 @@ def complete_run(output, stem, **overrides):
         "trace_config": {"rays": 200_000, "seed": 7, "max_bounces": 6},
         "illumination_models": {name: model_identity(model) for name, model in run_exposure.MODELS.items()},
     } | overrides
-    (output / f"{stem}_manifest.json").write_text(json.dumps(manifest))
+    seal_output_generation(output, stem, manifest, replay_config())
 
 
 def replay_config() -> RunConfig:
@@ -338,6 +362,87 @@ def replay_config() -> RunConfig:
 def test_a_run_already_on_disk_at_the_same_settings_is_not_retraced(ledger):
     complete_run(run_exposure.OUTPUT, "korenmarkt_walk_15ghz")
     assert run_exposure.reusable(replay_config())
+
+
+def test_reuse_refuses_a_support_mesh_replaced_at_the_same_path(ledger, tmp_path, monkeypatch):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    original = run_exposure.site_mesh(config.site, config.crop_m)
+    resolved = tmp_path / original.name
+    resolved.write_bytes(original.read_bytes())
+    monkeypatch.setattr("semantic_twin.exposure.reuse.paths.site_mesh", lambda _site, _crop: resolved)
+
+    assert run_exposure.reusable(config)
+
+    resolved.write_bytes(b"replacement mesh")
+    assert not run_exposure.reusable(config)
+
+
+def test_reuse_refuses_rows_from_an_interrupted_mixed_generation(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    rows = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_locations.jsonl"
+    replacement = [complete_result_row(index, config.models) for index in range(config.locations)]
+    replacement[0]["chi_rooftop"] = 0.25
+    rows.write_text("".join(json.dumps(row) + "\n" for row in replacement))
+
+    assert not run_exposure.reusable(config)
+
+
+def test_reuse_refuses_an_unsealed_legacy_generation(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    document = json.loads(manifest.read_text())
+    del document["output_generation"]
+    manifest.write_text(json.dumps(document))
+
+    assert not run_exposure.reusable(config)
+
+
+def test_an_atlas_run_is_reused_only_while_the_artifact_bytes_match(ledger, tmp_path):
+    atlas = tmp_path / "joint_atlas.npz"
+    atlas.write_bytes(b"first atlas build")
+    mesh = run_exposure.site_mesh("korenmarkt", 130)
+    atlas_sha256 = hashlib.sha256(atlas.read_bytes()).hexdigest()
+    atlas_sidecar = atlas.with_suffix(".json")
+    atlas_sidecar.write_text(
+        json.dumps(
+            {
+                "schema": "aegis.joint_semantic_material_atlas",
+                "format_version": 1,
+                "artifact": {
+                    "path": atlas.name,
+                    "sha256": atlas_sha256,
+                    "content_sha256": "1" * 64,
+                },
+                "mesh": {"sha256": hashlib.sha256(mesh.read_bytes()).hexdigest()},
+            }
+        )
+    )
+    config = replay_config().replace(materials="atlas", atlas_npz=str(atlas))
+    complete_identified_run(run_exposure.OUTPUT, config)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    document = json.loads(manifest.read_text())
+    document["semantic_binding"] = {
+        "atlas_npz_sha256": atlas_sha256,
+        "atlas_manifest_sha256": hashlib.sha256(atlas_sidecar.read_bytes()).hexdigest(),
+    }
+    manifest.write_text(json.dumps(document))
+
+    assert run_exposure.reusable(config)
+
+    atlas.write_bytes(b"rebuilt atlas at the same path")
+    assert not run_exposure.reusable(config)
+
+
+def test_an_atlas_run_without_a_recorded_artifact_hash_is_not_reused(ledger, tmp_path):
+    atlas = tmp_path / "joint_atlas.npz"
+    atlas.write_bytes(b"atlas")
+    config = replay_config().replace(materials="atlas", atlas_npz=str(atlas))
+    complete_identified_run(run_exposure.OUTPUT, config)
+
+    assert not run_exposure.reusable(config)
 
 
 def test_a_legacy_route_without_registered_point_provenance_is_not_reused(ledger):
@@ -366,6 +471,7 @@ def test_a_registered_route_reuses_only_rows_with_the_aligned_point_kind(ledger)
     for row in rows:
         row["point_kind"] = document["walk"]["point_kind"][row["index"]]
     rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    seal_output_generation(run_exposure.OUTPUT, stem.name, document, config)
 
     assert run_exposure.reusable(config)
     rows[1]["point_kind"] = "camera_registered"
@@ -390,7 +496,7 @@ def complete_identified_run(output, recorded: RunConfig, *, path_config: RunConf
         "run_digest": recorded.digest(),
         "run": recorded.as_dict(),
     }
-    (output / f"{stem}_manifest.json").write_text(json.dumps(manifest))
+    seal_output_generation(output, stem, manifest, recorded)
 
 
 IDENTITY_CHANGES = {
@@ -414,6 +520,7 @@ IDENTITY_CHANGES = {
     "range_weighted_escape": True,
     "materials": "geometric",
     "walk_npz": "outputs/another_walk.npz",
+    "atlas_npz": "outputs/another_atlas.npz",
     "rays": 100_000,
     "batch": 100_000,
     "local_cells": 256,
@@ -574,6 +681,7 @@ def test_a_walk_shorter_than_the_requested_pilot_remains_reusable(ledger):
     rows_path = stem.with_name(f"{stem.name}_locations.jsonl")
     rows_path.write_text("\n".join(rows_path.read_text().splitlines()[:63]) + "\n")
     write_complete_spectra(stem.with_name(f"{stem.name}_spectra.npz"), np.arange(63), config.local_cells)
+    seal_output_generation(run_exposure.OUTPUT, stem.name, document, config)
 
     assert run_exposure.reusable(config)
 
@@ -803,9 +911,9 @@ def test_a_sweep_refuses_to_overwrite_a_run_it_cannot_reuse(ledger, monkeypatch)
     # over them and say nothing.
     ledger()
     only_walk(monkeypatch, fishnet=False)
-    monkeypatch.setattr(run_exposure, "site_mesh", lambda site, crop_m: "mesh.ply")
     monkeypatch.setattr(run_exposure, "BodyCoupler", lambda *a, **k: None)
     complete_run(run_exposure.OUTPUT, "korenmarkt_geometric_15ghz", locations_traced=120)
+    monkeypatch.setattr(run_exposure, "site_mesh", lambda site, crop_m: "mesh.ply")
     (run_exposure.OUTPUT / "korenmarkt_geometric_15ghz_locations.jsonl").write_text("{}\n" * 120)
     with pytest.raises(ValueError, match="tag-suffix"):
         run_exposure.run_coverage_ladder(

@@ -74,6 +74,8 @@ def _escape_config(
     roulette_start = options.pop("roulette_start", DEFAULT_MAX_BOUNCES + 1)
     if roulette_start is None:
         roulette_start = DEFAULT_MAX_BOUNCES + 1
+    walk_npz = options.pop("walk_npz", None)
+    atlas_npz = options.pop("atlas_npz", None)
     config = RunConfig(
         site=options.pop("site", "korenmarkt"),
         crop_m=options.pop("crop_m", 130),
@@ -91,7 +93,8 @@ def _escape_config(
         max_bounces=options.pop("max_bounces"),
         roulette_start=roulette_start,
         materials=options.pop("materials"),
-        walk_npz=str(path) if (path := options.pop("walk_npz", None)) is not None else None,
+        walk_npz=str(walk_npz) if walk_npz is not None else None,
+        atlas_npz=str(atlas_npz) if atlas_npz is not None else None,
         rays=rays,
         local_cells=options.pop("local_cells"),
         seed=options.pop("seed"),
@@ -176,13 +179,14 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--materials",
         choices=(
+            "geometric",
+            "atlas",
             "semantic",
             "walk",
             "walk_material",
             "walk_material_mixture",
             "walk_material_over_entity",
             "walk_material_facade_only",
-            "geometric",
         ),
         default="geometric",
     )
@@ -190,10 +194,18 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         "--walk-npz",
         default=None,
         help=(
-            "fused walk semantics to bind materials from, for --materials walk. "
+            "fused walk semantics to bind materials from. "
             "Defaults to the eight station set that passed the 4 degree residual gate. "
             "outputs/walk_korenmarkt/walk_semantic_conflict9.npz is the nine station set "
             "that passes the sky conflict gate of section 3.2.1 instead."
+        ),
+    )
+    parser.add_argument(
+        "--atlas-npz",
+        default=None,
+        help=(
+            "joint barycentric surface atlas for --materials atlas. Defaults to "
+            "outputs/site_semantics/SITE/joint_atlas_CROPm_r8.npz"
         ),
     )
     parser.add_argument("--frequency-ghz", type=float, default=15.0)
@@ -331,6 +343,7 @@ def main(argv: list[str] | None = None) -> int:
             site=args.site,
             crop_m=args.crop_m,
             walk_npz=pathlib.Path(args.walk_npz) if args.walk_npz else None,
+            atlas_npz=pathlib.Path(args.atlas_npz) if args.atlas_npz else None,
             workers=args.workers,
         )
     return 0

@@ -2,9 +2,11 @@
 
 The dense ray fan remains in the file as an overview. This module adds two
 small animations beside it. The first ranks the bounded visual-trace samples
-under the rooftop angular law and shows one complete sample per frame. The
-second shows one stored SBR chain and its roofline visibility connections per
-frame.
+under the rooftop angular law. It separates the finite reflection prefix from
+the display proxy for the semi-infinite escape ray and arrows the incoming
+travel direction. The second shows exactly one roofline visibility test per
+frame. Its two coloured parts meet at one selected scattering vertex. No later
+part of the stored reverse path is shown.
 
 These frames do not turn the visual trace into a transmitter-to-receiver MPC
 decomposition. The production spectrum was computed from a separate, much
@@ -15,8 +17,9 @@ do not contain the factors needed to reconstruct a quantitative NEE deposit.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -37,6 +40,8 @@ from .style import (
     ANIMATION_SCATTER_COLOUR,
     ANIMATION_SOURCE_COLOUR,
 )
+
+ANIMATION_CAMERA_NAME = "cam_path_animation"
 
 
 @dataclass(frozen=True)
@@ -67,6 +72,16 @@ class _NeeArrays:
     site: np.ndarray
     rim_weight: np.ndarray
     blocked: np.ndarray
+
+
+@dataclass(frozen=True)
+class NeeCandidate:
+    """One stored roofline visibility test selected for one frame."""
+
+    record_index: int
+    path_index: int
+    vertex_index: int
+    blocked: bool
 
 
 def _payload_keys(payload: Any) -> Any:
@@ -104,8 +119,8 @@ def rank_rooftop_visual_paths(
     retrace because the payload records every ray cast by that retrace. It is not
     a per-path decomposition of the separate production GPU spectrum.
     """
-    if count < 1:
-        raise ValueError("animation path count must be positive")
+    if count < 0:
+        raise ValueError("animation path count must be non-negative")
     keys = _payload_keys(payload)
     required = {
         "path_vertices",
@@ -220,16 +235,19 @@ def _curve_from_legs(
         pairs[:, 1] = pairs[:, 0] + escaped_proxy_m * vector
     power = legs.leg_throughput[keep]
     point_power = np.repeat(power, 2)
+    display_power = np.maximum(point_power, 0.025)
     obj = scene.build_curves(
         name,
         pairs.reshape(-1, 3),
         np.full(power.size, 2, dtype=np.int32),
-        radius_m * np.cbrt(np.maximum(point_power, 0.0)),
+        radius_m * np.cbrt(display_power),
         into,
     )
     scene.attach_values(obj, "value_throughput", point_power, "POINT")
     scene.attach_values(obj, "value_leg_index", np.repeat(legs.leg_index[keep], 2), "POINT")
     scene.assign(obj, material)
+    obj["display_radius_power_floor"] = 0.025
+    obj["display_radius_floor_is_visual_only"] = True
     return obj
 
 
@@ -284,7 +302,13 @@ def _build_chain(
         objects.append(proxy)
     bounces = int(np.asarray(payload["path_bounces"])[path_index])
     for obj in objects:
-        _stamp_path_object(obj, path_index=path_index, bounces=bounces, role="stored SBR chain", score=score)
+        _stamp_path_object(
+            obj,
+            path_index=path_index,
+            bounces=bounces,
+            role="bounded visual-retrace escape sample",
+            score=score,
+        )
     return objects
 
 
@@ -298,40 +322,146 @@ def _marker_mesh(name: str, points: np.ndarray, into: Any, radius_m: float, mate
     obj = scene.build_mesh(name, vertices, faces, into)
     scene.assign(obj, material)
     obj["markers"] = int(unique.shape[0])
+    obj["marker_radius_m"] = radius_m
     return obj
 
 
-def _connection_curve(
-    name: str,
-    origin: np.ndarray,
-    site: np.ndarray,
-    rim_weight: np.ndarray,
-    into: Any,
+def _arrowhead_geometry(
+    tip: np.ndarray,
+    direction: np.ndarray,
     *,
+    length_m: float,
     radius_m: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return one four-sided arrowhead whose point follows ``direction``."""
+    tip = np.asarray(tip, dtype=np.float64)
+    direction = np.asarray(direction, dtype=np.float64)
+    norm = float(np.linalg.norm(direction))
+    if tip.shape != (3,) or direction.shape != (3,) or norm <= 1.0e-12:
+        raise ValueError("an arrowhead needs one point and one non-zero direction")
+    axis = direction / norm
+    helper = np.array([0.0, 0.0, 1.0]) if abs(axis[2]) < 0.9 else np.array([0.0, 1.0, 0.0])
+    side_a = np.cross(axis, helper)
+    side_a /= np.linalg.norm(side_a)
+    side_b = np.cross(axis, side_a)
+    base = tip - length_m * axis
+    vertices = np.vstack(
+        [
+            tip,
+            base + radius_m * side_a,
+            base + radius_m * side_b,
+            base - radius_m * side_a,
+            base - radius_m * side_b,
+        ]
+    )
+    faces = np.array(
+        [
+            [0, 1, 2],
+            [0, 2, 3],
+            [0, 3, 4],
+            [0, 4, 1],
+            [1, 4, 3],
+            [1, 3, 2],
+        ],
+        dtype=np.int32,
+    )
+    return vertices, faces
+
+
+def _direction_arrow(
+    name: str,
+    escape_origin: np.ndarray,
+    external: np.ndarray,
+    into: Any,
     material: Any,
-) -> Any | None:
+) -> Any:
+    """Draw an inward arrow on a finite proxy for a semi-infinite arrival."""
     from . import scene
 
-    if origin.size == 0:
-        return None
-    ends = np.empty((origin.shape[0] * 2, 3), dtype=np.float64)
-    ends[0::2], ends[1::2] = origin, site
-    obj = scene.build_curves(
-        name,
-        ends,
-        np.full(origin.shape[0], 2, dtype=np.int32),
-        np.full(ends.shape[0], radius_m),
-        into,
-    )
-    scene.attach_values(obj, "value_roofline_rim_direct_flux", np.repeat(rim_weight, 2), "POINT")
+    outward = np.asarray(external, dtype=np.float64) - np.asarray(escape_origin, dtype=np.float64)
+    length = float(np.linalg.norm(outward))
+    outward /= max(length, 1.0e-12)
+    tip = external - 0.62 * length * outward
+    vertices, faces = _arrowhead_geometry(tip, -outward, length_m=0.95, radius_m=0.34)
+    obj = scene.build_mesh(name, vertices, faces, into)
     scene.assign(obj, material)
-    obj["stored_weight_is"] = "roofline rim direct flux only"
-    obj["stored_weight_is_not"] = "a quantitative NEE contribution"
+    obj["candidate_part"] = "incoming travel direction arrow"
+    obj["arrow_points_toward_receiver"] = True
+    obj["arrow_is_on_finite_display_proxy"] = True
     return obj
+
+
+def _animation_camera() -> Any:
+    """Return a private camera copied from the static ray overview camera.
+
+    Prepared still scenes also use ``cam_rays``. Animation keyframes therefore
+    belong on a separate object and camera datablock, so saving an animation
+    cannot change the framing of any still scene.
+    """
+    import bpy
+
+    camera = bpy.data.objects.get(ANIMATION_CAMERA_NAME)
+    if camera is not None:
+        return camera
+    source = bpy.data.objects.get("cam_rays")
+    if source is None:
+        raise RuntimeError("path animation needs cam_rays before it can copy its private camera")
+    camera = source.copy()
+    camera.data = source.data.copy()
+    camera.animation_data_clear()
+    camera.data.animation_data_clear()
+    camera.name = ANIMATION_CAMERA_NAME
+    camera.data.name = ANIMATION_CAMERA_NAME
+    for collection in source.users_collection:
+        collection.objects.link(camera)
+    camera["animation_camera_source"] = source.name
+    camera["animation_camera_is_private"] = True
+    return camera
+
+
+def _key_camera_for_frame(points: np.ndarray, frame: int) -> None:
+    """Fit the private animation camera to one frame."""
+    import bpy
+
+    from .payload import camera_rotation
+
+    if points.size == 0:
+        return
+    camera = _animation_camera()
+    points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    low, high = np.min(points, axis=0), np.max(points, axis=0)
+    centre = 0.5 * (low + high)
+    radius = max(0.5 * float(np.linalg.norm(high - low)), 2.0)
+    if "animation_view_direction" in camera:
+        view = np.asarray(camera["animation_view_direction"], dtype=np.float64)
+    else:
+        view = np.asarray(camera.location, dtype=np.float64) - centre
+        if np.linalg.norm(view) <= 1.0e-9:
+            view = np.array([0.6, -1.0, 0.55])
+        view /= np.linalg.norm(view)
+        camera["animation_view_direction"] = view.tolist()
+
+    render = bpy.context.scene.render
+    aspect = max(float(render.resolution_x) / max(float(render.resolution_y), 1.0), 1.0e-6)
+    half_horizontal = np.arctan(float(camera.data.sensor_width) / (2.0 * float(camera.data.lens)))
+    half_vertical = np.arctan(np.tan(half_horizontal) / aspect)
+    distance = 1.35 * radius / max(np.tan(min(half_horizontal, half_vertical)), 1.0e-3)
+    location = centre + distance * view
+    camera.location = tuple(location)
+    camera.rotation_euler = camera_rotation(location, centre)
+    camera.data.clip_end = max(float(camera.data.clip_end), distance + 4.0 * radius)
+    for data_path in ("location", "rotation_euler"):
+        camera.keyframe_insert(data_path=data_path, frame=frame)
+    action = camera.animation_data.action
+    for curve in action.fcurves:
+        if curve.data_path in {"location", "rotation_euler"}:
+            for point in curve.keyframe_points:
+                point.interpolation = "CONSTANT"
+    camera["animation_camera_fit"] = "per-frame bounds with 35 percent margin"
 
 
 def _ordered_nee_paths(payload: Any, limit: int) -> np.ndarray:
+    """Put paths with both clear and blocked tests first for explanation."""
     selected = np.asarray(payload["nee_paths"], dtype=np.int64)
     connection_path = np.asarray(payload["nee_path_index"], dtype=np.int64)
     vertex_index = np.asarray(payload["nee_vertex_index"], dtype=np.int64)
@@ -369,6 +499,10 @@ def _animation_materials(scene_tools: Any) -> dict[str, Any]:
         "source": scene_tools.emissive_material(
             "animation NEE source endpoint", None, ANIMATION_SOURCE_COLOUR, strength=2.2
         ),
+        "receiver": scene_tools.emissive_material("animation receiver marker", None, (0.15, 0.95, 1.0), strength=2.8),
+        "boundary": scene_tools.emissive_material(
+            "animation external arrival boundary", None, ANIMATION_PROXY_COLOUR, strength=2.8
+        ),
         "label": scene_tools.emissive_material("animation frame label", None, (1.0, 0.96, 0.82), strength=1.4),
         "label_panel": scene_tools.emissive_material(
             "animation frame label panel", None, (0.012, 0.016, 0.025), strength=1.0
@@ -397,9 +531,7 @@ def _frame_label(
 
     from . import scene
 
-    camera = bpy.data.objects.get("cam_rays")
-    if camera is None:
-        raise RuntimeError("path animation needs cam_rays before it can place its frame label")
+    camera = _animation_camera()
     text_data = bpy.data.curves.new(f"{name} text", type="FONT")
     text_data.body = body
     text_data.align_x = "LEFT"
@@ -444,6 +576,9 @@ def _build_ranked_frames(
     import bpy
 
     rows: list[dict[str, Any]] = []
+    vertices = np.asarray(payload["path_vertices"], dtype=np.float64)
+    offsets = np.asarray(payload["path_offsets"], dtype=np.int64)
+    exit_direction = np.asarray(payload["path_exit_direction"], dtype=np.float64)
     for rank, path_index in enumerate(ranked.path_index, start=1):
         score = float(ranked.score[rank - 1])
         bounces = int(ranked.bounces[rank - 1])
@@ -461,6 +596,58 @@ def _build_ranked_frames(
             proxy_material=materials["proxy"],
             score=score,
         )
+        start = int(offsets[path_index])
+        receiver = vertices[start]
+        bounce_points = vertices[start + 1 : start + bounces + 1]
+        escape_origin = vertices[start + bounces]
+        escaped_direction = exit_direction[path_index].copy()
+        escaped_direction /= max(float(np.linalg.norm(escaped_direction)), 1.0e-12)
+        external = escape_origin + escaped_proxy_m * escaped_direction
+        receiver_marker = _marker_mesh(
+            f"rank {rank:02d} | receiver",
+            receiver[None, :],
+            path_collection,
+            0.52,
+            materials["receiver"],
+        )
+        bounce_marker = _marker_mesh(
+            f"rank {rank:02d} | finite reflection vertices",
+            bounce_points,
+            path_collection,
+            0.36,
+            materials["scatter"],
+        )
+        boundary_marker = _marker_mesh(
+            f"rank {rank:02d} | external arrival direction boundary",
+            external[None, :],
+            path_collection,
+            0.46,
+            materials["boundary"],
+        )
+        direction_arrow = _direction_arrow(
+            f"rank {rank:02d} | incoming travel direction arrow",
+            escape_origin,
+            external,
+            path_collection,
+            materials["boundary"],
+        )
+        for marker, marker_role in (
+            (receiver_marker, "receiver endpoint"),
+            (bounce_marker, "finite reflection vertices"),
+            (boundary_marker, "display boundary on a semi-infinite arrival direction"),
+            (direction_arrow, "incoming travel direction arrow"),
+        ):
+            if marker is None:
+                continue
+            _stamp_path_object(
+                marker,
+                path_index=int(path_index),
+                bounces=bounces,
+                role="bounded visual-retrace escape sample",
+                score=score,
+            )
+            marker["candidate_part"] = marker_role
+            objects.append(marker)
         for obj in objects:
             obj["rank"] = rank
             obj["score_definition"] = (
@@ -473,9 +660,9 @@ def _build_ranked_frames(
             obj["exit_elevation_deg"] = float(ranked.exit_elevation_deg[rank - 1])
             _one_frame(obj, rank, 1, frame_end)
         label = (
-            f"RANK {rank:02d}  |  SAMPLE {int(path_index)}  |  {kind.upper()}\n"
-            "ORANGE physical chain  |  BLUE escaped-direction proxy\n"
-            f"visual-retrace score {score:.5g}  |  not a production MPC"
+            f"VISUAL-RETRACE RANK {rank:02d}  |  SAMPLE {int(path_index)}  |  {kind.upper()}\n"
+            "ORANGE finite bounce prefix  |  BLUE semi-infinite direction  |  CYAN arrow points inward\n"
+            f"finite boundary is display only  |  score {score:.5g}  |  visual retrace, not a production MPC"
         )
         _frame_label(f"rank {rank:02d}", label, path_collection, materials, frame=rank, frame_end=frame_end)
         bpy.context.scene.timeline_markers.new(f"PATH {rank:02d} | {kind} | sample {int(path_index)}", frame=rank)
@@ -489,6 +676,8 @@ def _build_ranked_frames(
                 "exit_elevation_deg": float(ranked.exit_elevation_deg[rank - 1]),
             }
         )
+        frame_points = np.vstack([receiver, bounce_points, external])
+        _key_camera_for_frame(frame_points, rank)
     return rows
 
 
@@ -503,160 +692,236 @@ def _nee_arrays(payload: Any) -> _NeeArrays:
     )
 
 
-def _nee_connections(
+def nee_candidate_chain_points(
+    payload: Any,
+    *,
+    path_index: int,
+    vertex_index: int,
+    site: np.ndarray,
+    recorded_origin: np.ndarray,
+) -> np.ndarray:
+    """Return ``source -> selected vertex -> reverse prefix -> receiver``.
+
+    No vertex after ``vertex_index`` is admitted. Those vertices form the unused
+    suffix of the sampled reverse SBR path and do not belong to this NEE candidate.
+    """
+    vertices = np.asarray(payload["path_vertices"], dtype=np.float64)
+    offsets = np.asarray(payload["path_offsets"], dtype=np.int64)
+    if path_index < 0 or path_index >= offsets.size - 1:
+        raise IndexError("NEE candidate path is outside the recorded path table")
+    start, stop = int(offsets[path_index]), int(offsets[path_index + 1])
+    if vertex_index <= 0 or start + vertex_index >= stop - 1:
+        raise ValueError("NEE candidate must use a non-receiver scattering vertex")
+    origin = vertices[start + vertex_index]
+    recorded_origin = np.asarray(recorded_origin, dtype=np.float64)
+    if not np.allclose(origin, recorded_origin, rtol=0.0, atol=2.0e-5):
+        raise ValueError("stored NEE origin does not match its indexed SBR vertex")
+    prefix_to_receiver = vertices[start : start + vertex_index + 1][::-1]
+    return np.vstack([np.asarray(site, dtype=np.float64), prefix_to_receiver])
+
+
+def _candidate_records(
+    payload: Any,
     arrays: _NeeArrays,
-    keep: np.ndarray,
-    nee_collection: Any,
-    materials: Mapping[str, Any],
-    nee_rank: int,
-) -> tuple[list[Any], np.ndarray]:
-    origin = arrays.origin[keep]
-    site = arrays.site[keep]
-    weight = arrays.rim_weight[keep]
-    blocked = arrays.blocked[keep]
-    objects = []
-    for blocked_value, label, material, width in (
-        (False, "clear NEE connection", materials["clear"], 0.065),
-        (True, "blocked NEE connection", materials["blocked"], 0.055),
-    ):
-        subset = blocked == blocked_value
-        obj = _connection_curve(
-            f"NEE {nee_rank:02d} | {label}",
-            origin[subset],
-            site[subset],
-            weight[subset],
-            nee_collection,
-            radius_m=width,
-            material=material,
-        )
-        if obj is not None:
-            obj["connection_state"] = "blocked" if blocked_value else "clear"
-            objects.append(obj)
-    scatter = _marker_mesh(
-        f"NEE {nee_rank:02d} | scattering origins",
-        origin,
-        nee_collection,
-        0.32,
-        materials["scatter"],
+    selected_paths: np.ndarray,
+    live: np.ndarray,
+    *,
+    drawn_radius_m: float,
+    limit: int,
+) -> list[NeeCandidate]:
+    """Choose one clear and blocked row per path whose shown prefix has support."""
+    if limit == 0:
+        return []
+    on_mesh = np.linalg.norm(arrays.site[:, :2], axis=1) <= drawn_radius_m
+    eligible = (arrays.vertex > 0) & live & on_mesh & np.isfinite(arrays.rim_weight)
+    candidates: list[NeeCandidate] = []
+    for path_index in selected_paths:
+        rows = np.flatnonzero(eligible & (arrays.path == path_index))
+        for blocked in (False, True):
+            state_rows = rows[arrays.blocked[rows] == blocked]
+            if not state_rows.size:
+                continue
+            order = np.lexsort((state_rows, arrays.vertex[state_rows], -arrays.rim_weight[state_rows]))
+            for ordered_record in state_rows[order]:
+                record = int(ordered_record)
+                candidate = NeeCandidate(
+                    record_index=record,
+                    path_index=int(path_index),
+                    vertex_index=int(arrays.vertex[record]),
+                    blocked=bool(blocked),
+                )
+                chain = nee_candidate_chain_points(
+                    payload,
+                    path_index=candidate.path_index,
+                    vertex_index=candidate.vertex_index,
+                    site=arrays.site[record],
+                    recorded_origin=arrays.origin[record],
+                )
+                if np.any(np.linalg.norm(chain[1:-1, :2], axis=1) > drawn_radius_m):
+                    continue
+                candidates.append(candidate)
+                break
+            if len(candidates) >= limit:
+                return candidates
+    return candidates
+
+
+def _single_polyline(
+    name: str,
+    points: np.ndarray,
+    into: Any,
+    *,
+    radius_m: float,
+    material: Any,
+) -> Any:
+    from . import scene
+
+    obj = scene.build_curves(
+        name,
+        points,
+        np.array([points.shape[0]], dtype=np.int32),
+        np.full(points.shape[0], radius_m, dtype=np.float64),
+        into,
     )
-    source = _marker_mesh(
-        f"NEE {nee_rank:02d} | sampled roofline source endpoints",
-        site,
-        nee_collection,
-        0.48,
-        materials["source"],
-    )
-    objects.extend(obj for obj in (scatter, source) if obj is not None)
-    return objects, blocked
+    scene.attach_values(obj, "value_candidate_point_order", np.arange(points.shape[0]), "POINT")
+    scene.assign(obj, material)
+    obj["candidate_start_m"] = np.asarray(points[0], dtype=float).tolist()
+    obj["candidate_end_m"] = np.asarray(points[-1], dtype=float).tolist()
+    return obj
 
 
 def _build_one_nee_frame(
     payload: Any,
-    terminations: Sequence[str],
     arrays: _NeeArrays,
-    live: np.ndarray,
+    candidate: NeeCandidate,
     nee_collection: Any,
     materials: Mapping[str, Any],
     *,
-    path_index: int,
     nee_rank: int,
     frame: int,
     frame_end: int,
-    drawn_radius_m: float,
     radius_m: float,
-    escaped_proxy_m: float,
 ) -> dict[str, Any]:
     import bpy
 
-    objects = _build_chain(
+    record = candidate.record_index
+    chain = nee_candidate_chain_points(
         payload,
-        terminations,
+        path_index=candidate.path_index,
+        vertex_index=candidate.vertex_index,
+        site=arrays.site[record],
+        recorded_origin=arrays.origin[record],
+    )
+    source_link = _single_polyline(
+        f"NEE {nee_rank:02d} | {'blocked' if candidate.blocked else 'clear'} source link",
+        chain[:2],
         nee_collection,
-        path_index=path_index,
-        name=f"NEE {nee_rank:02d} | sample {path_index} | base SBR chain",
-        drawn_radius_m=drawn_radius_m,
-        radius_m=radius_m,
-        escaped_proxy_m=escaped_proxy_m,
-        chain_material=materials["nee_chain"],
-        proxy_material=materials["proxy"],
-        score=None,
+        radius_m=0.075 if not candidate.blocked else 0.062,
+        material=materials["blocked" if candidate.blocked else "clear"],
     )
-    keep = (
-        (arrays.path == path_index)
-        & (arrays.vertex > 0)
-        & live
-        & (np.linalg.norm(arrays.site[:, :2], axis=1) <= drawn_radius_m)
+    receiver_prefix = _single_polyline(
+        f"NEE {nee_rank:02d} | selected reverse prefix to receiver",
+        chain[1:],
+        nee_collection,
+        radius_m=max(radius_m, 0.09),
+        material=materials["nee_chain"],
     )
-    connection_objects, blocked = _nee_connections(arrays, keep, nee_collection, materials, nee_rank)
-    objects.extend(connection_objects)
+    scatter = _marker_mesh(
+        f"NEE {nee_rank:02d} | selected scattering vertex",
+        chain[1:2],
+        nee_collection,
+        0.42,
+        materials["scatter"],
+    )
+    source = _marker_mesh(
+        f"NEE {nee_rank:02d} | sampled roofline source",
+        chain[0:1],
+        nee_collection,
+        0.56,
+        materials["source"],
+    )
+    receiver = _marker_mesh(
+        f"NEE {nee_rank:02d} | receiver",
+        chain[-1:],
+        nee_collection,
+        0.52,
+        materials["receiver"],
+    )
+    objects = [source_link, receiver_prefix]
+    objects.extend(obj for obj in (scatter, source, receiver) if obj is not None)
     for obj in objects:
-        obj["visual_trace_path_index"] = path_index
-        obj["explanation_role"] = "qualitative roofline source visibility evidence"
-        obj["connections_shown_from"] = "surface scattering vertices; the separate direct head-to-site term is left out"
+        obj["visual_trace_path_index"] = candidate.path_index
+        obj["nee_record_index"] = record
+        obj["nee_vertex_index"] = candidate.vertex_index
+        obj["connection_state"] = "blocked" if candidate.blocked else "clear"
+        obj["explanation_role"] = "one qualitative roofline source visibility candidate"
+        obj["candidate_topology"] = "source -> selected SBR vertex -> reversed earlier prefix -> receiver"
+        obj["unused_sbr_suffix_drawn"] = False
+        obj["other_nee_alternatives_drawn"] = False
         obj["supplies_production_rho_or_body_dose"] = False
         obj["quantitative_nee_contribution_available"] = False
         obj["why_no_quantitative_nee_value"] = (
             "the payload stores roofline rim weight and visibility, not the full NEE deposit factors"
         )
         _one_frame(obj, frame, 1, frame_end)
-    clear_count = int(np.count_nonzero(~blocked))
-    blocked_count = int(np.count_nonzero(blocked))
+    source_link["candidate_part"] = "sampled source to selected scattering vertex"
+    source_link["stored_roofline_rim_direct_flux"] = float(arrays.rim_weight[record])
+    source_link["stored_weight_is_not"] = "a quantitative NEE contribution"
+    receiver_prefix["candidate_part"] = "selected scattering vertex to receiver through earlier reverse prefix"
+    receiver_prefix["prefix_vertex_count"] = candidate.vertex_index + 1
+    receiver_prefix["path_record_vertex_count"] = int(
+        np.asarray(payload["path_offsets"])[candidate.path_index + 1]
+        - np.asarray(payload["path_offsets"])[candidate.path_index]
+    )
+    state = "BLOCKED, REJECTED" if candidate.blocked else "CLEAR, ADMITTED"
     label = (
-        f"NEE VIEW {nee_rank:02d}  |  SAMPLE {path_index}  |  "
-        f"CLEAR {clear_count}  BLOCKED {blocked_count}\n"
-        "BROWN base chain  |  PINK post-bounce origin  |  LIME source\n"
-        "WHITE clear  |  RED blocked  |  evidence only; no dose value"
+        f"ROOFLINE CANDIDATE {nee_rank:02d}  |  SAMPLE {candidate.path_index}  |  "
+        f"VERTEX {candidate.vertex_index}  |  {state}\n"
+        "LIME source -> WHITE/RED tested link -> PINK scatter -> BROWN prefix -> CYAN receiver\n"
+        "one connected candidate  |  unused SBR suffix omitted  |  evidence only; no dose value"
     )
     _frame_label(f"NEE {nee_rank:02d}", label, nee_collection, materials, frame=frame, frame_end=frame_end)
     bpy.context.scene.timeline_markers.new(
-        f"NEE {nee_rank:02d} | sample {path_index} | clear {clear_count} blocked {blocked_count}",
+        f"NEE {nee_rank:02d} | sample {candidate.path_index} vertex {candidate.vertex_index} | "
+        f"{'blocked' if candidate.blocked else 'clear'}",
         frame=frame,
     )
+    _key_camera_for_frame(chain, frame)
     return {
         "frame": frame,
-        "path_index": path_index,
-        "clear_connections": clear_count,
-        "blocked_connections": blocked_count,
+        "path_index": candidate.path_index,
+        "record_index": record,
+        "vertex_index": candidate.vertex_index,
+        "connection_state": "blocked" if candidate.blocked else "clear",
+        "clear_connections": int(not candidate.blocked),
+        "blocked_connections": int(candidate.blocked),
     }
 
 
 def _build_nee_frames(
     payload: Any,
-    terminations: Sequence[str],
-    nee_paths: np.ndarray,
+    candidates: Sequence[NeeCandidate],
     nee_collection: Any,
     materials: Mapping[str, Any],
     *,
     ranked_count: int,
     frame_end: int,
-    drawn_radius_m: float,
     radius_m: float,
-    escaped_proxy_m: float,
 ) -> list[dict[str, Any]]:
     arrays = _nee_arrays(payload)
-    live = supported_live_scattering_vertices(
-        payload,
-        arrays.path,
-        arrays.vertex,
-        np.zeros(0, dtype=np.int64),
-    )
     return [
         _build_one_nee_frame(
             payload,
-            terminations,
             arrays,
-            live,
+            candidate,
             nee_collection,
             materials,
-            path_index=int(path_index),
             nee_rank=nee_rank,
             frame=ranked_count + nee_rank,
             frame_end=frame_end,
-            drawn_radius_m=drawn_radius_m,
             radius_m=radius_m,
-            escaped_proxy_m=escaped_proxy_m,
         )
-        for nee_rank, path_index in enumerate(nee_paths, start=1)
+        for nee_rank, candidate in enumerate(candidates, start=1)
     ]
 
 
@@ -685,8 +950,14 @@ def _stamp_animation_scene(
     scene.render.fps_base = 1.0
     scene.frame_start = 1
     scene.frame_end = frame_end
-    scene["animation_path_frames"] = [1, ranked_count]
-    scene["animation_nee_frames"] = [ranked_count + 1, frame_end] if nee_frames else []
+    if ranked_count:
+        scene["animation_path_frames"] = [1, ranked_count]
+    elif "animation_path_frames" in scene:
+        del scene["animation_path_frames"]
+    if nee_frames:
+        scene["animation_nee_frames"] = [ranked_count + 1, frame_end]
+    elif "animation_nee_frames" in scene:
+        del scene["animation_nee_frames"]
     scene["animation_ranked_paths"] = json.dumps(ranking_rows)
     scene["animation_nee_frames_detail"] = json.dumps(nee_frames)
     scene["animation_score_definition"] = (
@@ -697,7 +968,10 @@ def _stamp_animation_scene(
         "ranked reverse Monte Carlo samples from the bounded visual trace, not finite transmitter-to-receiver MPCs"
     )
     scene["animation_nee_meaning"] = (
-        "qualitative source visibility evidence only; clear and blocked connections do not supply production exposure"
+        "one connected qualitative source candidate per frame; clear and blocked tests do not supply production exposure"
+    )
+    scene["animation_nee_topology"] = (
+        "sampled roofline source -> selected SBR vertex -> reversed earlier path prefix -> receiver"
     )
     scene["animation_escape_proxy_length_m"] = escaped_proxy_m
     scene["animation_visual_trace_score_sum"] = ranked.score_sum_all_drawable_sky_paths
@@ -719,8 +993,13 @@ def build_path_animation(
     radius_m: float = 0.16,
     escaped_proxy_m: float = 24.0,
 ) -> dict[str, Any]:
-    """Build both animation ranges and make the dense ray fan an opt-in view."""
+    """Build the escape-sample and one-candidate-per-frame NEE ranges."""
     from . import scene as scene_tools
+
+    if ranked_count < 0:
+        raise ValueError("ranked animation count must be non-negative")
+    if nee_count < 0:
+        raise ValueError("NEE animation count must be non-negative")
 
     ranked = rank_rooftop_visual_paths(
         payload,
@@ -741,11 +1020,29 @@ def build_path_animation(
             "nee_blocked",
         )
     )
-    nee_paths = _ordered_nee_paths(payload, nee_count) if has_nee else np.zeros(0, dtype=np.int64)
+    nee_paths = (
+        _ordered_nee_paths(payload, int(np.asarray(payload["nee_paths"]).size))
+        if has_nee
+        else np.zeros(0, dtype=np.int64)
+    )
+    candidates: list[NeeCandidate] = []
     if nee_paths.size:
-        nee_legs = drawable_ray_legs(payload, nee_paths, terminations, drawn_radius_m=drawn_radius_m)
-        nee_paths = nee_paths[~np.isin(nee_paths, nee_legs.paths_left_out_beyond_drawn_support)]
-    frame_end = max(ranked_count + int(nee_paths.size), 1)
+        arrays = _nee_arrays(payload)
+        live = supported_live_scattering_vertices(
+            payload,
+            arrays.path,
+            arrays.vertex,
+            np.zeros(0, dtype=np.int64),
+        )
+        candidates = _candidate_records(
+            payload,
+            arrays,
+            nee_paths,
+            live,
+            drawn_radius_m=drawn_radius_m,
+            limit=nee_count,
+        )
+    frame_end = max(ranked_count + len(candidates), 1)
     materials = _animation_materials(scene_tools)
     ranking_rows = _build_ranked_frames(
         payload,
@@ -761,15 +1058,12 @@ def build_path_animation(
     nee_frames = (
         _build_nee_frames(
             payload,
-            terminations,
-            nee_paths,
+            candidates,
             nee_collection,
             materials,
             ranked_count=ranked_count,
             frame_end=frame_end,
-            drawn_radius_m=drawn_radius_m,
             radius_m=radius_m,
-            escaped_proxy_m=escaped_proxy_m,
         )
         if has_nee
         else []

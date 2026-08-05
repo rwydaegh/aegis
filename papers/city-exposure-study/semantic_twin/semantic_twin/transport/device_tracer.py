@@ -38,12 +38,15 @@ class DeviceEscapeTracer:
         permittivity: np.ndarray,
         rms_height_m: np.ndarray,
         config: TraceConfig,
+        *,
+        atlas_material: Any = None,
     ) -> None:
         self.geometry = geometry
         self.face_class = face_class
         self.permittivity = np.asarray(permittivity, dtype=np.complex128)
         self.rms_height_m = np.asarray(rms_height_m, dtype=np.float64)
         self.config = config
+        self.atlas_material = atlas_material
         self.local_grid = fibonacci_sphere(config.local_cells)
         self.exit_sin_edges = np.linspace(-1.0, 1.0, config.exit_bands + 1)
         vertices = getattr(geometry, "vertices", None)
@@ -52,12 +55,11 @@ class DeviceEscapeTracer:
             if vertices is not None and len(vertices)
             else 250.0
         )
-        self.kernel = DeviceSbrKernel(
-            geometry,
-            face_class,
-            self.permittivity,
-            self.rms_height_m,
-            config,
+        kernel_args = (geometry, face_class, self.permittivity, self.rms_height_m, config)
+        self.kernel = (
+            DeviceSbrKernel(*kernel_args)
+            if atlas_material is None
+            else DeviceSbrKernel(*kernel_args, atlas_material=atlas_material)
         )
 
     def trace(

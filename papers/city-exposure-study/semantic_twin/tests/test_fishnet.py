@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
@@ -246,6 +248,109 @@ def test_a_person_is_never_painted_onto_the_wall_behind_them() -> None:
     assert np.count_nonzero(surface.rejected_reason == REJECTION_REASONS["clutter_in_front"]) == 0
 
 
+def test_rejected_cells_keep_their_own_geometry_instead_of_the_whole_source_face() -> None:
+    labels = np.zeros((64, 64), dtype=np.int64)
+    labels[20:44, 20:44] = 7
+    surface, _regions, _face_ids, _view, _camera = _build(labels, transient={7})
+
+    records = np.flatnonzero(surface.rejected_reason == REJECTION_REASONS["transient_object"])
+    face_mask = np.isin(surface.rejected_face_record, records)
+    assert records.size > 0
+    assert face_mask.any()
+    assert np.all(surface.rejected_geometry_kind[records] == 1)
+
+    image = surface.rejected_face_image[face_mask]
+    twice_area = np.abs(
+        (image[:, 1, 0] - image[:, 0, 0]) * (image[:, 2, 1] - image[:, 0, 1])
+        - (image[:, 2, 0] - image[:, 0, 0]) * (image[:, 1, 1] - image[:, 0, 1])
+    )
+    assert 0.5 * twice_area.sum() == pytest.approx(surface.rejected_image_area_px[records].sum())
+
+    rejected_world = surface.rejected_vertices[surface.rejected_faces[face_mask]]
+    rejected_area = 0.5 * np.linalg.norm(
+        np.cross(rejected_world[:, 1] - rejected_world[:, 0], rejected_world[:, 2] - rejected_world[:, 0]),
+        axis=1,
+    )
+    source_world = _quad(WALL_DISTANCE_M, WALL_HALF_M, _pose())[[0, 1, 2]]
+    source_area = 0.5 * np.linalg.norm(np.cross(source_world[1] - source_world[0], source_world[2] - source_world[0]))
+    assert rejected_area.max() < 0.25 * source_area
+
+    projected = view_to_image(world_to_view(rejected_world.reshape(-1, 3), _camera, _view), _view).reshape(-1, 3, 2)
+    assert np.allclose(projected, image, atol=1e-9)
+
+
+def test_a_whole_refused_footprint_is_stored_as_its_clipped_geometry() -> None:
+    labels = np.full((64, 64), 7, dtype=np.int64)
+    surface, _regions, _face_ids, _view, _camera = _build(labels, transient={7})
+
+    records = np.flatnonzero(surface.rejected_reason == REJECTION_REASONS["transient_object"])
+    assert records.size == 2
+    assert 2 in surface.rejected_geometry_kind[records]
+    assert surface.rejected_face_offsets[-1] == surface.rejected_faces.shape[0]
+    assert surface.rejected_face_offsets.shape == (surface.rejected_reason.size + 1,)
+
+    clipped = records[surface.rejected_geometry_kind[records] == 2]
+    faces = np.isin(surface.rejected_face_record, clipped)
+    image = surface.rejected_face_image[faces]
+    assert image.min() >= 0.0
+    assert image.max() <= 64.0
+    area = 0.5 * np.abs(
+        (image[:, 1, 0] - image[:, 0, 0]) * (image[:, 2, 1] - image[:, 0, 1])
+        - (image[:, 2, 0] - image[:, 0, 0]) * (image[:, 1, 1] - image[:, 0, 1])
+    )
+    assert area.sum() == pytest.approx(surface.rejected_image_area_px[clipped].sum())
+
+
+@pytest.mark.parametrize(
+    "face_record",
+    (
+        np.array([0, 1, 0, 1], dtype=np.int64),
+        np.array([1, 1, 0, 0], dtype=np.int64),
+    ),
+    ids=("interleaved", "misordered"),
+)
+def test_rejected_geometry_csr_requires_faces_in_record_order(face_record: np.ndarray) -> None:
+    labels = np.full((64, 64), 7, dtype=np.int64)
+    surface = _build(labels, transient={7})[0]
+    expanded = replace(
+        surface,
+        rejected_faces=np.repeat(surface.rejected_faces, 2, axis=0),
+        rejected_face_image=np.repeat(surface.rejected_face_image, 2, axis=0),
+        rejected_face_record=np.repeat(surface.rejected_face_record, 2),
+        rejected_face_offsets=np.array([0, 2, 4], dtype=np.int64),
+    )
+    assert np.array_equal(expanded.rejected_face_record, np.array([0, 0, 1, 1]))
+
+    with pytest.raises(ValueError, match="must follow rejected_face_offsets record order"):
+        replace(expanded, rejected_face_record=face_record)
+
+
+def test_rejected_geometry_csr_rejects_inconsistent_offsets_and_geometry() -> None:
+    labels = np.full((64, 64), 7, dtype=np.int64)
+    surface = _build(labels, transient={7})[0]
+
+    with pytest.raises(ValueError, match="must start at zero"):
+        replace(surface, rejected_face_offsets=np.array([1, 1, 2], dtype=np.int64))
+    with pytest.raises(ValueError, match="must be nondecreasing"):
+        replace(surface, rejected_face_offsets=np.array([0, 2, 1], dtype=np.int64))
+    with pytest.raises(ValueError, match="must end at the rejected face count"):
+        replace(surface, rejected_face_offsets=np.array([0, 0, 1], dtype=np.int64))
+    with pytest.raises(ValueError, match="unavailable rejected geometry records must not own faces"):
+        replace(surface, rejected_geometry_kind=np.zeros(2, dtype=np.uint8))
+    with pytest.raises(ValueError, match="exact rejected geometry records must own at least one face"):
+        replace(
+            surface,
+            rejected_face_record=np.ones(2, dtype=np.int64),
+            rejected_face_offsets=np.array([0, 0, 2], dtype=np.int64),
+        )
+    with pytest.raises(ValueError, match=r"rejected_face_image must have shape \(n_faces, 3, 2\)"):
+        replace(surface, rejected_face_image=surface.rejected_face_image[:1])
+    invalid_image = surface.rejected_face_image.copy()
+    invalid_image[0, 0, 0] = np.nan
+    with pytest.raises(ValueError, match="rejected_face_image must contain finite numbers"):
+        replace(surface, rejected_face_image=invalid_image)
+
+
 def test_distance_evidence_rejects_clutter_and_stays_distinct_from_a_transient() -> None:
     labels = np.zeros((64, 64), dtype=np.int64)
     decision = np.ones((64, 64), dtype=np.uint8)
@@ -281,7 +386,7 @@ def test_a_withheld_distance_test_leaves_the_pixel_to_the_mesh_and_the_class() -
     labels = np.zeros((64, 64), dtype=np.int64)
     labels[20:44, 20:44] = 7
     decision = np.full((64, 64), 6, dtype=np.uint8)
-    surface, regions, _face_ids, view, _camera = _build(labels, decision=decision, transient={7})
+    surface, regions, _face_ids, _view, _camera = _build(labels, decision=decision, transient={7})
 
     assert np.all(regions.paint_reason[:20] == PAINT_REASONS["paintable"])
     assert np.all(regions.paint_reason[20:44, 20:44] == PAINT_REASONS["transient_object"])
@@ -460,7 +565,30 @@ def test_confidence_and_material_posteriors_reach_the_output(tmp_path) -> None:
     assert restored.triangle_count == surface.triangle_count
     assert np.array_equal(restored.faces, surface.faces)
     assert np.allclose(restored.face_material, surface.face_material)
+    assert restored.format_version == 2
+    assert np.array_equal(restored.rejected_faces, surface.rejected_faces)
+    assert np.array_equal(restored.rejected_face_record, surface.rejected_face_record)
+    assert np.array_equal(restored.rejected_geometry_kind, surface.rejected_geometry_kind)
     assert restored.report["emitted_area_px"] == pytest.approx(surface.report["emitted_area_px"])
+
+    with np.load(path) as archive:
+        legacy = {name: archive[name] for name in archive.files}
+    for name in (
+        "fishnet_format_version",
+        "rejected_vertices",
+        "rejected_faces",
+        "rejected_face_image",
+        "rejected_face_record",
+        "rejected_face_offsets",
+        "rejected_geometry_kind",
+    ):
+        legacy.pop(name)
+    legacy_path = tmp_path / "legacy_surface.npz"
+    np.savez_compressed(legacy_path, **legacy)
+    restored_legacy = load_fishnet(legacy_path)
+    assert restored_legacy.format_version == 1
+    assert restored_legacy.rejected_faces.shape == (0, 3)
+    assert restored_legacy.rejected_face_offsets.shape == (restored_legacy.rejected_reason.size + 1,)
 
 
 def test_angular_tolerance_tracks_the_pixel_pitch() -> None:

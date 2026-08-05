@@ -121,20 +121,14 @@ def test_a_thicker_slab_never_transmits_more():
 
 @pytest.mark.parametrize("frequency_ghz", [1.3, 11.2, 28.8, 61.5])
 @pytest.mark.parametrize("depth_m", [1.0, 4.5])
-@pytest.mark.xfail(
-    strict=True,
-    reason="docs/BUGS.md finding 4: foliage.py:239 uses 8.686 dB per neper where "
-    "ITU-R P.833-10 equation (12) makes exp(-tau) a power transmittance, so the "
-    "factor is 4.343 and the module disagrees with its own slab_transmission by two",
-)
 def test_the_two_routes_from_extinction_to_decibels_agree(frequency_ghz, depth_m):
     """One module, one sigma, two answers that must be the same answer.
 
     ``specific_attenuation_db_per_m`` converts the tabulated ``sigma_tau`` to dB
     per metre directly. ``slab_transmission`` exponentiates the same ``sigma_tau``
     and the loss of that transmittance is also dB per metre. No external
-    reference is involved, so whichever factor is right, these two cannot both
-    be. They differ by exactly two, at every frequency and every depth.
+    reference is involved. This catches an accidental use of the amplitude
+    neper conversion, which is twice the power-neper conversion.
     """
     parameters = ret_parameters(frequency_ghz * 1e9)
     medium = FoliageMedium(

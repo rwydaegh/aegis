@@ -74,14 +74,19 @@ equals `T0/4`, which is exactly unbiased by symmetry.
 
 ### 4. Foliage converts nepers to decibels with the wrong factor
 
-`foliage.py:239` uses 8.686 where ITU-R P.833-10 makes it 4.343. Equation (12)
+Status: fixed in the current refactor. The direct conversion and
+`slab_transmission` now agree at `10/ln10`, and the former expected-failure
+invariant is a passing test. Historical foliage outputs still record the old
+factor and must be regenerated before reuse.
+
+The former `foliage.py:239` used 8.686 where ITU-R P.833-10 makes it 4.343. Equation (12)
 reads `Lscat = -10 log10 { e^-tau ... }`, so `e^-tau` is a power transmittance and
 the conversion is `10/ln10` per unit sigma.
 
-The module contradicts itself: the same sigma through `slab_transmission` gives
+The module contradicted itself: the same sigma through `slab_transmission` gave
 exactly half.
 
-Fires at `run_foliage_study.py:267`. The shipped reference optical depth in
+The old value fired at `run_foliage_study.py:267`. The shipped reference optical depth in
 `sensitivity.json` is 2.078 and should be 4.157. `FOLIAGE.md` quotes its whole
 crossing table "at the reference optical depth of 2", and at tau 4 the
 medium-versus-cut 0.5 dB crossing moves from 6.0 to 4.6 percent.

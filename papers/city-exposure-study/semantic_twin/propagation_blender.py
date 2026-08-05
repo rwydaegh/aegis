@@ -1,10 +1,10 @@
 """Stage two of the propagation walkthrough: build the blend from the payload.
 
-Everything in the scene is measured. The mesh is the support mesh the rays were
-cast against, the ray polylines are the paths the estimator integrated, the lobe
-is the angular power spectrum it accumulated, and the colours on the phantom are
-the absorbed power density AEGIS returned for that spectrum. Nothing is drawn to
-illustrate a number that was computed elsewhere.
+The exposure fields in the scene are measured. The mesh is the exact production
+support mesh. The lobe is the stored production angular spectrum, and the body
+colours are the exact per-face absorbed power density AEGIS returned from that
+spectrum. The ray polylines come from a separate bounded 1,200-ray host trace.
+They explain path geometry only and supply no production exposure value.
 
 The blend is deliberately austere. No textures, no packed images, no tile
 imports, vertex colours only, and compression on. A textured 3D Tiles scene of
@@ -75,7 +75,7 @@ if str(ROOT) not in sys.path:
     # imports anything heavy at module scope, which is what makes that safe.
     sys.path.insert(0, str(ROOT))
 
-from semantic_twin.viz.blender import animation, estimator, evidence, panorama, renders, scene, views  # noqa: E402
+from semantic_twin.viz.blender.payload import verify_bundle_identity  # noqa: E402
 from semantic_twin.viz.blender.style import MODEL_NAMES  # noqa: E402
 
 
@@ -110,7 +110,9 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="Drawn length of the leg that left the scene, which in 09 runs to the sky sphere",
     )
     parser.add_argument(
+        "--animation-ranked-paths",
         "--animation-paths",
+        dest="animation_paths",
         type=int,
         default=12,
         help="Top rooftop-weighted visual-trace samples, one complete chain per frame",
@@ -157,22 +159,42 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--resolution-scale", type=float, default=1.0)
     if argv is None:
         argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.animation_paths < 0:
+        parser.error("--animation-ranked-paths must be zero or greater")
+    if args.animation_nee_paths < 0:
+        parser.error("--animation-nee-paths must be zero or greater")
+    return args
 
 
 def main() -> int:
     import bpy
+    from semantic_twin.viz.blender import animation, estimator, evidence, panorama, renders, scene, views
 
     args = arguments()
-    payload = np.load(args.payload)
     manifest_path = args.manifest or args.payload.with_name(args.payload.name.replace("_payload.npz", "_manifest.json"))
     manifest = json.loads(manifest_path.read_text())
+    payload = np.load(args.payload)
+    verify_bundle_identity(payload, manifest)
 
     scene.reset_scene()
     hero = payload["hero_point"].astype(np.float64)
     ground_z = float(payload["walk_ground_z_m"][int(payload["hero_index"])])
 
     twin = estimator.build_twin(payload, manifest["class_names"], scene.collection("twin"))
+    support_summary = scene.build_support_display(
+        payload,
+        manifest,
+        twin,
+        scene.collection("outer_support"),
+        scene.collection("support_extent"),
+        ground_z_m=ground_z,
+    )
+    fused_summary = scene.build_fused_semantic_surface(
+        payload,
+        manifest,
+        scene.collection("fused_semantics"),
+    )
     rays = estimator.build_rays(
         payload,
         manifest["terminations"],
@@ -230,6 +252,8 @@ def main() -> int:
         point_radius_m=args.point_radius_m,
         pose_sigma_scale=args.pose_sigma_scale,
     )
+    layers["all_camera_fused_atlas"] = fused_summary
+    layers["support_display"] = support_summary
 
     cameras = scene.collection("cameras")
     scene.build_cameras(twin, hero, ground_z, cameras)
@@ -240,6 +264,7 @@ def main() -> int:
         aspect=bpy.context.scene.render.resolution_x / bpy.context.scene.render.resolution_y,
     )
     scene.build_evidence_cameras(twin, payload, hero, cameras)
+    scene.build_full_support_camera(hero, float(manifest["traced_crop_radius_m"]), cameras)
     scene.build_lighting(hero)
     scene.hide_heavy_collections()
     animation_summary = animation.build_path_animation(
@@ -265,6 +290,8 @@ def main() -> int:
         layers=layers,
         root=ROOT,
     )
+    bpy.context.scene["support_display"] = json.dumps(support_summary)
+    bpy.context.scene["all_camera_fused_atlas"] = json.dumps(fused_summary)
 
     raw_scene = bpy.context.scene
     panorama_asset = None
@@ -308,6 +335,7 @@ def main() -> int:
         )
 
     print(f"[twin] {len(twin.data.polygons)} triangles inside {manifest['drawn_radius_m']:g} m", flush=True)
+    print(f"[support] {json.dumps(support_summary)}", flush=True)
     print(f"[rays] {rays}", flush=True)
     print(f"[bounces] {legs}", flush=True)
     print(f"[arrival] peak rho per sr { {k: round(v, 5) for k, v in peaks.items()} }", flush=True)

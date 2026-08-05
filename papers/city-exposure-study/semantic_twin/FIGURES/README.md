@@ -530,3 +530,104 @@ spread of one standpoint over eight seeds. The cost of the budget sits under the
 estimator's own seed noise for the rooftop and street models and two decades
 under the effect the study reports. Past three the ladder flattens onto that
 noise floor, which is why the worst standpoint stops falling.
+
+## 26: controlled forward validation with Sionna
+
+Four panels made by `make_sionna_forward_validation.py` from the stored 50,000
+and 100,000 sample runs in `outputs/cross_validation/`.
+
+**a, the shared scene.** An imagined open square has a floor, three walls, 27
+facade-tip sources, and six receivers. The south side is open. Every surface is
+a fully diffuse near-perfect reflector, so material selection, diffraction, and
+antenna patterns do not enter the test.
+
+**b and c, agreement.** Sionna traces forward from each source. The study tracer
+works backward from each receiver and connects to a sampled source at every
+bounce. Across one, two, and three interactions, the median total difference is
+0.011 to 0.024 dB and the largest is 0.086 dB. At three interactions and 100,000
+samples, the median is 0.008 dB and the largest is 0.024 dB.
+
+**d, convergence.** Doubling the budget moves the median result by 0.016 dB for
+the adjoint method and 0.018 dB for Sionna. The agreement is inside the sampling
+noise of both solvers.
+
+## 27: runtime at equal samples and equal accuracy
+
+Two panels made by `make_sionna_forward_performance.py` from the same stored
+runs. These are local CPU timings.
+
+**a, equal sample budget.** After dropping the first compiled seed from both
+solvers, the adjoint method is 2.5 times faster at 50,000 samples and 2.8 times
+faster at 100,000 samples. Including cold start gives 3.0 and 3.4 times, but the
+unequal number of seeds makes those less suitable for a performance claim.
+
+**b, equal Monte Carlo variance.** Sionna has slightly less sampling noise. The
+product of warmed time and median single-run variance estimates the compute
+needed for the same accuracy. By this measure the adjoint method is 1.7 times
+faster at 50,000 samples and 1.4 times faster at 100,000 samples. The experiment
+has four adjoint seeds and three Sionna seeds, so the result needs more seeds
+before it becomes a paper performance claim.
+
+## 28: validation ladder from an integral to a real mesh
+
+Three panels made by `make_sionna_validation_ladder.py`.
+
+**a, an independent first-bounce answer.** A deterministic area integral over
+2,097,152 surface samples shares neither ray tracer's path estimator. Sionna is
+within 0.010 dB at every receiver. The adjoint method is within 0.034 dB. This
+checks the inverse-square factors, both cosines, visibility, and the Lambertian
+normalisation without treating either tracer as the reference.
+
+**b, the neutral-material city test.** On the 617,000-triangle Korenmarkt mesh,
+the median Sionna-minus-adjoint residual grows from 0.029 dB at one interaction
+to 0.130 dB at three. Materials remain fixed, so this isolates the effect of a
+rough and densely tessellated surface.
+
+**c, the surface offset.** Increasing the connection start lift from 1 cm to
+10 cm reduces the median city residual from 0.130 to 0.066 dB. The production
+value stays at 1 cm because a larger lift can step across a thin blocker. The
+sweep is a numerical surface uncertainty, not a fitted correction.
+
+## 29: source scaling on CPU and GPU
+
+Three panels made by `make_sionna_source_scaling.py`.
+
+**a, the reason to trace backward.** Sionna RT runs on an RTX A6000 and uses
+3,000 samples per transmitter. The study estimator runs on the host CPU with
+50,000 rays per receiver. Sionna wins for a few sources. Its cost then rises
+with source count, while the adjoint reflected-path cost stays nearly flat. At
+5,002 and 9,668 sources, the measured adjoint advantage is 3.9 and 10.1 times.
+The grey band marks the source-to-receiver range in the eleven-city run, 313 to
+1,611. A 25,782-source point with only six receivers reaches 26.5 times, but it
+lies beyond that band and is an asymptotic check rather than the headline result.
+
+**b, the accuracy rule behind the timing.** At 2,187 sources, 2,500 Sionna
+samples per source leave one receiver 0.178 dB from the 10,000-sample result.
+At 3,000 samples, the worst shift is 0.043 dB. This makes 3,000 the first tested
+budget that puts every receiver below 0.1 dB.
+
+**c, why variance alone is unsafe.** At 2,187 sources, the 2,500-sample Sionna
+run has low seed-to-seed spread, yet misses the converged result by 0.178 dB at
+one receiver. Its error is path-search bias, not ordinary Monte Carlo
+variance. A variance times time score would select the wrong budget. The
+convergence test in panel b therefore sets the fair runtime comparison.
+
+## 30: full-source Korenmarkt stress test
+
+Three panels made by `make_sionna_full_city.py`.
+
+**a, full-source transfer.** The test uses all 8,873 facade-tip sources, 16
+receivers, and the 617,000-triangle Korenmarkt mesh. Direct and reflected power
+are summed before the transfer is plotted. Materials remain neutral.
+
+**b, numerical agreement.** Direct paths agree to 0.000002 dB at the median.
+The total Sionna result is 0.262 dB higher at the median and 0.632 dB higher at
+worst. Red points fail the predeclared three-standard-error plus 0.1 dB rule.
+Doubling Sionna from 3,000 to 6,000 samples per source moves its total by only
+0.010 dB at the median, so the common gap is not caused by the original ray
+budget alone.
+
+**c, measured-budget wall time.** The warmed means are 4.66 s for the adjoint
+CPU run and 36.60 s for Sionna on the A6000. The resulting 7.9 times advantage
+describes these sample budgets. It is not an equal-accuracy claim because the
+city comparison does not pass the agreement test.

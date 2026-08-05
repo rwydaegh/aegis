@@ -10,6 +10,7 @@ import pytest
 from semantic_twin.illumination import ISOTROPIC
 from semantic_twin.transport import BounceEvidenceTally, PathRecorder, SbrTracer, TraceConfig
 from semantic_twin.transport import tracer as tracer_module
+from semantic_twin.transport import trace_kernel
 from semantic_twin.transport.trace_kernel import TraceAccumulators
 
 
@@ -74,6 +75,61 @@ class OpenGeometry:
         )
 
 
+class RepeatingNonblockingGeometry:
+    """One false canopy face that repeats regardless of ray advancement."""
+
+    face_count = 1
+
+    def __init__(self) -> None:
+        self.queries = 0
+
+    def intersect(
+        self, origins: np.ndarray, directions: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        self.queries += 1
+        count = origins.shape[0]
+        return (
+            np.ones(count, dtype=bool),
+            np.ones(count),
+            np.tile([0.0, 0.0, 1.0], (count, 1)),
+            np.zeros(count, dtype=np.int64),
+        )
+
+
+class StackedCanopyGeometry:
+    """Two pass-through planes above one blocking floor."""
+
+    face_count = 3
+    levels = np.array([2.0, 1.0, 0.0])
+
+    def __init__(self) -> None:
+        self.queries = 0
+
+    def intersect(
+        self, origins: np.ndarray, directions: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        self.queries += 1
+        count = origins.shape[0]
+        distance = np.full((count, self.levels.size), np.inf)
+        moving = np.abs(directions[:, 2]) > 1.0e-12
+        candidate = np.divide(
+            self.levels[None, :] - origins[:, 2:3],
+            directions[:, 2:3],
+            out=np.full_like(distance, np.inf),
+            where=moving[:, None],
+        )
+        distance[candidate > 0.0] = candidate[candidate > 0.0]
+        face = np.argmin(distance, axis=1)
+        nearest = distance[np.arange(count), face]
+        hit = np.isfinite(nearest)
+        return (
+            hit,
+            nearest,
+            np.tile([0.0, 0.0, 1.0], (count, 1)),
+            face.astype(np.int64),
+        )
+
+
 class RecordingGather:
     def __init__(self) -> None:
         self.batch_sizes: list[int] = []
@@ -89,6 +145,50 @@ class RecordingGather:
 
 def _sha(array: np.ndarray) -> str:
     return hashlib.sha256(np.asarray(array).tobytes()).hexdigest()
+
+
+def test_repeated_nonblocking_self_hit_fails_instead_of_hanging() -> None:
+    geometry = RepeatingNonblockingGeometry()
+    tracer = SbrTracer(
+        geometry,
+        np.array([0]),
+        np.array([4.2 - 0.15j]),
+        np.array([0.0]),
+        TraceConfig(rays=4, max_bounces=0, batch=4),
+    )
+    tracer._surface_nonblocking = lambda face, position: np.ones(position.shape[0], dtype=bool)
+
+    with pytest.raises(RuntimeError, match="repeated self-intersection"):
+        tracer.trace(np.array([0.0, 0.0, 3.0]), {"iso": ISOTROPIC})
+    assert geometry.queries == 2
+
+
+def test_stacked_nonblocking_canopies_preserve_the_ray_until_the_floor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    geometry = StackedCanopyGeometry()
+    tracer = SbrTracer(
+        geometry,
+        np.array([0, 0, 0]),
+        np.array([complex(1.0, -1.0e12)]),
+        np.array([0.0]),
+        TraceConfig(rays=1, local_cells=1, max_bounces=1, roulette_start=2, batch=1),
+    )
+    tracer._surface_nonblocking = lambda face, position: np.asarray(face) < 2
+    monkeypatch.setattr(
+        trace_kernel,
+        "sample_sphere",
+        lambda count, rng: np.tile([0.0, 0.0, -1.0], (count, 1)),
+    )
+
+    result = tracer.trace(np.array([0.0, 0.0, 3.0]), {"iso": ISOTROPIC})
+
+    assert geometry.queries == 6
+    assert result.escaped_fraction == 1.0
+    assert result.sky_fraction == 0.0
+    assert result.mean_bounces == 1.0
+    assert result.susceptibility_direct["iso"] == 0.0
+    assert result.susceptibility["iso"] > 0.99
 
 
 def test_trace_uses_the_shared_finalizer_without_changing_result_bits(

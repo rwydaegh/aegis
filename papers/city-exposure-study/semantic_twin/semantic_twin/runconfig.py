@@ -83,6 +83,7 @@ WALK_PATHS = ("links", "street", "closest")
 #: Everything else binds some layer of image evidence on top of it.
 MATERIALS = (
     "geometric",
+    "atlas",
     "semantic",
     "walk",
     "walk_material",
@@ -204,6 +205,9 @@ class RunConfig:
     #: Fused semantics to bind materials from, when the materials mode needs one.
     #: A study relative path, so a config stays portable between checkouts.
     walk_npz: str | None = None
+    #: Joint barycentric entity/material atlas. None selects the site's exact
+    #: crop-matched atlas for either atlas material mode.
+    atlas_npz: str | None = None
 
     # ---------------------------------------------------------------- sampling
     rays: int = 200_000
@@ -336,6 +340,10 @@ class RunConfig:
         """
         document = self.as_dict()
         document.pop("tag")
+        # This field was added with the atlas mode. It cannot affect older
+        # modes when absent, so preserve their established identities.
+        if document["atlas_npz"] is None:
+            document.pop("atlas_npz")
         # ``numpy`` was the only implementation before this field existed. Keep
         # its established digest so published CPU and hybrid-CUDA runs retain
         # their identity. A device run retains the field and therefore cannot

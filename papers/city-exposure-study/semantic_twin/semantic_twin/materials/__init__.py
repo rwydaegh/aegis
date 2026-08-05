@@ -14,13 +14,14 @@ faces got their material from a photograph and which from the orientation of
 their normal. :mod:`~.evidence` and :mod:`~.posterior` are the routes that
 produce one from image evidence.
 
-The two halves meet at exactly one place, the class index. A binding's
-``face_class`` indexes the same tuple a table's ``permittivity`` does, and that
-is the whole contract.
+The ordinary face binding meets transport at the class index. The joint atlas
+adds a second contract. At an observed hit texel, transport mixes the power
+responses of its host-compatible material posterior. It keeps the support mesh
+unchanged and uses the face class wherever atlas evidence is refused or absent.
+Woody vegetation is the exception: without registered canopy chords its atlas
+cells are non-blocking, since the support face is not a physical interface.
 
-Three models sit alongside, none of them on the tracer's live path, because the
-tracer takes one permittivity and one RMS height per class and cannot express
-any of them. :mod:`~.foliage` treats a canopy as a participating medium rather
+Three richer models sit alongside. :mod:`~.foliage` treats a canopy as a participating medium rather
 than an interface, which is what it physically is. :mod:`~.masonry` treats a
 brick wall as a diffraction grating specified by construction documents.
 :mod:`~.stack` treats a facade as layers, and holds the power mixture that says
@@ -38,6 +39,14 @@ from .binding import (
     classify_faces,
     extend_classes,
     geometric_binding,
+)
+from .atlas_binding import (
+    ATLAS_MATERIAL_RULE,
+    ATLAS_PREFIX,
+    MIN_INTERFACE_POSTERIOR,
+    NON_STRUCTURAL_MATERIALS,
+    AtlasMaterialBinding,
+    bind_surface_atlas,
 )
 from .catalogue import (
     GEOMETRIC_CLASS_RULE,
@@ -93,8 +102,25 @@ from .support import (
     entity_support_kind,
     entity_supports_geometric_class,
 )
+from .vegetation_transport import (
+    GROUND_SURFACE_POLICY,
+    WOODY_VOLUME_POLICY,
+    AtlasVegetationEvidence,
+    P833FrequencyAssessment,
+    P833SegmentTransport,
+    VegetationPathSegments,
+    VegetationTransportPlan,
+    assess_p833_frequency,
+    evaluate_p833_segments,
+    plan_vegetation_transport,
+    vegetation_evidence_from_atlas,
+)
 
 __all__ = [
+    "ATLAS_MATERIAL_RULE",
+    "ATLAS_PREFIX",
+    "AtlasMaterialBinding",
+    "AtlasVegetationEvidence",
     "CLASS_NAMES",
     "BUILT_HOST_ENTITIES",
     "CLUTTER_ENTITIES",
@@ -102,12 +128,17 @@ __all__ = [
     "EMBEDDED_SUBFACE_ENTITIES",
     "GEOMETRIC_CLASS_RULE",
     "GROUND_HOST_ENTITIES",
+    "GROUND_SURFACE_POLICY",
     "HOST_SURFACE_CLASS_RULE",
     "IMAGE_MATERIALS",
     "MASONRY_RULE",
     "MATERIAL_SUBSTITUTION",
     "MATERIAL_VOCABULARY",
+    "MIN_INTERFACE_POSTERIOR",
+    "NON_STRUCTURAL_MATERIALS",
     "P833_CANOPY",
+    "P833FrequencyAssessment",
+    "P833SegmentTransport",
     "PERIODIC_STRUCTURES",
     "POSTERIOR_PREFIX",
     "QUADRATURE_RULE",
@@ -127,7 +158,12 @@ __all__ = [
     "SurfaceRoughnessPrior",
     "SupportKind",
     "VegetationBinding",
+    "VegetationPathSegments",
+    "VegetationTransportPlan",
+    "WOODY_VOLUME_POLICY",
+    "assess_p833_frequency",
     "bind_fishnet",
+    "bind_surface_atlas",
     "bind_posterior",
     "bind_walk_entities",
     "bind_walk_materials",
@@ -139,9 +175,11 @@ __all__ = [
     "entity_support_kind",
     "entity_supports_geometric_class",
     "extend_classes",
+    "evaluate_p833_segments",
     "geometric_binding",
     "load_table",
     "masonry_equivalent_rms_height",
+    "plan_vegetation_transport",
     "radio_material_from_roughness",
     "rayleigh_roughness_parameter",
     "rayleigh_smooth_threshold_m",
@@ -149,4 +187,5 @@ __all__ = [
     "roughness_to_scattering_coefficient",
     "sample_face_materials",
     "specular_power_fraction",
+    "vegetation_evidence_from_atlas",
 ]

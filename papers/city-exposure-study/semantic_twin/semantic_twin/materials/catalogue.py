@@ -74,13 +74,14 @@ P833_CANOPY = "p833_canopy"
 VEGETATION_NOTE = (
     "ITU-R P.833 has no tabulated data in FR2 and nothing between 12.5 and "
     "37 GHz, so every vegetation parameter at 15 GHz is an interpolation "
-    "across a gap in the recommendation. Vegetation is bound to the P.2040 "
-    "vacuum row rather than to wood: a canopy volume fraction of 6.4e-5 gives "
+    "across a gap in the recommendation. Vegetation carries the P.2040 "
+    "vacuum row only as a table placeholder rather than wood: a canopy volume fraction of 6.4e-5 gives "
     "a Maxwell-Garnett boundary reflectance of 1.9e-9 against the wood row's "
     "0.029, so the wood row would add 71.8 dB of reflection that is not there. "
-    "A vacuum row face still absorbs rather than transmits, so this removes "
-    "the false glint and keeps the false block. The correct treatment is a "
-    "participating medium and is not implemented."
+    "Surface transport never evaluates that placeholder as an interface. "
+    "Woody atlas evidence is non-blocking until registered watertight volume "
+    "chords exist. With those chords, the P.833 participating-medium model "
+    "supplies direct, scattered, and absorbed energy."
 )
 
 #: The four classes the orientation rule can produce, in index order. The index
@@ -114,14 +115,12 @@ IMAGE_MATERIALS: dict[str, MaterialSpec] = {
     # it is a different object. Leaf area index times leaf thickness over canopy
     # depth puts the canopy volume fraction at 6.4e-5, and Maxwell-Garnett then
     # gives a boundary reflectance of 1.9e-9 against the 0.029 of the P.2040
-    # wood row, which is 71.8 dB of reflection that is not there. Routing
-    # vegetation to the vacuum row removes that spurious reflection.
+    # wood row, which is 71.8 dB of reflection that is not there.
     #
     # ``medium`` says what the row cannot: this label is a volume, and a
     # transport estimator that can carry one should ask foliage.py for it
-    # instead of reflecting off it. The vacuum row remains the fallback for an
-    # estimator that only knows about surfaces, and it removes the false glint
-    # while keeping the false block.
+    # instead of reflecting off it. Surface transport excludes this row and
+    # passes through woody evidence until valid canopy volume chords exist.
     "vegetation_effective": MaterialSpec(
         "vacuum_air",
         "glass_glazing_unit",

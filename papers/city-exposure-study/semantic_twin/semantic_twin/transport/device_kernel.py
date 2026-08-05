@@ -24,6 +24,7 @@ import numpy as np
 _STATUS_ESCAPED = 1
 _STATUS_TRUNCATED = 2
 _STATUS_ROULETTE = 3
+_STATUS_CANOPY_LOOP_ERROR = 4
 _PACKED_COLUMNS = 13
 
 
@@ -70,19 +71,17 @@ class DeviceEscapeRecords:
         return math.fsum(float(value) for record in records for value in record.truncated_throughput_terms)
 
 
-def _counter_random(mi: Any, ray_index: Any, seed: int, depth: int, dimension: int) -> Any:
+def _counter_random(mi: Any, ray_index: Any, seed: tuple[Any, Any], depth: int, dimension: int) -> Any:
     """One repeatable draw keyed only by seed, ray, bounce, and dimension."""
-    seed = int(seed) & 0xFFFFFFFFFFFFFFFF
-    seed_low = seed & 0xFFFFFFFF
-    seed_high = (seed >> 32) & 0xFFFFFFFF
-    seed_permutation = (seed_high * 0xD6E8FEB9) & 0xFFFFFFFF
-    first = ray_index ^ mi.UInt32(seed_permutation)
-    seed_key = (seed_low ^ ((seed_high << 16) & 0xFFFFFFFF) ^ (seed_high >> 16)) & 0xFFFFFFFF
+    seed_low, seed_high = seed
+    seed_permutation = seed_high * mi.UInt32(0xD6E8FEB9)
+    first = ray_index ^ seed_permutation
+    seed_key = seed_low ^ (seed_high << 16) ^ (seed_high >> 16)
     stream = seed_key ^ (((depth + 1) * 0x9E3779B9) & 0xFFFFFFFF) ^ (((dimension + 1) * 0x85EBCA6B) & 0xFFFFFFFF)
-    return mi.sample_tea_float32(first, mi.UInt32(stream))
+    return mi.sample_tea_float32(first, stream)
 
 
-def _unit_sphere(mi: Any, dr: Any, ray_index: Any, seed: int) -> Any:
+def _unit_sphere(mi: Any, dr: Any, ray_index: Any, seed: tuple[Any, Any]) -> Any:
     z = 2.0 * _counter_random(mi, ray_index, seed, -1, 0) - 1.0
     phi = 2.0 * np.pi * _counter_random(mi, ray_index, seed, -1, 1)
     radius = dr.sqrt(dr.maximum(0.0, 1.0 - z * z))
@@ -90,7 +89,14 @@ def _unit_sphere(mi: Any, dr: Any, ray_index: Any, seed: int) -> Any:
     return mi.Vector3f(radius * cos_phi, radius * sin_phi, z)
 
 
-def _cosine_hemisphere(mi: Any, dr: Any, normal: Any, ray_index: Any, seed: int, depth: int) -> Any:
+def _cosine_hemisphere(
+    mi: Any,
+    dr: Any,
+    normal: Any,
+    ray_index: Any,
+    seed: tuple[Any, Any],
+    depth: int,
+) -> Any:
     u1 = _counter_random(mi, ray_index, seed, depth, 1)
     u2 = _counter_random(mi, ray_index, seed, depth, 2)
     radius = dr.sqrt(u1)
@@ -125,6 +131,8 @@ class DeviceSbrKernel:
         permittivity: np.ndarray,
         rms_height_m: np.ndarray,
         config: Any,
+        *,
+        atlas_material: Any = None,
     ) -> None:
         import mitsuba as mi
 
@@ -136,6 +144,7 @@ class DeviceSbrKernel:
         self.dr = __import__("drjit")
         self.permittivity = np.asarray(permittivity, dtype=np.complex128)
         self.rms_height_m = np.asarray(rms_height_m, dtype=np.float64)
+        self.atlas_material = atlas_material
         if self.permittivity.ndim != 1 or self.rms_height_m.shape != self.permittivity.shape:
             raise ValueError("permittivity and rms_height_m must be one-dimensional arrays with the same shape")
         if self.permittivity.size == 0:
@@ -163,6 +172,14 @@ class DeviceSbrKernel:
             raise ValueError(f"face_class has shape {self.face_class.shape}, expected ({int(face_count)},)")
         if self.face_class.size and int(self.face_class.max()) >= self.permittivity.size:
             raise ValueError("face_class contains a material index outside the material tables")
+        if self.atlas_material is not None:
+            if self.atlas_material.face_count != self.face_class.size:
+                raise ValueError(
+                    f"atlas material binding has {self.atlas_material.face_count} faces, "
+                    f"but geometry has {self.face_class.size}"
+                )
+            if np.any(self.atlas_material.material_class >= self.permittivity.size):
+                raise ValueError("atlas material classes leave the material table")
         self.wavelength_m = 299_792_458.0 / float(config.frequency_hz)
 
         self._face_class_device = mi.UInt32(self.face_class)
@@ -171,7 +188,29 @@ class DeviceSbrKernel:
             mi.Float(np.ascontiguousarray(self.permittivity.imag)),
         )
         self._rms_height_device = mi.Float(np.ascontiguousarray(self.rms_height_m))
-        self.dr.eval(self._face_class_device, self._permittivity_device, self._rms_height_device)
+        device_arrays = [self._face_class_device, self._permittivity_device, self._rms_height_device]
+        if self.atlas_material is not None:
+            self._atlas_face_to_row_device = mi.Int32(
+                np.ascontiguousarray(self.atlas_material.face_to_atlas_row, dtype=np.int32)
+            )
+            self._atlas_probability_device = mi.Float(
+                np.ascontiguousarray(self.atlas_material.material_probability, dtype=np.float32).reshape(-1)
+            )
+            self._atlas_supported_device = mi.Bool(
+                np.ascontiguousarray(self.atlas_material.supported, dtype=bool).reshape(-1)
+            )
+            self._atlas_nonblocking_device = mi.Bool(
+                np.ascontiguousarray(self.atlas_material.nonblocking, dtype=bool).reshape(-1)
+            )
+            device_arrays.extend(
+                (
+                    self._atlas_face_to_row_device,
+                    self._atlas_probability_device,
+                    self._atlas_supported_device,
+                    self._atlas_nonblocking_device,
+                )
+            )
+        self.dr.eval(*device_arrays)
         prepare_device = getattr(self.geometry, "prepare_device", None)
         if prepare_device is not None:
             prepare_device()
@@ -203,9 +242,13 @@ class DeviceSbrKernel:
             raise ValueError("ray indices must fit in uint32")
 
         mi, dr = self.mi, self.dr
-        used_seed = int(self.config.seed if seed is None else seed)
+        used_seed_value = int(self.config.seed if seed is None else seed) & 0xFFFFFFFFFFFFFFFF
+        used_seed = (
+            dr.opaque(mi.UInt32, used_seed_value & 0xFFFFFFFF),
+            dr.opaque(mi.UInt32, used_seed_value >> 32),
+        )
         started = time.perf_counter()
-        ray_index = dr.arange(mi.UInt32, count) + mi.UInt32(ray_start)
+        ray_index = dr.arange(mi.UInt32, count) + dr.opaque(mi.UInt32, ray_start)
         direction = _unit_sphere(mi, dr, ray_index, used_seed)
         # Materialise the counter draw before Mitsuba fuses it into an
         # intersection kernel. CUDA otherwise preserves the same rounded
@@ -217,9 +260,9 @@ class DeviceSbrKernel:
         if point.shape != (3,):
             raise ValueError(f"origin must have shape (3,), got {point.shape}")
         position = mi.Point3f(
-            dr.full(mi.Float, float(point[0]), count),
-            dr.full(mi.Float, float(point[1]), count),
-            dr.full(mi.Float, float(point[2]), count),
+            dr.opaque(mi.Float, float(point[0]), count),
+            dr.opaque(mi.Float, float(point[1]), count),
+            dr.opaque(mi.Float, float(point[2]), count),
         )
         throughput = dr.full(mi.Float, 1.0, count)
         path_length = dr.zeros(mi.Float, count)
@@ -229,52 +272,167 @@ class DeviceSbrKernel:
         alive = dr.full(mi.Bool, True, count)
 
         for depth in range(int(self.config.max_bounces) + 1):
-            epsilon = float(self.config.ray_epsilon_m)
-            intersection = self.geometry.intersect_device(position + epsilon * direction, direction, alive)
-            escaped = alive & ~intersection.hit
-            status = dr.select(escaped, _STATUS_ESCAPED, status)
-            hit = alive & intersection.hit
+            # Rays in ``searching`` may cross any number of non-blocking
+            # canopy cells before they escape or reach a real interface. The
+            # loop only finds that interface. Material response stays outside
+            # it, so a pass-through does not evaluate the material catalogue.
+            searching = alive
+            canopy_crossings = dr.zeros(mi.UInt32, count)
+            blocking = dr.zeros(mi.Bool, count)
+            interface_normal = mi.Vector3f(0.0)
+            interface_face = dr.zeros(mi.UInt32, count)
+            interface_uv = mi.Point2f(0.0)
+            # A ray that only advances can cross each triangle at most once.
+            # One more query is needed to establish escape after crossing the
+            # final face. Keeping this bound in device state also turns a
+            # repeated self-hit caused by invalid geometry into a hard error.
+            max_canopy_crossings = int(self.face_class.size)
+
+            def continue_search(
+                searching: Any,
+                canopy_crossings: Any,
+                blocking: Any,
+                position: Any,
+                path_length: Any,
+                last_vertex: Any,
+                interface_normal: Any,
+                interface_face: Any,
+                interface_uv: Any,
+                status: Any,
+            ) -> Any:
+                del (
+                    blocking,
+                    position,
+                    path_length,
+                    last_vertex,
+                    interface_normal,
+                    interface_face,
+                    interface_uv,
+                    status,
+                )
+                return searching & (canopy_crossings <= max_canopy_crossings)
+
+            def search_step(
+                searching: Any,
+                canopy_crossings: Any,
+                blocking: Any,
+                position: Any,
+                path_length: Any,
+                last_vertex: Any,
+                interface_normal: Any,
+                interface_face: Any,
+                interface_uv: Any,
+                status: Any,
+            ) -> tuple[Any, ...]:
+                epsilon = float(self.config.ray_epsilon_m)
+                intersection = self.geometry.intersect_device(
+                    position + epsilon * direction,
+                    direction,
+                    searching,
+                )
+                escaped = searching & ~intersection.hit
+                status = dr.select(escaped, _STATUS_ESCAPED, status)
+                hit = searching & intersection.hit
+                # The atlas mask is enough to cross a false canopy surface.
+                # Fresnel mixtures are evaluated only for the one real
+                # interface that ends this search.
+                nonblocking = self._surface_nonblocking(intersection, hit)
+                pass_through = hit & nonblocking
+                blocking_here = hit & ~nonblocking
+                canopy_crossings = dr.select(pass_through, canopy_crossings + 1, canopy_crossings)
+                blocking |= blocking_here
+                interface_normal = dr.select(blocking_here, intersection.normal, interface_normal)
+                interface_face = dr.select(blocking_here, intersection.face, interface_face)
+                interface_uv = dr.select(blocking_here, intersection.barycentric_uv, interface_uv)
+
+                # ``distance`` starts at the epsilon-shifted query origin.
+                # Adding the same epsilon recovers the true surface point.
+                hit_position = position + (intersection.distance + epsilon) * direction
+                path_length = dr.select(hit, path_length + intersection.distance, path_length)
+                last_vertex = dr.select(hit, hit_position, last_vertex)
+                position = dr.select(hit, hit_position, position)
+                searching = pass_through
+                return (
+                    searching,
+                    canopy_crossings,
+                    blocking,
+                    position,
+                    path_length,
+                    last_vertex,
+                    interface_normal,
+                    interface_face,
+                    interface_uv,
+                    status,
+                )
+
+            (
+                searching,
+                canopy_crossings,
+                blocking,
+                position,
+                path_length,
+                last_vertex,
+                interface_normal,
+                interface_face,
+                interface_uv,
+                status,
+            ) = dr.while_loop(
+                state=(
+                    searching,
+                    canopy_crossings,
+                    blocking,
+                    position,
+                    path_length,
+                    last_vertex,
+                    interface_normal,
+                    interface_face,
+                    interface_uv,
+                    status,
+                ),
+                cond=continue_search,
+                body=search_step,
+                mode="symbolic" if str(getattr(self.geometry, "variant", "")).startswith("cuda") else "evaluated",
+                label=f"canopy pass-through at bounce {depth}",
+            )
+            status = dr.select(searching, _STATUS_CANOPY_LOOP_ERROR, status)
+            blocking &= ~searching
             if depth == int(self.config.max_bounces):
-                status = dr.select(hit, _STATUS_TRUNCATED, status)
-                alive &= ~hit
-                continue
+                status = dr.select(blocking, _STATUS_TRUNCATED, status)
+                alive = dr.zeros(mi.Bool, count)
+            else:
+                facing = dr.select(-dr.dot(direction, interface_normal) < 0.0, -1.0, 1.0)
+                normal = interface_normal * facing
+                cosine = dr.clip(-dr.dot(direction, normal), 0.0, 1.0)
+                material = dr.gather(mi.UInt32, self._face_class_device, interface_face, blocking)
+                reflectance, share, _ = self._surface_response_at(
+                    cosine,
+                    material,
+                    interface_face,
+                    interface_uv,
+                    blocking,
+                )
+                bounces = dr.select(blocking, bounces + 1, bounces)
+                throughput = dr.select(blocking, throughput * reflectance, throughput)
 
-            # ``distance`` starts at the epsilon-shifted query origin. Adding
-            # the same epsilon here recovers the true surface point. The next
-            # loop shifts that point along the new ray, matching the NumPy
-            # reference without translating the reflected line.
-            hit_position = position + (intersection.distance + epsilon) * direction
-            path_length = dr.select(hit, path_length + intersection.distance, path_length)
-            last_vertex = dr.select(hit, hit_position, last_vertex)
-            bounces = dr.select(hit, bounces + 1, bounces)
+                take_specular = _counter_random(mi, ray_index, used_seed, depth, 0) < share
+                mirror = direction - 2.0 * dr.dot(direction, normal) * normal
+                diffuse = _cosine_hemisphere(mi, dr, normal, ray_index, used_seed, depth)
+                scattered = dr.normalize(dr.select(take_specular, mirror, diffuse))
+                direction = dr.select(blocking, scattered, direction)
 
-            geometric_normal = intersection.normal
-            facing = dr.select(-dr.dot(direction, geometric_normal) < 0.0, -1.0, 1.0)
-            normal = geometric_normal * facing
-            position = dr.select(hit, hit_position, position)
-            cosine = dr.clip(-dr.dot(direction, normal), 0.0, 1.0)
-            material = dr.gather(mi.UInt32, self._face_class_device, intersection.face, hit)
-            permittivity = dr.gather(mi.Complex2f, self._permittivity_device, material, hit)
-            rms_height = dr.gather(mi.Float, self._rms_height_device, material, hit)
-            reflectance = _fresnel_power(mi, dr, cosine, permittivity)
-            share = _specular_share(dr, rms_height, cosine, self.wavelength_m)
-            hit_throughput = throughput * reflectance
-            throughput = dr.select(hit, hit_throughput, throughput)
-
-            take_specular = _counter_random(mi, ray_index, used_seed, depth, 0) < share
-            mirror = direction - 2.0 * dr.dot(direction, normal) * normal
-            diffuse = _cosine_hemisphere(mi, dr, normal, ray_index, used_seed, depth)
-            scattered = dr.normalize(dr.select(take_specular, mirror, diffuse))
-            direction = dr.select(hit, scattered, direction)
-            alive = hit
-
-            if depth + 1 >= int(self.config.roulette_start):
-                survive_probability = dr.clip(throughput, float(self.config.roulette_floor), 1.0)
-                survive = _counter_random(mi, ray_index, used_seed, depth, 3) < survive_probability
-                killed = alive & ~survive
-                status = dr.select(killed, _STATUS_ROULETTE, status)
-                throughput = dr.select(alive, throughput / survive_probability, throughput)
-                alive &= survive
+                alive = blocking
+                if depth + 1 >= int(self.config.roulette_start):
+                    survive_probability = dr.clip(throughput, float(self.config.roulette_floor), 1.0)
+                    survive = _counter_random(mi, ray_index, used_seed, depth, 3) < survive_probability
+                    killed = alive & ~survive
+                    status = dr.select(killed, _STATUS_ROULETTE, status)
+                    throughput = dr.select(alive, throughput / survive_probability, throughput)
+                    alive &= survive
+            # Keep the fixed physical-bounce loop outside the generated
+            # device loop. This also avoids nesting several OptiX loops into
+            # one very large graph and gives every later bounce reusable,
+            # materialised inputs.
+            dr.eval(position, direction, throughput, path_length, last_vertex, bounces, status, alive)
 
         return self._transfer_records(
             ray_index,
@@ -289,6 +447,110 @@ class DeviceSbrKernel:
             count,
             started,
         )
+
+    def _surface_response(
+        self,
+        cosine: Any,
+        fallback_material: Any,
+        intersection: Any,
+        hit: Any,
+    ) -> tuple[Any, Any, Any]:
+        """Evaluate an interface and return its non-blocking volume state."""
+        return self._surface_response_at(
+            cosine,
+            fallback_material,
+            intersection.face,
+            intersection.barycentric_uv,
+            hit,
+        )
+
+    def _surface_response_at(
+        self,
+        cosine: Any,
+        fallback_material: Any,
+        face: Any,
+        barycentric_uv: Any,
+        hit: Any,
+    ) -> tuple[Any, Any, Any]:
+        """Evaluate an interface from its compact device coordinates."""
+        mi, dr = self.mi, self.dr
+        permittivity = dr.gather(mi.Complex2f, self._permittivity_device, fallback_material, hit)
+        rms_height = dr.gather(mi.Float, self._rms_height_device, fallback_material, hit)
+        fallback_reflectance = _fresnel_power(mi, dr, cosine, permittivity)
+        fallback_share = _specular_share(dr, rms_height, cosine, self.wavelength_m)
+        if self.atlas_material is None:
+            return fallback_reflectance, fallback_share, dr.zeros(mi.Bool, dr.width(cosine))
+
+        supported, nonblocking, texel = self._atlas_lookup(face, barycentric_uv, hit)
+        material_count = len(self.atlas_material.material_names)
+
+        reflected_power = dr.zeros(mi.Float, dr.width(cosine))
+        specular_power = dr.zeros(mi.Float, dr.width(cosine))
+        for channel, class_index in enumerate(self.atlas_material.material_class.tolist()):
+            probability = dr.gather(
+                mi.Float,
+                self._atlas_probability_device,
+                texel * material_count + channel,
+                supported,
+            )
+            component_permittivity = dr.gather(
+                mi.Complex2f,
+                self._permittivity_device,
+                mi.UInt32(int(class_index)),
+                supported,
+            )
+            component_rms = dr.gather(
+                mi.Float,
+                self._rms_height_device,
+                mi.UInt32(int(class_index)),
+                supported,
+            )
+            component_reflectance = _fresnel_power(mi, dr, cosine, component_permittivity)
+            component_share = _specular_share(dr, component_rms, cosine, self.wavelength_m)
+            reflected_power += probability * component_reflectance
+            specular_power += probability * component_reflectance * component_share
+        mixed_share = dr.select(reflected_power > 0.0, specular_power / reflected_power, 0.0)
+        return (
+            dr.select(supported, reflected_power, fallback_reflectance),
+            dr.select(supported, mixed_share, fallback_share),
+            nonblocking,
+        )
+
+    def _surface_nonblocking(self, intersection: Any, hit: Any) -> Any:
+        """Return pass-through state without evaluating any material model."""
+        mi, dr = self.mi, self.dr
+        if self.atlas_material is None:
+            return dr.zeros(mi.Bool, dr.width(hit))
+        _supported, nonblocking, _texel = self._atlas_lookup(
+            intersection.face,
+            intersection.barycentric_uv,
+            hit,
+        )
+        return nonblocking
+
+    def _atlas_lookup(self, face: Any, barycentric_uv: Any, hit: Any) -> tuple[Any, Any, Any]:
+        """Return supported, non-blocking, and flat texel indices."""
+        mi, dr = self.mi, self.dr
+        atlas_row = dr.gather(mi.Int32, self._atlas_face_to_row_device, face, hit)
+        atlas_hit = hit & (atlas_row >= 0)
+        safe_row = dr.maximum(atlas_row, 0)
+        height, width = self.atlas_material.resolution
+        u = dr.clip(barycentric_uv.x, 0.0, 1.0)
+        v = dr.clip(barycentric_uv.y, 0.0, 1.0)
+        scaled_row = v * float(height - 1)
+        scaled_column = u * float(width - 1)
+        texel_row = mi.Int32(dr.floor(scaled_row + 0.5))
+        texel_column = mi.Int32(dr.floor(scaled_column + 0.5))
+        row_excess = mi.Float(texel_row) - scaled_row
+        column_excess = mi.Float(texel_column) - scaled_column
+        outside = mi.Float(texel_row) / float(height - 1) + mi.Float(texel_column) / float(width - 1) > 1.0 + 1.0e-7
+        step_row = outside & (row_excess >= column_excess)
+        texel_row = dr.select(step_row, texel_row - 1, texel_row)
+        texel_column = dr.select(outside & ~step_row, texel_column - 1, texel_column)
+        texel = (safe_row * height + texel_row) * width + texel_column
+        supported = atlas_hit & dr.gather(mi.Bool, self._atlas_supported_device, texel, atlas_hit)
+        nonblocking = atlas_hit & dr.gather(mi.Bool, self._atlas_nonblocking_device, texel, atlas_hit)
+        return supported, nonblocking, texel
 
     def _transfer_records(self, *parts: Any) -> DeviceEscapeRecords:
         """Compact escaped rays and cross the device boundary in one array copy."""
@@ -311,9 +573,11 @@ class DeviceSbrKernel:
         truncated_index = dr.compress(status == _STATUS_TRUNCATED)
         truncated = dr.sum(mi.UInt32(status == _STATUS_TRUNCATED))
         roulette_killed = dr.sum(mi.UInt32(status == _STATUS_ROULETTE))
+        canopy_loop_errors = dr.sum(mi.UInt32(status == _STATUS_CANOPY_LOOP_ERROR))
         packed_parts = [
             dr.reinterpret_array(mi.Float, truncated),
             dr.reinterpret_array(mi.Float, roulette_killed),
+            dr.reinterpret_array(mi.Float, canopy_loop_errors),
             launch.x,
             launch.y,
             launch.z,
@@ -347,8 +611,13 @@ class DeviceSbrKernel:
             )
         packed_device = dr.concat(packed_parts)
         transferred = np.asarray(packed_device).copy()
-        summary = transferred[:2].view(np.uint32)
-        offset = 2
+        summary = transferred[:3].view(np.uint32)
+        if summary[2]:
+            raise RuntimeError(
+                f"{int(summary[2])} rays exceeded the support-mesh face count while crossing "
+                "non-blocking canopy cells; the mesh likely contains a repeated self-intersection"
+            )
+        offset = 3
         launch_size = 3 * count
         all_launch_direction = transferred[offset : offset + launch_size].reshape(3, count).T.copy()
         offset += launch_size

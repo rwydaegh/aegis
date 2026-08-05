@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from semantic_twin.propagation.geometry import MitsubaGeometry
+from semantic_twin.materials.atlas_binding import AtlasMaterialBinding
+from semantic_twin.propagation.geometry import DeviceIntersection, MitsubaGeometry
 from semantic_twin.transport.device_kernel import DeviceEscapeRecords, DeviceSbrKernel
 from semantic_twin.transport.tracer import TraceConfig, fresnel_power_reflectance
 
@@ -67,6 +69,49 @@ end_header
 """
     )
     return path
+
+
+def _write_layered_planes(path: Path) -> Path:
+    rows = [
+        "ply",
+        "format ascii 1.0",
+        "element vertex 12",
+        "property float x",
+        "property float y",
+        "property float z",
+        "element face 6",
+        "property list uchar int vertex_indices",
+        "end_header",
+    ]
+    for height in (2, 1, 0):
+        rows.extend(
+            (
+                f"-100 -100 {height}",
+                f"100 -100 {height}",
+                f"100 100 {height}",
+                f"-100 100 {height}",
+            )
+        )
+    for start in (0, 4, 8):
+        rows.extend((f"3 {start} {start + 1} {start + 2}", f"3 {start} {start + 2} {start + 3}"))
+    path.write_text("\n".join(rows) + "\n")
+    return path
+
+
+def _layered_binding() -> AtlasMaterialBinding:
+    valid = np.array([[True, True], [True, False]])
+    nonblocking = np.zeros((6, 2, 2), dtype=bool)
+    nonblocking[:4] = valid
+    return AtlasMaterialBinding(
+        face_to_atlas_row=np.arange(6, dtype=np.int32),
+        material_probability=np.zeros((6, 2, 2, 1), dtype=np.float32),
+        supported=np.zeros((6, 2, 2), dtype=bool),
+        valid_texels=valid,
+        material_names=("brick",),
+        material_class=np.array([1], dtype=np.int32),
+        provenance={"rule": "two non-blocking layers above one blocking surface"},
+        nonblocking=nonblocking,
+    )
 
 
 def _set_variant(name: str) -> None:
@@ -390,3 +435,133 @@ def test_device_kernel_rejects_observers_before_launch(tmp_path: Path, option: s
     kernel = _kernel(tmp_path / "plane.ply", "llvm_ad_rgb", rays=16)
     with pytest.raises(NotImplementedError, match=option):
         kernel.trace_escape_records(np.array([0.0, 0.0, 1.0]), **{option: object()})
+
+
+@pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
+def test_layered_canopy_pass_through_preserves_ray_state(tmp_path: Path, variant: str) -> None:
+    _set_variant(variant)
+    geometry = MitsubaGeometry(_write_layered_planes(tmp_path / f"layers_{variant}.ply"), variant=variant)
+    config = TraceConfig(rays=4096, max_bounces=1, roulette_start=2, seed=73)
+    permittivity = np.array([1.0 + 0.0j, 4.2 - 0.15j])
+    kernel = DeviceSbrKernel(
+        geometry,
+        np.ones(geometry.face_count, dtype=np.int64),
+        permittivity,
+        np.zeros(2),
+        config,
+        atlas_material=_layered_binding(),
+    )
+
+    result = kernel.trace_escape_records(np.array([0.0, 0.0, 3.0]))
+    launched_down = result.launch_direction[:, 2] < 0.0
+    distance_to_floor = np.divide(
+        3.0,
+        -result.launch_direction[:, 2],
+        out=np.full(result.rays, np.inf),
+        where=launched_down,
+    )
+    floor_xy = result.launch_direction[:, :2] * distance_to_floor[:, None]
+    bounced = launched_down & np.all(np.abs(floor_xy) <= 100.0, axis=1)
+    direct = ~bounced
+
+    assert result.escaped == result.rays
+    np.testing.assert_array_equal(result.bounces, bounced.astype(np.uint32))
+    np.testing.assert_array_equal(result.exit_direction[direct], result.launch_direction[direct])
+    expected_direction = result.launch_direction[bounced].copy()
+    expected_direction[:, 2] *= -1.0
+    np.testing.assert_allclose(result.exit_direction[bounced], expected_direction, atol=2.0e-6)
+    expected_power = fresnel_power_reflectance(
+        -result.launch_direction[bounced, 2],
+        np.full(np.count_nonzero(bounced), permittivity[1]),
+    )
+    np.testing.assert_allclose(result.throughput[bounced], expected_power, rtol=3.0e-5, atol=2.0e-6)
+    np.testing.assert_array_equal(result.throughput[direct], np.ones(np.count_nonzero(direct), dtype=np.float32))
+
+
+def test_canopy_search_is_a_structured_loop_without_material_work() -> None:
+    source = inspect.getsource(DeviceSbrKernel.trace_escape_records)
+    loop_body = source[source.index("def search_step") : source.index(") = dr.while_loop")]
+
+    assert "while bool(dr.any" not in source
+    assert "dr.while_loop(" in source
+    assert "_surface_response" not in loop_body
+    assert "_surface_nonblocking" in loop_body
+    assert "dr.opaque" in source
+
+
+def test_changed_origin_and_seed_reuse_compiled_device_kernels(tmp_path: Path) -> None:
+    _set_variant("llvm_ad_rgb")
+    import drjit as dr
+
+    kernel = _cube_kernel(
+        tmp_path / "cache_cube.ply",
+        "llvm_ad_rgb",
+        rays=256,
+        max_bounces=2,
+        roulette_start=3,
+    )
+    kernel.trace_escape_records(np.zeros(3), seed=91)
+    dr.kernel_history_clear()
+
+    with dr.scoped_set_flag(dr.JitFlag.KernelHistory):
+        kernel.trace_escape_records(np.array([1.0, 2.0, 3.0]), seed=92)
+    launches = [entry for entry in dr.kernel_history() if entry["type"] == dr.KernelType.JIT]
+
+    assert launches
+    assert all(entry["cache_hit"] for entry in launches)
+
+
+def test_repeated_nonblocking_self_hit_fails_instead_of_hanging() -> None:
+    _set_variant("llvm_ad_rgb")
+    import drjit as dr
+    import mitsuba as mi
+
+    class RepeatingGeometry:
+        face_count = 1
+        variant = "llvm_ad_rgb"
+
+        @staticmethod
+        def prepare_device() -> None:
+            return None
+
+        @staticmethod
+        def intersect_device(origins: object, directions: object, active: object) -> DeviceIntersection:
+            del origins, directions
+            width = dr.width(active)
+            return DeviceIntersection(
+                hit=active,
+                distance=dr.select(active, 1.0, 1.0e30),
+                normal=mi.Vector3f(
+                    dr.zeros(mi.Float, width),
+                    dr.zeros(mi.Float, width),
+                    dr.ones(mi.Float, width),
+                ),
+                face=dr.zeros(mi.UInt32, width),
+                barycentric_uv=mi.Point2f(
+                    dr.full(mi.Float, 0.25, width),
+                    dr.full(mi.Float, 0.25, width),
+                ),
+            )
+
+    valid = np.array([[True, True], [True, False]])
+    binding = AtlasMaterialBinding(
+        face_to_atlas_row=np.array([0], dtype=np.int32),
+        material_probability=np.zeros((1, 2, 2, 1), dtype=np.float32),
+        supported=np.zeros((1, 2, 2), dtype=bool),
+        valid_texels=valid,
+        material_names=("brick",),
+        material_class=np.array([0], dtype=np.int32),
+        provenance={"rule": "always non-blocking for repeated-hit guard"},
+        nonblocking=valid[None, ...],
+    )
+    kernel = DeviceSbrKernel(
+        RepeatingGeometry(),
+        np.array([0], dtype=np.int64),
+        np.array([4.2 - 0.15j]),
+        np.array([0.0]),
+        TraceConfig(rays=32, max_bounces=0),
+        atlas_material=binding,
+    )
+
+    with pytest.raises(RuntimeError, match="repeated self-intersection"):
+        kernel.trace_escape_records(np.zeros(3))
