@@ -1,5 +1,5 @@
 {
- "captured_utc": "2026-08-04T12:47:52Z",
+ "captured_utc": "2026-08-05T08:21:01Z",
  "cases": {
   "cities_250m_all_sites": {
    "argv": [
@@ -409,10 +409,10 @@
    "command": "python run_next_event.py --sites korenmarkt --crop-m 130 --rays 50000 --builders 32 --held-out 16 --azimuths 720 --elevations 300 --cell-m 1.0 --dims 3 --connections 1 --frequency-hz 15000000000.0 --max-bounces 3 --walk route --walk-path links --walk-stride-m 6.0 --seed 7 --tag golden_ne_km130_fast",
    "driver": "run_next_event.py",
    "fixture": "next_event_korenmarkt_130m_fast.json",
-   "fixture_bytes": 5517,
+   "fixture_bytes": 5508,
    "prerequisites": [],
    "tier": "fast",
-   "wall_seconds": 2.57,
+   "wall_seconds": 2.18,
    "what_it_locks": "The second estimator: skyline extraction, the explicit source set on facade tips, the exact line of sight term, and next event connection at every path vertex. Also carries the escape estimator's own surplus for the same points, so the factor of three gap between the two is locked as a number.",
    "writes": [
     "outputs/next_event/golden_ne_km130_fast_130m.json"
@@ -430,7 +430,7 @@
  },
  "git_branch": "feature/coherent-exposure-studio",
  "git_dirty": true,
- "git_sha": "af085de4e07a6fdb21830674d148952b34ad3fb8",
+ "git_sha": "1d0e7dd084a97f78d2548c282b5b7635b28205b5",
  "machine": {
   "cpu_count": 4,
   "env": {
