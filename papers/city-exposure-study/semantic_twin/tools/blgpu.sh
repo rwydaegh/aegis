@@ -160,7 +160,9 @@ PY
   #    --materials walk, and the site semantics and VLM tables for the material
   #    modes. All small. Anything heavier is pushed explicitly with `push`.
   echo "blgpu: sync propagation inputs"
-  for sub in walk_korenmarkt site_semantics material_vlm cross_validation antenna; do
+  for sub in \
+    walk_korenmarkt walk_korenmarkt_saturation city_screening \
+    site_semantics material_vlm cross_validation antenna; do
     [[ -d "$LOCAL_STUDY/outputs/$sub" ]] || continue
     rs \
       --include '*/' --include '*.npz' --include '*.json' --include '*.jsonl' --include '*.csv' \
