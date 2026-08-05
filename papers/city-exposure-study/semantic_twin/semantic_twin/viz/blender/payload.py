@@ -184,6 +184,39 @@ def builder_fingerprint(root: pathlib.Path | None = None) -> str:
     return digest.hexdigest()[:16]
 
 
+def _mapping_at(record: Mapping[str, Any], key: str) -> Mapping[str, Any]:
+    value = record.get(key)
+    return value if isinstance(value, Mapping) else {}
+
+
+def _named_strings(record: Mapping[str, Any], names: Sequence[tuple[str, str]]) -> dict[str, str]:
+    return {
+        property_name: value
+        for source_name, property_name in names
+        if isinstance((value := record.get(source_name)), str)
+    }
+
+
+def _production_input_hashes(production: Mapping[str, Any]) -> dict[str, str]:
+    inputs = _mapping_at(production, "inputs")
+    names = (
+        ("locations_jsonl", "production_locations_sha256"),
+        ("spectra_npz", "production_spectra_sha256"),
+        ("manifest_json", "production_manifest_sha256"),
+    )
+    return {
+        property_name: digest
+        for source_name, property_name in names
+        if isinstance((digest := _mapping_at(inputs, source_name).get("sha256")), str)
+    }
+
+
+def _production_transport(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
+    arms = _mapping_at(manifest, "estimator_arms")
+    exposure = _mapping_at(arms, "exposure")
+    return _mapping_at(exposure, "transport")
+
+
 def production_scene_properties(manifest: Mapping[str, Any]) -> dict[str, str]:
     """Flatten production identity into Blender-supported scene properties.
 
@@ -193,55 +226,35 @@ def production_scene_properties(manifest: Mapping[str, Any]) -> dict[str, str]:
     opening a second file. Standalone visualization manifests have no
     ``production_exposure`` block and therefore receive no production fields.
     """
-    production = manifest.get("production_exposure")
-    if not isinstance(production, Mapping):
+    production = _mapping_at(manifest, "production_exposure")
+    if not production:
         return {}
 
-    properties: dict[str, str] = {}
-    run_digest = production.get("run_digest")
-    if isinstance(run_digest, str):
-        properties["production_run_digest"] = run_digest
-
-    inputs = production.get("inputs")
-    if isinstance(inputs, Mapping):
-        for source, property_name in (
-            ("locations_jsonl", "production_locations_sha256"),
-            ("spectra_npz", "production_spectra_sha256"),
-            ("manifest_json", "production_manifest_sha256"),
-        ):
-            identity = inputs.get(source)
-            digest = identity.get("sha256") if isinstance(identity, Mapping) else None
-            if isinstance(digest, str):
-                properties[property_name] = digest
-
-    arms = manifest.get("estimator_arms")
-    exposure = arms.get("exposure") if isinstance(arms, Mapping) else None
-    transport = exposure.get("transport") if isinstance(exposure, Mapping) else None
-    if not isinstance(transport, Mapping):
-        return properties
-
-    for key, property_name in (
-        ("kernel", "transport_kernel"),
-        ("variant", "transport_variant"),
-        ("floating_point", "transport_floating_point"),
-    ):
-        value = transport.get(key)
-        if isinstance(value, str):
-            properties[property_name] = value
-
-    rng = transport.get("rng")
-    if isinstance(rng, Mapping):
-        for key, property_name in (("family", "transport_rng_family"), ("algorithm", "transport_rng_algorithm")):
-            value = rng.get(key)
-            if isinstance(value, str):
-                properties[property_name] = value
-
-    versions = transport.get("versions")
-    if isinstance(versions, Mapping):
-        for key, property_name in (("mitsuba", "mitsuba_version"), ("drjit", "drjit_version")):
-            value = versions.get(key)
-            if isinstance(value, str):
-                properties[property_name] = value
+    transport = _production_transport(manifest)
+    properties = _named_strings(production, (("run_digest", "production_run_digest"),))
+    properties.update(_production_input_hashes(production))
+    properties.update(
+        _named_strings(
+            transport,
+            (
+                ("kernel", "transport_kernel"),
+                ("variant", "transport_variant"),
+                ("floating_point", "transport_floating_point"),
+            ),
+        )
+    )
+    properties.update(
+        _named_strings(
+            _mapping_at(transport, "rng"),
+            (("family", "transport_rng_family"), ("algorithm", "transport_rng_algorithm")),
+        )
+    )
+    properties.update(
+        _named_strings(
+            _mapping_at(transport, "versions"),
+            (("mitsuba", "mitsuba_version"), ("drjit", "drjit_version")),
+        )
+    )
     return properties
 
 
