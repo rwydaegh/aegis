@@ -132,18 +132,18 @@ def build_ecbf_absolute(
     l_wb = float(limits.sar_wb)
     l_loc = limits.sab_4cm2  # None at or below 6 GHz
 
-    has_mass = mass is not None and float(mass) > 0
-    sar_active = bool(sar_wb_on) and has_mass
-    peak_active = bool(peak_on) and (l_loc is not None)
+    mass_kg = float(mass) if mass is not None and float(mass) > 0 else None
+    peak_limit = float(l_loc) if peak_on and l_loc is not None else None
+    sar_active = bool(sar_wb_on) and mass_kg is not None
 
     # Active constraint set. Order is the entry order in lambdas, so names[] maps
     # each multiplier back to the restriction it enforces.
     q_list: list[np.ndarray] = []
     l_list: list[float] = []
     names: list = []
-    if sar_active:
+    if sar_active and mass_kg is not None:
         q_list.append(global_operator(g_tilde, areas) if q_glob is None else np.asarray(q_glob))
-        l_list.append(l_wb * float(mass))
+        l_list.append(l_wb * mass_kg)
         names.append("sar_wb")
 
     indptr = np.asarray(g_avg.indptr)
@@ -175,7 +175,7 @@ def build_ecbf_absolute(
             x = np.sqrt(p) * np.conj(h) / max(float(np.linalg.norm(h)), 1e-30)
             diag = None
 
-        if not peak_active:
+        if peak_limit is None:
             break
 
         sab = deposited_sab(g_tilde, x)
@@ -183,7 +183,7 @@ def build_ecbf_absolute(
         if avg.size == 0:
             break
         r_max = int(np.argmax(avg))
-        if avg[r_max] <= l_loc * (1.0 + _PEAK_TOL):
+        if avg[r_max] <= peak_limit * (1.0 + _PEAK_TOL):
             break  # feasible: no region exceeds the local limit beyond tolerance
         if r_max in region_rows:
             # The worst region is already enforced (projected onto the limit) yet
@@ -197,7 +197,7 @@ def build_ecbf_absolute(
 
         s, e = int(indptr[r_max]), int(indptr[r_max + 1])
         q_list.append(region_operator(g_tilde, indices[s:e], data[s:e]))
-        l_list.append(float(l_loc))
+        l_list.append(peak_limit)
         names.append(("region", r_max))
         region_rows.append(r_max)
         if lambda_init is not None:
@@ -252,8 +252,8 @@ def build_ecbf_absolute(
     p_abs_w = float(np.sum(sab * areas))
 
     per_constraint: list[dict] = []
-    if sar_active:
-        sar_val = p_abs_w / float(mass)
+    if sar_active and mass_kg is not None:
+        sar_val = p_abs_w / mass_kg
         per_constraint.append(
             {
                 "name": "sar_wb",
@@ -264,15 +264,15 @@ def build_ecbf_absolute(
                 "active": glob_active,
             }
         )
-    if peak_active:
+    if peak_limit is not None:
         peak_val = float(avg.max()) if avg.size else 0.0
         per_constraint.append(
             {
                 "name": "peak_sab",
                 "value": peak_val,
-                "limit": float(l_loc),
+                "limit": peak_limit,
                 "unit": "W/m^2",
-                "utilisation": (peak_val / float(l_loc)) if l_loc > 0 else None,
+                "utilisation": (peak_val / peak_limit) if peak_limit > 0 else None,
                 "active": region_active,
             }
         )

@@ -19,10 +19,18 @@ _PHANTOM_KEY = "_studio_phantom"
 _Q_KEY = "_studio_q"
 
 
-def _cache_get(cache: dict | None, lock, top_key: str, sub_key, builder):
+def _cache_get(
+    cache: dict | None,
+    lock: threading.RLock | None,
+    top_key: str,
+    sub_key,
+    builder,
+):
     """Memoise ``builder()`` under ``cache[top_key][sub_key]`` (lock-guarded)."""
     if cache is None:
         return builder()
+    if lock is None:
+        raise ValueError("cache lock is required when cache is provided")
     with lock:
         store = cache.setdefault(top_key, {})
         if sub_key in store:
@@ -126,6 +134,8 @@ def load_q(
     stem = f"{base}_seed{int(seed)}"
 
     if cache is not None:
+        if cache_lock is None:
+            raise ValueError("cache_lock is required when cache is provided")
         with cache_lock:
             store = cache.setdefault(_Q_KEY, {})
             if stem in store:
@@ -146,6 +156,8 @@ def load_q(
         q = np.ascontiguousarray(d["Q"], dtype=complex)
 
     if cache is not None:
+        if cache_lock is None:
+            raise ValueError("cache_lock is required when cache is provided")
         with cache_lock:
             cache.setdefault(_Q_KEY, {})[stem] = q
     return q

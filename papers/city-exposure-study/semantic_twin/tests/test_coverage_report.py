@@ -65,6 +65,7 @@ def test_an_empty_crop_is_refused_rather_than_guessed(tmp_path):
 
 
 @pytest.mark.parametrize(("site", "crop_m"), (("korenmarkt", 130), ("milan_duomo", 170)))
+@pytest.mark.local_data
 def test_a_rebuilt_config_records_the_acquisition_mesh_not_the_preferred_trace_mesh(monkeypatch, site, crop_m):
     datum = {
         "camera_ground_z_m": 1.0,

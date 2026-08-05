@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from decimal import Decimal, localcontext
 
 import numpy as np
 import pytest
@@ -387,20 +388,35 @@ def test_trace_kernel_keeps_the_recorded_bits_and_callback_order() -> None:
     }
     assert gather.batch_sizes == [73, 73, 73, 38]
     assert len(gather.rows) == 10
-    assert [
-        _sha(np.concatenate([row[column] for row in gather.rows if row[column] is not None], axis=0))
-        for column in range(9)
-    ] == [
+    gathered = [
+        np.concatenate([row[column] for row in gather.rows if row[column] is not None], axis=0) for column in range(9)
+    ]
+    exact_columns = (0, 1, 2, 3, 4, 6, 7, 8)
+    assert [_sha(gathered[column]) for column in exact_columns] == [
         "819adfff90cf42afd34f02786cbf69185e2de2204bc0863b3b16c41e5b243b98",
         "53363f3471ec412916829b4f87c959e2a92bf0b6c05fd9d9ae1de8daa6eb5f6a",
         "59e121a7a24288888c85da97a06cc4e812b5cdbb0acd7a1b7f36802aa620f5f3",
         "14ee867b68c5f2ca3bae3640b93d6cfe1ae5309ee0ea09562d60cad85042090b",
         "79d1db270f45e051ca417353029d7abdda043c4be0cc4ec363cdd8eaea31e87f",
-        "722654627723af31bc1119c009607b5e74cd16ffcd181236896847b74a8f5eff",
         "6df81342358cbd95ef677256a336fb3719831ac8b1651ff6ab1e461b00299e54",
         "eed260b53567d973511b540fa38a66f2bec9a0c247bc9b443ee7e9a97c995ff4",
         "b5ee4090e41195fac886a223d99baf8f509e554ae56ea692becc84d2cbd804ae",
     ]
+
+    incoming = gathered[2]
+    normal = gathered[3]
+    face = gathered[8]
+    cosine = np.clip(-np.einsum("ij,ij->i", incoming, normal), 0.0, 1.0)
+    assert tracer.face_class is not None
+    klass = tracer.face_class[face]
+    g = 4.0 * np.pi * tracer.rms_height_m[klass] * cosine / tracer.wavelength_m
+    exponent = -np.minimum(g * g, 60.0)
+    with localcontext() as context:
+        context.prec = 80
+        reference_share = np.array([float(Decimal.from_float(float(value)).exp()) for value in exponent])
+    # NumPy delegates exp to the host math library. Glibc versions can differ
+    # in the final one or two bits, while the Rayleigh closure remains the same.
+    np.testing.assert_array_max_ulp(gathered[5], reference_share, maxulp=2)
 
 
 def test_range_weighting_keeps_the_tracer_override_hook() -> None:

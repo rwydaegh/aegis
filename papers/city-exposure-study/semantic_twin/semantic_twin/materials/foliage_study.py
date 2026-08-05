@@ -55,6 +55,7 @@ from semantic_twin.materials.foliage import (
     ret_parameter_envelope,
     ret_parameters,
 )
+from semantic_twin.materials.serialization import publication_json
 
 OUTPUT = paths.output("foliage_study")
 
@@ -295,7 +296,7 @@ def stage_leaf() -> None:
         "curves": curves,
         "canopy_boundary_reflectance": boundary,
     }
-    (OUTPUT / "leaf.json").write_text(json.dumps(document, indent=1))
+    (OUTPUT / "leaf.json").write_text(publication_json(document))
     print(f"wrote {OUTPUT / 'leaf.json'}")
 
 

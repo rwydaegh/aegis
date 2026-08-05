@@ -222,7 +222,7 @@ def build_gep_from_q(
     h = channel_at(focus, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
 
     eigvals, vecs = np.linalg.eigh(q)
-    eigvals = np.maximum(eigvals.real, 0.0)
+    eigvals = np.maximum(np.real(eigvals), 0.0)
     tol = max(q.shape) * np.finfo(eigvals.dtype).eps * float(eigvals.max(initial=0.0))
     inv = np.where(eigvals > tol, 1.0 / np.where(eigvals > tol, eigvals, 1.0), 0.0)
     y = vecs @ (inv * (vecs.conj().T @ np.conj(h)))

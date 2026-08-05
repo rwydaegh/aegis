@@ -244,6 +244,7 @@ def test_the_two_broken_sites_no_longer_sit_on_a_roof(site: str, roof_z_m: float
     assert measured.band_fraction > 0.4
 
 
+@pytest.mark.local_data
 def test_no_crop_needs_the_majority_ratio_at_the_walk_radius() -> None:
     """On the real crops at 90 m the ground is the busiest level everywhere.
 
@@ -261,6 +262,7 @@ def test_no_crop_needs_the_majority_ratio_at_the_walk_radius() -> None:
     assert checked >= 10, f"expected the eleven crops, saw {checked}"
 
 
+@pytest.mark.local_data
 def test_every_registered_site_agrees_with_its_registration() -> None:
     """Eight of the eleven crops carry a registered pavement height. All eight agree.
 

@@ -382,7 +382,7 @@ class TestPathsFromDiffert:
         np.testing.assert_allclose(ratio, 4.0, rtol=1e-10)
 
     def test_propagation_phase(self):
-        """Coherent psi should include propagation phase exp(-j*k*d)."""
+        """The field reconstructed at the receiver has phase exp(-j*k*d)."""
         verts = np.zeros((1, 3))
         normals = np.array([[0, 0, 1.0]])
         path_verts = np.array([[[0, 0, 0], [10, 0, 0]]], dtype=np.float64)
@@ -390,14 +390,15 @@ class TestPathsFromDiffert:
         freq = 28e9
         result = paths_from_differt(verts, normals, path_verts, tx_pos, freq_hz=freq)
 
-        # Check that psi has the expected phase
+        # psi is the coefficient of the world-coordinate expansion
+        # E(r) = psi * exp(-j*k0*k_hat.r). Reconstruct E at the receiver
+        # before comparing it with the path-length propagation phase.
         k0 = 2 * np.pi * freq / C_0
         d = 10.0
-        expected_phase = -k0 * d
-        actual_phase = np.angle(result.psi[0, 2])  # z-component (vertical pol for x-propagation)
-        # Phase should match modulo 2*pi
-        phase_diff = (actual_phase - expected_phase) % (2 * np.pi)
-        assert phase_diff < 1e-6 or abs(phase_diff - 2 * np.pi) < 1e-6
+        receiver = path_verts[0, -1]
+        field_at_receiver = result.psi[0, 2] * np.exp(-1j * k0 * np.dot(result.k_hat[0], receiver))
+        phase_error = np.angle(field_at_receiver * np.exp(1j * k0 * d))
+        assert abs(phase_error) < 1e-6
 
     def test_with_polarisation_tracking(self):
         """Full polarisation tracking through reflections."""

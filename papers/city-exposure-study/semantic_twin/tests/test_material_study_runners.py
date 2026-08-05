@@ -17,6 +17,7 @@ from semantic_twin import paths
 from semantic_twin.materials import foliage_study
 from semantic_twin.materials.foliage import POWER_DB_PER_NEPER
 from semantic_twin.materials.masonry import grating_study, spectrum_study
+from semantic_twin.materials.serialization import publication_json
 from semantic_twin.propagation import diffraction_bound
 
 
@@ -162,7 +163,7 @@ def test_foliage_leaf_output_is_deterministic_and_keeps_its_schema(monkeypatch, 
     foliage_study.run(["leaf"])
 
     assert (tmp_path / "leaf.json").read_bytes() == first
-    assert hashlib.sha256(first).hexdigest() == "d4f08d12a8d5a9f68c47ea706799b1e367c57e1fa9ffc90f4778a83d29eef001"
+    assert hashlib.sha256(first).hexdigest() == "aa2bd38f375b16456559cfa1da2335a0e08af4d55e7b81c6a87ac7abafed96bc"
     document = json.loads(first)
     assert list(document) == [
         "leaf_thickness_m",
@@ -200,10 +201,18 @@ def test_masonry_census_output_keeps_its_exact_contents(monkeypatch, tmp_path):
     grating_study.run("census")
 
     census = (tmp_path / "census.json").read_bytes()
-    assert hashlib.sha256(census).hexdigest() == "886e69e16249ad01b2282f2a6723aa73d10a7a01549ac9015f4fe32e63c5732d"
+    assert hashlib.sha256(census).hexdigest() == "b842c2906d38e865726bf65e7e5bfd89c98101a6797ebd022a0a812439f7eeca"
     document = json.loads(census)
     assert len(document["walls"]) == 20
     assert list(document["tolerance_classes"]) == ["T1", "T2", "R1", "R2"]
+
+
+def test_publication_json_removes_cpu_tail_bits_but_keeps_a_change_at_13_digits():
+    reference = publication_json({"value": 1.23456789012341, "computed_here": True})
+
+    assert json.loads(reference)["computed_here"] is True
+    assert publication_json({"value": 1.23456789012342, "computed_here": True}) == reference
+    assert publication_json({"value": 1.234567890124, "computed_here": True}) != reference
 
 
 def test_diffraction_grid_integrates_the_sampled_sky_cap():

@@ -55,6 +55,8 @@ def get_scene(
 
     if cache is None:
         return _build()
+    if cache_lock is None:
+        raise ValueError("cache_lock is required when cache is provided")
     with cache_lock:
         store = cache.setdefault(_SCENE_KEY, {})
         if stem in store:

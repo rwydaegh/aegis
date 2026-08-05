@@ -53,6 +53,7 @@ from semantic_twin.materials.masonry import (
 )
 from semantic_twin.materials.masonry import solve as rcwa_solve
 from semantic_twin.materials.roughness import wavelength_m
+from semantic_twin.materials.serialization import publication_json
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 OUTPUT = ROOT / "outputs" / "masonry_grating"
@@ -182,7 +183,7 @@ def summarise(
 def write(name: str, payload: dict) -> pathlib.Path:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     path = OUTPUT / name
-    path.write_text(json.dumps(payload, indent=2, default=float))
+    path.write_text(publication_json(payload, indent=2))
     return path
 
 

@@ -10,6 +10,7 @@ ray tracer. Packs are produced offline by ``scripts/studio_precompute.py``.
 from __future__ import annotations
 
 import threading
+from typing import TypedDict
 
 import numpy as np
 from flask import Flask, jsonify
@@ -31,8 +32,21 @@ class _QPackMissing(Exception):
     """
 
     def __init__(self, stem: str) -> None:
-        self.stem = stem
+        self.stem: str = stem
         super().__init__(stem)
+
+
+class _ConstraintArgs(TypedDict):
+    constraint_mode: str
+    sar_wb_on: bool
+    peak_sab_on: bool
+    tx_power_w: float
+
+
+class _ComplianceLimits(TypedDict):
+    sar_wb: float
+    sab_4cm2: float | None
+    scenario: str
 
 
 def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
@@ -203,14 +217,14 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             return x, None
         return _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna), None
 
-    def _parse_ue_antenna(params):
+    def _parse_ue_antenna(params: dict[str, object]) -> str:
         """Validated UE receive-antenna kind from a request body (default dipole)."""
         ue_antenna = params.get("ue_antenna", "dipole")
-        if ue_antenna not in _presets._UE_ANTENNAS:
+        if not isinstance(ue_antenna, str) or ue_antenna not in _presets._UE_ANTENNAS:
             raise ValueError(f"unknown ue_antenna {ue_antenna!r}; expected one of {_presets._UE_ANTENNAS}")
         return ue_antenna
 
-    def _parse_constraint_args(params):
+    def _parse_constraint_args(params: dict[str, object]) -> _ConstraintArgs:
         """ECBF constraint-mode kwargs for ``_beam_field`` from a request body.
 
         ``relative`` (default) keeps the render-only budget ECBF; ``absolute``
@@ -219,16 +233,28 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         client opts out.
         """
         constraint_mode = params.get("constraint_mode", "relative")
-        if constraint_mode not in ("relative", "absolute"):
+        if not isinstance(constraint_mode, str) or constraint_mode not in ("relative", "absolute"):
             raise ValueError(f"unknown constraint_mode {constraint_mode!r}; expected 'relative' or 'absolute'")
+
+        sar_wb_on = params.get("sar_wb_on", True)
+        if not isinstance(sar_wb_on, bool):
+            raise ValueError(f"sar_wb_on must be a boolean, got {sar_wb_on!r}")
+
+        peak_sab_on = params.get("peak_sab_on", True)
+        if not isinstance(peak_sab_on, bool):
+            raise ValueError(f"peak_sab_on must be a boolean, got {peak_sab_on!r}")
+
+        tx_power = params.get("tx_power_w", 1.0)
+        if isinstance(tx_power, bool) or not isinstance(tx_power, (int, float)):
+            raise ValueError(f"tx_power_w must be a number, got {tx_power!r}")
         return {
             "constraint_mode": constraint_mode,
-            "sar_wb_on": bool(params.get("sar_wb_on", True)),
-            "peak_sab_on": bool(params.get("peak_sab_on", True)),
-            "tx_power_w": float(params.get("tx_power_w", 1.0)),
+            "sar_wb_on": sar_wb_on,
+            "peak_sab_on": peak_sab_on,
+            "tx_power_w": float(tx_power),
         }
 
-    def _compliance_limits(freq_hz):
+    def _compliance_limits(freq_hz: float) -> _ComplianceLimits:
         """ICNIRP limit values for the current frequency, for the absolute readout.
 
         ``sab_4cm2`` is ``None`` at or below 6 GHz (the peak restriction does not
@@ -628,7 +654,15 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             # are absolute (W, W/kg, W/m^2) and comparable to the ICNIRP limits.
             k_hat, psi, element_index, n_elements = paths
             ue_rx = make_rx_response(ue_antenna, freq_hz)
-            h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+            h = channel_at(
+                np.asarray(focus_xyz, dtype=float),
+                k_hat,
+                psi,
+                element_index,
+                freq_hz,
+                n_elements,
+                rx_response=ue_rx,
+            )
             snr_mrt_db = float(params.get("snr_mrt_db", 20.0))
             g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
 
@@ -760,7 +794,15 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
             k_hat, psi, element_index, n_elements = paths
             ue_rx = make_rx_response(ue_antenna, freq_hz)
-            h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+            h = channel_at(
+                np.asarray(focus_xyz, dtype=float),
+                k_hat,
+                psi,
+                element_index,
+                freq_hz,
+                n_elements,
+                rx_response=ue_rx,
+            )
             x_mrt = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna)
             g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
             body_mass = _compliance.body_mass_kg(mesh)
@@ -869,7 +911,15 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
             k_hat, psi, element_index, n_elements = paths
             ue_rx = make_rx_response(ue_antenna, freq_hz)
-            h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+            h = channel_at(
+                np.asarray(focus_xyz, dtype=float),
+                k_hat,
+                psi,
+                element_index,
+                freq_hz,
+                n_elements,
+                rx_response=ue_rx,
+            )
             g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
             mass = _compliance.body_mass_kg(mesh)
             limits = _compliance_limits(freq_hz)

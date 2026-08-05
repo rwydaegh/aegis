@@ -239,11 +239,13 @@ def test_the_accumulator_follows_the_better_registered_of_two_disagreeing_views(
 # The 83 poses on disk.
 
 
+@pytest.mark.local_data
 def test_every_pose_in_the_repository_reads_as_a_registration() -> None:
     survey_all = survey(gate=GATE)
     assert sum(report.registered for report in survey_all.values()) == 83
 
 
+@pytest.mark.local_data
 def test_the_survey_counts_the_cameras_that_are_actually_usable() -> None:
     """Three numbers, and the study's evidence lists were written against the middle one."""
     reports = survey(gate=GATE).values()
@@ -260,6 +262,7 @@ def test_the_two_refusal_reasons_partition_the_refused_poses() -> None:
         assert refused == report.inside_geometry + report.refused_on_residual
 
 
+@pytest.mark.local_data
 def test_a_site_with_photographs_and_no_pose_at_all_is_visible() -> None:
     """London has 14 panoramas on disk and not one of them is registered."""
     london = survey_site(sites.Site.get("london_trafalgar"), gate=GATE)
@@ -269,6 +272,7 @@ def test_a_site_with_photographs_and_no_pose_at_all_is_visible() -> None:
     assert london.usable_fraction == 0.0
 
 
+@pytest.mark.local_data
 def test_a_stricter_gate_never_admits_more_cameras() -> None:
     loose = survey(gate=AdmissionGate(max_residual_deg=8.0))
     strict = survey(gate=AdmissionGate(max_residual_deg=2.0))
