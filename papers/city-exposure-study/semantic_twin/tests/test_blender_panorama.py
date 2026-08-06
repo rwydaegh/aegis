@@ -11,7 +11,15 @@ import pytest
 from PIL import Image
 
 from semantic_twin.pano_geometry import panorama_to_world_matrix
-from semantic_twin.viz.blender.panorama import PanoramaAsset, camera_matrix, select_panorama_asset
+from semantic_twin.viz.blender.panorama import (
+    PANORAMA_PREVIEW_RESOLUTION_PERCENT,
+    PANORAMA_PREVIEW_SAMPLES,
+    PANORAMA_PUBLICATION_RESOLUTION_PERCENT,
+    PANORAMA_PUBLICATION_SAMPLES,
+    PanoramaAsset,
+    camera_matrix,
+    select_panorama_asset,
+)
 
 BLENDER = pathlib.Path.home() / "blender-4.5" / "blender"
 
@@ -490,6 +498,21 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
             bpy.ops.wm.save_as_mainfile(filepath={str(blend)!r}, compress=True)
             bpy.ops.wm.open_mainfile(filepath={str(blend)!r})
             scene = bpy.context.scene
+            saved_preview_settings = {{
+                "resolution_percentage": scene.render.resolution_percentage,
+                "samples": scene.cycles.samples,
+                "denoising": scene.cycles.use_denoising,
+                "use_compositing": scene.render.use_compositing,
+                "source_width_px": scene["panorama_source_width_px"],
+                "source_height_px": scene["panorama_source_height_px"],
+                "source_resolution": json.loads(scene["panorama_source_resolution_json"]),
+                "preview_percentage_property": scene["panorama_preview_resolution_percentage"],
+                "preview_samples_property": scene["panorama_preview_samples"],
+                "preview_denoising_property": scene["panorama_preview_denoising"],
+                "publication_percentage": scene["panorama_publication_resolution_percentage"],
+                "publication_samples": scene["panorama_publication_samples"],
+                "instructions": scene["panorama_render_instructions"],
+            }}
             scene.render.resolution_percentage = 50
             scene.cycles.samples = 1
             compositor_layers_during_render = []
@@ -581,6 +604,8 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
                 "atlas_image_verification": camera["panorama_surface_atlas_image_verification"],
                 "compositor_layers_during_render": compositor_layers_during_render,
                 "compositor_layer_after_render": compositor_layer_after_render,
+                "saved_preview_settings": saved_preview_settings,
+                "denoising_during_final_render": scene.cycles.use_denoising,
             }}))
             """
         )
@@ -672,6 +697,26 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
     assert measured["atlas_image_verification"] == "verified against surface atlas panorama SHA-256"
     assert measured["compositor_layers_during_render"] == ["Panorama capture poses", "Exposure standpoints"]
     assert measured["compositor_layer_after_render"] == "ViewLayer"
+    assert measured["saved_preview_settings"] == {  # nosec B101
+        "resolution_percentage": PANORAMA_PREVIEW_RESOLUTION_PERCENT,
+        "samples": PANORAMA_PREVIEW_SAMPLES,
+        "denoising": True,
+        "use_compositing": True,
+        "source_width_px": 64,
+        "source_height_px": 32,
+        "source_resolution": [64, 32],
+        "preview_percentage_property": PANORAMA_PREVIEW_RESOLUTION_PERCENT,
+        "preview_samples_property": PANORAMA_PREVIEW_SAMPLES,
+        "preview_denoising_property": True,
+        "publication_percentage": PANORAMA_PUBLICATION_RESOLUTION_PERCENT,
+        "publication_samples": PANORAMA_PUBLICATION_SAMPLES,
+        "instructions": (
+            "F12 renders a fast 5% preview at 16 samples with denoising. For a publication render, keep "
+            "Resolution X/Y at the linked source dimensions, set Percentage to 100, and set Render Max Samples "
+            "to 96."
+        ),
+    }
+    assert measured["denoising_during_final_render"]  # nosec B101
     for prepared_render in (tmp_path / "capture_poses.png", tmp_path / "exposure_standpoints.png"):
         prepared = np.asarray(Image.open(prepared_render).convert("RGB"), dtype=np.int16)
         assert prepared.std(axis=(0, 1)).max() > 50, "the linked photograph must remain visible"
@@ -833,6 +878,15 @@ def test_each_admitted_capture_has_a_saved_render_ready_scene(tmp_path: pathlib.
                 scene = bpy.data.scenes[scene_name]
                 bpy.context.window.scene = scene
                 bpy.context.view_layer.update()
+                saved_preview = {{
+                    "resolution_percentage": scene.render.resolution_percentage,
+                    "samples": scene.cycles.samples,
+                    "denoising": scene.cycles.use_denoising,
+                    "source_resolution": json.loads(scene["panorama_source_resolution_json"]),
+                    "publication_percentage": scene["panorama_publication_resolution_percentage"],
+                    "publication_samples": scene["panorama_publication_samples"],
+                }}
+                scene.render.resolution_percentage = 100
                 scene.cycles.samples = 1
                 scene.cycles.use_denoising = False
                 render_path = pathlib.Path({str(tmp_path)!r}) / f"{{scene['panorama_capture']}}.png"
@@ -871,6 +925,7 @@ def test_each_admitted_capture_has_a_saved_render_ready_scene(tmp_path: pathlib.
                     "source_path": source.filepath,
                     "source_sha256": camera["panorama_image_sha256"],
                     "resolution": [scene.render.resolution_x, scene.render.resolution_y],
+                    "saved_preview": saved_preview,
                     "overlay_centre": list(centre),
                     "overlay_matrix_error": max(
                         abs(overlay.matrix_world[row][column] - expected_overlay[row][column])
@@ -930,6 +985,18 @@ def test_each_admitted_capture_has_a_saved_render_ready_scene(tmp_path: pathlib.
     assert companion["source_sha256"] == companion_digest
     assert hero["resolution"] == [64, 32]
     assert companion["resolution"] == [80, 40]
+    assert hero["saved_preview"] == {  # nosec B101
+        "resolution_percentage": PANORAMA_PREVIEW_RESOLUTION_PERCENT,
+        "samples": PANORAMA_PREVIEW_SAMPLES,
+        "denoising": True,
+        "source_resolution": [64, 32],
+        "publication_percentage": PANORAMA_PUBLICATION_RESOLUTION_PERCENT,
+        "publication_samples": PANORAMA_PUBLICATION_SAMPLES,
+    }
+    assert companion["saved_preview"] == {  # nosec B101
+        **hero["saved_preview"],
+        "source_resolution": [80, 40],
+    }
     assert hero["overlay_centre"] == pytest.approx(hero["camera_position"])
     assert companion["overlay_centre"] == pytest.approx(companion["camera_position"])
     assert hero["overlay_matrix_error"] < 1e-9
@@ -1253,6 +1320,7 @@ def test_cycles_projection_and_support_holdout_are_visible_in_rendered_pixels(tm
             sphere("up blue", (0.0, 0.0, 10.0), (0.0, 0.0, 1.0))
             scene.cycles.samples = 1
             scene.cycles.use_denoising = False
+            scene.render.resolution_percentage = 100
             scene.render.filepath = {str(convention_render)!r}
             bpy.ops.render.render(write_still=True)
 
@@ -1273,6 +1341,7 @@ def test_cycles_projection_and_support_holdout_are_visible_in_rendered_pixels(tm
             sphere("front green", (1.0, 3.0, 0.0), (0.0, 1.0, 0.0), radius=0.35)
             scene.cycles.samples = 1
             scene.cycles.use_denoising = False
+            scene.render.resolution_percentage = 100
             scene.render.filepath = {str(occlusion_render)!r}
             bpy.ops.render.render(write_still=True)
             """

@@ -122,6 +122,21 @@ tools/blgpu.sh wait $JOB && tools/blgpu.sh fetch $JOB outputs/exposure_korenmark
 The tracer reproduces bit for bit there, checked to full float64 precision
 rather than to a tolerance, so results from the box are publishable.
 
+### Previewing registered panoramas in Blender
+
+Choose a scene whose name starts with `07 PANO`, then press `F12`. The saved
+settings render a fast Cycles preview at 5% of the linked photograph's native
+width and height, with 16 samples and denoising. The compositor places the
+measured overlay over the source photograph after denoising. Blender shows the
+result as a flat 2:1 image because that rectangle stores the full 360 degree
+equirectangular view.
+
+For a publication render, keep Resolution X and Y at the source dimensions.
+Set Output Properties > Resolution > Percentage to 100, then set Render
+Properties > Sampling > Render > Max Samples to 96. The saved scene does not
+select a GPU because Blender device names depend on the machine. Choose an
+available Cycles device in Blender before the full render.
+
 Tile downloads need a Google Maps Platform key in the environment. Panorama
 selection needs a Mapillary token. Neither is committed. `outputs/` and
 `data/panoramas/` are not tracked, so a fresh clone has the code and none of the
