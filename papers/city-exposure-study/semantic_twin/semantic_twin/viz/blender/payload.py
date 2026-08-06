@@ -365,6 +365,30 @@ def _surface_hashes(manifest: Mapping[str, Any]) -> dict[str, str]:
     return properties
 
 
+def _admission_properties(manifest: Mapping[str, Any]) -> dict[str, str]:
+    """Flatten the two linked registration gates and the atlas cohort."""
+    atlas = _mapping_at(manifest, "surface_atlas")
+    atlas_admission = _mapping_at(atlas, "admission")
+    registration = _mapping_at(_mapping_at(manifest, "evidence"), "registration")
+    registration_admission = _mapping_at(registration, "admission")
+    properties: dict[str, str] = {}
+    for prefix, admission in (
+        ("surface_atlas", atlas_admission),
+        ("registration", registration_admission),
+    ):
+        version = admission.get("version")
+        if isinstance(version, str):
+            properties[f"{prefix}_admission_version"] = version
+            properties[f"{prefix}_admission_json"] = json.dumps(admission, sort_keys=True, separators=(",", ":"))
+    camera_ids = atlas.get("camera_ids")
+    if isinstance(camera_ids, list) and all(isinstance(value, str) for value in camera_ids):
+        properties["surface_atlas_admitted_captures_json"] = json.dumps(camera_ids, separators=(",", ":"))
+    admitted = registration.get("admitted_captures")
+    if isinstance(admitted, list) and all(isinstance(value, str) for value in admitted):
+        properties["registration_admitted_captures_json"] = json.dumps(admitted, separators=(",", ":"))
+    return properties
+
+
 def _production_transport(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
     arms = _mapping_at(manifest, "estimator_arms")
     exposure = _mapping_at(arms, "exposure")
@@ -391,6 +415,7 @@ def production_scene_properties(manifest: Mapping[str, Any]) -> dict[str, str]:
     properties.update(_named_strings(production, (("run_digest", "production_run_digest"),)))
     properties.update(_production_input_hashes(production))
     properties.update(_surface_hashes(manifest))
+    properties.update(_admission_properties(manifest))
     properties.update(
         _named_strings(
             transport,

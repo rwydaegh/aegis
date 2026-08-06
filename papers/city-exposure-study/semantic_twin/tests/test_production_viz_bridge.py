@@ -37,6 +37,7 @@ from semantic_twin.vision.surface_atlas import (
     save_surface_atlas,
     sha256_file,
 )
+from semantic_twin.vision.provenance import AdmissionGate
 from semantic_twin.viz.blender.payload import (
     ProductionFiles,
     available_spectrum_models,
@@ -286,6 +287,14 @@ def test_production_scene_properties_flatten_exact_run_and_transport_identity() 
             "manifest": {"sha256": "2" * 64},
             "content_sha256": "3" * 64,
             "mesh_sha256": "d" * 64,
+            "admission": AdmissionGate.legacy_v1().as_dict(),
+            "camera_ids": ["capture-a", "capture-b"],
+        },
+        "evidence": {
+            "registration": {
+                "admission": AdmissionGate.legacy_v1().as_dict(),
+                "admitted_captures": ["capture-a", "capture-b"],
+            }
         },
         "estimator_arms": {
             "exposure": {
@@ -313,6 +322,16 @@ def test_production_scene_properties_flatten_exact_run_and_transport_identity() 
         "surface_atlas_manifest_sha256": "2" * 64,
         "surface_atlas_content_sha256": "3" * 64,
         "surface_atlas_mesh_sha256": "d" * 64,
+        "surface_atlas_admission_version": "registration-admission-v1",
+        "surface_atlas_admission_json": json.dumps(
+            AdmissionGate.legacy_v1().as_dict(), sort_keys=True, separators=(",", ":")
+        ),
+        "surface_atlas_admitted_captures_json": '["capture-a","capture-b"]',
+        "registration_admission_version": "registration-admission-v1",
+        "registration_admission_json": json.dumps(
+            AdmissionGate.legacy_v1().as_dict(), sort_keys=True, separators=(",", ":")
+        ),
+        "registration_admitted_captures_json": '["capture-a","capture-b"]',
         "transport_kernel": "drjit",
         "transport_variant": "cuda_ad_rgb",
         "transport_floating_point": "float32",
@@ -546,8 +565,10 @@ def test_real_surface_atlas_artifact_bridges_into_production_payload(tmp_path: p
     record = manifest["surface_atlas"]
     assert record["npz"]["sha256"] == sha256_file(atlas_path)
     assert record["manifest"]["sha256"] == sha256_file(atlas_path.with_suffix(".json"))
+    assert record["admission"] == AdmissionGate().as_dict()
     assert record["content_sha256"] == atlas.content_digest()
     assert record["camera_ids"] == ["capture-a"]
+    assert manifest["admitted_captures"] == ["capture-a"]
     assert record["cameras"] == [{"camera_id": "capture-a", "panorama": "capture-a.png"}]
     assert record["vocabularies"]["entity"] == ["Building"]
     assert record["vocabularies"]["material"] == ["unknown", "brick"]

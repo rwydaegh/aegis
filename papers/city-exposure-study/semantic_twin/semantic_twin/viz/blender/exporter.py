@@ -77,6 +77,7 @@ from semantic_twin.propagation import (
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.vision.surface_atlas import load_surface_atlas, sha256_file, to_surface_mesh
 from semantic_twin.vision.provenance import (
+    LEGACY_ADMISSION_GATE_VERSION,
     SKY_CONFLICT_INSIDE_GEOMETRY,
     SKY_CONFLICT_LARGE_MISMATCH,
     SKY_CONFLICT_UNKNOWN,
@@ -138,6 +139,22 @@ def artifact_admission_gate(manifest: dict[str, Any]) -> AdmissionGate:
             min_conflict_range_m=float(thresholds.get("min_conflict_range_m", 2.0)),
         )
     return AdmissionGate.from_dict(admission)
+
+
+def stamp_surface_atlas_admission(manifest: dict[str, Any]) -> AdmissionGate:
+    """Write the inferred gate and canonical camera cohort into an atlas record."""
+    gate = artifact_admission_gate(manifest)
+    atlas = manifest.get("surface_atlas")
+    if not isinstance(atlas, dict):
+        return gate
+    camera_ids = atlas.get("camera_ids", [])
+    if not isinstance(camera_ids, list) or any(not isinstance(value, str) or not value for value in camera_ids):
+        raise ValueError("surface-atlas camera_ids must be a list of non-empty strings")
+    if len(set(camera_ids)) != len(camera_ids):
+        raise ValueError("surface-atlas camera_ids must be unique")
+    atlas["admission"] = gate.as_dict()
+    manifest["admitted_captures"] = list(camera_ids)
+    return gate
 
 
 #: Height above head, in metres, of each site population, read off the models
@@ -1127,6 +1144,7 @@ def attach_production_surface_atlas(
         "payload_arrays": {name: _array_manifest(value) for name, value in arrays.items()},
     }
     manifest["surface_atlas"] = record
+    stamp_surface_atlas_admission(manifest)
     # The scene builder uses this narrow key for object provenance. Keep it an
     # explicit reference to the canonical record rather than a second contract.
     manifest["all_camera_fused_atlas"] = {
@@ -2649,7 +2667,7 @@ def _attach_registration(
     manifest: dict[str, Any],
 ) -> None:
     audit_name = "outputs/registration_sky_conflict.json"
-    gate = artifact_admission_gate(manifest)
+    gate = stamp_surface_atlas_admission(manifest)
     registration = registration_layer(site, gate)
     if registration is None:
         reason = (
@@ -2662,17 +2680,42 @@ def _attach_registration(
         return
     for name in ("position", "rotation", "sigma_vectors", "verdict", "residual_deg", "sky_conflict"):
         payload[f"pano_{name}"] = registration[name]
+    admitted_captures = [record["capture"] for record in registration["records"] if record["admitted"]]
+    atlas = manifest.get("surface_atlas")
+    atlas_reference = None
+    if isinstance(atlas, dict):
+        atlas_camera_ids = list(atlas.get("camera_ids", []))
+        atlas_manifest = atlas.get("manifest")
+        atlas_manifest_sha256 = atlas_manifest.get("sha256") if isinstance(atlas_manifest, dict) else None
+        cohort_matches = set(admitted_captures) == set(atlas_camera_ids) and len(admitted_captures) == len(
+            atlas_camera_ids
+        )
+        if gate.version == LEGACY_ADMISSION_GATE_VERSION and atlas_manifest_sha256 in SEALED_LEGACY_ADMISSION_MANIFESTS:
+            if not cohort_matches:
+                raise ValueError("sealed legacy registration cohort differs from the exact surface-atlas cameras")
+            admitted_captures = atlas_camera_ids
+        atlas_reference = {
+            "manifest_sha256": atlas_manifest_sha256,
+            "content_sha256": atlas.get("content_sha256"),
+            "camera_ids": atlas_camera_ids,
+            "admission": gate.as_dict(),
+            "admitted_cohort_matches": cohort_matches,
+        }
     report["registration"] = {
         "poses": registration["records"],
         "verdict_codes": VERDICT_CODES,
         "reading": registration["reading"],
         "audit": audit_name,
         "admission": registration["admission"],
+        "admitted_captures": admitted_captures,
+        "surface_atlas_reference": atlas_reference,
     }
     report["layer_status"]["registration"] = {
         "status": "built",
         "audit": audit_name,
         "poses": len(registration["records"]),
+        "admission_version": gate.version,
+        "admitted_captures": len(admitted_captures),
     }
     print(f"[evidence] {len(registration['records'])} registered poses", flush=True)
 
@@ -2716,6 +2759,7 @@ def _attach_bodies(payload: dict[str, Any], report: dict[str, Any], directory: p
 def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
     """Add every evidence layer that exists for this site to the payload."""
     payload, manifest = bundle["payload"], bundle["manifest"]
+    stamp_surface_atlas_admission(manifest)
     directories, family = select_evidence_family(args.site)
     report: dict[str, Any] = {
         "found": {key: str(path.relative_to(SCRIPT_DIR)) for key, path in sorted(directories.items())},

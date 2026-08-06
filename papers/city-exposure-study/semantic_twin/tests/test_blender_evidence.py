@@ -121,6 +121,33 @@ def test_exporter_preserves_the_sealed_korenmarkt_v1_cohort_but_defaults_new_inp
     assert sealed_gate.version == "registration-admission-v1"
     assert sum(record["admitted"] for record in sealed_layer["records"]) == 9
 
+    camera_ids = [f"pano_{index:02d}" for index in range(9)]
+    sealed_manifest = {
+        "surface_atlas": {
+            "manifest": {"sha256": next(iter(exporter.SEALED_LEGACY_ADMISSION_MANIFESTS))},
+            "content_sha256": "c" * 64,
+            "camera_ids": camera_ids,
+        }
+    }
+    payload: dict[str, object] = {}
+    report: dict[str, object] = {"layer_status": {}}
+
+    exporter._attach_registration("korenmarkt", payload, report, sealed_manifest)
+
+    expected_gate = exporter.AdmissionGate.legacy_v1().as_dict()
+    assert sealed_manifest["surface_atlas"]["admission"] == expected_gate
+    assert sealed_manifest["admitted_captures"] == camera_ids
+    registration = report["registration"]
+    assert registration["admission"] == expected_gate
+    assert registration["admitted_captures"] == camera_ids
+    assert registration["surface_atlas_reference"] == {
+        "manifest_sha256": next(iter(exporter.SEALED_LEGACY_ADMISSION_MANIFESTS)),
+        "content_sha256": "c" * 64,
+        "camera_ids": camera_ids,
+        "admission": expected_gate,
+        "admitted_cohort_matches": True,
+    }
+
     unversioned = {"surface_atlas": {"admission": {"max_residual_deg": 4.0}}}
     strict_gate = exporter.artifact_admission_gate(unversioned)
     strict_layer = exporter.registration_layer("korenmarkt", strict_gate)
