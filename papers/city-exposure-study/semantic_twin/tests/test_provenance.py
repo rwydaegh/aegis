@@ -216,6 +216,30 @@ def test_legacy_gate_is_named_and_keeps_sealed_v1_boundary_policy() -> None:
     assert not gate.require_interior_optimum
 
 
+def test_gate_manifest_round_trip_restores_each_version() -> None:
+    for gate in (AdmissionGate(), AdmissionGate.legacy_v1(max_residual_deg=3.5)):
+        assert AdmissionGate.from_dict(gate.as_dict()) == gate
+
+
+def test_unversioned_gate_manifest_defaults_to_strict_v2() -> None:
+    gate = AdmissionGate.from_dict({"max_residual_deg": 3.5})
+    assert gate.version == "registration-admission-v2"
+    assert gate.require_complete_sky_diagnostics
+    assert gate.require_interior_optimum
+
+
+def test_legacy_gate_reproduces_missing_range_label_and_quality() -> None:
+    gate = AdmissionGate.legacy_v1()
+    missing_range = Registration.from_pose(pose(1.0, sky_hit=0.2, conflict_range=None, dz_at_bound=None))
+    missing_sky = Registration.from_pose(pose(1.0, sky_hit=None, dz_at_bound=None))
+
+    assert missing_range.verdict(gate).admitted
+    assert missing_range.verdict(gate).sky_conflict_state == "clear"
+    assert missing_range.quality(gate) == pytest.approx((1.0 - 1.0 / 4.0) * (1.0 - 0.2 / 0.5))
+    assert missing_sky.verdict(gate).admitted
+    assert missing_sky.quality(gate) == 0.0
+
+
 def test_quality_falls_off_with_the_residual_inside_the_gate() -> None:
     ladder = [Registration.from_pose(pose(r)).quality(GATE) for r in (0.5, 1.5, 3.0, 3.9)]
     assert ladder == sorted(ladder, reverse=True)

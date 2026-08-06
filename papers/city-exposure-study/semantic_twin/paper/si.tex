@@ -168,8 +168,9 @@ square and a fraction of the skyline of a high-rise canyon. Truncating it lowers
 the modelled skyline, the optimizer buys the residual back by sinking the
 camera, and it keeps doing so until it reaches the bound. All 25 of the poses
 called inside the geometry that carry a recorded dive dropped more than 1.5\,m,
-with a median dive of 2.97\,m against a 3.0\,m bound, whereas the 41 admitted
-poses have a median dive of 0.58\,m and only one in eight goes past 1.5\,m.
+with a median dive of 2.97\,m against a 3.0\,m bound. In that original cohort,
+the 41 poses admitted by the residual and paired sky screen have a median dive
+of 0.58\,m and only one in eight goes past 1.5\,m.
 
 Scoring the untouched initial pose against both crops separates the sites
 cleanly. Taking the median over each site's first three stations, the extra crop
@@ -184,8 +185,9 @@ above the ground measured under that camera and excludes no pose that was ever
 any good. Its three stations move from $6.53^\circ$, $4.80^\circ$ and
 $6.19^\circ$ to $1.42^\circ$, $3.70^\circ$ and $3.08^\circ$, and their sky
 conflicts from 1.00 at 0.5, 0.3 and 0.1\,m to 0.02, 0.07 and 0.01 at 108.1, 20.6
-and 33.9\,m. Zero usable stations become three. The two changes do different
-work: the wider crop moves the residual, from a median of $6.19^\circ$ to
+and 33.9\,m. Zero usable stations become three under the residual and paired
+sky screen, while version 2 retains two. The two changes do different work:
+the wider crop moves the residual, from a median of $6.19^\circ$ to
 $3.08^\circ$, and the clamp moves the sky conflict at a cost of $0.34^\circ$ of
 residual at one station and nothing at the other. Across the study the
 re-registrations take the count of poses inside the geometry from 26 to 14. The
@@ -193,6 +195,41 @@ residual and paired sky rule admit 51 poses. Requiring an interior altitude
 optimum, the version-2 production rule, admits 39. Six of the 14 inside poses
 still pass the residual gate, so the disagreement between the tests survives
 the fix.
+
+Korenmarkt was then audited without changing its sealed version-1 atlas or
+route. The five fits at the old lower altitude bound were repeated over
+$-2.0$ to $+3.0$\,m. Three still reached the new lower bound. The two interior
+fits placed the optical centre only 0.618 and 0.765\,m above measured pavement,
+so both remain on hold as low-height warnings.
+\Cref{tab:si-korenmarkt-widened} records the widened results.
+
+\begin{table*}[!t]
+  \caption{Korenmarkt widened-bound audit. Height is optical-centre height above
+  measured pavement. An interior result lies at least 0.1\,m from either bound}
+  \label{tab:si-korenmarkt-widened}
+  \centering
+  \begin{tabular}{lrrrrrl}
+    \toprule
+    Station & $d_z$ (m) & Residual (deg) & Height (m) & Sky hit & Range (m) & Result \\
+    \midrule
+    Korenmarkt & $-1.6026$ & 1.1924 & 0.6184 & 0.0601 & 19.3857 & interior, held \\
+    706535575184668  & $-1.7354$ & 2.2307 & 0.7646 & 0.0328 & 20.5671 & interior, held \\
+    1419513849204492 & $-1.9931$ & 2.8098 & 0.5069 & 0.0497 & 16.8922 & lower boundary \\
+    1019442960256615 & $-1.9187$ & 2.0419 & 0.5813 & 0.0452 & 18.1720 & lower boundary \\
+    3367014310197013 & $-1.9040$ & 2.2541 & 0.5960 & 0.0794 & 18.5355 & lower boundary \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+Applying only the widened-bound result would reduce the frozen five-camera
+route to three cameras and its 13 standpoints to eight, with five interpolated
+points. Holding the two low cameras leaves no unique continuation of that
+route. The nine-camera atlas covers 3.2497\% of mesh area. The six-camera
+boundary-gated counterfactual covers 2.7097\%, and the four-camera promotion
+hold covers 2.5577\%. The corresponding route unions cover 2.5791\% for the
+sealed five-camera route, 2.1801\% for the three-camera counterfactual, and
+2.2596\% for the current two-camera fragment after the hold. This is a no-go
+for promotion. The sealed version-1 atlas, route and results remain unchanged.
 
 Times Square keeps a residual near $9^\circ$ on the wider crop and the crop is
 not its problem. Scanning yaw over the entire circle at the initial pose moves
@@ -216,7 +253,8 @@ Trace the reference square at each admitted station position and record the
 share of the power incident at the first interaction that lands on a triangle
 some panorama photographed. The run is Korenmarkt at the 130\,m crop, 15\,GHz,
 200\,000 rays per standpoint. \Cref{tab:si-station-coverage} gives the eight
-admitted stations of that binding, ordered by their skyline residual.
+stations admitted by that sealed version-1 binding, ordered by their skyline
+residual.
 
 Seven of the eight sit between 0.978 and 0.999 at the first interaction, which
 confirms the geometric argument of the paper to about two parts in a thousand.
@@ -259,8 +297,8 @@ rather than the pose. A triangle small enough to fall between adjacent rows of a
 whatever the camera saw.
 
 \begin{table}[!t]
-  \caption{First-interaction coverage at the eight admitted Korenmarkt stations,
-  130\,m crop, ordered by skyline residual}
+  \caption{First-interaction coverage at the eight Korenmarkt stations admitted
+  by the sealed version-1 binding, 130\,m crop, ordered by skyline residual}
   \label{tab:si-station-coverage}
   \centering
   \begin{tabular}{lcccc}
@@ -288,8 +326,9 @@ whatever the camera saw.
 \subsection{Which stations are usable}
 
 \Cref{tab:si-registration} gives the whole corpus. Eighty-three panoramas were
-acquired across the eleven squares and all 83 registered. Fifty-one poses are
-admitted.
+acquired across the eleven squares and all 83 registered. The current
+version-2 production gate admits 39 poses. The 51-pose count above is the
+historical residual-and-paired-sky cohort before the interior-altitude rule.
 
 Three squares carry no panoramas at all. At Krakow and Toulouse the capture with
 the most stations is an indoor virtual tour, 162 panoramas of the Cloth Hall
@@ -350,7 +389,13 @@ figures quote both.
 
 \subsection{The station cast}
 
-From each admitted station an equirectangular ray grid of 1536 rows is cast
+The stored station bindings in this section predate version 2 and remain sealed
+version-1 artifacts. In particular, the Korenmarkt probes use their recorded
+eight- or nine-camera variants, and the Zocalo binding uses 12 stations. A
+version-2 rebuild would admit four Korenmarkt poses and nine Zocalo poses. These
+coverage values describe the stored bindings, not a version-2 counterfactual.
+
+From each station admitted by its binding an equirectangular ray grid of 1536 rows is cast
 against the mesh of the run. Per triangle the cast records the modal semantic
 class it collects and the number of rays that survived transient rejection, with
 one row per station, so a triangle is observed when at least one station landed
@@ -358,7 +403,7 @@ a ray on it.
 
 The grid resolution sets a floor on what can be covered, because a triangle no
 ray landed on is a triangle no station saw. At Plaza Mayor over the 130\,m crop
-the same six admitted stations bind 18.04\% of the triangle area at 384 rows and
+the same six version-1 stations bind 18.04\% of the triangle area at 384 rows and
 19.43\% at 768, so a fourfold cheaper grid costs about 7\% of the answer in
 relative terms. Every per-site binding records a grid height of 1536 rows, and
 the grid is held fixed across squares because the covered fraction is compared
@@ -371,7 +416,7 @@ a separate file, and its sidecar records no grid height at all. It was built at
 stored ray, transient, clean-ray and modal-class arrays bit for bit. A rebuild
 at 1536 casts 2.25 times as many rays and moves the modal class on 4.9\% of the
 triangles both grids see. What that costs at the end of the chain was measured
-on the nine-station variant, where a uniform 1024 rebuild agrees with the stored
+on the sealed version-1 nine-station variant, where a uniform 1024 rebuild agrees with the stored
 file on 99.45\% of the 2559 triangles at issue, moves the bound area from
 11.019\% to 10.982\% and moves the evidence-ladder shift from 0.350 to
 0.352\,dB isotropic and from 0.364 to 0.368\,dB rooftop. The grid height of the
@@ -578,11 +623,12 @@ nearer the truth is not settled here and should not be read off the fractions.
 At the 250\,m crop the headline runs use, the station cast binds 9.9\% at Old
 Town Square, 8.1\% at Hachiko, 7.0\% at the Zocalo, 5.1\% at Plaza Mayor, 4.6\%
 at Grand-Place, 4.0\% at the Duomo and 3.2\% at Korenmarkt. The spread is not a
-quality signal. Bound area rises with the number of admitted stations and falls
+quality signal. Bound area rises with the number of stations admitted by the
+stored binding and falls
 with the size of the crop relative to the square, so the Duomo reaches 4.0\%
 from a single camera because the facade it faces is large and close, and Hachiko
-reaches 8.1\% from three stations for the same reason in reverse. The admitted
-cameras at every square with a station set sit within 29 to 62\,m of their own
+reaches 8.1\% from three stations for the same reason in reverse. Those cameras
+at every square with a station set sit within 29 to 62\,m of their own
 centroid, against a crop that reaches 250\,m, so most of a crop is roofs and rear
 elevations no street-level capture in this study has seen.
 

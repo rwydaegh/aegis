@@ -153,6 +153,31 @@ class AdmissionGate:
             require_interior_optimum=False,
         )
 
+    @classmethod
+    def from_dict(cls, document: dict[str, Any] | None) -> AdmissionGate:
+        """Restore a gate from its manifest stamp.
+
+        An absent version means version 2. Version 1 must therefore be named
+        explicitly, except where a caller has independently identified a
+        sealed pre-version artifact and uses :meth:`legacy_v1`.
+        """
+        values = {} if document is None else dict(document)
+        version = str(values.get("version", ADMISSION_GATE_VERSION))
+        policy = {
+            LEGACY_ADMISSION_GATE_VERSION: (False, False),
+            ADMISSION_GATE_VERSION: (True, True),
+        }.get(version)
+        if policy is None:
+            raise ValueError(f"unsupported admission gate version: {version!r}")
+        return cls(
+            version=version,
+            max_residual_deg=float(values.get("max_residual_deg", 4.0)),
+            max_sky_conflict=float(values.get("max_sky_conflict", 0.5)),
+            min_conflict_range_m=float(values.get("min_conflict_range_m", 2.0)),
+            require_complete_sky_diagnostics=bool(values.get("require_complete_sky_diagnostics", policy[0])),
+            require_interior_optimum=bool(values.get("require_interior_optimum", policy[1])),
+        )
+
     def as_dict(self) -> dict[str, Any]:
         """A complete policy stamp for reports and production manifests."""
         return {
@@ -273,8 +298,12 @@ class Registration:
         return Verdict(admitted=not reasons, sky_conflict_state=state, reasons=tuple(reasons))
 
     def _conflict_state(self, gate: AdmissionGate) -> str:
-        if self.sky_conflict is None or self.conflict_median_range_m is None:
+        if self.sky_conflict is None:
             return SKY_CONFLICT_UNKNOWN
+        if self.conflict_median_range_m is None:
+            # Version 1 recorded the fraction first and treated an absent range
+            # as non-conflicting. Preserve that label for sealed artifacts.
+            return SKY_CONFLICT_CLEAR if gate.version == LEGACY_ADMISSION_GATE_VERSION else SKY_CONFLICT_UNKNOWN
         if self.sky_conflict > gate.max_sky_conflict:
             if self.conflict_median_range_m < gate.min_conflict_range_m:
                 return SKY_CONFLICT_INSIDE_GEOMETRY
@@ -302,8 +331,15 @@ class Registration:
         # A large distant mismatch is not the paired signature of a camera
         # inside geometry. Keep it as low-weight evidence rather than assigning
         # the same zero score as a refused inside-geometry pose.
-        conflict = 1.0 if self.sky_conflict is None else self.sky_conflict
-        from_conflict = max(0.0, 1.0 - conflict)
+        if gate.version == LEGACY_ADMISSION_GATE_VERSION:
+            # This is the original v1 score, including its zero weight for a
+            # missing sky diagnostic. Sealed artifacts use v1 for membership,
+            # and reproducing its score avoids a second hidden policy change.
+            conflict = gate.max_sky_conflict if self.sky_conflict is None else self.sky_conflict
+            from_conflict = max(0.0, 1.0 - conflict / gate.max_sky_conflict)
+        else:
+            conflict = 1.0 if self.sky_conflict is None else self.sky_conflict
+            from_conflict = max(0.0, 1.0 - conflict)
         return float(from_residual * from_conflict)
 
     def as_dict(self) -> dict[str, Any]:

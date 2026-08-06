@@ -37,6 +37,7 @@ import numpy as np
 from semantic_twin import paths
 from semantic_twin.scene.site_semantics import COMPANION_DIRECTORIES, SITES, STATION_PREFIXES, station_verdict
 from semantic_twin.vision.provenance import AdmissionGate
+from semantic_twin.vision.surface_atlas import SEMANTIC_SAM_RASTERS
 
 SCRIPT_DIR = paths.root()
 
@@ -186,6 +187,22 @@ def binding(site: str, crop_m: int) -> dict[str, Any] | None:
     return None
 
 
+def sam_material_artifact_problem(path: pathlib.Path) -> str | None:
+    """Return why an atlas cannot read the required SAM material rasters."""
+    try:
+        with np.load(path, allow_pickle=False) as document:
+            missing = sorted(set(SEMANTIC_SAM_RASTERS) - set(document.files))
+            if missing:
+                return f"incomplete SAM material artifact: {', '.join(missing)}"
+            shapes = {name: np.asarray(document[name]).shape for name in SEMANTIC_SAM_RASTERS}
+    except (EOFError, OSError, ValueError) as error:
+        return f"unreadable SAM material artifact: {type(error).__name__}: {error}"
+    if any(len(shape) != 2 for shape in shapes.values()) or len(set(shapes.values())) != 1:
+        rendered = ", ".join(f"{name}={shape}" for name, shape in shapes.items())
+        return f"incompatible SAM material raster shapes: {rendered}"
+    return None
+
+
 def row(site: str, crops: tuple[int, ...], **gate: float) -> dict[str, Any]:
     folders = panorama_dirs(site)
     poses, backends, material_axis, artifact_failures, sam_artifact_failures = [], set(), 0, [], []
@@ -200,22 +217,29 @@ def row(site: str, crops: tuple[int, ...], **gate: float) -> dict[str, Any]:
             missing.append("missing dense semantic artifact: semantics/panorama_semantics.npz")
         if not meta.exists():
             missing.append("missing semantic metadata artifact: semantics/semantics.json")
-        if missing:
-            artifact_failures.append({"station": folder.name, "reasons": missing})
+        sam_problem = None
         if not dense.exists():
             sam_artifact_failures.append(
                 {"station": folder.name, "reason": "missing SAM material artifact: panorama_semantics.npz"}
             )
+        else:
+            sam_problem = sam_material_artifact_problem(dense)
+            if sam_problem is not None:
+                missing.append(sam_problem)
+                sam_artifact_failures.append({"station": folder.name, "reason": sam_problem})
         if meta.exists():
             document = json.loads(meta.read_text())
             backends.add(str(document.get("backend")))
-            # Only the hybrid backend writes the SAM 3 `rf_material` axis. The
-            # entity axis is present either way, so the backend is the test.
-            material_axis += int(document.get("backend") == "hybrid")
-            if document.get("backend") != "hybrid" and dense.exists():
+            hybrid = document.get("backend") == "hybrid"
+            # The backend declaration and all arrays have to agree. Opening
+            # each array also detects a damaged NPZ whose member list survives.
+            material_axis += int(hybrid and sam_problem is None and dense.exists())
+            if not hybrid and dense.exists():
                 sam_artifact_failures.append(
                     {"station": folder.name, "reason": "missing SAM material artifact: backend is not hybrid"}
                 )
+        if missing:
+            artifact_failures.append({"station": folder.name, "reasons": missing})
         if not aligned.exists():
             continue
         pose = json.loads(aligned.read_text())
@@ -247,7 +271,7 @@ def row(site: str, crops: tuple[int, ...], **gate: float) -> dict[str, Any]:
         ),
         "poses_admitted": len(admitted),
         "semantics_backend": sorted(backends),
-        "sam3_material_axis": "hybrid" in backends,
+        "sam3_material_axis": material_axis > 0,
         "panoramas_with_sam3_material_axis": material_axis,
         "panorama_artifact_failures": artifact_failures,
         "panorama_sam_artifact_failures": sam_artifact_failures,

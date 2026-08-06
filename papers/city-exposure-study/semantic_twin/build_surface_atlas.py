@@ -18,6 +18,9 @@ from semantic_twin.vision.prompted import semantic_catalogue_identity
 from semantic_twin.vision.provenance import AdmissionGate
 from semantic_twin.vision.surface_atlas import (
     CameraSurfaceObservations,
+    REQUIRED_SEMANTIC_RASTERS,
+    SEMANTIC_DENSE_RASTERS,
+    SEMANTIC_SAM_RASTERS,
     ReducedCameraSurfaceEvidence,
     fuse_surface_observations,
     reduce_camera_observations,
@@ -27,17 +30,9 @@ from semantic_twin.vision.surface_atlas import (
 from semantic_twin.vision.vocabulary import ConceptCatalog
 
 DEFAULT_OUT = paths.outputs_dir() / "site_semantics"
-REQUIRED_RASTERS = (
-    "entity",
-    "confidence",
-    "rf_material",
-    "rf_material_prior_mass",
-    "material_concept",
-    "material_confidence",
-    "material_source",
-)
-DENSE_RASTERS = ("entity", "confidence")
-SAM_RASTERS = tuple(name for name in REQUIRED_RASTERS if name not in DENSE_RASTERS)
+REQUIRED_RASTERS = REQUIRED_SEMANTIC_RASTERS
+DENSE_RASTERS = SEMANTIC_DENSE_RASTERS
+SAM_RASTERS = SEMANTIC_SAM_RASTERS
 VEGETATION_RASTERS = (
     "vegetation_form",
     "vegetation_subtype",

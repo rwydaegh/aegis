@@ -19,7 +19,7 @@ city name or an image.
 | Korenmarkt | Medieval brick square and car-track capture | 250 m f64 mesh with 617,091 triangles. The v1 atlas uses 9 cameras. Four matched runs use 80 locations, 200,000 rays, 512 cells, and seeds 7 to 10. The final route uses 5 cameras, 8 interpolated points, 1.6 million rays, and 4,096 cells. | Current high-fidelity anchor | This is the sealed v1 baseline. It is not binding-matched to the legacy city runs. |
 | Prague Staromestske | Irregular medieval square with gothic towers and a plaster and stone mix | 250 m f64 mesh with 664,619 triangles. The strict v2 gate admits 12 of 14 stations. Four matched walk runs use the same 80-location, 200,000-ray, 512-cell design. | Irregular historic enclosure | The current pose diagnostics name the 130 m support mesh. A 250 m registration pass is still required. |
 | Tokyo Hachiko | Dense glass canyon with a scramble crossing and heavy signage | 250 m f64 mesh with 797,615 triangles. The old binding used three stations. Strict v2 admission retains two. | Dense canyon diagnostic | Two cameras cover 2.72 percent of faces and 7.19 percent of area. This is too thin for a production material claim. |
-| Mexico Zocalo | Very large open plaza with volcanic stone and low surrounding blocks | 250 m f64 mesh with 707,812 triangles. The semantic binding admits 12 of 14 stations. Four matched walk runs use the common design. | Open reference endpoint | This is an open plaza, not a non-plaza street type. |
+| Mexico Zocalo | Very large open plaza with volcanic stone and low surrounding blocks | 250 m f64 mesh with 707,812 triangles. The sealed v1 semantic binding uses 12 of 14 stations. Strict v2 admits 9. Four matched walk runs use the common design. | Open reference endpoint | This is an open plaza, not a non-plaza street type. |
 
 The screening inventory also records useful acquisition context. The total
 panorama counts are 66 for Korenmarkt, 228 for Prague, 277 for Hachiko, and 388
@@ -98,10 +98,46 @@ altitude bound, and three cameras have the paired inside-geometry signature.
 Widening the vertical search does not produce a useful interior optimum.
 
 Korenmarkt remains the sealed admission-v1 baseline. Its atlas contains nine
-admitted cameras and its final route uses five. Applying v2 would retain four
-atlas cameras and two route cameras. Every removal is caused by the new
-altitude-bound rule. The existing contract and results remain readable under v1
-while the five bound fits are audited and, if needed, rebuilt.
+admitted cameras and its final route uses five cameras over 13 standpoints.
+Applying v2 to the stored fits would retain four atlas cameras and two route
+cameras. Every removal is caused by the altitude-bound rule.
+
+The final widened-bound audit is a no-go for promotion. It repeated the five
+lower-bound fits over `[-2.0, 3.0]` m. An interior optimum had to remain at least
+0.1 m from either bound. The exact results are:
+
+| Camera | dz (m) | Residual (deg) | Height above pavement (m) | Sky-hit fraction | Median conflict range (m) | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `korenmarkt` | -1.602588 | 1.192397 | 0.618412 | 0.060077 | 19.385696 | Interior, held for low height |
+| `walk_03_706535575184668` | -1.735411 | 2.230664 | 0.764589 | 0.032775 | 20.567124 | Interior, held for low height |
+| `walk_06_1419513849204492` | -1.993075 | 2.809796 | 0.506925 | 0.049745 | 16.892166 | At lower boundary |
+| `walk_08_1019442960256615` | -1.918687 | 2.041920 | 0.581313 | 0.045199 | 18.171973 | At lower boundary |
+| `walk_10_3367014310197013` | -1.904032 | 2.254061 | 0.595968 | 0.079447 | 18.535477 | At lower boundary |
+
+The provider records a 2.5 m scene height for the walk cameras. The accepted
+production route's non-bound anchors are 1.590 and 1.701 m above pavement. The
+two widened interior fits are only 0.62 and 0.76 m high, so they remain on hold.
+
+The boundary-only counterfactual reduces the route from five to three cameras
+and from 13 to 8 standpoints, with five interpolated points. Holding the two low
+cameras leaves two tied two-camera fragments and no unique continuation. The
+current fragment ordering selects `walk_00` and `walk_01`, spans 8.05 m, and has
+three standpoints. That is a material route change.
+
+Full-sphere first-hit coverage also falls. The sealed nine-camera atlas covers
+13,921 faces, 2.2559 percent of faces and 3.2497 percent of area. The six-camera
+boundary counterfactual covers 11,686 faces, 1.8937 percent of faces and 2.7097
+percent of area. The four-camera promotion hold covers 10,828 faces, 1.7547
+percent of faces and 2.5577 percent of area. The sealed five-camera route union
+covers 11,598 faces and 2.5791 percent of area. The three-camera counterfactual
+covers 9,838 faces and 2.1801 percent of area. The current two-camera fragment
+covers 9,105 faces and 2.2596 percent of area.
+
+The accepted atlas and route remain unchanged under v1. Their atlas manifest,
+atlas NPZ, and sealed route manifest SHA-256 values remain
+`80d8f0bb448d6677fc29c9c51e81036e9b54913d52f1480030095ac16f08d783`,
+`c452c34e1d9422022d55fc758d228c22a39b80d9a770042e89e13f9110f43a76`, and
+`e87bd8e5db0308cfa9ad445c179a8464b19a7aaa8eaf2242fb1492c0eee75a9d`.
 
 ### Pending GPU work
 
