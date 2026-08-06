@@ -201,6 +201,15 @@ body coupling are implemented and independently verified. Direct results are
 independent of the diagnostic angular-grid resolution. The body heading rule is
 still open, so this stage is not yet complete.
 
+An optional exact uniform-yaw level-2 endpoint is also implemented and verified.
+It averages the body surface field analytically over all horizontal headings.
+It needs no heading samples and no additional ray tracing. Its area-weighted
+mean, absorbed power, and whole-body SAR are exact yaw averages. Its reported
+peak is named the peak of the yaw-averaged surface field. It is not the mean of
+the peak over individual headings. Existing production results still use the
+body mesh's native yaw. The final paper rule remains open until the endpoint and
+population meaning are frozen together.
+
 Gate: free-space point sources reproduce analytic level-2 body incidence. Grid
 refinement does not move the direct body result because direct atoms are not
 binned.
