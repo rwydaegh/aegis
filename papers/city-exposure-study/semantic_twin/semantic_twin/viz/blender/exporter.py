@@ -2728,20 +2728,73 @@ def _attach_registration(
     print(f"[evidence] {len(registration['records'])} registered poses", flush=True)
 
 
-def _attach_bodies(payload: dict[str, Any], report: dict[str, Any], directory: pathlib.Path | None) -> None:
+def _attach_bodies(
+    payload: dict[str, Any], report: dict[str, Any], directory: pathlib.Path | None, *, site: str | None = None
+) -> None:
+    """Attach dynamic bodies and record whether their artifact can be drawn."""
+    source = str(directory.relative_to(SCRIPT_DIR)) if directory is not None else None
+    expected = source or (f"outputs/{site}_dynamic_bodies" if site else None)
+    common = {
+        "directory": source,
+        "role": "image-reconstructed transient bystander bodies",
+        "transport_role": (
+            "optional geometry for an explicit bystander study; not part of the static atlas, and inclusion in a "
+            "sealed trace must be verified from that run's manifest"
+        ),
+        "receiver_distinction": (
+            "not the receiver phantom; the Duke exposure body is a separate transport receiver in 14 body exposure"
+        ),
+    }
     if directory is None:
-        return
-    bodies = body_layer(directory)
-    source = str(directory.relative_to(SCRIPT_DIR))
-    if bodies is None:
-        reason = (
-            "dynamic body manifest is missing"
-            if not (directory / "dynamic_bodies_manifest.json").exists()
-            else "dynamic body manifest names no existing body NPZ files"
-        )
-        report["layer_status"]["bodies"] = {"status": "skipped", "directory": source, "reason": reason}
+        reason = "dynamic body artifact directory is unavailable"
+        status = {
+            **common,
+            "status": "skipped",
+            "artifact_status": "unavailable",
+            "expected_artifact_path": expected,
+            "reason": reason,
+        }
+        report["layer_status"]["bodies"] = status
         print(f"[evidence] skipped bystander bodies: {reason}", flush=True)
         return
+
+    manifest_path = directory / "dynamic_bodies_manifest.json"
+    if not manifest_path.exists():
+        reason = "dynamic body manifest is missing"
+        status = {
+            **common,
+            "status": "skipped",
+            "artifact_status": "unavailable",
+            "artifact_path": source,
+            "expected_artifact_path": str(manifest_path.relative_to(SCRIPT_DIR)),
+            "reason": reason,
+        }
+        report["layer_status"]["bodies"] = status
+        print(f"[evidence] skipped bystander bodies: {reason}", flush=True)
+        return
+
+    manifest = json.loads(manifest_path.read_text())
+    declared = manifest.get("bodies", [])
+    if not isinstance(declared, list):
+        raise ValueError(f"dynamic body manifest has non-list bodies field: {manifest_path}")
+    bodies = body_layer(directory)
+    if bodies is None:
+        reason = (
+            "dynamic body manifest contains no drawable body records"
+            if not declared
+            else "dynamic body manifest names no existing body NPZ files"
+        )
+        status = {
+            **common,
+            "status": "empty",
+            "artifact_status": "present_zero_drawable_bodies",
+            "artifact_path": source,
+            "reason": reason,
+        }
+        report["layer_status"]["bodies"] = status
+        print(f"[evidence] skipped bystander bodies: {reason}", flush=True)
+        return
+
     payload["body_layer_vertices"] = bodies["vertices"]
     payload["body_layer_faces"] = bodies["faces"]
     report["bodies"] = {
@@ -2754,7 +2807,12 @@ def _attach_bodies(payload: dict[str, Any], report: dict[str, Any], directory: p
     missing = bodies["missing_body_ids"]
     status = {
         "status": "built_partial" if missing else "built",
+        "artifact_status": "built_partial" if missing else "built",
         "directory": source,
+        "artifact_path": source,
+        "role": common["role"],
+        "transport_role": common["transport_role"],
+        "receiver_distinction": common["receiver_distinction"],
         "count": int(bodies["vertices"].shape[0]),
         "missing_body_ids": missing,
     }
@@ -2792,7 +2850,7 @@ def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
     _attach_monocular_depth(args, payload, report, directories, pose)
     record_excluded_evidence_statuses(report)
     _attach_registration(args.site, payload, report, manifest)
-    _attach_bodies(payload, report, directories.get("bodies"))
+    _attach_bodies(payload, report, directories.get("bodies"), site=args.site)
 
 
 def reopen(args: Any, *, output_stem: str | None = None) -> dict[str, Any]:

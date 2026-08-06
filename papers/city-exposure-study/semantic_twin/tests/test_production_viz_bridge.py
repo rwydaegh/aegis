@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import pathlib
 from types import SimpleNamespace
@@ -720,6 +721,12 @@ def test_blender_cli_accepts_zero_animation_counts(tmp_path: pathlib.Path) -> No
     )
     assert args.animation_paths == 0
     assert args.animation_nee_paths == 0
+
+
+def test_blender_cli_stamps_collection_status_after_building_animation() -> None:
+    source = inspect.getsource(blender_cli.main)
+
+    assert source.index("animation.build_path_animation") < source.index("scene.hide_heavy_collections")
 
 
 def test_crossed_payload_and_manifest_bundle_is_rejected() -> None:

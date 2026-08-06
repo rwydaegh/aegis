@@ -87,6 +87,61 @@ INFERNO = np.array(
     ]
 )
 
+# Contribution layers use separate hues so the two evidence sources remain
+# readable when they are shown on the same atlas.  The exact values are a
+# display convention only.  The uncoloured float attributes beside each layer
+# remain the authoritative weights.
+VISTAS_CONTRIBUTION_PALETTE = np.array(
+    [
+        [0.005, 0.035, 0.090],
+        [0.000, 0.180, 0.470],
+        [0.000, 0.500, 0.800],
+        [0.180, 0.820, 0.980],
+        [0.700, 1.000, 1.000],
+    ],
+    dtype=np.float64,
+)
+SAM3_CONTRIBUTION_PALETTE = np.array(
+    [
+        [0.080, 0.005, 0.070],
+        [0.330, 0.000, 0.300],
+        [0.650, 0.015, 0.500],
+        [0.900, 0.120, 0.680],
+        [1.000, 0.650, 0.900],
+    ],
+    dtype=np.float64,
+)
+
+# JSON-ready legends are kept here rather than reconstructed by a Blender
+# script.  That makes the colour meaning available to readers and QA tools even
+# when they never open the node editor.
+CONTRIBUTION_COLOUR_LEGENDS = {
+    "vistas_prior_weight": [
+        {"name": name, "rgba": [*colour, 1.0]}
+        for name, colour in zip(("low", "quarter", "middle", "high", "peak"), VISTAS_CONTRIBUTION_PALETTE)
+    ],
+    "sam3_concept_weight": [
+        {"name": name, "rgba": [*colour, 1.0]}
+        for name, colour in zip(("low", "quarter", "middle", "high", "peak"), SAM3_CONTRIBUTION_PALETTE)
+    ],
+}
+
+SOURCE_CONTRIBUTION_COLOURS = np.array(
+    [
+        [0.015, 0.015, 0.020],
+        [0.030, 0.360, 0.980],
+        [0.980, 0.080, 0.620],
+        [0.620, 0.180, 0.980],
+    ],
+    dtype=np.float64,
+)
+SOURCE_CONTRIBUTION_COLOUR_LEGEND = [
+    {"code": 0, "name": "no Vistas or SAM 3 evidence", "rgba": [*SOURCE_CONTRIBUTION_COLOURS[0], 1.0]},
+    {"code": 1, "name": "Vistas prior only", "rgba": [*SOURCE_CONTRIBUTION_COLOURS[1], 1.0]},
+    {"code": 2, "name": "SAM 3 concept only", "rgba": [*SOURCE_CONTRIBUTION_COLOURS[2], 1.0]},
+    {"code": 3, "name": "Vistas prior and SAM 3 concept", "rgba": [*SOURCE_CONTRIBUTION_COLOURS[3], 1.0]},
+]
+
 #: Where the rim polyline is cut. Two azimuths half a degree apart whose tips are
 #: further apart than this fraction of their own range are not one roofline: the
 #: silhouette has stepped across a street opening onto a facade behind it, and
@@ -149,6 +204,26 @@ def colour_ramp(values: np.ndarray, low: float, high: float) -> np.ndarray:
     upper = np.minimum(lower + 1, INFERNO.shape[0] - 1)
     blend = (position - lower)[:, None]
     rgb = INFERNO[lower] * (1.0 - blend) + INFERNO[upper] * blend
+    return np.column_stack([rgb, np.ones(rgb.shape[0])])
+
+
+def contribution_colour_ramp(values: np.ndarray, low: float, high: float, source: str) -> np.ndarray:
+    """Map one shared log-weight range to the named source palette."""
+    palettes = {
+        "vistas_prior_weight": VISTAS_CONTRIBUTION_PALETTE,
+        "sam3_concept_weight": SAM3_CONTRIBUTION_PALETTE,
+    }
+    try:
+        palette = palettes[source]
+    except KeyError as exc:
+        raise ValueError(f"unknown contribution source {source!r}") from exc
+    span = max(high - low, 1.0e-30)
+    t = np.clip((np.asarray(values, dtype=np.float64) - low) / span, 0.0, 1.0)
+    position = t * (palette.shape[0] - 1)
+    lower = np.floor(position).astype(int)
+    upper = np.minimum(lower + 1, palette.shape[0] - 1)
+    blend = (position - lower)[:, None]
+    rgb = palette[lower] * (1.0 - blend) + palette[upper] * blend
     return np.column_stack([rgb, np.ones(rgb.shape[0])])
 
 

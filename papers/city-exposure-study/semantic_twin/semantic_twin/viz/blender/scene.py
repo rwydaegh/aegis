@@ -27,7 +27,13 @@ import bpy
 import numpy as np
 
 from .payload import builder_fingerprint, camera_rotation, production_scene_properties
-from .style import colour_ramp
+from .style import (
+    CONTRIBUTION_COLOUR_LEGENDS,
+    SOURCE_CONTRIBUTION_COLOUR_LEGEND,
+    SOURCE_CONTRIBUTION_COLOURS,
+    contribution_colour_ramp,
+    colour_ramp,
+)
 
 
 def stamp_scene(
@@ -186,9 +192,18 @@ COLLECTION_DESCRIPTIONS: dict[str, str] = {
         "Transport uses the complete stored mixture."
     ),
     "transport_fallback": "Whole-face geometric fallback class mapped onto each observed atlas cell.",
-    "vistas_contribution": "Accumulated Mapillary Vistas material-prior weight per joint-atlas cell.",
-    "sam3_contribution": "Accumulated SAM 3 promptable material-concept weight per joint-atlas cell.",
-    "source_contribution": "Whether each joint-atlas cell carries Vistas prior evidence, SAM 3 concept evidence, or both.",
+    "vistas_contribution": (
+        "Accumulated Mapillary Vistas material-prior weight per joint-atlas cell. "
+        "Colour is a blue-to-cyan shared log-weight scale, not class confidence."
+    ),
+    "sam3_contribution": (
+        "Accumulated SAM 3 promptable material-concept weight per joint-atlas cell. "
+        "Colour is a magenta-to-pink shared log-weight scale, not class confidence."
+    ),
+    "source_contribution": (
+        "Categorical source coverage per joint-atlas cell: Vistas only, SAM 3 only, both, or no source evidence. "
+        "Overlap is expected because the two sources can support the same cell."
+    ),
     "semantics": (
         "Legacy single-panorama fishnet surfaces for audit. They preserve the older Vistas and SAM 3 views "
         "and are separate from the joint hit-position atlas."
@@ -957,15 +972,7 @@ def _attach_transport_audit_layers(
         probability_attributes.append(attribute)
         probability_names[attribute] = name
 
-    source_tint = np.asarray(
-        [
-            [0.0, 0.0, 0.0, 1.0],
-            [0.18, 0.62, 1.0, 1.0],
-            [1.0, 0.30, 0.72, 1.0],
-            [0.76, 0.42, 1.0, 1.0],
-        ],
-        dtype=np.float64,
-    )
+    source_tint = np.column_stack([SOURCE_CONTRIBUTION_COLOURS, np.ones(4)])
     attach_face_colour(obj, "source_contribution_state", source_tint[source_mask])
     attach_values(obj, "value_source_contribution_mask", source_mask, "FACE")
     positive = np.concatenate([vistas[vistas > 0.0], sam3[sam3 > 0.0]])
@@ -978,7 +985,7 @@ def _attach_transport_audit_layers(
         log_values = np.full(values.shape, low)
         present = values > 0.0
         log_values[present] = np.log10(values[present])
-        attach_face_colour(obj, name, colour_ramp(log_values, low, high))
+        attach_face_colour(obj, name, contribution_colour_ramp(log_values, low, high, name))
         attach_values(obj, f"value_{name}", values, "FACE")
 
     atlas = manifest.get("surface_atlas", {})
@@ -1003,9 +1010,16 @@ def _attach_transport_audit_layers(
     obj["geometric_fallback_vocabulary"] = json.dumps(class_names)
     obj["geometric_fallback_colour_legend"] = json.dumps(fallback_legend)
     obj["source_contribution_mask_names"] = json.dumps(SOURCE_CONTRIBUTION_MASK_NAMES)
+    obj["source_contribution_mask_face_counts"] = json.dumps(
+        {str(code): int(np.count_nonzero(source_mask == code)) for code in range(4)}
+    )
+    obj["source_contribution_mask_colour_legend"] = json.dumps(SOURCE_CONTRIBUTION_COLOUR_LEGEND)
+    obj["vistas_prior_weight_colour_legend"] = json.dumps(CONTRIBUTION_COLOUR_LEGENDS["vistas_prior_weight"])
+    obj["sam3_concept_weight_colour_legend"] = json.dumps(CONTRIBUTION_COLOUR_LEGENDS["sam3_concept_weight"])
     obj["source_contribution_weight_log10_range"] = [low, high]
     obj["source_contribution_weight_role"] = (
-        "accumulated atlas evidence weights; exact linear values are stored in value_* face attributes"
+        "accumulated atlas evidence weights; exact linear values are stored in value_* face attributes; "
+        "weights show evidence amount, not semantic class confidence"
     )
     return True
 
@@ -1018,21 +1032,38 @@ def _linked_audit_display(source: Any, name: str, channel: str, into: Any) -> An
     if not copy.material_slots:
         raise RuntimeError("atlas audit display source has no material slot")
     copy.material_slots[0].link = "OBJECT"
-    copy.material_slots[0].material = lit_material(f"{name}_material", channel)
+    contribution_channels = {
+        "vistas_prior_weight",
+        "sam3_concept_weight",
+        "source_contribution_state",
+    }
+    if channel in contribution_channels:
+        copy.material_slots[0].material = emissive_material(f"{name}_material", channel)
+        copy["display_shader"] = "unlit emission"
+    else:
+        copy.material_slots[0].material = lit_material(f"{name}_material", channel)
+        copy["display_shader"] = "lit principled"
     copy["display_channel"] = channel
     copy["shared_mesh_datablock"] = source.data.name
     copy["display_copy_only"] = True
+    copy["colour_layers"] = [channel]
+    copy["default_colour_layer"] = channel
+    copy["display_purpose"] = (
+        "categorical source coverage; overlap is expected"
+        if channel == "source_contribution_state"
+        else "accumulated source evidence weight; intensity is not class confidence"
+    )
     return copy
 
 
 def _build_linked_atlas_audit_displays(source: Any, collections: Mapping[str, Any]) -> None:
     specifications = (
+        ("source_contribution", "atlas_contribution_source_state", "source_contribution_state"),
+        ("vistas_contribution", "atlas_vistas_prior_contribution", "vistas_prior_weight"),
+        ("sam3_contribution", "atlas_sam3_concept_contribution", "sam3_concept_weight"),
         ("transport_state", "atlas_final_transport_state", "transport_state"),
         ("transport_material", "atlas_host_gated_material_mixture", "transport_posterior_dominant"),
         ("transport_fallback", "atlas_geometric_fallback_per_cell", "geometric_fallback_class"),
-        ("vistas_contribution", "atlas_vistas_prior_contribution", "vistas_prior_weight"),
-        ("sam3_contribution", "atlas_sam3_concept_contribution", "sam3_concept_weight"),
-        ("source_contribution", "atlas_contribution_source_state", "source_contribution_state"),
     )
     missing = [key for key, _name, _channel in specifications if key not in collections]
     if missing:

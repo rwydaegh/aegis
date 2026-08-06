@@ -599,6 +599,66 @@ def test_missing_body_file_does_not_shift_the_following_body_metadata(tmp_path) 
     assert layer["missing_body_ids"] == ["missing"]
 
 
+def test_missing_dynamic_body_artifact_is_explicitly_unavailable(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(exporter, "SCRIPT_DIR", tmp_path)
+    report: dict[str, object] = {"layer_status": {}}
+    payload: dict[str, object] = {}
+
+    exporter._attach_bodies(payload, report, None, site="prague_staromestske")
+
+    status = report["layer_status"]["bodies"]
+    assert status["artifact_status"] == "unavailable"
+    assert status["expected_artifact_path"] == "outputs/prague_staromestske_dynamic_bodies"
+    assert "receiver phantom" in status["receiver_distinction"]
+
+
+def test_present_dynamic_body_manifest_with_no_drawable_bodies_is_distinct(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(exporter, "SCRIPT_DIR", tmp_path)
+    directory = tmp_path / "outputs" / "prague_staromestske_dynamic_bodies"
+    directory.mkdir(parents=True)
+    (directory / "dynamic_bodies_manifest.json").write_text(json.dumps({"bodies": []}))
+    report: dict[str, object] = {"layer_status": {}}
+
+    exporter._attach_bodies({}, report, directory, site="prague_staromestske")
+
+    status = report["layer_status"]["bodies"]
+    assert status["artifact_status"] == "present_zero_drawable_bodies"
+    assert status["status"] == "empty"
+    assert "no drawable body records" in status["reason"]
+
+
+def test_bystander_collection_explains_artifact_and_receiver_roles() -> None:
+    evidence = _evidence_module()
+
+    class Group(dict):
+        def __init__(self) -> None:
+            super().__init__()
+            self.objects: list[object] = []
+
+    groups = {key: Group() for key in evidence.COLLECTION_LAYERS}
+    manifest = {
+        "evidence": {
+            "layer_status": {
+                "bodies": {
+                    "status": "empty",
+                    "artifact_status": "present_zero_drawable_bodies",
+                    "expected_artifact_path": "outputs/prague_staromestske_dynamic_bodies",
+                    "reason": "dynamic body manifest contains no drawable body records",
+                }
+            }
+        }
+    }
+
+    evidence.annotate_collection_status(groups, manifest)
+
+    bodies = groups["bodies"]
+    assert bodies["status"] == "empty"
+    assert bodies["artifact_status"] == "present_zero_drawable_bodies"
+    assert bodies["expected_artifact_path"] == "outputs/prague_staromestske_dynamic_bodies"
+    assert bodies["role"] == "image-reconstructed transient bystander bodies"
+    assert "not the receiver phantom" in bodies["receiver_distinction"]
+
+
 def test_depth_cloud_marks_a_missing_auxiliary_manifest_as_partial(tmp_path, monkeypatch) -> None:
     outputs = tmp_path / "outputs"
     mesh_depth = outputs / "square_mesh_depth"

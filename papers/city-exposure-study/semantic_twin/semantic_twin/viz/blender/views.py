@@ -176,12 +176,15 @@ def prepared_view_specs() -> tuple[PreparedView, ...]:
         PreparedView(
             key="model_contributions",
             name="12 VIEW - Vistas and SAM 3 contributions",
-            purpose="the Vistas prior and SAM 3 concept weights kept separate on the joint atlas",
+            purpose=(
+                "categorical source coverage first, then comparable Vistas and SAM 3 accumulated evidence weights; "
+                "overlap is expected and intensity is not class confidence"
+            ),
             camera="cam_evidence",
             layers=(
+                PreparedLayer("Contribution source state", ("twin", "source_contribution")),
                 PreparedLayer("Vistas prior contribution", ("twin", "vistas_contribution")),
                 PreparedLayer("SAM 3 concept contribution", ("twin", "sam3_contribution")),
-                PreparedLayer("Contribution source state", ("twin", "source_contribution")),
             ),
             requires_objects=("vistas_contribution", "sam3_contribution", "source_contribution"),
         ),
@@ -532,6 +535,10 @@ def _configure_prepared_render(
     base_y = int(made.get("prepared_render_base_resolution_y", made.render.resolution_y))
     made.render.resolution_x = max(1, round(base_x * resolution_scale))
     made.render.resolution_y = max(1, round(base_y * resolution_scale))
+    # Prepared scales describe the requested output pixels. A saved panorama
+    # scene may carry a preview percentage, which must not scale that request a
+    # second time. The caller restores this display setting after rendering.
+    made.render.resolution_percentage = 100
     if gpu:
         from .scene import use_gpu
 
@@ -633,6 +640,7 @@ def render_prepared_frames(
         "filepath": made.render.filepath,
         "resolution_x": int(made.render.resolution_x),
         "resolution_y": int(made.render.resolution_y),
+        "resolution_percentage": int(made.render.resolution_percentage),
         "samples": int(made.cycles.samples) if hasattr(made, "cycles") else None,
     }
     written: list[str] = []
@@ -659,6 +667,7 @@ def render_prepared_frames(
         made.render.filepath = render_state["filepath"]
         made.render.resolution_x = render_state["resolution_x"]
         made.render.resolution_y = render_state["resolution_y"]
+        made.render.resolution_percentage = render_state["resolution_percentage"]
         if render_state["samples"] is not None:
             made.cycles.samples = render_state["samples"]
         made.frame_set(made_frame)
@@ -690,18 +699,31 @@ def render_prepared_scenes(
     for key, made in prepared.items():
         if allowed is not None and key not in allowed:
             continue
-        _configure_prepared_render(
-            prepared,
-            key,
-            made,
-            samples=samples,
-            resolution_scale=resolution_scale,
-            gpu=gpu,
-        )
-        layers = tuple(made.view_layers) if all_layers else (made.view_layers[0],)
-        for layer in layers:
-            suffix = f"_{layer.name.lower().replace(' ', '_')}" if all_layers else ""
-            path = (destination / f"{key}{suffix}.png").resolve()
-            _render_prepared_layer(made, layer, path)
-            written.append(str(path))
+        render_state = {
+            "resolution_x": int(made.render.resolution_x),
+            "resolution_y": int(made.render.resolution_y),
+            "resolution_percentage": int(made.render.resolution_percentage),
+            "samples": int(made.cycles.samples) if hasattr(made, "cycles") else None,
+        }
+        try:
+            _configure_prepared_render(
+                prepared,
+                key,
+                made,
+                samples=samples,
+                resolution_scale=resolution_scale,
+                gpu=gpu,
+            )
+            layers = tuple(made.view_layers) if all_layers else (made.view_layers[0],)
+            for layer in layers:
+                suffix = f"_{layer.name.lower().replace(' ', '_')}" if all_layers else ""
+                path = (destination / f"{key}{suffix}.png").resolve()
+                _render_prepared_layer(made, layer, path)
+                written.append(str(path))
+        finally:
+            made.render.resolution_x = render_state["resolution_x"]
+            made.render.resolution_y = render_state["resolution_y"]
+            made.render.resolution_percentage = render_state["resolution_percentage"]
+            if render_state["samples"] is not None:
+                made.cycles.samples = render_state["samples"]
     return written

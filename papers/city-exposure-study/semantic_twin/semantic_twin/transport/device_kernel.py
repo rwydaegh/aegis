@@ -282,6 +282,13 @@ class DeviceSbrKernel:
             interface_normal = mi.Vector3f(0.0)
             interface_face = dr.zeros(mi.UInt32, count)
             interface_uv = mi.Point2f(0.0)
+            # The atlas lookup is needed both to decide whether a hit is a
+            # pass-through surface and to evaluate a blocking material mix.
+            # Carry it through the search loop so the blocking hit does not
+            # repeat the same device gathers.
+            interface_atlas_supported = dr.zeros(mi.Bool, count)
+            interface_atlas_nonblocking = dr.zeros(mi.Bool, count)
+            interface_atlas_texel = dr.zeros(mi.Int32, count)
             # A ray that only advances can cross each triangle at most once.
             # One more query is needed to establish escape after crossing the
             # final face. Keeping this bound in device state also turns a
@@ -298,6 +305,9 @@ class DeviceSbrKernel:
                 interface_normal: Any,
                 interface_face: Any,
                 interface_uv: Any,
+                interface_atlas_supported: Any,
+                interface_atlas_nonblocking: Any,
+                interface_atlas_texel: Any,
                 status: Any,
             ) -> Any:
                 del (
@@ -308,6 +318,9 @@ class DeviceSbrKernel:
                     interface_normal,
                     interface_face,
                     interface_uv,
+                    interface_atlas_supported,
+                    interface_atlas_nonblocking,
+                    interface_atlas_texel,
                     status,
                 )
                 return searching & (canopy_crossings <= max_canopy_crossings)
@@ -322,6 +335,9 @@ class DeviceSbrKernel:
                 interface_normal: Any,
                 interface_face: Any,
                 interface_uv: Any,
+                interface_atlas_supported: Any,
+                interface_atlas_nonblocking: Any,
+                interface_atlas_texel: Any,
                 status: Any,
             ) -> tuple[Any, ...]:
                 epsilon = float(self.config.ray_epsilon_m)
@@ -336,7 +352,15 @@ class DeviceSbrKernel:
                 # The atlas mask is enough to cross a false canopy surface.
                 # Fresnel mixtures are evaluated only for the one real
                 # interface that ends this search.
-                nonblocking = self._surface_nonblocking(intersection, hit)
+                if self.atlas_material is None:
+                    atlas_lookup = None
+                else:
+                    atlas_lookup = self._atlas_lookup(
+                        intersection.face,
+                        intersection.barycentric_uv,
+                        hit,
+                    )
+                nonblocking = self._surface_nonblocking(intersection, hit, atlas_lookup=atlas_lookup)
                 pass_through = hit & nonblocking
                 blocking_here = hit & ~nonblocking
                 canopy_crossings = dr.select(pass_through, canopy_crossings + 1, canopy_crossings)
@@ -344,6 +368,23 @@ class DeviceSbrKernel:
                 interface_normal = dr.select(blocking_here, intersection.normal, interface_normal)
                 interface_face = dr.select(blocking_here, intersection.face, interface_face)
                 interface_uv = dr.select(blocking_here, intersection.barycentric_uv, interface_uv)
+                if atlas_lookup is not None:
+                    lookup_supported, lookup_nonblocking, lookup_texel = atlas_lookup
+                    interface_atlas_supported = dr.select(
+                        blocking_here,
+                        lookup_supported,
+                        interface_atlas_supported,
+                    )
+                    interface_atlas_nonblocking = dr.select(
+                        blocking_here,
+                        lookup_nonblocking,
+                        interface_atlas_nonblocking,
+                    )
+                    interface_atlas_texel = dr.select(
+                        blocking_here,
+                        lookup_texel,
+                        interface_atlas_texel,
+                    )
 
                 # ``distance`` starts at the epsilon-shifted query origin.
                 # Adding the same epsilon recovers the true surface point.
@@ -362,6 +403,9 @@ class DeviceSbrKernel:
                     interface_normal,
                     interface_face,
                     interface_uv,
+                    interface_atlas_supported,
+                    interface_atlas_nonblocking,
+                    interface_atlas_texel,
                     status,
                 )
 
@@ -375,6 +419,9 @@ class DeviceSbrKernel:
                 interface_normal,
                 interface_face,
                 interface_uv,
+                interface_atlas_supported,
+                interface_atlas_nonblocking,
+                interface_atlas_texel,
                 status,
             ) = dr.while_loop(
                 state=(
@@ -387,6 +434,9 @@ class DeviceSbrKernel:
                     interface_normal,
                     interface_face,
                     interface_uv,
+                    interface_atlas_supported,
+                    interface_atlas_nonblocking,
+                    interface_atlas_texel,
                     status,
                 ),
                 cond=continue_search,
@@ -410,6 +460,11 @@ class DeviceSbrKernel:
                     interface_face,
                     interface_uv,
                     blocking,
+                    atlas_lookup=(
+                        interface_atlas_supported,
+                        interface_atlas_nonblocking,
+                        interface_atlas_texel,
+                    ),
                 )
                 bounces = dr.select(blocking, bounces + 1, bounces)
                 throughput = dr.select(blocking, throughput * reflectance, throughput)
@@ -471,6 +526,8 @@ class DeviceSbrKernel:
         face: Any,
         barycentric_uv: Any,
         hit: Any,
+        *,
+        atlas_lookup: tuple[Any, Any, Any] | None = None,
     ) -> tuple[Any, Any, Any]:
         """Evaluate an interface from its compact device coordinates."""
         mi, dr = self.mi, self.dr
@@ -481,7 +538,10 @@ class DeviceSbrKernel:
         if self.atlas_material is None:
             return fallback_reflectance, fallback_share, dr.zeros(mi.Bool, dr.width(cosine))
 
-        supported, nonblocking, texel = self._atlas_lookup(face, barycentric_uv, hit)
+        if atlas_lookup is None:
+            supported, nonblocking, texel = self._atlas_lookup(face, barycentric_uv, hit)
+        else:
+            supported, nonblocking, texel = atlas_lookup
         material_count = len(self.atlas_material.material_names)
 
         reflected_power = dr.zeros(mi.Float, dr.width(cosine))
@@ -516,16 +576,25 @@ class DeviceSbrKernel:
             nonblocking,
         )
 
-    def _surface_nonblocking(self, intersection: Any, hit: Any) -> Any:
+    def _surface_nonblocking(
+        self,
+        intersection: Any,
+        hit: Any,
+        *,
+        atlas_lookup: tuple[Any, Any, Any] | None = None,
+    ) -> Any:
         """Return pass-through state without evaluating any material model."""
         mi, dr = self.mi, self.dr
         if self.atlas_material is None:
             return dr.zeros(mi.Bool, dr.width(hit))
-        _supported, nonblocking, _texel = self._atlas_lookup(
-            intersection.face,
-            intersection.barycentric_uv,
-            hit,
-        )
+        if atlas_lookup is None:
+            _supported, nonblocking, _texel = self._atlas_lookup(
+                intersection.face,
+                intersection.barycentric_uv,
+                hit,
+            )
+        else:
+            _supported, nonblocking, _texel = atlas_lookup
         return nonblocking
 
     def _atlas_lookup(self, face: Any, barycentric_uv: Any, hit: Any) -> tuple[Any, Any, Any]:

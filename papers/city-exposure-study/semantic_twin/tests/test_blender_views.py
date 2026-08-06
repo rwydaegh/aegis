@@ -60,9 +60,9 @@ def test_prepared_views_keep_each_question_small_and_separate() -> None:
     assert transport.requires_objects == ("transport_state", "transport_material", "transport_fallback")
     contributions = next(view for view in specs if view.key == "model_contributions")
     assert [layer.name for layer in contributions.layers] == [
+        "Contribution source state",
         "Vistas prior contribution",
         "SAM 3 concept contribution",
-        "Contribution source state",
     ]
     assert contributions.requires_objects == (
         "vistas_contribution",
@@ -123,7 +123,7 @@ def test_prepared_animation_frames_use_the_target_scene_and_frame(tmp_path: path
             target.render.engine = "BLENDER_EEVEE_NEXT"
             target.render.resolution_x = 48
             target.render.resolution_y = 48
-            target.render.resolution_percentage = 100
+            target.render.resolution_percentage = 5
             target.render.image_settings.file_format = "PNG"
             target.render.filepath = "/tmp/original-prepared-path"
             target.frame_start = 1
@@ -186,10 +186,12 @@ def test_prepared_animation_frames_use_the_target_scene_and_frame(tmp_path: path
 
             channels = []
             hashes = []
+            sizes = []
             for filename in written:
                 path = pathlib.Path(filename)
                 hashes.append(hashlib.sha256(path.read_bytes()).hexdigest())
                 image = bpy.data.images.load(str(path), check_existing=False)
+                sizes.append(list(image.size))
                 pixels = list(image.pixels)
                 channels.append([sum(pixels[index::4]) for index in range(3)])
                 bpy.data.images.remove(image)
@@ -215,11 +217,13 @@ def test_prepared_animation_frames_use_the_target_scene_and_frame(tmp_path: path
                 "written": written,
                 "hashes": hashes,
                 "channels": channels,
+                "sizes": sizes,
                 "first_restore": first_restore,
                 "same_scene_restore": same_scene_restore,
                 "target_frame": target.frame_current,
                 "target_filepath": target.render.filepath,
                 "target_resolution": [target.render.resolution_x, target.render.resolution_y],
+                "target_resolution_percentage": target.render.resolution_percentage,
                 "ranked_visible": not ranked.hide_render,
                 "nee_visible": not nee.hide_render,
             }}))
@@ -244,11 +248,13 @@ def test_prepared_animation_frames_use_the_target_scene_and_frame(tmp_path: path
     assert measured["hashes"][0] != measured["hashes"][1]
     assert measured["channels"][0][0] > measured["channels"][0][1] * 2.0
     assert measured["channels"][1][1] > measured["channels"][1][0] * 1.5
+    assert measured["sizes"] == [[24, 24], [24, 24]]
     assert measured["first_restore"] == ["decoy scene", 11]
     assert measured["same_scene_restore"] == ["prepared animation", "prior audit layer", 2]
     assert measured["target_frame"] == 2
     assert measured["target_filepath"] == "/tmp/original-prepared-path"
     assert measured["target_resolution"] == [48, 48]
+    assert measured["target_resolution_percentage"] == 5
     assert not measured["ranked_visible"]
     assert measured["nee_visible"]
 
@@ -427,11 +433,19 @@ def test_full_support_and_fused_atlas_are_exact_separate_layers(tmp_path: pathli
                     obj.name: obj["display_channel"]
                     for obj in (transport_state, transport_material, transport_fallback, vistas, sam3, sources)
                 }},
+                "audit_shaders": {{
+                    obj.name: sorted(node.bl_idname for node in obj.material_slots[0].material.node_tree.nodes)
+                    for obj in (transport_state, transport_material, transport_fallback, vistas, sam3, sources)
+                }},
                 "transport_state_names": json.loads(fused["transport_state_names"]),
                 "transport_material_names": json.loads(fused["transport_material_vocabulary"]),
                 "transport_probability_attributes": list(fused["transport_probability_attributes"]),
                 "transport_state_counts": json.loads(fused["transport_state_cell_counts"]),
                 "source_mask_names": json.loads(fused["source_contribution_mask_names"]),
+                "source_mask_face_counts": json.loads(fused["source_contribution_mask_face_counts"]),
+                "source_mask_colour_legend": json.loads(fused["source_contribution_mask_colour_legend"]),
+                "vistas_colour_legend": json.loads(fused["vistas_prior_weight_colour_legend"]),
+                "sam3_colour_legend": json.loads(fused["sam3_concept_weight_colour_legend"]),
                 "camera": camera.name,
                 "camera_type": camera.data.type,
                 "camera_scale": camera.data.ortho_scale,
@@ -495,13 +509,32 @@ def test_full_support_and_fused_atlas_are_exact_separate_layers(tmp_path: pathli
     assert measured["provenance"]["content_sha256"] == "a" * 64
     assert measured["audit_shared_mesh"]
     assert measured["audit_channels"] == {
+        "atlas_contribution_source_state": "source_contribution_state",
+        "atlas_vistas_prior_contribution": "vistas_prior_weight",
+        "atlas_sam3_concept_contribution": "sam3_concept_weight",
         "atlas_final_transport_state": "transport_state",
         "atlas_host_gated_material_mixture": "transport_posterior_dominant",
         "atlas_geometric_fallback_per_cell": "geometric_fallback_class",
-        "atlas_vistas_prior_contribution": "vistas_prior_weight",
-        "atlas_sam3_concept_contribution": "sam3_concept_weight",
-        "atlas_contribution_source_state": "source_contribution_state",
     }
+    for name in (
+        "atlas_contribution_source_state",
+        "atlas_vistas_prior_contribution",
+        "atlas_sam3_concept_contribution",
+    ):
+        assert measured["audit_shaders"][name] == [
+            "ShaderNodeAttribute",
+            "ShaderNodeEmission",
+            "ShaderNodeOutputMaterial",
+        ]
+    assert measured["source_mask_face_counts"] == {"0": 0, "1": 0, "2": 0, "3": 1}
+    assert [entry["name"] for entry in measured["source_mask_colour_legend"]] == [
+        "no Vistas or SAM 3 evidence",
+        "Vistas prior only",
+        "SAM 3 concept only",
+        "Vistas prior and SAM 3 concept",
+    ]
+    assert measured["vistas_colour_legend"][-1]["rgba"][:3] == pytest.approx([0.7, 1.0, 1.0])
+    assert measured["sam3_colour_legend"][-1]["rgba"][:3] == pytest.approx([1.0, 0.65, 0.9])
     assert measured["transport_state_names"] == [
         "atlas_interface",
         "nonblocking_woody_vegetation",
@@ -622,7 +655,7 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
             raw.frame_end = 5
             raw.render.resolution_x = 32
             raw.render.resolution_y = 32
-            raw.render.resolution_percentage = 100
+            raw.render.resolution_percentage = 5
             def add_panorama_groups(prepared_scene, prefix):
                 overlay = bpy.data.collections.new(f"{{prefix}} overlay")
                 overlay["panorama_overlay_collection"] = True
@@ -680,6 +713,12 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
             rendered_frame = bpy.context.scene.frame_current
             animated_visible = not animated.hide_render
             first_resolution = [made["exposure_overview"].render.resolution_x, made["exposure_overview"].render.resolution_y]
+            first_percentage = made["exposure_overview"].render.resolution_percentage
+            render_sizes = []
+            for filename in rendered:
+                image = bpy.data.images.load(filename, check_existing=False)
+                render_sizes.append(list(image.size))
+                bpy.data.images.remove(image)
             render_prepared_scenes(
                 made,
                 {str(renders)!r},
@@ -687,6 +726,7 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
                 resolution_scale=0.5,
             )
             second_resolution = [made["exposure_overview"].render.resolution_x, made["exposure_overview"].render.resolution_y]
+            second_percentage = made["exposure_overview"].render.resolution_percentage
             raw.view_layers[0].layer_collection.children[groups["twin"].name].exclude = True
             activate_raw_scene(raw, clear_root_exclusions=True)
 
@@ -708,7 +748,10 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
                 "rendered_frame": rendered_frame,
                 "animated_visible": animated_visible,
                 "first_resolution": first_resolution,
+                "first_percentage": first_percentage,
                 "second_resolution": second_resolution,
+                "second_percentage": second_percentage,
+                "render_sizes": render_sizes,
                 "panorama_overlay_excluded": {{
                     layer.name: layer.layer_collection.children["panorama hook overlay"].exclude
                     for layer in made["panorama_registration"].view_layers
@@ -806,8 +849,11 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
     assert measured["rendered_scene"] == "05 VIEW - NEE explainer"
     assert measured["rendered_frame"] == 4
     assert measured["animated_visible"]
-    assert measured["first_resolution"] == [16, 16]
-    assert measured["second_resolution"] == [16, 16]
+    assert measured["first_resolution"] == [32, 32]
+    assert measured["second_resolution"] == [32, 32]
+    assert measured["first_percentage"] == 5
+    assert measured["second_percentage"] == 5
+    assert measured["render_sizes"] == [[16, 16], [16, 16]]
     assert measured["panorama_overlay_excluded"] == {
         "Registered photograph": False,
         "Panorama capture poses": True,

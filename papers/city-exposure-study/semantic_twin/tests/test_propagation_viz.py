@@ -35,9 +35,12 @@ from semantic_twin.viz.blender.payload import (
     supported_live_scattering_vertices,
 )
 from semantic_twin.viz.blender.style import (
+    SAM3_CONTRIBUTION_PALETTE,
+    VISTAS_CONTRIBUTION_PALETTE,
     RAY_STYLE,
     angular_law_sample_metadata,
     angular_law_sample_object_name,
+    contribution_colour_ramp,
     colour_ramp,
 )
 
@@ -479,6 +482,21 @@ def test_colour_ramp_is_monotone_and_clamps() -> None:
     # Inferno rises monotonically in luminance across its whole range.
     luminance = rgba[1:-1] @ np.array([0.2126, 0.7152, 0.0722, 0.0])
     assert np.all(np.diff(luminance) > 0.0)
+
+
+@pytest.mark.parametrize(
+    ("source", "palette"),
+    (("vistas_prior_weight", VISTAS_CONTRIBUTION_PALETTE), ("sam3_concept_weight", SAM3_CONTRIBUTION_PALETTE)),
+)
+def test_contribution_ramps_share_the_log_range_but_keep_distinct_hues(source: str, palette: np.ndarray) -> None:
+    values = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
+    rgba = contribution_colour_ramp(values, -2.0, 2.0, source)
+    assert np.allclose(rgba[[0, -1], :3], palette[[0, -1]])
+    assert np.allclose(rgba[:, 3], 1.0)
+    # The source palettes are intentionally different even though their scalar
+    # positions and ranges are identical.
+    other = "sam3_concept_weight" if source == "vistas_prior_weight" else "vistas_prior_weight"
+    assert not np.allclose(rgba[2, :3], contribution_colour_ramp(values, -2.0, 2.0, other)[2, :3])
 
 
 def test_ray_bundles_are_exclusive_and_exhaustive() -> None:
