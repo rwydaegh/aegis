@@ -42,11 +42,13 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import pathlib
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -75,6 +77,32 @@ DEFAULT_VERTICAL_HALF_EXTENT_M = 3000.0
 # any site in this study puts in a crop is a Times Square tower at roughly 250 m,
 # and Milan's spire is 109 m above its pavement.
 BUILDING_HEADROOM_M = 300.0
+
+
+@dataclass(frozen=True)
+class TilesAcquireConfig:
+    """Inputs for one bounded Google Photorealistic 3D Tiles acquisition."""
+
+    lat: float
+    lon: float
+    radius_m: float
+    geometric_error_cutoff_m: float
+    out: pathlib.Path
+    vertical_half_extent_m: float = DEFAULT_VERTICAL_HALF_EXTENT_M
+    site_height_m: float | None = None
+    max_requests: int = DEFAULT_MAX_REQUESTS
+    max_bytes: int = DEFAULT_MAX_BYTES
+    api_key: str | None = None
+
+
+def google_api_key() -> str | None:
+    """Return the preferred Google tile key, with the old fallback still supported."""
+    return os.environ.get("GOOGLE_MAPS_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+
+
+def api_key() -> str | None:
+    """Compatibility alias for callers that used the old command helper."""
+    return google_api_key()
 
 
 class DownloadLimitExceeded(RuntimeError):
@@ -616,3 +644,23 @@ class GoogleTilesDownloader:
             f"    Imagery: {line}\n",
             encoding="utf-8",
         )
+
+
+def acquire_tiles(config: TilesAcquireConfig) -> dict[str, Any]:
+    """Download one configured region and return its persisted manifest."""
+    key = config.api_key or google_api_key()
+    if not key:
+        raise ValueError("An API key is required")
+    downloader = GoogleTilesDownloader(
+        key,
+        lat=config.lat,
+        lon=config.lon,
+        radius_m=config.radius_m,
+        geometric_error_cutoff_m=config.geometric_error_cutoff_m,
+        out_dir=config.out,
+        vertical_half_extent_m=config.vertical_half_extent_m,
+        site_ellipsoid_height_m=config.site_height_m,
+        max_requests=config.max_requests,
+        max_bytes=config.max_bytes,
+    )
+    return downloader.run()

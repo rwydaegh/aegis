@@ -45,6 +45,7 @@ BUILDER_SOURCES: tuple[str, ...] = (
     "semantic_twin/viz/blender/scene.py",
     "semantic_twin/viz/blender/estimator.py",
     "semantic_twin/viz/blender/animation.py",
+    "semantic_twin/viz/blender/atlas_display_lod.py",
     "semantic_twin/viz/blender/panorama.py",
     "semantic_twin/viz/blender/views.py",
     "semantic_twin/viz/blender/evidence.py",

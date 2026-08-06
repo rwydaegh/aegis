@@ -89,6 +89,13 @@ from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.model import stratified_subset
 from semantic_twin.walk.site import site_walk
 
+from .atlas_display_lod import (
+    DISPLAY_LOD_ALGORITHM,
+    DISPLAY_LOD_KEY_FIELDS,
+    DISPLAY_LOD_SCHEMA,
+    DISPLAY_LOD_VERSION,
+    build_atlas_display_lod,
+)
 from .payload import ProductionData, read_production_data, stamp_bundle_identity, verify_bundle_identity
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parents[3]
@@ -1112,6 +1119,14 @@ def attach_production_surface_atlas(
         material.face_class,
     )
     arrays.update(decision_arrays)
+    canonical_array_names = tuple(arrays)
+    display_lod = build_atlas_display_lod(
+        arrays,
+        geometry.vertices,
+        geometry.faces,
+        resolution=atlas.atlas_resolution,
+    )
+    arrays.update(display_lod.arrays)
     expected_state_counts = transport.get("transport_states")
     if expected_state_counts is not None and dict(expected_state_counts) != state_counts:
         raise ValueError("surface-atlas audit transport-state counts do not match the production material binding")
@@ -1148,6 +1163,49 @@ def attach_production_surface_atlas(
             "role": (
                 "exact production interface, nonblocking vegetation, or geometric fallback decision per atlas cell"
             ),
+        },
+        "display_lod": {
+            "schema": DISPLAY_LOD_SCHEMA,
+            "version": DISPLAY_LOD_VERSION,
+            "display_only": True,
+            "algorithm": DISPLAY_LOD_ALGORITHM,
+            "categorical_key": list(DISPLAY_LOD_KEY_FIELDS),
+            "merge_boundary": "never across atlas_source_triangle",
+            "full_coverage_rule": (
+                "a parent support triangle is used only when every canonical R-grid cell is observed "
+                "and all cells have one exact categorical key"
+            ),
+            "canonical_triangle_face_count": display_lod.canonical_face_count,
+            "canonical_sparse_cell_count": display_lod.canonical_cell_count,
+            "display_polygon_count": display_lod.polygon_count,
+            "canonical_vertex_count": int(np.asarray(arrays["atlas_vertices"]).shape[0]),
+            "display_vertex_count": int(display_lod.arrays["atlas_display_vertices"].shape[0]),
+            "display_loop_count": int(display_lod.arrays["atlas_display_polygon_indices"].size),
+            "triangle_to_polygon_reduction": (
+                display_lod.canonical_face_count / display_lod.polygon_count if display_lod.polygon_count else 1.0
+            ),
+            "merged_parent_triangle_count": display_lod.merged_parent_triangle_count,
+            "membership_sha256": display_lod.membership_sha256,
+            "membership_encoding": (
+                "CSR atlas_display_sparse_cell_offsets into atlas_display_sparse_cell_indices; "
+                "each canonical sparse cell occurs exactly once"
+            ),
+            "canonical_input_arrays": {
+                name: _array_manifest(arrays[name])
+                for name in canonical_array_names
+                if name
+                in {
+                    "atlas_vertices",
+                    "atlas_faces",
+                    "atlas_source_triangle",
+                    "atlas_sparse_cell",
+                    "atlas_texel_row",
+                    "atlas_texel_column",
+                    *DISPLAY_LOD_KEY_FIELDS,
+                }
+            },
+            "payload_arrays": {name: _array_manifest(value) for name, value in display_lod.arrays.items()},
+            "continuous_audit_mesh": "canonical atlas_* arrays remain exact and separate",
         },
         "payload_arrays": {name: _array_manifest(value) for name, value in arrays.items()},
     }

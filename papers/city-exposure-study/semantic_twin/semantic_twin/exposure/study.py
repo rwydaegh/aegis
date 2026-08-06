@@ -25,6 +25,7 @@ from typing import Any, Sequence
 
 from semantic_twin import paths
 from semantic_twin.exposure.reuse import reusable as reusable_output
+from semantic_twin.exposure.output_policy import OutputProfile
 from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 from semantic_twin.materials import (
     bind_fishnet,
@@ -490,7 +491,7 @@ def ladder_sites(sites: tuple[str, ...], crop_m: int) -> tuple[list[str], dict[s
     return admitted, refused
 
 
-def reusable(config: RunConfig) -> bool:
+def reusable(config: RunConfig, profile: OutputProfile | str = OutputProfile.STANDARD) -> bool:
     """Whether a run already on disk is the run this sweep would produce.
 
     Existing and complete is not enough. Korenmarkt's three published 130 m
@@ -500,7 +501,7 @@ def reusable(config: RunConfig) -> bool:
     about it. Every field that changes the number is checked, and a rung is
     retraced whenever any of them disagrees.
     """
-    return reusable_output(config, OUTPUT, MODELS)
+    return reusable_output(config, OUTPUT, MODELS, profile=profile)
 
 
 def run_coverage_ladder(

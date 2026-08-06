@@ -98,6 +98,11 @@ MATERIALS = (
 #: numerical runs even when they use the same Mitsuba intersection variant.
 TRANSPORT_KERNELS = ("numpy", "drjit")
 
+#: The complete model tuple used by the escape/grid driver.  Keep this here,
+#: beside the named factory below, rather than making the command-line adapter
+#: carry a second copy of the production model order.
+ESCAPE_GRID_MODELS = ("isotropic", "rooftop", "street_small_cell")
+
 
 @dataclass(frozen=True)
 class NextEventConfig:
@@ -251,6 +256,104 @@ class RunConfig:
         self._check_names()
         self._check_quantities()
         self._settle_the_source_set()
+
+    @classmethod
+    def next_event_roofline(cls, site: str = "korenmarkt", **changes: Any) -> RunConfig:
+        """Build the named roofline/next-event configuration.
+
+        The generic constructor keeps its historical defaults for manifest and
+        golden-test compatibility.  Callers that mean the current roofline
+        method should say so by using this factory.  It also makes the source
+        law and estimator choices explicit while retaining the isotropic and
+        rooftop diagnostics used by ``run_next_event.py``.
+
+        This factory describes the roofline method.  The generic exposure
+        executor does not implement next-event rows, so hand this config to the
+        dedicated ``run_next_event.py`` entry point rather than to
+        :func:`semantic_twin.exposure.execution.execute`.
+        """
+        values: dict[str, Any] = {
+            "site": site,
+            "law": "roofline",
+            "models": ("isotropic", "rooftop"),
+            "estimator": "next_event",
+            "walk": "route",
+            "walk_path": "links",
+        }
+        values.update(changes)
+        for name, expected in (("law", "roofline"), ("estimator", "next_event")):
+            if values[name] != expected:
+                raise ValueError(f"next_event_roofline fixes {name} to {expected!r}; got {values[name]!r}")
+        return cls(**values)
+
+    @classmethod
+    def escape_grid(cls, site: str = "korenmarkt", **changes: Any) -> RunConfig:
+        """Build the named band/escape configuration used by the legacy driver.
+
+        ``run_exposure.py`` historically assembled this object inline and, in
+        doing so, silently selected the band law, escape estimator, and grid
+        walk.  The defaults below are that adapter's explicit contract.  A
+        caller may still pass a deliberate walk, crop, or numerical override
+        (for example, a route replay or a larger bounce budget), but the
+        resulting fields remain visible in the returned :class:`RunConfig`.
+
+        ``roulette_start=4`` is retained as the legacy tracer default.  It is
+        intentionally explicit here because the old adapter used that literal
+        even when a caller raised ``max_bounces``.  New code that wants the
+        budget-relative default should construct ``RunConfig`` directly or pass
+        ``roulette_start=None``.
+        """
+        values: dict[str, Any] = {
+            "site": site,
+            "crop_m": 130,
+            "law": "band",
+            "models": ESCAPE_GRID_MODELS,
+            "estimator": "escape",
+            "next_event": None,
+            "walk": "grid",
+            "walk_path": "links",
+            "walk_radius_m": 90.0,
+            "walk_spacing_m": 3.0,
+            "walk_stride_m": 6.0,
+            "head_height_m": 1.5,
+            "locations": 0,
+            "frequency_hz": 15.0e9,
+            "max_bounces": 3,
+            "roulette_start": 4,
+            "roulette_floor": 0.05,
+            "ray_epsilon_m": 1.0e-3,
+            "range_weighted_escape": False,
+            "materials": "geometric",
+            "walk_npz": None,
+            "atlas_npz": None,
+            "rays": 200_000,
+            "batch": 400_000,
+            "local_cells": 512,
+            "exit_bands": 18,
+            "seed": 7,
+            "variant": "llvm_ad_rgb",
+            "transport_kernel": "numpy",
+            "tag": "",
+        }
+        values.update(changes)
+        for name, expected in (("law", "band"), ("estimator", "escape"), ("next_event", None)):
+            if values[name] != expected:
+                raise ValueError(f"escape_grid fixes {name} to {expected!r}; got {values[name]!r}")
+        return cls(**values)
+
+    @property
+    def method_profile(self) -> str:
+        """Name the two supported method combinations, or ``custom``.
+
+        This is derived rather than stored, so adding a human-facing profile
+        label cannot change a run digest or invalidate sealed manifests.  A
+        route walk remains part of the run identity and is recorded separately.
+        """
+        if self.law == "roofline" and self.estimator == "next_event":
+            return "next_event_roofline"
+        if self.law == "band" and self.estimator == "escape":
+            return "escape_band"
+        return "custom"
 
     def _check_names(self) -> None:
         """A typo in a law name must not reach a manifest and look authoritative."""
@@ -457,6 +560,7 @@ class Provenance:
             "versions": dict(self.versions),
             "law": self.run.law,
             "estimator": self.run.estimator,
+            "method_profile": self.run.method_profile,
             "transport_kernel": self.run.transport_kernel,
             "run_digest": self.run.digest(),
             "run": self.run.as_dict(),

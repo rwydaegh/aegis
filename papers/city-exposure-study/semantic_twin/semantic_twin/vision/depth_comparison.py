@@ -42,6 +42,28 @@ from PIL import Image
 
 from semantic_twin.vision.depth_models import DEFAULT_REFERENCE_LOG_SIGMA, relative_error_to_log_sigma
 
+__all__ = [
+    "AGREEMENT_Z",
+    "BLOCKER_Z",
+    "COLOURS",
+    "DECISIONS",
+    "DEFAULT_REFERENCE_LOG_SIGMA",
+    "DYNAMIC_OBJECT_LABELS",
+    "DepthComparisonConfig",
+    "MAX_CROSS_VIEW_SCALE_SPREAD",
+    "MIN_DISAGREEMENT_LOG_SIGMA",
+    "OBJECT_IDS",
+    "PLAUSIBLE_SCALE_BAND",
+    "SECOND_OPINION_LOG_SIGMA",
+    "STATIC_CALIBRATION_IDS",
+    "STATIC_CALIBRATION_LABELS",
+    "classify",
+    "compare_mesh_depth",
+    "depth_log_sigma",
+    "fit_log_scale",
+    "scale_plausibility",
+]
+
 # Legacy defaults preserve the small unit-test fixtures.  Real runs resolve
 # ids from the segmentation manifest, since Mapillary Vistas and a material
 # head do not share a numeric taxonomy.

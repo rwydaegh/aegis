@@ -319,6 +319,47 @@ def build_mesh(name: str, vertices: np.ndarray, faces: np.ndarray, into: Any) ->
     return obj
 
 
+def build_polygon_mesh(
+    name: str,
+    vertices: np.ndarray,
+    polygon_offsets: np.ndarray,
+    polygon_indices: np.ndarray,
+    into: Any,
+) -> Any:
+    """Build a checked ragged polygon mesh without changing ``build_mesh``."""
+    vertices = np.asarray(vertices)
+    offsets = np.asarray(polygon_offsets, dtype=np.int64)
+    indices = np.asarray(polygon_indices, dtype=np.int64)
+    if vertices.ndim != 2 or vertices.shape[1:] != (3,) or not np.all(np.isfinite(vertices)):
+        raise ValueError("polygon vertices must be finite with shape (vertices, 3)")
+    if offsets.ndim != 1 or offsets.size < 1 or offsets[0] != 0 or offsets[-1] != indices.size:
+        raise ValueError("polygon offsets must be a CSR boundary for polygon indices")
+    totals = np.diff(offsets)
+    if np.any(totals < 3) or np.any(np.diff(offsets) < 0):
+        raise ValueError("every display polygon must have at least three vertices")
+    if indices.ndim != 1 or (indices.size and (indices.min() < 0 or indices.max() >= len(vertices))):
+        raise ValueError("polygon indices leave the display vertex array")
+    if len(vertices) > np.iinfo(np.int32).max or indices.size > np.iinfo(np.int32).max:
+        raise ValueError("polygon mesh exceeds Blender's 32-bit index capacity")
+    mesh = bpy.data.meshes.new(name)
+    mesh.vertices.add(len(vertices))
+    mesh.vertices.foreach_set("co", np.ascontiguousarray(vertices, dtype=np.float32).ravel())
+    mesh.loops.add(indices.size)
+    mesh.loops.foreach_set("vertex_index", np.ascontiguousarray(indices, dtype=np.int32))
+    mesh.polygons.add(len(totals))
+    mesh.polygons.foreach_set("loop_start", np.ascontiguousarray(offsets[:-1], dtype=np.int32))
+    mesh.polygons.foreach_set("loop_total", np.ascontiguousarray(totals, dtype=np.int32))
+    mesh.update(calc_edges=True)
+    mesh.validate(verbose=False)
+    if len(mesh.polygons) != len(totals):
+        raise RuntimeError(
+            f"{name}: Blender kept {len(mesh.polygons)} of {len(totals)} polygons, so per-face attributes shifted"
+        )
+    obj = bpy.data.objects.new(name, mesh)
+    into.objects.link(obj)
+    return obj
+
+
 def build_curves(name: str, points: np.ndarray, lengths: np.ndarray, radius: np.ndarray, into: Any) -> Any:
     """A hair curves object, which is the only curve type that carries attributes.
 
@@ -400,8 +441,13 @@ def point_cloud(name: str, points: np.ndarray, into: Any, *, radius: float, mate
 
 def attach_face_colour(obj: Any, name: str, rgba: np.ndarray) -> None:
     """Store one colour per face on the corner domain, which shaders read directly."""
+    rgba = np.asarray(rgba)
+    if rgba.shape != (len(obj.data.polygons), 4):
+        raise ValueError("face colours must have one RGBA row per mesh polygon")
     attribute = obj.data.color_attributes.new(name=name, type="FLOAT_COLOR", domain="CORNER")
-    corner = np.repeat(np.ascontiguousarray(rgba, dtype=np.float32), 3, axis=0)
+    loop_total = np.empty(len(obj.data.polygons), dtype=np.int32)
+    obj.data.polygons.foreach_get("loop_total", loop_total)
+    corner = np.repeat(np.ascontiguousarray(rgba, dtype=np.float32), loop_total, axis=0)
     attribute.data.foreach_set("color", corner.ravel())
 
 
@@ -1038,11 +1084,67 @@ def _attach_transport_audit_layers(
     return True
 
 
+def _attach_transport_display_categories(
+    obj: Any,
+    payload: Any,
+    manifest: Mapping[str, Any],
+    *,
+    face_count: int,
+) -> None:
+    state = np.asarray(payload["atlas_display_transport_state"], dtype=np.int32)
+    dominant = np.asarray(payload["atlas_display_transport_material"], dtype=np.int32)
+    fallback = np.asarray(payload["atlas_display_geometric_fallback_class"], dtype=np.int32)
+    source_mask = np.asarray(payload["atlas_display_source_mask"], dtype=np.int32)
+    if any(values.shape != (face_count,) for values in (state, dominant, fallback, source_mask)):
+        raise ValueError("atlas display categorical arrays must have one value per LOD polygon")
+    if np.any((state < 0) | (state >= len(TRANSPORT_STATE_NAMES))):
+        raise ValueError("atlas display transport state leaves its vocabulary")
+    material_names = _transport_material_names(manifest)
+    supported = state == 0
+    if np.any(supported & ((dominant < 0) | (dominant >= len(material_names)))):
+        raise ValueError("supported atlas display polygons must name a transport material")
+    if np.any(~supported & (dominant != -1)):
+        raise ValueError("non-interface atlas display polygons cannot name a transport material")
+    class_names = [str(value) for value in manifest.get("class_names", [])]
+    if not class_names or np.any((fallback < 0) | (fallback >= len(class_names))):
+        raise ValueError("atlas display fallback class leaves the production vocabulary")
+    if np.any(~np.isin(source_mask, list(SOURCE_CONTRIBUTION_MASK_NAMES))):
+        raise ValueError("atlas display source mask leaves its vocabulary")
+
+    state_tint = np.asarray(
+        [[0.10, 0.78, 0.98, 1.0], [0.22, 0.86, 0.32, 1.0], [0.96, 0.52, 0.12, 1.0]],
+        dtype=np.float64,
+    )
+    attach_face_colour(obj, "transport_state", state_tint[state])
+    attach_values(obj, "value_transport_state", state, "FACE")
+    material_colour, material_legend = _class_colours(np.maximum(dominant, 0), material_names, phase=0.31)
+    material_colour[state == 1] = (0.22, 0.86, 0.32, 1.0)
+    material_colour[state == 2] = (0.34, 0.36, 0.40, 1.0)
+    attach_face_colour(obj, "transport_posterior_dominant", material_colour)
+    attach_values(obj, "value_transport_material", dominant, "FACE")
+    fallback_colour, fallback_legend = _class_colours(fallback, class_names, phase=0.09)
+    attach_face_colour(obj, "geometric_fallback_class", fallback_colour)
+    attach_values(obj, "value_geometric_fallback_class", fallback, "FACE")
+    source_tint = np.column_stack([SOURCE_CONTRIBUTION_COLOURS, np.ones(4)])
+    attach_face_colour(obj, "source_contribution_state", source_tint[source_mask])
+    attach_values(obj, "value_source_contribution_mask", source_mask, "FACE")
+    obj["transport_state_names"] = json.dumps(list(TRANSPORT_STATE_NAMES))
+    obj["transport_material_vocabulary"] = json.dumps(material_names)
+    obj["transport_material_colour_legend"] = json.dumps(material_legend)
+    obj["geometric_fallback_vocabulary"] = json.dumps(class_names)
+    obj["geometric_fallback_colour_legend"] = json.dumps(fallback_legend)
+    obj["source_contribution_mask_names"] = json.dumps(SOURCE_CONTRIBUTION_MASK_NAMES)
+    obj["source_contribution_mask_colour_legend"] = json.dumps(SOURCE_CONTRIBUTION_COLOUR_LEGEND)
+    obj["categorical_display_only"] = True
+
+
 def _linked_audit_display(source: Any, name: str, channel: str, into: Any) -> Any:
     copy = source.copy()
     copy.data = source.data
     copy.name = name
     into.objects.link(copy)
+    copy.hide_viewport = False
+    copy.hide_render = False
     if not copy.material_slots:
         raise RuntimeError("atlas audit display source has no material slot")
     copy.material_slots[0].link = "OBJECT"
@@ -1074,29 +1176,46 @@ def _linked_audit_display(source: Any, name: str, channel: str, into: Any) -> An
     return copy
 
 
-def _build_linked_atlas_audit_displays(source: Any, collections: Mapping[str, Any]) -> None:
-    specifications = [
+def _build_linked_atlas_audit_displays(
+    categorical_source: Any,
+    continuous_source: Any,
+    collections: Mapping[str, Any],
+) -> None:
+    categorical = [
         ("source_contribution", "atlas_contribution_source_state", "source_contribution_state"),
-        ("vistas_contribution", "atlas_vistas_prior_contribution", "vistas_prior_weight"),
-        ("sam3_contribution", "atlas_sam3_concept_contribution", "sam3_concept_weight"),
         ("transport_state", "atlas_final_transport_state", "transport_state"),
         ("transport_material", "atlas_host_gated_material_mixture", "transport_posterior_dominant"),
         ("transport_fallback", "atlas_geometric_fallback_per_cell", "geometric_fallback_class"),
     ]
-    optional = (
-        ("entity_semantics", "all_camera_fused_entity_semantics", "entity_posterior_winner"),
-        ("atlas_confidence", "all_camera_atlas_confidence", "confidence"),
-        ("atlas_camera_count", "all_camera_atlas_camera_count", "camera_count"),
-        ("atlas_observation_count", "all_camera_atlas_observation_count", "observation_count"),
+    continuous = [
+        ("vistas_contribution", "atlas_vistas_prior_contribution", "vistas_prior_weight"),
+        ("sam3_contribution", "atlas_sam3_concept_contribution", "sam3_concept_weight"),
+    ]
+    categorical.extend(
+        item
+        for item in (("entity_semantics", "all_camera_fused_entity_semantics", "entity_posterior_winner"),)
+        if item[0] in collections
     )
-    specifications.extend(item for item in optional if item[0] in collections)
+    continuous.extend(
+        item
+        for item in (
+            ("atlas_confidence", "all_camera_atlas_confidence", "confidence"),
+            ("atlas_camera_count", "all_camera_atlas_camera_count", "camera_count"),
+            ("atlas_observation_count", "all_camera_atlas_observation_count", "observation_count"),
+        )
+        if item[0] in collections
+    )
+    specifications = categorical + continuous
     missing = [key for key, _name, _channel in specifications if key not in collections]
     if missing:
         raise KeyError(f"atlas audit display collections are missing: {missing}")
-    for key, name, channel in specifications:
-        _linked_audit_display(source, name, channel, collections[key])
-        collections[key]["status"] = "built"
-        collections[key]["shared_mesh_datablock"] = source.data.name
+    for source, group in ((categorical_source, categorical), (continuous_source, continuous)):
+        for key, name, channel in group:
+            _linked_audit_display(source, name, channel, collections[key])
+            collections[key]["status"] = "built"
+            collections[key]["shared_mesh_datablock"] = source.data.name
+            is_lod = categorical_source is not continuous_source and source is categorical_source
+            collections[key]["mesh_role"] = "categorical display LOD" if is_lod else "raw audit"
 
 
 def build_fused_semantic_surface(
@@ -1124,58 +1243,127 @@ def build_fused_semantic_surface(
     atlas_manifest, entity_names, material_names = _atlas_vocabularies(manifest, entity, material)
     entity_rgba, entity_legend = _class_colours(entity, entity_names)
     material_rgba, material_legend = _class_colours(material, material_names, phase=0.17)
-
-    obj = build_mesh("all_camera_fused_surface_atlas", vertices, faces, into)
-    attach_face_colour(obj, "entity_posterior_winner", entity_rgba)
-    attach_face_colour(obj, "material_posterior_winner", material_rgba)
-    attach_values(obj, "entity_class_id", entity, "FACE")
-    attach_values(obj, "material_class_id", material, "FACE")
+    display_required = (
+        "atlas_display_vertices",
+        "atlas_display_polygon_offsets",
+        "atlas_display_polygon_indices",
+        "atlas_display_source_triangle",
+        "atlas_display_entity",
+        "atlas_display_material",
+        "atlas_display_transport_state",
+        "atlas_display_transport_material",
+        "atlas_display_geometric_fallback_class",
+        "atlas_display_source_mask",
+        "atlas_display_cell_count",
+    )
+    has_display_lod = all(_payload_has(payload, key) for key in display_required)
+    raw_name = "all_camera_fused_surface_atlas_raw" if has_display_lod else "all_camera_fused_surface_atlas"
+    raw = build_mesh(raw_name, vertices, faces, into)
+    attach_face_colour(raw, "entity_posterior_winner", entity_rgba)
+    attach_face_colour(raw, "material_posterior_winner", material_rgba)
+    attach_values(raw, "entity_class_id", entity, "FACE")
+    attach_values(raw, "material_class_id", material, "FACE")
     scalar_columns, ranges = _atlas_scalar_columns(payload, faces.shape[0])
     if scalar_columns:
-        scalar_layers(obj, scalar_columns, "FACE", ranges=ranges)
-    assign(obj, lit_material("all_camera_fused_atlas", "material_posterior_winner"))
+        scalar_layers(raw, scalar_columns, "FACE", ranges=ranges)
+    assign(raw, lit_material("all_camera_fused_atlas_raw", "material_posterior_winner"))
     layered(
-        obj,
+        raw,
         ("material_posterior_winner", "entity_posterior_winner", *scalar_columns),
         "material_posterior_winner",
     )
-    obj["surface_role"] = "display audit of joint all-camera entity and material atlas"
-    obj["display_class_rule"] = "argmax posterior winner for colour only"
-    obj["transport_role"] = "full compatible material posterior is evaluated at supported ray-hit positions"
-    obj["atlas_drives_supported_hit_transport"] = True
-    obj["display_winner_changes_transport"] = False
-    obj["changes_transport"] = True
-    obj["is_transport_geometry"] = False
-    obj["whole_face_fallback_collection"] = COLLECTION_NAMES["twin"]
-    obj["entity_vocabulary"] = json.dumps(entity_names)
-    obj["material_vocabulary"] = json.dumps(material_names)
-    obj["entity_colour_legend"] = json.dumps(entity_legend)
-    obj["material_colour_legend"] = json.dumps(material_legend)
-    if atlas_manifest:
-        obj["canonical_surface_atlas_provenance"] = json.dumps(atlas_manifest, default=str)
     _attach_atlas_probabilities(
-        obj,
+        raw,
         payload,
         face_count=faces.shape[0],
         entity_names=entity_names,
         material_names=material_names,
     )
     has_transport_audit = _attach_transport_audit_layers(
-        obj,
+        raw,
         payload,
         manifest,
         face_count=faces.shape[0],
     )
+    raw["surface_role"] = "display audit of joint all-camera entity and material atlas"
+    obj = raw
+    displayed_face_count = faces.shape[0]
+    if has_display_lod:
+        display_vertices = np.asarray(payload["atlas_display_vertices"], dtype=np.float64)
+        display_offsets = np.asarray(payload["atlas_display_polygon_offsets"], dtype=np.int64)
+        display_indices = np.asarray(payload["atlas_display_polygon_indices"], dtype=np.int64)
+        display_entity = np.asarray(payload["atlas_display_entity"], dtype=np.int32)
+        display_material = np.asarray(payload["atlas_display_material"], dtype=np.int32)
+        display_count = len(display_offsets) - 1
+        if display_entity.shape != (display_count,) or display_material.shape != (display_count,):
+            raise ValueError("atlas display entity and material must have one value per LOD polygon")
+        display_entity_rgba, _ = _class_colours(display_entity, entity_names)
+        display_material_rgba, _ = _class_colours(display_material, material_names, phase=0.17)
+        obj = build_polygon_mesh(
+            "all_camera_fused_surface_atlas",
+            display_vertices,
+            display_offsets,
+            display_indices,
+            into,
+        )
+        attach_face_colour(obj, "entity_posterior_winner", display_entity_rgba)
+        attach_face_colour(obj, "material_posterior_winner", display_material_rgba)
+        attach_values(obj, "entity_class_id", display_entity, "FACE")
+        attach_values(obj, "material_class_id", display_material, "FACE")
+        attach_values(obj, "source_triangle_index", payload["atlas_display_source_triangle"], "FACE")
+        attach_values(obj, "canonical_cell_count", payload["atlas_display_cell_count"], "FACE")
+        _attach_transport_display_categories(obj, payload, manifest, face_count=display_count)
+        assign(obj, lit_material("all_camera_fused_atlas", "material_posterior_winner"))
+        layered(
+            obj,
+            (
+                "material_posterior_winner",
+                "entity_posterior_winner",
+                "transport_state",
+                "transport_posterior_dominant",
+                "geometric_fallback_class",
+                "source_contribution_state",
+            ),
+            "material_posterior_winner",
+        )
+        raw.hide_viewport = True
+        raw.hide_render = True
+        raw["surface_role"] = "exact canonical atlas mesh for continuous audit channels"
+        raw["canonical_triangle_face_count"] = int(faces.shape[0])
+        raw["display_only"] = True
+        obj["surface_role"] = "categorical display LOD of the joint all-camera atlas"
+        obj["display_lod"] = True
+        obj["canonical_raw_mesh_object"] = raw.name
+        obj["canonical_triangle_face_count"] = int(faces.shape[0])
+        obj["display_polygon_count"] = int(display_count)
+        displayed_face_count = display_count
+
+    surfaces = (raw,) if raw is obj else (raw, obj)
+    for surface in surfaces:
+        surface["display_class_rule"] = "argmax posterior winner for colour only"
+        surface["transport_role"] = "full compatible material posterior is evaluated at supported ray-hit positions"
+        surface["atlas_drives_supported_hit_transport"] = True
+        surface["display_winner_changes_transport"] = False
+        surface["changes_transport"] = True
+        surface["is_transport_geometry"] = False
+        surface["whole_face_fallback_collection"] = COLLECTION_NAMES["twin"]
+        surface["entity_vocabulary"] = json.dumps(entity_names)
+        surface["material_vocabulary"] = json.dumps(material_names)
+        surface["entity_colour_legend"] = json.dumps(entity_legend)
+        surface["material_colour_legend"] = json.dumps(material_legend)
+        if atlas_manifest:
+            surface["canonical_surface_atlas_provenance"] = json.dumps(atlas_manifest, default=str)
     if audit_collections is not None:
         if has_transport_audit:
-            _build_linked_atlas_audit_displays(obj, audit_collections)
+            _build_linked_atlas_audit_displays(obj, raw, audit_collections)
         else:
             for group in audit_collections.values():
                 group["status"] = "empty"
                 group["reason"] = "payload contains no exact production transport decision arrays"
     into["status"] = "built"
-    into["faces"] = int(faces.shape[0])
-    return {"status": "built", "faces": int(faces.shape[0])}
+    into["faces"] = int(displayed_face_count)
+    into["canonical_faces"] = int(faces.shape[0])
+    return {"status": "built", "faces": int(displayed_face_count)}
 
 
 # ---------------------------------------------------------------------------

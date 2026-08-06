@@ -657,6 +657,94 @@ def test_identity_mismatch_quarantines_every_managed_look_file(tmp_path: pathlib
     assert _quarantine_stale_generation(output, "new") is None
 
 
+def test_shard_index_identity_is_quarantined_before_store_open(tmp_path: pathlib.Path) -> None:
+    output = tmp_path / "output"
+    shards = output / "checkpoint_shards"
+    shards.mkdir(parents=True)
+    (output / "plan.json").write_text(json.dumps({"identity_sha256": "new"}))
+    (shards / "index.json").write_text(json.dumps({"identity_sha256": "old"}))
+
+    destination = _quarantine_stale_generation(output, "new")
+
+    assert destination is not None
+    assert not shards.exists()
+    assert json.loads((destination / "checkpoint_shards" / "index.json").read_text())["identity_sha256"] == "old"
+
+
+def test_same_identity_shard_index_is_reused_and_corrupt_index_is_quarantined(tmp_path: pathlib.Path) -> None:
+    output = tmp_path / "output"
+    shards = output / "checkpoint_shards"
+    shards.mkdir(parents=True)
+    (output / "plan.json").write_text(json.dumps({"identity_sha256": "same"}))
+    index = shards / "index.json"
+    index.write_text(json.dumps({"schema": "fixed-walk-cdf-checkpoint-shards-v1", "identity_sha256": "same"}))
+    assert _quarantine_stale_generation(output, "same") is None
+    assert shards.is_dir()
+
+    index.write_text("not json")
+    destination = _quarantine_stale_generation(output, "same")
+    assert destination is not None
+    assert (destination / "checkpoint_shards" / "index.json").read_text() == "not json"
+
+
+def test_valid_shards_override_corrupt_legacy_checkpoint(tmp_path: pathlib.Path) -> None:
+    output = tmp_path / "output"
+    shards = output / "checkpoint_shards"
+    shards.mkdir(parents=True)
+    (output / "plan.json").write_text(json.dumps({"identity_sha256": "same"}))
+    (shards / "index.json").write_text(
+        json.dumps({"schema": "fixed-walk-cdf-checkpoint-shards-v1", "identity_sha256": "same"})
+    )
+    (output / "checkpoint.npz").write_bytes(b"truncated legacy checkpoint")
+
+    destination = _quarantine_stale_generation(output, "same")
+
+    assert destination is not None
+    assert (output / "plan.json").is_file()
+    assert shards.is_dir()
+    assert not (output / "checkpoint.npz").exists()
+    assert (destination / "checkpoint.npz").read_bytes() == b"truncated legacy checkpoint"
+
+
+def test_requested_legacy_identity_wins_over_conflicting_valid_shard_index(tmp_path: pathlib.Path) -> None:
+    output = tmp_path / "output"
+    shards = output / "checkpoint_shards"
+    shards.mkdir(parents=True)
+    (output / "plan.json").write_text(json.dumps({"identity_sha256": "same"}))
+    (shards / "index.json").write_text(
+        json.dumps({"schema": "fixed-walk-cdf-checkpoint-shards-v1", "identity_sha256": "old"})
+    )
+    np.savez(output / "checkpoint.npz", identity_sha256=np.asarray("same"))
+
+    destination = _quarantine_stale_generation(output, "same")
+
+    assert destination is not None
+    assert (output / "plan.json").is_file()
+    assert (output / "checkpoint.npz").is_file()
+    assert not shards.exists()
+    assert (destination / "checkpoint_shards" / "index.json").is_file()
+
+
+def test_requested_legacy_identity_also_quarantines_stale_plan(tmp_path: pathlib.Path) -> None:
+    output = tmp_path / "output"
+    shards = output / "checkpoint_shards"
+    shards.mkdir(parents=True)
+    (output / "plan.json").write_text(json.dumps({"identity_sha256": "old"}))
+    (shards / "index.json").write_text(
+        json.dumps({"schema": "fixed-walk-cdf-checkpoint-shards-v1", "identity_sha256": "old"})
+    )
+    np.savez(output / "checkpoint.npz", identity_sha256=np.asarray("same"))
+
+    destination = _quarantine_stale_generation(output, "same")
+
+    assert destination is not None
+    assert (output / "checkpoint.npz").is_file()
+    assert not (output / "plan.json").exists()
+    assert not shards.exists()
+    assert (destination / "plan.json").is_file()
+    assert (destination / "checkpoint_shards" / "index.json").is_file()
+
+
 def test_manifest_names_only_matching_planned_look_analyses(tmp_path: pathlib.Path) -> None:
     output = tmp_path / "output"
     output.mkdir()

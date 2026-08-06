@@ -29,6 +29,13 @@ from semantic_twin.exposure.cdf_contracts import (
     CdfProductionContract,
     production_contract as resolve_production_contract,
 )
+from semantic_twin.exposure.checkpoint_store import (
+    CheckpointPrefix,
+    CheckpointSpec,
+    CheckpointStore,
+    ReplicaPayload,
+    SCHEMA as CHECKPOINT_SHARD_SCHEMA,
+)
 
 MODEL_NAMES = ("isotropic", "rooftop", "street_small_cell")
 CDF_STATISTICS = ("minimum", "q10", "q50", "q90", "maximum")
@@ -1169,13 +1176,23 @@ def run_campaign(
     plan_path = _prepare_campaign_plan(config.output_dir, identity, plan)
 
     checkpoint_path = config.output_dir / "checkpoint.npz"
-    checkpoint = _load_campaign_checkpoint(
+    legacy_checkpoint = _load_campaign_checkpoint(
         checkpoint_path,
         identity,
         reference,
         config,
         tissue_database["sha256"],
     )
+    checkpoint_store: CheckpointStore | None = None
+    checkpoint = legacy_checkpoint
+    if legacy_checkpoint is None:
+        checkpoint_store = CheckpointStore(
+            config.output_dir / "checkpoint_shards",
+            _checkpoint_store_spec(config, reference, identity, tissue_database["sha256"]),
+        )
+        if checkpoint_store.replicas:
+            checkpoint = _campaign_checkpoint_from_prefix(checkpoint_store.load_prefix())
+    performance = _performance_ledger("shards" if checkpoint_store is not None else "legacy_npz")
     if analyse_only and checkpoint is None:
         raise RuntimeError("no valid campaign checkpoint is available to analyse")
 
@@ -1201,14 +1218,24 @@ def run_campaign(
             tracer,
             coupler,
             checkpoint,
-            checkpoint_path,
+            checkpoint_path if checkpoint_store is None else None,
             identity,
             tissue_database["sha256"],
+            checkpoint_store=checkpoint_store,
+            performance=performance,
         )
 
     if checkpoint is None:
         raise AssertionError("campaign checkpoint was not prepared")
-    analysis = trace_analysis or _write_reached_formal_analyses(config, checkpoint, identity)
+    if trace_analysis is not None:
+        analysis = trace_analysis
+    else:
+        started = time.perf_counter()
+        analysis = _write_reached_formal_analyses(config, checkpoint, identity)
+        if analysis is not None:
+            performance["formal_analysis"].append(
+                {"replicas": checkpoint.replicas, "seconds": time.perf_counter() - started}
+            )
     if analysis is None:
         raise RuntimeError(f"at least {config.looks[0]} complete replicas are needed for a formal analysis")
     ensemble = _final_ensemble(
@@ -1219,6 +1246,16 @@ def run_campaign(
         study,
         body_path=body_path,
     )
+    if checkpoint_store is not None:
+        started = time.perf_counter()
+        checkpoint_store.consolidate(checkpoint_path)
+        performance["final_consolidation"] = {
+            "seconds": time.perf_counter() - started,
+            "bytes": checkpoint_path.stat().st_size,
+        }
+        performance["shards_retired"] = True
+    performance["replica_count"] = checkpoint.replicas
+    analysis["performance"] = performance
     analysis["ensemble"] = ensemble
     analysis["identity_sha256"] = identity
     analysis["reference"] = reference.as_dict()
@@ -1236,6 +1273,7 @@ def run_campaign(
         code,
         tissue_database,
         analysis_path,
+        performance=performance,
     )
     _write_json_atomic(config.output_dir / "manifest.json", manifest)
     return analysis_path
@@ -1246,6 +1284,7 @@ def _quarantine_stale_generation(output_dir: pathlib.Path, identity: str) -> pat
     managed = [
         output_dir / "plan.json",
         output_dir / "checkpoint.npz",
+        output_dir / "checkpoint_shards",
         output_dir / "analysis.json",
         output_dir / "ensemble_locations.jsonl",
         output_dir / "cdf_convergence.png",
@@ -1257,46 +1296,80 @@ def _quarantine_stale_generation(output_dir: pathlib.Path, identity: str) -> pat
     if not existing:
         return None
 
+    shard_index = output_dir / "checkpoint_shards" / "index.json"
     identity_paths = [
         path
         for path in existing
         if path.name in {"plan.json", "checkpoint.npz", "analysis.json", "manifest.json"}
         or path.name.startswith("analysis_look")
     ]
+    if shard_index.is_file():
+        identity_paths.append(shard_index)
     found: dict[str, str | None] = {}
     for path in identity_paths:
         try:
             if path.suffix == ".npz":
                 with np.load(path) as artifact:
                     found[path.name] = str(artifact["identity_sha256"])
+            elif path == shard_index:
+                document = json.loads(path.read_text())
+                if document.get("schema") != CHECKPOINT_SHARD_SCHEMA:
+                    raise ValueError("checkpoint shard index schema is invalid")
+                found["checkpoint_shards/index.json"] = str(document["identity_sha256"])
             else:
                 found[path.name] = str(json.loads(path.read_text())["identity_sha256"])
         except (KeyError, OSError, TypeError, ValueError):
-            found[path.name] = None
+            found["checkpoint_shards/index.json" if path == shard_index else path.name] = None
+
+    def quarantine(paths: list[pathlib.Path], reason: str) -> pathlib.Path:
+        labels = sorted({value for value in found.values() if value})
+        old_label = labels[0][:12] if len(labels) == 1 else "mixed-or-unreadable"
+        stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+        destination = output_dir / "quarantine" / f"{stamp}-{time.time_ns() % 1_000_000_000:09d}-{old_label}"
+        destination.mkdir(parents=True, exist_ok=False)
+        moved: list[str] = []
+        for path in paths:
+            os.replace(path, destination / path.name)
+            moved.append(path.name)
+        _write_json_atomic(
+            destination / "quarantine_record.json",
+            {
+                "schema": "fixed-walk-cdf-quarantine-v1",
+                "created_utc": _utc_now(),
+                "replacement_identity_sha256": identity,
+                "found_identity_by_file": found,
+                "moved_files": moved,
+                "reason": reason,
+            },
+        )
+        return destination
+
+    shard_identity = found.get("checkpoint_shards/index.json")
+    legacy_identity = found.get("checkpoint.npz")
+    if shard_identity == identity:
+        stale = [
+            path
+            for path in existing
+            if path != output_dir / "checkpoint_shards"
+            and path.name in found
+            and found.get(path.name, None) != identity
+        ]
+        if stale:
+            return quarantine(stale, "valid checkpoint shard index superseded stale legacy outputs")
+        return None
+    if legacy_identity == identity and shard_index.is_file() and shard_identity != identity:
+        stale = [
+            path
+            for path in existing
+            if path == output_dir / "checkpoint_shards" or (path.name in found and found[path.name] != identity)
+        ]
+        return quarantine(
+            stale,
+            "valid legacy checkpoint superseded a conflicting checkpoint shard index",
+        )
     if found and all(value == identity for value in found.values()):
         return None
-
-    labels = sorted({value for value in found.values() if value})
-    old_label = labels[0][:12] if len(labels) == 1 else "mixed-or-unreadable"
-    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-    destination = output_dir / "quarantine" / f"{stamp}-{time.time_ns() % 1_000_000_000:09d}-{old_label}"
-    destination.mkdir(parents=True, exist_ok=False)
-    moved: list[str] = []
-    for path in existing:
-        os.replace(path, destination / path.name)
-        moved.append(path.name)
-    _write_json_atomic(
-        destination / "quarantine_record.json",
-        {
-            "schema": "fixed-walk-cdf-quarantine-v1",
-            "created_utc": _utc_now(),
-            "replacement_identity_sha256": identity,
-            "found_identity_by_file": found,
-            "moved_files": moved,
-            "reason": "managed outputs did not all carry the replacement campaign identity",
-        },
-    )
-    return destination
+    return quarantine(existing, "managed outputs did not all carry the replacement campaign identity")
 
 
 def _prepare_campaign_plan(
@@ -1581,37 +1654,205 @@ def _empty_checkpoint(tracer: Any, coupler: Any, reference: Any) -> CampaignChec
     )
 
 
+def _checkpoint_store_spec(
+    config: CdfConvergenceConfig,
+    reference: Any,
+    identity: str,
+    tissue_database_sha256: str,
+) -> CheckpointSpec:
+    """Build the immutable identity and shape contract for replica shards."""
+    from semantic_twin.illumination import fibonacci_sphere
+
+    cells = int(reference.manifest["run"]["local_cells"])
+    local_grid = np.asarray(fibonacci_sphere(cells), dtype=np.float64)
+    return CheckpointSpec(
+        identity_sha256=identity,
+        standpoint_array_sha256=reference.standpoints.sha256,
+        tissue_database_sha256=tissue_database_sha256,
+        model_names=MODEL_NAMES,
+        planned_seeds=tuple(int(seed) for seed in config.base_seeds),
+        surface_elements=int(reference.manifest["body"]["triangles"]),
+        local_grid=local_grid,
+        solid_angle=float(4.0 * np.pi / cells),
+    )
+
+
+def _performance_ledger(storage_mode: str) -> dict[str, Any]:
+    """Create timing fields kept outside the scientific campaign identity."""
+    return {
+        "schema": "cdf-checkpoint-performance-v1",
+        "storage_mode": storage_mode,
+        "replica_count": 0,
+        "shard_append": [],
+        "formal_analysis": [],
+        "final_consolidation": None,
+        "shards_retired": False,
+    }
+
+
+def _campaign_checkpoint_from_prefix(prefix: CheckpointPrefix) -> CampaignCheckpoint:
+    """Convert the store's field-compatible prefix to the live checkpoint type."""
+    return CampaignCheckpoint(
+        base_seeds=np.asarray(prefix.base_seeds, dtype=np.int64),
+        chi=np.asarray(prefix.chi, dtype=np.float64),
+        chi_direct=np.asarray(prefix.chi_direct, dtype=np.float64),
+        body_peak_rooftop=np.asarray(prefix.body_peak_rooftop, dtype=np.float64),
+        body_mean_rooftop=np.asarray(prefix.body_mean_rooftop, dtype=np.float64),
+        body_sab_rooftop=np.asarray(prefix.body_sab_rooftop, dtype=np.float64),
+        trace_seconds=np.asarray(prefix.trace_seconds, dtype=np.float64),
+        rho_sum=np.asarray(prefix.rho_sum, dtype=np.float64),
+        local_grid=np.asarray(prefix.local_grid, dtype=np.float64),
+        solid_angle=float(prefix.solid_angle),
+    )
+
+
+@dataclass
+class _CampaignAccumulator:
+    """List-backed replica history with one running angular-spectrum sum.
+
+    Replica rows stay as individual arrays while a campaign is tracing.  The
+    complete prefix is materialized only when formal analysis, legacy
+    checkpointing, or final publication needs the public checkpoint type.
+    """
+
+    _base_seeds: list[int]
+    _chi: list[np.ndarray]
+    _chi_direct: list[np.ndarray]
+    _body_peak_rooftop: list[np.ndarray]
+    _body_mean_rooftop: list[np.ndarray]
+    _body_sab_rooftop: list[np.ndarray]
+    _trace_seconds: list[np.ndarray]
+    _rho_sum: np.ndarray
+    _local_grid: np.ndarray
+    _solid_angle: float
+    _points: int
+    _surface_elements: int
+
+    @classmethod
+    def from_checkpoint(cls, checkpoint: CampaignCheckpoint) -> _CampaignAccumulator:
+        """Adopt a checkpoint prefix without copying its history rows."""
+
+        def as_float64(row: np.ndarray) -> np.ndarray:
+            return np.asarray(row, dtype=np.float64)
+
+        return cls(
+            _base_seeds=[int(value) for value in checkpoint.base_seeds],
+            _chi=[as_float64(row) for row in checkpoint.chi],
+            _chi_direct=[as_float64(row) for row in checkpoint.chi_direct],
+            _body_peak_rooftop=[as_float64(row) for row in checkpoint.body_peak_rooftop],
+            _body_mean_rooftop=[as_float64(row) for row in checkpoint.body_mean_rooftop],
+            _body_sab_rooftop=[as_float64(row) for row in checkpoint.body_sab_rooftop],
+            _trace_seconds=[as_float64(row) for row in checkpoint.trace_seconds],
+            _rho_sum=np.asarray(checkpoint.rho_sum, dtype=np.float64).copy(),
+            _local_grid=np.asarray(checkpoint.local_grid, dtype=np.float64),
+            _solid_angle=float(checkpoint.solid_angle),
+            _points=int(checkpoint.chi.shape[1]),
+            _surface_elements=int(checkpoint.body_sab_rooftop.shape[2]),
+        )
+
+    @property
+    def replicas(self) -> int:
+        return len(self._base_seeds)
+
+    def append(self, payload: ReplicaPayload) -> None:
+        """Append one validated replica without growing a history array."""
+
+        self._base_seeds.append(int(payload.base_seed))
+        self._chi.append(np.asarray(payload.chi, dtype=np.float64))
+        self._chi_direct.append(np.asarray(payload.chi_direct, dtype=np.float64))
+        self._body_peak_rooftop.append(np.asarray(payload.body_peak_rooftop, dtype=np.float64))
+        self._body_mean_rooftop.append(np.asarray(payload.body_mean_rooftop, dtype=np.float64))
+        self._body_sab_rooftop.append(np.asarray(payload.body_sab_rooftop, dtype=np.float64))
+        self._trace_seconds.append(np.asarray(payload.trace_seconds, dtype=np.float64))
+        np.add(self._rho_sum, np.asarray(payload.rho, dtype=np.float64), out=self._rho_sum)
+
+    def materialize(self) -> CampaignCheckpoint:
+        """Build the public contiguous prefix at an explicit boundary."""
+
+        def stack(rows: list[np.ndarray], shape: tuple[int, ...]) -> np.ndarray:
+            return np.stack(rows, axis=0) if rows else np.empty(shape, dtype=np.float64)
+
+        return CampaignCheckpoint(
+            base_seeds=np.asarray(self._base_seeds, dtype=np.int64),
+            chi=stack(self._chi, (0, self._points, len(MODEL_NAMES))),
+            chi_direct=stack(self._chi_direct, (0, self._points, len(MODEL_NAMES))),
+            body_peak_rooftop=stack(self._body_peak_rooftop, (0, self._points)),
+            body_mean_rooftop=stack(self._body_mean_rooftop, (0, self._points)),
+            body_sab_rooftop=stack(self._body_sab_rooftop, (0, self._points, self._surface_elements)),
+            trace_seconds=stack(self._trace_seconds, (0, self._points)),
+            rho_sum=self._rho_sum.copy(),
+            local_grid=self._local_grid,
+            solid_angle=self._solid_angle,
+        )
+
+
 def _trace_until_stop(
     config: CdfConvergenceConfig,
     reference: Any,
     tracer: Any,
     coupler: Any,
     checkpoint: CampaignCheckpoint,
-    checkpoint_path: pathlib.Path,
+    checkpoint_path: pathlib.Path | None,
     identity: str,
     tissue_database_sha256: str,
+    *,
+    checkpoint_store: CheckpointStore | None = None,
+    performance: dict[str, Any] | None = None,
 ) -> tuple[CampaignCheckpoint, dict[str, Any] | None]:
     formal_targets = set(config.looks)
+    accumulator = _CampaignAccumulator.from_checkpoint(checkpoint)
+    started = time.perf_counter()
     analysis = _write_reached_formal_analyses(config, checkpoint, identity)
+    if analysis is not None and performance is not None:
+        performance["formal_analysis"].append(
+            {"replicas": checkpoint.replicas, "seconds": time.perf_counter() - started}
+        )
     if analysis is not None and analysis["stopped"]:
         return checkpoint, analysis
-    for base_seed in config.base_seeds[checkpoint.replicas :]:
-        checkpoint = _trace_replica(config, reference, tracer, coupler, checkpoint, int(base_seed))
-        _write_campaign_checkpoint(
-            checkpoint_path,
-            checkpoint,
-            identity,
-            reference,
-            tissue_database_sha256,
-        )
-        print(f"replica {checkpoint.replicas}/{config.looks[-1]} complete at base seed {base_seed}", flush=True)
-        if checkpoint.replicas not in formal_targets:
+    for base_seed in config.base_seeds[accumulator.replicas :]:
+        payload = _trace_replica_payload(config, reference, tracer, coupler, checkpoint, int(base_seed))
+        accumulator.append(payload)
+        replica_count = accumulator.replicas
+        if checkpoint_store is None:
+            checkpoint = accumulator.materialize()
+            if checkpoint_path is None:
+                raise ValueError("checkpoint_path is required without a checkpoint store")
+            _write_campaign_checkpoint(
+                checkpoint_path,
+                checkpoint,
+                identity,
+                reference,
+                tissue_database_sha256,
+            )
+        else:
+            started = time.perf_counter()
+            checkpoint_store.append(replica_count - 1, payload)
+            if performance is not None:
+                performance["shard_append"].append(
+                    {
+                        "replica": replica_count,
+                        "seconds": time.perf_counter() - started,
+                        "shard_bytes": (checkpoint_store.root / f"replica-{replica_count - 1:06d}.npz").stat().st_size,
+                        "index_bytes": checkpoint_store.index_path.stat().st_size,
+                    }
+                )
+        print(f"replica {replica_count}/{config.looks[-1]} complete at base seed {base_seed}", flush=True)
+        if replica_count not in formal_targets:
             continue
+        if checkpoint_store is not None:
+            checkpoint = accumulator.materialize()
+        started = time.perf_counter()
         analysis = _write_reached_formal_analyses(config, checkpoint, identity)
+        if analysis is not None and performance is not None:
+            performance["formal_analysis"].append(
+                {"replicas": checkpoint.replicas, "seconds": time.perf_counter() - started}
+            )
         if analysis is None:
             raise AssertionError("a formal target did not produce an analysis")
         if analysis["stopped"]:
             return checkpoint, analysis
+    if checkpoint.replicas != accumulator.replicas:
+        checkpoint = accumulator.materialize()
     return checkpoint, analysis
 
 
@@ -1622,7 +1863,28 @@ def _trace_replica(
     coupler: Any,
     checkpoint: CampaignCheckpoint,
     base_seed: int,
-) -> CampaignCheckpoint:
+    *,
+    return_payload: bool = False,
+) -> CampaignCheckpoint | tuple[CampaignCheckpoint, ReplicaPayload]:
+    payload = _trace_replica_payload(config, reference, tracer, coupler, checkpoint, base_seed)
+    updated = _CampaignAccumulator.from_checkpoint(checkpoint)
+    updated.append(payload)
+    materialized = updated.materialize()
+    if not return_payload:
+        return materialized
+    return materialized, payload
+
+
+def _trace_replica_payload(
+    config: CdfConvergenceConfig,
+    reference: Any,
+    tracer: Any,
+    coupler: Any,
+    checkpoint: CampaignCheckpoint,
+    base_seed: int,
+) -> ReplicaPayload:
+    """Trace one replica and return only its fixed-size payload."""
+
     points = int(reference.standpoints.index.size)
     cells = int(checkpoint.local_grid.shape[0])
     chi = np.empty((points, len(MODEL_NAMES)), dtype=np.float64)
@@ -1667,17 +1929,15 @@ def _trace_replica(
             f"chi_{config.body_model}={chi[row, body_model_index]:.6g} ({seconds[row]:.1f} s trace)",
             flush=True,
         )
-    return CampaignCheckpoint(
-        base_seeds=np.append(checkpoint.base_seeds, base_seed),
-        chi=np.concatenate((checkpoint.chi, chi[None, ...]), axis=0),
-        chi_direct=np.concatenate((checkpoint.chi_direct, direct[None, ...]), axis=0),
-        body_peak_rooftop=np.concatenate((checkpoint.body_peak_rooftop, peak[None, ...]), axis=0),
-        body_mean_rooftop=np.concatenate((checkpoint.body_mean_rooftop, mean[None, ...]), axis=0),
-        body_sab_rooftop=np.concatenate((checkpoint.body_sab_rooftop, sab[None, ...]), axis=0),
-        trace_seconds=np.concatenate((checkpoint.trace_seconds, seconds[None, ...]), axis=0),
-        rho_sum=checkpoint.rho_sum + rho,
-        local_grid=checkpoint.local_grid,
-        solid_angle=checkpoint.solid_angle,
+    return ReplicaPayload(
+        base_seed=base_seed,
+        chi=chi,
+        chi_direct=direct,
+        body_peak_rooftop=peak,
+        body_mean_rooftop=mean,
+        body_sab_rooftop=sab,
+        trace_seconds=seconds,
+        rho=rho,
     )
 
 
@@ -1955,6 +2215,7 @@ def _campaign_manifest(
     code: dict[str, Any],
     tissue_database: dict[str, Any],
     analysis_path: pathlib.Path,
+    performance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     for label, path in {
         "plan": config.output_dir / "plan.json",
@@ -1989,7 +2250,7 @@ def _campaign_manifest(
         }
         for name, path in artifact_paths.items()
     }
-    return {
+    manifest = {
         "schema": "fixed-walk-cdf-manifest-v3",
         "created_utc": _utc_now(),
         "identity_sha256": identity,
@@ -2006,6 +2267,9 @@ def _campaign_manifest(
         },
         "artifacts": artifacts,
     }
+    if performance is not None:
+        manifest["performance"] = performance
+    return manifest
 
 
 def _write_final_rows(path: pathlib.Path, rows: list[dict[str, Any]]) -> None:
