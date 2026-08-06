@@ -86,7 +86,10 @@ def _semantics_directory(folder: pathlib.Path, dirname: str) -> pathlib.Path:
     try:
         return semantic_evidence_directory(folder, dirname)
     except ValueError as error:
-        raise ValueError("--semantics-dirname must be a relative path beneath each panorama folder") from error
+        raise ValueError(
+            "--semantics-dirname must be a relative path that is non-symlinked and physically beneath each "
+            "panorama folder"
+        ) from error
 
 
 def build(site: str, options: SurfaceAtlasBuildOptions) -> dict[str, Any]:

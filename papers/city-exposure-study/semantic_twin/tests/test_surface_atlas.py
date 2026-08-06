@@ -343,6 +343,37 @@ def test_versioned_semantic_evidence_is_selected_without_a_symlink(tmp_path: pat
         build_surface_atlas._semantics_directory(capture, "../elsewhere")
 
 
+def test_selected_semantic_directory_cannot_be_a_symlink_to_legacy(tmp_path: pathlib.Path) -> None:
+    capture = tmp_path / "camera"
+    legacy = capture / "semantics"
+    legacy.mkdir(parents=True)
+    (capture / "semantics_selected").symlink_to(legacy, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="non-symlinked"):
+        build_surface_atlas._semantics_directory(capture, "semantics_selected")
+
+
+def test_selected_semantic_directory_cannot_be_a_symlink_outside_camera(tmp_path: pathlib.Path) -> None:
+    capture = tmp_path / "camera"
+    outside = tmp_path / "outside_evidence"
+    capture.mkdir()
+    outside.mkdir()
+    (capture / "semantics_selected").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="non-symlinked"):
+        build_surface_atlas._semantics_directory(capture, "semantics_selected")
+
+
+def test_selected_semantic_directory_rejects_a_symlinked_parent_component(tmp_path: pathlib.Path) -> None:
+    capture = tmp_path / "camera"
+    actual = capture / "actual" / "revision"
+    actual.mkdir(parents=True)
+    (capture / "alias").symlink_to(capture / "actual", target_is_directory=True)
+
+    with pytest.raises(ValueError, match="non-symlinked"):
+        build_surface_atlas._semantics_directory(capture, "alias/revision")
+
+
 @pytest.mark.parametrize(
     ("directory_name", "admission_selection", "error_match"),
     (

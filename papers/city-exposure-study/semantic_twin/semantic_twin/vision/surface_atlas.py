@@ -55,11 +55,24 @@ WEIGHTING_RULE = (
 
 
 def semantic_evidence_directory(folder: pathlib.Path, dirname: str) -> pathlib.Path:
-    """Resolve one selected evidence directory without allowing path escape."""
+    """Resolve one physically isolated evidence directory beneath a camera."""
     relative = pathlib.PurePath(dirname)
     if relative.is_absolute() or not relative.parts or ".." in relative.parts:
         raise ValueError("semantic evidence directory must be a relative path beneath each panorama folder")
-    return folder.joinpath(*relative.parts)
+    candidate = folder.joinpath(*relative.parts)
+    current = folder
+    for part in relative.parts:
+        current /= part
+        if current.is_symlink():
+            raise ValueError("semantic evidence directory must not contain symlinks")
+    try:
+        resolved_folder = folder.resolve(strict=True)
+        resolved_candidate = candidate.resolve(strict=False)
+    except (OSError, RuntimeError) as error:
+        raise ValueError(f"semantic evidence directory cannot be resolved: {error}") from error
+    if not resolved_candidate.is_relative_to(resolved_folder):
+        raise ValueError("semantic evidence directory must remain physically beneath each panorama folder")
+    return candidate
 
 
 def semantic_artifact_reasons(
