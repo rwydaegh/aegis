@@ -1,0 +1,81 @@
+% Support + interest-to-license (combined) - Marta Parazzini (CNR-IEIIT), to Prof. Wout Joseph
+% SPECTRUM 3/3 (fullest, still fully non-binding): does both in one letter - endorses the IOF
+% proposal AND adds the soft "would like to use it / license it when available" hook, mirroring
+% the Unisens support letter that closed with "we hope to deploy this in our projects".
+% No validation, no joint paper. DRAFT to discuss together.
+% \hl = "my suggestion, let's adjust", [brackets] = placeholders. Disclosure guard as before.
+% Compile: pdflatex parazzini_3_support_and_license_interest.tex
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\definecolor{hlcol}{HTML}{B58900}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+% Real yellow highlighter if soul is installed, else amber bold (wraps across lines).
+\IfFileExists{soul.sty}{\usepackage{soul}\sethlcolor{yellow!60}}{}
+\providecommand{\hl}[1]{\textbf{\textcolor{hlcol}{#1}}}
+\pagestyle{empty}
+
+\begin{document}
+
+\begin{center}\small\itshape
+\hl{Draft for us to go through together. Nothing here is fixed, and nothing here commits you to anything.}\\
+This version does two things at once (support + a soft note of interest). We can keep both, or drop either part. Highlighted = my suggestions; [brackets] = placeholders.
+\end{center}
+\bigskip
+
+% --- CNR-IEIIT letterhead placeholder ---------------------------------------
+{\large\textbf{CNR-IEIIT}}\\
+Istituto di Elettronica e di Ingegneria dell'Informazione e delle Telecomunicazioni\\
+Consiglio Nazionale delle Ricerche, Milan, Italy\\[1.5em]
+% ----------------------------------------------------------------------------
+
+\begin{flushright}
+Mr.\ Robin Wydaeghe and Prof.\ Wout Joseph\\
+Ghent University -- imec\\[1em]
+Milan, [date]
+\end{flushright}
+
+\bigskip
+\textbf{Subject: Support and interest in the fast numerical-dosimetry tool
+(\hl{AEGIS}), by Robin Wydaeghe}
+
+\bigskip
+Dear Mr.\ Wydaeghe, dear Prof.\ Joseph,
+
+I am Director of Research at CNR-IEIIT in Milan, where my work focuses on numerical and
+stochastic dosimetry of human exposure to electromagnetic fields, including \hl{5G/6G
+beamforming, reconfigurable intelligent surfaces, and millimetre-wave wearable scenarios}. I
+have worked together with your group and with Robin for several years, in particular within
+the GOLIAT project.
+
+Full-wave (FDTD) dosimetry is our accepted reference, but it is computationally expensive,
+which in practice limits the number of scenarios, body models, and exposure conditions we can
+study. The method Robin has developed is, as I understand it, very substantially faster than
+FDTD while keeping comparable accuracy, and it is differentiable. \hl{A tool with these
+properties would address a genuine need in our field}.
+
+I am therefore glad to express my support for Robin Wydaeghe's IOF proposal.
+
+\hl{And should the method become available as a software tool, I would be interested, in
+principle, in using it in our dosimetry research and, if it fits our needs, in licensing it
+for use in our group.} \hl{[we can soften, sharpen, or simply remove this sentence, whatever you are
+comfortable with]} This note of interest is \hl{entirely non-binding} and creates no
+obligation on either side.
+
+I look forward to following how this develops.
+
+\bigskip
+With best regards,
+
+\vspace{2.2cm}
+
+\rule{6cm}{0.4pt}\\
+Dr.\ Marta Parazzini\\
+Director of Research, CNR-IEIIT\\
+Consiglio Nazionale delle Ricerche, Milan, Italy\\
+marta.parazzini@cnr.it
+
+\end{document}

@@ -1,0 +1,2741 @@
+{
+ "area": "graslei",
+ "model": "opus",
+ "brief_sha": "c5b7d81803f8",
+ "readings": [
+  {
+   "osm_id": 493993666,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 2,
+     "evidence": "inferred"
+    },
+    "confidence": 0.45,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "inferred"
+    },
+    "identification": "'t Galgenhuisje, Groentenmarkt 5, Ghent: a late-17th/18th-century one-room-deep infill house wedged against the Groot Vleeshuis, in use as a caf\u00e9 since 1776 and known as the smallest caf\u00e9 in the city.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": false,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 3,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "notes": "Identification is solid, facade parameters are not. In set B the building is occluded by a Denys construction hoarding, a white picket fence and scaffolding; the magenta box mostly encloses the printed banner, whose text (\"'t Galgenhuisje ... het kleinste cafe van Gent. Sinds 1776\") is what identifies the target. Set A is a degraded 3D-tile mesh with no resolvable storey lines or openings. Hence every field is marked inferred; nothing here supports a 'seen'. Height 9.0 m has height_source=no-data, so I have distributed it rather than trusted it as measured: ground 3.2 m + upper 2.9 m gives a 6.1 m eaves, with the gable apex at 9.0 m (~53 deg pitch over the 4.3 m frontage). The gable is turned end-on to the square, which is both the Ghent vernacular and the only way 9 m of height sits sensibly on a 2.6 m depth; a ridge parallel to the street would need a ~63 deg pitch. 'marble' in the trim slot is a dielectric proxy for Balegem limestone (plinth, sills, door surround) - the enum has no limestone class. roughness_mm 3 carries the brick bond and mortar joints as a scattering term, per the 1-10 cm regime; do not mesh them. Geometry budget belongs on the window reveals, the stone sills, the gable cornice and the gable steps of the silhouette, and on the cafe threshold at eye level. Scene context: fronting street is pedestrian with car_access=none, so no parked or moving vehicles - the classic failure here would be lining Groentenmarkt with cars. Populate instead with cafe terrace furniture at the door, the construction hoarding line, bins, bikes, and wet paving_stones as seen in set B.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": false,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 2,
+     "ground_height_m": 3.2,
+     "upper_height_m": 2.9,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 0.85,
+     "height_m": 1.55,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 493993666,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house"
+    },
+    "frontage_width_m": 4.3,
+    "footprint_m": [
+     4.7,
+     2.6
+    ],
+    "footprint_area_m2": 11,
+    "height_m": 9.0,
+    "height_source": "no-data",
+    "street_frontages": 1,
+    "attached_neighbours": 1,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Groentenmarkt",
+     "surface": "paving_stones",
+     "car_access": "none",
+     "distance_m": 0.1
+    },
+    "plate_view": "street",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.378,
+     "x1": 0.622,
+     "y0": 0.131,
+     "y1": 0.807
+    }
+   },
+   "plate": "renders/plates/graslei/493993666.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993666_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.36074300000000004,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 493993669,
+   "status": "ok",
+   "reading": {
+    "identification": "Late-18th to early-19th-century Ghent burgher house with a white lime-rendered Louis XVI/Empire classicist front over an older market-square core, three storeys under a slate roof, now in commercial use as a Europabank branch on the Groentenmarkt/Pensmarkt corner.",
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 4.3,
+     "upper_height_m": 3.5,
+     "evidence": "seen"
+    },
+    "bays": {
+     "count": 5,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.15,
+     "height_m": 2.1,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    },
+    "ground_floor": {
+     "kind": "shopfront",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "concrete",
+     "roughness_mm": 0.8,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "confidence": 0.72,
+    "notes": "SCALE: image scale fixed at ~29.8 px/m by matching the measured cornice-to-ground run (y195-600, 405 px) against the recorded 16.9 m height; implies camera ~27 m out, i.e. across Groentenmarkt. All metric reads below use that scale.\n\nSEEN (set A supports these): three window rows resolve as distinct dark bands with heads at y=255, 360, 490 -> 3 storeys, matching building:levels=3. Row pitch is 105 px (3.5 m) between the two upper rows and 130 px (4.35 m) between first and ground, so the ground floor is genuinely taller, as expected for a commercial/bank frontage. Five window columns resolve on the outlined frontage at centres x=390/454/516/574/630, spacing 64->56 px with foreshortening to the right, mean 2.08 m. 5 x 2.08 = 10.4 m, which reproduces frontage_width_m independently - the bay count and the cadastre agree, so I am confident in 5 rather than 6. A 6th axis cannot be excluded behind the tree at x>660 but nothing in the roofline suggests it. The wall reads as a uniform light rendered surface with no brick modulation, corroborating building:material=plaster; the roof reads slate-grey with the ridge running parallel to the street.\n\nINFERRED, and why: window dimensions are at the edge of what the plate supports (dark runs ~30 px wide, ~65 px tall -> ~1.0 x 2.2 m including reveal shadow smear), so I set 1.15 x 2.1 m, a 1.83 aspect, which is the standard Ghent Louis XVI proportion. Reveal and glazing bars are far below 25 cm/texel: rendered masonry of this period sets sashes back behind a plaster surround, hence shallow (~0.12 m), and the T-division survives on almost all Ghent refrontings even where the joinery is modern.\n\nROOF FORM: the tiles actually read closer to hipped - there is a slope at the left end - but the tile roof is a low-poly blob and OSM says gabled, so I have taken the data and marked the whole group inferred rather than claim I saw a gable. Ridge-parallel-to-street IS legible, but I could not split the evidence flag within the group, so the conservative mark governs.\n\nGROUND FLOOR: heavily compromised - a horizontal tile-texture seam runs across at y=470-490, a tree occludes from x=660, and market clutter fills the base. Tall dark openings are present across the frontage, which is all I can honestly say; shopfront is the class inference from amenity=bank on a market square (a modern glazed branch frontage with signage), not an observation. Institutional_portal was rejected: Europabank branches do not have monumental doorways.\n\nLEDGES: only the cornice is arguably visible - there is a real shadow line at y=210 under a bright frieze band, with eaves overhang. Sills and a plat-band cordon over the ground floor are period-typical for this facade class and are the elements that matter above the 10 cm threshold. I set balconies false deliberately rather than inventing a balconet; nothing in the plate shows a projection and this house type often has none.\n\nMATERIALS at 28 GHz: no plaster entry exists in the enum, so wall=concrete as the standard P.2040 proxy for render-on-masonry - plasterboard would be badly wrong here (eps ~2.9, an interior drywall value) for a solid rendered brick wall. trim=marble is the proxy for Belgian bluestone (Doornik), which is what the plinth, sills and surrounds will be on any Ghent house of this date. Roughness 0.8 mm: old painted lime render, slightly undulating and weathered, so a touch above the 0.5 mm smooth-render value but firmly in the material regime, not geometry. Brick bond and mortar joints are irrelevant here in any case - the facade is rendered.\n\nSCENE CONTEXT for the generator, do not override with a generic street rule: fronting_street is Pensmarkt, highway=pedestrian, car_access=none. Place NO vehicles at this frontage. The correct clutter for Groentenmarkt is market stalls, cafe terrace furniture, bicycles against the plinth, bollards and the street trees - one of which is already occluding the right of the target in the plate and should be honoured in the twin, since it will shadow the ground-floor field. Detail budget belongs on the ground-floor openings and the cornice/eaves silhouette; the return elevation on Groentenmarkt (the 32.7 m footprint dimension) is not visible in set A and should inherit this grammar rather than receive independently invented detail."
+   },
+   "flags": [
+    "wall 'concrete' contradicts OSM building:material='plaster'"
+   ],
+   "facts": {
+    "osm_id": 493993669,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes",
+     "name": "Europabank",
+     "building:material": "plaster",
+     "building:levels": "3",
+     "roof:shape": "gabled",
+     "roof:material": "slate",
+     "amenity": "bank",
+     "addr:street": "Groentenmarkt"
+    },
+    "frontage_width_m": 10.4,
+    "footprint_m": [
+     32.7,
+     14.3
+    ],
+    "footprint_area_m2": 307,
+    "height_m": 16.9,
+    "height_source": "conflict-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 3,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Pensmarkt",
+     "surface": null,
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "street",
+    "target_box_normalised": {
+     "x0": 0.341,
+     "x1": 0.644,
+     "y0": 0.11,
+     "y1": 0.821
+    }
+   },
+   "plate": "renders/plates/graslei/493993669.png",
+   "photos": [],
+   "view": "street",
+   "cost_usd": 0.592164,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 493993761,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 12,
+     "evidence": "seen"
+    },
+    "confidence": 0.62,
+    "ground_floor": {
+     "kind": "institutional_portal",
+     "evidence": "inferred"
+    },
+    "identification": "Groot Vleeshuis, Ghent: a 1407-1419 late-Gothic brick market hall on the Groentenmarkt, one great single-volume hall under a very steep slate gabled roof with crow-stepped ends, now a public food hall.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 6,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "notes": "EVIDENCE WARNING: both set B street photographs show a DIFFERENT building - a two-storey yellow-brick late-19th-c. structure with a slate mansard roof, pedimented dormer, segmental brick arches with alternating light headers, stainless ramp handrail and a \"'t STAPEL huis\" signboard, standing on block paving with parked cars. That is not the Groot Vleeshuis (wrong period, material, scale, massing, ground plane) and contradicts car_access=none on the gravel Vleeshuistragel. The photos are mis-geocoded to this OSM ID and were discarded in full; none of their features were carried into these parameters. Only plate A and knowledge of the building were used, hence the low-to-moderate confidence on facade-scale fields.\n\nSEEN from plate A: the long continuous slate roof plane with its ridge running the length of the frontage, the overall low-wall/huge-roof massing, and the repeating rhythm of small pointed gables along the eaves. Nothing finer - the render dissolves well above mullion and reveal scale.\n\nMASSING: building:levels=1 is correct and must be respected - this is one great hall, not a stacked building. Eaves at roughly 7.5 m, the remaining ~8.5 m of the confirmed 16 m is the steep roof (12.9 m depth at ~55 deg gives about that rise). Crow-stepped gables at both ends, ridge parallel to the Groentenmarkt frontage. The repeating gables along the long side are the 1542-43 \"penshuizekes\" - small houses built against the hall - plus their dormers; at ~4.9 m spacing over the 58.5 m frontage that gives 12 bays.\n\nPHYSICS ALLOCATION: the >10 cm regime that matters is the deep window reveals in a roughly 0.6 m medieval wall, the stone sills and string courses, the corbelled eaves cornice, and the stepped gable copings - these are the facets and wedges that will govern street-level field on a corridor only 3.8 m away, and they should be explicit geometry. Hand-made brick with raked, weathered joints and the Balegem/Tournai stone banding stay as roughness (6 mm RMS) plus a scattering coefficient, never as mesh. Trim is set to \"marble\" as the nearest available dielectric proxy for the natural limestone dressings (eps ~7); \"concrete\" would be the fallback if the generator prefers it.\n\nCLUTTER: no vehicles on either frontage. fronting_street is a gravel path with car_access=none, and the Groentenmarkt side is pedestrianised market surface. Populate with market stalls, bollards, bicycles, terrace furniture and bins instead - a parked-car rule applied here would be the same failure that filled the medieval square.\n\nDETAIL BUDGET: spend it on the gable-end silhouettes, the eaves gable rhythm and the ground-floor portal, which is where the eye and the beam both go. The rear/river elevation deserves less.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "seen"
+    },
+    "storeys": {
+     "count": 1,
+     "ground_height_m": 7.5,
+     "upper_height_m": 3,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1,
+     "height_m": 3,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [
+    "roof form marked `seen`, but no view here looks down on it"
+   ],
+   "facts": {
+    "osm_id": 493993761,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "public",
+     "name": "Groot Vleeshuis",
+     "building:material": "brick",
+     "building:levels": "1",
+     "roof:shape": "gabled",
+     "roof:material": "slate",
+     "addr:street": "Groentenmarkt"
+    },
+    "frontage_width_m": 58.5,
+    "footprint_m": [
+     72.1,
+     12.9
+    ],
+    "footprint_area_m2": 901,
+    "height_m": 16.0,
+    "height_source": "confirmed",
+    "street_frontages": 2,
+    "attached_neighbours": 6,
+    "fronting_street": {
+     "highway": "path",
+     "name": "Vleeshuistragel",
+     "surface": "gravel",
+     "car_access": "none",
+     "distance_m": 3.8
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.308,
+     "x1": 0.862,
+     "y0": 0.271,
+     "y1": 0.681
+    }
+   },
+   "plate": "renders/plates/graslei/493993761.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.443395,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 493993762,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 2,
+     "evidence": "inferred"
+    },
+    "confidence": 0.5,
+    "ground_floor": {
+     "kind": "blank",
+     "evidence": "inferred"
+    },
+    "identification": "The Graanspijker, a late-medieval/early-modern Ghent brick grain-staple warehouse on the Pensmarkt, turning a tall steep tiled gable to the narrow Vleeshuistragel alley beside the Groot Vleeshuis, three tall storage floors under a deep loft, heritage-listed and currently under restoration behind contractor hoarding.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": false,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 6,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "notes": "EVIDENCE STATE: set B does not show this facade at all - the target is entirely behind white Denys site hoarding, scaffolding and a green temporary weather roof at the right frame edge. The crisp brick, sash joinery and stone plinth visible in set B belong to the buildings on the LEFT of the tragel and must not be attributed here. All facade fields are therefore inferred from building type; only massing and roof come from plate A.\n\nHEIGHT LOGIC: 18 m confirmed over 3 levels only closes with warehouse storeys (4.5 / 4.0 / 4.0 -> ~12.5 m eaves, ~5.5 m gable). Across the 4.8 m alley frontage that is a very steep pitch, which is correct for a spijker - grain lofts are volume, not headroom - and matches the sharp apex in plate A. Do not substitute domestic 2.8 m storeys; they force a physically impossible roof.\n\nGEOMETRY TO GENERATE (>10 cm, the regime that matters at 28 GHz): deep window reveals in thick brick, ~0.25 m, with segmental brick relieving arches and projecting Balegem limestone sills; a corbelled brick eaves table (muizentand) at the gable springing; stone gable coping with kneelers; a limestone plinth ~0.8 m at the base; iron wall anchors at floor levels. On the loft face, one hoisting door with a projecting timber hoist beam under the apex - this is the signature element of a graanspijker and is the strongest silhouette feature from any camera angle.\n\nMATERIAL, NOT GEOMETRY: hand-formed small brick with recessed weathered lime joints is the 6 mm roughness figure plus a scattering coefficient. Do not mesh the bond. Trim is set to marble as the nearest EM proxy for Balegem/Tournai calcareous limestone dressings.\n\nGROUND FLOOR: blank is deliberate. Vleeshuistragel is a gravel path, car_access=none, 1.1 m off the wall - a service flank, not a retail frontage. Place a single tall segmental-arched loading/service door within the blank plane; no shopfront, no glazing.\n\nCLUTTER, and this is the one thing set B genuinely proves: the current state is a construction site. Place the white plank hoarding line, scaffolding standards, tarpaulin/temporary roofing and site signage along the alley face. Absolutely no parked vehicles - car access is none and the plate shows a pedestrian cobble/gravel tragel. Pedestrians and a parked bicycle at the Groentenmarkt end only.\n\nDETAIL BUDGET: this wall is 1.1 m from the path, so it sits directly on the street-level corridor. Spend on reveals, the plinth, the arched door and the gable silhouette. The Pensmarkt flank and the party walls to the 5 attached neighbours are occluded and deserve almost nothing.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": false,
+     "evidence": "seen"
+    },
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 4.5,
+     "upper_height_m": 4,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 0.95,
+     "height_m": 1.5,
+     "reveal_class": "deep",
+     "glazing_bars": false,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [
+    "roof form marked `seen`, but no view here looks down on it"
+   ],
+   "facts": {
+    "osm_id": 493993762,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes",
+     "name": "Graanspijker",
+     "building:material": "brick",
+     "building:levels": "3",
+     "roof:shape": "gabled",
+     "roof:material": "roof_tiles",
+     "heritage": "4",
+     "addr:street": "Pensmarkt"
+    },
+    "frontage_width_m": 4.8,
+    "footprint_m": [
+     21.9,
+     19.6
+    ],
+    "footprint_area_m2": 327,
+    "height_m": 18.0,
+    "height_source": "confirmed",
+    "street_frontages": 2,
+    "attached_neighbours": 5,
+    "fronting_street": {
+     "highway": "path",
+     "name": "Vleeshuistragel",
+     "surface": "gravel",
+     "car_access": "none",
+     "distance_m": 1.1
+    },
+    "plate_view": "street",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.434,
+     "x1": 0.564,
+     "y0": 0.121,
+     "y1": 0.813
+    }
+   },
+   "plate": "renders/plates/graslei/493993762.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993762_0.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.3803225,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 493993763,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 2,
+     "evidence": "inferred"
+    },
+    "confidence": 0.52,
+    "ground_floor": {
+     "kind": "residential_door",
+     "evidence": "inferred"
+    },
+    "identification": "A small 16th\u201317th century brick 'penshuisje' (tripe-vendor's house) of the Pensmarkt row built against the flank of Ghent's Groot Vleeshuis \u2014 a 5 m-wide gable-fronted townhouse of two storeys plus attic under a crow-stepped gable, now in residential/small-commercial use.",
+    "ledges": {
+     "sills": true,
+     "cornice": false,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 4,
+     "trim": "concrete",
+     "evidence": "inferred"
+    },
+    "notes": "EVIDENCE CAVEAT: the street photograph (set B) is misregistered \u2014 the magenta box outlines the timber palisade fence in the foreground of the opposite quay, and the target building does not appear in that frame. All fields that set B was expected to carry (wall material, window size and subdivision, sills, string courses, ground floor) are therefore inferred from building type, not observed. I have deliberately not read them off the Kraanlei/Graslei row visible across the water, which is a different street.\n\nSet A (Google tiles) is melted but its silhouette is legible: the outlined unit reads as a narrow gable-fronted house with a jagged stepped crown, consistent with the unambiguously crow-stepped neighbours immediately to its left. That supports roof form and ridge orientation only. The lower half of the outlined box is occluded by foreground roof geometry, so the ground floor is unobserved.\n\nHEIGHT: height_source is 'no-data', so 9.0 m is a default rather than a measurement. Split as ~5.9 m to eaves (3.0 + 2.9) with ~3.1 m of stepped gable above, the normal proportion for this house type. Storey count is inferred from that split, not counted in the image.\n\nGEOMETRY THAT MATTERS AT 28 GHz: build the crow steps explicitly \u2014 5\u20137 steps per rake, each a ~0.25 m tread with a stone coping, is the dominant scatterer for a receiver in the 0.9 m-wide Vleeshuistragel and will be sampled from every camera azimuth. Also mesh: the stone plinth/water table at the base, the sandstone speklagen string courses (~60\u201380 mm proud, keep only if they exceed 0.10 m; otherwise fold into roughness), window sills, and deep reveals in the massive masonry. Do NOT mesh brick bond, mortar joints or the sandstone/brick banding contrast \u2014 those live in the 1\u201310 cm regime and belong in roughness_mm and the scattering coefficient.\n\nGROUND FLOOR: the fronting street here is the Vleeshuistragel, a gravel path with car_access=none, so this facade is the secondary alley elevation \u2014 a plain door and a single small window, no shopfront, no vehicles, no terrace. If the generator also builds the Pensmarkt elevation, that one plausibly carries a small caf\u00e9/shop glazing instead; do not mirror the alley treatment onto it.\n\nCLUTTER: car_access=none on the fronting path is explicit \u2014 place no vehicles. Appropriate to the tragel: leaned bicycles, a wheelie bin, a downpipe, moss and rising damp on the lower 0.5 m of brick.",
+    "roof": {
+     "form": "stepped_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "seen"
+    },
+    "storeys": {
+     "count": 2,
+     "ground_height_m": 3,
+     "upper_height_m": 2.9,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.05,
+     "height_m": 1.6,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [
+    "roof form marked `seen`, but no view here looks down on it"
+   ],
+   "facts": {
+    "osm_id": 493993763,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "addr:street": "Pensmarkt"
+    },
+    "frontage_width_m": 5.0,
+    "footprint_m": [
+     5.8,
+     5.0
+    ],
+    "footprint_area_m2": 25,
+    "height_m": 9.0,
+    "height_source": "no-data",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "path",
+     "name": "Vleeshuistragel",
+     "surface": "gravel",
+     "car_access": "none",
+     "distance_m": 0.9
+    },
+    "plate_view": "street",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.354,
+     "x1": 0.646,
+     "y0": 0.149,
+     "y1": 0.809
+    }
+   },
+   "plate": "renders/plates/graslei/493993763.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993763_0.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.33025899999999997,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 493993764,
+   "status": "ok",
+   "reading": {
+    "identification": "A surviving 'penshuisje' \u2014 one of the row of tiny tripe-sellers' shops built 1542-43 as a shallow 2.5 m lean-to against the north flank of Ghent's Groot Vleeshuis on Pensmarkt \u2014 two low storeys of weathered grey limestone rubble under small crow-stepped street-facing gables, ground floor a shop (latterly a frituur), currently shored and hoarded for restoration.",
+    "storeys": {
+     "count": 2,
+     "ground_height_m": 3,
+     "upper_height_m": 2.6,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 3,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 0.85,
+     "height_m": 1.5,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    },
+    "ground_floor": {
+     "kind": "shopfront",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "stepped_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "seen"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "marble",
+     "roughness_mm": 10,
+     "trim": "wood",
+     "evidence": "seen"
+    },
+    "confidence": 0.72,
+    "notes": "Identification is anchored by the site's own interpretation panel (set B, image 1): the penshuisjes of 1542 beside the Groot Vleeshuis, the last surviving one now a frituur. Set A (3D tiles) is unusable \u2014 the whole range dissolves into untextured purple mush, so nothing below was read from it.\n\nMASSING: do not extrude as a freestanding block. footprint_m 13.4 x 2.5 with area 32 m2 is a lean-to strip against the Vleeshuis flank; the rear wall is party wall (attached_neighbours 1) and the far taller Vleeshuis roof rises behind these small gables. An isolated 9 m box would read wrong from any rotated camera \u2014 this is exactly the visible-primitive failure.\n\nROOF: seen clearly in the enlarged crop \u2014 a repeating run of crow-stepped gable ends (trapgevels) with small stone pinnacles, each gable perpendicular to the street, hence ridge_parallel_to_street false. A green-slated pentice/penthouse roof slope runs below them; worth generating as geometry, it is a strong horizontal wedge at ~5-6 m and will matter for street-level scatter.\n\nMATERIAL: wall is coursed grey limestone/sandstone rubble (Tournai bluestone with Balegem dressings), badly eroded, with brick patching and a whitewashed brick plinth at the near end. 'marble' is chosen as the closest available dielectric proxy for limestone (eps' ~7) \u2014 'brick' (~3.75) and 'concrete' (~5.24) both understate it. roughness_mm 10 reflects genuinely rough rubble with deeply weathered raked joints; this is the 1-10 cm regime and must stay a roughness number, never meshed relief. trim 'wood' for the heavy timber ground-floor front, lintel beam and window joinery, which is what the beam actually meets at street level; note the window surrounds themselves are dressed stone.\n\nGROUND FLOOR marked inferred, not seen: the front is boarded in dark timber and fenced off by white picket hoarding, so shopfront vs blank cannot be resolved from the image. 'shopfront' is the correct standing class given the documented frituur use and the wide timber front with a door opening under a beam.\n\nSTOREYS inferred: grade is hidden behind the hoarding so the count cannot be made from the image. 9.0 m is height_source 'no-data', so it is treated as ridge height, not eaves \u2014 3.0 + 2.6 gives eaves ~5.6 m with the steep gable and crow-steps carrying the rest.\n\nTEMPORARY WORKS: the bright yellow steel raking shores are restoration propping, not building geometry. Include them as scaffolding clutter if capture-time fidelity is wanted, but never as facades facets.\n\nCLUTTER: fronting_street is highway=pedestrian with car_access=none \u2014 no parked vehicles anywhere on Pensmarkt. Correct clutter for this scene is the site hoarding and Denys signage, wheelie bins, a blue drum, pedestrians, and wet granite setts. Detail budget should go to the gable silhouettes, the crow-steps, the window reveals and the timber ground-floor front; the party-wall side deserves none."
+   },
+   "flags": [
+    "roof form marked `seen`, but no view here looks down on it"
+   ],
+   "facts": {
+    "osm_id": 493993764,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house"
+    },
+    "frontage_width_m": 9.8,
+    "footprint_m": [
+     13.4,
+     2.5
+    ],
+    "footprint_area_m2": 32,
+    "height_m": 9.0,
+    "height_source": "no-data",
+    "street_frontages": 1,
+    "attached_neighbours": 1,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Pensmarkt",
+     "surface": null,
+     "car_access": "none",
+     "distance_m": 0.1
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.169,
+     "x1": 0.683,
+     "y0": 0.0,
+     "y1": 1.0
+    }
+   },
+   "plate": "renders/plates/graslei/493993764.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993764_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993764_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.7958025,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007823,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 5,
+     "evidence": "inferred"
+    },
+    "confidence": 0.62,
+    "ground_floor": {
+     "kind": "residential_door",
+     "evidence": "inferred"
+    },
+    "identification": "Mid-C18 heritage-listed Ghent town house, narrow gable-end to Hooiaard square with its long 17 m flank forming the modelled facade on Schuddeveestraatje; red-painted brick with cream limestone blokbanden and a bluestone plinth, now in mixed residential/restaurant use.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 5,
+     "trim": "marble",
+     "evidence": "seen"
+    },
+    "notes": "FACADE MODELLED = the long alley flank on Schuddeveestraatje (frontage_width 15.4 m of the 17 m footprint dimension); the 7 m gable end faces Hooiaard. Set A plate is degraded photogrammetry and supports nothing about this wall; all roof data is inferred from plot geometry and the row typology in B_1, where neighbouring Hooiaard houses show stepped and spout gables. The Hooiaard gable end is very likely stepped or spout-gabled \u2014 worth a separate grammar pass, it is the silhouette the square actually sees.\n\nEVIDENCE SPLIT WITHIN BLOCKS (deliberate under-claiming): in `ledges`, the stone sills and the continuous cream sill-level band are genuinely visible in B_0, but the eaves cornice is above the crop, so the whole block is marked inferred rather than promote an unseen cornice. In `window`, width/height/glazing bars/grilles are seen; reveal_class is the weakest element \u2014 the left jamb of the near ground-floor window throws a real shadow, which is why I chose deep over shallow, but treat it as a judgement.\n\nMATERIAL MAPPING: wall is hand-made brick, partly painted oxblood red, with irregular joints and patchy paint loss \u2014 roughness_mm 5 carries the 1\u201310 cm regime (brick relief, mortar joints, the blokbanden's shallow tooth pattern) and must NOT be meshed. Trim mapped to `marble` as the nearest available stone permittivity for the cream limestone dressings and the bluestone plinth; `concrete` would understate epsilon. The plinth is a distinct darker bluestone band ~0.9 m tall \u2014 worth its own material band if the generator supports one.\n\nWHAT SHOULD BE EXPLICIT GEOMETRY (>10 cm): window reveals and the projecting stone surrounds, the continuous sill band, the corner quoin chain (the blokbanden project a few cm only \u2014 that is roughness, but the corner itself is a wedge and matters), the plinth offset, and the iron grilles over the ground-floor windows.\n\nCLUTTER, CALIBRATED TO THIS ALLEY: car_access is `none` and the surface is sett \u2014 place NO vehicles here. B_0 shows the correct inventory: two grey metal utility cabinets standing against the plinth (~2.0 x 1.0 x 0.6 m, above the geometry threshold and strong scatterers at 1.1 m from the corridor), concrete planters with shrubs, a wheelie bin, leaning bicycles, galvanised soil pipes and ducting on the opposite wall, and the cafe terrace with rattan chairs and a maroon awning at the Hooiaard corner. The corner bay's ground floor is cafe glazing serving the restaurant; the alley elevation itself has no shopfront, which is why ground_floor is set to residential_door rather than shopfront.\n\nHEIGHT BUDGET: 14.5 m adopted-photo read as ridge height. Ground 3.6 + two uppers at 3.0 gives eaves ~9.6 m, leaving ~4.9 m of roof \u2014 consistent with a steep Flemish pitch and an attic excluded from the storey count.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 3.6,
+     "upper_height_m": 3,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.6,
+     "height_m": 2.4,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007823,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes",
+     "start_date": "mid C18",
+     "heritage": "4",
+     "historic": "house",
+     "addr:street": "Hooiaard"
+    },
+    "frontage_width_m": 15.4,
+    "footprint_m": [
+     17.0,
+     7.0
+    ],
+    "footprint_area_m2": 111,
+    "height_m": 14.5,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "living_street",
+     "name": "Schuddeveestraatje",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 1.1
+    },
+    "plate_view": "oblique",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.227,
+     "x1": 0.771,
+     "y0": 0.469,
+     "y1": 0.873
+    }
+   },
+   "plate": "renders/plates/graslei/494007823.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007823_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007823_1.jpg"
+   ],
+   "view": "oblique",
+   "cost_usd": 0.48230950000000006,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007824,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 5,
+     "evidence": "seen"
+    },
+    "confidence": 0.5,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "seen"
+    },
+    "identification": "Wide, shallow brick corner town house of 1725 on the Hooiaard/Graslei junction in Ghent \u2014 a late-Baroque grain-quay house with low upper storage floors, listed locally (heritage 4) and now in restaurant use with a terrace on the pedestrian sett quay.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 2.5,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "notes": "Set B's magenta box lands on the awning/terrace at the far left frame edge, so the target's facade is essentially not photographed; only the ground-floor use is legible there (caf\u00e9/restaurant, awning, bistro chairs, planters). The red-brick-with-cream-banding facade dominating set B is the NEIGHBOUR on Schuddevee and was deliberately not transcribed onto this building. Storey count and bay count come from set A's massing/rhythm, which is what those tiles carry; storey heights are apportioned arithmetic, not observation: 13.6 m to ridge minus a ~2.7 m roof rise (ridge-parallel gable over 5.9 m depth) leaves ~10.9 m of eave, which over four observed rows forces ~2.5 m uppers \u2014 low for a house but normal for a Graslei grain-quay building with storage lofts. Facade reads distinctly paler than the reddish neighbours in the same plate, hence painted/limewashed brick rather than exposed red brick; roughness 2.5 mm reflects paint over partly filled joints. Trim is Belgian bluestone (plinth, sills, window surrounds, band course) mapped to 'marble' as the closest dielectric proxy \u2014 'concrete' would understate its permittivity. Roof marked inferred: the plate shows a broad plane above a straight eave, which supports ridge-parallel, but gabled-vs-half-hipped at the exposed Hooiaard end is not resolvable and one gable is a party wall to the single attached neighbour. CLUTTER: highway=pedestrian, car_access=none, sett surface \u2014 place NO vehicles on this frontage. Correct clutter, all visible in set B: projecting awning, rattan chairs and tables, chalkboard menu, grey planters, wall-mounted utility cabinet, bagged recycling, bikes. At 28 GHz the awning and terrace furniture are >10 cm geometry and likely matter more for street-level field than any facade ornament; brick bond and joint relief must stay in the roughness term, never meshed.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 3.4,
+     "upper_height_m": 2.5,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.25,
+     "height_m": 1.8,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007824,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes",
+     "start_date": "1725",
+     "heritage": "4",
+     "historic": "house",
+     "addr:street": "Hooiaard"
+    },
+    "frontage_width_m": 13.1,
+    "footprint_m": [
+     13.9,
+     5.9
+    ],
+    "footprint_area_m2": 73,
+    "height_m": 13.6,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 1,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Graslei",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "street",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.245,
+     "x1": 0.718,
+     "y0": 0.097,
+     "y1": 0.829
+    }
+   },
+   "plate": "renders/plates/graslei/494007824.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007824_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.5054365000000001,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007850,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 4,
+     "evidence": "inferred"
+    },
+    "confidence": 0.72,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "seen"
+    },
+    "identification": "A four-storey plastered and white-painted Ghent corner commercial house on Hooiaard/Kortemunt, an older masonry core refronted in smooth lime render, with a modern dark-framed cafe/breakfast bar occupying the full ground floor and tall multi-light timber windows on the three floors above.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 1,
+     "trim": "wood",
+     "evidence": "seen"
+    },
+    "notes": "EVIDENCE SPLIT WITHIN OBJECTS (schema forces one flag each, so stating it plainly):\n- storeys: count=4 is genuinely seen (three window rows over a tall glazed ground floor, photo B0, and corroborated by building:levels=4). The 4.0/3.2 m split is NOT seen; it is apportioned inside the confirmed 16.0 m total, leaving ~2.4 m of gable/attic above the top ceiling. Treat the split as inferred.\n- ledges: sills and the string course over the shopfront are seen in photo B1. The eaves cornice is inferred - the top of the building is cut off in every frame (both outlines dashed/clipped at the top). Absence of balconies is seen; the balconies visible in B1 belong to the buildings opposite, not to this one.\n- bays: inferred. Both photographs are steeply oblique and photo B0's magenta box also contains further brick buildings behind the target, so counting window columns there is unsafe. 4 bays comes from 12.5 m frontage at ~3.1 m Ghent bay spacing, consistent with the ~1.35 m windows and ~1.8 m piers seen close up.\n- roof: fully inferred. Not visible anywhere. Form from OSM. Ridge parallel to street because a 12.5 x 5.0 m footprint gives only a 2.5 m rafter run - a gable-to-street here would be an implausibly squat 12.5 m-wide gable, and this facade reads as a cornice-topped refront rather than a gable house. If a later oblique or aerial contradicts this, the ridge orientation is the first thing to overturn.\n\nMATERIAL, and why it does not contradict the data: building:material=plaster describes the finish. I set the ray-tracing wall to ITU brick because a ~2 cm lime render over solid masonry is dielectrically brick-like (e' ~ 3.5-4.5), whereas ITU plasterboard is low-density gypsum board (e' ~ 2.94) and would materially under-predict reflection at 28 GHz. Photo B1 shows painted render with gentle undulation and no exposed joints, so roughness is 1.0 mm RMS, not the 3-8 mm of fair-faced brick - the render's function here is precisely to bury the 1-10 cm regime. Suggested scattering coefficient S ~ 0.2-0.3, near-specular. Trim=wood covers the heavy dark-painted timber upper joinery; the ground-floor frames may be metal-clad, which matters little as they are thin members against a large glass plane.\n\nGEOMETRY WORTH MESHING (>10 cm, 1.07 cm wavelength):\n- Shopfront piers between the cafe bays, roughly 0.4-0.5 m wide and standing ~0.10-0.15 m proud of the recessed glazing. These wedges are the main off-specular scatterers at pedestrian height and the ground floor is where the beam actually lands - spend budget here.\n- The full-height ground-floor glass is a large flat specular plane; keep it flat, do not fake relief into it.\n- Window sills, ~0.05-0.08 m projection, and shallow (~0.12 m) reveals on all upper openings.\n- String course / fascia band over the shopfront, and the inferred eaves cornice.\n- Projecting hardware seen in B0/B1: wall-mounted lamps, CCTV housings, a fire-service plate, window-box planters. Small but real silhouette breakers on an otherwise plain render plane.\n\nSCENE CONTEXT: Hooiaard is highway=pedestrian with car_access=none. Place NO vehicles. The correct clutter, all seen: A-board menu chalkboards on the sett, folded and open parasols, timber planters with bamboo/box hedging, leaning bicycles, cafe tables. Ground is sett paving, which is itself a 3-8 cm relief regime - roughness, not geometry.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 4,
+     "upper_height_m": 3.2,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.35,
+     "height_m": 2.5,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "seen"
+    }
+   },
+   "flags": [
+    "wall 'brick' contradicts OSM building:material='plaster'"
+   ],
+   "facts": {
+    "osm_id": 494007850,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "retail",
+     "building:material": "plaster",
+     "building:levels": "4",
+     "roof:shape": "gabled",
+     "addr:street": "Kortemunt"
+    },
+    "frontage_width_m": 12.5,
+    "footprint_m": [
+     12.5,
+     5.0
+    ],
+    "footprint_area_m2": 61,
+    "height_m": 16.0,
+    "height_source": "confirmed",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Hooiaard",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.29,
+     "x1": 0.639,
+     "y0": 0.0,
+     "y1": 0.973
+    }
+   },
+   "plate": "renders/plates/graslei/494007850.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007850_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007850_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.5094905,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007922,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 3,
+     "evidence": "inferred"
+    },
+    "confidence": 0.58,
+    "ground_floor": {
+     "kind": "shopfront",
+     "evidence": "seen"
+    },
+    "identification": "A 19th-century rendered and painted neoclassical/eclectic corner townhouse on the east side of Korenmarkt at the Kortemunt corner in Ghent, four storeys of flats over a pharmacy shopfront, under a slate pitched roof with the ridge parallel to the square.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "concrete",
+     "roughness_mm": 0.6,
+     "trim": "marble",
+     "evidence": "seen"
+    },
+    "notes": "Wall is painted cement/lime render over masonry, not fair-faced brick; 'concrete' is the closest dielectric proxy in the enum and roughness 0.6 mm keeps it in the material regime where it belongs (near-specular at 1.07 cm). Trim 'marble' stands for Belgian bluestone: the ground-floor plinth panels, door surround and (inferred) window sills. Only the plinth and surround are actually seen; sills, cornice and first-floor string course are supplied from the type, hence the ledges group is marked inferred even though a cornice band is faintly present in plate A. Roof read entirely from set A: a broad dark slate plane sloping to the square with the ridge across it. The useful finding is negative - there is no street-facing gable, so the Ghent stepped-gable prior must not fire on this building. Storey split 4.3 + 3 x 3.0 = 13.3 m to eaves, leaving 3.7 m of roof over an 8.5 m depth (~41 deg pitch), which closes on the measured 17.0 m without touching it. Detail budget: this facade is at 0 m from a pedestrian corridor, so spend it on the ground floor - the deep shopfront recess, the plinth, and the window reveals and cornice on the silhouette. CLUTTER: car_access none, highway pedestrian, paving_stones. No vehicles of any kind on this frontage. Set B shows the correct furniture - benches against the plinth, bike racks, cafe terrace, pedestrians - plus tram rails in the paving and catenary wire on poles overhead, both of which are real scatterers at this frequency and should not be dropped. Corner condition: two street frontages, so the Kortemunt return needs a facade too, not a blank party wall.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "seen"
+    },
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 4.3,
+     "upper_height_m": 3,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.15,
+     "height_m": 2.1,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007922,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "addr:street": "Kortemunt"
+    },
+    "frontage_width_m": 7.8,
+    "footprint_m": [
+     6.8,
+     8.5
+    ],
+    "footprint_area_m2": 50,
+    "height_m": 17.0,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Korenmarkt",
+     "surface": "paving_stones",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "oblique",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.329,
+     "x1": 0.563,
+     "y0": 0.46,
+     "y1": 0.876
+    }
+   },
+   "plate": "renders/plates/graslei/494007922.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007922_0.jpg"
+   ],
+   "view": "oblique",
+   "cost_usd": 0.3806015,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007927,
+   "status": "ok",
+   "reading": {
+    "identification": "A tall four-storey brick town house of c. 1900 historicist Flemish-Renaissance type (a rebuild or heavy restoration on a medieval plot) at the Hooiaard corner beside the Groot Vleeshuis, with a crow-stepped gable, bluestone-banded facade and a commercial/caf\u00e9 ground floor onto the pedestrian sett square.",
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 3.9,
+     "upper_height_m": 3.3,
+     "evidence": "seen"
+    },
+    "bays": {
+     "count": 6,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 0.95,
+     "height_m": 2.15,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    },
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "stepped_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "seen"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": false,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 5,
+     "trim": "marble",
+     "evidence": "seen"
+    },
+    "confidence": 0.62,
+    "notes": "Sub-field evidence, stated explicitly so nothing gets promoted into the measured layer:\n\nSEEN in set B at 5-6x magnification: brick wall colour and bond scale; crow-stepped gable with stone coping slabs on every step and red pantile roof behind; small lozenge opening in the gable field; continuous stone string courses at each floor plus a continuous stone sill band; stone jambs and segmental stone-and-brick arches around every opening; tall-narrow window proportion (roughly 1:2.2); absence of balconies on this facade.\n\nINFERRED, not seen: reveal_class. Set B cannot resolve reveal depth; 'deep' is the prior for a ~40 cm solid brick wall with stone dressings, where the sash sits roughly 0.20 m behind the jamb face. If the generator wants a single number rather than a class, 0.20 m is my estimate, not a measurement. Glazing bars are at the edge of resolvability - I can see an internal vertical division in several openings, and a cross-window (kruiskozijn) subdivision is the type-correct prior either way. Bay count is inferred from the flank rhythm (openings ~0.95 m on a ~2.4 m pitch, giving 6 across the 14.3 m frontage); the street facade itself is not resolved bay-by-bay in either image. Ground floor is fully occluded by a parasol, planters and a pedestrian; cafe_glazing follows from the terrace economy of this square, and shopfront is the plausible alternative.\n\nHeight budget: 3.9 + 3x3.3 = 13.8 m to eaves, leaving ~2.2 m of stepped gable to reach the confirmed 16.0 m. Consistent with building:levels=4 and roof:shape=gabled - a trapgevel is a gable with a stepped parapet, so stepped_gable does not contradict the data, it refines it.\n\nridge_parallel_to_street = false because the gable fronts the street, which is the normal Flemish plot logic here and is what set A shows (gable sitting directly over the street facade). This is the field I would most want a second view to check: if the 14.3 m frontage is in fact the eaves side, this flips.\n\nPhysics allocation at 28 GHz:\n- Explicit geometry (>10 cm): the gable steps and their coping (each step is a strong horizontal wedge on the silhouette, and it is the single most distinctive scatterer on this building), the per-floor string courses, the sill band, the stone jambs and arch surrounds standing proud of the brick, and the window reveals. These carry the off-specular return into the street.\n- Roughness only (1-10 cm): brick relief and joints at 5 mm RMS. Do not mesh the bond, and do not mesh the alternating brick/stone speklagen as individual blocks - where they are flush accents they belong in the roughness and albedo, not in geometry. Only the bands that genuinely project belong in string_courses.\n- Material only (<1 cm): brick permittivity for the wall; trim set to 'marble' as the closest available proxy for Belgian bluestone/Balegem limestone (carbonate, eps' ~7), which is physically nearer than 'concrete'. The roof is clay pantile, which the schema has no slot for - if the generator can take a roof material, do not inherit the wall brick value uncritically.\n\nClutter: fronting street is pedestrian with car_access=none and sett surface, so no parked or moving vehicles anywhere on this frontage - this is exactly the case the blanket parking rule got wrong. What belongs instead, and is visible in set B: caf\u00e9 terraces with white parasols, dark timber planters with bamboo, chalkboard A-boards, light stackable chairs, leaning bicycles, and worn sett paving with standing-water sheen in the joints.\n\nDetail budget: spend it on the gable steps against the sky, on the openings and their stone surrounds, and on the ground-floor zone and terrace. The flank away from the study corridor can drop to string courses and openings only."
+   },
+   "flags": [
+    "roof form marked `seen`, but no view here looks down on it"
+   ],
+   "facts": {
+    "osm_id": 494007927,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "building:material": "brick",
+     "building:levels": "4",
+     "roof:shape": "gabled",
+     "addr:street": "Hooiaard"
+    },
+    "frontage_width_m": 14.3,
+    "footprint_m": [
+     15.2,
+     14.3
+    ],
+    "footprint_area_m2": 206,
+    "height_m": 16.0,
+    "height_source": "confirmed",
+    "street_frontages": 2,
+    "attached_neighbours": 4,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Hooiaard",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "street",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.203,
+     "x1": 0.71,
+     "y0": 0.0,
+     "y1": 0.96
+    }
+   },
+   "plate": "renders/plates/graslei/494007927.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007927_0.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 1.2477905000000002,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007930,
+   "status": "ok",
+   "reading": {
+    "identification": "Late-19th/early-20th-century four-storey brick corner block at Pensmarkt/Hooiaard in Ghent's medieval core, retail at ground level with dwellings above, on an amalgamated 13.6 m frontage under a long street-parallel gabled roof with an inhabited attic.",
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 3.8,
+     "upper_height_m": 2.9,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 6,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.15,
+     "height_m": 2,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    },
+    "ground_floor": {
+     "kind": "shopfront",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "seen"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 4,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "confidence": 0.5,
+    "notes": "EVIDENCE SPLIT. Only the roof is marked seen. Set A resolves one crisp orange ridge cap running the full length of the block with a single broad plane facing the square and a gable end at the right-hand party wall: gabled, ridge parallel to street, confirmed by both the plate and OSM roof:shape. Everything on the wall is typological inference for this street and period.\n\nBAY RHYTHM: measured, count inferred. Column-luminance autocorrelation over the upper-floor band (y 450-590) gives a single dominant peak at lag 58 px, r=0.70 \u2014 a real regular fenestration rhythm, not tile noise. Converting it to a count requires a horizontal scale I cannot pin down, because this is a corner building (street_frontages=2) and I cannot locate the return corner well enough to say how much of the ~420 px visible face is the 13.6 m Pensmarkt frontage versus the Hooiaard return. At ~25 px/m the 58 px period is ~2.3 m centres, giving 6 bays; that also sits mid-band for an amalgamated 13.6 m Ghent retail frontage. 5 bays at ~2.7 m centres is the live alternative \u2014 if the generator can tolerate it, 6 is the better default but this is the least-secure number in the set. Naive per-row minima detection returned 12-19 spurious peaks; ignore that, the autocorrelation is the trustworthy statistic.\n\nHEIGHT BUDGET closes against the confirmed 16.0 m: 3.8 ground + 3 x 2.9 upper = 12.5 m eaves, leaving 3.5 m ridge rise over the 4.7 m half-span (footprint depth 9.4 m) for a ~37 deg pitch. That matches the moderate, non-steep slope in the plate. It also leaves a habitable attic, which is consistent with two pale rectangles resolvable on the front pitch \u2014 roof lights or small dormers. They are at the very edge of resolution and I cannot separate flush rooflight from dormer, so I have not claimed them; if the generator places roof openings on the front pitch, that is defensible, but do not mark them seen.\n\nDO NOT INHERIT THE GRASLEI PRIOR. This is one block behind Graslei, and the reflex answer for that quarter is a stepped or spout gable turned end-on to the water. The plate contradicts it: eaves-to-street, ridge-along-street, unbroken across a 13.6 m plot. That plot width is itself the tell \u2014 it is two or three medieval plots merged, so the surviving-guild-house grammar (narrow, vertical, gable-fronted, deep stone reveals) is the wrong template here. I have set reveal_class to shallow (~0.12 m) accordingly: shallow is what a 19th-century brick wall with segmental arches gives. Deep reveals belong to thick medieval or stone walls and would put too much geometry into the facade.\n\nTRIM MATERIAL: the real material is blue Belgian limestone (arduin), the Ghent default for sills, lintels and shopfront surrounds. The enum has no limestone, so I selected marble \u2014 both are calcium carbonate with eps' ~7 and similar loss, which is the correct dielectric behaviour at 28 GHz. Concrete would have been the wrong permittivity for the right-sounding reason. Please do not \"correct\" this to concrete downstream.\n\nPHYSICS PARTITION. Above 10 cm, ask for explicit geometry: window reveals, the stone sills, the floor-level string courses, the eaves cornice, and the shopfront fascia and stallriser. Those wedges are what set street-level field in this narrow square. Between 1 and 10 cm \u2014 brick relief and recessed mortar joints \u2014 is the roughness_mm 4.0 figure and a diffuse scattering coefficient, never mesh. Ghent historic brick with raked joints sits at 3-5 mm RMS; I have taken 4.0. Below 1 cm is permittivity only.\n\nCLUTTER CALIBRATION \u2014 read the tags. fronting_street is highway=pedestrian with car_access=none, distance 0.0 m. Place NO vehicles at this facade. Pensmarkt adjoins the Groentenmarkt and is a market and terrace square; the plate shows exactly that clutter class in the open paved area to the right of the building \u2014 market stalls or parasols, street trees, and people. That, plus terrace furniture, A-boards, bins and bike parking, is the correct population. A generic park-cars-along-every-street rule would fill this square wrongly.\n\nDETAIL BUDGET. The building has two frontages, both public and both close to the corridor, so concentrate resolution on the ground-floor shopfront line and the window heads and sills of the first floor, and on the eaves and gable silhouette which is the only edge this plate actually verifies. The rear and the party walls carry attached neighbours on both sides and deserve almost nothing.\n\nCONFIDENCE 0.5: macro layer is solid \u2014 height confirmed, levels, brick and gabled roof from OSM, roof orientation genuinely seen. The entire opening grammar is a defensible instance rather than a recovered truth, and no street photograph exists to close the gap."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007930,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "retail",
+     "building:material": "brick",
+     "building:levels": "4",
+     "roof:shape": "gabled",
+     "addr:street": "Hooiaard"
+    },
+    "frontage_width_m": 13.6,
+    "footprint_m": [
+     9.4,
+     16.0
+    ],
+    "footprint_area_m2": 140,
+    "height_m": 16.0,
+    "height_source": "confirmed",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Pensmarkt",
+     "surface": null,
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "oblique",
+    "target_box_normalised": {
+     "x0": 0.215,
+     "x1": 0.65,
+     "y0": 0.455,
+     "y1": 0.889
+    }
+   },
+   "plate": "renders/plates/graslei/494007930.png",
+   "photos": [],
+   "view": "oblique",
+   "cost_usd": 0.565234,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007934,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 4,
+     "evidence": "seen"
+    },
+    "confidence": 0.62,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "seen"
+    },
+    "identification": "An early-20th-century eclectic/Beaux-Arts corner commercial-residential house at the Korenmarkt/Hooiaard corner in Ghent \u2014 four storeys of painted render over masonry, banded at ground level, with a first-floor wrought-iron balcony and an arched piano-nobile opening, its ground floor now occupied by the Wasbar laundry-caf\u00e9.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": true,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "concrete",
+     "roughness_mm": 1,
+     "trim": "metal",
+     "evidence": "seen"
+    },
+    "notes": "EVIDENCE SPLIT. Seen in B (close range, though at the frame edge under wide-lens curvature): painted smooth render walls, horizontally channelled/banded render at ground level, full-width first-floor balcony on black wrought-iron railing carried on consoles, string-course band between ground and first floor, round-arched opening above the balcony, tall metal-framed shopfront glazing of the Wasbar laundry-cafe (AEG machine and neon lettering legible through the glass). Seen in A: four storey bands, regular bay rhythm, white/cream colour, presence of a pitched (non-flat) dark roof and an eaves cornice line. Inferred: window dimensions, glazing subdivision, roof form, and the metre heights.\n\nHEIGHTS ARE DERIVED, NOT SEEN. Storey count is read from A; the metre values are back-solved from the measured height_m 15.8 so they close against it: 4.2 (tall commercial ground floor, consistent with the double-height-reading Wasbar glazing) + 3 x 3.3 = 14.1 m to eaves, leaving ~1.7 m of roof above the cornice. Do not treat 4.2/3.3 as observed.\n\nROOF IS THE WEAKEST FIELD. B is cut off above the first floor (the outline runs off the top of the frame), so the roof is invisible from the pavement exactly as warned. A shows a dark pitched mass with an eaves line but at ~25 cm/texel cannot separate mansard from hipped. Mansard with the ridge parallel to Hooiaard is the period-and-place prior for a Korenmarkt corner block of this date; ~1.7 m of roof height suits a mansard whose lower slope hides behind the cornice. If a roof dataset exists, it overrides this outright.\n\nBAY COUNT. 9.0 m frontage over 4 bays gives a 2.25 m module \u2014 1.2 m opening on a 1.05 m pier, which is the rhythm A shows. The 7.5 x 11.2 footprint with street_frontages 2 means this is a corner unit; the 9.0 m figure and this grammar describe the Hooiaard elevation that both plates actually see. The return elevation should inherit the same storey bands and string course but not necessarily the balcony.\n\nPHYSICS REGIMES. Above 10 cm, build as geometry: the balcony slab, its consoles and the iron balustrade (the strongest scatterer on this facade and the one feature that most changes street-level field on a 12 m-wide pedestrian canyon), window reveals at the shallow class, sills, the string course, the eaves cornice, and the shopfront frame. 1-10 cm \u2014 the channelled render banding at ground level, any ornament around the arch \u2014 must NOT be meshed; it is carried by the roughness number. Painted smooth render is genuinely smooth, hence 1.0 mm RMS; the banding grooves are shallow and sparse and do not justify pushing it toward a brick-like 3-8 mm. Wall is set to concrete as the standard proxy for render over masonry (the render is the surface the ray sees, not the brick behind it); trim is metal for the balustrade and shopfront framing, both directly visible.\n\nCLUTTER \u2014 CHECK THE ACCESS TAG. fronting_street is pedestrian, surface sett, car_access none. Place NO vehicles on Hooiaard. The correct clutter, all of it visible in B, is cafe terrace furniture directly against this facade (timber tables, black metal chairs), folded parasols on masts, planters, bollards, and a tactile paving strip with embedded tram rails crossing the sett. Terrace furniture sits within 2 m of the wall and is worth explicit geometry here; it is between the beam and the facade.\n\nDETAIL BUDGET. This building is at distance_m 0.0 from the corridor, so it earns the full budget \u2014 concentrate it on the balcony assembly, the ground-floor glazing plane and its reveals, and the silhouette at the cornice. Do not spend equally on the return elevation or the roof slopes, which no plate resolves.",
+    "roof": {
+     "form": "mansard",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 4.2,
+     "upper_height_m": 3.3,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.2,
+     "height_m": 2.4,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007934,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "addr:street": "Korenmarkt"
+    },
+    "frontage_width_m": 9.0,
+    "footprint_m": [
+     7.5,
+     11.2
+    ],
+    "footprint_area_m2": 79,
+    "height_m": 15.8,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Hooiaard",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "street",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.368,
+     "x1": 0.612,
+     "y0": 0.095,
+     "y1": 0.83
+    }
+   },
+   "plate": "renders/plates/graslei/494007934.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007934_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.4239805,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007950,
+   "status": "ok",
+   "reading": {
+    "identification": "Late-19th-century rendered corner house at Korenmarkt/Kortemunt in Ghent, four storeys of flats over a pharmacy shopfront, distinguished by a painted timber canted oriel at first floor.",
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 4,
+     "upper_height_m": 3.15,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 3,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.3,
+     "height_m": 2.3,
+     "reveal_class": "shallow",
+     "glazing_bars": false,
+     "evidence": "seen"
+    },
+    "ground_floor": {
+     "kind": "shopfront",
+     "evidence": "seen"
+    },
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "concrete",
+     "roughness_mm": 0.6,
+     "trim": "marble",
+     "evidence": "seen"
+    },
+    "confidence": 0.58,
+    "notes": "STOREYS/ROOF ARE THE WEAK HALF. Set B's outline is dashed at the top, so no storey count is observable; the count is reconstructed from height_m 17.1 against a 5.3 m depth. 4.0 + 3x3.15 = 13.45 m eaves leaves 3.65 m of roof over a 5.3 m span, a ~54 deg Flemish pitch that lands on 17.1. Five storeys would leave ~1.1 m of roof, which this city does not build. A mansard is the plausible alternative to gabled for this period and would keep the same eaves line; if the generator supports it, mansard is roughly a coin-flip against gabled here. Ridge orientation follows the shallow plan (spanning the 5.3 m depth, parallel to Korenmarkt); as a corner unit with 2 street frontages it may carry a half-hip at the exposed end, which set A cannot resolve.\n\nMATERIAL CHOICES. Wall is smooth painted cement render over masonry, not fair-face brick, so I chose concrete over brick: at 28 GHz the penetration depth is small enough that the render skin, not the brick substrate, sets the surface impedance. roughness_mm 0.6 is the smooth-render regime, deliberately far below the 3-8 mm you would give recessed brick joints. Trim = marble stands for the grey natural stone (Belgian blue stone) plinth and the smooth stone-look surrounds around the shopfront, which is the electrically distinct band at exactly the height a street-level beam hits. Caveat: the oriel itself is painted timber joinery, a different material from the trim value; if the generator can take a per-element override, the oriel box should be wood.\n\nDETAIL BUDGET. distance_m 0.0 from the pedestrian corridor puts this building in the top tier. Spend it on the canted oriel: it must be real geometry, a three-sided corbelled projection roughly 2.6 m wide and 0.5-0.6 m deep spanning first floor, because it is the one feature that makes this facade a specific building rather than a rendered box, and at ~0.5 m projection it is firmly in the explicit-geometry regime. Second priority is the ground floor: the shop entrance is genuinely recessed (roughly 0.6-0.9 m behind the frontage line) and that reveal is a strong corner reflector at pedestrian height. Third, the string course and window sills as real ledges. Do NOT mesh the render texture or the moulding ornament - the panelled pilaster strips on the oriel and the fascia lettering are 1-5 cm relief and belong in the roughness/scattering coefficient, not the mesh.\n\nCLUTTER. car_access is none on Korenmarkt and the photograph confirms it: trams and pedestrians only, no parked vehicles anywhere in frame. Do not place vehicles on this frontage under any rule. What the photo does show and what belongs here: bicycles parked loose against the facades, a bike trailer, freestanding timber terrace benches on the pavement directly in front of the neighbouring unit, and the tram rails set into the paving_stones. The projecting illuminated pharmacy cross is a real metre-scale metal object cantilevered off the wall at about first-floor level and is a legitimate scatterer if the generator has a signage class.\n\nWHAT I DID NOT SEE. Bay count is inferred from 8.4 m frontage at a typical 2.7 m rhythm; the frame shows the oriel plus one adjacent opening and cuts off the rest. Window dimensions are read off the first-floor openings and assumed repeated up the elevation, which is standard for this type but not observed above the second floor."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007950,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "addr:street": "Kortemunt"
+    },
+    "frontage_width_m": 8.4,
+    "footprint_m": [
+     9.2,
+     5.3
+    ],
+    "footprint_area_m2": 43,
+    "height_m": 17.1,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Korenmarkt",
+     "surface": "paving_stones",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "oblique",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.377,
+     "x1": 0.63,
+     "y0": 0.434,
+     "y1": 0.835
+    }
+   },
+   "plate": "renders/plates/graslei/494007950.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007950_0.jpg"
+   ],
+   "view": "oblique",
+   "cost_usd": 0.6730415000000001,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007953,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 3,
+     "evidence": "inferred"
+    },
+    "confidence": 0.5,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "inferred"
+    },
+    "identification": "A narrow 18th-19th century Ghent burgher house on Hooiaard, four storeys over a cafe/brasserie ground floor, eaves-to-street pitched roof, plastered or painted brick, terraced with party walls on both sides.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 3,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "seen"
+    },
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 4,
+     "upper_height_m": 3,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.2,
+     "height_m": 2.1,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    },
+    "notes": "EVIDENCE DISCIPLINE. Only the roof is marked seen. Set A shows a broad slope above the target with a horizontal top edge running left-right and no street-facing gable peak, which supports eaves-to-street / ridge-parallel at this resolution. Form gabled rather than hipped follows from attached_neighbours=4 (party walls at both gable ends); the visibly hipped neighbour to the left is a different, freestanding-ended mass and should not be copied onto the target. Everything on the wall is inferred: the frontage spans only ~200 px of degraded photogrammetry, window slots are visible as blobs but bays cannot honestly be counted and a reveal class cannot be resolved.\n\nHEIGHT CONSISTENCY. 4.0 ground + 3 x 3.0 upper = 13.0 m eaves; ~50 deg pitch over the 7.6 m depth adds ~4.5 m to the ridge = 17.5 m, matching the adopted-photo height. Do NOT re-derive storey heights from height_m independently or the roof volume gets absorbed into the wall and the eaves line lands too high. If the generator prefers a shallower pitch, take it out of the ridge, not out of the storeys.\n\nCLUTTER - THE IMPORTANT ONE. fronting_street is pedestrian, sett, car_access=none, distance 0.0 m. NO parked or moving vehicles anywhere on Hooiaard. This is the exact case that previously filled a pedestrian square with individually-plausible cars. Correct clutter for this frontage: cafe terrace tables and chairs against the facade, parasols, A-boards, bike clusters, waste bins at the corners. Terrace furniture is 0.7-1.1 m tall scattering geometry directly in the street-level beam and is worth explicit facets; it matters more here than any facade ornament.\n\nGROUND FLOOR. cafe_glazing chosen over generic shopfront because Hooiaard at the head of the Graslei is a brasserie strip, not a retail run. Expect a large glazed opening nearly filling the bay width with a recessed entrance door, a fascia/signage band above, and the glass plane set back 0.3-0.5 m from the upper-storey wall plane. That setback is a real wedge at 28 GHz and should be geometry, not texture.\n\nPHYSICS SPLIT. Explicit geometry (>10 cm): window reveals at the shallow class (~0.12 m), stone sills, the plat band string course between ground and first floor, the eaves cornice with its overhang, the ground-floor glazing setback, chimney stacks on the ridge. NOT geometry (1-10 cm): brick coursing, mortar joints, painted-render texture, any moulding profile detail. Those are carried entirely by roughness_mm = 3.0. If the facade is stucco rather than painted brick, drop roughness to ~0.5; 3.0 is a deliberate hedge between the two, since the uniform pink in the plate is equally consistent with red brick and with painted render and set A cannot separate them.\n\nTRIM. marble is used as the natural-stone dielectric proxy for Belgian blue limestone (arduin), which is the near-universal sill, plinth and surround material in Ghent. Expect a stone plinth 0.4-0.8 m at pavement level. If the generator has a distinct limestone entry, prefer it over marble.\n\nVERTICAL RHYTHM. Windows should diminish upward in the Flemish manner: first floor at the stated 2.1 m, second ~1.9 m, third ~1.6 m, widths held constant at 1.2 m so the bay centrelines stay aligned. Uniform window heights on all four storeys is the tell of a generic template. Glazing bars true: a T-division or small-pane pattern, but render this as material and fine relief, never as meshed muntins at 28 GHz.\n\nDETAIL BUDGET. distance_m = 0.0 on a pedestrian street means this facade is at eye level and in the beam; spend on the ground floor, the openings and the silhouette edges (cornice, ridge, chimneys). street_frontages = 2 with an 18.7 m depth implies a rear elevation, plausibly toward the Leie quay: give it the same grammar at reduced budget, plainer, fewer ledges, no cafe glazing.\n\nCONFIDENCE. 0.5 reflects a solid roof reading, a height-corroborated storey count, and a bay count plus full wall grammar that rest on Ghent building stock rather than on this image."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007953,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "addr:street": "Hooiaard"
+    },
+    "frontage_width_m": 7.2,
+    "footprint_m": [
+     18.7,
+     7.6
+    ],
+    "footprint_area_m2": 136,
+    "height_m": 17.5,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 4,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Hooiaard",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "oblique",
+    "target_box_normalised": {
+     "x0": 0.396,
+     "x1": 0.607,
+     "y0": 0.59,
+     "y1": 1.0
+    }
+   },
+   "plate": "renders/plates/graslei/494007953.png",
+   "photos": [],
+   "view": "oblique",
+   "cost_usd": 0.25549299999999997,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007957,
+   "status": "ok",
+   "reading": {
+    "identification": "Mid-19th-century Ghent townhouse on the east side of the Korenmarkt: a narrow (7.8 m) four-storey burgher house in painted cement render over a full-width commercial ground floor (restaurant/fast-food unit with fascia signage and pavement terrace), with wrought-iron Juliet balconettes to the upper windows and a slate pitched roof running parallel to the square.",
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 4.2,
+     "upper_height_m": 3.1,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 3,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.4,
+     "height_m": 2.2,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "seen"
+    },
+    "ground_floor": {
+     "kind": "shopfront",
+     "evidence": "seen"
+    },
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "seen"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": true,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "concrete",
+     "roughness_mm": 1.2,
+     "trim": "wood",
+     "evidence": "seen"
+    },
+    "confidence": 0.6,
+    "notes": "IDENTITY CAVEAT: the magenta box in B/0 straddles a party joint between two near-identical rendered houses (the \"...ville\" unit and the Pizza Hut unit). Both are the same type and period, so this grammar holds for either; do not treat the box edges as the party walls.\n\nSTOREYS: marked inferred, not seen. B/0 clearly shows the ground floor plus three upper window rows, but the top of the facade is clipped in both street photos and the set A tile has a duplicated-band render glitch straight through the facade, so I cannot count the top row directly. 4 storeys reconciles the visible rows with the 17.1 m measured height: 4.2 ground + 3 x 3.1 upper = 13.5 m of wall, leaving 3.6 m eaves-to-ridge, right for a ~45 deg pitch on a 7.8 m span. If the generator needs a fallback, 5 storeys at 2.8 m with a shallower roof is the only competing reading.\n\nROOF: read from set A, which is the right source for massing. The roof zone at the top of the box is clean of the glitch and shows a slate-grey pitched plane with a street-parallel eaves line and light dormer patches along the row. B/1 shows a red pantile eave inside the box on a neighbour, so the row is mixed slate/pantile \u2014 vary tile colour along the terrace rather than making the whole row uniform. A mansard is the plausible alternative if the generator has one; the lower slope in the tile is steep.\n\nMATERIAL, and what to keep out of geometry: the wall is smooth painted cement render (anthracite/charcoal grey), NOT brick. At 3x in B/0 there is no bond pattern and no joint shadow, only a flat painted surface with rain-streak staining below the ledges. So concrete is the dielectric class and roughness stays low \u2014 1.2 mm RMS, i.e. a smooth painted surface with age, nowhere near the 3-8 mm of exposed brick. Do not mesh the render texture or the staining.\n\nTRIM SPLIT \u2014 important, one enum value cannot carry this: window frames are white painted timber/PVC (wood is the correct dielectric class, which is why trim=wood), but three elements on this facade are genuinely metal and should be assigned metal separately if the generator supports it: (a) the wrought-iron Juliet balustrades, (b) the shopfront framing and fascia, (c) the projecting box sign brackets. Sills, surrounds and the string course are painted render/stone, i.e. concrete. Getting the sills wrong as metal would over-reflect a lot of small horizontal area.\n\nWHAT TO SPEND GEOMETRY ON (>10 cm regime, this is where the 28 GHz street-level field is decided): the Juliet balconettes are the defining feature and project roughly 10-15 cm with open scrollwork \u2014 model them as real facets, they sit directly at first/second floor and will dominate off-specular scatter down onto the pavement. Then the projecting sills, the string course above the shop fascia, the eaves cornice, and the window reveals (shallow class, ~0.12 m \u2014 B/0 shows jamb shadow but reference imagery cannot resolve depth better than a class, so do not invent a number). The ironwork is thin-bar: keep it as bars, not a solid panel, or it becomes a mirror it is not.\n\nWHAT MUST STAY A NUMBER (1-10 cm regime): render texture, the fascia lettering, the sign graphics, the window decals. These are roughness and scattering coefficient only. Meshing them produces specular garbage.\n\nGROUND FLOOR: dark-framed full-height glazing with a solid fascia band above and a recessed entry \u2014 classed shopfront rather than cafe_glazing because of the fascia and the retail-style stallriser framing, but the unit functions as a restaurant. Large flat glass panes at eye level: this is the single most radio-significant surface on the building and deserves the finest facet budget, along with the balconettes.\n\nCLUTTER \u2014 calibrate to this street, do not apply a generic rule: fronting_street is highway=pedestrian, car_access=none, surface=paving_stones, distance 0.0 m. NO PARKED CARS, NO MOVING VEHICLES. What the photos actually show on this pavement: cafe terrace tables and stacked metal chairs, tall black market-parasols, A-board menu boards, a wooden terrace enclosure with planting, a parked scooter and bicycles, tram rails and overhead catenary wires in the carriageway, and dense pedestrian traffic. The catenary wires are worth including \u2014 they are metal, they cross the corridor, and nothing else in the scene is at that height.\n\nSECOND FRONTAGE: street_frontages=2 with 4 attached neighbours means this is a corner unit. The return elevation should carry the same render, sill and cornice grammar but with a sparser and more irregular bay rhythm, and a largely blank or service-doored ground floor rather than a second shopfront."
+   },
+   "flags": [
+    "roof form marked `seen`, but no view here looks down on it"
+   ],
+   "facts": {
+    "osm_id": 494007957,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "addr:street": "Korenmarkt"
+    },
+    "frontage_width_m": 7.8,
+    "footprint_m": [
+     16.5,
+     7.8
+    ],
+    "footprint_area_m2": 96,
+    "height_m": 17.1,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 4,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Korenmarkt",
+     "surface": "paving_stones",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.397,
+     "x1": 0.59,
+     "y0": 0.1,
+     "y1": 0.827
+    }
+   },
+   "plate": "renders/plates/graslei/494007957.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007957_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007957_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 1.230769,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007959,
+   "status": "ok",
+   "reading": {
+    "identification": "Mid-to-late 19th-century plastered-brick corner commercial house at Korenmarkt/Hooiaard, Ghent: four storeys of dwelling/office over a tall bluestone-pier ground floor now trading as a caf\u00e9, under a red-pantile hipped roof.",
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 4.3,
+     "upper_height_m": 3.3,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 5,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.3,
+     "height_m": 2.4,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "seen"
+    },
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "seen"
+    },
+    "roof": {
+     "form": "hipped",
+     "ridge_parallel_to_street": true,
+     "evidence": "seen"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 0.8,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "confidence": 0.62,
+    "notes": "Storey count is reconstructed, not sighted: set B is cut off above the second floor (dashed outline) and set A's facade has a mesh seam that duplicates one window band. Ground+3 is the only reading that closes with the measured 17.4 m ridge \u2014 4.3 + 3x3.3 = 14.2 m eaves, leaving a 3.2 m rise over the 6.7 m depth (~44 deg hip, normal for a Ghent pantile roof). Five storeys would force ~23 deg, which set A contradicts. Heights therefore inferred.\n\nWindow metrics: subdivision (two lights plus transom), shallow reveal behind the render face, and the tall ~1:1.9 proportion are directly seen in B at good resolution; the values in metres are scaled off the assumed storey height, so treat the proportion as measured and the absolute size as +/- 15%.\n\nLedges: sills seen in B under every upper window (stone, projection is marginal at ~8-10 cm \u2014 model as explicit geometry but do not exaggerate). String course = the projecting ledge running the length of the facade at shopfront head height, seen in B with the service conduit riding on it; this is the strongest horizontal wedge on the wall and matters for street-level field. Cornice is from set A only (white projecting eaves band under the pantiles) \u2014 set A is weak wall evidence but this is a roofline feature it can resolve. No balconies anywhere on either frontage.\n\nMaterial: render hides the substrate, so brick is the period/place prior, not an observation. What is seen is smooth painted stucco, patched and hairline-cracked, with visible panel joints in the bluestone plinth \u2014 hence 0.8 mm RMS. Keep the 1-10 cm regime (patching, joints, plinth panel lines) as a scattering coefficient; meshing it would produce specular garbage at 1.07 cm wavelength. Trim is Belgian bluestone (arduin) at the piers, plinth, corner quoin pier and sills; 'marble' is the nearest dielectric in the available set, denser than the wall.\n\nCorner condition: two street frontages, so the shopfront and the dark plinth return around the Hooiaard corner on a full-height bluestone quoin pier. Give that corner extra silhouette budget \u2014 it is the edge most cameras and most rays will see.\n\nClutter: fronting street is pedestrian with car_access=none. No parked or moving vehicles on this frontage under any circumstances. What set B actually shows and what should be placed instead: caf\u00e9 terrace with a large parasol, timber planter troughs on the shopfront shelf, two A-boards on the paving, bicycles leaning at the kerb, a tarped stack, plus wall-mounted CCTV domes, security floodlights, an H100 hydrant plate and the HOOIAARD enamel street plate on the corner pier. The floodlights and cameras are ~20-30 cm bodies on brackets standing off the wall \u2014 above the 10 cm threshold and directly in the ground-floor beam path, so they are worth explicit geometry."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007959,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "addr:street": "Kortemunt"
+    },
+    "frontage_width_m": 11.8,
+    "footprint_m": [
+     11.8,
+     6.7
+    ],
+    "footprint_area_m2": 74,
+    "height_m": 17.4,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 3,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Korenmarkt",
+     "surface": "paving_stones",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "oblique",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.351,
+     "x1": 0.699,
+     "y0": 0.461,
+     "y1": 0.874
+    }
+   },
+   "plate": "renders/plates/graslei/494007959.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007959_0.jpg"
+   ],
+   "view": "oblique",
+   "cost_usd": 0.955625,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007977,
+   "status": "ok",
+   "reading": {
+    "identification": "A 16th\u201317th-century Flemish brick-and-stone quay house on the Korenlei in Ghent, heritage-listed, four storeys on a narrow 9.1 m gable-fronted plot with stone cross-mullioned windows and a scroll-consoled gable, in mixed residential/hospitality use on the pedestrianised Leie waterfront.",
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 3.8,
+     "upper_height_m": 3.2,
+     "evidence": "seen"
+    },
+    "bays": {
+     "count": 3,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.45,
+     "height_m": 2.3,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    },
+    "ground_floor": {
+     "kind": "residential_door",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "bell_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "inferred"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": false,
+     "string_courses": true,
+     "balconies": true,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 7,
+     "trim": "marble",
+     "evidence": "seen"
+    },
+    "confidence": 0.68,
+    "notes": "Read almost entirely from set B photo 0, which is the target's own quay elevation at close range and steep oblique; photo 1's box is loose and brackets the stuccoed classicist neighbour and the KorenleiTwee terrace as well, so I took no material or ground-floor evidence from it. Plate A is unusable for this building \u2014 the tile mesh shreds the gable into spikes and the facade into a purple smear.\n\nSTOREYS/BAYS: four window rows countable above the quay plus the gable stage. 3.8 + 3x3.2 = 13.4 m to the eaves, leaving ~3.3 m of gable/attic to reach the measured 16.7 m \u2014 consistent. Three window axes at roughly 3 m centres across the 9.1 m frontage; the extreme obliquity means a fourth axis cannot be ruled out, but three is what the photo supports. Note the 9.1 x 5.3 m footprint is the front range only; the real plot runs much deeper behind, so do not read the 5.3 m as building depth for the roof solid.\n\nWINDOWS: stone kruisvensters \u2014 central mullion, transom in the upper third, leaded small-pane glazing in the upper lights, red-painted timber frames below. Glazing bars are directly resolved. Reveal read as deep: the stone surrounds sit in a ~0.4 m brick wall and throw real shadow on the jambs at this grazing angle.\n\nGEOMETRY vs MATERIAL (28 GHz): put as explicit facets \u2014 the stone window surrounds and their reveals, the continuous stone sill and lintel courses that band the brick horizontally across the whole frontage, the brick segmental relieving arches above the openings (clearly proud of the wall plane), the two wrought-iron balconettes (one at the gable window, one at second floor), and the gable's volute scroll consoles. All exceed 10 cm relief and are what will scatter off-specular into the quay canyon. Keep as roughness only \u2014 the hand-moulded brick bond and its deeply eroded recessed joints; 7 mm RMS is high for brick stock and is justified here by visible weathering and washed-out mortar. Do not mesh it.\n\nTRIM: 'marble' is standing in for Belgian bluestone / Balegem sandstone dressings, chosen as the closest dense-limestone dielectric in the enumeration; if the generator has a limestone entry, prefer it. Timber frames are a sub-facet detail, not the trim class.\n\nROOF: inferred, and flagged as such. The box runs off the top of frame 0, so the gable profile is cut. What I can see is a pair of large stone volute scrolls flanking a narrow upper stage with a balconied window, and a slate plane receding away from the water \u2014 that reads as a bell/neck gable, ridge perpendicular to the quay, and rules out crow-steps (a stepped silhouette would be unmistakable). If the generator supports a neck gable (halsgevel) distinct from a bell gable, that is the better fit. Roof covering is slate, not tile.\n\nGROUND FLOOR: inferred. The lowest window row is the same cross-window type as above, with no shopfront, fascia or display glazing on this elevation; the brick arch at the very bottom of frame 0 is the quay retaining wall below street level, not the building. Residential door is the defensible instance for a heritage house here, but hospitality use is common on this row and cafe_glazing would be the alternative if a plot-level POI says so.\n\nCLUTTER: fronting_street is pedestrian, sett, car_access none. No parked or moving vehicles on this frontage at any distance \u2014 this is exactly the case where a generic parked-car rule would fill the Korenlei with a hundred illegal vehicles. Correct dressing is terrace tables and chairs, parasols, bollards and chain rails along the quay edge, bins, leaning bicycles, planters and A-boards, plus pedestrians. Photo 1 confirms all of these on the quay. The sett paving is itself a >1 cm relief surface but well under 10 cm \u2014 treat as ground roughness, not geometry."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007977,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "heritage": "4",
+     "addr:street": "Korenlei"
+    },
+    "frontage_width_m": 9.1,
+    "footprint_m": [
+     9.1,
+     5.3
+    ],
+    "footprint_area_m2": 36,
+    "height_m": 16.7,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Korenlei",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.361,
+     "x1": 0.627,
+     "y0": 0.109,
+     "y1": 0.819
+    }
+   },
+   "plate": "renders/plates/graslei/494007977.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007977_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007977_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.5444680000000001,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007983,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 4,
+     "evidence": "inferred"
+    },
+    "confidence": 0.62,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "seen"
+    },
+    "identification": "A heritage-listed 17th-century Flemish traditional-style brick-and-sandstone corner house at Hooiaard / Schuddeveestraatje in Ghent's old harbour quarter, red-painted brick with cream sandstone quoins and window surrounds over a bluestone plinth, now in restaurant use with a glazed, awninged ground floor and pavement terrace.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 6,
+     "trim": "marble",
+     "evidence": "seen"
+    },
+    "notes": "EVIDENCE SPLIT. Seen in set B: painted brick wall with spalled paint over irregular handmade brick; cream-painted sandstone toothed quoins at the corner and around openings; bluestone plinth ~0.8 m; projecting stone sills; tall multi-light windows with iron bars (diefijzers) and clearly recessed glazing planes; caf\u00e9 glazing under a retractable awning, chalkboard, festoon lights, bistro terrace. Seen in set A (only roof view, photogrammetry heavily smeared): one pitched plane, ridge along the long axis of the block, eaves line legible, no dormer resolvable.\n\nSTOREYS marked inferred: the magenta outline in set B runs off the top of the frame, so the building continues above the photo. Two upper storeys plus the shopfront are directly visible; count=3 with 3.5 m ground and 3.1 m upper reconciles that against the 13.6 m adopted height, leaving ~3.9 m of roof over a 4.8 m depth (~58 deg pitch, steep but normal for this quarter). If the generator prefers a shallower roof, 4 storeys at ~2.85 m is the alternative reading; I did not see enough to choose.\n\nBAYS marked inferred: the corner is ambiguous as to which face carries the 13.9 m frontage. I count four large openings on the long face; 13.9/4 = ~3.5 m bay pitch, which fits either reading of the corner.\n\nLEDGES marked inferred as a group because the cornice is not seen \u2014 the wall is cut off in set B and set A resolves only a bright eaves band. Sills, the horizontal stone band above the shopfront, and the absence of balconies are directly seen; a modest corbelled brick eaves is the prior for this type.\n\nPHYSICS. The sandstone toothing that makes this facade legible projects only 2-4 cm and the brick relief 3-8 mm. Both sit in the 1-10 cm regime: do NOT mesh the toothing, the speklagen or the joints. They are carried by roughness_mm = 6 (plain historic brick ~4 mm, raised for the localised 2-4 cm stone toothing). Only the window reveals, the projecting sills, the plinth nosing and the eaves exceed 10 cm and deserve explicit geometry. trim = marble is the closest dielectric proxy in the enum for Belgian bluestone (dense limestone, eps ~7) and the Balegem sandstone dressings; concrete would under-state permittivity for the plinth, which is the trim element the beam actually sees at street level.\n\nCLUTTER. fronting_street has car_access=none on sett-paved living_street. No parked vehicles on Schuddeveestraatje. Correct clutter for this frontage: bistro chairs and tables with cushions, zinc planters with rosemary/laurel, two utility cabinets against the plinth, wall-mounted stainless extract ducting on the alley side, wheelie bins, refuse sacks, and bicycles.\n\nDETAIL BUDGET. The building is 0.9 m from the corridor, so it earns full treatment on openings and the ground floor; the roof is the weakest-evidence element and should not be over-articulated.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "seen"
+    },
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 3.5,
+     "upper_height_m": 3.1,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.3,
+     "height_m": 2.2,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007983,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes",
+     "heritage": "4",
+     "historic": "house",
+     "addr:street": "Hooiaard"
+    },
+    "frontage_width_m": 13.9,
+    "footprint_m": [
+     14.6,
+     4.8
+    ],
+    "footprint_area_m2": 64,
+    "height_m": 13.6,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "living_street",
+     "name": "Schuddeveestraatje",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.9
+    },
+    "plate_view": "oblique",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.239,
+     "x1": 0.762,
+     "y0": 0.443,
+     "y1": 0.845
+    }
+   },
+   "plate": "renders/plates/graslei/494007983.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007983_0.jpg"
+   ],
+   "view": "oblique",
+   "cost_usd": 0.5962755,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007984,
+   "status": "ok",
+   "reading": {
+    "identification": "Early-18th-century (1714) Ghent narrow-plot burgher/merchant house on the Hooiaard wharf by the Leie, listed heritage, presenting a 6.4 m three-bay gable front to the Schuddeveestraatje alley over a deep 18 m plot, with a commercial ground floor under four upper storeys and an attic in the street gable.",
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 3.8,
+     "upper_height_m": 3,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 3,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.1,
+     "height_m": 2.1,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    },
+    "ground_floor": {
+     "kind": "shopfront",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "bell_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "inferred"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 1.5,
+     "trim": "concrete",
+     "evidence": "inferred"
+    },
+    "confidence": 0.55,
+    "notes": "Plate is heavily degraded for this target: clipped at frame top (no roof visible) and the lower ~55% is occluded by a smeared foreground mass (bridge parapet / quay blob). Only ~2.5 window rows of upper facade are legible. Bay count (3 columns) is the sole field the imagery genuinely supports.\n\nHeight budget drives the storey call: 3.8 + 3x3.0 = 12.8 m eaves, leaving ~4.1 m of gable to reach the measured 16.9 m \u2014 the signature of a gable-front house, not a cornice building. Five storeys would leave only ~1.5 m above the top floor and is rejected on that basis. Measured window pitch in-plate (~135 px, naive scale ~3.0 m) is consistent.\n\nSoftest field is roof form. 1714 is Ghent's late-Baroque window, so klokgevel (bell_gable) is the prior; spout_gable (tuitgevel) is the plausible alternative and a defensible swap. Stepped gable is explicitly rejected as 16th-century vocabulary \u2014 two centuries early for this start_date, and it is the generic-Flemish template worth resisting here.\n\nWall is painted render over brick: roughness 1.5 mm sits in the 1-10 cm scattering regime, not geometry \u2014 do not mesh bond or joints. Neighbouring facades in-plate read pinker/redder (exposed brick); this target reads paler grey-lilac, hence render, though at 25 cm/texel that is a weak cue and the field stays inferred. Trim = concrete as the ITU proxy for sandstone dressings (sills, waterlijsten, gable coping).\n\nLedges are all >10 cm and belong as explicit geometry: sandstone sills ~15-20 cm proud, moulded floor-level band courses, cornice under the gable. Balconies false \u2014 no projecting elements on the target in-plate, and an alley this narrow would not carry them.\n\nCLUTTER CONSTRAINT, read before populating the street: fronting_street car_access = none, surface sett, living_street, 1.0 m offset. Place zero vehicles on Schuddeveestraatje. The alley is also too narrow for a cafe terrace, which is why ground_floor is shopfront rather than cafe_glazing \u2014 a glazed ground plane with a recessed entrance, no terrace furniture. Bikes and bins against the wall are appropriate; parked cars are not.\n\nDetail budget: the building sits 1.0 m off the corridor, so it earns full resolution on openings, sills and the ground-floor glazing. Spend it on the gable silhouette and the window reveals, which is where the off-specular return at 28 GHz is decided."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007984,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes",
+     "start_date": "1714",
+     "heritage": "4",
+     "historic": "house",
+     "addr:street": "Hooiaard"
+    },
+    "frontage_width_m": 6.4,
+    "footprint_m": [
+     18.1,
+     7.5
+    ],
+    "footprint_area_m2": 122,
+    "height_m": 16.9,
+    "height_source": "adopted-photo",
+    "street_frontages": 1,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "living_street",
+     "name": "Schuddeveestraatje",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 1.0
+    },
+    "plate_view": "street",
+    "target_box_normalised": {
+     "x0": 0.331,
+     "x1": 0.669,
+     "y0": 0.0,
+     "y1": 0.979
+    }
+   },
+   "plate": "renders/plates/graslei/494007984.png",
+   "photos": [],
+   "view": "street",
+   "cost_usd": 0.31289500000000003,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007986,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 5,
+     "evidence": "inferred"
+    },
+    "confidence": 0.55,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "seen"
+    },
+    "identification": "A 19th-century heritage-listed corner house on Hooiaard at the mouth of Schuddeveestraatje in Ghent's old port quarter, built or re-fronted in the neo-traditional Flemish manner: red-painted brick with white-painted stone toothed quoins and cross-mullioned windows over a bluestone plinth, four storeys, with a cafe occupying the ground floor and a terrace under a retractable awning.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": false,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 4,
+     "trim": "marble",
+     "evidence": "seen"
+    },
+    "notes": "Evidence weighting: B_0 is close-range (~1 m) and carries essentially all the reliable detail \u2014 wall material, quoining, window subdivision, sills, plinth, ground-floor use. Plate A is tile-mesh smear at this range and supports massing only. B_1's magenta box straddles two unrelated facades (a white bay-windowed one and a green-painted one) at long range through a fisheye and matches neither the brick nor the quoins in B_0; I treated it as low-information rather than as contradicting B_0, which is the main reason confidence is 0.55 rather than 0.75.\n\nFrontage orientation is the load-bearing uncertainty. footprint 15.4 x 5.2 with frontage_width 14.6 is ambiguous about which side faces which street. The 2D box in B_0 compresses the receding wall to a narrow x-range, which reads as the 5.2 m end facing Schuddeveestraatje and the 14.6 m frontage running away along Hooiaard; addr:street=Hooiaard agrees. Bay count is therefore set for the Hooiaard face and marked inferred. If the generator instead places 14.6 m along the alley, re-derive bays at ~2.9 m spacing and expect barred windows over the plinth there rather than glazing.\n\nStorey stack is a reconciliation, not an observation: 15.4 m to ridge, less ~2.6 m for a 45-degree roof over a 5.2 m span, leaves ~12.8 m of wall, i.e. 3.8 + 3 x 3.0. B_0 is cut off at the top of frame so the full stack was never visible.\n\nGeometry vs roughness. Explicit facets (>10 cm regime): the toothed quoin strips up the corner and returning around every opening, the projecting stone window surrounds and sills, the bluestone plinth offset, the awning box. These are the scattering features that matter for a wall standing 1.2 m off the corridor, and they are exactly what a plain extruded footprint would lose. NOT geometry (1-10 cm regime): brick relief, mortar joints, the patches where red paint has spalled to bare brick \u2014 these are the 4 mm RMS number. The wrought-iron window bars (~2 cm rod at ~10 cm pitch) sit on the boundary and are better omitted than meshed coarsely.\n\nTrim is set to marble as the dielectric proxy for the bluestone plinth and the painted limestone/sandstone surrounds; there is no dense-limestone entry in the enum. Wall roughness is raised slightly above smooth-render values because repeated overpainting has partly filled joints while paint loss has opened others.\n\nClutter, calibrated to this street and not to Europe generally: car_access is none on a sett-surfaced living_street, so place no vehicles on Schuddeveestraatje. Correct clutter, all of it visible in B_0: cafe terrace tables, stacked rattan chairs and cushions plus lead-grey planters at the Hooiaard end under the awning; two grey utility cabinets and a ground-level planter against the alley wall; wall-mounted galvanised vent ducting and downpipes; wheelie bins and a leaning bicycle further down the alley; overhead cabling across the alley.\n\nDetail budget: spend it on the corner pier and the first two bays either side of it, the ground floor, and the alley elevation. The rear long wall and anything above the eaves deserve much less.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 3.8,
+     "upper_height_m": 3,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.5,
+     "height_m": 2.4,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "seen"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007986,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes",
+     "start_date": "C19",
+     "heritage": "4",
+     "historic": "house",
+     "addr:street": "Hooiaard"
+    },
+    "frontage_width_m": 14.6,
+    "footprint_m": [
+     15.4,
+     5.2
+    ],
+    "footprint_area_m2": 77,
+    "height_m": 15.4,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "living_street",
+     "name": "Schuddeveestraatje",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 1.2
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.312,
+     "x1": 0.667,
+     "y0": 0.195,
+     "y1": 0.749
+    }
+   },
+   "plate": "renders/plates/graslei/494007986.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007986_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007986_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.692419,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007989,
+   "status": "ok",
+   "reading": {
+    "identification": "A late-16th/17th-century Ghent patrician canal house on the Korenlei quay in traditional Flemish brick-and-sandstone style, four storeys of hand-made brick with sandstone cross-windows under a steep slate roof crowned by a scrolled bell-profiled gable, heritage-listed and in hospitality use at quay level.",
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 3.8,
+     "upper_height_m": 3.3,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 3,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.5,
+     "height_m": 2.6,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    },
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "bell_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "seen"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": true,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 6,
+     "trim": "concrete",
+     "evidence": "seen"
+    },
+    "confidence": 0.7,
+    "notes": "Wall, windows and ledges read from set B photo 1, where the outline is tight on a brick facade seen obliquely from the quay (Groot Vleeshuis and Gravensteen behind confirm the camera looks north along Korenlei). Clearly resolved there: sandstone kruiskozijnen (mullion + transom, four lights), leaded small-pane upper lights, red-painted timber frames, deep chamfered stone reveals, continuous sandstone sill bands running across the wall as string courses, segmental brick relieving arches, red-painted timber eaves cornice, a wrought-iron balconet at the gable window plus a second dark balustrade one floor down, and stone volute scrolls flanking the crowning gable.\n\nSet B photo 0 conflicts: its box lands on a white-rendered Baroque facade with a rococo corner niche, black awning and restaurant terrace, materially incompatible with the brick of photo 1. Either it is the parcel's second frontage (street_frontages: 2) or the projection slipped onto a neighbour. I used it only as weak support for hospitality use at ground level, hence ground_floor is marked inferred, not seen. The target's own quay-level storey is below the frame bottom in photo 1.\n\nStoreys: three window rows are directly visible and the ground floor is cut off; count 4 is the reconciliation of those rows with the 17.1 m height datum (3.8 + 3x3.3 = 13.7 m to eaves, leaving ~3.4 m of gable). Per-storey heights are priors, so the whole block is inferred.\n\nSet A is badly degraded photogrammetry but supports two things: the roof is dark slate rather than the red pantile of the eastern neighbours, and a raised vertical element faces the quay. Gable form (bell_gable, standing for a Flemish scrolled neck/klokgevel, which the enum has no exact term for) and the ridge-perpendicular-to-street orientation come from photo 1, where the slate-clad ogee raking edge and its stone volutes are visible against the sky.\n\nMaterial mapping: the dressings are Balegem sandstone. Emitted as concrete (ITU eps_r ~5.24) rather than marble (7.07) because the concrete dielectric is the closer proxy for sandstone; the label reads wrong, the physics reads right. Roughness 6 mm covers hand-made brick with eroded and raked lime joints, weathering streaks and the flat brick relieving arches - all of which sit in the 1-10 cm band and must stay a roughness number, not geometry.\n\nDetail budget: put the explicit geometry on the deep window reveals, the projecting sill and cordon bands, the two balconets, the eaves cornice and the gable volutes. All are above 10 cm and all sit on the silhouette or around the openings.\n\nStreet context, do not violate: fronting_street is pedestrian with car_access none on sett paving, so no parked or moving vehicles anywhere on this frontage. The clutter that belongs is terrace tables and chairs, planters, umbrellas, A-boards, bollards, hanging restaurant banners (KorenleiTwee signage is visible on this stretch), quay railings, moored tour boats and a quay-wall segmental arch at water level."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007989,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes",
+     "heritage": "4",
+     "addr:street": "Korenlei"
+    },
+    "frontage_width_m": 7.1,
+    "footprint_m": [
+     14.5,
+     16.8
+    ],
+    "footprint_area_m2": 161,
+    "height_m": 17.1,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 6,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Korenlei",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "oblique",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.207,
+     "x1": 0.445,
+     "y0": 0.472,
+     "y1": 0.92
+    }
+   },
+   "plate": "renders/plates/graslei/494007989.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007989_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007989_1.jpg"
+   ],
+   "view": "oblique",
+   "cost_usd": 1.528408,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007995,
+   "status": "ok",
+   "reading": {
+    "identification": "Mid-18th-century (Louis XV/rococo) Ghent canal-front townhouse on Korenlei: a narrow three-bay dressed-sandstone burgher house with carved rocaille window surrounds, balustraded aprons and a slate mansard with a curved bell-dormer, heritage-listed, now retail/restaurant at ground level with dwellings above.",
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 4.2,
+     "upper_height_m": 3.5,
+     "evidence": "seen"
+    },
+    "bays": {
+     "count": 3,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.2,
+     "height_m": 2.4,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    },
+    "ground_floor": {
+     "kind": "shopfront",
+     "evidence": "seen"
+    },
+    "roof": {
+     "form": "mansard",
+     "ridge_parallel_to_street": true,
+     "evidence": "seen"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": true,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "marble",
+     "roughness_mm": 2.5,
+     "trim": "wood",
+     "evidence": "seen"
+    },
+    "confidence": 0.78,
+    "notes": "GEOMETRY BUDGET (>10 cm, worth meshing): (1) the mansard \u2014 a two-slope roof with the lower slope at ~70 deg, terminated by a projecting moulded eaves cornice ~0.35 m deep; (2) three street dormers on that lower slope, the central one a voluted bell-dormer with a round-arched head and scrolled flanks, the two flankers smaller with segmental heads (plate A resolves all three; sv1 shows the centre one in detail); (3) window reveals ~0.22 m within moulded architraves; (4) continuous stone sills and inter-storey string/panel bands; (5) balustraded aprons under the first-floor windows \u2014 short runs of turned stone balusters projecting ~0.15 m, clearly resolved in street photo _0; (6) the ground-floor awnings, which are large fabric planes cantilevered ~1.8 m over the quay and are strong specular blockers at 28 GHz \u2014 model them, they matter more than any brick relief.\n\nNOT GEOMETRY (1-10 cm): ashlar joints, the carved rocaille cartouches and keystones, tooling on the stone. These go into roughness_mm = 2.5 and a scattering coefficient. Meshing the carving would produce specular garbage.\n\nMATERIAL CAVEAT: the wall is natural calcareous sandstone ashlar (Lede/Balegem), not brick and not render \u2014 street photo _0 resolves individual block joints and monolithic carved elements. The enum has no stone class, so `marble` is used as the dielectric proxy (eps_r ~7, right for limestone/sandstone; `concrete` at 5.2 would be too low). Visually it must read as warm weathered cream-grey ashlar with soiling streaks, NOT polished marble. roughness_mm = 2.5 is an inferred derived value for fine-tooled ashlar with thin recessed lime joints; no image resolves RMS height. Everything else in the material block (wall identity, dark-painted timber joinery) is photographed.\n\nSTREET CONTEXT \u2014 read the data, do not apply the parked-car prior: fronting_street is Korenlei, highway=pedestrian, car_access=none, surface=sett. ZERO vehicles. Populate instead with what both street photos actually show against this frontage: caf\u00e9 terrace furniture (rattan chairs with sheepskin throws, small tables), large black square parasols on heavy bases, stainless bollard-and-rope terrace edging, patio heaters, A-board menu signs, a large planted tub, parked bicycles in clusters, and pedestrians. Paving is granite sett, wet-toned.\n\nCORNER CONDITION: street_frontages = 2 and attached_neighbours = 2 \u2014 this is a corner unit on a narrow footprint (10.2 x 8.3 m). Apply the same bay rhythm, sill/cornice grammar and ashlar to the return elevation; street photo _0 shows the return carrying a glazed shopfront with stallriser and transom under its own awning. The party walls to left and right are blind.\n\nDETAIL GRADIENT: the building sits 3.5 m from the pedestrian corridor, so it earns full budget on the ground floor, the openings and the silhouette (cornice, dormers, gable scrolls). The rear and roof planes away from the quay can drop to plain planes.\n\nWEAK EVIDENCE FLAGS: window width/height are scaled from the 7.3 m frontage divided across 3 bays, cross-checked against the pane grid in photo _0 \u2014 good to about +/-0.15 m. The mansard is confirmed by plate A massing and the slate slope in sv1, but its rear pitch and any rear dormers are unobserved. Ground-floor storey height is inferred from the awning line and shopfront proportions since the base is partly occluded in every view."
+   },
+   "flags": [
+    "roof form marked `seen`, but no view here looks down on it"
+   ],
+   "facts": {
+    "osm_id": 494007995,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "heritage": "4",
+     "addr:street": "Korenlei"
+    },
+    "frontage_width_m": 7.3,
+    "footprint_m": [
+     10.2,
+     8.3
+    ],
+    "footprint_area_m2": 79,
+    "height_m": 13.9,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Korenlei",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 3.5
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.364,
+     "x1": 0.636,
+     "y0": 0.138,
+     "y1": 0.809
+    }
+   },
+   "plate": "renders/plates/graslei/494007995.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007995_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007995_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 1.022592,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494007999,
+   "status": "ok",
+   "reading": {
+    "identification": "A narrow single-unit slice of a 16th\u201317th century brick-and-sandstone merchant quay house on Korenlei, Ghent, three storeys plus attic over a river-level cellar, 5.4 m frontage carrying 15.1 m of height, now in mixed residential/horeca use on a protected canal-front row.",
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 4,
+     "upper_height_m": 3.2,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 2,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.4,
+     "height_m": 2.3,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    },
+    "ground_floor": {
+     "kind": "residential_door",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": false,
+     "evidence": "inferred"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 6,
+     "trim": "concrete",
+     "evidence": "seen"
+    },
+    "confidence": 0.68,
+    "notes": "EVIDENCE BASE. Both street photos (set B) are shot from the water, i.e. they show the REAR/canal elevation, not the Korenlei front. Set A is photogrammetry that has melted into unusable shards precisely inside the target box \u2014 I read nothing from it and recommend no one else does either.\n\nSTOREYS \u2014 marked inferred, but split: the COUNT of 3 is seen (three window rows above quay level in both photos). The metre values are inferred, apportioned against the measured 15.1 m: 4.0 + 3.2 + 3.2 = 10.4 m, leaving ~4.7 m of gable/roof, which is consistent with the steep pitch this typology carries. Because two of the three numbers in this group are inferred, the group is marked inferred rather than promote a guess into the measured layer.\n\nCELLAR STOREY \u2014 important and not captured by the schema. Photo 1 shows the masonry continuing BELOW the Korenlei pavement datum down to the waterline, with a small punched opening at cellar level and then a plain quay wall to the water. The count of 3 excludes this, per \"storeys above ground.\" For the ray tracer, do not terminate the facade at the street datum on the canal side: there is roughly 3-4 m of additional wetted quay wall acting as a large, near-flat reflector, and a grazing-incidence water surface below that. On this corridor that geometry likely matters more than anything on the upper facade.\n\nBAYS \u2014 inferred, not seen. Both views are oblique or partial; photo 0 shows what may be two windows per floor but plausibly straddles two different wall planes (front bay vs recessed section), and photo 1's box covers a strip narrower than the full frontage showing one window per floor. 2 is the prior for 5.4 m: 2 x 1.4 m openings with stone piers between and at the jambs. Treat as a candidate, not a measurement.\n\nROOF \u2014 inferred, low confidence, and the weakest field here. Gabled with ridge perpendicular to the quay is the canonical Graslei/Korenlei form for a deep narrow plot (6.3 x 3.7 m), and I am applying it as a prior. The raking brick gable end with hoist opening visible in photo 1 belongs to the NEIGHBOUR, not the target, so it is corroboration of the row typology only. Note also that the enum conflates structure with dressing: the roof is structurally a perpendicular gable, but the quay-front gable is very likely dressed as a stepped (trapgevel), spout (tuitgevel) or voluted neck gable (halsgevel) \u2014 a voluted example with stone scrolls is clearly visible on the adjacent house in photo 0. If the generator supports gable dressing as a separate knob, set it; stepped and bell are both defensible instances for this row. A flat top would be badly wrong and is the classic \"visible primitive\" failure.\n\nGROUND FLOOR \u2014 inferred, zero direct evidence. Chose residential_door over cafe_glazing deliberately despite the restaurant context. This is a protected facade; its ground floor is masonry with punched stone-framed openings (tall stone-framed door plus stone-framed windows), NOT a modern glazed shopfront. The radio consequence is the point: punched masonry scatters, a continuous glass plane specularly reflects. If ground-truth later shows horeca occupancy behind, that does not change the opening geometry.\n\nMATERIAL / PHYSICS REGIME SPLIT.\n- >10 cm, give these explicit geometry: window reveals (~0.20-0.25 m, stone cross-window frames with the leaded lights set back behind the mullion and transom); projecting stone sills; the continuous stone string courses running the full frontage at sill and lintel level; the eaves cornice with its timber fascia; brick relieving arches over openings. On a frontage only 5.4 m wide the string courses are the dominant off-specular feature \u2014 they are horizontal, continuous and unbroken across the whole facade, so they will drive street-level and over-water field far more than the window count does.\n- 1-10 cm, roughness ONLY, do not mesh: the brickwork. Hand-made irregular Flemish brick, weathered, with deeply eroded lime mortar joints and noticeable coursing unevenness. 6 mm RMS. Suggest a scattering coefficient around S = 0.3-0.4, at the high end for masonry, because this is genuinely eroded rather than sharp modern brick. Meshing this relief would produce specular garbage, not extra realism.\n- <1 cm, material only: brick permittivity for the wall field. Trim is set to concrete as a DIELECTRIC PROXY for Balegem sandstone (ITU concrete eps' ~5.24 sits close to calcareous sandstone; marble at ~7.07 is too high and would also render as polished white, which is visually wrong). The trim is pale grey-buff dressed stone, not concrete, in appearance. Window frames are dark-stained and red-painted timber, a secondary trim not representable in a single enum slot.\n\nBALCONIES \u2014 false for this unit. Photo 0 does show two small wrought-iron balconies and photo 1 shows a metal terrace platform, but all of them fall on adjacent units outside the target box. Do not let the neighbour's ironwork bleed onto this frontage.\n\nGLAZING \u2014 glazing_bars true is firmly seen: leaded small-pane glazing is resolved in photo 0. Note these are true divided lights, so the glazed area is subdivided at roughly 20-30 cm pitch. That is right at the boundary of the geometry regime; treat the bars as material/roughness on the glass panel rather than as modelled mullions, but DO model the stone mullion and transom themselves, which are ~15-20 cm and structural.\n\nCLUTTER \u2014 the fronting street is pedestrian, sett-surfaced, car_access none. Place NO vehicles on Korenlei. This is exactly the failure mode that filled a medieval square with parked cars. What the photos actually show and what belongs here: caf\u00e9 terrace furniture and white parasols, planters and small trees, hanging vertical banners on brackets projecting from the facade, string lighting, wheelie bins, moored boats and a floating pontoon against the quay wall, and heavy metal downpipes running the full height of the facade (clearly visible and worth including \u2014 a vertical metal cylinder against masonry is a real scatterer). Detail budget should concentrate on the water-facing elevation and the quay wall, since that is what the corridor illuminates; the Korenlei front is unobserved and should get the typology default, not invented specificity."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494007999,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "yes"
+    },
+    "frontage_width_m": 5.4,
+    "footprint_m": [
+     6.3,
+     3.7
+    ],
+    "footprint_area_m2": 20,
+    "height_m": 15.1,
+    "height_source": "adopted-photo",
+    "street_frontages": 1,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Korenlei",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 7.7
+    },
+    "plate_view": "oblique",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.394,
+     "x1": 0.578,
+     "y0": 0.432,
+     "y1": 0.836
+    }
+   },
+   "plate": "renders/plates/graslei/494007999.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007999_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007999_1.jpg"
+   ],
+   "view": "oblique",
+   "cost_usd": 0.589426,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494008001,
+   "status": "ok",
+   "reading": {
+    "identification": "A tiny modern timber service structure \u2014 OSM building=roof, 4.4 \u00d7 1.9 m, 8 m\u00b2 \u2014 an open-sided lean-to canopy and enclosure standing on the gravel Vleeshuistragel towpath against the river flank of Ghent's 15th-century Groot Vleeshuis, its path-side face closed by a white-painted pointed-top timber palisade with dark-stained timber posts behind.",
+    "storeys": {
+     "count": 1,
+     "ground_height_m": 4,
+     "upper_height_m": 2.6,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 1,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 0.6,
+     "height_m": 0.9,
+     "reveal_class": "flush",
+     "glazing_bars": false,
+     "evidence": "inferred"
+    },
+    "ground_floor": {
+     "kind": "blank",
+     "evidence": "seen"
+    },
+    "roof": {
+     "form": "shed",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "ledges": {
+     "sills": false,
+     "cornice": true,
+     "string_courses": false,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "wood",
+     "roughness_mm": 2.5,
+     "trim": "wood",
+     "evidence": "seen"
+    },
+    "confidence": 0.42,
+    "notes": "WHAT THIS IS NOT: do not apply a Ghent canal-house grammar here. The magenta box in set A lands on the Groot Vleeshuis flank (tall two-light arch-headed openings in brick/sandstone) purely because Google tiles contain no geometry for an 8 m\u00b2 canopy \u2014 that wall is the NEIGHBOUR, behind the target. Set A's left third is this same white palisade, photogrammetrically melted into a spiky crest; that is the only part of A that touches the target at all. Read nothing about storeys, fenestration or material off A.\n\nHEIGHT: height_source is \"no-data\", so 9.0 m is a fallback, not a measurement, and I am not treating it as macro truth. The visible fabric is a ~2.8\u20133.0 m palisade with dark timber rising a little above it; total mass reads ~4 m to the eaves. I have set one storey at 4.0 m. If the pipeline is hard-bound to 9.0 m, the surplus belongs to the Vleeshuis wall this thing leans on, not to this prism \u2014 a 9 m tall 4.4 \u00d7 1.9 m timber slab on a towpath would be a visible-primitive failure from any rotated camera.\n\nBAYS / OPENINGS: bays=1 is a formality \u2014 the towpath face is continuous boarding with no window column anywhere across the 4.1 m frontage, seen at 1\u20133 m in B. Preferred generation is ZERO openings. The window block is a floor value only; if the grammar insists on punching one, make it a flush unglazed gap in the boarding, never a framed sash.\n\nCORNICE, read correctly: true here means a timber eaves fascia with roughly 0.2\u20130.3 m of overhang shading the path \u2014 the serrated dark-brown edge above the palisade top-right in B. It is emphatically NOT a moulded masonry cornice. That overhang is the single most valuable >10 cm feature on this object: it is the wedge that produces the near-field diffraction at 3.1 m from the path centreline. Model the fascia and the eaves line as geometry; model the roof pitch falling from the Vleeshuis party wall toward the water.\n\nPALISADE \u2014 the physics point that matters most: the boards are separated by open gaps of roughly 15\u201320 mm, i.e. 1.5\u20132 \u03bb at 28 GHz. This screen is partially TRANSMISSIVE, not a solid wall. Treating the towpath face as a closed dielectric slab will overstate blockage and kill the field that actually leaks through onto the path. If the generator supports it, model the palisade as a slatted plane with real gaps (board pitch ~120 mm, board width ~100 mm, thickness ~22 mm) rather than as a filled facade; if it cannot, at minimum apply a transmission/porosity term of order 0.15.\n\nMATERIAL: painted sawn softwood, near-white and chalky with grey weathering streaks and rust-stained nail holes. 2.5 mm RMS covers the board cupping and the chamfered arrises \u2014 the board-to-board steps and the gaps are handled as the slat geometry above, not folded into roughness twice. Trim (posts, rails, the return screen) is dark-stained near-black timber, distinctly lower albedo than the palisade; that contrast is the main visual read from the path and should not be flattened to one wood shader.\n\nCLUTTER: fronting_street is a gravel path with car_access=none. Place no vehicles, no parking, no kerb. Correct ground clutter for a Ghent towpath is gravel with weed tufts at the fence line (both visible in B), the steel pipe railing on the water side, and possibly a moored boat. Ground material under and around this structure is loose gravel, not paving."
+   },
+   "flags": [
+    "storeys fill only 44% of the envelope"
+   ],
+   "facts": {
+    "osm_id": 494008001,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "roof"
+    },
+    "frontage_width_m": 4.1,
+    "footprint_m": [
+     4.4,
+     1.9
+    ],
+    "footprint_area_m2": 8,
+    "height_m": 9.0,
+    "height_source": "no-data",
+    "street_frontages": 1,
+    "attached_neighbours": 1,
+    "fronting_street": {
+     "highway": "path",
+     "name": "Vleeshuistragel",
+     "surface": "gravel",
+     "car_access": "none",
+     "distance_m": 3.1
+    },
+    "plate_view": "street",
+    "street_photos": 1,
+    "target_box_normalised": {
+     "x0": 0.416,
+     "x1": 0.57,
+     "y0": 0.098,
+     "y1": 0.822
+    }
+   },
+   "plate": "renders/plates/graslei/494008001.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494008001_0.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.8021340000000001,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494008008,
+   "status": "failed",
+   "error": "no reading"
+  },
+  {
+   "osm_id": 494008011,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 4,
+     "evidence": "inferred"
+    },
+    "confidence": 0.55,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "inferred"
+    },
+    "identification": "A narrow gable-fronted brick-and-sandstone burgher/quay house on the Graslei, 17th-century in origin and restored or partly rebuilt for the 1913 Ghent World's Fair, standing on a deep 22 m plot running back from the Leie with its short gable end to the water and a caf\u00e9-occupied ground floor at quay level.",
+    "ledges": {
+     "sills": true,
+     "cornice": false,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 5,
+     "trim": "concrete",
+     "evidence": "inferred"
+    },
+    "notes": "READ FROM PLATE: the lower band of facade in set A is the Leie reflection / tile LOD duplication, not a second storey group \u2014 only the upper band was used. The magenta box is a footprint bounding box, ~2x the 8.6 m frontage in screen width, so it straddles both neighbours; bay count was NOT taken from it.\n\nSTOREYS: derived from height_m 11.6 (data), not counted. A gable-fronted Graslei house of this modest size carries three full storeys to the gable springing (3.6 + 2.8 + 2.8 = 9.2 m) with the attic inside the ~2.4 m gable. The apparent fourth window row in the plate is the attic light in the gable, which is why count excludes it.\n\nROOF: stepped gable (trapgevel) is the Graslei row idiom and the immediate right-hand neighbour in the plate shows one clearly, with finials \u2014 but I could not attribute a specific gable profile to the target at this resolution, hence inferred. Ridge perpendicular to the quay follows directly from 8.6 m frontage on a 9.7 x 22.3 m footprint.\n\nTRIM MATERIAL: \"concrete\" is a dielectric proxy for Balegem/Ledian sandstone dressings (bandeaux, window surrounds, gable copings), whose dry permittivity sits near ITU concrete rather than marble. Do NOT render it as concrete \u2014 it is pale honey-grey ashlar banding against dark red-brown brick. That brick/stone alternation is the strongest visual signature of this row and must be albedo plus the string-course geometry, never a painted stripe.\n\n28 GHz BUDGET: put geometry into (a) the horizontal sandstone string courses between storeys, (b) deep window reveals with sills, and (c) the stepped gable coping treads \u2014 these are the >10 cm features that give this quay its off-specular return and they read from every camera angle. Brick bond and mortar joints stay as the 5 mm roughness number; meshing them would be wrong physics. The gable steps in particular are a strong retroreflective set at grazing incidence across the water, which matters for any link on the Korenlei side.\n\nCLUTTER, do not get this wrong: fronting_street is highway=pedestrian, car_access=none. There are no vehicles on Graslei. Populate instead with cafe terrace furniture on the sett quay, mooring bollards and the quay edge drop to the water, bicycles against the facade, and pedestrians. A parked-car rule applied here would be the same failure as the medieval-square case.\n\nCONFIDENCE: macro (storey banding, gable-fronted massing, brick-with-stone-banding) is well supported by data plus row context; everything at opening and reveal scale is regional prior for restored C17 Ghent quay houses and would be overturned by a single street photograph.",
+    "roof": {
+     "form": "stepped_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 3.6,
+     "upper_height_m": 2.8,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.2,
+     "height_m": 2,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494008011,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "start_date": "C17..1913",
+     "heritage": "4",
+     "historic": "house",
+     "addr:street": "Graslei"
+    },
+    "frontage_width_m": 8.6,
+    "footprint_m": [
+     22.3,
+     9.7
+    ],
+    "footprint_area_m2": 200,
+    "height_m": 11.6,
+    "height_source": "adopted-photo",
+    "street_frontages": 1,
+    "attached_neighbours": 4,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Graslei",
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 0.0
+    },
+    "plate_view": "street",
+    "target_box_normalised": {
+     "x0": 0.306,
+     "x1": 0.694,
+     "y0": 0.166,
+     "y1": 0.806
+    }
+   },
+   "plate": "renders/plates/graslei/494008011.png",
+   "photos": [],
+   "view": "street",
+   "cost_usd": 0.281558,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 494018352,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 4,
+     "evidence": "inferred"
+    },
+    "confidence": 0.42,
+    "ground_floor": {
+     "kind": "residential_door",
+     "evidence": "inferred"
+    },
+    "identification": "A modest two-storey-plus-attic brick mid-terrace dwelling of the Ghent historic core, probably 18th-19th century in its present facade, fronting a sett-paved pedestrian lane behind the Graslei quay and in residential use.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": false,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 5,
+     "trim": "marble",
+     "evidence": "inferred"
+    },
+    "notes": "Set A resolves nothing on this building. The only well-resolved facade in the frame (pale, legible window rows, top centre) is a neighbour further up the block, NOT the outlined target; inside the magenta box the Google tiles have collapsed into a melted purple-grey mass with a few pinkish planar streaks. I can assert \"pitched, not flat\" and no more, so the roof is marked inferred despite set A nominally being the roof view. Every field here is inferred.\n\nStoreys: 9.2 m read as total height to ridge. Ground 3.2 + one upper 2.9 puts eaves at ~6.1 m, leaving 3.1 m of roof over a 3.75 m half-span = ~40 deg pitch, the standard Flemish tiled figure. Reading 9.2 as eaves height would force three storeys and make the building taller than it reads against its neighbours in the plate. Count excludes the attic per schema.\n\nRoof orientation is derived from the measured footprint, not from the image: a 10.3 m frontage on a 7.5 m depth cannot carry a street-facing gable, which is the narrow-and-deep typology. Ridge runs parallel to the lane; party gables into the neighbours on both sides (3 attached).\n\nThis is deliberately NOT read as a Graslei/Korenlei quay guild house. Those are narrow-fronted (5-8 m), deep, tall and gable-to-water with stepped or crow gables. The measured record here is wide, shallow and low, which is a back-lane terrace unit. Applying the quay-front stepped-gable prior would have been the generic-plausible error.\n\nGround floor: car_access=none on a sett path, plain building=house, no shop tag, 7 m off a side lane. The cafe glazing of this quarter belongs to the quay frontage, not to this unit.\n\nMaterials: brick relief and mortar joints are in the 1-10 cm regime and are carried entirely by roughness_mm ~5 (hand-moulded Flemish brick, fairly flush lime joints), never as mesh. Trim coded \"marble\" as the closest available dielectric match (eps' ~7, dense calcite) for Belgian blue limestone (arduin) used at sills, plinth and door surround; it is not literally marble. Explicit geometry requested is confined to the >10 cm regime: shallow window reveals, sills, eaves cornice.\n\nClutter guidance for the generator: car_access=none, so place NO vehicles on this frontage. Sett-paved pedestrian lane in the Ghent core supports leaning bicycles, wheelie bins, and a doorstep threshold stone. Detail budget should sit on the openings, the eaves line and the ground-floor door; the rear and party walls are occluded by 3 attached neighbours and deserve almost nothing.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": true,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 2,
+     "ground_height_m": 3.2,
+     "upper_height_m": 2.9,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.1,
+     "height_m": 1.9,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 494018352,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house"
+    },
+    "frontage_width_m": 10.3,
+    "footprint_m": [
+     12.3,
+     7.5
+    ],
+    "footprint_area_m2": 69,
+    "height_m": 9.2,
+    "height_source": "adopted-photo",
+    "street_frontages": 1,
+    "attached_neighbours": 3,
+    "fronting_street": {
+     "highway": "path",
+     "name": null,
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 7.0
+    },
+    "plate_view": "oblique",
+    "target_box_normalised": {
+     "x0": 0.165,
+     "x1": 0.624,
+     "y0": 0.515,
+     "y1": 0.908
+    }
+   },
+   "plate": "renders/plates/graslei/494018352.png",
+   "photos": [],
+   "view": "oblique",
+   "cost_usd": 0.253745,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 514020945,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 2,
+     "evidence": "inferred"
+    },
+    "confidence": 0.66,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "seen"
+    },
+    "identification": "A very small heritage stone house on Pensmarkt, Ghent \u2014 one of the late-medieval tripe-market houses built against the flank of the Groot Vleeshuis, 3.8 m frontage on a 13 m\u00b2 plot, rough Tournai-limestone rubble walls with arched leaded-light windows, now in caf\u00e9 use (Het Spijker) with a terrace at ground level.",
+    "ledges": {
+     "sills": true,
+     "cornice": false,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "marble",
+     "roughness_mm": 12,
+     "trim": "wood",
+     "evidence": "seen"
+    },
+    "notes": "Plate A (Google 3D tiles) is degenerate at this range \u2014 a melted mass with no facade information; nothing was read from it. Street photo _1 outlines a distant red-brick crow-stepped gable across the square that contradicts _0 and does not match a 13 m\u00b2 Pensmarkt unit; treated as a geolocation error and discarded. All facade reading comes from _0. Wall is Tournai bluestone rubble, not brick \u2014 'marble' is the closest available dielectric proxy for dense limestone (concrete would under-state permittivity); roughness 12 mm carries the irregular rubble faces and deeply raked joints in the 1\u201310 cm regime rather than as mesh. 'trim' = wood for the substantial dark timber joinery: window frames, leaded casements and the panelled aprons under the first-floor sills; the reveals and sills themselves are dressed stone, same as wall. Reveal class deep is supported \u2014 the wall is a thick rubble wall and jamb shadow is unambiguous in _0. Bay count is inferred: the photo shows the rhythm across the whole terrace of houses but the outline is an axis-aligned box over an obliquely-viewed facade, so I cannot isolate this unit's party walls; 2 bays follows from 3.8 m frontage minus piers with ~1.2 m openings. Roof inferred: gable-to-street on a narrow deep plot (5.4 m depth), ridge perpendicular \u2014 not visible from the pavement in either photo. Height 9.0 m is flagged no-data upstream; 3.2 + 2.6 + 2.6 = 8.4 m of storey plus roof is consistent with it and I have not overridden it. Scene direction: pedestrian street, car_access none \u2014 place no vehicles. Real clutter here is terrace furniture (stacked green chairs, round tables, umbrella), parked bicycles, blackboard menus, terracotta window planters, projecting bracket signs and enamel brewery plaques; all above 10 cm and worth explicit geometry given the 0.1 m standoff from the corridor.",
+    "roof": {
+     "form": "gabled",
+     "ridge_parallel_to_street": false,
+     "evidence": "inferred"
+    },
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 3.2,
+     "upper_height_m": 2.6,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.2,
+     "height_m": 1.8,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    }
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 514020945,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "heritage": "4",
+     "addr:street": "Pensmarkt"
+    },
+    "frontage_width_m": 3.8,
+    "footprint_m": [
+     5.4,
+     3.0
+    ],
+    "footprint_area_m2": 13,
+    "height_m": 9.0,
+    "height_source": "no-data",
+    "street_frontages": 1,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "pedestrian",
+     "name": "Pensmarkt",
+     "surface": null,
+     "car_access": "none",
+     "distance_m": 0.1
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.4,
+     "x1": 0.607,
+     "y0": 0.128,
+     "y1": 0.815
+    }
+   },
+   "plate": "renders/plates/graslei/514020945.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020945_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020945_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.466461,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 514020946,
+   "status": "ok",
+   "reading": {
+    "bays": {
+     "count": 3,
+     "evidence": "seen"
+    },
+    "confidence": 0.82,
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "seen"
+    },
+    "identification": "A tall narrow brick quayside house on the Graslei/Vleeshuistragel corner in Ghent, late-Gothic/Flemish-Renaissance in idiom and restored, with a crow-stepped gable and oculus facing the Leie, natural-stone cross windows, and a tea-room occupying the quay-level ground floor.",
+    "ledges": {
+     "sills": true,
+     "cornice": true,
+     "string_courses": true,
+     "balconies": true,
+     "evidence": "seen"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 6,
+     "trim": "marble",
+     "evidence": "seen"
+    },
+    "notes": "CORNER BUILDING - read the two faces differently. Gable front (9.3 m) faces the Leie/Graslei and carries all the ornament; the 16.5 m flank down Vleeshuistragel is plainer, large brick field with isolated cross windows, the VLEESHUIS street sign and the Callisto board. Bays and ridge orientation below are set against the GABLE FRONT: ridge_parallel_to_street=false means the ridge runs into the plot, i.e. parallel to Vleeshuistragel, perpendicular to the Graslei face. Do not flip this.\n\nROOF: stepped_gable chosen over gabled because the crow steps with projecting stone copings are the silhouette and are >10 cm relief - they must be geometry, not a painted profile. Steep tiled pitch behind, ~49 deg, derived from 5.4 m of gable above a 12.3 m eaves; B_1 shows a pitch consistent with that. Oculus/roundel and volute scrollwork in the gable head are ornament: 1-10 cm regime, roughness only, do not mesh.\n\nCORNICE: true, but it is a corbelled brick eaves band with a painted fascia and gutter along the flank plus the stone step copings on the gable - not a classical moulded cornice. Model it as a shallow projecting band, ~0.15 m, not a bracketed entablature.\n\nWINDOWS: stone mullion-and-transom cross windows (kruiskozijn) with leaded small-pane upper lights and red-painted joinery, clearly resolved in both photographs. Upper-floor openings on the gable front group into wide multi-light bands; 1.5 m is the single-cross-window module, use it as the unit and let the generator group two of them in the centre bays. reveal_class=deep is read from the oblique view in B_0, where the stone jamb sides and the set-back glazing plane are visible on the flank windows; wall is thick handmade brick, so ~0.25 m is right. This is the single most valuable geometric feature on the building at 28 GHz.\n\nBALCONIES: two distinct ones on the gable front, seen - a semicircular wrought-iron balcony with potted plants at the upper level and a red-balustraded one below, plus a canted oriel with a curved metal canopy over the ground floor. All are real projecting geometry and should be built.\n\nGROUND FLOOR: cafe_glazing. Tea-room with awning, glazed openings under segmental brick arches, and a terrace of tables and red chairs on the quay in both photographs, with a stone arch at quay level. Note the quay sits below the Graslei/tragel level - there are steps and a retaining wall; the cafe floor is the lower level.\n\nMATERIAL: trim=marble is a stand-in for Balegem-type calcareous limestone (sills, mullions, window surrounds, gable copings) - marble is the closest calcareous stone in the library and the dielectric fit is acceptable; it is not actual marble. roughness_mm=6 is an inference, not a measurement: old handmade brick with irregular courses and deep raked/eroded joints, as seen at close range in B_0. The seen mark on this block covers wall material and trim material, which are unambiguous; the number itself is derived. Same caveat on the storeys block - the count of 4 is seen, the 3.6/2.9 m heights are back-solved from the 17.7 m datum and the observed rhythm.\n\nCLUTTER, and please read this: fronting_street is a 2.4 m gravel tragel with car_access=none. No parked or moving vehicles anywhere near this building - this is exactly the square-full-of-cars failure. What belongs is cafe terrace furniture (tables, stacked chairs, parasols, A-boards, chalkboards), the steel quay railing and steps, bins, bikes leaning at the Graslei end, and moss/damp staining on the lower quay wall.\n\nDETAIL BUDGET: spend it on the gable front and the first 6-8 m of the flank nearest the corner, which is what the corridor illuminates. The far end of the 16.5 m flank and the rear can stay coarse.",
+    "roof": {
+     "form": "stepped_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "seen"
+    },
+    "storeys": {
+     "count": 4,
+     "ground_height_m": 3.6,
+     "upper_height_m": 2.9,
+     "evidence": "seen"
+    },
+    "window": {
+     "width_m": 1.5,
+     "height_m": 2.2,
+     "reveal_class": "deep",
+     "glazing_bars": true,
+     "evidence": "seen"
+    }
+   },
+   "flags": [
+    "roof form marked `seen`, but no view here looks down on it"
+   ],
+   "facts": {
+    "osm_id": 514020946,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "house",
+     "addr:street": "Graslei"
+    },
+    "frontage_width_m": 9.3,
+    "footprint_m": [
+     12.8,
+     16.5
+    ],
+    "footprint_area_m2": 132,
+    "height_m": 17.7,
+    "height_source": "adopted-photo",
+    "street_frontages": 2,
+    "attached_neighbours": 2,
+    "fronting_street": {
+     "highway": "path",
+     "name": "Vleeshuistragel",
+     "surface": "gravel",
+     "car_access": "none",
+     "distance_m": 2.4
+    },
+    "plate_view": "street",
+    "street_photos": 2,
+    "target_box_normalised": {
+     "x0": 0.366,
+     "x1": 0.623,
+     "y0": 0.114,
+     "y1": 0.819
+    }
+   },
+   "plate": "renders/plates/graslei/514020946.png",
+   "photos": [
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020946_0.jpg",
+    "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020946_1.jpg"
+   ],
+   "view": "street",
+   "cost_usd": 0.5126664999999999,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 1410441581,
+   "status": "ok",
+   "reading": {
+    "identification": "A very narrow (5.2 m) gable-fronted brick quayside house of the Flemish 16th\u201317th century burgher/guild-house type, wedged as a sliver infill in the Graslei/Korenlei terrace, with a horeca ground floor facing the pedestrian sett quay and dwelling/storage above.",
+    "storeys": {
+     "count": 3,
+     "ground_height_m": 3.6,
+     "upper_height_m": 2.8,
+     "evidence": "inferred"
+    },
+    "bays": {
+     "count": 2,
+     "evidence": "inferred"
+    },
+    "window": {
+     "width_m": 1.05,
+     "height_m": 1.9,
+     "reveal_class": "shallow",
+     "glazing_bars": true,
+     "evidence": "inferred"
+    },
+    "ground_floor": {
+     "kind": "cafe_glazing",
+     "evidence": "inferred"
+    },
+    "roof": {
+     "form": "stepped_gable",
+     "ridge_parallel_to_street": false,
+     "evidence": "inferred"
+    },
+    "ledges": {
+     "sills": true,
+     "cornice": false,
+     "string_courses": true,
+     "balconies": false,
+     "evidence": "inferred"
+    },
+    "material": {
+     "wall": "brick",
+     "roughness_mm": 6,
+     "trim": "concrete",
+     "evidence": "inferred"
+    },
+    "confidence": 0.35,
+    "notes": "PLATE UNUSABLE. The Google 3D tiles in this region have degenerated into smeared shards; no storey line, opening, reveal or ground-floor edge survives, and the mauve cast is tile atmosphere rather than true colour. A reddish pitched-roof mass sits near the top of the magenta box but cannot be attributed to the target versus the row behind, so even the roof is marked inferred. Nothing here is seen.\n\nTAG CAVEAT: osm building=roof. I have read this as a roof-only mapping over a real narrow house rather than as an open canopy \u2014 a 13.2 m open canopy on a 19 m2 plot with 4 attached neighbours is not a form that occurs in this terrace. If the generator honours building=roof literally it will produce a wall-less shed and should override this grammar; flagged for the data owner.\n\nHEIGHT CONSISTENCY: 3.6 ground + 2 x 2.8 upper = 9.2 m eaves, + ~4.0 m stepped gable = the given 13.2 m. Storey count 3 is derived from that budget, not observed. If the 13.2 m turns out to be eaves rather than ridge, go to 4 storeys and keep the gable.\n\nCLUTTER: fronting way is highway=path, surface=sett, car_access=none. NO VEHICLES on this frontage \u2014 this is the pedestrian quay, and a parked-car rule firing here would repeat the medieval-square failure. Populate with cafe terrace furniture and parasols against the ground-floor glazing, bollards, bike clusters, and the quay edge with moored boats. Sett surface should be a roughness parameter, not tessellated cobbles.\n\nDETAIL BUDGET: concentrate on the gable silhouette (the crow-steps are the feature a rotated camera judges, and they are genuine >10 cm geometry producing strong edge diffraction against sky), on the window reveals and sills, and on the ground-floor glazing plane. The two flanks are buried between four attached neighbours, receive no beam and should get near-zero budget.\n\nPHYSICS: brick relief and lime mortar joints at 5-8 mm stay as the 6 mm RMS roughness number plus a scattering coefficient, never as mesh. The 0.12 m window reveals, the sills, the string courses and the gable steps are the facets that matter and must be explicit geometry. Trim is set to concrete as the nearest available dielectric proxy for Balegem sandstone (the real trim material, eps ~4-6); marble in the enum would be too high. No cornice: gable-fronted houses of this type terminate in the stepped coping rather than an eaves cornice, and the string courses stand in for the sandstone/brick banding (speklagen). No balconies \u2014 absent from this building type in Ghent.\n\nCONFIDENCE 0.35 reflects zero usable imagery plus an ambiguous building tag. The grammar is a defensible instance of the type, not a recovery of this specific facade. A single street photograph would move most of these fields to seen and roughly double the confidence."
+   },
+   "flags": [],
+   "facts": {
+    "osm_id": 1410441581,
+    "city": "Ghent, Belgium",
+    "osm_tags": {
+     "building": "roof"
+    },
+    "frontage_width_m": 5.2,
+    "footprint_m": [
+     5.2,
+     4.1
+    ],
+    "footprint_area_m2": 19,
+    "height_m": 13.2,
+    "height_source": "adopted-photo",
+    "street_frontages": 1,
+    "attached_neighbours": 4,
+    "fronting_street": {
+     "highway": "path",
+     "name": null,
+     "surface": "sett",
+     "car_access": "none",
+     "distance_m": 17.4
+    },
+    "plate_view": "street",
+    "target_box_normalised": {
+     "x0": 0.398,
+     "x1": 0.602,
+     "y0": 0.134,
+     "y1": 0.808
+    }
+   },
+   "plate": "renders/plates/graslei/1410441581.png",
+   "photos": [],
+   "view": "street",
+   "cost_usd": 0.23854250000000002,
+   "model": "claude-opus-5"
+  },
+  {
+   "osm_id": 1410441582,
+   "status": "failed",
+   "error": "no reading"
+  }
+ ]
+}

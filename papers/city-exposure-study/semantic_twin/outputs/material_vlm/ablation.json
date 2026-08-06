@@ -1,0 +1,1196 @@
+{
+  "generator": "run_material_ablation.py",
+  "created_utc": "2026-08-03T01:04:17Z",
+  "mesh": "/home/user/aegis/papers/city-exposure-study/semantic_twin/data/geometry/korenmarkt/inhouse_leaf_130m_f64.ply",
+  "frequency_hz": 15000000000.0,
+  "trace_config": {
+    "frequency_hz": 15000000000.0,
+    "rays": 60000,
+    "local_cells": 512,
+    "exit_bands": 18,
+    "max_bounces": 12,
+    "roulette_start": 3,
+    "roulette_floor": 0.05,
+    "ray_epsilon_m": 0.001,
+    "seed": 0,
+    "batch": 400000
+  },
+  "locations": 24,
+  "body": {
+    "phantom": "duke",
+    "triangles": 56024,
+    "frequency_hz": 15000000000.0,
+    "level": 2,
+    "T0": 0.5001397541911426
+  },
+  "geometric_class_area_fractions": {
+    "ground": 0.28986120079013616,
+    "facade": 0.4091793632401121,
+    "roof": 0.2634647464980295,
+    "soffit": 0.03749468947172215
+  },
+  "variants": {
+    "brick": {
+      "variant": "brick",
+      "posterior": null,
+      "realised_area_composition": {
+        "brick": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.0,
+      "locations": 24,
+      "seconds": 543.1,
+      "chi_isotropic": {
+        "median": 0.28927538698045885,
+        "p10": 0.20030276650773987,
+        "p90": 0.365778753063195
+      },
+      "chi_rooftop": {
+        "median": 0.1866464213885397,
+        "p10": 0.0822288494348528,
+        "p90": 0.3814272520272423
+      },
+      "chi_street_small_cell": {
+        "median": 0.07741223278534423,
+        "p10": 0.021638397713219317,
+        "p90": 0.23073839492482973
+      },
+      "mean_bounces": {
+        "median": 0.9752388763420721,
+        "p10": 0.8355504988760515,
+        "p90": 1.1305150249978073
+      },
+      "escaped_fraction": {
+        "median": 0.7472583333333334,
+        "p10": 0.618085,
+        "p90": 0.83379
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0008543634742324324,
+        "p10": 0.0005669773522152581,
+        "p90": 0.0011403474612352357
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.000699372581510683,
+        "p10": 0.0002915991959215377,
+        "p90": 0.0014378374966504148
+      },
+      "shift_db": {
+        "chi_isotropic": 0.0,
+        "chi_rooftop": 0.0,
+        "chi_street_small_cell": 0.0
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        }
+      }
+    },
+    "pure_brick_m0": {
+      "variant": "pure_brick_m0",
+      "posterior": {
+        "brick": 1.0
+      },
+      "realised_area_composition": {
+        "brick": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 417.8,
+      "chi_isotropic": {
+        "median": 0.28927538698045885,
+        "p10": 0.20030276650773987,
+        "p90": 0.365778753063195
+      },
+      "chi_rooftop": {
+        "median": 0.1866464213885397,
+        "p10": 0.0822288494348528,
+        "p90": 0.3814272520272423
+      },
+      "chi_street_small_cell": {
+        "median": 0.07741223278534423,
+        "p10": 0.021638397713219317,
+        "p90": 0.23073839492482973
+      },
+      "mean_bounces": {
+        "median": 0.9752388763420721,
+        "p10": 0.8355504988760515,
+        "p90": 1.1305150249978073
+      },
+      "escaped_fraction": {
+        "median": 0.7472583333333334,
+        "p10": 0.618085,
+        "p90": 0.83379
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0008543634742324324,
+        "p10": 0.0005669773522152581,
+        "p90": 0.0011403474612352357
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.000699372581510683,
+        "p10": 0.0002915991959215377,
+        "p90": 0.0014378374966504148
+      },
+      "shift_db": {
+        "chi_isotropic": 0.0,
+        "chi_rooftop": 0.0,
+        "chi_street_small_cell": 0.0
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        }
+      }
+    },
+    "pure_brick_m1": {
+      "variant": "pure_brick_m1",
+      "posterior": {
+        "brick": 1.0
+      },
+      "realised_area_composition": {
+        "brick": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 416.7,
+      "chi_isotropic": {
+        "median": 0.28927538698045885,
+        "p10": 0.20030276650773987,
+        "p90": 0.365778753063195
+      },
+      "chi_rooftop": {
+        "median": 0.1866464213885397,
+        "p10": 0.0822288494348528,
+        "p90": 0.3814272520272423
+      },
+      "chi_street_small_cell": {
+        "median": 0.07741223278534423,
+        "p10": 0.021638397713219317,
+        "p90": 0.23073839492482973
+      },
+      "mean_bounces": {
+        "median": 0.9752388763420721,
+        "p10": 0.8355504988760515,
+        "p90": 1.1305150249978073
+      },
+      "escaped_fraction": {
+        "median": 0.7472583333333334,
+        "p10": 0.618085,
+        "p90": 0.83379
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0008543634742324324,
+        "p10": 0.0005669773522152581,
+        "p90": 0.0011403474612352357
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.000699372581510683,
+        "p10": 0.0002915991959215377,
+        "p90": 0.0014378374966504148
+      },
+      "shift_db": {
+        "chi_isotropic": 0.0,
+        "chi_rooftop": 0.0,
+        "chi_street_small_cell": 0.0
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.0,
+          "p10_db": 0.0,
+          "p90_db": 0.0,
+          "locations_over_1db": 0
+        }
+      }
+    },
+    "prior_draw_m0": {
+      "variant": "prior_draw_m0",
+      "posterior": {
+        "brick": 0.3,
+        "concrete": 0.15,
+        "plasterboard": 0.2,
+        "marble": 0.12,
+        "glass": 0.12,
+        "metal": 0.03,
+        "wood": 0.03,
+        "ceramic": 0.0,
+        "unknown": 0.05
+      },
+      "realised_area_composition": {
+        "brick": 0.1326264015630585,
+        "concrete": 0.06401111986373716,
+        "glass": 0.050883890121325014,
+        "marble": 0.05022811322589311,
+        "metal": 0.013088044169721948,
+        "plasterboard": 0.08566392180210808,
+        "wood": 0.012677872494268315
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 554.2,
+      "chi_isotropic": {
+        "median": 0.29627476059517954,
+        "p10": 0.20379010378023815,
+        "p90": 0.3731654815570619
+      },
+      "chi_rooftop": {
+        "median": 0.19298659077387845,
+        "p10": 0.08744931067536128,
+        "p90": 0.39403964520088536
+      },
+      "chi_street_small_cell": {
+        "median": 0.0796765973143106,
+        "p10": 0.02722761568025873,
+        "p90": 0.23835204181875713
+      },
+      "mean_bounces": {
+        "median": 0.9779305458118355,
+        "p10": 0.8377386186923338,
+        "p90": 1.1323802652520336
+      },
+      "escaped_fraction": {
+        "median": 0.7534333333333334,
+        "p10": 0.622945,
+        "p90": 0.8405
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0008789202904434619,
+        "p10": 0.0005787296831635275,
+        "p90": 0.0011665452577417955
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0007228888163205813,
+        "p10": 0.0003101110046462692,
+        "p90": 0.0014843222687103371
+      },
+      "shift_db": {
+        "chi_isotropic": 0.10383172624673524,
+        "chi_rooftop": 0.1450746658838652,
+        "chi_street_small_cell": 0.1252118483420262
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.10551625606812995,
+          "p10_db": 0.05703505611187228,
+          "p90_db": 0.20143490347242188,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.21248199952768415,
+          "p10_db": 0.14366511555854805,
+          "p90_db": 0.5087575162694726,
+          "locations_over_1db": 0
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.16021284737406508,
+          "p10_db": 0.07202443724962028,
+          "p90_db": 0.8031663974874976,
+          "locations_over_1db": 2
+        }
+      }
+    },
+    "prior_draw_m1": {
+      "variant": "prior_draw_m1",
+      "posterior": {
+        "brick": 0.3,
+        "concrete": 0.15,
+        "plasterboard": 0.2,
+        "marble": 0.12,
+        "glass": 0.12,
+        "metal": 0.03,
+        "wood": 0.03,
+        "ceramic": 0.0,
+        "unknown": 0.05
+      },
+      "realised_area_composition": {
+        "brick": 0.12956101488781804,
+        "concrete": 0.06405323126686449,
+        "glass": 0.05111107818510624,
+        "marble": 0.051335946979630974,
+        "metal": 0.012785524686678625,
+        "plasterboard": 0.0872122433559751,
+        "wood": 0.013120323878038642
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 473.0,
+      "chi_isotropic": {
+        "median": 0.2951341516678133,
+        "p10": 0.21018864552645475,
+        "p90": 0.37746891784186143
+      },
+      "chi_rooftop": {
+        "median": 0.1960812573429518,
+        "p10": 0.09640238451711894,
+        "p90": 0.39480797301734255
+      },
+      "chi_street_small_cell": {
+        "median": 0.08264430383330726,
+        "p10": 0.024466022882421553,
+        "p90": 0.23692372785738156
+      },
+      "mean_bounces": {
+        "median": 0.9788722368137333,
+        "p10": 0.8383475670360812,
+        "p90": 1.1353510261591608
+      },
+      "escaped_fraction": {
+        "median": 0.7533,
+        "p10": 0.6235566666666668,
+        "p90": 0.84212
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0008747914635747539,
+        "p10": 0.0005965721860378841,
+        "p90": 0.0011753222121321171
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0007337579637098862,
+        "p10": 0.0003405089458577074,
+        "p90": 0.001487460394666687
+      },
+      "shift_db": {
+        "chi_isotropic": 0.08707983877674724,
+        "chi_rooftop": 0.21416415582202747,
+        "chi_street_small_cell": 0.2840333176993126
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.09910787240282612,
+          "p10_db": 0.0694779627558412,
+          "p90_db": 0.18340621453103564,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.2140806124728719,
+          "p10_db": 0.13673380316679778,
+          "p90_db": 0.670393852228792,
+          "locations_over_1db": 0
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.1250790284182895,
+          "p10_db": 0.06512794892572411,
+          "p90_db": 0.8564016311306049,
+          "locations_over_1db": 2
+        }
+      }
+    },
+    "vlm_panorama_m0": {
+      "variant": "vlm_panorama_m0",
+      "posterior": {
+        "brick": 0.29355062005656707,
+        "concrete": 0.3244882300093718,
+        "plasterboard": 0.017207436564748955,
+        "marble": 0.08266401028926823,
+        "glass": 0.10228279630700596,
+        "metal": 0.03989871624990682,
+        "wood": 0.017582840945539895,
+        "ceramic": 0.022259964172343213,
+        "unknown": 0.10006538540524808
+      },
+      "realised_area_composition": {
+        "brick": 0.13684268653652953,
+        "concrete": 0.14480426271099764,
+        "glass": 0.04618873881022318,
+        "marble": 0.047279450841404856,
+        "metal": 0.018397782896971228,
+        "plasterboard": 0.007938304840732758,
+        "wood": 0.007728136603252928
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 393.0,
+      "chi_isotropic": {
+        "median": 0.30195925782438626,
+        "p10": 0.20927022264265038,
+        "p90": 0.37785023200960305
+      },
+      "chi_rooftop": {
+        "median": 0.20455607292627787,
+        "p10": 0.09189519738678342,
+        "p90": 0.4063339455055723
+      },
+      "chi_street_small_cell": {
+        "median": 0.0810869126908346,
+        "p10": 0.026667517986184767,
+        "p90": 0.2595521446508307
+      },
+      "mean_bounces": {
+        "median": 0.9803438248777254,
+        "p10": 0.8373002277314961,
+        "p90": 1.1309319134883584
+      },
+      "escaped_fraction": {
+        "median": 0.7538416666666667,
+        "p10": 0.62173,
+        "p90": 0.840425
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0008986961948089099,
+        "p10": 0.0005975633347730433,
+        "p90": 0.001179119522939307
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.000764248273560712,
+        "p10": 0.00032639746562437415,
+        "p90": 0.001528697032939836
+      },
+      "shift_db": {
+        "chi_isotropic": 0.1863686602375829,
+        "chi_rooftop": 0.39792709977760793,
+        "chi_street_small_cell": 0.2014117146757699
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.19173984027054647,
+          "p10_db": 0.13283001205123288,
+          "p90_db": 0.2848208011113402,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.40715788503698036,
+          "p10_db": 0.23165201256525758,
+          "p90_db": 0.7238840402413818,
+          "locations_over_1db": 2
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.3083526360399381,
+          "p10_db": 0.13121901584228887,
+          "p90_db": 1.1916613109111696,
+          "locations_over_1db": 4
+        }
+      }
+    },
+    "vlm_panorama_m1": {
+      "variant": "vlm_panorama_m1",
+      "posterior": {
+        "brick": 0.29355062005656707,
+        "concrete": 0.3244882300093718,
+        "plasterboard": 0.017207436564748955,
+        "marble": 0.08266401028926823,
+        "glass": 0.10228279630700596,
+        "metal": 0.03989871624990682,
+        "wood": 0.017582840945539895,
+        "ceramic": 0.022259964172343213,
+        "unknown": 0.10006538540524808
+      },
+      "realised_area_composition": {
+        "brick": 0.13392029842567627,
+        "concrete": 0.14599085164275305,
+        "glass": 0.04648180194160656,
+        "marble": 0.04813909742160675,
+        "metal": 0.01877722289421307,
+        "plasterboard": 0.007810568959279358,
+        "wood": 0.008059521954977063
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 337.0,
+      "chi_isotropic": {
+        "median": 0.3034501710958414,
+        "p10": 0.20804911915012572,
+        "p90": 0.3778165002562277
+      },
+      "chi_rooftop": {
+        "median": 0.19965524723302747,
+        "p10": 0.0948001791983183,
+        "p90": 0.40909913921574953
+      },
+      "chi_street_small_cell": {
+        "median": 0.08106268459319022,
+        "p10": 0.025792535141547217,
+        "p90": 0.24388226304966643
+      },
+      "mean_bounces": {
+        "median": 0.9789225943670555,
+        "p10": 0.8393716644085987,
+        "p90": 1.1327846287279868
+      },
+      "escaped_fraction": {
+        "median": 0.7540166666666667,
+        "p10": 0.621835,
+        "p90": 0.8412700000000001
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0009026526672500077,
+        "p10": 0.0005937987079103475,
+        "p90": 0.0011826875995140785
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0007443637569064169,
+        "p10": 0.0003341191088649665,
+        "p90": 0.0015390648470443977
+      },
+      "shift_db": {
+        "chi_isotropic": 0.2077590345796283,
+        "chi_rooftop": 0.29261061055102827,
+        "chi_street_small_cell": 0.2001138848484354
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.16240921858603607,
+          "p10_db": 0.11987993192995952,
+          "p90_db": 0.3398745792651617,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.3496504384128728,
+          "p10_db": 0.26772737832610866,
+          "p90_db": 0.7722668735617435,
+          "locations_over_1db": 1
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.26635242958793665,
+          "p10_db": 0.13142759910854324,
+          "p90_db": 1.1710231340358164,
+          "locations_over_1db": 4
+        }
+      }
+    },
+    "vlm_texture_m0": {
+      "variant": "vlm_texture_m0",
+      "posterior": {
+        "brick": 0.16985404857826858,
+        "concrete": 0.17142760711424498,
+        "plasterboard": 0.040214293851943014,
+        "marble": 0.04909827182458631,
+        "glass": 0.09404625429031871,
+        "metal": 0.04351526444436698,
+        "wood": 0.027304581650789313,
+        "ceramic": 0.02158484490835559,
+        "unknown": 0.38295483333712654
+      },
+      "realised_area_composition": {
+        "brick": 0.1150375780994999,
+        "concrete": 0.11401360543232218,
+        "glass": 0.06025491851503107,
+        "marble": 0.04684220985385441,
+        "metal": 0.028541917114533154,
+        "plasterboard": 0.026459374139957196,
+        "wood": 0.018029760084914203
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 464.0,
+      "chi_isotropic": {
+        "median": 0.3040749271276473,
+        "p10": 0.20960956671893546,
+        "p90": 0.37920759142674937
+      },
+      "chi_rooftop": {
+        "median": 0.20308169238167245,
+        "p10": 0.09862191568219002,
+        "p90": 0.41561995419201636
+      },
+      "chi_street_small_cell": {
+        "median": 0.08125720796253146,
+        "p10": 0.0296110242659807,
+        "p90": 0.24827588406449455
+      },
+      "mean_bounces": {
+        "median": 0.9779562220941724,
+        "p10": 0.8388546993201345,
+        "p90": 1.1341398299313987
+      },
+      "escaped_fraction": {
+        "median": 0.7547166666666667,
+        "p10": 0.6236383333333334,
+        "p90": 0.839865
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0009059521782306514,
+        "p10": 0.0005985438824034553,
+        "p90": 0.0011788988993471673
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0007591966447309092,
+        "p10": 0.0003485361435457614,
+        "p90": 0.0015628514403767605
+      },
+      "shift_db": {
+        "chi_isotropic": 0.21669128095392148,
+        "chi_rooftop": 0.3665110641969389,
+        "chi_street_small_cell": 0.21052301770556534
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.21718844778314914,
+          "p10_db": 0.13622112291430502,
+          "p90_db": 0.37153737847615914,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.41501616394877905,
+          "p10_db": 0.26201360854990163,
+          "p90_db": 0.9334119195294368,
+          "locations_over_1db": 1
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.3191342586403213,
+          "p10_db": 0.15214823639217961,
+          "p90_db": 1.2345151784457218,
+          "locations_over_1db": 4
+        }
+      }
+    },
+    "vlm_texture_m1": {
+      "variant": "vlm_texture_m1",
+      "posterior": {
+        "brick": 0.16985404857826858,
+        "concrete": 0.17142760711424498,
+        "plasterboard": 0.040214293851943014,
+        "marble": 0.04909827182458631,
+        "glass": 0.09404625429031871,
+        "metal": 0.04351526444436698,
+        "wood": 0.027304581650789313,
+        "ceramic": 0.02158484490835559,
+        "unknown": 0.38295483333712654
+      },
+      "realised_area_composition": {
+        "brick": 0.11260041546986788,
+        "concrete": 0.11307924219108823,
+        "glass": 0.062128948997350816,
+        "marble": 0.04581196871888873,
+        "metal": 0.02971728411784367,
+        "plasterboard": 0.027550021459289174,
+        "wood": 0.018291482285783617
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 354.3,
+      "chi_isotropic": {
+        "median": 0.3033699361039299,
+        "p10": 0.21499552925142,
+        "p90": 0.3831940958051903
+      },
+      "chi_rooftop": {
+        "median": 0.2037285334509848,
+        "p10": 0.10010807134437738,
+        "p90": 0.4132795502587917
+      },
+      "chi_street_small_cell": {
+        "median": 0.08203928450154241,
+        "p10": 0.02760125089519346,
+        "p90": 0.2524443617183527
+      },
+      "mean_bounces": {
+        "median": 0.9807541782494144,
+        "p10": 0.8391229062749296,
+        "p90": 1.1344493662566195
+      },
+      "escaped_fraction": {
+        "median": 0.7542,
+        "p10": 0.62241,
+        "p90": 0.8432466666666666
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0009034487967583566,
+        "p10": 0.0006148876938554676,
+        "p90": 0.0011999850775754116
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0007613226147315772,
+        "p10": 0.00035561671064744194,
+        "p90": 0.0015544275557356569
+      },
+      "shift_db": {
+        "chi_isotropic": 0.20661056853401386,
+        "chi_rooftop": 0.3803219138743958,
+        "chi_street_small_cell": 0.2521227014636505
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.22333305151844346,
+          "p10_db": 0.15376449034991793,
+          "p90_db": 0.3413654361245575,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.43003398149572664,
+          "p10_db": 0.31702847518755994,
+          "p90_db": 0.8571140484553017,
+          "locations_over_1db": 2
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.34322595507049736,
+          "p10_db": 0.2047228316709099,
+          "p90_db": 1.918964886153704,
+          "locations_over_1db": 5
+        }
+      }
+    },
+    "pure_plasterboard_m0": {
+      "variant": "pure_plasterboard_m0",
+      "posterior": {
+        "plasterboard": 1.0
+      },
+      "realised_area_composition": {
+        "plasterboard": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 288.9,
+      "chi_isotropic": {
+        "median": 0.2829538510628174,
+        "p10": 0.1927577336371015,
+        "p90": 0.35866032363963074
+      },
+      "chi_rooftop": {
+        "median": 0.17995360235126173,
+        "p10": 0.07597127198719167,
+        "p90": 0.3706858888536222
+      },
+      "chi_street_small_cell": {
+        "median": 0.07522070786191945,
+        "p10": 0.01917572478405718,
+        "p90": 0.22433111348982435
+      },
+      "mean_bounces": {
+        "median": 0.9828429151776337,
+        "p10": 0.8423531577906139,
+        "p90": 1.136108502184073
+      },
+      "escaped_fraction": {
+        "median": 0.7620333333333333,
+        "p10": 0.6260883333333332,
+        "p90": 0.8482733333333333
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0008322498542553282,
+        "p10": 0.0005384318583959947,
+        "p90": 0.0011110970783824758
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0006752090042021697,
+        "p10": 0.00026937239871500365,
+        "p90": 0.0013987972892330258
+      },
+      "shift_db": {
+        "chi_isotropic": -0.09595874086092056,
+        "chi_rooftop": -0.15859122642308454,
+        "chi_street_small_cell": -0.12472177885972548
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": -0.10409031395101406,
+          "p10_db": -0.15968953533954738,
+          "p90_db": -0.06942522216502876,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": -0.16354340472563772,
+          "p10_db": -0.3519325693837177,
+          "p90_db": -0.12515143790102362,
+          "locations_over_1db": 0
+        },
+        "chi_street_small_cell": {
+          "median_db": -0.1364618627681581,
+          "p10_db": -0.6569305055876147,
+          "p90_db": -0.09219704015554706,
+          "locations_over_1db": 1
+        }
+      }
+    },
+    "pure_plasterboard_m1": {
+      "variant": "pure_plasterboard_m1",
+      "posterior": {
+        "plasterboard": 1.0
+      },
+      "realised_area_composition": {
+        "plasterboard": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 423.2,
+      "chi_isotropic": {
+        "median": 0.2829538510628174,
+        "p10": 0.1927577336371015,
+        "p90": 0.35866032363963074
+      },
+      "chi_rooftop": {
+        "median": 0.17995360235126173,
+        "p10": 0.07597127198719167,
+        "p90": 0.3706858888536222
+      },
+      "chi_street_small_cell": {
+        "median": 0.07522070786191945,
+        "p10": 0.01917572478405718,
+        "p90": 0.22433111348982435
+      },
+      "mean_bounces": {
+        "median": 0.9828429151776337,
+        "p10": 0.8423531577906139,
+        "p90": 1.136108502184073
+      },
+      "escaped_fraction": {
+        "median": 0.7620333333333333,
+        "p10": 0.6260883333333332,
+        "p90": 0.8482733333333333
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0008322498542553282,
+        "p10": 0.0005384318583959947,
+        "p90": 0.0011110970783824758
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0006752090042021697,
+        "p10": 0.00026937239871500365,
+        "p90": 0.0013987972892330258
+      },
+      "shift_db": {
+        "chi_isotropic": -0.09595874086092056,
+        "chi_rooftop": -0.15859122642308454,
+        "chi_street_small_cell": -0.12472177885972548
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": -0.10409031395101406,
+          "p10_db": -0.15968953533954738,
+          "p90_db": -0.06942522216502876,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": -0.16354340472563772,
+          "p10_db": -0.3519325693837177,
+          "p90_db": -0.12515143790102362,
+          "locations_over_1db": 0
+        },
+        "chi_street_small_cell": {
+          "median_db": -0.1364618627681581,
+          "p10_db": -0.6569305055876147,
+          "p90_db": -0.09219704015554706,
+          "locations_over_1db": 1
+        }
+      }
+    },
+    "pure_marble_m0": {
+      "variant": "pure_marble_m0",
+      "posterior": {
+        "marble": 1.0
+      },
+      "realised_area_composition": {
+        "marble": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 443.7,
+      "chi_isotropic": {
+        "median": 0.3055234174574608,
+        "p10": 0.21457019642217118,
+        "p90": 0.38360667343561294
+      },
+      "chi_rooftop": {
+        "median": 0.20443196254200127,
+        "p10": 0.1010542639348693,
+        "p90": 0.4116340150512107
+      },
+      "chi_street_small_cell": {
+        "median": 0.08171670698833006,
+        "p10": 0.025993538524454816,
+        "p90": 0.24528490308260412
+      },
+      "mean_bounces": {
+        "median": 0.9813101561324393,
+        "p10": 0.8390071687591166,
+        "p90": 1.1359860369540058
+      },
+      "escaped_fraction": {
+        "median": 0.7574833333333333,
+        "p10": 0.6252,
+        "p90": 0.8435616666666667
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0009110839050847231,
+        "p10": 0.0006144870648168017,
+        "p90": 0.0012020208313243354
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.000764360381376469,
+        "p10": 0.0003590849830352972,
+        "p90": 0.0015492551274602705
+      },
+      "shift_db": {
+        "chi_isotropic": 0.23733019990243825,
+        "chi_rooftop": 0.39529130351862973,
+        "chi_street_small_cell": 0.23501263252445131
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.23949738083459698,
+          "p10_db": 0.16099384751278875,
+          "p90_db": 0.3363280058267789,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.4138365384186423,
+          "p10_db": 0.3203937377309738,
+          "p90_db": 0.927768953678173,
+          "locations_over_1db": 2
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.32235253838275735,
+          "p10_db": 0.18812118171806722,
+          "p90_db": 1.7390737145631872,
+          "locations_over_1db": 5
+        }
+      }
+    },
+    "pure_marble_m1": {
+      "variant": "pure_marble_m1",
+      "posterior": {
+        "marble": 1.0
+      },
+      "realised_area_composition": {
+        "marble": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 386.1,
+      "chi_isotropic": {
+        "median": 0.3055234174574608,
+        "p10": 0.21457019642217118,
+        "p90": 0.38360667343561294
+      },
+      "chi_rooftop": {
+        "median": 0.20443196254200127,
+        "p10": 0.1010542639348693,
+        "p90": 0.4116340150512107
+      },
+      "chi_street_small_cell": {
+        "median": 0.08171670698833006,
+        "p10": 0.025993538524454816,
+        "p90": 0.24528490308260412
+      },
+      "mean_bounces": {
+        "median": 0.9813101561324393,
+        "p10": 0.8390071687591166,
+        "p90": 1.1359860369540058
+      },
+      "escaped_fraction": {
+        "median": 0.7574833333333333,
+        "p10": 0.6252,
+        "p90": 0.8435616666666667
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0009110839050847231,
+        "p10": 0.0006144870648168017,
+        "p90": 0.0012020208313243354
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.000764360381376469,
+        "p10": 0.0003590849830352972,
+        "p90": 0.0015492551274602705
+      },
+      "shift_db": {
+        "chi_isotropic": 0.23733019990243825,
+        "chi_rooftop": 0.39529130351862973,
+        "chi_street_small_cell": 0.23501263252445131
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 0.23949738083459698,
+          "p10_db": 0.16099384751278875,
+          "p90_db": 0.3363280058267789,
+          "locations_over_1db": 0
+        },
+        "chi_rooftop": {
+          "median_db": 0.4138365384186423,
+          "p10_db": 0.3203937377309738,
+          "p90_db": 0.927768953678173,
+          "locations_over_1db": 2
+        },
+        "chi_street_small_cell": {
+          "median_db": 0.32235253838275735,
+          "p10_db": 0.18812118171806722,
+          "p90_db": 1.7390737145631872,
+          "locations_over_1db": 5
+        }
+      }
+    },
+    "pure_metal_m0": {
+      "variant": "pure_metal_m0",
+      "posterior": {
+        "metal": 1.0
+      },
+      "realised_area_composition": {
+        "metal": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 248.6,
+      "chi_isotropic": {
+        "median": 0.5141930713785007,
+        "p10": 0.44990558452045504,
+        "p90": 0.5710042623096456
+      },
+      "chi_rooftop": {
+        "median": 0.5100082259216913,
+        "p10": 0.3517607268536503,
+        "p90": 0.8126227394140237
+      },
+      "chi_street_small_cell": {
+        "median": 0.22485892786829526,
+        "p10": 0.11300294501578509,
+        "p90": 0.48687067001907974
+      },
+      "mean_bounces": {
+        "median": 1.1079375473588544,
+        "p10": 0.9368865096988748,
+        "p90": 1.453263139022893
+      },
+      "escaped_fraction": {
+        "median": 0.79715,
+        "p10": 0.693155,
+        "p90": 0.88183
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0016402852993527423,
+        "p10": 0.0014256087143297215,
+        "p90": 0.0018490559968635442
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0018952589115041971,
+        "p10": 0.001282446889297242,
+        "p90": 0.003014009072649529
+      },
+      "shift_db": {
+        "chi_isotropic": 2.498147370989993,
+        "chi_rooftop": 4.365575133674361,
+        "chi_street_small_cell": 4.631005417034105
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 2.5018783448784343,
+          "p10_db": 1.6845995688370485,
+          "p90_db": 3.9276353014545355,
+          "locations_over_1db": 24
+        },
+        "chi_rooftop": {
+          "median_db": 4.373902503418639,
+          "p10_db": 3.0303347547265482,
+          "p90_db": 7.479630990960899,
+          "locations_over_1db": 24
+        },
+        "chi_street_small_cell": {
+          "median_db": 3.8081020846799163,
+          "p10_db": 2.4716765859764336,
+          "p90_db": 9.908553984705478,
+          "locations_over_1db": 24
+        }
+      }
+    },
+    "pure_metal_m1": {
+      "variant": "pure_metal_m1",
+      "posterior": {
+        "metal": 1.0
+      },
+      "realised_area_composition": {
+        "metal": 0.4091793632401121
+      },
+      "facade_area_fraction_drawn": 0.4091793632401121,
+      "locations": 24,
+      "seconds": 192.7,
+      "chi_isotropic": {
+        "median": 0.5141930713785007,
+        "p10": 0.44990558452045504,
+        "p90": 0.5710042623096456
+      },
+      "chi_rooftop": {
+        "median": 0.5100082259216913,
+        "p10": 0.3517607268536503,
+        "p90": 0.8126227394140237
+      },
+      "chi_street_small_cell": {
+        "median": 0.22485892786829526,
+        "p10": 0.11300294501578509,
+        "p90": 0.48687067001907974
+      },
+      "mean_bounces": {
+        "median": 1.1079375473588544,
+        "p10": 0.9368865096988748,
+        "p90": 1.453263139022893
+      },
+      "escaped_fraction": {
+        "median": 0.79715,
+        "p10": 0.693155,
+        "p90": 0.88183
+      },
+      "isotropic_sar_wb_w_kg": {
+        "median": 0.0016402852993527423,
+        "p10": 0.0014256087143297215,
+        "p90": 0.0018490559968635442
+      },
+      "rooftop_sar_wb_w_kg": {
+        "median": 0.0018952589115041971,
+        "p10": 0.001282446889297242,
+        "p90": 0.003014009072649529
+      },
+      "shift_db": {
+        "chi_isotropic": 2.498147370989993,
+        "chi_rooftop": 4.365575133674361,
+        "chi_street_small_cell": 4.631005417034105
+      },
+      "paired_shift_db": {
+        "chi_isotropic": {
+          "median_db": 2.5018783448784343,
+          "p10_db": 1.6845995688370485,
+          "p90_db": 3.9276353014545355,
+          "locations_over_1db": 24
+        },
+        "chi_rooftop": {
+          "median_db": 4.373902503418639,
+          "p10_db": 3.0303347547265482,
+          "p90_db": 7.479630990960899,
+          "locations_over_1db": 24
+        },
+        "chi_street_small_cell": {
+          "median_db": 3.8081020846799163,
+          "p10_db": 2.4716765859764336,
+          "p90_db": 9.908553984705478,
+          "locations_over_1db": 24
+        }
+      }
+    }
+  }
+}

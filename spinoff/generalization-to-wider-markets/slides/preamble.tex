@@ -1,0 +1,94 @@
+% ---------------------------------------------------------------
+% PREAMBLE -- Tom Dhaene meeting deck
+% Copied from presentations/patent_meeting/preamble.tex, only the
+% \graphicspath is adapted to this directory.
+% ---------------------------------------------------------------
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usefonttheme[onlymath]{serif}
+
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{bm}
+
+\usepackage{graphicx}
+% Figure trees, resolved relative to spinoff/before-tom-meeting/slides/.
+\graphicspath{%
+  {figures/}%
+  {../../../presentations/patent_meeting/figures/}%
+  {../../../presentations/patent_meeting/}%
+  {../../../presentations/promotors/figures/}%
+  {../../../papers/TAP_paper/figures/}%
+  {../../../papers/coherent-exposure-operator/figures/}%
+}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{makecell}
+
+\usepackage{siunitx}
+\sisetup{detect-all, range-phrase={--}, range-units=single, per-mode=symbol}
+
+\usepackage[most]{tcolorbox}
+\usepackage{appendixnumberbeamer}
+\hypersetup{colorlinks=false, pdfstartview=FitH}
+
+% =============================== COLORS ===============================
+\definecolor{navyblue}{RGB}{25, 55, 100}
+\definecolor{medblue}{RGB}{50, 100, 170}
+\definecolor{lightblue}{RGB}{220, 235, 250}
+\definecolor{alertred}{RGB}{180, 30, 30}
+\definecolor{resultgreen}{RGB}{0, 110, 55}
+\definecolor{darkgray}{RGB}{60, 60, 60}
+\definecolor{warnamber}{RGB}{150, 95, 0}
+\definecolor{colsinc}{RGB}{30, 110, 165}
+\definecolor{coltransmission}{RGB}{200, 105, 20}
+\definecolor{colgeometry}{RGB}{0, 130, 70}
+
+% =============================== BEAMER STYLING ===============================
+\setbeamertemplate{navigation symbols}{}
+\setbeamercolor{frametitle}{fg=white, bg=navyblue}
+\setbeamercolor{title}{fg=navyblue}
+\setbeamercolor{normal text}{fg=black, bg=white}
+\setbeamercolor{itemize item}{fg=navyblue}
+\setbeamercolor{itemize subitem}{fg=medblue}
+\setbeamercolor{enumerate item}{fg=navyblue}
+\setbeamercolor{alerted text}{fg=alertred}
+\setbeamercolor{example text}{fg=resultgreen}
+\setbeamerfont{frametitle}{size=\large, series=\bfseries}
+\setbeamerfont{title}{size=\Large, series=\bfseries}
+
+\setbeamertemplate{frametitle}{%
+  \vskip2pt%
+  \begin{beamercolorbox}[wd=\paperwidth, ht=2.8ex, dp=1.2ex, leftskip=10pt]{frametitle}%
+    \usebeamerfont{frametitle}\insertframetitle%
+  \end{beamercolorbox}%
+}
+\setbeamertemplate{itemize item}{\small\raise1pt\hbox{\textbullet}}
+\setbeamertemplate{itemize subitem}{\footnotesize\raise1pt\hbox{--}}
+
+\setbeamertemplate{footline}{%
+  \hbox to \paperwidth{\hfill\usebeamercolor[fg]{normal text}%
+    \footnotesize\textcolor{darkgray}{\insertframenumber}\hskip10pt}%
+  \vskip4pt}
+
+% =============================== RESULT BOX ===============================
+\newtcolorbox{resultbox}[1][]{%
+  colback=lightblue, colframe=navyblue, arc=3pt, boxrule=0.8pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt,
+  fonttitle=\bfseries\small, title={#1}}
+
+% =============================== PLACEHOLDERS ===============================
+% \phfig and \phvid draw a labelled box where a real figure / mp4 will drop in.
+\newtcolorbox{phboxenv}[1][height=3.0cm]{%
+  colback=lightblue!30, colframe=medblue, arc=2pt, boxrule=0.6pt,
+  halign=center, valign=center, #1}
+\newcommand{\phfig}[2][3.0cm]{%
+  \begin{phboxenv}[height=#1]{\footnotesize\itshape\color{darkgray} FIGURE\\#2}\end{phboxenv}}
+\newcommand{\phvid}[2][3.0cm]{%
+  \begin{phboxenv}[height=#1]{\footnotesize\itshape\color{medblue} $\blacktriangleright$~VIDEO (mp4)\\#2}\end{phboxenv}}
+
+\newcommand{\srcnote}[1]{{\scriptsize\color{darkgray}\textit{src: #1}}}
+
+\input{math_commands}

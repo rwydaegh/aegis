@@ -1,0 +1,532 @@
+{
+  "generator": "build_facade_crops.py",
+  "mesh": "/home/user/aegis/papers/city-exposure-study/semantic_twin/data/geometry/korenmarkt/inhouse_leaf_130m_f64.ply",
+  "tiles": "/home/user/aegis/papers/city-exposure-study/semantic_twin/data/tiles/korenmarkt",
+  "panorama_pose": "/home/user/aegis/papers/city-exposure-study/semantic_twin/data/panoramas/korenmarkt/alignment/pose_aligned.json",
+  "tile_match": {
+    "faces": 157862.0,
+    "matched": 157810.0,
+    "matched_fraction": 0.9996705983707289,
+    "median_tile_offset_m": 9.664456525173034e-08,
+    "median_residual_m": 1.2126453023910828e-06
+  },
+  "crop_size_px": 384,
+  "min_building_fraction": 0.82,
+  "max_range_m": 90.0,
+  "walls": 8,
+  "crops": [
+    {
+      "crop_id": "h+45_000_r1152_c1024",
+      "view": "h+45_000",
+      "row": 1152,
+      "column": 1024,
+      "size": 384,
+      "building_fraction": 1.0,
+      "wall_group": "wall_00",
+      "faces": 61,
+      "face_area_m2": 102.1092343237992,
+      "range_median_m": 23.28261661529541,
+      "incidence_median_deg": 19.985713749920777,
+      "normal_enu": [
+        0.9413963573146319,
+        -0.33714853501637976,
+        0.010186450365608673
+      ],
+      "plane_offset_m": -17.802930751712136,
+      "centroid_enu": [
+        -17.88758849108881,
+        4.671916764033253,
+        59.48223576511927
+      ],
+      "patch": "patch_00",
+      "texture_pixel_fraction": 1.0,
+      "texture_gsd_m": 0.20643613813361555
+    },
+    {
+      "crop_id": "h+45_045_r1152_c0512",
+      "view": "h+45_045",
+      "row": 1152,
+      "column": 512,
+      "size": 384,
+      "building_fraction": 1.0,
+      "wall_group": "wall_00",
+      "faces": 52,
+      "face_area_m2": 140.36445956255335,
+      "range_median_m": 24.870512008666992,
+      "incidence_median_deg": 25.732715777127545,
+      "normal_enu": [
+        0.9243077813094009,
+        -0.38122003774117247,
+        0.018066771585196716
+      ],
+      "plane_offset_m": -17.345573247340607,
+      "centroid_enu": [
+        -15.376386496081537,
+        11.011260925507251,
+        58.839781292345414
+      ],
+      "patch": "patch_01",
+      "texture_pixel_fraction": 1.0,
+      "texture_gsd_m": 0.2573758504488164
+    },
+    {
+      "crop_id": "h+45_090_r0128_c1152",
+      "view": "h+45_090",
+      "row": 128,
+      "column": 1152,
+      "size": 384,
+      "building_fraction": 0.9964870876736112,
+      "wall_group": "wall_01",
+      "faces": 40,
+      "face_area_m2": 60.945988406396594,
+      "range_median_m": 15.209343910217285,
+      "incidence_median_deg": 51.97906992737284,
+      "normal_enu": [
+        -0.9393656986178299,
+        0.3407254465983381,
+        -0.03870729001879948
+      ],
+      "plane_offset_m": -14.8741397564047,
+      "centroid_enu": [
+        12.696774099292824,
+        -1.4992632596153679,
+        62.731847058476
+      ],
+      "patch": "patch_02",
+      "texture_pixel_fraction": 1.0,
+      "texture_gsd_m": 0.2067794513448405
+    },
+    {
+      "crop_id": "h+45_135_r0640_c1152",
+      "view": "h+45_135",
+      "row": 640,
+      "column": 1152,
+      "size": 384,
+      "building_fraction": 0.9959784613715278,
+      "wall_group": "wall_02",
+      "faces": 54,
+      "face_area_m2": 169.55092640577698,
+      "range_median_m": 13.597217559814453,
+      "incidence_median_deg": 70.68980004934835,
+      "normal_enu": [
+        -0.45456879351484836,
+        -0.8892742024653114,
+        0.050582653075333016
+      ],
+      "plane_offset_m": 1.0184652061697226,
+      "centroid_enu": [
+        15.425785263716666,
+        -5.6651633498908955,
+        57.510215077945496
+      ],
+      "patch": "patch_03",
+      "texture_pixel_fraction": 1.0,
+      "texture_gsd_m": 0.19281790096497484
+    },
+    {
+      "crop_id": "h+45_045_r1152_c0128",
+      "view": "h+45_045",
+      "row": 1152,
+      "column": 128,
+      "size": 384,
+      "building_fraction": 0.9957817925347222,
+      "wall_group": "wall_00",
+      "faces": 70,
+      "face_area_m2": 110.59339292294496,
+      "range_median_m": 23.127896308898926,
+      "incidence_median_deg": 22.200824372660044,
+      "normal_enu": [
+        0.9473608705867684,
+        -0.3200204310127964,
+        0.009711056351617434
+      ],
+      "plane_offset_m": -17.853749043617576,
+      "centroid_enu": [
+        -18.593767771341856,
+        2.6245321370158856,
+        59.80129943615039
+      ],
+      "patch": "patch_00",
+      "texture_pixel_fraction": 1.0,
+      "texture_gsd_m": 0.1933365559139898
+    },
+    {
+      "crop_id": "h+45_225_r0640_c0000",
+      "view": "h+45_225",
+      "row": 640,
+      "column": 0,
+      "size": 384,
+      "building_fraction": 0.9947374131944444,
+      "wall_group": "wall_02",
+      "faces": 97,
+      "face_area_m2": 229.39254993549199,
+      "range_median_m": 14.077615737915039,
+      "incidence_median_deg": 70.97642328982133,
+      "normal_enu": [
+        -0.49804364112073934,
+        -0.8670647158900288,
+        0.012300812889391216
+      ],
+      "plane_offset_m": -2.0218881040088528,
+      "centroid_enu": [
+        16.608861760717687,
+        -6.0525038783440595,
+        57.71044250661093
+      ],
+      "patch": "patch_03",
+      "texture_pixel_fraction": 0.9961480034722222,
+      "texture_gsd_m": 0.19281790096497484
+    },
+    {
+      "crop_id": "h+00_270_r0256_c0000",
+      "view": "h+00_270",
+      "row": 256,
+      "column": 0,
+      "size": 384,
+      "building_fraction": 0.9885050455729166,
+      "wall_group": "wall_03",
+      "faces": 77,
+      "face_area_m2": 155.33998480488236,
+      "range_median_m": 28.3822603225708,
+      "incidence_median_deg": 43.21956256564444,
+      "normal_enu": [
+        -0.9763970672536473,
+        0.21593420678136352,
+        -0.004602760061065158
+      ],
+      "plane_offset_m": -24.855670263998864,
+      "centroid_enu": [
+        18.75408770154476,
+        -26.53503816775742,
+        60.48559194836647
+      ],
+      "patch": "patch_04",
+      "texture_pixel_fraction": 0.9848225911458334,
+      "texture_gsd_m": 0.22164947145469718
+    },
+    {
+      "crop_id": "h+00_180_r0128_c1152",
+      "view": "h+00_180",
+      "row": 128,
+      "column": 1152,
+      "size": 384,
+      "building_fraction": 0.9875895182291666,
+      "wall_group": "wall_04",
+      "faces": 114,
+      "face_area_m2": 115.5629711093992,
+      "range_median_m": 23.332985877990723,
+      "incidence_median_deg": 33.471390268154856,
+      "normal_enu": [
+        -0.8337293087907284,
+        0.5517456871974906,
+        0.021728698127205973
+      ],
+      "plane_offset_m": -25.56291279877553,
+      "centroid_enu": [
+        14.967097789066438,
+        -13.442673775501083,
+        57.6414387721429
+      ],
+      "patch": "patch_05",
+      "texture_pixel_fraction": 0.9831271701388888,
+      "texture_gsd_m": 0.18890891824088862
+    },
+    {
+      "crop_id": "h+45_225_r0256_c0000",
+      "view": "h+45_225",
+      "row": 256,
+      "column": 0,
+      "size": 384,
+      "building_fraction": 0.9852159288194444,
+      "wall_group": "wall_01",
+      "faces": 40,
+      "face_area_m2": 84.3446991511854,
+      "range_median_m": 13.95905876159668,
+      "incidence_median_deg": 50.45035435849115,
+      "normal_enu": [
+        -0.9796459956771467,
+        0.19802847292593814,
+        -0.03283971778735225
+      ],
+      "plane_offset_m": -14.693825062252277,
+      "centroid_enu": [
+        12.48006274024312,
+        -2.580190168664428,
+        61.01676047126212
+      ],
+      "patch": "patch_02",
+      "texture_pixel_fraction": 1.0,
+      "texture_gsd_m": 0.20696447508675742
+    },
+    {
+      "crop_id": "h+00_315_r0512_c1152",
+      "view": "h+00_315",
+      "row": 512,
+      "column": 1152,
+      "size": 384,
+      "building_fraction": 0.9599677191840278,
+      "wall_group": "wall_00",
+      "faces": 77,
+      "face_area_m2": 141.10648021044082,
+      "range_median_m": 25.698280334472656,
+      "incidence_median_deg": 30.236734903700462,
+      "normal_enu": [
+        0.9551246673503341,
+        -0.2962009564494978,
+        -0.0013649971855184528
+      ],
+      "plane_offset_m": -18.982967094923755,
+      "centroid_enu": [
+        -22.548912964612747,
+        -8.8368541979725,
+        60.181791921472666
+      ],
+      "patch": "patch_06",
+      "texture_pixel_fraction": 0.9464382595486112,
+      "texture_gsd_m": 0.19178498337263017
+    },
+    {
+      "crop_id": "h+45_135_r0768_c0384",
+      "view": "h+45_135",
+      "row": 768,
+      "column": 384,
+      "size": 384,
+      "building_fraction": 0.9498087565104166,
+      "wall_group": "wall_02",
+      "faces": 50,
+      "face_area_m2": 96.41368991306888,
+      "range_median_m": 6.634387016296387,
+      "incidence_median_deg": 32.80070224125062,
+      "normal_enu": [
+        -0.6255959243954304,
+        -0.7783674045646618,
+        0.052668044306761495
+      ],
+      "plane_offset_m": 0.15571176765699868,
+      "centroid_enu": [
+        6.951851585076868,
+        2.2442045760405716,
+        57.04057789517597
+      ],
+      "patch": "patch_07",
+      "texture_pixel_fraction": 1.0,
+      "texture_gsd_m": 0.19195075105575618
+    },
+    {
+      "crop_id": "h+45_180_r0896_c1152",
+      "view": "h+45_180",
+      "row": 896,
+      "column": 1152,
+      "size": 384,
+      "building_fraction": 0.9422878689236112,
+      "wall_group": "wall_04",
+      "faces": 101,
+      "face_area_m2": 116.37358874367469,
+      "range_median_m": 22.539276123046875,
+      "incidence_median_deg": 32.61201151213319,
+      "normal_enu": [
+        -0.8547024684865003,
+        0.5182598028332371,
+        0.02984069587554654
+      ],
+      "plane_offset_m": -25.109298281937743,
+      "centroid_enu": [
+        14.363975809398772,
+        -13.744377556412243,
+        55.84135565459383
+      ],
+      "patch": "patch_05",
+      "texture_pixel_fraction": 1.0,
+      "texture_gsd_m": 0.18830014470455106
+    },
+    {
+      "crop_id": "h+45_000_r1152_c0512",
+      "view": "h+45_000",
+      "row": 1152,
+      "column": 512,
+      "size": 384,
+      "building_fraction": 0.9266764322916666,
+      "wall_group": "wall_00",
+      "faces": 68,
+      "face_area_m2": 119.22375083696613,
+      "range_median_m": 25.38207721710205,
+      "incidence_median_deg": 30.45053240141379,
+      "normal_enu": [
+        0.9520445572642425,
+        -0.30565805818559955,
+        -0.013576172131390278
+      ],
+      "plane_offset_m": -19.559217908972187,
+      "centroid_enu": [
+        -21.846631285271087,
+        -6.663259406696705,
+        61.7971470471032
+      ],
+      "patch": "patch_06",
+      "texture_pixel_fraction": 0.91119384765625,
+      "texture_gsd_m": 0.19235247037826123
+    },
+    {
+      "crop_id": "h+00_090_r0384_c0000",
+      "view": "h+00_090",
+      "row": 384,
+      "column": 0,
+      "size": 384,
+      "building_fraction": 0.9091932508680556,
+      "wall_group": "wall_00",
+      "faces": 108,
+      "face_area_m2": 183.07184626830156,
+      "range_median_m": 27.414088249206543,
+      "incidence_median_deg": 36.85192992202104,
+      "normal_enu": [
+        0.9096885690624378,
+        -0.41475861141697484,
+        0.021023833442005032
+      ],
+      "plane_offset_m": -17.450084256913563,
+      "centroid_enu": [
+        -12.952886020100143,
+        16.703376264850085,
+        58.864554267456874
+      ],
+      "patch": "patch_08",
+      "texture_pixel_fraction": 0.9638400607638888,
+      "texture_gsd_m": 0.2014904352515546
+    },
+    {
+      "crop_id": "h+00_225_r0128_c0000",
+      "view": "h+00_225",
+      "row": 128,
+      "column": 0,
+      "size": 384,
+      "building_fraction": 0.9000108506944444,
+      "wall_group": "wall_05",
+      "faces": 131,
+      "face_area_m2": 284.84801429170756,
+      "range_median_m": 20.582765579223633,
+      "incidence_median_deg": 73.52426590805892,
+      "normal_enu": [
+        -0.45882008657878964,
+        -0.8883098645469703,
+        -0.019741142327008573
+      ],
+      "plane_offset_m": -3.785794323308346,
+      "centroid_enu": [
+        22.14894150152757,
+        -8.355335452845765,
+        57.47761325871865
+      ],
+      "patch": "patch_09",
+      "texture_pixel_fraction": 0.9516262478298612,
+      "texture_gsd_m": 0.1952943994581441
+    },
+    {
+      "crop_id": "h+45_180_r0256_c0000",
+      "view": "h+45_180",
+      "row": 256,
+      "column": 0,
+      "size": 384,
+      "building_fraction": 0.8967827690972222,
+      "wall_group": "wall_06",
+      "faces": 36,
+      "face_area_m2": 77.57804217100578,
+      "range_median_m": 18.66757297515869,
+      "incidence_median_deg": 40.677363408660085,
+      "normal_enu": [
+        -0.3661325538417913,
+        -0.9304249507629522,
+        -0.01601137142926292
+      ],
+      "plane_offset_m": -10.37306392835351,
+      "centroid_enu": [
+        10.790930391081623,
+        5.80734458321201,
+        64.34204568293897
+      ],
+      "patch": "patch_10",
+      "texture_pixel_fraction": 0.9415622287326388,
+      "texture_gsd_m": 0.19440731767040087
+    },
+    {
+      "crop_id": "h+45_135_r1024_c0000",
+      "view": "h+45_135",
+      "row": 1024,
+      "column": 0,
+      "size": 384,
+      "building_fraction": 0.8818088107638888,
+      "wall_group": "wall_02",
+      "faces": 20,
+      "face_area_m2": 11.329395208234853,
+      "range_median_m": 6.917662620544434,
+      "incidence_median_deg": 42.4033191730615,
+      "normal_enu": [
+        -0.6927896959203786,
+        -0.6951251105018494,
+        -0.1919466539857905
+      ],
+      "plane_offset_m": -13.445244159409732,
+      "centroid_enu": [
+        3.527880609201413,
+        1.3934052027917418,
+        53.44074788215828
+      ],
+      "patch": "patch_07",
+      "texture_pixel_fraction": 0.99285888671875,
+      "texture_gsd_m": 0.1942383703117264
+    },
+    {
+      "crop_id": "h+00_000_r0640_c0128",
+      "view": "h+00_000",
+      "row": 640,
+      "column": 128,
+      "size": 384,
+      "building_fraction": 0.8711073133680556,
+      "wall_group": "wall_07",
+      "faces": 270,
+      "face_area_m2": 284.42920753734967,
+      "range_median_m": 32.49398231506348,
+      "incidence_median_deg": 40.422718631062786,
+      "normal_enu": [
+        0.995319749746851,
+        -0.09659437300658082,
+        -0.0028500644433831065
+      ],
+      "plane_offset_m": -23.78958435101204,
+      "centroid_enu": [
+        -24.681308313255016,
+        -21.250355939840926,
+        58.60311662389441
+      ],
+      "patch": "patch_11",
+      "texture_pixel_fraction": 0.9950086805555556,
+      "texture_gsd_m": 0.1969157578096754
+    },
+    {
+      "crop_id": "h+45_090_r0512_c0896",
+      "view": "h+45_090",
+      "row": 512,
+      "column": 896,
+      "size": 384,
+      "building_fraction": 0.8381008572048612,
+      "wall_group": "wall_06",
+      "faces": 75,
+      "face_area_m2": 136.54885691820408,
+      "range_median_m": 18.151403427124023,
+      "incidence_median_deg": 39.14434403723836,
+      "normal_enu": [
+        -0.48311900053370505,
+        -0.8755426439712081,
+        -0.004594552341668134
+      ],
+      "plane_offset_m": -10.603092734169811,
+      "centroid_enu": [
+        10.656842408068478,
+        5.042813268456797,
+        62.40966734813686
+      ],
+      "patch": "patch_10",
+      "texture_pixel_fraction": 0.9733547634548612,
+      "texture_gsd_m": 0.1951128884496377
+    }
+  ]
+}

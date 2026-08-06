@@ -1,0 +1,62 @@
+{
+  "contract": "korenmarkt_angular_4096_v1",
+  "root": "..",
+  "output_dir": "outputs/angular_convergence_4096_atlas_v2",
+  "reference": {
+    "manifest": "outputs/exposure_korenmarkt/pilot_korenmarkt_walk_drjit_atlas_v2_15ghz_manifest.json",
+    "locations": "outputs/exposure_korenmarkt/pilot_korenmarkt_walk_drjit_atlas_v2_15ghz_locations.jsonl",
+    "spectra": "outputs/exposure_korenmarkt/pilot_korenmarkt_walk_drjit_atlas_v2_15ghz_spectra.npz"
+  },
+  "sweeps": {
+    "cells": {
+      "values": [512, 1024, 2048, 4096],
+      "rays": 1600000
+    },
+    "rays": {
+      "values": [200000, 400000, 800000, 1600000],
+      "cells": 4096
+    }
+  },
+  "seeds": {
+    "initial": [7, 8, 9, 10],
+    "extended": [7, 8, 9, 10, 11, 12, 13, 14]
+  },
+  "body_chunk_cells": 512,
+  "fixed_sectors": [
+    {"name": "az000_045_el-90_-30", "azimuth_deg": [0, 45], "elevation_deg": [-90, -30]},
+    {"name": "az045_090_el-90_-30", "azimuth_deg": [45, 90], "elevation_deg": [-90, -30]},
+    {"name": "az090_135_el-90_-30", "azimuth_deg": [90, 135], "elevation_deg": [-90, -30]},
+    {"name": "az135_180_el-90_-30", "azimuth_deg": [135, 180], "elevation_deg": [-90, -30]},
+    {"name": "az180_225_el-90_-30", "azimuth_deg": [180, 225], "elevation_deg": [-90, -30]},
+    {"name": "az225_270_el-90_-30", "azimuth_deg": [225, 270], "elevation_deg": [-90, -30]},
+    {"name": "az270_315_el-90_-30", "azimuth_deg": [270, 315], "elevation_deg": [-90, -30]},
+    {"name": "az315_000_el-90_-30", "azimuth_deg": [315, 0], "elevation_deg": [-90, -30]},
+
+    {"name": "az000_045_el-30_000", "azimuth_deg": [0, 45], "elevation_deg": [-30, 0]},
+    {"name": "az045_090_el-30_000", "azimuth_deg": [45, 90], "elevation_deg": [-30, 0]},
+    {"name": "az090_135_el-30_000", "azimuth_deg": [90, 135], "elevation_deg": [-30, 0]},
+    {"name": "az135_180_el-30_000", "azimuth_deg": [135, 180], "elevation_deg": [-30, 0]},
+    {"name": "az180_225_el-30_000", "azimuth_deg": [180, 225], "elevation_deg": [-30, 0]},
+    {"name": "az225_270_el-30_000", "azimuth_deg": [225, 270], "elevation_deg": [-30, 0]},
+    {"name": "az270_315_el-30_000", "azimuth_deg": [270, 315], "elevation_deg": [-30, 0]},
+    {"name": "az315_000_el-30_000", "azimuth_deg": [315, 0], "elevation_deg": [-30, 0]},
+
+    {"name": "az000_045_el000_030", "azimuth_deg": [0, 45], "elevation_deg": [0, 30]},
+    {"name": "az045_090_el000_030", "azimuth_deg": [45, 90], "elevation_deg": [0, 30]},
+    {"name": "az090_135_el000_030", "azimuth_deg": [90, 135], "elevation_deg": [0, 30]},
+    {"name": "az135_180_el000_030", "azimuth_deg": [135, 180], "elevation_deg": [0, 30]},
+    {"name": "az180_225_el000_030", "azimuth_deg": [180, 225], "elevation_deg": [0, 30]},
+    {"name": "az225_270_el000_030", "azimuth_deg": [225, 270], "elevation_deg": [0, 30]},
+    {"name": "az270_315_el000_030", "azimuth_deg": [270, 315], "elevation_deg": [0, 30]},
+    {"name": "az315_000_el000_030", "azimuth_deg": [315, 0], "elevation_deg": [0, 30]},
+
+    {"name": "az000_045_el030_090", "azimuth_deg": [0, 45], "elevation_deg": [30, 90]},
+    {"name": "az045_090_el030_090", "azimuth_deg": [45, 90], "elevation_deg": [30, 90]},
+    {"name": "az090_135_el030_090", "azimuth_deg": [90, 135], "elevation_deg": [30, 90]},
+    {"name": "az135_180_el030_090", "azimuth_deg": [135, 180], "elevation_deg": [30, 90]},
+    {"name": "az180_225_el030_090", "azimuth_deg": [180, 225], "elevation_deg": [30, 90]},
+    {"name": "az225_270_el030_090", "azimuth_deg": [225, 270], "elevation_deg": [30, 90]},
+    {"name": "az270_315_el030_090", "azimuth_deg": [270, 315], "elevation_deg": [30, 90]},
+    {"name": "az315_000_el030_090", "azimuth_deg": [315, 0], "elevation_deg": [30, 90]}
+  ]
+}

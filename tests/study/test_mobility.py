@@ -30,9 +30,9 @@ def test_route_walk_uses_cache_and_fake_call(tmp_path, monkeypatch):
 
     def fake_call(orig, dest, api_key):
         calls.append((orig, dest))
-        return {"status": "OK", "routes": [{"overview_polyline": {"points": encoded}}]}
+        return {"routes": [{"polyline": {"encodedPolyline": encoded}}]}
 
-    monkeypatch.setattr(mobility, "_call_directions", fake_call)
+    monkeypatch.setattr(mobility, "_call_routes", fake_call)
 
     orig, dest = (38.5, -120.2), (43.252, -126.453)
     route1 = route_walk(orig, dest, cache_dir=tmp_path, api_key="fake")
@@ -51,6 +51,7 @@ def test_route_walk_uses_cache_and_fake_call(tmp_path, monkeypatch):
 
 def test_route_walk_requires_key(tmp_path, monkeypatch):
     monkeypatch.delenv("GOOGLE_DIRECTIONS_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     import pytest
 
     with pytest.raises(RuntimeError, match="API key"):

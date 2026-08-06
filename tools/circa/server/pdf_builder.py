@@ -13,9 +13,11 @@ class BuildResult:
 
 
 class PdfBuilder:
-    def __init__(self, paper_dir: Path, build_timeout_s: int = 120) -> None:
+    def __init__(self, paper_dir: Path, build_timeout_s: int = 120, tex_name: str = "paper.tex") -> None:
         self.paper_dir = paper_dir
         self.timeout = build_timeout_s
+        self.tex_name = tex_name
+        self.stem = Path(tex_name).stem
         self._lock = asyncio.Lock()
 
     async def build(self) -> BuildResult:
@@ -23,7 +25,7 @@ class PdfBuilder:
             return await asyncio.to_thread(self._blocking)
 
     def _blocking(self) -> BuildResult:
-        cmd = ["pdflatex", "-interaction=nonstopmode", "-file-line-error", "paper.tex"]
+        cmd = ["pdflatex", "-interaction=nonstopmode", "-file-line-error", self.tex_name]
         try:
             for _ in range(2):
                 r = subprocess.run(
@@ -36,7 +38,7 @@ class PdfBuilder:
             return BuildResult(ok=False, error_tail="pdflatex timed out", timed_out=True)
 
     def _tail_log(self) -> str:
-        log = self.paper_dir / "paper.log"
+        log = self.paper_dir / f"{self.stem}.log"
         if not log.exists():
             return ""
         return "\n".join(log.read_text(errors="replace").splitlines()[-50:])

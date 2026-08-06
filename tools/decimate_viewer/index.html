@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AEGIS phantoms: original / processed</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace; background: #0d0f13; color: #e8eaed; overflow: hidden; }
+  #bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 46px; z-index: 10;
+    display: flex; align-items: center; gap: 14px; padding: 0 16px;
+    background: rgba(18,20,26,.92); border-bottom: 1px solid #232733; backdrop-filter: blur(6px);
+  }
+  #bar h1 { font-size: 13px; font-weight: 600; margin: 0; letter-spacing: .02em; color: #cfd3da; }
+  .spacer { flex: 1; }
+  select, button {
+    font: inherit; font-size: 12px; color: #d6dae2; background: #1b1f29; border: 1px solid #2c3140;
+    padding: 6px 11px; border-radius: 7px; cursor: pointer; user-select: none; transition: .12s;
+  }
+  select:hover, button:hover { background: #232838; border-color: #3a4150; }
+  button.on { background: #2d6cff; border-color: #2d6cff; color: #fff; }
+  .hint { font-size: 11px; color: #6b7280; }
+  #wrap { position: absolute; top: 46px; left: 0; right: 0; bottom: 0; display: flex; }
+  .pane { position: relative; flex: 1; min-width: 0; }
+  .pane + .pane { border-left: 1px solid #232733; }
+  .pane canvas { display: block; width: 100%; height: 100%; }
+  .tag {
+    position: absolute; top: 12px; left: 12px; z-index: 5; pointer-events: none;
+    background: rgba(18,20,26,.82); border: 1px solid #232733; border-radius: 8px; padding: 8px 12px; max-width: 46%;
+  }
+  .tag .t { font-size: 13px; font-weight: 600; }
+  .tag .s { font-size: 11px; color: #9aa0ac; margin-top: 3px; line-height: 1.5; }
+  .tag .b { color: #ff8a5c; } .tag .a { color: #5cd0ff; }
+  #legend {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    display: none; align-items: center; gap: 8px; background: rgba(18,20,26,.9);
+    border: 1px solid #232733; border-radius: 8px; padding: 7px 12px; font-size: 11px; color: #9aa0ac;
+  }
+  #legend .ramp { width: 160px; height: 10px; border-radius: 3px;
+    background: linear-gradient(90deg,#2b1a52,#3b5bdb,#22b8cf,#51cf66,#fcc419,#ff6b6b); }
+  #loading { position: fixed; inset: 46px 0 0 0; display: flex; align-items: center; justify-content: center;
+    background: #0d0f13; z-index: 20; font-size: 14px; color: #9aa0ac; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <h1>AEGIS phantoms &mdash; original vs processed</h1>
+  <select id="sel">
+    <option value="eartha">eartha</option>
+    <option value="duke">duke</option>
+    <option value="ella">ella</option>
+    <option value="thelonious">thelonious</option>
+  </select>
+  <span class="hint">drag to orbit &middot; scroll to zoom &middot; cameras synced</span>
+  <span class="spacer"></span>
+  <button id="btnWire">wireframe</button>
+  <button id="btnHeat">triangle-size heatmap</button>
+  <button id="btnSpin" class="on">auto-spin</button>
+</div>
+<div id="wrap">
+  <div class="pane" id="paneL"><div class="tag"><div class="t b">ORIGINAL</div><div class="s" id="statL"></div></div></div>
+  <div class="pane" id="paneR"><div class="tag"><div class="t a">PROCESSED</div><div class="s" id="statR"></div></div></div>
+</div>
+<div id="legend"><span>small tris</span><div class="ramp"></div><span>large tris</span></div>
+<div id="loading">loading&hellip;</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { STLLoader } from "three/addons/loaders/STLLoader.js";
+
+// Per-phantom captions for the PROCESSED pane (the ORIGINAL caption is generic).
+const NOTES = {
+  eartha: "double-wall repaired -> solid single skin &middot; genus 0 &middot; original ear/finger detail kept &middot; curvature-adaptive",
+  duke: "already solid &amp; at house density &middot; cleaned only (unchanged)",
+  ella: "already solid &middot; stray 2-face speck removed &middot; cleaned",
+  thelonious: "already solid &amp; at house density &middot; cleaned only (unchanged)",
+};
+
+const RAMP = [[0x2b,0x1a,0x52],[0x3b,0x5b,0xdb],[0x22,0xb8,0xcf],[0x51,0xcf,0x66],[0xfc,0xc4,0x19],[0xff,0x6b,0x6b]];
+function ramp(t){
+  t = Math.min(0.999, Math.max(0, t)) * (RAMP.length - 1);
+  const i = Math.floor(t), f = t - i, a = RAMP[i], b = RAMP[i+1];
+  return [ (a[0]+(b[0]-a[0])*f)/255, (a[1]+(b[1]-a[1])*f)/255, (a[2]+(b[2]-a[2])*f)/255 ];
+}
+
+let views = [];
+let spin = true, wire = false, heat = false, syncing = false;
+const loader = new STLLoader();
+
+function makeView(pane, statEl, geometry, note){
+  const w = pane.clientWidth, h = pane.clientHeight;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d0f13);
+  const camera = new THREE.PerspectiveCamera(35, w/h, 0.01, 50);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  pane.appendChild(renderer.domElement);
+
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox, ctr = new THREE.Vector3();
+  bb.getCenter(ctr);
+  const size = bb.getSize(new THREE.Vector3()).length();
+
+  // Per-vertex colour = sqrt(face area) on a shared absolute scale (1.5..7.5 mm
+  // of triangle edge), so a colour means the same physical size in both panes.
+  const pos = geometry.attributes.position;
+  const tri = pos.count / 3;
+  const colors = new Float32Array(pos.count * 3);
+  const vA=new THREE.Vector3(), vB=new THREE.Vector3(), vC=new THREE.Vector3(), e1=new THREE.Vector3(), e2=new THREE.Vector3();
+  const lo = 0.0015, hi = 0.0075;
+  for (let f=0; f<tri; f++){
+    vA.fromBufferAttribute(pos, f*3); vB.fromBufferAttribute(pos, f*3+1); vC.fromBufferAttribute(pos, f*3+2);
+    e1.subVectors(vB,vA); e2.subVectors(vC,vA);
+    const edge = Math.sqrt(0.5 * e1.cross(e2).length());
+    const c = ramp((edge-lo)/(hi-lo));
+    for (let k=0;k<3;k++){ const o=(f*3+k)*3; colors[o]=c[0]; colors[o+1]=c[1]; colors[o+2]=c[2]; }
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+  const matSolid = new THREE.MeshStandardMaterial({ color: 0xd7dbe2, roughness: 0.55, metalness: 0.0 });
+  const matHeat  = new THREE.MeshBasicMaterial({ vertexColors: true });
+  const mesh = new THREE.Mesh(geometry, heat ? matHeat : matSolid);
+  scene.add(mesh);
+
+  const wireMesh = new THREE.LineSegments(
+    new THREE.WireframeGeometry(geometry),
+    new THREE.LineBasicMaterial({ color: 0x4a90ff, transparent: true, opacity: 0.35 }));
+  wireMesh.visible = wire;
+  scene.add(wireMesh);
+  if (wire){ mesh.visible = heat; }
+
+  scene.add(new THREE.HemisphereLight(0xeaf0ff, 0x2a2f3a, 1.55));
+  const key  = new THREE.DirectionalLight(0xffffff, 2.1); key.position.set(0.6, -1.0, 0.8); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xbcd0ff, 1.0); fill.position.set(-0.8, -0.4, 0.3); scene.add(fill);
+  const rim  = new THREE.DirectionalLight(0x90b0ff, 0.9); rim.position.set(0.2, 1.0, -0.6); scene.add(rim);
+
+  // Phantoms are Z-up (height along +Z); view from the front (-Y) so they stand.
+  camera.up.set(0, 0, 1);
+  camera.position.set(ctr.x, ctr.y - size*0.95, ctr.z + size*0.12);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.copy(ctr);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.minDistance = size*0.15; controls.maxDistance = size*3;
+  controls.update();
+
+  statEl.innerHTML = `${tri.toLocaleString()} triangles<br>${note}`;
+  return { scene, camera, renderer, controls, mesh, wireMesh, matSolid, matHeat, pane };
+}
+
+function disposeViews(){
+  for (const v of views){
+    v.renderer.dispose();
+    v.renderer.forceContextLoss?.();
+    if (v.renderer.domElement.parentNode) v.renderer.domElement.parentNode.removeChild(v.renderer.domElement);
+  }
+  views = [];
+}
+
+function wireSync(){
+  views.forEach((v, i) => v.controls.addEventListener("change", () => {
+    if (syncing) return;
+    syncing = true;
+    const o = views[1-i];
+    o.camera.position.copy(v.camera.position);
+    o.camera.quaternion.copy(v.camera.quaternion);
+    o.controls.target.copy(v.controls.target);
+    o.controls.update();
+    syncing = false;
+  }));
+}
+
+function loadPhantom(name){
+  document.getElementById("loading").style.display = "flex";
+  const urls = [
+    { url: `${name}.stl`,           pane: "paneL", stat: "statL", note: "as shipped" },
+    { url: `${name}_processed.stl`, pane: "paneR", stat: "statR", note: NOTES[name] },
+  ];
+  Promise.all(urls.map(c => new Promise((res,rej) => loader.load(c.url, g => res({c,g}), undefined, rej))))
+    .then(loaded => {
+      disposeViews();
+      loaded.forEach(({c,g}) => views.push(
+        makeView(document.getElementById(c.pane), document.getElementById(c.stat), g, c.note)));
+      wireSync();
+      document.getElementById("loading").style.display = "none";
+    })
+    .catch(err => { document.getElementById("loading").textContent = "load error: " + err; });
+}
+
+function resize(){
+  views.forEach(v => {
+    const w = v.pane.clientWidth, h = v.pane.clientHeight;
+    v.camera.aspect = w/h; v.camera.updateProjectionMatrix(); v.renderer.setSize(w, h);
+  });
+}
+addEventListener("resize", resize);
+
+function animate(){
+  requestAnimationFrame(animate);
+  if (views.length === 2 && spin && !syncing){
+    syncing = true;
+    views.forEach(v => {
+      const off = new THREE.Vector3().subVectors(v.camera.position, v.controls.target);
+      off.applyAxisAngle(new THREE.Vector3(0,0,1), 0.0032);
+      v.camera.position.copy(v.controls.target).add(off);
+      v.camera.lookAt(v.controls.target);
+    });
+    syncing = false;
+  }
+  views.forEach(v => { v.controls.update(); v.renderer.render(v.scene, v.camera); });
+}
+
+document.getElementById("sel").onchange = e => loadPhantom(e.target.value);
+document.getElementById("btnSpin").onclick = e => { spin=!spin; e.target.classList.toggle("on", spin); };
+document.getElementById("btnWire").onclick = e => {
+  wire=!wire; e.target.classList.toggle("on", wire);
+  views.forEach(v => { v.wireMesh.visible = wire; v.mesh.visible = !wire || heat; });
+};
+document.getElementById("btnHeat").onclick = e => {
+  heat=!heat; e.target.classList.toggle("on", heat);
+  document.getElementById("legend").style.display = heat ? "flex" : "none";
+  views.forEach(v => { v.mesh.material = heat ? v.matHeat : v.matSolid; v.mesh.visible = !wire || heat; });
+};
+
+loadPhantom("eartha");
+animate();
+</script>
+</body>
+</html>

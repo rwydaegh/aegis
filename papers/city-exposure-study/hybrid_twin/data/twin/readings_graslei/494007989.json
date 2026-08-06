@@ -1,0 +1,91 @@
+{
+ "osm_id": 494007989,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 2,
+   "evidence": "seen"
+  },
+  "confidence": 0.66,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "inferred"
+  },
+  "identification": "A narrow-plot 16th/17th-century Flemish brick-and-sandstone burgher house on the Korenlei quay in Ghent (heritage=4, 7.1 m frontage, 17.1 m to gable top), one of six attached in a listed quayside terrace, now with a caf\u00e9 and outdoor terrace at ground level.",
+  "ledges": {
+   "sills": true,
+   "cornice": false,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "concrete",
+   "evidence": "seen"
+  },
+  "notes": "STREET IS PEDESTRIAN, car_access=none, surface=sett. No parked or moving vehicles anywhere on this frontage \u2014 the generic parked-car rule must not fire on Korenlei. Substitute the clutter actually visible in street photo _0: a row of black branded caf\u00e9 parasols directly against the facade (mix of open ~3 m canopies and furled ~2.5 m vertical cylinders), rattan bistro chairs and small round tables, an A-board menu, the cast-iron quay railing, and dense pedestrian traffic. The furled parasols and railing are above 10 cm and 1-2 m off the wall, so they are explicit geometry and dominate street-level scattering more than anything on the upper facade.\n\nTrim mapped to `concrete` as the closest available dielectric for Balegem calcareous sandstone; `marble` would overstate the permittivity. Wall brick is weathered handmade with deeply raked lime joints and irregular sandstone banding (speklagen) \u2014 that 3-8 mm relief is the roughness number, never geometry.\n\nSpend the detail budget on: the gable silhouette steps (silhouette edge, visible from every rotated camera), the stone cross-window surrounds and their reveals, the projecting glazed oriel at first floor, the continuous string courses, and the ground floor with its terrace. The party walls are shared with 6 attached neighbours and are never seen \u2014 give them nothing.\n\nRoof marked inferred: photo _0 foreshortens it to a sliver and the aerial plate is a collapsed photogrammetric mesh. A gable-to-street stepped gable is near-certain for this frontage width, plot depth and period, and the crowning element in the outlined box reads as tiered, but I did not resolve it. Ground floor marked inferred for the same reason: the caf\u00e9 is unmistakable, the shopfront glazing itself is hidden behind the parasol row.\n\nBalconies false for the target specifically \u2014 the small iron balconies and pink flower boxes in photo _0 belong to the larger house to the right, outside the magenta outline.",
+  "roof": {
+   "form": "stepped_gable",
+   "ridge_parallel_to_street": false,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 4,
+   "upper_height_m": 3.2,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.6,
+   "height_m": 2.2,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494007989,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "heritage": "4",
+   "addr:street": "Korenlei"
+  },
+  "frontage_width_m": 7.1,
+  "footprint_m": [
+   14.5,
+   16.8
+  ],
+  "footprint_area_m2": 161,
+  "height_m": 17.1,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 6,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Korenlei",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "oblique",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.207,
+   "x1": 0.445,
+   "y0": 0.472,
+   "y1": 0.92
+  }
+ },
+ "plate": "renders/plates/graslei/494007989.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007989_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007989_1.jpg"
+ ],
+ "view": "oblique",
+ "cost_usd": 0.3085105,
+ "model": "claude-opus-5"
+}

@@ -12,9 +12,10 @@ def _sha256(p: Path) -> str:
 
 
 class SnapshotManager:
-    def __init__(self, paper_dir: Path) -> None:
+    def __init__(self, paper_dir: Path, tex_name: str = "paper.tex") -> None:
         self.paper_dir = paper_dir
-        self.paper_tex = paper_dir / "paper.tex"
+        self.tex_name = tex_name
+        self.paper_tex = paper_dir / tex_name
 
     def take_snapshot(self, batch_id: str) -> None:
         dst = paths.snapshots_dir(self.paper_dir) / f"{batch_id}.tex"

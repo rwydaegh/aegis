@@ -1,0 +1,233 @@
+{
+  "key_string": "material-vlm-blind-v1",
+  "map": {
+    "patch_0d8198d5d7": {
+      "crop_id": "h+00_315_r0512_c1152",
+      "patch": "patch_06",
+      "source": "texture",
+      "wall_group": "wall_00"
+    },
+    "patch_10b7cfd4fe": {
+      "crop_id": "h+00_270_r0256_c0000",
+      "patch": "patch_04",
+      "source": "texture",
+      "wall_group": "wall_03"
+    },
+    "patch_1549242d3f": {
+      "crop_id": "h+00_180_r0128_c1152",
+      "patch": "patch_05",
+      "source": "texture",
+      "wall_group": "wall_04"
+    },
+    "patch_1689730371": {
+      "crop_id": "h+45_180_r0896_c1152",
+      "patch": "patch_05",
+      "source": "panorama",
+      "wall_group": "wall_04"
+    },
+    "patch_1cdfba408e": {
+      "crop_id": "h+45_180_r0256_c0000",
+      "patch": "patch_10",
+      "source": "panorama",
+      "wall_group": "wall_06"
+    },
+    "patch_314aed2304": {
+      "crop_id": "h+45_135_r1024_c0000",
+      "patch": "patch_07",
+      "source": "panorama",
+      "wall_group": "wall_02"
+    },
+    "patch_3363b4b9e4": {
+      "crop_id": "h+00_225_r0128_c0000",
+      "patch": "patch_09",
+      "source": "texture",
+      "wall_group": "wall_05"
+    },
+    "patch_33a792a103": {
+      "crop_id": "h+45_090_r0512_c0896",
+      "patch": "patch_10",
+      "source": "panorama",
+      "wall_group": "wall_06"
+    },
+    "patch_33ed7f5f53": {
+      "crop_id": "h+00_000_r0640_c0128",
+      "patch": "patch_11",
+      "source": "panorama",
+      "wall_group": "wall_07"
+    },
+    "patch_3448959fac": {
+      "crop_id": "h+45_000_r1152_c1024",
+      "patch": "patch_00",
+      "source": "texture",
+      "wall_group": "wall_00"
+    },
+    "patch_411781dd81": {
+      "crop_id": "h+45_090_r0512_c0896",
+      "patch": "patch_10",
+      "source": "texture",
+      "wall_group": "wall_06"
+    },
+    "patch_421ae5386c": {
+      "crop_id": "h+45_045_r1152_c0128",
+      "patch": "patch_00",
+      "source": "texture",
+      "wall_group": "wall_00"
+    },
+    "patch_4f63202a89": {
+      "crop_id": "h+45_000_r1152_c0512",
+      "patch": "patch_06",
+      "source": "texture",
+      "wall_group": "wall_00"
+    },
+    "patch_55e0fbd314": {
+      "crop_id": "h+00_180_r0128_c1152",
+      "patch": "patch_05",
+      "source": "panorama",
+      "wall_group": "wall_04"
+    },
+    "patch_5c7ce22034": {
+      "crop_id": "h+45_090_r0128_c1152",
+      "patch": "patch_02",
+      "source": "panorama",
+      "wall_group": "wall_01"
+    },
+    "patch_5f49dfd4b4": {
+      "crop_id": "h+00_270_r0256_c0000",
+      "patch": "patch_04",
+      "source": "panorama",
+      "wall_group": "wall_03"
+    },
+    "patch_6946e2d3a3": {
+      "crop_id": "h+45_135_r0768_c0384",
+      "patch": "patch_07",
+      "source": "texture",
+      "wall_group": "wall_02"
+    },
+    "patch_77bbd1963a": {
+      "crop_id": "h+45_135_r1024_c0000",
+      "patch": "patch_07",
+      "source": "texture",
+      "wall_group": "wall_02"
+    },
+    "patch_7b620d2f81": {
+      "crop_id": "h+45_225_r0256_c0000",
+      "patch": "patch_02",
+      "source": "texture",
+      "wall_group": "wall_01"
+    },
+    "patch_810b3383fc": {
+      "crop_id": "h+45_225_r0640_c0000",
+      "patch": "patch_03",
+      "source": "panorama",
+      "wall_group": "wall_02"
+    },
+    "patch_92571f47b0": {
+      "crop_id": "h+45_045_r1152_c0512",
+      "patch": "patch_01",
+      "source": "panorama",
+      "wall_group": "wall_00"
+    },
+    "patch_9b7c1b5403": {
+      "crop_id": "h+45_090_r0128_c1152",
+      "patch": "patch_02",
+      "source": "texture",
+      "wall_group": "wall_01"
+    },
+    "patch_a1fad7ffb6": {
+      "crop_id": "h+45_045_r1152_c0128",
+      "patch": "patch_00",
+      "source": "panorama",
+      "wall_group": "wall_00"
+    },
+    "patch_a38b408c51": {
+      "crop_id": "h+00_090_r0384_c0000",
+      "patch": "patch_08",
+      "source": "texture",
+      "wall_group": "wall_00"
+    },
+    "patch_a4c5c2e007": {
+      "crop_id": "h+45_000_r1152_c0512",
+      "patch": "patch_06",
+      "source": "panorama",
+      "wall_group": "wall_00"
+    },
+    "patch_a7e7915a03": {
+      "crop_id": "h+45_135_r0768_c0384",
+      "patch": "patch_07",
+      "source": "panorama",
+      "wall_group": "wall_02"
+    },
+    "patch_a91e1423ee": {
+      "crop_id": "h+45_180_r0256_c0000",
+      "patch": "patch_10",
+      "source": "texture",
+      "wall_group": "wall_06"
+    },
+    "patch_b08f59b525": {
+      "crop_id": "h+45_225_r0640_c0000",
+      "patch": "patch_03",
+      "source": "texture",
+      "wall_group": "wall_02"
+    },
+    "patch_bfedefd8f0": {
+      "crop_id": "h+00_315_r0512_c1152",
+      "patch": "patch_06",
+      "source": "panorama",
+      "wall_group": "wall_00"
+    },
+    "patch_caf8650e88": {
+      "crop_id": "h+45_045_r1152_c0512",
+      "patch": "patch_01",
+      "source": "texture",
+      "wall_group": "wall_00"
+    },
+    "patch_e22356f67e": {
+      "crop_id": "h+00_090_r0384_c0000",
+      "patch": "patch_08",
+      "source": "panorama",
+      "wall_group": "wall_00"
+    },
+    "patch_e2cb1e09ba": {
+      "crop_id": "h+45_135_r0640_c1152",
+      "patch": "patch_03",
+      "source": "panorama",
+      "wall_group": "wall_02"
+    },
+    "patch_e2ea02b34a": {
+      "crop_id": "h+45_180_r0896_c1152",
+      "patch": "patch_05",
+      "source": "texture",
+      "wall_group": "wall_04"
+    },
+    "patch_f2badec4ea": {
+      "crop_id": "h+45_135_r0640_c1152",
+      "patch": "patch_03",
+      "source": "texture",
+      "wall_group": "wall_02"
+    },
+    "patch_f3d72dd549": {
+      "crop_id": "h+45_225_r0256_c0000",
+      "patch": "patch_02",
+      "source": "panorama",
+      "wall_group": "wall_01"
+    },
+    "patch_f840fd49d8": {
+      "crop_id": "h+00_000_r0640_c0128",
+      "patch": "patch_11",
+      "source": "texture",
+      "wall_group": "wall_07"
+    },
+    "patch_fe792b11cf": {
+      "crop_id": "h+45_000_r1152_c1024",
+      "patch": "patch_00",
+      "source": "panorama",
+      "wall_group": "wall_00"
+    },
+    "patch_ff5f270780": {
+      "crop_id": "h+00_225_r0128_c0000",
+      "patch": "patch_09",
+      "source": "panorama",
+      "wall_group": "wall_05"
+    }
+  }
+}

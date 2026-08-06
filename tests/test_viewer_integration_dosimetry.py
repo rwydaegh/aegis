@@ -383,7 +383,7 @@ class TestComputeDosimetryRealPhantoms:
         assert stats["peak_sab"] < 20.0
 
     def test_eartha_largest_phantom_smoke(self, viewer_app_large_phantom):
-        """Largest phantom (eartha, ~164k triangles) - memory path test."""
+        """eartha phantom (~32k triangles, reprocessed from a 164k shell) - memory path."""
         with viewer_app_large_phantom.test_client() as c:
             resp = c.post(
                 "/api/compute",
@@ -396,7 +396,7 @@ class TestComputeDosimetryRealPhantoms:
             )
         assert resp.status_code == 200
         stats = json.loads(resp.headers["X-Stats"])
-        assert stats["n_triangles"] > 100_000
+        assert stats["n_triangles"] > 25_000  # eartha is ~32k after reprocessing
         assert np.isfinite(stats["peak_sab"])
 
 

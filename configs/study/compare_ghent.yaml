@@ -1,0 +1,48 @@
+# Deterministic (Sionna RT) vs stochastic (coherent 38.901) exposure comparison
+# on the Ghent core: the study's stated reason to exist, run via
+# python -m aegis.study.compare --config configs/study/compare_ghent.yaml
+# Each agent is evaluated once at mid-walk (both arms share the deployment), so
+# a modest crowd gives the paired error distribution cheaply.
+cities:
+  count: 1
+  radius_m: 180
+mobility:
+  n_agents: 16
+  window_s: 30
+  walk_speed_mps: 1.4
+  user_fraction: 0.5
+  routing: directions
+deployment:
+  process: ginibre
+  density_source: dataset
+  densification: 1.0
+  realizations_K: 1
+  sectoring:
+    sectors: 3
+    az_coverage_deg: 120
+    max_range_m: 150
+    downtilt_deg: 10.0
+  equipment:
+    name: mmwave_mamimo_28ghz
+    array: [8, 8]
+    tx_power_dbm: 30
+    height_class: rooftop
+    freq_hz: 28.0e+9
+  precoder: mrt
+  site_height_min_m: 8.0
+  site_height_max_m: 45.0
+  mount_height_m: 2.0
+channel:
+  stochastic: coherent_38901
+  los_blend: p_los
+  seed: 42
+  samples_per_src: 4000000
+  diffraction: true
+  max_center_paths: 12
+dosimetry:
+  level: 7
+  peak_sab: false
+temporal:
+  dt_s: 1.0
+  pose_period: 10
+  recompute_period: 10

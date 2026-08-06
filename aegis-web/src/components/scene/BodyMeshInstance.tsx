@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
+import type { ThreeEvent } from '@react-three/fiber'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { jetColor, gainTFromLinear, arrayMax } from '@/lib/colormap'
@@ -19,7 +20,39 @@ export interface BodyMeshInstanceProps {
   position: ScenePos
   rotationY: number
   opacity?: number
-  onClick?: () => void
+  /** Click handler. Receives the R3F pointer event (with the world-space hit
+   * point) so callers that need the surface coordinate, e.g. the studio's
+   * pick-focus-on-body, can read `e.point`. Callers that ignore the arg keep
+   * working unchanged. */
+  onClick?: (e: ThreeEvent<MouseEvent>) => void
+  // --- Optional colour-scale overrides ---
+  // When provided, these take precedence over the shared useUIStore /
+  // useSimulationStore reads, letting a standalone module (e.g. the Coherent
+  // Exposure Studio) drive its own colour scale without cross-talk with the main
+  // viewer. When omitted, the component falls back to the stores as before.
+  displayQuantityOverride?: string
+  legendScaleOverride?: string
+  dynamicRangeDbOverride?: number
+  colormapLockedOverride?: boolean
+  colormapLockedMaxOverride?: number | null
+  /** Lower bound of the locked linear colour range. Defaults to 0 (the main
+   * viewer normalises power densities from 0); the studio passes its resolved
+   * scale's vmin so the body map matches the slice/volume in fixed mode. */
+  colormapLockedMinOverride?: number | null
+  ratioModeOverride?: boolean
+  /** Drive the wireframe toggle independently of the shared useUIStore (used by
+   * the studio so its body-wireframe checkbox does not cross-talk with the main
+   * viewer). When omitted, falls back to useUIStore.wireframe. */
+  wireframeOverride?: boolean
+  /** Colour ramp returning [r, g, b] in 0..1. Defaults to jetColor. */
+  colorFn?: (t: number) => [number, number, number]
+  /**
+   * Render both faces of every triangle. Defaults to false (single-sided, the
+   * main viewer's long-standing behaviour). The Coherent Exposure Studio sets
+   * this true so the body never shows back-face culling holes regardless of
+   * per-triangle winding.
+   */
+  doubleSided?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +93,12 @@ function resolveRatioLimit(
   return compliance.checks.find(finder)?.limit ?? 20.0
 }
 
-function writeRatioColors(buf: Float32Array, dataArray: Float32Array, ratioLimit: number): void {
+function writeRatioColors(
+  buf: Float32Array,
+  dataArray: Float32Array,
+  ratioLimit: number,
+  colorFn: (t: number) => [number, number, number] = jetColor,
+): void {
   const nFaces = dataArray.length
   const invLimit = ratioLimit > 0 ? 1 / ratioLimit : 0
   let maxRatio = 0
@@ -72,7 +110,7 @@ function writeRatioColors(buf: Float32Array, dataArray: Float32Array, ratioLimit
   const invMax = 1 / maxRatio
   for (let f = 0; f < nFaces; f++) {
     const t = dataArray[f] * invLimit * invMax
-    const [r, g, b] = jetColor(t)
+    const [r, g, b] = colorFn(t)
     const base = f * 9
     buf[base] = r; buf[base + 1] = g; buf[base + 2] = b
     buf[base + 3] = r; buf[base + 4] = g; buf[base + 5] = b
@@ -87,6 +125,8 @@ function writeAbsoluteColors(
   dynamicRangeDb: number,
   colormapLocked: boolean,
   colormapLockedMax: number | null,
+  colorFn: (t: number) => [number, number, number] = jetColor,
+  colormapLockedMin = 0,
 ): void {
   const currentMax = arrayMax(dataArray)
 
@@ -95,15 +135,21 @@ function writeAbsoluteColors(
   }
 
   const maxSab = (colormapLocked && colormapLockedMax != null) ? colormapLockedMax : currentMax
+  // Linear floor: 0 for the main viewer, the resolved scale's vmin for the
+  // studio. The dB path is a vmax-anchored window and ignores vmin (matching
+  // scaleNormalise / the slice shader), so vmin only enters the linear branch.
+  const minSab = colormapLockedMin
+  const span = maxSab - minSab
+  const invSpan = span > 0 ? 1 / span : 0
   const nFaces = dataArray.length
-  const invMax = maxSab > 0 ? 1 / maxSab : 0
   const isDb = legendScale === 'dB'
 
   for (let f = 0; f < nFaces; f++) {
-    const t = isDb
+    const raw = isDb
       ? gainTFromLinear(dataArray[f], maxSab, dynamicRangeDb)
-      : dataArray[f] * invMax
-    const [r, g, b] = jetColor(t)
+      : (dataArray[f] - minSab) * invSpan
+    const t = raw < 0 ? 0 : raw > 1 ? 1 : raw
+    const [r, g, b] = colorFn(t)
     const base = f * 9
     buf[base] = r; buf[base + 1] = g; buf[base + 2] = b
     buf[base + 3] = r; buf[base + 4] = g; buf[base + 5] = b
@@ -128,16 +174,38 @@ export default function BodyMeshInstance({
   rotationY,
   opacity = 1,
   onClick,
+  displayQuantityOverride,
+  legendScaleOverride,
+  dynamicRangeDbOverride,
+  colormapLockedOverride,
+  colormapLockedMaxOverride,
+  colormapLockedMinOverride,
+  ratioModeOverride,
+  wireframeOverride,
+  colorFn,
+  doubleSided = false,
 }: BodyMeshInstanceProps) {
   const meshRef = useRef<THREE.Mesh>(null)
 
-  const displayQuantity = useSimulationStore(s => s.displayQuantity)
-  const wireframe = useUIStore(s => s.wireframe)
-  const ratioMode = useUIStore(s => s.ratioMode)
-  const legendScale = useUIStore(s => s.legendScale)
-  const dynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
-  const colormapLocked = useUIStore(s => s.colormapLocked)
-  const colormapLockedMax = useUIStore(s => s.colormapLockedMax)
+  // Always read the stores (hooks cannot be conditional), then let any provided
+  // override win. Absent overrides fall back to the shared viewer state.
+  const storeDisplayQuantity = useSimulationStore(s => s.displayQuantity)
+  const storeWireframe = useUIStore(s => s.wireframe)
+  const wireframe = wireframeOverride ?? storeWireframe
+  const storeRatioMode = useUIStore(s => s.ratioMode)
+  const storeLegendScale = useUIStore(s => s.legendScale)
+  const storeDynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
+  const storeColormapLocked = useUIStore(s => s.colormapLocked)
+  const storeColormapLockedMax = useUIStore(s => s.colormapLockedMax)
+
+  const displayQuantity = displayQuantityOverride ?? storeDisplayQuantity
+  const ratioMode = ratioModeOverride ?? storeRatioMode
+  const legendScale = legendScaleOverride ?? storeLegendScale
+  const dynamicRangeDb = dynamicRangeDbOverride ?? storeDynamicRangeDb
+  const colormapLocked = colormapLockedOverride ?? storeColormapLocked
+  const colormapLockedMax = colormapLockedMaxOverride ?? storeColormapLockedMax
+  // No store equivalent: absent override means "normalise from 0" (main viewer).
+  const colormapLockedMin = colormapLockedMinOverride ?? 0
 
   const dataArray = selectDataArray(
     displayQuantity, sabArray, sabAveragedArray, sincArray, sincAveragedArray, sab1cm2AveragedArray,
@@ -158,12 +226,12 @@ export default function BodyMeshInstance({
     if (!dataArray) {
       buf.fill(0.5)
     } else if (isRatioMode) {
-      writeRatioColors(buf, dataArray, ratioLimit)
+      writeRatioColors(buf, dataArray, ratioLimit, colorFn)
     } else {
-      writeAbsoluteColors(buf, dataArray, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax)
+      writeAbsoluteColors(buf, dataArray, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax, colorFn, colormapLockedMin)
     }
     colorAttr.needsUpdate = true
-  }, [dataArray, isRatioMode, ratioLimit, geometry, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax])
+  }, [dataArray, isRatioMode, ratioLimit, geometry, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax, colormapLockedMin, colorFn])
 
   if (!geometry) return null
 
@@ -180,6 +248,7 @@ export default function BodyMeshInstance({
           wireframe={wireframe}
           roughness={0.7}
           metalness={0.1}
+          side={doubleSided ? THREE.DoubleSide : THREE.FrontSide}
           transparent={opacity < 1}
           opacity={opacity}
         />

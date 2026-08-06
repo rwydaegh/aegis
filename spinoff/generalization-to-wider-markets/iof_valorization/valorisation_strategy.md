@@ -1,0 +1,131 @@
+# 5.3 Valorisation strategy
+
+*IOF StarTT (AEGIS). Max 2 pages, UGent Panno 10.5pt. Compiled: `valorisation_strategy.pdf` (fits 2 pages).
+External claims sourced in `fact_check.md`. This is v2, rebuilt after `redteam_fable.md` refuted the v1
+central argument. See `WHAT_CHANGED.md`.*
+
+---
+
+**First market: absorbed power density for devices above 6 GHz.** ICNIRP 2020 made absorbed power density the
+basic restriction above 6 GHz, and the IEC/IEEE 63195 series makes it the quantity a millimetre-wave device
+must be certified against. Buyers are device makers and their chipset suppliers, the test laboratories that
+certify them, and the dosimetry institutes serving both. Two facts define the opening.
+
+**1. The procedure does not exist yet, and it is being written now.** Parts 1 and 2 of IEC/IEEE 63195, covering
+*incident* power density, were published in 2022. Parts 3 and 4, covering *absorbed* power density, are still
+drafts, and part 4, "Computational Procedures for Absorbed Power Density", currently specifies FDTD and FEM. So
+the computational rules for the quantity this project computes are open, in a working group, inside the window
+of this project. ICNIRP has asked for exactly this work in writing: it states that "information from a technical
+standards body, designed to specify external exposures for each EMF source type to more adequately match the
+basic restrictions, should be utilized to improve reference level assessment procedures." The generic reference
+levels are a deliberately conservative plane-wave proxy, derived on a planar multi-layer model at normal
+incidence. No source-specific procedure replaces them above 6 GHz.
+
+**2. The obstacle is cost, and it is ours to remove.** Computing absorbed power density on an anatomical body
+needs a full-wave simulation, at hours per scenario. A device product cycle needs thousands: beam configuration
+by grip by body position by antenna placement. Nobody can afford that, so the industry falls back on the generic
+proxy and designs with margin it cannot quantify. **AEGIS replaces the volume simulation with a closed-form
+surface integral: milliseconds per scenario, and differentiable, so absorbed power becomes a design variable
+rather than a post-hoc check.**
+
+**On the size of the market, plainly.** This is a specialist market and I will not dress it up. The
+electromagnetic-simulation market is roughly $1.7B with telecommunications its largest end-use segment, but the
+slice concerned with human RF exposure is a low-single-digit-millions niche, and the figure circulated for ZMT
+(Sim4Life) is one plausible order-of-magnitude marker for it. Bottom-up, the buyers are around six infrastructure
+vendors, twelve to fifteen millimetre-wave device makers plus their chipset suppliers, twenty to forty
+RF-exposure test laboratories, ten to fifteen regulators, and several dozen research institutes. A serviceable
+market of a few million euros a year is the honest ceiling. That is the right size for this instrument: not a
+venture-scale company, but a capital-efficient software spin-off on the model of two recent StarTT spin-offs in
+this group, targeting seven-figure recurring revenue and a strategic exit to an established simulation or
+compliance-tool vendor. A small niche is not an argument against the spin-off. It is an argument for reaching it
+through the incumbents' distribution rather than around it.
+
+**Customer discovery: what the buyers actually said.** No company is a project partner. These are prospective
+customers.
+
+- **CNR-IEIIT Milan, Dr. M. Parazzini, Director of Research.** Two of her researchers work above 6 GHz and she
+  intends to hire as FR3 arrives. Her group loses 30 to 50% of its time waiting for FDTD, and *"the bottleneck is
+  always the mesh, it is our nightmare"*. On price: *"if I really find a real improvement with respect to what I
+  have now, I would be able to pay you."* She has drafted a letter of support and licence interest, and ranked
+  what would make her adopt: a usable platform with tutorials (5/5), a validation paper (4/5), standards
+  recognition (3/5). Phase 1 delivers all three. She is the validation and citation route, not the revenue route,
+  and is priced accordingly.
+- **Ericsson Research, EMF team** (6 to 7 people, 1 to 2 FTE on full-body simulation in CST, FEKO and HFSS). They
+  set the target: *"if you can reduce the compliance boundary only because you added the human body, that would be
+  a great story."* They then handed over the shape of the deal unprompted: absorbed power density needs the same
+  input data as the incident power density they already compute, so the method is *"a drop-in replacement, for EMF
+  Visual or IXUS."* That is a distribution instruction and I have taken it. Their 63195 contributor added: go to
+  devices, not base stations. Outcome: an invitation to demonstrate to the full team after the summer.
+- **Nokia, C. Grangeat**, convenor of IEC TC106 MT3. **A clear negative, and the most useful result obtained.** He
+  reports no operator pull for body-based compliance (*"operators probably prefer on reference level basis"*) and
+  judged the base-station route closer to research than to valorisation. I take that at face value. It is why the
+  beachhead is device-side absorbed power density, where that quantity is already what must be certified, and why
+  base stations are scoped to one escalation case rather than to routine assessment.
+
+**Pricing, and the two datapoints that constrain it.** Nokia's EMF team spends under 10 kEUR a year on software of
+this class, and CNR-IEIIT pays 3 kEUR per exposure licence. Neither supports a seat sold into an EMF team's
+existing software line, and ZMT supplies Sim4Life to academic groups free under a University Research Agreement,
+so a paid academic tier would not clear. The model therefore sells design-loop value to the engineering budget
+that already pays for full-wave tools, and sells distribution to the vendors whose compliance products the
+customers already run.
+
+**Academic and research: free**, with a citation requirement, a deliberate funnel. **Test laboratory and institute
+seat: 15 kEUR/yr**, below one commercial full-wave seat. **Device maker and vendor seat** with API, report
+automation and the design loop: **40 kEUR/yr**, under half an FTE against a pre-compliance workflow of thousands
+of scenarios per product cycle. **OEM licence into a compliance tool**, the route Ericsson described: **80 kEUR/yr
+plus royalty**. **Contract research: 50 kEUR** per project.
+
+| Year | Lab seats | Device seats | OEM licences | Projects | Turnover (EUR) |
+|---|---|---|---|---|---|
+| 1 | 2 | 1 | 0 | 1 | 120 000 |
+| 2 | 3 | 2 | 1 | 1 | 255 000 |
+| 3 | 5 | 4 | 1 | 2 | 415 000 |
+| 4 | 6 | 5 | 2 | 2 | 550 000 |
+| 5 | 8 | 6 | 3 | 3 | 750 000 |
+
+Fourteen direct seats by year 5, against a direct universe of sixty to eighty organisations, with a third of
+revenue carried by three OEM licences rather than by a penetration rate no one-person spin-off could deliver.
+Against a project investment of order 250 kEUR, that is roughly 2.1 MEUR cumulative on software margins with no
+hardware to finance.
+
+**Route to market: the standard is the channel.** Both infrastructure vendors said so unprompted. Ericsson: *"it
+has to be in the standard, that is always most important for the business side, and for regulators."* Nokia:
+*"prepare five slides, show it to everybody, ask for a vote, why it should be in the standard."* The incumbent
+proves it from the other side: ZMT's position rests less on its solver than on having got a computational tool
+written into a regulatory pathway. That is an unusually favourable channel here: the promotor is the Belgian
+representative to CENELEC TC106X and IEC TC106, and WAVES sits in three of the four EU 5G-health projects. The
+method is contributed as a fast pre-screening approach complementing FDTD, which is also how it is genuinely used.
+
+| Phase | Timing | Activity | Gate |
+|---|---|---|---|
+| 1. Validate | M1 to M6 | Validation against a reference solver **and against measurement** on a 63195 device benchmark. Validation paper. Public tutorial platform. **Also settles the base-station question** (below). | Agreement within the error bound. Go/no-go on the exploration WP and on base stations. |
+| 2. Standardise | M6 to M18 | Contribution to the open IEC/IEEE 63195-4 draft and to IEC TR 62669 Ed. 3, via the promotor | Method recorded as an accepted computational approach |
+| 3. Sell | M9 to M24 | Full-day demonstration at Ericsson (invited). Paid pilots with device makers and test labs. First OEM licence conversation with a compliance-tool vendor | Two paid pilots, one letter of intent |
+| 4. Incorporate | M18 to M24 | Spin-off preparation with TechTransfer and istart | Spin-off founded, first licences signed |
+
+**The base-station case is a measurement, not a claim.** Above 6 GHz the restriction that binds at a compliance
+boundary is whole-body SAR at 0.08 W/kg for the general public, and its reference-level proxy of 10 W/m² was
+carried over unchanged from ICNIRP 1998, where it was set by whole-body resonance near 70 MHz. It has never been
+re-derived for the superficial-absorption regime above 6 GHz. My estimate is that an anatomical assessment
+recovers of order 1.5x in permitted power, hence around 1.2x in distance, but no published value exists and I will
+not assert one. Phase 1 computes it on a named IEC 62232 configuration at 3.5 and 26 GHz and reports the ratio of
+the two boundaries. If it is 1.0 I will say so, and the base-station case closes at month 6 rather than month 18.
+
+**Adjacent markets: a bounded exploration on a legal deadline.** The engine is not specific to human tissue. It
+computes, in closed form and differentiably, how a coherent field partitions into absorbed, scattered and
+transmitted power on any electrically large body. Screening candidate applications with UGent TechTransfer produced
+a falsifiable selection rule: the method adds value where the task is to **design a controllable coherent excitation
+against a quadratic power limit**, and none where it is to **certify a passive scattering signature**. Four pass,
+among them constrained synthesis of reconfigurable intelligent surfaces and automotive in-cabin sensing. A dedicated
+work package runs this to a hard gate: **a signed letter of intent or a paid pilot from a named company by M6, or
+the patent family stays narrow**. The timing is not arbitrary: priority is filed in 2026, so the PCT deadline falls
+around August 2027, and an M6 gate lands one to two months before the last moment the family's scope can be widened.
+Prof. T. Dhaene (IDLab, formerly Agilent/Keysight) advises it. It is cheap, gated early, and the business case does
+not depend on it.
+
+**Valorisation route and team.** The primary route is a **spin-off**, prepared during the project and incorporated
+at its end, as in two recent StarTT projects in this group. R. Wydaeghe leads it as founder, with Prof. W. Joseph
+(promotor, CENELEC TC106X and IEC TC106) on the standards route, UGent TechTransfer on IP and incorporation, and a
+co-founder recruited through istart. A licence to an established vendor is an exit rather than an entry: adoption is
+gated by the standards, so a licensee needs the standardisation position to exist first, and it is the product plus
+that position which creates the licensable asset.

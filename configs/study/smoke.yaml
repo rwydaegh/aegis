@@ -31,7 +31,7 @@ channel:
   seed: 42
   samples_per_src: 3000000   # smoke: ~0.5% off the 30M plateau, much faster trace
   diffraction: true
-  max_center_paths: 24    # cap Gram cost; keep strongest paths
+  max_center_paths: 12    # cap Gram cost (quadratic in paths); keep strongest
 dosimetry:
   level: 7
   peak_sab: false           # headline CDF = cheap scalar x^H Q x, skip the map

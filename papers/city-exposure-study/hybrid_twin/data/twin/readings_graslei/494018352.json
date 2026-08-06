@@ -1,0 +1,89 @@
+{
+ "osm_id": 494018352,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 4,
+   "evidence": "seen"
+  },
+  "confidence": 0.68,
+  "ground_floor": {
+   "kind": "blank",
+   "evidence": "seen"
+  },
+  "identification": "A one-storey 16th-17th century Flemish brick service/almshouse range in Ghent's Graslei-Patershol quarter, presenting its blank-plinthed garden elevation to a sett footpath, with stone cross-mullioned windows, green shutters and a steep clay pantile roof.",
+  "ledges": {
+   "sills": true,
+   "cornice": false,
+   "string_courses": false,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 7,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "notes": "Set A (3D tiles) is degraded to unreadable smears over the target and was used ONLY to confirm ridge orientation; every wall-level field comes from set B image _1. Scale derived from frontage_width_m 10.3 spanning ~505 px in the magenta box (~49 px/m at wall plane): eaves ~5.0 m, ridge ~8.5 m, consistent with the 9.2 m height datum. That settles storeys at 1 tall storey + attic, not 2 \u2014 a single window band with blank brick beneath it down to the hedge. The pedestrian in _1 stands forward of the wall plane and was not used for scale. Bays: left cross-wing gable (small attic light, stone corbels visible in _0) plus three windows; the right two are clearly stone cross-divided (kruiskozijn), the left one a simpler tall opening. Shutters read as set back behind the stone frame with a pronounced left-jamb shadow, hence deep reveal class. Trim mapped to 'marble' as the nearest stone dielectric proxy for Balegem-type sandstone dressings; if the generator prefers a lower permittivity, concrete is the acceptable fallback. roughness_mm 7 is INFERRED from visible hand-moulded brick with weathered recessed joints \u2014 no image measures RMS height; the brick relief must stay a roughness/scattering coefficient and never be meshed, since 1-10 cm facets at 1.07 cm wavelength produce specular garbage. Geometry budget belongs on the window reveals, stone mullions/transoms and sills, the eaves line, the two chimneys and the cross-wing gable silhouette \u2014 these are the only >10 cm features on an otherwise blank wall and they carry the entire off-specular return at street level. Ground floor marked blank on the evidence of the outlined frontage only; a door may exist behind the hedge. Clutter: clipped beech hedge along the full frontage, grass/gravel verge, green utility cabinet at the right end. NO vehicles \u2014 fronting way is highway=path, surface=sett, car_access=none. Do not let a generic parked-car rule touch this frontage.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 1,
+   "ground_height_m": 4.8,
+   "upper_height_m": 3,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.4,
+   "height_m": 2,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494018352,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house"
+  },
+  "frontage_width_m": 10.3,
+  "footprint_m": [
+   12.3,
+   7.5
+  ],
+  "footprint_area_m2": 69,
+  "height_m": 9.2,
+  "height_source": "adopted-photo",
+  "street_frontages": 1,
+  "attached_neighbours": 3,
+  "fronting_street": {
+   "highway": "path",
+   "name": null,
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 7.0
+  },
+  "plate_view": "oblique",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.165,
+   "x1": 0.624,
+   "y0": 0.515,
+   "y1": 0.908
+  }
+ },
+ "plate": "renders/plates/graslei/494018352.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494018352_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494018352_1.jpg"
+ ],
+ "view": "oblique",
+ "cost_usd": 0.320688,
+ "model": "claude-opus-5"
+}

@@ -1,0 +1,92 @@
+{
+ "osm_id": 514020946,
+ "status": "ok",
+ "reading": {
+  "identification": "Late-Gothic Ghent quay/burgher house of the 15th-16th century, brick with pale Balegem sandstone dressings, standing on the corner of Graslei and the Vleeshuistragel alley with a crow-stepped gable to the street and a cafe ground floor under dwelling storeys.",
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 3.6,
+   "upper_height_m": 2.9,
+   "evidence": "seen"
+  },
+  "bays": {
+   "count": 4,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.7,
+   "height_m": 1.9,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  },
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "seen"
+  },
+  "roof": {
+   "form": "stepped_gable",
+   "ridge_parallel_to_street": false,
+   "evidence": "seen"
+  },
+  "ledges": {
+   "sills": true,
+   "cornice": false,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "confidence": 0.74,
+  "notes": "Corner house, two frontages, and they are very different \u2014 do not apply one grammar to both. PRINCIPAL FRONT (Graslei, 9.3 m, crow-stepped gable): late-Gothic \"glass wall\" type. Near-continuous glazed bands per storey divided by slim sandstone mullions, carried on heavy continuous sandstone string courses at every floor line. Those string courses are the key >10 cm feature: four full-width horizontal wedges, project them 0.10-0.15 m. Gable copings are stone-capped crow-steps, roughly 6-7 steps per side climbing from eaves (~12 m) to apex (17.7 m); model as real stepped geometry, they are the silhouette and judges will rotate onto them. Glazing ratio on this front is high, ~70%, which is correct for the type and should not be reduced to punched openings.\n\nFLANK (Vleeshuistragel, 16.5 m deep, 2.4 m from the corridor): almost blind. Two stone cross-windows (kruiskozijn, mullion + transom, four lights) and a poster frame over the whole wall. This is the surface the beam actually sees, so give it accurate roughness and reveal depth and spend nothing on ornament. A painted red timber/metal eaves band runs along the top of this flank at the roof springing \u2014 a small real ledge, ~0.10 m, seen in both street photos.\n\nStorey heights are anchored: bridge parapet to the red eaves band scales to ~11.8-12.3 m against the 17.7 m datum, giving 3.6 + 3 x 2.9. Gable rise 5.4 m over a 4.65 m half-span, ~49-52 deg, consistent with the tiled plane in set B.\n\nTrim caveat: the dressings are pale sandstone, not marble. The enum has no non-marble stone, so marble is a deliberate proxy \u2014 it renders as light dressed stone and its permittivity (~7.07) overshoots sandstone (~5.5) modestly. If a sandstone class is added upstream, swap it.\n\nRoughness 6 mm is old hand-made brick with weathered, partly raked joints, clearly bumpy in the zoomed photo. Keep it as a scattering parameter; meshing this bond would be wrong physics at 1.07 cm.\n\nBays marked inferred, not seen: both views are raking and the near facade runs into the neighbour's beyond a depth break, so the exact column count is a reconstruction from the measured 9.3 m frontage plus the visible rhythm. Storey count, material, window subdivision, ground floor and gable form are genuinely resolved in set B.\n\nCLUTTER \u2014 do not park cars here. fronting_street is a gravel tragel with car_access none, and the Graslei quay is pedestrian. What belongs at this corner, all of it visible in set B: black cafe parasols and terrace tables hard against the ground floor, bikes leaned on the white cast-iron bridge railing, dense standing pedestrians, wet setts. Set A is Google 3D tiles and is unreliable below ~25 cm/texel \u2014 it was used only for massing and the roof plane; every material, opening and ledge call came from set B."
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 514020946,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "addr:street": "Graslei"
+  },
+  "frontage_width_m": 9.3,
+  "footprint_m": [
+   12.8,
+   16.5
+  ],
+  "footprint_area_m2": 132,
+  "height_m": 17.7,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "path",
+   "name": "Vleeshuistragel",
+   "surface": "gravel",
+   "car_access": "none",
+   "distance_m": 2.4
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.366,
+   "x1": 0.623,
+   "y0": 0.114,
+   "y1": 0.819
+  }
+ },
+ "plate": "renders/plates/graslei/514020946.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020946_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020946_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.8702774999999999,
+ "model": "claude-opus-5"
+}

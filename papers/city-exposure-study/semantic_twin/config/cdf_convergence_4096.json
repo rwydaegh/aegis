@@ -1,0 +1,40 @@
+{
+  "contract": "korenmarkt_cdf_stopping_4096_v1",
+  "root": "..",
+  "output_dir": "outputs/cdf_convergence_4096_atlas_v1",
+  "reference": {
+    "manifest": "outputs/exposure_korenmarkt/final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz_manifest.json",
+    "locations": "outputs/exposure_korenmarkt/final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz_locations.jsonl",
+    "spectra": "outputs/exposure_korenmarkt/final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz_spectra.npz"
+  },
+  "base_seeds": [
+    7, 8, 9, 10, 11, 12, 13, 14,
+    15, 16, 17, 18, 19, 20, 21, 22,
+    23, 24, 25, 26, 27, 28, 29, 30,
+    31, 32, 33, 34, 35, 36, 37, 38
+  ],
+  "diagnostic_look": 8,
+  "looks": [16, 24, 32],
+  "bootstrap": {
+    "replicates": 20000,
+    "seed": 20260805,
+    "confidence": 0.95,
+    "alpha_allocation": "equal Bonferroni allocation over formal looks 16, 24, and 32"
+  },
+  "body_peak": {
+    "chunk_cells": 512,
+    "selection_stability_min_fraction": 0.95
+  },
+  "thresholds": {
+    "point_p90_db": 0.10,
+    "point_max_db": 0.15,
+    "cdf_q50_db": 0.05,
+    "cdf_q10_q90_db": 0.10,
+    "cdf_endpoint_db": 0.15,
+    "stability_wasserstein_db": 0.03,
+    "stability_q50_db": 0.03,
+    "stability_q10_q90_db": 0.05,
+    "stability_endpoint_db": 0.10,
+    "body_peak_max_db": 0.15
+  }
+}

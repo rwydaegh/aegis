@@ -1,0 +1,631 @@
+{
+ "n": 32,
+ "agreement": 0.6875,
+ "gt_score": {
+  "frontier": "4/5",
+  "haiku": "2/5"
+ },
+ "mean_confidence": {
+  "frontier": 0.6,
+  "haiku": 0.76
+ },
+ "distribution": {
+  "frontier": {
+   "plasterboard": 21,
+   "marble": 2,
+   "brick": 9
+  },
+  "haiku": {
+   "plasterboard": 29,
+   "brick": 3
+  }
+ },
+ "disagreements": [
+  {
+   "id": "107539763",
+   "name": "De Post",
+   "frontier": "marble",
+   "haiku": "plasterboard"
+  },
+  {
+   "id": "514020946",
+   "name": null,
+   "frontier": "brick",
+   "haiku": "plasterboard"
+  },
+  {
+   "id": "494007930",
+   "name": null,
+   "frontier": "brick",
+   "haiku": "plasterboard"
+  },
+  {
+   "id": "494007927",
+   "name": null,
+   "frontier": "brick",
+   "haiku": "plasterboard"
+  },
+  {
+   "id": "494012345",
+   "name": null,
+   "frontier": "brick",
+   "haiku": "plasterboard"
+  },
+  {
+   "id": "514020945",
+   "name": null,
+   "frontier": "brick",
+   "haiku": "plasterboard"
+  },
+  {
+   "id": "493993762",
+   "name": "Graanspijker",
+   "frontier": "marble",
+   "haiku": "plasterboard"
+  },
+  {
+   "id": "494007995",
+   "name": null,
+   "frontier": "plasterboard",
+   "haiku": "brick"
+  },
+  {
+   "id": "494007977",
+   "name": null,
+   "frontier": "brick",
+   "haiku": "plasterboard"
+  },
+  {
+   "id": "494012342",
+   "name": null,
+   "frontier": "brick",
+   "haiku": "plasterboard"
+  }
+ ],
+ "per_building": [
+  {
+   "id": "494012344",
+   "name": null,
+   "tier": "detailed",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.7,
+    "secondary": "marble",
+    "cues": "Uniform white/cream facade colour with classical window surrounds on a 19.5 m townhouse; reads as painted/plastered masonry, unlike the red-brick neighbours; stone facade less likely for a plain house"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Pale cream/lavender uniform colour, smooth surface at texture resolution, regular window rhythm, Ghent historic painted-masonry context, no visible brick courses at aerial bake scale, consistent with lime-plastered/painted finish over masonry."
+   }
+  },
+  {
+   "id": "107539763",
+   "name": "De Post",
+   "tier": "detailed",
+   "frontier": {
+    "material": "marble",
+    "confidence": 0.9,
+    "secondary": "brick",
+    "cues": "De Post = Ghent's neo-Gothic old post office on Korenmarkt: grey stone facade with clock tower, turrets, tracery; known limestone/sandstone eclectic monument, not brick or render."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.85,
+    "secondary": "brick",
+    "cues": "Light cream-beige uniform facade tone typical of painted masonry; regular fenestration; no glass/curtain wall dominance; consistent with Ghent painted-plaster tradition; shadow darkening discounted"
+   }
+  },
+  {
+   "id": "493993669",
+   "name": "Europabank",
+   "tier": "detailed",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "marble",
+    "cues": "Uniform white/cream facade on all 3 floors, regular classical window rhythm with pilaster strips: typical Ghent painted/plastered masonry. Too pale for brick, no glazing dominance. Limestone is the plausible alternative for a stately corner building."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.85,
+    "secondary": "brick",
+    "cues": "Uniform light grey-beige painted/rendered finish; smooth surface readable even at 25 cm/texel resolution; regular window rhythm; architectural style consistent with Ghent's historic plastered masonry typology; cream/grey tone dominant across all facades; no coarse texture or veining visible."
+   }
+  },
+  {
+   "id": "514020946",
+   "name": null,
+   "tier": "detailed",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.7,
+    "secondary": "plasterboard",
+    "cues": "Dark red-brown facade colour on a tall stepped/pointed-gable row house with regular small-window rhythm, typical Ghent historic-core brick row; no white/cream render tone, no glazing dominance, no stone monument detailing."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.82,
+    "secondary": "brick",
+    "cues": "Light pale-grey colouration; regular masonry-pattern window rhythm; historic Flemish gabled architecture; Ghent heritage context (plastered rows); aerial-baked texture obscures fine detail, consistent with rendered finish"
+   }
+  },
+  {
+   "id": "514019312",
+   "name": "Hof van Gruuthuuse",
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.7,
+    "secondary": "marble",
+    "cues": "Uniform pale cream/white facade with ornate classical window surrounds and regular window rhythm, typical 18th-c plastered/painted mansion; no brick colour visible; \"Hof van\" mansion fits lime-plastered masonry, natural stone the runner-up"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.7,
+    "secondary": "marble",
+    "cues": "Pale cream facade with smooth uniform surface; historic guild house in Ghent core; regular Flemish fenestration; aerial photogrammetry obscures fine texture; consistent with region's lime-plastered masonry tradition"
+   }
+  },
+  {
+   "id": "493993754",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "brick",
+    "cues": "Uniform pale white/cream facade colour across gabled townhouse row, regular sash-window rhythm, historic-core context; no red-brown brick tone or stone monument detailing visible."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Uniform pale cream/white facade, regular window rhythm, no brick coursing visible, architectural style matches Ghent painted-masonry tradition, aerial texture blur prevents fine material resolution but coarse colour strongly indicates render/paint over masonry."
+   }
+  },
+  {
+   "id": "494007930",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.5,
+    "secondary": "plasterboard",
+    "cues": "4-storey historic row with regular punched windows; facade in shadow but dark reddish-brown masonry tone, no white/cream render (neighbour at left is clearly plastered/white); typical Ghent brick retail row"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.58,
+    "secondary": "brick",
+    "cues": "Neutral grey tone on lit left side; uniform rendered finish; no visible brick-course texture; regular 4-level fenestration typical of painted merchant/residential masonry in Ghent historic centre"
+   }
+  },
+  {
+   "id": "494007927",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.7,
+    "secondary": "plasterboard",
+    "cues": "Dark red-brown facade colour with light window surrounds, stepped-gable 4-level row typical of Ghent brick guild houses; neighbouring cream facades show what rendered masonry looks like here"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.72,
+    "secondary": "brick",
+    "cues": "Shadow-rendered aerial bake obscures fine detail. Uniform dark tone, regular 4\u00d712 window grid, 19th-century townhouse style. Plastered/painted masonry typical of Ghent historic centre; adjacent buildings confirm brick local context."
+   }
+  },
+  {
+   "id": "493993738",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.5,
+    "secondary": "brick",
+    "cues": "Melted render, but street shows white/cream facades with regular window rhythm and gabled historic houses typical of painted/lime-plastered masonry rows in Ghent core; OSM \"house\" ~14 m fits; dark areas read as shadow, not material. Brick is the plausible alternative given local dominance."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.85,
+    "secondary": "brick",
+    "cues": "Cream/off-white fa\u00e7ade, regular window pattern, coarse photogrammetry prevents brick visibility suggesting render, historic Flemish townhouse style typical of Ghent's painted-masonry rows"
+   }
+  },
+  {
+   "id": "493993764",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.45,
+    "secondary": "plasterboard",
+    "cues": "Shadowed row-house facade with warm brown/ochre patches and regular window rhythm typical of Ghent brick rows; OSM house, ~9 m; no light plaster tone or stone detailing visible; darkness attributed to shadow, not material."
+   },
+   "haiku": {
+    "material": "brick",
+    "confidence": 0.58,
+    "secondary": "plasterboard",
+    "cues": "Regular multi-storey window grid consistent with 19th-century Ghent row housing; heavy shadow prevents fine texture but rules out glass and modern infill; context-typical masonry structure; brick most common in historic core for this architectural form"
+   }
+  },
+  {
+   "id": "494012345",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.5,
+    "secondary": "plasterboard",
+    "cues": "Reddish-brown/purple coarse facade colour (dark from shadow), regular punched-window grid on a ~19 m mid-rise row typical of Ghent brick rows; no glazing dominance or stone detailing visible."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.72,
+    "secondary": "brick",
+    "cues": "Neutral grey tone consistent with plastered/painted masonry, not warm brick red. Flat uniform aerial-baked surface. Regular formal window grid of 19th\u201320th century Flemish row. Ghent historic centre dominated by plastered masonry."
+   }
+  },
+  {
+   "id": "493993744",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.45,
+    "secondary": "brick",
+    "cues": "Render heavily occluded by overhead mesh; visible facades are light grey/cream gabled houses with regular window rhythm, typical painted/lime-plastered masonry of Ghent's core; no red-brick tone on the near wall. Low confidence, brick plausible if true facade is hidden."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Cream/white facade color, regular masonry window rhythm, historic Ghent row-building scale (~14.9 m), no fine brick courses resolvable in aerial-baked texture, no glass/concrete/stone dominance. Rendered/painted finish typical of Flemish plastered masonry core."
+   }
+  },
+  {
+   "id": "514020945",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.4,
+    "secondary": "plasterboard",
+    "cues": "Facade in deep shadow with melted texture; dark reddish-grey tone and regular window rhythm on a ~9 m OSM house in Ghent's core suggests a brick row house; neighbouring background rows are painted plaster, the plausible alternative."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Light grey/cream uniform facade color and smooth appearance typical of lime-plastered/painted masonry in Ghent historic core; traditional rowhouse style; no visible brick texture or variation; matches documented Ghent aesthetic of plastered facades often white/cream/grey"
+   }
+  },
+  {
+   "id": "494007824",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "brick",
+    "cues": "Pale grey/cream uniform facade colour, 1725 gabled house with regular window rhythm; matches lime-plastered/painted masonry common in Ghent core; no red-brown brick tone visible"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.8,
+    "secondary": "brick",
+    "cues": "Pale white/cream facade typical of lime-plastered Ghent row houses; regular 18th-century window grid; uniform rendered appearance; 1725 historic house in Ghent context where plastered masonry dominated"
+   }
+  },
+  {
+   "id": "493993753",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.7,
+    "secondary": "brick",
+    "cues": "Row of white/cream light-toned gabled facades with regular sash-window rhythm, typical Ghent lime-plastered/painted masonry rows; no red-brick hue or stone monument massing visible."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.85,
+    "secondary": "brick",
+    "cues": "Uniform light grey/cream facade, regular window grid, Flemish townhouse style, smooth rendered surface (no visible exposed masonry), typical painted-plaster finish of Ghent historic centre."
+   }
+  },
+  {
+   "id": "494012343",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.45,
+    "secondary": "brick",
+    "cues": "Camera is embedded in melted photogrammetry; nearby facade reads uniform pale grey/cream like the white-rendered townhouses visible behind, typical painted/plastered masonry rows of Ghent's core; no red-brick tone or glazing dominance visible. Low confidence due to occluded viewpoint."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.75,
+    "secondary": "brick",
+    "cues": "Light cream/off-white painted surface, smooth finish, regular window grid. No visible brick coursing despite coarse resolution. Consistent with Ghent painted masonry facades; surface uniformity favors plaster over exposed brick."
+   }
+  },
+  {
+   "id": "493993762",
+   "name": "Graanspijker",
+   "tier": "prism",
+   "frontier": {
+    "material": "marble",
+    "confidence": 0.7,
+    "secondary": "brick",
+    "cues": "Name Graanspijker = the Romanesque grain staple house (Graslei), a c.1200 Tournai limestone monument; render shows shadowed mottled grey-brown facade, no painted/plaster uniformity, small window rhythm of a medieval storehouse"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.58,
+    "secondary": "brick",
+    "cues": "Deep shadow hides color; no visible brick coursing even under shadow; regular window rhythm suggests traditional masonry; consistent with Ghent's lime-plastered/painted facades; bare brick would show darker tone or course pattern in shadow."
+   }
+  },
+  {
+   "id": "494012338",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "marble",
+    "cues": "Central 5-storey facade is uniform light cream/white-grey with regular sash-window rhythm and gabled top, typical Ghent lime-plastered/painted masonry; no red-brick hue (neighbours show brick red), too ornate/uniform pale for concrete; could alternatively be light natural stone."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Smooth rendered finish, lavender shadow tone (not material), regular window rhythm, Flemish residential architectural style, consistent with Ghent's documented plastered-masonry dominance in historic core."
+   }
+  },
+  {
+   "id": "494007989",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.55,
+    "secondary": "plasterboard",
+    "cues": "Central gabled facade reads red-brown with light stone banding, stepped/neck gable and 17 m height match Ghent brick guild-row houses; neighbors are cream painted masonry, hence plasterboard as runner-up."
+   },
+   "haiku": {
+    "material": "brick",
+    "confidence": 0.78,
+    "secondary": "plasterboard",
+    "cues": "Warm salmon-pink facade (historic Flemish brick signature); 18th\u201319th century rowhouse proportions; regular fenestration; coarse color even across blur, not paint-wash or stone grey; Ghent context matches brick-dominant core"
+   }
+  },
+  {
+   "id": "493993749",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.55,
+    "secondary": "marble",
+    "cues": "Background facade shows uniform light cream/white flat wall with regular ~1800 sash-window rhythm, typical Ghent lime-plastered/painted masonry; darker right section could be natural stone but shadow likely. No red brick tone visible."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.83,
+    "secondary": "brick",
+    "cues": "Pale cream/white rendered facade; smooth plastered finish despite coarse texture; regular window grid; Ghent historic centre context; ~1800 construction date aligned with lime-plastered masonry tradition; no visible exposed brick or stone texture."
+   }
+  },
+  {
+   "id": "494012340",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "brick",
+    "cues": "Uniform pale cream/white facade colour with regular tall-window rhythm suggests painted/plastered masonry row house; no brick-red tone; dark patches are baked shadow."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.72,
+    "secondary": "brick",
+    "cues": "Uniform painted surface, regular window pattern, no visible brick courses (aerial texture low-res), grayish masonry tone. Typical Ghent historic row-housing typology (plastered brick)."
+   }
+  },
+  {
+   "id": "493993665",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "brick",
+    "cues": "White/cream flat facade with regular sash-window rhythm, typical Ghent painted/lime-plastered masonry row house; no stone ornament or glass dominance; dark melted foreground geometry is shadow-baked, not material."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.76,
+    "secondary": "marble",
+    "cues": "Light cream-blue-grey uniform facade; flat rendered finish with no brick coursing pattern visible; regular fenestration rhythm; typical Ghent painted masonry typology; coarse aerial texture shows homogeneous color not brick variation."
+   }
+  },
+  {
+   "id": "494007995",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "brick",
+    "cues": "Central foreground house is a uniform cream/white facade with dark window surrounds, typical Ghent lime-plastered/painted masonry; adjacent gabled facade is red-brick, making brick the fallback if target is the neighbor."
+   },
+   "haiku": {
+    "material": "brick",
+    "confidence": 0.78,
+    "secondary": "plasterboard",
+    "cues": "Coarse warm terracotta/salmon tone; Flemish stepped gable roof; regular window rhythm consistent with masonry; architectural style typical of Ghent historic core; no evidence of rendered finish or paint uniformity"
+   }
+  },
+  {
+   "id": "493993748",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "brick",
+    "cues": "Foreground facade is uniform white/cream with regular punched windows, no red-brick hue; matches painted/plastered masonry common in Ghent core. Generic building=yes, 14 m row house."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Uniform cream-white facade color (lime-plaster/paint finish); smooth surface at available resolution; regular residential window pattern; context: Ghent's historic core dominated by plastered/painted masonry; not exposed brick (too light/uniform) or natural stone (too plain for monument)"
+   }
+  },
+  {
+   "id": "493993759",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "brick",
+    "cues": "Foreground 2-storey building shows uniform white/cream facade colour typical of lime-plastered/painted masonry, regular small windows, historic-core retail context; no brick red or stone tone dominant."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Pale cream/white uniform finish, no visible brick courses, smooth rendered appearance. Consistent with Ghent's historic lime-plastered masonry typology. Coarse texel prevents fine resolution but pale uniformity indicates plaster/paint render."
+   }
+  },
+  {
+   "id": "493993751",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.6,
+    "secondary": "brick",
+    "cues": "Nearest facades are uniform white/cream with dark sash windows in a regular rhythm, typical Ghent lime-plastered/painted masonry rows; no red-brick tone or stone monumental detailing dominates at the target distance."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.68,
+    "secondary": "brick",
+    "cues": "Pale grey-cream tone with regular windows; aerial texture too coarse to resolve brick; no glass/concrete dominance; rendered masonry typology common in Ghent historic centre."
+   }
+  },
+  {
+   "id": "493993755",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.7,
+    "secondary": "brick",
+    "cues": "Uniform white/cream facade with regular window rhythm, typical ~1800 lime-plastered/painted masonry row in Ghent core; no brick-red hue or stone ornament visible"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Uniform light grey/cream finish, flat matte appearance, regular window rhythm, no visible brick coursing, shadows at ground floor don't reveal texture, architectural style (~1800) consistent with rendered masonry, finish rules out exposed material."
+   }
+  },
+  {
+   "id": "121290167",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.75,
+    "secondary": "marble",
+    "cues": "Uniform white/cream painted-render facade, 1850 neoclassical style, regular window bays with moulded surrounds; no brick colour or stone ashlar texture visible"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.82,
+    "secondary": "brick",
+    "cues": "Uniform pale/white-blue facade, smooth finish typical of painted plaster; classical 1850s castle architecture; regular window grid; no visible raw brick, stone, glass, concrete, or metal; Ghent historic context of painted masonry; aerial texture too coarse to resolve brick courses"
+   }
+  },
+  {
+   "id": "493993704",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.7,
+    "secondary": "brick",
+    "cues": "Uniform white/cream facade with regular small punched windows, typical Ghent lime-plastered/painted masonry row house; no brick-red hue or stone ornamentation visible."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "marble",
+    "cues": "Pale cream/white rendered surface, regular windows. Historic painted plaster townhouse. No brick warmth, concrete, or glass reflectivity visible."
+   }
+  },
+  {
+   "id": "494007977",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.6,
+    "secondary": "plasterboard",
+    "cues": "Central gabled house (matching ~16.7 m \"house\" tag) shows reddish-brown facade with light stone banding, classic Ghent brick gable row; neighbouring cream facades are plastered, hence secondary."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.87,
+    "secondary": "brick",
+    "cues": "Uniform pale cream/beige facade colour; regular rectangular window grid; Flemish townhouse proportions; no visible brick courses, stone weathering, or concrete grey; consistent with Ghent historic centre lime-plastered/painted masonry vernacular"
+   }
+  },
+  {
+   "id": "494012342",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "brick",
+    "confidence": 0.4,
+    "secondary": "plasterboard",
+    "cues": "Melted shadowed render; stepped-gable row house with regular window grid, historic-core prior favours brick; grey cast could also be painted masonry"
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.75,
+    "secondary": "brick",
+    "cues": "Pale cream-grey facade, smooth rendered surface, regular window rhythm, historic townhouse typology. Ghent's lime-plastered masonry convention; aerial texture obscures fine detail but coarse colour and architecture diagnostic for painted/rendered masonry."
+   }
+  },
+  {
+   "id": "493778691",
+   "name": null,
+   "tier": "prism",
+   "frontier": {
+    "material": "plasterboard",
+    "confidence": 0.55,
+    "secondary": "brick",
+    "cues": "Uniform pale cream/white facade colour across the wall with regular punched-window rhythm, typical of lime-plastered/painted masonry rows in Ghent's core; no reddish brick hue or stone monument articulation visible."
+   },
+   "haiku": {
+    "material": "plasterboard",
+    "confidence": 0.78,
+    "secondary": "brick",
+    "cues": "Light cream/white coarse colour, smooth rendered finish with no visible brick coursing, traditional Ghent masonry-row architecture, regular window rhythm. Aerial photogrammetry texture (~25 cm/texel) shows uniform rendered surface consistent with plastered/painted facade."
+   }
+  }
+ ]
+}

@@ -312,7 +312,12 @@ def viewer_app_real_phantom(data_dir):
 
 @pytest.fixture
 def viewer_app_large_phantom(data_dir):
-    """Flask test app with a larger phantom (eartha ~164k triangles) for memory paths."""
+    """Flask test app with the eartha phantom (~32k triangles) for memory paths.
+
+    eartha was reprocessed from a 164k double-walled shell into a 32k solid skin
+    (see tools/process_phantom.py), so duke (~56k) is now the largest phantom; use
+    it here instead if this fixture should exercise the heaviest mesh.
+    """
     pytest.importorskip("flask", reason="viewer tests require flask (pip install aegis[viewer])")
 
     if not (data_dir / "eartha.stl").exists():

@@ -1,0 +1,98 @@
+{
+ "osm_id": 493993762,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 3,
+   "evidence": "seen"
+  },
+  "confidence": 0.62,
+  "ground_floor": {
+   "kind": "blank",
+   "evidence": "inferred"
+  },
+  "identification": "Late-medieval Ghent grain storehouse (the Graanspijker adjoining the Groot Vleeshuis on the Pensmarkt), three tall storage levels in rubble stone with brick repair, steep tiled gable end fronting the Vleeshuistragel service alley, now a heritage-listed utility structure under scaffold rather than a dwelling or shop.",
+  "ledges": {
+   "sills": true,
+   "cornice": false,
+   "string_courses": false,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 9,
+   "trim": "marble",
+   "evidence": "inferred"
+  },
+  "notes": "Wall class follows OSM building:material=brick and is not contradicted, but set B plainly shows grey coursed rubble limestone over a brick-patched lower zone; roughness_mm=9 encodes that eroded-joint rubble rather than a tidy brick face, and trim=marble is standing in for Balegem/Doornik natural stone dressings and gable coping (no limestone slot in the enum). Ground floor is screened in both photographs by white hoarding, a yellow scaffold run and heavy ivy, so it is inferred, not read: blank masonry with a small service opening, which suits a granary flank on a 1.1 m gravel tragel. Ledges inferred: openings are ~15 px at best and dressed sills are a prior, not an observation; absence of cornice and string course is likewise a judgement from the gable-fronted type. Ridge runs perpendicular to the alley \u2014 the triangular gable faces the viewer in both street photos and in plate A. Gable is plain-raking, NOT crow-stepped; the stepped gables visible to the right belong to the Vleeshuis wing and must not be copied onto this one. Storey heights are storage-scale (4.5 m ground, 3.8 m upper), giving ~12.1 m at eaves and ~5.9 m of gable rise to the confirmed 18.0 m apex, roughly a 47 deg pitch. Openings are sparse granary loops, not a domestic bay rhythm: keep them few, small, square and deeply reveal'd \u2014 the 0.6 m+ wall thickness makes those reveals the dominant >10 cm scattering feature on this facade. Clutter: fronting street is highway=path, gravel, car_access=none, so place NO vehicles on this frontage; the correct clutter is construction hoarding and scaffold poles against the wall, stacked plant and bins at the base, ivy on the lower masonry, and the cafe terrace out on the Groot Vleeshuis square to the west. Detail budget belongs on the gable silhouette, the opening reveals and the ground-level 3 m band facing the tragel; the 19.6 m rear flank can be much coarser. Note the frontage_width_m of 4.8 refers to the narrow Pensmarkt address frontage and is consistent with 3 small bays at ~1.6 m centres.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": false,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 4.5,
+   "upper_height_m": 3.8,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 0.9,
+   "height_m": 1.2,
+   "reveal_class": "deep",
+   "glazing_bars": false,
+   "evidence": "seen"
+  }
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 493993762,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "name": "Graanspijker",
+   "building:material": "brick",
+   "building:levels": "3",
+   "roof:shape": "gabled",
+   "roof:material": "roof_tiles",
+   "heritage": "4",
+   "addr:street": "Pensmarkt"
+  },
+  "frontage_width_m": 4.8,
+  "footprint_m": [
+   21.9,
+   19.6
+  ],
+  "footprint_area_m2": 327,
+  "height_m": 18.0,
+  "height_source": "confirmed",
+  "street_frontages": 2,
+  "attached_neighbours": 5,
+  "fronting_street": {
+   "highway": "path",
+   "name": "Vleeshuistragel",
+   "surface": "gravel",
+   "car_access": "none",
+   "distance_m": 1.1
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.434,
+   "x1": 0.564,
+   "y0": 0.121,
+   "y1": 0.813
+  }
+ },
+ "plate": "renders/plates/graslei/493993762.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993762_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993762_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.280094,
+ "model": "claude-opus-5"
+}

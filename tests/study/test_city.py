@@ -17,6 +17,51 @@ def test_rooftop_candidate_is_centroid_at_eave_height():
     assert pts[0, 2] == 20.0
 
 
+def test_interior_point_inside_concave_footprint():
+    # L-shaped footprint whose vertex mean falls in the notch (outside the
+    # polygon). The candidate must still land inside.
+    from matplotlib.path import Path as MplPath
+
+    fp = np.array(
+        [[0, 0], [10, 0], [10, 3], [3, 3], [3, 10], [0, 10]],
+        dtype=float,
+    )
+    assert not MplPath(fp).contains_point(fp.mean(axis=0))
+    b = Building(way_id=7, footprint=fp, height=12.0)
+    pts = rooftop_candidates([b])
+    assert pts.shape == (1, 3)
+    assert MplPath(fp).contains_point(pts[0, :2])
+    assert pts[0, 2] == 12.0
+
+
+def test_candidate_z_snaps_to_mesh_roof():
+    # The OSM tag claims 30 m but the traced mesh roof is a flat slab at 8 m:
+    # the candidate must sit on the mesh (no floating masts), not the tag.
+    class FakeMesh:
+        vertices = np.array([[0.0, 0.0, 8.0], [10.0, 0.0, 8.0], [10.0, 10.0, 8.0], [0.0, 10.0, 8.0]])
+        triangles = np.array([[0, 1, 2], [0, 2, 3]])
+
+    fp = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+    b = Building(way_id=8, footprint=fp, height=30.0)
+    pts = rooftop_candidates([b], mesh=FakeMesh())
+    assert pts.shape == (1, 3)
+    np.testing.assert_allclose(pts[0, 2], 8.0)
+
+
+def test_candidate_skipped_when_building_missing_from_mesh():
+    # The builder dropped this building from the traced mesh (no surface under
+    # the point): trusting the tag would float a mast in empty air, so skip.
+    class FakeMesh:
+        vertices = np.array([[100.0, 100.0, 5.0], [110.0, 100.0, 5.0], [110.0, 110.0, 5.0]])
+        triangles = np.array([[0, 1, 2]])
+
+    fp = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+    b = Building(way_id=9, footprint=fp, height=17.0)
+    assert rooftop_candidates([b], mesh=FakeMesh()).shape == (0, 3)
+    # without a mesh the parsed height is still the honest fallback
+    np.testing.assert_allclose(rooftop_candidates([b])[0, 2], 17.0)
+
+
 def test_skips_degenerate_footprints():
     b = Building(way_id=2, footprint=np.zeros((2, 2)), height=10.0)
     assert rooftop_candidates([b]).shape == (0, 3)

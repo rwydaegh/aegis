@@ -1,0 +1,60 @@
+the intro slide needs to be there, short and casual. just two bullet points about 10 min 5 slides, 20 min discussion. basic
+
+...FDTD, I introduce...
+
+~days/weeks of GPU 
+
+"Teff is a dial, and the whole machine is differentiable"
+KISS. Variable `fidelity levels' + differentiable
+
+Ban the word dial.
+
+>The durable moat is the operator calculus, not the raw speed
+remove, just say operator calculus or something, KISS please
+
+
+'become gradient-based design and have ML applications'
+
+are already fast, but not differentiable or this operator form.
+
+
+
+write 'What Filip said'
+title of that slide: 'The intake meeting: small TAM, no focus'
+...niche is small. End the sentence after that.
+
+no italics on and, use bold. 
+
+ban word moat
+
+remove "That is a method-level moat, so the patent-scope question is a method question"
+
+
+"Strip dosimetry away: what transfers, what does not"
+--> Generalize? 
+(thats it)
+
+remove: "The pattern: my jewel is the differentiable
+closed-form constrained-focusing operator. It wins
+where I design a controllable coherent excitation
+against quadratic power limits, and loses where I
+must certify a passive scattering signature."
+
+"The patent is on hold for one week to answer exactly these."
+--> The patent is on hold for one week for these decisions
+
+
+BAN the em dash for god sake please
+
+remove: "Narrow but live: deep regional hyperthermia, free-field array
+beamforming, heliostat-field layout."
+
+verbatim
+Q1. Which fields (listed or not) do you think this method has the most commercial viability?
+
+Q2. ... strong enough for LoIs?
+
+Q3. remove
+
+Q4 (so Q3). keep the narrower dosimetry application? [end here]
+

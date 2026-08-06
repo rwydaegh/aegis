@@ -31,6 +31,11 @@ def annotations_log(paper_dir: Path) -> Path:
     return workdir(paper_dir) / "annotations.jsonl"
 
 
+def session_id_file(paper_dir: Path) -> Path:
+    """Persisted Claude SDK session id, so a restarted server resumes the convo."""
+    return workdir(paper_dir) / "claude_session_id"
+
+
 def parser_errors_log(paper_dir: Path) -> Path:
     return workdir(paper_dir) / "parser_errors.log"
 

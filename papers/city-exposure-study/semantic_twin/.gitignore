@@ -1,0 +1,20 @@
+data/panoramas/
+outputs/
+*.blend
+*.blend1
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+data/tiles/
+data/tiles250/
+
+# Downloaded papers used to check the bibliography. 274 MB, and none of it is
+# ours to redistribute. Two of them survive only on the Internet Archive, so
+# CITATIONS.md carries the retrieval URLs rather than the files.
+lit/
+
+# Cropped meshes at the published 250 m radius. Regenerable from the cached
+# tiles above, and 538 MB across the eleven squares, so they stay out of git.
+# The smaller crops predate this rule and are still tracked.
+data/geometry/*/inhouse_leaf_250m*.ply
+data/geometry/*/inhouse_leaf_250m*.json

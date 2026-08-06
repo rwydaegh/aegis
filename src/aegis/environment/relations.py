@@ -17,7 +17,9 @@ from aegis.environment.osm_helpers import (
     Building,
     _parse_building_material,
     _parse_height,
+    _parse_roof_height,
     _parse_roof_shape,
+    _split_height,
 )
 
 # ---------------------------------------------------------------------------
@@ -27,13 +29,19 @@ from aegis.environment.osm_helpers import (
 
 @dataclass
 class MultipolygonBuilding:
-    """A building parsed from an OSM multipolygon relation."""
+    """A building parsed from an OSM multipolygon relation.
+
+    Follows the same height convention as :class:`Building`: ``height`` is the
+    eave (wall top) and ``roof_height`` the peak above it, split from the OSM
+    total ground-to-peak ``height`` tag at parse time.
+    """
 
     relation_id: int
     outer_rings: list[np.ndarray]  # each (N, 2) float64
     inner_rings: list[np.ndarray]  # each (N, 2) float64
     height: float = 8.0
     roof_shape: str = "flat"
+    roof_height: float = 2.0
     material: object = None  # MaterialType, resolved lazily
     tags: dict[str, str] = field(default_factory=dict)
 
@@ -222,15 +230,22 @@ def _parse_building_members(
             part_type = part_tags.get("building:part", "yes")
             part_building_type = part_tags.get("building", part_type)
 
+            total_height = _parse_height(part_tags, part_building_type)
+            roof_shape = _parse_roof_shape(part_tags)
+            roof_height = _parse_roof_height(part_tags, total_height)
+            height, roof_height = _split_height(total_height, roof_shape, roof_height)
+
             coords = [list(proj_nodes[nid]) for nid in node_ids[:-1] if nid in proj_nodes]
             if len(coords) >= 3:
                 parts.append(
                     Building(
                         way_id=wid,
                         footprint=np.array(coords, dtype=np.float64),
-                        height=_parse_height(part_tags, part_building_type),
-                        roof_shape=_parse_roof_shape(part_tags),
+                        height=height,
+                        roof_shape=roof_shape,
+                        roof_height=roof_height,
                         material=_parse_building_material(part_tags),
+                        tags=part_tags,
                     )
                 )
 
@@ -279,11 +294,16 @@ def parse_relations(
         x, y = transverse_mercator_forward(lat, lon, origin_lat, origin_lon)
         proj_nodes[nid] = (x, y)
 
-    # Build way lookup: id -> [node_ids]
+    # Build way lookup: id -> [node_ids]. Overpass can print the same way
+    # twice (tagged body output plus the relation member recursion), so prefer
+    # the copy that carries tags: a tagless skel duplicate must not shadow the
+    # part's height/roof tags.
     ways: dict[int, list[int]] = {}
     way_elems: dict[int, ET.Element] = {}
     for way_elem in root.findall("way"):
         wid = int(way_elem.attrib["id"])
+        if wid in way_elems and way_elem.find("tag") is None and way_elems[wid].find("tag") is not None:
+            continue
         ways[wid] = _node_refs_from_way(way_elem)
         way_elems[wid] = way_elem
 
@@ -309,8 +329,10 @@ def parse_relations(
                 continue
 
             building_type = tags.get("building", "yes")
-            height = _parse_height(tags, building_type)
+            total_height = _parse_height(tags, building_type)
             roof_shape = _parse_roof_shape(tags)
+            roof_height = _parse_roof_height(tags, total_height)
+            height, roof_height = _split_height(total_height, roof_shape, roof_height)
             material = _parse_building_material(tags)
 
             result.multipolygons.append(
@@ -320,6 +342,7 @@ def parse_relations(
                     inner_rings=inner_rings,
                     height=height,
                     roof_shape=roof_shape,
+                    roof_height=roof_height,
                     material=material,
                     tags=tags,
                 )

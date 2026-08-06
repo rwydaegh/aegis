@@ -1,0 +1,65 @@
+{
+  "name": "madrid_plazamayor",
+  "location": {
+    "lat": 40.41552,
+    "lon": -3.70744,
+    "radius_m": 50.0
+  },
+  "enu_origin": {
+    "lat": 40.41552,
+    "lon": -3.70744,
+    "ellipsoid_height_m": 0.0
+  },
+  "camera_ground_z_m": 702.5385658579601,
+  "camera_ground_z_note": "One scene-wide constant, which is a known weakness of the current code. It is the median topmost tile surface over a 13 by 13 grid spanning 6 by 6 m centred on the panorama named in screening_provenance.seed_pano_id, measured by downward ray cast against the shipped 130 m mesh with the ray starting above the whole scene. Sampling spread over that patch is 0.028 m standard deviation and 0.104 m peak to peak, which is flat enough that the patch is pavement rather than an awning or an arcade roof. Sites whose patch spread exceeded 0.1 m are not shipped with a ground height at all, because a high ray ceiling catches the first thing it meets and that is not always the ground. Any later camera on steps or under an arch inherits a biased altitude from this one number.",
+  "camera_height_m": 2.5,
+  "frequencies_hz": [
+    28000000000.0,
+    39000000000.0
+  ],
+  "extrapolated_frequencies_hz": [
+    60000000000.0
+  ],
+  "frequency_note": "Same split as korenmarkt.json and milan_duomo.json. 28 and 39 GHz sit inside the ITU-R P.2040-4 validity band. 60 GHz does not for every material a masonry scene needs, since brick and asphalt_concrete are tabulated only to 40 GHz and PowerLawMaterial.evaluate raises rather than extrapolate silently, so it is listed separately as an explicit opt-in requiring allow_extrapolation=True, applicability indicative_extrapolation and an uncertainty multiplier of 1.585 from the 0.585 octaves between 40 and 60 GHz. The material inventory for this site has not been built yet, so the note states the constraint rather than which materials trip it here.",
+  "source_mesh": "data/geometry/madrid_plazamayor/inhouse_leaf_130m.ply",
+  "source_mesh_manifest": "data/geometry/madrid_plazamayor/inhouse_leaf_130m.json",
+  "geometry_selection": {
+    "provider": "Inhouse Photorealistic 3D Tiles",
+    "selection": "deepest available leaf tiles",
+    "observed_geometric_error_m": 2.006368774808128,
+    "acquisition_radius_m": 130.0,
+    "crop_radius_m": 130.0,
+    "leaf_tile_count": 150,
+    "triangle_count": 187462,
+    "tile_requests": 306,
+    "tile_bytes": 15229465,
+    "coverage_acceptance": "Not yet established for this site. Korenmarkt and Milan chose their crop by keeping at least 99% of the 200 m projection in four validation views, and that sweep has not been run here. The acquisition radius and the crop radius are both 130 m, so the crop keeps every triangle that was paid for and nothing inside 130 m is missing, but whether 130 m is enough for this square is unanswered. Milan needed 170 m and Korenmarkt needed 130 m, so the answer is a property of the square rather than of the method."
+  },
+  "geometry_note": "Standalone ENU support mesh. Inhouse triangulation supplies first-hit depth only. Semantic boundary resolution comes from the source image pixels.",
+  "screening_provenance": {
+    "screened_on": "2026-08-01",
+    "screen_radius_m": 60.0,
+    "panoramas_within_60m": 97,
+    "distinct_capture_dates": 16,
+    "walk_date": "2025-05",
+    "walk_panoramas": 56,
+    "walk_median_spacing_m": 9.025636515298737,
+    "walk_span_m": 112.2937563157679,
+    "walk_azimuth_spread": 1.0,
+    "walk_age_years": 1,
+    "newest_usable_walk": {
+      "date": "2025-05",
+      "walk_panoramas": 56
+    },
+    "seed_pano_id": "mX-LS0pBbFTgxsbt3cKYNA",
+    "seed_pano_enu_m": [
+      -2.47,
+      3.82
+    ],
+    "table": "outputs/city_screening/screening.json"
+  },
+  "mesh_defects": [
+    "Single-precision ECEF to ENU in build_inhouse_mesh.py, measured at Korenmarkt as about 0.22 m of mean rigid shift and up to 0.44 m of differential tile-to-tile misregistration. This mesh carries it. Rebuild once the module is fixed.",
+    "camera_ground_z_m is one constant for the whole site."
+  ]
+}

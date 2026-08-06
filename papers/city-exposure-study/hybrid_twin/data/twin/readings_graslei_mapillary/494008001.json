@@ -1,0 +1,90 @@
+{
+ "osm_id": 494008001,
+ "status": "ok",
+ "reading": {
+  "identification": "A tiny modern timber service structure \u2014 OSM building=roof, 4.4 \u00d7 1.9 m, 8 m\u00b2 \u2014 an open-sided lean-to canopy and enclosure standing on the gravel Vleeshuistragel towpath against the river flank of Ghent's 15th-century Groot Vleeshuis, its path-side face closed by a white-painted pointed-top timber palisade with dark-stained timber posts behind.",
+  "storeys": {
+   "count": 1,
+   "ground_height_m": 4,
+   "upper_height_m": 2.6,
+   "evidence": "inferred"
+  },
+  "bays": {
+   "count": 1,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 0.6,
+   "height_m": 0.9,
+   "reveal_class": "flush",
+   "glazing_bars": false,
+   "evidence": "inferred"
+  },
+  "ground_floor": {
+   "kind": "blank",
+   "evidence": "seen"
+  },
+  "roof": {
+   "form": "shed",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "ledges": {
+   "sills": false,
+   "cornice": true,
+   "string_courses": false,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "wood",
+   "roughness_mm": 2.5,
+   "trim": "wood",
+   "evidence": "seen"
+  },
+  "confidence": 0.42,
+  "notes": "WHAT THIS IS NOT: do not apply a Ghent canal-house grammar here. The magenta box in set A lands on the Groot Vleeshuis flank (tall two-light arch-headed openings in brick/sandstone) purely because Google tiles contain no geometry for an 8 m\u00b2 canopy \u2014 that wall is the NEIGHBOUR, behind the target. Set A's left third is this same white palisade, photogrammetrically melted into a spiky crest; that is the only part of A that touches the target at all. Read nothing about storeys, fenestration or material off A.\n\nHEIGHT: height_source is \"no-data\", so 9.0 m is a fallback, not a measurement, and I am not treating it as macro truth. The visible fabric is a ~2.8\u20133.0 m palisade with dark timber rising a little above it; total mass reads ~4 m to the eaves. I have set one storey at 4.0 m. If the pipeline is hard-bound to 9.0 m, the surplus belongs to the Vleeshuis wall this thing leans on, not to this prism \u2014 a 9 m tall 4.4 \u00d7 1.9 m timber slab on a towpath would be a visible-primitive failure from any rotated camera.\n\nBAYS / OPENINGS: bays=1 is a formality \u2014 the towpath face is continuous boarding with no window column anywhere across the 4.1 m frontage, seen at 1\u20133 m in B. Preferred generation is ZERO openings. The window block is a floor value only; if the grammar insists on punching one, make it a flush unglazed gap in the boarding, never a framed sash.\n\nCORNICE, read correctly: true here means a timber eaves fascia with roughly 0.2\u20130.3 m of overhang shading the path \u2014 the serrated dark-brown edge above the palisade top-right in B. It is emphatically NOT a moulded masonry cornice. That overhang is the single most valuable >10 cm feature on this object: it is the wedge that produces the near-field diffraction at 3.1 m from the path centreline. Model the fascia and the eaves line as geometry; model the roof pitch falling from the Vleeshuis party wall toward the water.\n\nPALISADE \u2014 the physics point that matters most: the boards are separated by open gaps of roughly 15\u201320 mm, i.e. 1.5\u20132 \u03bb at 28 GHz. This screen is partially TRANSMISSIVE, not a solid wall. Treating the towpath face as a closed dielectric slab will overstate blockage and kill the field that actually leaks through onto the path. If the generator supports it, model the palisade as a slatted plane with real gaps (board pitch ~120 mm, board width ~100 mm, thickness ~22 mm) rather than as a filled facade; if it cannot, at minimum apply a transmission/porosity term of order 0.15.\n\nMATERIAL: painted sawn softwood, near-white and chalky with grey weathering streaks and rust-stained nail holes. 2.5 mm RMS covers the board cupping and the chamfered arrises \u2014 the board-to-board steps and the gaps are handled as the slat geometry above, not folded into roughness twice. Trim (posts, rails, the return screen) is dark-stained near-black timber, distinctly lower albedo than the palisade; that contrast is the main visual read from the path and should not be flattened to one wood shader.\n\nCLUTTER: fronting_street is a gravel path with car_access=none. Place no vehicles, no parking, no kerb. Correct ground clutter for a Ghent towpath is gravel with weed tufts at the fence line (both visible in B), the steel pipe railing on the water side, and possibly a moored boat. Ground material under and around this structure is loose gravel, not paving."
+ },
+ "flags": [
+  "storeys fill only 44% of the envelope"
+ ],
+ "facts": {
+  "osm_id": 494008001,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "roof"
+  },
+  "frontage_width_m": 4.1,
+  "footprint_m": [
+   4.4,
+   1.9
+  ],
+  "footprint_area_m2": 8,
+  "height_m": 9.0,
+  "height_source": "no-data",
+  "street_frontages": 1,
+  "attached_neighbours": 1,
+  "fronting_street": {
+   "highway": "path",
+   "name": "Vleeshuistragel",
+   "surface": "gravel",
+   "car_access": "none",
+   "distance_m": 3.1
+  },
+  "plate_view": "street",
+  "street_photos": 1,
+  "target_box_normalised": {
+   "x0": 0.416,
+   "x1": 0.57,
+   "y0": 0.098,
+   "y1": 0.822
+  }
+ },
+ "plate": "renders/plates/graslei/494008001.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494008001_0.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.8021340000000001,
+ "model": "claude-opus-5"
+}

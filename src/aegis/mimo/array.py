@@ -108,11 +108,15 @@ class AntennaArray:
         )
 
     def element_gain(self, k_hat: np.ndarray) -> np.ndarray:
-        """Per-element gain for a direction or set of directions.
+        """Per-element amplitude gain for a direction or set of directions.
 
-        For "patch": G(theta) = max(cos(theta), 0)^q where theta is the
-        angle between k_hat and broadside. q=1.5 gives ~6.6 dBi, typical
-        for a rectangular microstrip patch at 28 GHz.
+        For "patch": sqrt(D) * max(cos(theta), 0)^q with q = 1.5, where theta
+        is the angle off broadside. The power pattern is D cos^3(theta) with
+        D = 2(2q + 1) = 8 (9.0 dBi peak), the directivity that makes the
+        pattern radiate exactly the input power over the front hemisphere.
+        Comparable to the 8 dBi elements 3GPP TR 38.901 assumes for mmWave
+        panels. (Before 2026-07 the amplitude was unnormalized, peak 0 dBi,
+        under-reporting absolute exposure by ~9 dB.)
 
         Parameters
         ----------
@@ -120,16 +124,17 @@ class AntennaArray:
 
         Returns
         -------
-        gain : scalar or (N,) real gain values in [0, 1].
+        gain : scalar or (N,) real amplitude gain (multiply into psi).
         """
         if self.element_pattern == "isotropic" or self.broadside is None:
             if k_hat.ndim == 1:
                 return np.float64(1.0)
             return np.ones(k_hat.shape[0])
-        # Patch: cos^q(theta) with backside suppression
+        # Patch: energy-normalized cos^q amplitude with backside suppression
         q = 1.5
+        amp = np.sqrt(2.0 * (2.0 * q + 1.0))
         cos_theta = k_hat @ self.broadside
-        return np.maximum(cos_theta, 0.0) ** q
+        return amp * np.maximum(cos_theta, 0.0) ** q
 
     def steering_vector(self, k_hat: np.ndarray, freq_hz: float) -> np.ndarray:
         """Transmit steering vector for a single direction.

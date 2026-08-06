@@ -1,0 +1,1399 @@
+{
+  "after_triangle_count": 197092,
+  "after_vertex_count": 258982,
+  "alignment": {
+    "axis_fix": "identity",
+    "double_precision_objects": 219,
+    "ecef_to_local_enu_matrix": [
+      [
+        -0.6467836563958258,
+        -0.76267352243227,
+        0.0,
+        7.108309777958862e-11
+      ],
+      [
+        0.4446131995715256,
+        -0.37705327698229635,
+        0.8124961101960319,
+        20247.14383926644
+      ],
+      [
+        -0.6196692703257255,
+        0.5255092049599753,
+        0.582966612179735,
+        -6370877.46508443
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "placement_source": "glTF node matrices read in float64, never Object.matrix_world",
+    "residual_to_anchor_m": 81.68805681298252,
+    "root_object_count": 219,
+    "single_precision_fallback_objects": 0
+  },
+  "anchor": {
+    "height_m": 0.0,
+    "lat_deg": 35.65947,
+    "lon_deg": 139.70046
+  },
+  "bbox": {
+    "max_enu_m": [
+      129.79897046011894,
+      129.7642681148703,
+      163.40360235014214
+    ],
+    "min_enu_m": [
+      -129.9767766619176,
+      -129.97191063024886,
+      18.825845784870182
+    ]
+  },
+  "before_triangle_count": 403285,
+  "before_vertex_count": 524933,
+  "blend": null,
+  "blender_version": "4.5.9 LTS",
+  "coordinate_system": "local ENU metres, z up",
+  "crop_policy": "keep triangles whose three vertices are inside the horizontal radius",
+  "crop_radius_m": 130.0,
+  "format_version": 3,
+  "generator": "semantic_twin/build_inhouse_mesh.py",
+  "output_bytes": 5670204,
+  "output_ply": "/home/user/aegis/papers/city-exposure-study/semantic_twin/data/geometry/tokyo_hachiko/inhouse_leaf_130m.ply",
+  "source_acquisition": {
+    "geometric_error_cutoff_m": 0.0,
+    "lat_deg": 35.65947,
+    "lon_deg": 139.70046,
+    "radius_m": 130.0,
+    "request_bytes": 20216044,
+    "request_count": 444
+  },
+  "source_geometric_error_range_m": {
+    "max": 2.006368774808128,
+    "min": 2.006368774808128
+  },
+  "source_geometric_errors_m": [
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128,
+    2.006368774808128
+  ],
+  "source_manifest": "/home/user/aegis/papers/city-exposure-study/semantic_twin/data/tiles/tokyo_hachiko/manifest.json",
+  "source_payload_bytes": 18977944,
+  "source_tile_count": 219,
+  "source_tiles": [
+    {
+      "file": "tile_0000.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 19888
+    },
+    {
+      "file": "tile_0001.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4124
+    },
+    {
+      "file": "tile_0002.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 48144
+    },
+    {
+      "file": "tile_0003.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 109552
+    },
+    {
+      "file": "tile_0004.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4120
+    },
+    {
+      "file": "tile_0005.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 52720
+    },
+    {
+      "file": "tile_0006.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 94032
+    },
+    {
+      "file": "tile_0007.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 135268
+    },
+    {
+      "file": "tile_0008.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 18212
+    },
+    {
+      "file": "tile_0009.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2952
+    },
+    {
+      "file": "tile_0010.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 46560
+    },
+    {
+      "file": "tile_0011.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4464
+    },
+    {
+      "file": "tile_0012.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 136164
+    },
+    {
+      "file": "tile_0013.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 49436
+    },
+    {
+      "file": "tile_0014.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 72008
+    },
+    {
+      "file": "tile_0015.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 132984
+    },
+    {
+      "file": "tile_0016.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 53540
+    },
+    {
+      "file": "tile_0017.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 51000
+    },
+    {
+      "file": "tile_0018.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4280
+    },
+    {
+      "file": "tile_0019.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 45960
+    },
+    {
+      "file": "tile_0020.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 99372
+    },
+    {
+      "file": "tile_0021.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 12236
+    },
+    {
+      "file": "tile_0022.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 24728
+    },
+    {
+      "file": "tile_0023.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 67796
+    },
+    {
+      "file": "tile_0024.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 62104
+    },
+    {
+      "file": "tile_0025.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 208456
+    },
+    {
+      "file": "tile_0026.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 149280
+    },
+    {
+      "file": "tile_0027.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 98320
+    },
+    {
+      "file": "tile_0028.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 148732
+    },
+    {
+      "file": "tile_0029.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 56184
+    },
+    {
+      "file": "tile_0030.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 62612
+    },
+    {
+      "file": "tile_0031.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 6084
+    },
+    {
+      "file": "tile_0032.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 161216
+    },
+    {
+      "file": "tile_0033.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 11356
+    },
+    {
+      "file": "tile_0034.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 32300
+    },
+    {
+      "file": "tile_0035.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 105840
+    },
+    {
+      "file": "tile_0036.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 25548
+    },
+    {
+      "file": "tile_0037.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 91280
+    },
+    {
+      "file": "tile_0038.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 137516
+    },
+    {
+      "file": "tile_0039.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 68116
+    },
+    {
+      "file": "tile_0040.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 136624
+    },
+    {
+      "file": "tile_0041.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 69296
+    },
+    {
+      "file": "tile_0042.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 92648
+    },
+    {
+      "file": "tile_0043.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2556
+    },
+    {
+      "file": "tile_0044.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 10204
+    },
+    {
+      "file": "tile_0045.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2984
+    },
+    {
+      "file": "tile_0046.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 104964
+    },
+    {
+      "file": "tile_0047.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 133712
+    },
+    {
+      "file": "tile_0048.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2728
+    },
+    {
+      "file": "tile_0049.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 214836
+    },
+    {
+      "file": "tile_0050.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 10896
+    },
+    {
+      "file": "tile_0051.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 3684
+    },
+    {
+      "file": "tile_0052.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 246336
+    },
+    {
+      "file": "tile_0053.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 302160
+    },
+    {
+      "file": "tile_0054.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 157724
+    },
+    {
+      "file": "tile_0055.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 101924
+    },
+    {
+      "file": "tile_0056.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 260772
+    },
+    {
+      "file": "tile_0057.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 16896
+    },
+    {
+      "file": "tile_0058.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 11648
+    },
+    {
+      "file": "tile_0059.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 126860
+    },
+    {
+      "file": "tile_0060.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 17624
+    },
+    {
+      "file": "tile_0061.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 114604
+    },
+    {
+      "file": "tile_0062.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 114352
+    },
+    {
+      "file": "tile_0063.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 7708
+    },
+    {
+      "file": "tile_0064.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 184404
+    },
+    {
+      "file": "tile_0065.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 12956
+    },
+    {
+      "file": "tile_0066.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 8828
+    },
+    {
+      "file": "tile_0067.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 166996
+    },
+    {
+      "file": "tile_0068.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 230616
+    },
+    {
+      "file": "tile_0069.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 209120
+    },
+    {
+      "file": "tile_0070.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 237884
+    },
+    {
+      "file": "tile_0071.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 69240
+    },
+    {
+      "file": "tile_0072.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 145536
+    },
+    {
+      "file": "tile_0073.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2608
+    },
+    {
+      "file": "tile_0074.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 152776
+    },
+    {
+      "file": "tile_0075.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 11720
+    },
+    {
+      "file": "tile_0076.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 28032
+    },
+    {
+      "file": "tile_0077.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 150332
+    },
+    {
+      "file": "tile_0078.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 9632
+    },
+    {
+      "file": "tile_0079.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 113264
+    },
+    {
+      "file": "tile_0080.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 88564
+    },
+    {
+      "file": "tile_0081.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 131868
+    },
+    {
+      "file": "tile_0082.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 146436
+    },
+    {
+      "file": "tile_0083.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 30624
+    },
+    {
+      "file": "tile_0084.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 114448
+    },
+    {
+      "file": "tile_0085.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 82264
+    },
+    {
+      "file": "tile_0086.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 87496
+    },
+    {
+      "file": "tile_0087.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2540
+    },
+    {
+      "file": "tile_0088.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 11276
+    },
+    {
+      "file": "tile_0089.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 164068
+    },
+    {
+      "file": "tile_0090.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 207644
+    },
+    {
+      "file": "tile_0091.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2580
+    },
+    {
+      "file": "tile_0092.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 204564
+    },
+    {
+      "file": "tile_0093.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 200900
+    },
+    {
+      "file": "tile_0094.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 8764
+    },
+    {
+      "file": "tile_0095.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 11696
+    },
+    {
+      "file": "tile_0096.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 17304
+    },
+    {
+      "file": "tile_0097.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 213848
+    },
+    {
+      "file": "tile_0098.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 251552
+    },
+    {
+      "file": "tile_0099.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 314820
+    },
+    {
+      "file": "tile_0100.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 232080
+    },
+    {
+      "file": "tile_0101.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 26536
+    },
+    {
+      "file": "tile_0102.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 245044
+    },
+    {
+      "file": "tile_0103.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 18772
+    },
+    {
+      "file": "tile_0104.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 7896
+    },
+    {
+      "file": "tile_0105.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 143824
+    },
+    {
+      "file": "tile_0106.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 183448
+    },
+    {
+      "file": "tile_0107.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 114888
+    },
+    {
+      "file": "tile_0108.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 14764
+    },
+    {
+      "file": "tile_0109.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 46148
+    },
+    {
+      "file": "tile_0110.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 3444
+    },
+    {
+      "file": "tile_0111.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 194236
+    },
+    {
+      "file": "tile_0112.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 40132
+    },
+    {
+      "file": "tile_0113.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 195884
+    },
+    {
+      "file": "tile_0114.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 220552
+    },
+    {
+      "file": "tile_0115.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 175004
+    },
+    {
+      "file": "tile_0116.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 5288
+    },
+    {
+      "file": "tile_0117.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 33708
+    },
+    {
+      "file": "tile_0118.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 10360
+    },
+    {
+      "file": "tile_0119.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 124244
+    },
+    {
+      "file": "tile_0120.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 9788
+    },
+    {
+      "file": "tile_0121.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 114708
+    },
+    {
+      "file": "tile_0122.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 106768
+    },
+    {
+      "file": "tile_0123.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 252988
+    },
+    {
+      "file": "tile_0124.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 35980
+    },
+    {
+      "file": "tile_0125.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 199552
+    },
+    {
+      "file": "tile_0126.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4820
+    },
+    {
+      "file": "tile_0127.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 309740
+    },
+    {
+      "file": "tile_0128.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 338852
+    },
+    {
+      "file": "tile_0129.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 12444
+    },
+    {
+      "file": "tile_0130.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 24172
+    },
+    {
+      "file": "tile_0131.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 400724
+    },
+    {
+      "file": "tile_0132.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 3372
+    },
+    {
+      "file": "tile_0133.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 24188
+    },
+    {
+      "file": "tile_0134.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 41716
+    },
+    {
+      "file": "tile_0135.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 15068
+    },
+    {
+      "file": "tile_0136.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 41456
+    },
+    {
+      "file": "tile_0137.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 48220
+    },
+    {
+      "file": "tile_0138.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2856
+    },
+    {
+      "file": "tile_0139.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 182852
+    },
+    {
+      "file": "tile_0140.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 22000
+    },
+    {
+      "file": "tile_0141.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 53896
+    },
+    {
+      "file": "tile_0142.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 93944
+    },
+    {
+      "file": "tile_0143.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 76628
+    },
+    {
+      "file": "tile_0144.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 253504
+    },
+    {
+      "file": "tile_0145.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 10276
+    },
+    {
+      "file": "tile_0146.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 310284
+    },
+    {
+      "file": "tile_0147.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 214168
+    },
+    {
+      "file": "tile_0148.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2796
+    },
+    {
+      "file": "tile_0149.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 211864
+    },
+    {
+      "file": "tile_0150.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 27436
+    },
+    {
+      "file": "tile_0151.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 42088
+    },
+    {
+      "file": "tile_0152.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 42584
+    },
+    {
+      "file": "tile_0153.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 169400
+    },
+    {
+      "file": "tile_0154.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 176088
+    },
+    {
+      "file": "tile_0155.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 39536
+    },
+    {
+      "file": "tile_0156.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 193064
+    },
+    {
+      "file": "tile_0157.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 138724
+    },
+    {
+      "file": "tile_0158.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 171196
+    },
+    {
+      "file": "tile_0159.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 25216
+    },
+    {
+      "file": "tile_0160.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 109216
+    },
+    {
+      "file": "tile_0161.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 6796
+    },
+    {
+      "file": "tile_0162.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 65040
+    },
+    {
+      "file": "tile_0163.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 22060
+    },
+    {
+      "file": "tile_0164.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 31544
+    },
+    {
+      "file": "tile_0165.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 81760
+    },
+    {
+      "file": "tile_0166.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 21192
+    },
+    {
+      "file": "tile_0167.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 27960
+    },
+    {
+      "file": "tile_0168.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4264
+    },
+    {
+      "file": "tile_0169.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4484
+    },
+    {
+      "file": "tile_0170.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4472
+    },
+    {
+      "file": "tile_0171.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 3996
+    },
+    {
+      "file": "tile_0172.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 19244
+    },
+    {
+      "file": "tile_0173.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 27112
+    },
+    {
+      "file": "tile_0174.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 19372
+    },
+    {
+      "file": "tile_0175.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 5312
+    },
+    {
+      "file": "tile_0176.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 23080
+    },
+    {
+      "file": "tile_0177.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 31504
+    },
+    {
+      "file": "tile_0178.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4136
+    },
+    {
+      "file": "tile_0179.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 20232
+    },
+    {
+      "file": "tile_0180.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 3032
+    },
+    {
+      "file": "tile_0181.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2620
+    },
+    {
+      "file": "tile_0182.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 11332
+    },
+    {
+      "file": "tile_0183.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4396
+    },
+    {
+      "file": "tile_0184.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 112680
+    },
+    {
+      "file": "tile_0185.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 60276
+    },
+    {
+      "file": "tile_0186.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 14168
+    },
+    {
+      "file": "tile_0187.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 63548
+    },
+    {
+      "file": "tile_0188.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 29288
+    },
+    {
+      "file": "tile_0189.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 59148
+    },
+    {
+      "file": "tile_0190.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 45348
+    },
+    {
+      "file": "tile_0191.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2552
+    },
+    {
+      "file": "tile_0192.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 67324
+    },
+    {
+      "file": "tile_0193.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 16472
+    },
+    {
+      "file": "tile_0194.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 7388
+    },
+    {
+      "file": "tile_0195.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4540
+    },
+    {
+      "file": "tile_0196.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 97668
+    },
+    {
+      "file": "tile_0197.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 17924
+    },
+    {
+      "file": "tile_0198.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 101272
+    },
+    {
+      "file": "tile_0199.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 104580
+    },
+    {
+      "file": "tile_0200.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 182516
+    },
+    {
+      "file": "tile_0201.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 199328
+    },
+    {
+      "file": "tile_0202.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 108432
+    },
+    {
+      "file": "tile_0203.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 228528
+    },
+    {
+      "file": "tile_0204.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 146768
+    },
+    {
+      "file": "tile_0205.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 2584
+    },
+    {
+      "file": "tile_0206.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 299368
+    },
+    {
+      "file": "tile_0207.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 227668
+    },
+    {
+      "file": "tile_0208.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 4212
+    },
+    {
+      "file": "tile_0209.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 13180
+    },
+    {
+      "file": "tile_0210.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 222044
+    },
+    {
+      "file": "tile_0211.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 14220
+    },
+    {
+      "file": "tile_0212.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 273316
+    },
+    {
+      "file": "tile_0213.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 36160
+    },
+    {
+      "file": "tile_0214.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 14748
+    },
+    {
+      "file": "tile_0215.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 16032
+    },
+    {
+      "file": "tile_0216.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 92336
+    },
+    {
+      "file": "tile_0217.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 9848
+    },
+    {
+      "file": "tile_0218.glb",
+      "geometric_error_m": 2.006368774808128,
+      "payload_bytes": 41692
+    }
+  ]
+}

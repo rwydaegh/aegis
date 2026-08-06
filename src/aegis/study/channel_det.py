@@ -112,14 +112,17 @@ def sector_paths(
     )
 
 
-def _cap_paths(paths, max_paths):
+def _cap_paths(paths, max_paths, array=None):
     """Keep the ``max_paths`` strongest paths by field power ``||psi||^2``.
 
     The translation-phasor Gram cost grows with the number of center paths, so a
     diffraction-rich trace (tens of paths) can dominate. The exposure operator is
     dominated by the strongest paths, so truncating to the top few by power is a
-    cheap, physically reasonable bound. Returns ``paths`` unchanged if it already
-    has at most ``max_paths`` or if ``max_paths`` is falsy.
+    cheap, physically reasonable bound. When ``array`` is given, the ranking
+    folds the element pattern at each path's departure direction, so a strong
+    back-lobe path cannot displace a boresight path that will out-contribute it
+    once the gain is applied downstream. Returns ``paths`` unchanged if it
+    already has at most ``max_paths`` or if ``max_paths`` is falsy.
     """
     import dataclasses
 
@@ -129,6 +132,9 @@ def _cap_paths(paths, max_paths):
     if n <= int(max_paths):
         return paths
     power = np.sum(np.abs(np.asarray(paths.psi)) ** 2, axis=1)  # (N,)
+    if array is not None:
+        k_dep = paths.k_hat_tx if getattr(paths, "k_hat_tx", None) is not None else paths.k_hat
+        power = power * np.asarray(array.element_gain(k_dep)) ** 2
     keep = np.argsort(power)[::-1][: int(max_paths)]
     keep = np.sort(keep)  # preserve original ordering among the kept paths
     fields = {}
@@ -175,5 +181,5 @@ def center_paths(
     )
     if return_viz:
         paths, viz = res
-        return _cap_paths(paths, max_center_paths), viz
-    return _cap_paths(res, max_center_paths)
+        return _cap_paths(paths, max_center_paths, array=sector.array), viz
+    return _cap_paths(res, max_center_paths, array=sector.array)

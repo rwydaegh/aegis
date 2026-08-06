@@ -1,0 +1,91 @@
+{
+ "osm_id": 493993763,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 2,
+   "evidence": "inferred"
+  },
+  "confidence": 0.52,
+  "ground_floor": {
+   "kind": "residential_door",
+   "evidence": "inferred"
+  },
+  "identification": "A small 16th\u201317th century brick 'penshuisje' (tripe-vendor's house) of the Pensmarkt row built against the flank of Ghent's Groot Vleeshuis \u2014 a 5 m-wide gable-fronted townhouse of two storeys plus attic under a crow-stepped gable, now in residential/small-commercial use.",
+  "ledges": {
+   "sills": true,
+   "cornice": false,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 4,
+   "trim": "concrete",
+   "evidence": "inferred"
+  },
+  "notes": "EVIDENCE CAVEAT: the street photograph (set B) is misregistered \u2014 the magenta box outlines the timber palisade fence in the foreground of the opposite quay, and the target building does not appear in that frame. All fields that set B was expected to carry (wall material, window size and subdivision, sills, string courses, ground floor) are therefore inferred from building type, not observed. I have deliberately not read them off the Kraanlei/Graslei row visible across the water, which is a different street.\n\nSet A (Google tiles) is melted but its silhouette is legible: the outlined unit reads as a narrow gable-fronted house with a jagged stepped crown, consistent with the unambiguously crow-stepped neighbours immediately to its left. That supports roof form and ridge orientation only. The lower half of the outlined box is occluded by foreground roof geometry, so the ground floor is unobserved.\n\nHEIGHT: height_source is 'no-data', so 9.0 m is a default rather than a measurement. Split as ~5.9 m to eaves (3.0 + 2.9) with ~3.1 m of stepped gable above, the normal proportion for this house type. Storey count is inferred from that split, not counted in the image.\n\nGEOMETRY THAT MATTERS AT 28 GHz: build the crow steps explicitly \u2014 5\u20137 steps per rake, each a ~0.25 m tread with a stone coping, is the dominant scatterer for a receiver in the 0.9 m-wide Vleeshuistragel and will be sampled from every camera azimuth. Also mesh: the stone plinth/water table at the base, the sandstone speklagen string courses (~60\u201380 mm proud, keep only if they exceed 0.10 m; otherwise fold into roughness), window sills, and deep reveals in the massive masonry. Do NOT mesh brick bond, mortar joints or the sandstone/brick banding contrast \u2014 those live in the 1\u201310 cm regime and belong in roughness_mm and the scattering coefficient.\n\nGROUND FLOOR: the fronting street here is the Vleeshuistragel, a gravel path with car_access=none, so this facade is the secondary alley elevation \u2014 a plain door and a single small window, no shopfront, no vehicles, no terrace. If the generator also builds the Pensmarkt elevation, that one plausibly carries a small caf\u00e9/shop glazing instead; do not mirror the alley treatment onto it.\n\nCLUTTER: car_access=none on the fronting path is explicit \u2014 place no vehicles. Appropriate to the tragel: leaned bicycles, a wheelie bin, a downpipe, moss and rising damp on the lower 0.5 m of brick.",
+  "roof": {
+   "form": "stepped_gable",
+   "ridge_parallel_to_street": false,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 2,
+   "ground_height_m": 3,
+   "upper_height_m": 2.9,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.05,
+   "height_m": 1.6,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "inferred"
+  }
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 493993763,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "addr:street": "Pensmarkt"
+  },
+  "frontage_width_m": 5.0,
+  "footprint_m": [
+   5.8,
+   5.0
+  ],
+  "footprint_area_m2": 25,
+  "height_m": 9.0,
+  "height_source": "no-data",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "path",
+   "name": "Vleeshuistragel",
+   "surface": "gravel",
+   "car_access": "none",
+   "distance_m": 0.9
+  },
+  "plate_view": "street",
+  "street_photos": 1,
+  "target_box_normalised": {
+   "x0": 0.354,
+   "x1": 0.646,
+   "y0": 0.149,
+   "y1": 0.809
+  }
+ },
+ "plate": "renders/plates/graslei/493993763.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993763_0.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.33025899999999997,
+ "model": "claude-opus-5"
+}

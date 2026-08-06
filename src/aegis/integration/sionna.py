@@ -161,7 +161,7 @@ def _extract_path_viz(paths, valid: np.ndarray) -> list[dict]:
     return path_viz
 
 
-def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w):
+def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w, rx_position):
     """JAX-preserving extraction from Sionna Paths object.
 
     Uses ``paths.cir(out_type="jax")`` to get JAX arrays with Dr.Jit
@@ -182,13 +182,17 @@ def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w):
     """
     import jax.numpy as jnp
 
-    # Get CIR as JAX arrays (gradient-tracked via dr.wrap)
-    a_raw, tau_raw = paths.cir(out_type="jax")
+    # Get CIR as JAX arrays (gradient-tracked via dr.wrap). normalize_delays=
+    # False bakes the full carrier phase into a and returns true delays (the
+    # default keeps only first-arrival-relative phase); see the NumPy branch.
+    a_raw, tau_raw = paths.cir(out_type="jax", normalize_delays=False)
     a_raw = a_raw[..., 0]  # drop time_steps -> (num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths)
 
     # Angles as JAX arrays
     theta_r_raw = jnp.asarray(paths.theta_r)  # (num_rx, num_tx, num_paths)
     phi_r_raw = jnp.asarray(paths.phi_r)
+    theta_t_raw = jnp.asarray(paths.theta_t)
+    phi_t_raw = jnp.asarray(paths.phi_t)
 
     rx_idx, tx_idx = 0, 0
     n_paths_per_elem = a_raw.shape[-1]
@@ -221,6 +225,19 @@ def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w):
     default_k = jnp.array([0.0, 0.0, -1.0])
     k_hat = jnp.where(valid_all[:, None], k_hat_raw, default_k[None, :])
 
+    # Departure directions (AoD points away from the tx: no negation)
+    theta_t = jnp.tile(theta_t_raw[rx_idx, tx_idx, :], n_elements)
+    phi_t = jnp.tile(phi_t_raw[rx_idx, tx_idx, :], n_elements)
+    stt, ctt = jnp.sin(theta_t), jnp.cos(theta_t)
+    spt, cpt = jnp.sin(phi_t), jnp.cos(phi_t)
+    k_hat_tx_raw = jnp.column_stack([stt * cpt, stt * spt, ctt])
+    k_hat_tx = jnp.where(valid_all[:, None], k_hat_tx_raw, default_k[None, :])
+
+    # Re-reference psi to the world origin (see the NumPy branch).
+    k0 = 2.0 * jnp.pi * freq_hz / C_0
+    rx_vec = jnp.asarray(rx_position, dtype=jnp.float64)
+    psi = psi * jnp.exp(1j * k0 * (k_hat @ rx_vec))[:, None]
+
     # Element indices: [0,0,...,0, 1,1,...,1, ..., M-1,...,M-1]
     element_index = jnp.repeat(jnp.arange(n_elements, dtype=jnp.int32), n_paths_per_elem)
 
@@ -244,6 +261,7 @@ def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w):
         delay=tau_all,
         is_los=is_los,
         polarised=True,
+        k_hat_tx=k_hat_tx,
     )
 
 
@@ -382,7 +400,7 @@ def paths_from_sionna_scene(
     if differentiable:
         if not JAX_AVAILABLE:
             raise RuntimeError("differentiable=True requires JAX. Install with: pip install jax")
-        result = _paths_from_sionna_jax(paths, valid_raw, n_elements, freq_hz, tx_power_w)
+        result = _paths_from_sionna_jax(paths, valid_raw, n_elements, freq_hz, tx_power_w, rx_position)
         return (result, path_viz) if return_viz else result
 
     # --- Original NumPy path (unchanged) ---
@@ -390,19 +408,28 @@ def paths_from_sionna_scene(
     # Sionna v2 cir() shape: a[num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths, num_time_steps]
     # With cross-pol RX: num_rx_ant=2 (pol 0=theta, pol 1=phi)
     # tau shape: (num_rx, num_tx, num_paths)
-    a_raw, tau_raw = paths.cir(out_type="numpy")
+    # normalize_delays=False makes cir() return true geometric delays AND bake
+    # the full carrier phase exp(-j 2 pi f tau) into a (the default bakes only
+    # the phase relative to the first arrival, which scrambles absolute path
+    # phases). Empirically pinned for sionna-rt 2.0.1 by the coherent-phase
+    # regression tests in tests/test_sionna.py.
+    a_raw, tau_raw = paths.cir(out_type="numpy", normalize_delays=False)
     a_raw = a_raw[..., 0]  # drop time_steps dim -> (num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths)
 
     theta_r_raw = np.array(paths.theta_r)  # (num_rx, num_tx, num_paths)
     phi_r_raw = np.array(paths.phi_r)
+    theta_t_raw = np.array(paths.theta_t)  # departure angles at the source
+    phi_t_raw = np.array(paths.phi_t)
     valid = valid_raw
 
     all_k_hat = []
+    all_k_hat_tx = []
     all_psi = []
     all_element_index = []
     all_delay = []
     all_is_los = []
 
+    k0 = 2.0 * np.pi * freq_hz / C_0
     rx_idx = 0  # single RX (body centroid)
     tx_idx = 0  # single TX device
     for elem in range(n_elements):
@@ -411,6 +438,8 @@ def paths_from_sionna_scene(
         a_phi = a_raw[rx_idx, 1, tx_idx, elem, :]
         theta_r = theta_r_raw[rx_idx, tx_idx, :]
         phi_r = phi_r_raw[rx_idx, tx_idx, :]
+        theta_t = theta_t_raw[rx_idx, tx_idx, :]
+        phi_t = phi_t_raw[rx_idx, tx_idx, :]
         tau = tau_raw[rx_idx, tx_idx, :]
         mask = valid[rx_idx, tx_idx, :]
 
@@ -423,6 +452,8 @@ def paths_from_sionna_scene(
         a_phi = a_phi[idx]
         theta_r = theta_r[idx]
         phi_r = phi_r[idx]
+        theta_t = theta_t[idx]
+        phi_t = phi_t[idx]
         tau = tau[idx]
 
         # Convert to AEGIS psi
@@ -438,6 +469,21 @@ def paths_from_sionna_scene(
                 np.cos(theta_r),
             ]
         )
+        # Departure direction at the source (Sionna AoD points away from the tx,
+        # which is already the propagation direction: no negation).
+        k_hat_tx = np.column_stack(
+            [
+                np.sin(theta_t) * np.cos(phi_t),
+                np.sin(theta_t) * np.sin(phi_t),
+                np.cos(theta_t),
+            ]
+        )
+
+        # a (and so psi) is the field AT the rx point, but every coherent
+        # kernel phases at absolute coordinates, exp(-i k0 k_n . r). Re-reference
+        # psi to the world origin so that expansion reproduces the traced field
+        # at and around the receiver, wherever the body stands in the city.
+        psi = psi * np.exp(1j * k0 * (k_hat @ rx_position))[:, None]
 
         # Detect LOS: shortest-delay path per element (lowest tau = closest to LOS)
         is_los = np.zeros(len(idx), dtype=bool)
@@ -445,6 +491,7 @@ def paths_from_sionna_scene(
             is_los[np.argmin(tau)] = True
 
         all_k_hat.append(k_hat)
+        all_k_hat_tx.append(k_hat_tx)
         all_psi.append(psi)
         all_element_index.append(np.full(len(idx), elem, dtype=np.intp))
         all_delay.append(tau)
@@ -461,5 +508,6 @@ def paths_from_sionna_scene(
         delay=np.concatenate(all_delay),
         is_los=np.concatenate(all_is_los),
         polarised=True,
+        k_hat_tx=np.vstack(all_k_hat_tx),
     )
     return (result, path_viz) if return_viz else result

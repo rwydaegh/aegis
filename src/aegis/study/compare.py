@@ -62,25 +62,33 @@ def compare_city(cfg, city_latlon, out_dir, seed=42):  # pragma: no cover - heav
     from aegis.channel.path_loss import p_los
     from aegis.channel.presets import load_preset
     from aegis.mimo.array_paths import expand_paths_to_array
-    from aegis.study.channel_det import center_paths
+    from aegis.study.channel_det import _cap_paths, center_paths
     from aegis.study.deployment import sectors_illuminating
     from aegis.study.precoding import mrt_for_user, user_channel_vector
     from aegis.study.run import _build_real
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    agents, sites, kernel, freq = _build_real(cfg, out_dir, seed, 0, cfg.mobility.n_agents, city_latlon=city_latlon)
+    agents, sites, kernel, freq, _city = _build_real(
+        cfg, out_dir, seed, 0, cfg.mobility.n_agents, city_latlon=city_latlon
+    )
     scene, poser = kernel.scene, kernel.poser
     freq_ghz = freq / 1e9
-    pdbm = cfg.deployment.equipment.tx_power_dbm
+    env = getattr(cfg.channel, "stochastic_env", "umi")
+    preset_env = {"umi": "UMi", "uma": "UMa"}[env.lower()]
     preset_dir = Path("data/channel_presets")
-    los = load_preset("3GPP_38.901_UMi_LOS", preset_dir)["params"]
-    nlos = load_preset("3GPP_38.901_UMi_NLOS", preset_dir)["params"]
+    los = load_preset(f"3GPP_38.901_{preset_env}_LOS", preset_dir)["params"]
+    nlos = load_preset(f"3GPP_38.901_{preset_env}_NLOS", preset_dir)["params"]
     samp = getattr(cfg.channel, "samples_per_src", 3_000_000)
     cap = getattr(cfg.channel, "max_center_paths", 16)
+    diffraction = getattr(cfg.channel, "diffraction", None)
+    det_kw = {"samples_per_src": samp, "max_center_paths": cap}
+    if diffraction is not None:
+        det_kw["diffraction"] = bool(diffraction)
     torso_z = 1.1
 
     det_w, stoch_w = [], []
+    n_skipped = 0
     for a in agents:
         pos = np.asarray(a.trajectory.positions)
         xy = pos[len(pos) // 2]
@@ -92,20 +100,41 @@ def compare_city(cfg, city_latlon, out_dir, seed=42):  # pragma: no cover - heav
         body = poser.pose(xy, heading_rad=0.0, z_ground=0.0)
         ant = np.asarray(sector.position, dtype=float)
         d2d = float(np.hypot(ant[0] - rx[0], ant[1] - rx[1]))
-        # deterministic
-        cdet = center_paths(scene, sector, rx, freq, engine="sionna", samples_per_src=samp, max_center_paths=cap)
+        # Deterministic arm. Both arms trace at the 30 dBm = 1 W field
+        # reference; the configured transmit power enters exactly once, via the
+        # MRT normalization ||x||^2 = tx_power_w.
+        cdet = center_paths(scene, sector, rx, freq, engine="sionna", **det_kw)
         if cdet is None or cdet.k_hat is None or cdet.k_hat.shape[0] == 0:
+            n_skipped += 1
             continue
         pe = expand_paths_to_array(cdet, sector.array, freq)
         xd = mrt_for_user(user_channel_vector(pe, sector.m_ant), sector.tx_power_w).x
         qd = refresh_Q(build_static_gram(body, cdet, sector.array, freq), cdet.k_hat, np.zeros(3), freq)
         e_det = scalar_exposure_w(qd, xd)
-        # stochastic (geometry-blind): LOS + NLOS coherent 38.901, P_LOS-blended Q
-        cl = generate_coherent_channel(los, freq_ghz, ant, rx, pdbm, seed=seed)
-        cn = generate_coherent_channel(nlos, freq_ghz, ant, rx, pdbm, seed=seed + 1)
-        pe_s = expand_paths_to_array(cl, sector.array, freq)
-        xs = mrt_for_user(user_channel_vector(pe_s, sector.m_ant), sector.tx_power_w).x
-        e_stoch = stochastic_exposure_w(body, cl, cn, sector.array, freq, p_los(d2d, "umi"), xs)
+        # Stochastic arm (geometry-blind): per-hypothesis MRT beams, blended in
+        # probability. Beam-matching only the LOS realization while blending Q
+        # would bias low-P_LOS links (the NLOS term would see a random beam).
+        # Channels are capped like the deterministic arm: the (N, N, M, M) gram
+        # is quadratic in paths and an uncapped 400-sub-path NLOS draw is ~5 GB.
+        xpr_l = float(los.get("XPR_mu", 8.0))
+        xpr_n = float(nlos.get("XPR_mu", 8.0))
+        cl = _cap_paths(
+            generate_coherent_channel(los, freq_ghz, ant, rx, 30.0, seed=seed, xpr_db=xpr_l),
+            cap,
+            array=sector.array,
+        )
+        cn = _cap_paths(
+            generate_coherent_channel(nlos, freq_ghz, ant, rx, 30.0, seed=seed + 1, xpr_db=xpr_n),
+            cap,
+            array=sector.array,
+        )
+        p = p_los(d2d, env)
+        e_stoch = 0.0
+        for c, weight in ((cl, p), (cn, 1.0 - p)):
+            pe_s = expand_paths_to_array(c, sector.array, freq)
+            xs = mrt_for_user(user_channel_vector(pe_s, sector.m_ant), sector.tx_power_w).x
+            qs = refresh_Q(build_static_gram(body, c, sector.array, freq), c.k_hat, np.zeros(3), freq)
+            e_stoch += weight * scalar_exposure_w(qs, xs)
         det_w.append(e_det)
         stoch_w.append(e_stoch)
 
@@ -114,6 +143,7 @@ def compare_city(cfg, city_latlon, out_dir, seed=42):  # pragma: no cover - heav
     err = paired_db_error(det_w, stoch_w)
     summary = {
         "n_paired": int(det_w.size),
+        "n_skipped_no_det_paths": int(n_skipped),
         "det_median_w": float(np.median(det_w)) if det_w.size else None,
         "stoch_median_w": float(np.median(stoch_w)) if stoch_w.size else None,
         "db_error_median": float(np.median(err)) if err.size else None,

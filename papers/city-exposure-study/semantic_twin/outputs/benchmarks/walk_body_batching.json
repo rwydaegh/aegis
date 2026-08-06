@@ -1,0 +1,57 @@
+{
+  "batched_median_seconds": 1.3318580869818106,
+  "batched_seconds": [
+    1.3318580869818106
+  ],
+  "body_triangles": 56024,
+  "cells": 4096,
+  "chunk_cells": 512,
+  "created_utc": "2026-08-06T00:08:13Z",
+  "host": "devpc",
+  "inputs": [
+    {
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed7/spectra.npz",
+      "sha256": "6efb116f18b44195631fa8d7a989d537e09d25bf9fe901b2180ac70602b6b97e",
+      "stored_index": 0
+    },
+    {
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed8/spectra.npz",
+      "sha256": "86d1c7ee7911631cecea366479c863e6641722e09d5c9dbdfeb74babc60a4b5b",
+      "stored_index": 0
+    },
+    {
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed9/spectra.npz",
+      "sha256": "5e19097c6d6eebd00417050f8a920ca360198548b17d31330396010cfa7e7cf8",
+      "stored_index": 0
+    }
+  ],
+  "maximum_absolute_error_by_field": {
+    "absorbed_power_w": 0.0,
+    "arriving_power_density_w_m2": 0.0,
+    "mean_sab_w_m2": 3.469446951953614e-18,
+    "peak_sab_w_m2": 1.3877787807814457e-17,
+    "reference_s0_w_m2": 0.0,
+    "sar_wb_w_kg": 0.0,
+    "susceptibility": 0.0
+  },
+  "platform": "Linux-5.15.0-171-generic-x86_64-with-glibc2.35",
+  "python": "3.12.13",
+  "repeat": 1,
+  "schema": "walk-body-batching-benchmark-v1",
+  "separate_median_seconds": 9.317454530973919,
+  "separate_seconds": [
+    9.317454530973919
+  ],
+  "source_sha256": {
+    "benchmark": "9b5895896a0d92d96c8ed648cbdc973586a6a6b4344d21f09acf95054f623200",
+    "body_coupler": "9efdbf442d343d20baaf2d5d716911f73d3e69a27d1b9f1a6906088ed48093c5",
+    "row_execution": "5efb16b9fdda7ac066bfd53535323bb5b9a9a33565d54fd6b0891ca52882433e"
+  },
+  "spectra": 3,
+  "speedup": 6.995831329213657,
+  "versions": {
+    "aegis": "0.39.2.dev452+g5425b397f.d20260805",
+    "aegis-semantic-twin": "0.1.0",
+    "numpy": "2.4.6"
+  }
+}

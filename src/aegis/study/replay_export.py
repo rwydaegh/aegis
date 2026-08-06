@@ -67,7 +67,7 @@ def build_artifact(cfg, out_dir, seed, frames, city_latlon=(51.0536, 3.7253)):  
     from aegis.study.bodies import StaticPhantomPoser
     from aegis.study.channel_det import center_paths
     from aegis.study.city import CityCache
-    from aegis.study.deployment import build_sites, sectors_illuminating, thin_min_spacing
+    from aegis.study.deployment import build_sites, sectors_illuminating, select_rooftop_sites
     from aegis.study.precoding import mrt_for_user, user_channel_vector
     from aegis.study.run import _build_agents
     from aegis.tissue.dielectric import TissueModel
@@ -82,7 +82,14 @@ def build_artifact(cfg, out_dir, seed, frames, city_latlon=(51.0536, 3.7253)):  
     lat, lon = float(city_latlon[0]), float(city_latlon[1])
     city = CityCache.build(lat, lon, cfg.cities.radius_m, out_dir / "city")
     n_sites = max(1, int(round(3 * cfg.deployment.densification)))
-    site_xy = thin_min_spacing(city.candidates, min_spacing_m=60.0, n_target=n_sites, rng=rng)
+    site_xy = select_rooftop_sites(
+        city.candidates,
+        n_sites,
+        rng,
+        min_spacing_m=60.0,
+        height_band_m=(cfg.deployment.site_height_min_m, cfg.deployment.site_height_max_m),
+        mount_height_m=cfg.deployment.mount_height_m,
+    )
     if site_xy.shape[0] == 0:
         site_xy = np.array([[0.0, 0.0, 15.0]])
     sites = build_sites(
@@ -93,12 +100,16 @@ def build_artifact(cfg, out_dir, seed, frames, city_latlon=(51.0536, 3.7253)):  
         freq,
         eq.array,
         eq.tx_power_dbm,
+        downtilt_deg=cfg.deployment.sectoring.downtilt_deg,
+        rng=rng,
     )
 
-    agents = _build_agents(cfg, city, rng, 0, cfg.mobility.n_agents, out_dir / "routes")
+    from aegis.study.covariates import data_dir
+
+    agents = _build_agents(cfg, city, rng, 0, cfg.mobility.n_agents, out_dir / "routes", seed=seed)
     engine = DosimetryEngine(TissueModel.from_database("Skin", freq))
-    poser = StaticPhantomPoser(BodyMesh.load(Path("data/duke.stl"), name="duke"))
-    _, cverts, cfaces = _canonical_body("data/duke.stl")
+    poser = StaticPhantomPoser(BodyMesh.load(data_dir() / "duke.stl", name="duke"))
+    _, cverts, cfaces = _canonical_body(data_dir() / "duke.stl")
 
     # Pick the agent with the most illuminated slots, and sample frames from
     # those lit slots (evenly-spaced slots can miss the covered stretch).

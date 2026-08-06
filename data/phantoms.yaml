@@ -1,12 +1,27 @@
+# IT'IS Virtual Population v3.x specifications.
+# https://itis.swiss/virtual-population/virtual-population/overview/
 thelonious:
   mass_kg: 17.4
+  height_m: 1.157
+  age_y: 6
+  sex: male
   # device_offset: [x, y, z]  # optional Z-up override; auto-detected from mesh if absent
 duke:
   mass_kg: 72.4
+  height_m: 1.774
+  age_y: 34
+  sex: male
 eartha:
-  mass_kg: 56.0
+  # Was 56.0, which is not any IT'IS figure and put an 8-year-old above Ella.
+  mass_kg: 29.9
+  height_m: 1.363
+  age_y: 8
+  sex: female
 ella:
   mass_kg: 58.7
+  height_m: 1.630
+  age_y: 26
+  sex: female
 adult_male:
   mass_kg: 73.0
 adult_female:

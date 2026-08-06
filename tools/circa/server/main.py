@@ -18,9 +18,12 @@ def build_app(
     pdf_builder,
     snapshot_mgr,
     hunk_mgr,
+    tex_name: str = "paper.tex",
 ) -> FastAPI:
     app = FastAPI()
     app.state.paper_dir = paper_dir
+    app.state.paper_tex_name = tex_name
+    app.state.pdf_name = Path(tex_name).with_suffix(".pdf").name
     app.state.state = state
     app.state.claude_session = claude_session
     app.state.pdf_builder = pdf_builder
@@ -43,16 +46,16 @@ def build_app(
     @app.api_route("/pdf", methods=["GET", "HEAD"])
     async def get_pdf():
         served = paper_dir / ".circa" / "paper.served.pdf"
-        live = paper_dir / "paper.pdf"
+        live = paper_dir / app.state.pdf_name
         if not served.exists() and live.exists():
-            _publish_served_pdf(paper_dir)
+            _publish_served_pdf(paper_dir, app.state.pdf_name)
         if not served.exists():
-            raise HTTPException(status_code=404, detail="paper.pdf not found")
+            raise HTTPException(status_code=404, detail=f"{app.state.pdf_name} not found")
         return FileResponse(served, media_type="application/pdf")
 
     @app.get("/tex")
     async def get_tex():
-        return PlainTextResponse((paper_dir / "paper.tex").read_text())
+        return PlainTextResponse((paper_dir / tex_name).read_text())
 
     @app.post("/rebuild")
     async def post_rebuild():
@@ -69,8 +72,8 @@ def build_app(
                 status_code=408 if result.timed_out else 500,
             )
         # Record current tex as the last successful-build baseline for diff sidebar.
-        app.state.last_built_tex = (paper_dir / "paper.tex").read_text()
-        _publish_served_pdf(paper_dir)
+        app.state.last_built_tex = (paper_dir / tex_name).read_text()
+        _publish_served_pdf(paper_dir, app.state.pdf_name)
         new_pass = state.next_pass()
         await _broadcast(app, _pdf_reloaded(state, new_pass))
         await _broadcast(app, _build_status(state, ok=True, error_tail=""))
@@ -179,12 +182,12 @@ def _fix_inline_fence_markers(tex: Path) -> bool:
     return True
 
 
-def _publish_served_pdf(paper_dir: Path) -> None:
-    """Atomically copy paper.pdf to .circa/paper.served.pdf so concurrent rebuilds
+def _publish_served_pdf(paper_dir: Path, pdf_name: str = "paper.pdf") -> None:
+    """Atomically copy the built PDF to .circa/paper.served.pdf so concurrent rebuilds
     can't desync Content-Length with the response body."""
     import shutil
 
-    live = paper_dir / "paper.pdf"
+    live = paper_dir / pdf_name
     if not live.exists():
         return
     served = paper_dir / ".circa" / "paper.served.pdf"
@@ -207,7 +210,12 @@ def _build_status(state, ok, error_tail):
 
 
 def run_server(
-    paper_dir: Path, port: int, build_timeout_s: int, batch_timeout_s: int, pdfcomment_enabled: bool
+    paper_dir: Path,
+    port: int,
+    build_timeout_s: int,
+    batch_timeout_s: int,
+    pdfcomment_enabled: bool,
+    tex_name: str = "paper.tex",
 ) -> None:
     import uvicorn
 
@@ -218,9 +226,10 @@ def run_server(
 
     from .paths import annotations_log
 
+    pdf_name = Path(tex_name).with_suffix(".pdf").name
     state = State(save_path=annotations_log(paper_dir).with_suffix(".json"))
     state.load()
-    paper_outline = (paper_dir / "paper.tex").read_text()[:5000]
+    paper_outline = (paper_dir / tex_name).read_text()[:5000]
     tells_path = Path("/home/user/aegis/.claude/ai_writing_tells.md")
     session = ClaudeSession.with_default_prompt(
         paper_dir,
@@ -228,18 +237,19 @@ def run_server(
         pdfcomment_enabled,
         tells_path=tells_path,
         batch_timeout_s=batch_timeout_s,
+        tex_name=tex_name,
     )
-    builder = PdfBuilder(paper_dir, build_timeout_s=build_timeout_s)
-    snap = SnapshotManager(paper_dir)
-    hunks = HunkManager(paper_dir)
-    app = build_app(paper_dir, state, session, builder, snap, hunks)
+    builder = PdfBuilder(paper_dir, build_timeout_s=build_timeout_s, tex_name=tex_name)
+    snap = SnapshotManager(paper_dir, tex_name=tex_name)
+    hunks = HunkManager(paper_dir, tex_name=tex_name)
+    app = build_app(paper_dir, state, session, builder, snap, hunks, tex_name=tex_name)
 
     @app.on_event("startup")
     async def _startup():
         await session.start()
         # If a built PDF already exists, take its tex as the diff baseline.
-        if (paper_dir / "paper.pdf").exists():
-            app.state.last_built_tex = (paper_dir / "paper.tex").read_text()
+        if (paper_dir / pdf_name).exists():
+            app.state.last_built_tex = (paper_dir / tex_name).read_text()
 
     @app.on_event("shutdown")
     async def _shutdown():
@@ -322,7 +332,7 @@ async def _process_batch(app, data: dict) -> None:
         page_pngs=page_pngs,
         build_status_text=build_text,
     )
-    _fix_inline_fence_markers(app.state.paper_dir / "paper.tex")
+    _fix_inline_fence_markers(app.state.paper_dir / app.state.paper_tex_name)
     if app.state.hunk_mgr is not None:
         app.state.hunk_mgr.persist_for_batch(data["batch_id"], [a.id for a in annotations])
     if app.state.snapshot_mgr is not None:
@@ -335,6 +345,7 @@ async def _process_batch(app, data: dict) -> None:
             app.state.paper_dir,
             batch_id=data["batch_id"],
             last_built_tex=getattr(app.state, "last_built_tex", None),
+            tex_name=app.state.paper_tex_name,
         )
         app.state.current_diff = diff
         await _broadcast(app, diff_update_event(state, hunk=diff))

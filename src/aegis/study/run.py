@@ -31,8 +31,12 @@ def _cadences(cfg: StudyConfig, n_slots: int) -> tuple[int, int]:
     return pose, recompute
 
 
-def run_study(cfg, agents, sites, kernel, out_dir, freq_hz) -> dict:
-    """Run the crowd and write results. ``kernel`` supplies the physics callables."""
+def run_study(cfg, agents, sites, kernel, out_dir, freq_hz, city=None) -> dict:
+    """Run the crowd and write results. ``kernel`` supplies the physics callables.
+
+    ``city`` (a CityCache), when given, adds per-city morphology covariates to
+    the summary so the cross-city spread can be explained, not just stated.
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -65,6 +69,16 @@ def run_study(cfg, agents, sites, kernel, out_dir, freq_hz) -> dict:
     icnirp_frac = np.asarray(icnirp_frac)
     is_user = np.asarray(is_user)
 
+    # Link-budget gate: a crowd whose median absorbed power is exactly zero has
+    # a broken run (scene, placement, or channel), not a quiet city. The July
+    # rerun shipped exactly this and was only caught by manual inspection.
+    if p_abs_w.size and float(np.median(p_abs_w)) == 0.0:
+        print(
+            f"[run_study] WARNING: median absorbed power is 0 for {out_dir} "
+            f"({int((p_abs_w == 0).sum())}/{p_abs_w.size} agents at zero); "
+            "the deployment/coverage/channel chain likely failed silently"
+        )
+
     np.savez(
         out_dir / "exposure.npz",
         p_abs_w=p_abs_w,
@@ -85,6 +99,37 @@ def run_study(cfg, agents, sites, kernel, out_dir, freq_hz) -> dict:
         "median": float(np.median(headline)) if headline.size else None,
         "p95": float(np.percentile(headline, 95)) if headline.size else None,
     }
+    # Users are periodically the beam target, bystanders never are: the split
+    # matters, so publish both sub-CDFs alongside the whole-population one.
+    if headline.size == is_user.shape[0]:
+        for label, mask in (("users", is_user), ("bystanders", ~is_user)):
+            xs, fs = population_cdf(headline[mask])
+            summary[f"cdf_x_{label}"] = xs.tolist()
+            summary[f"cdf_f_{label}"] = fs.tolist()
+            summary[f"median_{label}"] = float(np.median(headline[mask])) if mask.any() else None
+
+    # Whole-body SAR context: absorbed power / phantom mass against the ICNIRP
+    # 2020 whole-body basic restriction. Nearly free, and it anchors the CDF to
+    # a compliance scale even when the expensive peak-Sab map is off.
+    phantom = getattr(getattr(getattr(kernel, "poser", None), "base_mesh", None), "name", None)
+    if phantom is not None and p_abs_w.size:
+        from aegis.compliance import ExposureScenario, icnirp_limits
+        from aegis.study.covariates import phantom_mass_kg
+
+        mass = phantom_mass_kg(phantom)
+        if mass:
+            sar_med = float(np.median(p_abs_w)) / mass
+            limit = icnirp_limits(scenario=ExposureScenario.GENERAL_PUBLIC, freq_hz=freq_hz).sar_wb
+            summary["phantom"] = phantom
+            summary["mass_kg"] = mass
+            summary["sar_wb_median_w_kg"] = sar_med
+            summary["icnirp_wb_fraction_median"] = sar_med / limit
+
+    if city is not None:
+        from aegis.study.covariates import city_covariates
+
+        summary["covariates"] = city_covariates(city, sites, agents, cfg.cities.radius_m)
+
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     _write_cdf_figure(x, f, summary["headline"], out_dir / "cdf.png")
     _write_scene_json(out_dir, agents, sites, p_abs_w, is_user)
@@ -189,7 +234,11 @@ class RealKernel:
         self._beam_cache: dict = {}
 
     def _trace_kwargs(self):
-        kw = {}
+        # Traces always run at the 30 dBm = 1 W field reference: the configured
+        # transmit power enters the exposure exactly once, via the MRT
+        # normalization ||x||^2 = sector.tx_power_w. Passing the config power
+        # here as well would square it.
+        kw = {"tx_power_dbm": 30.0}
         if self.samples_per_src is not None:
             kw["samples_per_src"] = int(self.samples_per_src)
         if self.diffraction is not None:
@@ -248,6 +297,11 @@ class RealKernel:
         center = center_paths(self.scene, sector, rx, self.freq_hz, engine=self.rt_engine, **self._trace_kwargs())
         per_elem = expand_paths_to_array(center, sector.array, self.freq_hz)
         h = user_channel_vector(per_elem, sector.m_ant)
+        if not np.any(np.abs(h) > 0):
+            # Deep-shadowed user with zero traced channel: a real scheduler
+            # would not serve it, and Precoder.mrt's e_0 fallback would blast
+            # full power on one element instead. Keep the sector silent.
+            return np.zeros(sector.m_ant, dtype=complex)
         return mrt_for_user(h, sector.tx_power_w).x
 
     def _peak_sab(self, body, sector, x, center_paths):
@@ -293,12 +347,18 @@ def _directions_route_xy(city, rng, radius_m, cache_dir):  # pragma: no cover - 
         if xy.shape[0] >= 2:
             return xy
         print(f"[walk] degenerate route ({xy.shape[0]} pts), using straight OD")
+    except RuntimeError as exc:
+        if "API key" in str(exc):
+            # No key means EVERY walk would silently degrade to a straight
+            # line, changing the study's mobility model wholesale: fatal.
+            raise
+        print(f"[walk] Directions failed ({exc}); using straight OD for this agent")
     except Exception as exc:
         print(f"[walk] Directions failed ({exc}); using straight OD for this agent")
     return np.array([o_xy, d_xy])
 
 
-def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir):  # pragma: no cover
+def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir, seed=0):  # pragma: no cover
     """Build the crowd. ``routing='directions'`` walks real Google street routes;
     otherwise synthetic radial diameters across the core."""
     import numpy as np
@@ -310,6 +370,10 @@ def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir):  # pragm
     radius_m = cfg.cities.radius_m
     routing = getattr(cfg.mobility, "routing", "radial")
     max_slots = max(2, int(round(cfg.mobility.window_s / 1.0)))
+    # User assignment honours mobility.user_fraction, drawn from the seed alone
+    # (not the shared rng stream) so job-array shards agree on who the users are.
+    n_users = int(round(float(cfg.mobility.user_fraction) * n))
+    users = set(np.random.default_rng([int(seed), 1701]).permutation(n)[:n_users].tolist())
 
     agents = []
     for i in range(agent_start, min(agent_start + agent_count, n)):
@@ -329,7 +393,7 @@ def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir):  # pragm
                 headings_rad=traj.headings_rad[:max_slots],
                 t0_s=traj.t0_s,
             )
-        agents.append(Agent(trajectory=traj, is_user=(i % 2 == 0), agent_id=i))
+        agents.append(Agent(trajectory=traj, is_user=(i in users), agent_id=i))
     return agents
 
 
@@ -340,7 +404,7 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
     from aegis.geometry.mesh import BodyMesh
     from aegis.study.bodies import StaticPhantomPoser
     from aegis.study.city import CityCache
-    from aegis.study.deployment import build_sites, thin_min_spacing
+    from aegis.study.deployment import build_sites, select_rooftop_sites
     from aegis.tissue.dielectric import TissueModel
 
     rng = np.random.default_rng(seed)
@@ -350,7 +414,14 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
     lat, lon = float(city_latlon[0]), float(city_latlon[1])
     city = CityCache.build(lat, lon, cfg.cities.radius_m, out_dir / "city")
     n_sites = max(1, int(round(3 * cfg.deployment.densification)))
-    site_xy = thin_min_spacing(city.candidates, min_spacing_m=60.0, n_target=n_sites, rng=rng)
+    site_xy = select_rooftop_sites(
+        city.candidates,
+        n_sites,
+        rng,
+        min_spacing_m=60.0,
+        height_band_m=(cfg.deployment.site_height_min_m, cfg.deployment.site_height_max_m),
+        mount_height_m=cfg.deployment.mount_height_m,
+    )
     if site_xy.shape[0] == 0:
         site_xy = np.array([[0.0, 0.0, 15.0]])
     sites = build_sites(
@@ -361,11 +432,15 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
         freq,
         eq.array,
         eq.tx_power_dbm,
+        downtilt_deg=cfg.deployment.sectoring.downtilt_deg,
+        rng=rng,
     )
 
-    agents = _build_agents(cfg, city, rng, agent_start, agent_count, out_dir / "routes")
+    agents = _build_agents(cfg, city, rng, agent_start, agent_count, out_dir / "routes", seed=seed)
 
-    poser = StaticPhantomPoser(BodyMesh.load(Path("data/duke.stl"), name="duke"))
+    from aegis.study.covariates import data_dir
+
+    poser = StaticPhantomPoser(BodyMesh.load(data_dir() / "duke.stl", name="duke"))
     engine = DosimetryEngine(TissueModel.from_database("Skin", freq))
     n_slots = max((len(a.trajectory.positions) for a in agents), default=1)
     _, recompute_period = _cadences(cfg, n_slots)
@@ -384,7 +459,24 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
         max_center_paths=getattr(cfg.channel, "max_center_paths", None),
         compute_peak_sab=getattr(cfg.dosimetry, "peak_sab", True),
     )
-    return agents, sites, kernel, freq
+    return agents, sites, kernel, freq, city
+
+
+def _resolve_city(spec: str | None, cfg) -> tuple[float, float]:
+    """Resolve --city into (lat, lon): 'lat,lon' literal, a name from
+    cfg.cities.specs, or a name from run_cities.DEFAULT_CITIES. Defaults to
+    Ghent when omitted (the historical single-city behavior)."""
+    if spec is None:
+        return (51.0536, 3.7253)
+    if "," in spec:
+        lat, lon = spec.split(",", 1)
+        return (float(lat), float(lon))
+    from aegis.study.run_cities import DEFAULT_CITIES
+
+    for entry in list(getattr(cfg.cities, "specs", []) or []) + DEFAULT_CITIES:
+        if entry.get("name") == spec:
+            return (float(entry["lat"]), float(entry["lon"]))
+    raise SystemExit(f"unknown city {spec!r}: not in cities.specs or DEFAULT_CITIES")
 
 
 def main(argv=None) -> int:
@@ -394,6 +486,11 @@ def main(argv=None) -> int:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--agent-start", type=int, default=0)
     parser.add_argument("--agent-count", type=int, default=None)
+    parser.add_argument(
+        "--city",
+        default=None,
+        help="city name (cities.specs or DEFAULT_CITIES) or 'lat,lon'; default Ghent",
+    )
     args = parser.parse_args(argv)
 
     cfg = StudyConfig.from_yaml(args.config)
@@ -401,8 +498,10 @@ def main(argv=None) -> int:
     agent_count = args.agent_count if args.agent_count is not None else cfg.mobility.n_agents
     out_dir = Path(args.out)
 
-    agents, sites, kernel, freq = _build_real(cfg, out_dir, seed, args.agent_start, agent_count)
-    summary = run_study(cfg, agents, sites, kernel, out_dir, freq)
+    agents, sites, kernel, freq, city = _build_real(
+        cfg, out_dir, seed, args.agent_start, agent_count, city_latlon=_resolve_city(args.city, cfg)
+    )
+    summary = run_study(cfg, agents, sites, kernel, out_dir, freq, city=city)
     print(json.dumps(summary, indent=2))
     return 0
 

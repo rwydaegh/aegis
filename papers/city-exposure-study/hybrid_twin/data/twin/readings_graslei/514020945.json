@@ -1,0 +1,91 @@
+{
+ "osm_id": 514020945,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 2,
+   "evidence": "seen"
+  },
+  "confidence": 0.72,
+  "ground_floor": {
+   "kind": "shopfront",
+   "evidence": "seen"
+  },
+  "identification": "A heritage-listed 16th\u201317th-century narrow burgher house on Pensmarkt, Ghent, with a restored pale-green rendered front, gilded festoon string-course panels and timber mullioned windows, now functioning as a waffle/ice-cream shop at ground floor.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 2,
+   "trim": "wood",
+   "evidence": "seen"
+  },
+  "notes": "Set A (3D tiles) is degenerate at this grazing angle and contributed nothing; all detail is from set B, chiefly image 1 which shows the front near-frontally. INFERRED WITHIN OTHERWISE-SEEN GROUPS, flagged explicitly: (a) roof form and ridge orientation \u2014 the top of the front is foreshortened and possibly occluded by the neighbour's dormer, so gabled/ridge-perpendicular is the standard Ghent narrow-plot prior, not an observation; (b) window reveal_class \u2014 imagery cannot resolve depth; shallow (~0.12 m) is inferred from the slim timber frames sitting in a rendered front; (c) storey heights \u2014 count is seen, the 3.6/2.7 m split is fitted so ground+2*upper = 9.0 m and does not contradict the supplied height (which is itself flagged no-data). Attic/dormer level excluded from the count per schema. MATERIAL: front is lime-rendered/painted masonry, mapped to brick for permittivity; trim is wood (window frames, mullions, carved gilded panels, black shopfront joinery). A stone plinth runs at the base of the corner return \u2014 treat as a separate <1 m band if the generator supports it. ROUGHNESS: 2.0 mm is deliberately above smooth-render 0.5 because the gilded festoon panels and timber framing bands modulate roughly a quarter of the facade at 2-6 cm relief; that relief belongs in the scattering coefficient, NOT in geometry \u2014 meshing it would break the locally-smooth assumption at 1.07 cm wavelength. GEOMETRY THAT MUST BE EXPLICIT (>10 cm): window reveals and sills, the moulded band course at each floor line, the eaves cornice, the projecting black fabric awning over the shopfront, and the shopfront's recessed door. CLUTTER: fronting street is pedestrian with car_access=none \u2014 emit zero vehicles. The photos show the actual occupancy: A-boards, a ~1.5 m fibreglass ice-cream cone on the pavement, neighbouring caf\u00e9 terrace edges, wheelie bins at the corner, and cobbled setts. This building is 0.1 m from the corridor, so it deserves a high detail budget; its neighbours further down the terrace do not.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": false,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 3.6,
+   "upper_height_m": 2.7,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.3,
+   "height_m": 1.9,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 514020945,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "heritage": "4",
+   "addr:street": "Pensmarkt"
+  },
+  "frontage_width_m": 3.8,
+  "footprint_m": [
+   5.4,
+   3.0
+  ],
+  "footprint_area_m2": 13,
+  "height_m": 9.0,
+  "height_source": "no-data",
+  "street_frontages": 1,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Pensmarkt",
+   "surface": null,
+   "car_access": "none",
+   "distance_m": 0.1
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.4,
+   "x1": 0.607,
+   "y0": 0.128,
+   "y1": 0.815
+  }
+ },
+ "plate": "renders/plates/graslei/514020945.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020945_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020945_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.318125,
+ "model": "claude-opus-5"
+}

@@ -4,7 +4,7 @@ Levels 7-8 of the AEGIS fidelity hierarchy.
 """
 
 from aegis.coherent.body_channel import compute_body_channel
-from aegis.coherent.ecbf import solve_ecbf
+from aegis.coherent.ecbf import solve_ecbf, solve_ecbf_sweep
 from aegis.coherent.exposure_operator import (
     compute_exposure_operator,
     compute_rho,
@@ -40,6 +40,7 @@ __all__ = [
     "q_translate",
     "q_translate_batch",
     "solve_ecbf",
+    "solve_ecbf_sweep",
     "solve_multibody_ecbf",
     "te_tm_basis",
     "translation_phasor",

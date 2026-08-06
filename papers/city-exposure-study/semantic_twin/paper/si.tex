@@ -1,0 +1,1204 @@
+% Supplementary information for the city-square exposure paper.
+% Build: pdflatex si && pdflatex si
+\documentclass[journal]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+
+\crefname{table}{Table}{Tables}
+
+% Supplementary numbering, so nothing here collides with the paper.
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\theequation}{S\arabic{equation}}
+
+% Same macros and the same notation as the paper.
+\newcommand{\uloc}{\hat{u}}
+\newcommand{\uext}{\hat{v}}
+\newcommand{\nhat}{\hat{n}}
+\newcommand{\khat}{\hat{k}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\dOmega}{\,\mathrm{d}\Omega}
+
+\begin{document}
+
+\title{Supplementary information for ``City-square geometry sets the
+distribution of relative pedestrian exposure at 15\,GHz''}
+\author{Robin~Wydaeghe%
+\thanks{The author is with the Department of Information Technology, Ghent
+University / imec, 9052 Ghent, Belgium.}}
+
+\maketitle
+
+This document holds the two procedures the paper defers to it, the registration
+of a panorama against the mesh and the projection of image labels onto
+triangles, together with the seeds and ray counts behind every reported number.
+Three further sections give the per-square numbers behind the headline figures,
+the material assignment, and the convergence sweeps at the resolution the body
+had no room for. Notation, symbols and units follow the paper. Sections, tables
+and equations here carry an S prefix, so a reference without one points at the
+paper.
+
+\section{Panorama registration}
+\label{sec:si-registration}
+
+A panorama arrives with a horizontal position and a heading from its provider
+and with no altitude. Registration refines that pose by matching the sky
+boundary the segmented image sees against the angular upper envelope of the
+photogrammetric mesh. The skyline is used rather than the whole image because
+tile noise at ground level is then absent from the objective. This section gives
+the objective, the free parameters and their bounds, the seed study that
+supplies the pose uncertainty, what the reported residual does and does not
+measure, and which stations are usable.
+
+\subsection{The objective}
+
+The observed skyline is read from the segmented panorama. For each of 1024
+equally spaced image columns, the lowest row belonging to the sky class is taken
+over the top 72\% of the rows. A column with no sky at all has no skyline and is
+dropped rather than filled, so no observation is fabricated. A median filter of
+width 11 columns then removes the gaps a cable or a bare tree punches in
+otherwise connected sky. When the segmentation manifest supplies a list of
+structural classes, a column is kept only when the pixel just below its boundary
+carries one of them, which are building, wall, bridge and tunnel. Each kept
+column becomes a unit ray in the panorama frame.
+
+The modelled skyline is read from the mesh vertices. Vertices more than 8\,m
+away in horizontal range are sorted into the same 1024 azimuth bins, and each
+bin takes the largest elevation among its vertices. Bins with no vertex are
+filled by interpolation across the wrap. A percentile filter of width 11 bins
+then takes the 90th percentile of each neighbourhood.
+
+That percentile is the one setting in the objective with a physical
+consequence. At the 50th percentile the filter is an azimuthal median, which
+rejects the isolated high vertices photogrammetry leaves behind and also shaves
+every convex roof peak, and a roofline is convex upward almost everywhere it
+matters. The modelled skyline then sits too low, and the optimizer has one cheap
+way to raise every modelled rooftop at once, which is to lower the camera.
+Measured at the camera's own altitude, the observed skyline sat $3.83^\circ$
+above the modelled one at Korenmarkt and $1.56^\circ$ at Milan under the median
+filter, falling to $1.11^\circ$ and $0.52^\circ$ under the 90th percentile.
+
+The cost is the mean absolute angular difference between the observed and the
+modelled elevation over the kept samples, made robust by clipping every residual
+above the 0.8 quantile to that quantile, which is what keeps trees and cranes
+from steering the fit. A small prior on the orientation offsets is added,
+$0.001\,[(\Delta\theta/3)^2 + (\Delta\phi/3)^2]$ with both offsets in degrees.
+The residual quoted throughout is that robust mean converted to degrees.
+
+\subsection{Free parameters, bounds and optimizer}
+
+Six parameters are solved for: two horizontal offsets, an altitude offset, a
+yaw correction, and pitch and roll corrections about the provider's values.
+Their bounds are $\pm4$\,m horizontally, $-3.0$ to $+3.0$\,m in altitude,
+$\pm20^\circ$ in yaw and $\pm6^\circ$ in pitch and roll.
+
+A seventh parameter exists and is switched off in every run reported here. It
+adds a constant elevation bias to the modelled skyline, and it is degenerate
+with altitude: a roofline too low by $d$ meters and a camera too high by $d$
+meters produce the same angular error $d\cos^2\!\alpha / R$ at every azimuth.
+Fitting both at Korenmarkt traces a straight valley at $1.47^\circ$ of bias per
+meter of altitude, along which three meters of altitude cost $0.05^\circ$ of
+residual. The bias is therefore kept as a diagnostic and the altitude is
+measured against the support mesh instead of being inferred.
+
+The fit is a global one by differential evolution~\cite{storn}, with a
+population size factor of 7, at most 600 generations, immediate population
+updating, an absolute convergence tolerance of $10^{-7}$ on the cost, and a
+local polish at the end~\cite{scipy}. Before the fit runs, the mesh vertices are
+pruned to those that can reach the skyline anywhere the optimizer is allowed to
+go. The prune is the union over the corners and the center of the translation
+search box of the vertices standing within $4^\circ$ of the envelope seen from
+that point, with every fortieth vertex retained unconditionally. Pruning at the
+initial camera alone would be wrong, because a vertex hidden from the start
+position can be the silhouette from a meter away.
+
+\subsection{The seed study, and what the residual is not}
+
+Differential evolution is stochastic, so the fit is repeated from eight
+independent seeds on identical data. The seeds are 714261, 1, 2, 3, 5, 8, 13 and
+21. The lowest-cost fit of the eight is the pose that ships. The sample
+covariance of the fitted parameters across the eight is what ships beside it as
+the pose uncertainty, and the horizontal one-sigma figure quoted per site in
+\cref{tab:si-registration} is the square root of the sum of the two horizontal
+variances of that covariance.
+
+The residual is a goodness of fit between two silhouettes and nothing else. It
+is not an error bar on the pose, which is why every pose carries the seed
+ensemble as well. Three failures pass it, and each is caught by a different
+test. A camera driven inside the geometry scores a low residual, because the
+silhouette it is matching is the inside of a wall and it matches it well. A site
+whose skyline is uniformly high carries almost no orientation information, so a
+low residual there says little about the heading. A pose can also be several
+meters from where the camera stood while still matching the horizon, which
+leaves the residual unchanged and the surfaces the camera is pointed at wrong.
+
+\subsection{Admission, and the second test}
+
+A pose is admitted when its residual is at most $4.0^\circ$, its sky conflict is
+at most 0.5, and the median range of any conflict is at least 2.0\,m.
+
+The sky conflict is the second test and it shares no code with the objective. A
+$512 \times 256$ equirectangular grid of directions is cast from the fitted
+camera against the support mesh, dropping elevations below $-60^\circ$ because
+the rig and the road directly under it are not a registration signal. The
+conflict is the fraction of directions the segmentation calls sky for which the
+mesh returns a first hit, and it is read together with the median range of those
+hits. A healthy pose sits near zero with its few conflicts tens of meters away.
+A pose at 1.0 with a median conflict range under a meter is inside a building.
+
+As the poses were first shipped, 26 of the 83 were inside the geometry by that
+test and 6 of those 26 passed the residual gate, so the two tests are not
+redundant and the residual on its own admits poses that cannot be used.
+
+The mechanism behind the 26 is the crop, and it is measured rather than
+inferred. Every registration in the study was fitted against the 130\,m mesh,
+which the candidate vertex count stored in each pose reproduces exactly at all
+six registered sites and at no other radius: 23\,640 at Grand-Place, 38\,138 at
+Plaza Mayor, 36\,782 at the Zocalo, 47\,184 at Old Town Square, 38\,304 at Times
+Square and 27\,371 at Hachiko. A 130\,m crop is the whole skyline of a low-rise
+square and a fraction of the skyline of a high-rise canyon. Truncating it lowers
+the modelled skyline, the optimizer buys the residual back by sinking the
+camera, and it keeps doing so until it reaches the bound. All 25 of the poses
+called inside the geometry that carry a recorded dive dropped more than 1.5\,m,
+with a median dive of 2.97\,m against a 3.0\,m bound, whereas the 41 admitted
+poses have a median dive of 0.58\,m and only one in eight goes past 1.5\,m.
+
+Scoring the untouched initial pose against both crops separates the sites
+cleanly. Taking the median over each site's first three stations, the extra crop
+is worth $-0.00^\circ$ at Old Town Square, $+0.00^\circ$ at Plaza Mayor,
+$-0.02^\circ$ at Grand-Place, $+0.48^\circ$ at the Zocalo, $+1.37^\circ$ at
+Times Square and $+5.60^\circ$ at Hachiko. The shipped crop was therefore
+adequate at four sites, marginal at a fifth and wrong at one.
+
+Hachiko was re-registered against the 250\,m mesh with the altitude bound
+clamped to $-1.5$ to $+3.0$\,m, which keeps the optical center at least a meter
+above the ground measured under that camera and excludes no pose that was ever
+any good. Its three stations move from $6.53^\circ$, $4.80^\circ$ and
+$6.19^\circ$ to $1.42^\circ$, $3.70^\circ$ and $3.08^\circ$, and their sky
+conflicts from 1.00 at 0.5, 0.3 and 0.1\,m to 0.02, 0.07 and 0.01 at 108.1, 20.6
+and 33.9\,m. Zero usable stations become three. The two changes do different
+work: the wider crop moves the residual, from a median of $6.19^\circ$ to
+$3.08^\circ$, and the clamp moves the sky conflict at a cost of $0.34^\circ$ of
+residual at one station and nothing at the other. Across the study the
+re-registrations take the count of poses inside the geometry from 26 to 14 and
+the admitted count to 51, and 6 of the 14 still pass the residual gate, so the
+disagreement between the two tests survives the fix.
+
+Times Square keeps a residual near $9^\circ$ on the wider crop and the crop is
+not its problem. Scanning yaw over the entire circle at the initial pose moves
+the residual by under $2^\circ$ at every one of its 14 stations, and four of
+them score their minimum more than $120^\circ$ away from the provider's heading,
+one at $178^\circ$. The control says this is the site and not the method: the
+same scan puts 13 of 14 stations within $2^\circ$ of the provider heading at Old
+Town Square and all three within $2^\circ$ at Hachiko. The modelled skyline at
+Times Square sits at a median elevation of 55 to $62^\circ$ in every direction.
+A uniformly high skyline has no features, and rotating a camera inside one
+changes almost nothing. Skyline registration needs a ragged horizon, and the
+deepest canyon in the set is the one square without one. The yaw scan behind
+this paragraph is recorded in the repository notes and no output file was kept
+for it, so it can be repeated but not read off disk.
+
+\subsection{First-interaction coverage is a sharper test than the residual}
+\label{sec:si-coverage-test}
+
+A third test came from the propagation side and it is the one the paper quotes.
+Trace the reference square at each admitted station position and record the
+share of the power incident at the first interaction that lands on a triangle
+some panorama photographed. The run is Korenmarkt at the 130\,m crop, 15\,GHz,
+200\,000 rays per standpoint. \Cref{tab:si-station-coverage} gives the eight
+admitted stations of that binding, ordered by their skyline residual.
+
+Seven of the eight sit between 0.978 and 0.999 at the first interaction, which
+confirms the geometric argument of the paper to about two parts in a thousand.
+The eighth returns 0.362. It carries the largest residual in the admitted set at
+$3.67^\circ$, but the residual does not separate it from the rest, because the
+admitted set runs from $1.08^\circ$ to $3.08^\circ$ against a gate at
+$4.0^\circ$ and the station at $3.06^\circ$ scores 0.998. The low station is not
+somewhere nobody walked either. It sits 9.1\,m from a station scoring 0.999, and
+8.1\,m from it once both are taken at their registered rather than their
+provider positions.
+
+One detail of how the probe was run has to be given, because it changes what the
+row means. The eight probe standpoints of this run are the positions the
+provider supplied, not the positions registration returned, while the set of
+photographed triangles they are scored against was built from the registered
+poses. The eight cameras moved 3.91 to 5.50\,m horizontally and $-1.61$ to
+$+1.37$\,m vertically during registration, so every one of the eight probes is a
+few metres away from the camera whose photographs it is being scored against.
+The size of that gap does not order the result. The camera that moved furthest,
+5.50\,m, scores 0.978, and the one that scores 0.362 moved 5.28\,m.
+
+The same camera reads 1.000, 0.962 and 0.919 over the first three interactions
+in the 250\,m binding, in line with every other station. That comparison is
+suggestive and it is not controlled. Three things differ between the two runs at
+once: the probe standpoints are the registered positions rather than the
+provider ones, the crop radius is 250\,m rather than 130\,m, and the station set
+holds nine cameras rather than eight. No single one of them can be credited with
+the change on the evidence here.
+
+What the two rows do support is narrow and is what the paper claims. At one
+fixed binding, one standpoint out of eight returned 0.362 where the rest
+returned 0.978 to 0.999, and the skyline residual gave no warning. A
+first-interaction coverage probe therefore finds something the residual does
+not, and it costs one trace. Why that standpoint is the one is not resolved
+here. The station is excluded from the coverage figures the paper quotes.
+
+The residual 2\% at the seven good stations is the resolution of the ray grid
+rather than the pose. A triangle small enough to fall between adjacent rows of a
+1536-row equirectangular cast collects no ray and is therefore not observed,
+whatever the camera saw.
+
+\begin{table}[!t]
+  \caption{First-interaction coverage at the eight admitted Korenmarkt stations,
+  130\,m crop, ordered by skyline residual}
+  \label{tab:si-station-coverage}
+  \centering
+  \begin{tabular}{lcccc}
+    \toprule
+    Station & Residual & \multicolumn{3}{c}{Share of incident power on} \\
+     & (deg) & \multicolumn{3}{c}{photographed triangles} \\
+    \cmidrule(l){3-5}
+     & & first & second & third \\
+    \midrule
+    1084407470281938 & 1.08 & 0.978 & 0.909 & 0.823 \\
+    582445657694750  & 1.30 & 0.998 & 0.952 & 0.890 \\
+    1019442960256615 & 2.15 & 0.997 & 0.962 & 0.897 \\
+    3367014310197013 & 2.32 & 0.995 & 0.959 & 0.901 \\
+    706535575184668  & 2.39 & 0.996 & 0.958 & 0.902 \\
+    1419513849204492 & 3.06 & 0.998 & 0.965 & 0.915 \\
+    986493819697753  & 3.08 & 0.999 & 0.963 & 0.919 \\
+    1304023184185511 & 3.67 & 0.362 & 0.351 & 0.226 \\
+    \addlinespace
+    1304023184185511, & 3.67 & 1.000 & 0.962 & 0.919 \\
+    \quad at the 250\,m binding & & & & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Which stations are usable}
+
+\Cref{tab:si-registration} gives the whole corpus. Eighty-three panoramas were
+acquired across the eleven squares and all 83 registered. Fifty-one poses are
+admitted.
+
+Three squares carry no panoramas at all. At Krakow and Toulouse the capture with
+the most stations is an indoor virtual tour, 162 panoramas of the Cloth Hall
+interior and 118 of the interior of the Capitole, and a downward cast at each
+candidate finds open sky above 0 of 162 and 0 of 118 of them. London's screened
+capture is outdoors, with 111 of 142 stations under open sky, and no panoramas
+were acquired there.
+
+One square registered and lost everything at admission. All 14 Times Square
+poses registered and none is admitted, for the reason given above.
+
+Two squares carry the material axis. Twelve panoramas in the corpus carry a
+material label rather than only an entity label, eleven of them at Korenmarkt
+and one at Milan. Every panorama at the other nine squares carries the entity
+axis only. This is why the material comparison in the paper is a one-square
+result and why the eleven-square comparison runs on geometric classes.
+
+\begin{table*}[!t]
+  \caption{Registration, per square. Residuals are the robust skyline residual
+  in degrees. Pose sigma is the horizontal one-sigma of the eight-seed
+  ensemble covariance. Admission requires a residual of at most $4.0^\circ$, a
+  sky conflict of at most 0.5, and a conflict range of at least 2.0\,m}
+  \label{tab:si-registration}
+  \centering
+  \begin{tabular}{lcccccccc}
+    \toprule
+    Square & Panoramas & Registered & Median & Worst & Median pose & At altitude & Inside the & Admitted \\
+     & & & residual & residual & sigma (m) & bound & geometry & \\
+    \midrule
+    Brussels, Grand-Place        & 14 & 14 & 2.87 & 11.16 & 0.47 & 6 & 6 & 8 \\
+    Ghent, Korenmarkt            & 13 & 13 & 3.06 & 8.10  & 0.18 & 7 & 0 & 9 \\
+    Krakow, Rynek Glowny         & 0  & 0  & --   & --    & --   & 0 & 0 & 0 \\
+    London, Trafalgar Square     & 0  & 0  & --   & --    & --   & 0 & 0 & 0 \\
+    Madrid, Plaza Mayor          & 10 & 10 & 0.40 & 2.92  & 0.26 & 5 & 4 & 6 \\
+    Mexico City, Zocalo          & 14 & 14 & 2.76 & 4.60  & 1.86 & 4 & 0 & 12 \\
+    Milan, Piazza del Duomo      & 1  & 1  & 0.75 & 0.75  & 0.26 & 1 & 0 & 1 \\
+    New York, Times Square       & 14 & 14 & 9.13 & 11.25 & 1.44 & 5 & 3 & 0 \\
+    Prague, Old Town Square      & 14 & 14 & 0.82 & 9.33  & 0.25 & 2 & 1 & 12 \\
+    Tokyo, Hachiko crossing      & 3  & 3  & 3.08 & 3.70  & 0.48 & 1 & 0 & 3 \\
+    Toulouse, Place du Capitole  & 0  & 0  & --   & --    & --   & 0 & 0 & 0 \\
+    \midrule
+    Total                        & 83 & 83 &      &       &      & 31 & 14 & 51 \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\section{Projection onto triangles}
+\label{sec:si-projection}
+
+Two routes turn labelled pixels into per-triangle evidence. One casts a ray grid
+outward from the camera and tallies a class per triangle of the mesh the tracer
+will use. The other cuts each visible triangle in the image against the label
+boundaries and carries the pieces back onto the triangle's own plane. Both are
+described here, because the exposure runs read the first and the coverage
+figures quote both.
+
+\subsection{The station cast}
+
+From each admitted station an equirectangular ray grid of 1536 rows is cast
+against the mesh of the run. Per triangle the cast records the modal semantic
+class it collects and the number of rays that survived transient rejection, with
+one row per station, so a triangle is observed when at least one station landed
+a ray on it.
+
+The grid resolution sets a floor on what can be covered, because a triangle no
+ray landed on is a triangle no station saw. At Plaza Mayor over the 130\,m crop
+the same six admitted stations bind 18.04\% of the triangle area at 384 rows and
+19.43\% at 768, so a fourfold cheaper grid costs about 7\% of the answer in
+relative terms. Every per-site binding records a grid height of 1536 rows, and
+the grid is held fixed across squares because the covered fraction is compared
+between squares.
+
+One binding is not on that grid and it is the one the image-derived exposure
+numbers rest on. The Korenmarkt 130\,m binding that carries the material axis is
+a separate file, and its sidecar records no grid height at all. It was built at
+1024 rows, which was established by rebuilding at 1024 and reproducing the
+stored ray, transient, clean-ray and modal-class arrays bit for bit. A rebuild
+at 1536 casts 2.25 times as many rays and moves the modal class on 4.9\% of the
+triangles both grids see. What that costs at the end of the chain was measured
+on the nine-station variant, where a uniform 1024 rebuild agrees with the stored
+file on 99.45\% of the 2559 triangles at issue, moves the bound area from
+11.019\% to 10.982\% and moves the evidence-ladder shift from 0.350 to
+0.352\,dB isotropic and from 0.364 to 0.368\,dB rooftop. The grid height of the
+shipped file is not recorded in it, and that is a provenance defect rather than
+a numerical one.
+
+The class the cast collects is a semantic entity rather than a material. It is
+mapped onto the radio material vocabulary by a table that is a property of the
+vocabulary and not a site measurement. All 83 station-level segmentation files
+carry the same 65-class vocabulary from the same segmentation
+checkpoint~\cite{mask2former,vistas}, which is checked label by label rather
+than assumed, so the same table is passed through to every square.
+
+\subsection{The cutter}
+
+The cutter reverses the direction of travel. Rather than tiling the label image
+and splatting tiles onto the mesh, it projects each support triangle into the
+image, cuts it there against the label boundaries, and maps the pieces back onto
+the triangle's supporting plane.
+
+Within one rectilinear crop the camera is an ordinary pinhole, so a triangle
+maps to a triangle under a projective map that is invertible on the triangle's
+interior. The inverse used is the exact intersection of the pixel ray with the
+supporting plane, not barycentric interpolation of the projected corners, which
+is wrong under perspective. Checked against an independent first-hit depth
+buffer at Korenmarkt, unprojecting all 707\,620 first-hit pixels of one crop and
+testing the result against the plane of the face the buffer reports gives a
+median residual of $4.7 \times 10^{-7}$\,m, a 95th percentile of
+$3.7 \times 10^{-6}$\,m and a worst case of $1.9 \times 10^{-5}$\,m.
+
+Two guards are not optional. Each triangle is clipped in camera space against a
+near plane at 0.05\,m before it is projected, because at Korenmarkt yaw 0 four of
+the 1431 visible support triangles have a vertex behind the camera plane and
+those four own 33.5\% of the hit pixels in the view. And the projection is a
+bijection on the visible surface only, since two triangles routinely project to
+the same pixel, so a first-hit triangle identifier buffer decides ownership and
+any piece a different triangle owns is rejected rather than painted.
+
+The cut runs in four steps. First, every pixel receives one reason code:
+paintable, no mesh hit, low confidence, transient object, clutter in front, mesh
+or pose conflict, or not a support surface. Distance and class are kept as
+separate causes on purpose, because a person's depth often agrees with the wall
+they stand against and only the class can reject them. Second, paintable pixels
+are grouped into connected components that share a class and are continuous in
+first-hit range, with a relative step test so grazing surfaces stay whole.
+Folding depth continuity into the grouping is what puts occlusion silhouettes
+into the output, since a wall seen past a nearer building becomes a different
+component from that building even when both carry the same label. Components
+below 64 pixels merge into the depth-continuous neighbor with the longest shared
+boundary. Third, boundaries are traced on the pixel-corner crack grid rather
+than per class mask, so the boundary between two components is one shared
+object, and each chain between junctions is simplified once by the
+Douglas-Peucker rule~\cite{douglas} with its junctions held fixed, which can
+open neither a gap nor an overlap. Fourth, each visible triangle is clipped to
+the near plane and the crop rectangle and rasterized. When its footprint lies in
+one component and the triangle owns at least 98\% of it, the triangle is emitted
+untouched, because the support triangulation is meter-scale photogrammetry and
+subdividing it where the labels do not change buys nothing. Otherwise the local
+chains are noded against the triangle outline, the resulting arrangement faces
+are depth-tested and support-tested, and each survivor is triangulated by ear
+clipping.
+
+\subsection{Crop geometry}
+
+Each panorama is cut through four rectilinear crops at yaw 0, 90, 180 and
+$270^\circ$ with zero pitch, each $90^\circ$ across and $1024 \times 1024$
+pixels. Pixel row $i$ and column $j$ has its center at image coordinate
+$(j + 0.5, i + 0.5)$.
+
+The boundary simplification tolerance is the one crop-side parameter that was
+swept. \Cref{tab:si-tolerance} gives that sweep at Korenmarkt yaw 0. The face
+count falls steeply up to about 1.5 pixels and then flattens, because past that
+point the output is dominated by the support triangulation rather than by the
+boundary description. The shipped tolerance of 1.5 pixels is $0.168^\circ$ of
+worst-case boundary displacement at the crop center, where a $90^\circ$ crop has
+its coarsest angular pixel pitch. That is 29\,mm at 10\,m of range, about 1.5
+wavelengths at 15\,GHz, which is fine enough for material assignment and not
+fine enough for coherent phase on a path that hugs a boundary. Raising the
+minimum component size from 64 to 256 pixels nearly doubles the class change
+while saving 2\% of the faces, so 64 is the default.
+
+\begin{table}[!t]
+  \caption{Boundary simplification sweep at Korenmarkt yaw 0. Coverage is the
+  share of paintable pixels an output face lands on after a round trip through
+  the image, and class change is the share of those whose label differs}
+  \label{tab:si-tolerance}
+  \centering
+  \begin{tabular}{cccccc}
+    \toprule
+    Tolerance & Minimum & Faces & Angular & Class & Coverage \\
+    (px) & island (px) & & (deg) & change & \\
+    \midrule
+    0.0 & 64  & 12\,191 & 0.000 & 0.077\% & 99.23\% \\
+    1.0 & 64  & 3\,987  & 0.112 & 0.150\% & 99.02\% \\
+    1.5 & 64  & 3\,306  & 0.168 & 0.190\% & 98.91\% \\
+    2.5 & 64  & 2\,932  & 0.280 & 0.277\% & 98.72\% \\
+    4.0 & 64  & 2\,768  & 0.448 & 0.353\% & 98.55\% \\
+    1.5 & 256 & 3\,252  & 0.168 & 0.348\% & 98.91\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The four Korenmarkt crops give 10\,534 faces against 257\,310 from the
+tile-splatting path they replace on the same mesh, pose and label maps, a factor
+of 24. The floor is hard rather than tunable: a triangle inside one component is
+preserved, so the output can never fall below the number of visible support
+triangles, which is 1431 at yaw 0. At 3306 the cutter sits 2.3 times above that
+floor, and going lower means decimating the support mesh.
+
+\subsection{The per-face record}
+
+Each face carries an indexed triangle in world meters together with the source
+triangle it was cut from, its outward normal, which points back toward the
+capture point by construction, its centroid, its metric area, its exact solid
+angle from the capture point, its class, the class posterior over the taxonomy,
+a confidence, a pixel support count, a visible fraction, and a compressed index
+of the source pixels it was built from. A material posterior is written by the
+same code when a material model was run, and it is absent from the shipped
+Korenmarkt fishnets, which carry the entity taxonomy only. Candidates the cut
+refused are kept in a parallel table with a reason code and their image area, so
+what was removed and why remains readable downstream. Image area is conserved
+exactly: at every view the emitted and rejected areas sum to the clipped source
+area to the last pixel.
+
+\subsection{Visible fraction and confidence}
+
+The visible fraction of a face is the share of its rasterized footprint that the
+first-hit identifier buffer assigns to that face's own source triangle. A piece
+owning less than 0.5 of its footprint is rejected rather than kept at a low
+visible fraction, so the kept faces are a truncated sample and that threshold is
+reported beside the occlusion budget for exactly that reason.
+
+Confidence is built from the pixels a face owns. The class is the
+confidence-weighted majority over those pixels, the class posterior is that
+weighted histogram normalized, and the confidence is the winner's share of the
+histogram multiplied by the mean per-pixel confidence of the winning pixels.
+Where a material model is present the material posterior is the mean of the
+per-pixel material probabilities over the same winning pixels.
+
+The station cast keeps no such record. Its per-triangle output is the modal
+class, the number of rays, the number of rays lost to transient objects and the
+number that survived, one row per station. There is no per-triangle confidence,
+no visible fraction, no incidence angle and no record of which station won. The
+per-pixel confidence raster produced by the segmentation network is present in
+every station file and the cast does not read it, so no confidence gate acts
+anywhere on this route. Its threshold for observing a triangle is one
+transient-free ray. When several stations see the same triangle the winner is
+chosen by a vote weighted by each station's transient-free ray count on that
+triangle, which stands in for view quality because a triangle seen edge on
+collects few rays.
+
+The occlusion budget reports what occlusion removed as a share of the projected
+image area of the visible support triangles, split three ways because the three
+fail differently. The within-cell term is area an accepted face carries but does
+not own, the absent term is whole cells rejected with nothing downstream to
+replace them, and the deferred term is whole cells handed to the separate
+pedestrian layer. Over the four Korenmarkt crops on the entity taxonomy, at
+10\,534 faces, those are 0.725\%, 9.169\% and 20.490\%, totalling 30.385\%. On
+the 17-class material taxonomy, at 16\,451 faces, they are 0.474\%, 9.663\% and
+27.252\%, totalling 37.389\%.
+
+Fidelity is measured by rasterizing the output faces back into the image with a
+nearest-surface test and comparing against the source label map.
+\Cref{tab:si-roundtrip} gives that round trip per view. Both directions of the
+visibility error are reported because they fail differently for propagation: a
+phantom face invents a scatterer where the camera cannot see one, and a deleted
+face removes a path.
+
+\begin{table}[!t]
+  \caption{Round trip of the cut surfaces back into the image, per crop at
+  Korenmarkt. Leaked pixels are unpaintable pixels an output face nonetheless
+  paints, which is the error of painting a person onto the wall behind them}
+  \label{tab:si-roundtrip}
+  \centering
+  \begin{tabular}{lccccc}
+    \toprule
+    View & Class change & Coverage & Leaked & Phantom & Deleted \\
+    \midrule
+    yaw 0   & 0.190\% & 98.91\% & 0.294\% & 0.380\% & 1.086\% \\
+    yaw 90  & 0.126\% & 98.74\% & 0.117\% & 0.094\% & 1.262\% \\
+    yaw 180 & 0.123\% & 98.92\% & 0.121\% & 0.129\% & 1.080\% \\
+    yaw 270 & 0.250\% & 99.27\% & 1.111\% & 0.063\% & 0.731\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Withheld transient pixels are not painted by anything. They leave a hole in the
+static surface, and the hole is filled by the separate pedestrian layer rather
+than by the cutter, which is why the occlusion budget keeps the deferred term
+apart from the absent one. On the four Korenmarkt crops that layer holds 18
+people, of stature 1.40 to 1.71\,m with a mean of 1.56\,m, standing 3.2 to
+15.0\,m from the capture point.
+
+\subsection{How much of a square the projection binds}
+
+The two routes are built from the same photographs by different machinery and
+they agree to a few points of area without being the same number. Over the
+130\,m crop the station cast binds 31.1\%, 26.2\%, 20.2\% and 13.3\% of the
+triangle area at Old Town Square, the Zocalo, Plaza Mayor and Grand-Place,
+against 33.0\%, 23.4\%, 18.7\% and 11.2\% for the cutter, so the cutter is the
+larger of the two at one square and the smaller at the other three. Which is
+nearer the truth is not settled here and should not be read off the fractions.
+
+At the 250\,m crop the headline runs use, the station cast binds 9.9\% at Old
+Town Square, 8.1\% at Hachiko, 7.0\% at the Zocalo, 5.1\% at Plaza Mayor, 4.6\%
+at Grand-Place, 4.0\% at the Duomo and 3.2\% at Korenmarkt. The spread is not a
+quality signal. Bound area rises with the number of admitted stations and falls
+with the size of the crop relative to the square, so the Duomo reaches 4.0\%
+from a single camera because the facade it faces is large and close, and Hachiko
+reaches 8.1\% from three stations for the same reason in reverse. The admitted
+cameras at every square with a station set sit within 29 to 62\,m of their own
+centroid, against a crop that reaches 250\,m, so most of a crop is roofs and rear
+elevations no street-level capture in this study has seen.
+
+% ======================================================================
+% LAW CHANGE NOTE, 2026-08-03. See ../docs/LAW_CHANGE.md.
+% The illumination law is being replaced. Sites move onto facade tips read off
+% the geometry, so the height bands and the range bands go, and with them the
+% rooftop and street small cell models as defined.
+% In this section: every Monte Carlo floor quoted per illumination model is a
+% floor on an integral against the old weights, so the rooftop and street
+% columns need recomputing. The isotropic column stands. The pairing argument,
+% the seed assignment scheme and the standpoint sampling result are about the
+% experimental design rather than about Q, and they stand.
+% Numbers unchanged on purpose. The replacement's own numbers are provisional.
+% ======================================================================
+\section{Seeds and ray counts}
+\label{sec:si-seeds}
+
+Every susceptibility in the paper is a Monte Carlo estimate. This section gives
+what a seed controls, how seeds are assigned, how many rays each result was
+given, how the error on a reported number was measured, and which comparisons
+are paired and therefore carry less noise than their two sides do.
+
+\subsection{What the seed fixes}
+
+One standpoint is traced by one call, and that call opens a single NumPy
+generator, a PCG64 instance initialised from an integer seed through
+SeedSequence \cite{numpy}. That one generator supplies every random number the
+trace uses. There are three of them. The launch directions are drawn uniformly
+on the sphere. At each surface interaction the choice between the specular and
+the diffuse branch is a draw against the Rayleigh specular share. A ray taking
+the diffuse branch is given a cosine-weighted direction about the local normal.
+Russian roulette would be a fourth, but at the operating point of the paper it
+never fires, because \texttt{roulette\_start} is set one past the interaction
+budget.
+
+Nothing else in a trace is random. Geometry, material assignment, the ground
+datum and the standpoint list are all fixed before the generator is opened, so
+two traces with the same seed and the same scene return bit-identical numbers.
+That was checked rather than assumed: in the seed study of
+\cref{sec:si-seeds-error} the replica that reuses the published stream
+reproduces the stored file to zero difference at all 120 standpoints and all
+three illumination models.
+
+The launch direction of an adjoint ray is the local arrival direction
+$\uloc$, so it is also the axis $\rho$ is binned on. Each drawn direction is
+assigned to the nearest of the $M = 512$ near-equal-solid-angle cells, and the
+cell value is the mean over the rays assigned to that cell rather than a sum
+divided by $N/M$. A cell that received no ray contributes nothing instead of
+dividing by zero. This is a stratification in $\uloc$ and it does not reduce the
+variance that matters, because the weight $Q$ is evaluated on the escape
+direction and the escape direction is not the launch direction.
+
+\subsection{How seeds are assigned}
+
+The eleven-square runs and every ablation built on the same walk use one base
+seed of 7 and give standpoint $i$ the seed $7 + 1000\,i$, where $i$ is the index
+of the standpoint in the site's walk rather than its row in the output file.
+Two consequences follow and both are used. No two standpoints inside one run
+share a stream, so the standpoints of a run are independent draws. Two runs over
+the same walk use the same stream at each matching standpoint, so an ablation
+that changes only the material assignment or only the interaction budget is a
+paired comparison at every standpoint.
+
+The smaller studies were written as separate scripts and do not all follow that
+map. The law comparison and the sub-street ablation use base seed 0 with an
+offset of one per standpoint. The monostatic cross-check uses base seed 7 with
+an offset of 1000 for the walk sweep and 977 for its station sweep. The material
+posterior ablation uses base seed 0 with an offset of 1000, and draws its
+material realisations from a separate generator seeded at $1000 + j$ for
+realisation $j$. The bystander noise floor uses $7 + 1000\,i + 131\,r$ for
+replica $r$.
+
+The crop convergence sweep is the one exception worth flagging. It passes no
+per-standpoint seed, so every one of its 32 observers at every one of its nine
+radii is traced with the configured seed of 11. The 32 observers within one
+radius are therefore not independent of one another, and the same launch set is
+reused at all nine radii. That makes the sweep a paired comparison across
+radius, which is what it is for, and it means the scatter between its rows is
+not a Monte Carlo error estimate.
+
+Distinct integer seeds passed through SeedSequence are not covered by a formal
+non-overlap guarantee. The generator state space makes an overlap between two
+streams of a few million draws a negligible risk, and no stronger claim than
+that is made here.
+
+\subsection{Ray counts}
+
+\cref{tab:si-rays} lists what each result was given. Rays are per standpoint.
+The interaction budget is the maximum number of surface interactions a ray may
+make before it is dropped.
+
+\begin{table*}[t]
+  \centering
+  \caption{Ray count, interaction budget and standpoint count behind each
+  result. Rays are per standpoint. Two entries are deterministic and shoot no
+  random rays.}
+  \label{tab:si-rays}
+  \footnotesize
+  \begin{tabular}{llrlrrl}
+    \toprule
+    Result & Run tag & Sites & Standpoints & Rays & $L$ & Crop \\
+    \midrule
+    Eleven squares, headline & \texttt{city250\_L3} & 11 & 80 & 200\,000 & 3 & 250\,m \\
+    Eleven squares, four interactions & \texttt{city250\_corrected} & 11 & 80 & 200\,000 & 4 & 250\,m \\
+    Ground datum control & \texttt{city250\_datum} & 9 & 80 & 200\,000 & 4 & 250\,m \\
+    Image evidence ladder & \texttt{*\_L3} & 1 & 120 & 200\,000 & 3 & 130\,m \\
+    Crop convergence & \texttt{crop\_convergence} & 1 & 32 & 200\,000 & 3 & 9 radii, 60 to 340\,m \\
+    Interaction budget sweep & \texttt{bounce\_evidence} & 4 & 40 & 200\,000 & 1 to 8 & 130 and 250\,m \\
+    Seed spread and roulette cost & \texttt{bounce\_evidence} & 1 & 4, 8 seeds each & 200\,000 & 3 & 250\,m \\
+    Illumination law, one square & \texttt{law\_comparison} & 1 & 40 & 150\,000 & 4 & 130 and 250\,m \\
+    Sensitivity harvest & \texttt{harvest\_*} & 11 & 40 & 200\,000 & 4 & 250\,m \\
+    Illumination law, eleven squares & \texttt{law\_ordering} & 11 & 40 & reweighted harvest & 4 & 250\,m \\
+    Sub-street ablation & \texttt{*\_substreet} & 2 & 40 & 120\,000 & 3 & 250\,m \\
+    Beamforming aperture sweep & \texttt{antenna11} & 11 & 32 & 150\,000 & 3 & 250\,m \\
+    Beamforming budget control & \texttt{antennab4} & 1 & 32 & 150\,000 & 4 & 250\,m \\
+    Beamforming steering artefact & \texttt{paper\_artefact} & 1 & 20 & 30\,000 & 3 & 250\,m \\
+    Bystanders & \texttt{bystander\_study} & 1 & 12 & 120\,000 & 3 & 250\,m \\
+    Bystander absorber control & \texttt{*\_absorber} & 1 & 8 & 120\,000 & 3 & 250\,m \\
+    Bystander noise floor & \texttt{*\_noise\_floor} & 1 & 12, 3 seeds each & 120\,000 & 3 & 250\,m \\
+    Monostatic return & \texttt{mono250\_*} & 11 & 40 & 100\,000 & 3 & 250\,m \\
+    Material posterior ablation & \texttt{material\_vlm} & 1 & 24 & 60\,000 & 12 & 90\,m walk \\
+    External cross-validation & \texttt{cross\_validation} & 2 & 8 & 200\,000 and 150\,000 & 4 & 250\,m \\
+    Diffraction bound & \texttt{diffraction\_bound} & 3 & 20 & deterministic & -- & $720 \times 600$ grid \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+The headline run is 11 sites at 80 standpoints, so 880 traces of 200\,000 rays
+each, which is $1.76 \times 10^{8}$ launched rays in total. Per-site wall clock
+ran from 177\,s at Old Town Square to 730\,s at Grand-Place, and the whole
+eleven-square run took 1.20 hours on one machine. The spread between sites is
+scene size and not standpoint count, which is 80 everywhere.
+
+Two rows of \cref{tab:si-rays} need reading with care. The eleven-square law
+ordering shoots no rays of its own. It reweights the escape records already
+stored by the sensitivity harvest, so both laws are evaluated on the same rays
+at every standpoint and their difference carries no Monte Carlo noise at all.
+The diffraction bound is not a Monte Carlo estimate either. It sweeps a fixed
+grid of 720 azimuths by 600 elevations, logarithmic in elevation from a floor of
+0.05 degrees, and so has no seed and no sampling error.
+
+\subsection{How the error was measured}
+\label{sec:si-seeds-error}
+
+The error on a reported susceptibility is measured by retracing the same
+standpoints under seed streams that share nothing, not by any within-run
+variance estimate. Three such measurements exist and they are consistent with
+one another.
+
+The largest is the study behind the numbers the paper quotes. The 120 published
+Korenmarkt standpoints of the geometric rung were retraced over 32 disjoint seed
+streams at 200\,000 rays, 512 cells, six surface interactions and the 130\,m
+crop. \cref{tab:si-noise} gives the resulting standard deviations. The first
+three columns are per standpoint and the last is the standard deviation of the
+median over the 120 standpoints, which is the unit the paper actually reports.
+
+\begin{table}[t]
+  \centering
+  \caption{Monte Carlo standard deviation from 32 disjoint seed streams over 120
+  Korenmarkt standpoints at 200\,000 rays. All entries in dB. An earlier
+  eight-stream measurement gave walk medians of 0.0042, 0.0136, and 0.0343\,dB.
+  The rooftop figure survives the larger sample and the other two do not.}
+  \label{tab:si-noise}
+  \begin{tabular}{lrrrr}
+    \toprule
+    & \multicolumn{3}{c}{Per standpoint} & Walk \\
+    \cmidrule(lr){2-4}
+    Illumination & median & p90 & worst & median \\
+    \midrule
+    Isotropic          & 0.0042 & 0.0059 & 0.0125 & 0.0028 \\
+    Rooftop macro      & 0.0263 & 0.0381 & 0.0583 & 0.0162 \\
+    Street small cell  & 0.1302 & 0.2170 & 0.5791 & 0.0594 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The walk median column should be read as indicative rather than as a tolerance.
+A median over 120 standpoints does not average the per-standpoint noise down as
+the square root of 120, because with the standpoints well separated the median
+sits close to whichever standpoint is in the middle and moves in steps as ranks
+swap. Its sampling distribution is therefore not normal, and the eight-stream
+isotropic interval of 0.0010 to 0.0029\,dB contains the 32-stream answer only at
+its edge. The column is also specific to the 130\,m crop: measured at the 250\,m
+crop over 32 streams the street figure falls to 0.0392\,dB while the rooftop
+figure rises to 0.0258\,dB, so neither moves as a change of standpoint count
+alone would predict.
+
+The factor of about thirty between the isotropic and street rows is the reason
+given in the body. The street law puts its whole mass into the lowest tens of
+degrees of elevation, so most rays escape into directions the weight sets to
+zero and contribute nothing.
+
+Two caveats belong with \cref{tab:si-noise} and neither is small. It was
+measured at six surface interactions on the 130\,m crop, which was the operating
+point of the evidence ladder at the time, and not at the three-interaction
+250\,m configuration of the headline run. The transfer to the headline
+configuration is an argument rather than a measurement. And the numbers exist
+only in the audit note that produced them. No replica file was written to
+\texttt{outputs/}, and no per-standpoint value in any location file carries an
+error bar of any kind.
+
+Two smaller seed measurements are on disk and can be reproduced from the shipped
+artefacts. The first sits inside the interaction budget sweep. At Korenmarkt on
+the 250\,m crop, four standpoints were each traced eight times at 200\,000 rays
+and three interactions, and the relative standard deviation of $\chi$ was
+recorded. Its median over the four standpoints is 0.00081 isotropic, 0.00825
+rooftop and 0.02177 street, which converts to 0.0035, 0.0358 and 0.0945\,dB. The
+worst of the four is 0.00181, 0.00913 and 0.11778, or 0.0079, 0.0397 and
+0.5115\,dB. The second sits inside the bystander study. Twelve standpoints on an
+empty square were traced under three streams at 120\,000 rays and three
+interactions, and the difference between two streams at the same standpoint has
+a median absolute value of 0.0087, 0.0354 and 0.1123\,dB, a 95th percentile of
+0.0240, 0.1194 and 0.6450\,dB and a maximum of 0.0274, 0.1399 and 0.7314\,dB.
+The difference of two independent draws is $\sqrt{2}$ times a single one, so
+these three sets of numbers agree with each other to the accuracy any of them
+can claim, at three different ray counts and two different crops.
+
+\subsection{Which comparisons are paired}
+
+A comparison that changes only material or only the interaction budget keeps the
+scene, the standpoints and the seeds, so the two sides share their launch set
+and their difference is far quieter than either side. The evidence ladder, the
+interaction budget sweep, the roulette on and off comparison, the two
+illumination law comparisons and the material posterior ablation are all paired
+in this sense. The illumination law comparisons are the strongest case, since
+both laws are computed from one stored set of escapes and their difference
+carries no sampling noise whatsoever.
+
+Two comparisons are not paired and should not be read as though they were. The
+crop sweep changes the mesh, so the two sides decorrelate at the first
+interaction and the error on their difference is the independent one, about
+$\sqrt{2}$ times the single-run figure. For the rooftop model that is roughly
+0.019\,dB on a walk median, so the largest published crop correction of 4.80\,dB
+is beyond argument while the smallest of 0.05\,dB is under three standard errors
+and is not resolved at this ray count. The sub-street ablation changes the mesh
+in the same way and inherits the same floor.
+
+One number in the paper is reported as a seed average for this reason. The
+street-cell shift across the evidence ladder is $0.1505 \pm 0.0092$\,dB over 32
+disjoint streams, the uncertainty being the standard error on a mean of 32. That
+is 16.4 standard errors from zero on the mean and 2.9 on a single run, and the
+0.079\,dB value once quoted as a result is the second lowest of the 32. The
+isotropic and rooftop shifts over the same 32 streams are $0.3473 \pm 0.0007$
+and $0.3855 \pm 0.0036$\,dB, which sit far enough from zero that the choice of
+seed does not reach them.
+
+\subsection{What the seed study does not cover}
+
+Monte Carlo error is not the dominant uncertainty on a per-square number, and
+adding rays does not touch the term that is. The standpoints themselves are a
+sample of the square. Changing the ground datum by a fraction of a metre adds or
+drops candidate positions, the ordering that selects 80 of them changes, and at
+the nine sites whose datum was corrected only 4 to 24 of the 80 standpoints
+survived the change. The per-square medians moved by 0.128, 0.061 and 0.188\,dB
+rms and by up to 0.242, 0.116 and 0.326\,dB under the three illumination models.
+Against a walk median Monte Carlo floor of a few hundredths of a decibel that is
+more than an order of magnitude larger. Korenmarkt is the control, since its
+standpoints did not change and its medians moved by less than the floor. The
+consequence for reading the paper is stated in the body: a per-square median
+carries roughly 0.13\,dB rms of standpoint sampling uncertainty, which does not
+threaten a 3.71\,dB spread across eleven squares but does threaten any claim
+that two adjacent squares differ.
+
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The rooftop macro and street
+% small cell column pairs of tab:si-sites are stale, as are the spreads read
+% off them and the two paragraphs that explain the ordering reversal between
+% isotropic and street. The isotropic pair, the sky fraction column, the ground
+% datum column and the walk column stand. The datum shifts attributed to Krakow
+% and Toulouse stand as a story and need their directional decibels redone.
+\section{The eleven squares, one by one}
+\label{sec:si-sites}
+
+\cref{tab:si-sites} gives the numbers behind the headline figure of the paper,
+per square. Every column comes from the same run, which is 11 sites at 80
+standpoints, three surface interactions, the 250\,m crop and one common material
+assignment, so what differs between rows is the shape of the square and nothing
+else.
+
+The standpoints are built the same way everywhere. A grid of 3\,m spacing is
+laid over a disc of 90\,m radius about the centre of the square. A grid point is
+kept when the surface under it is within 2.5\,m of the ground datum measured for
+that square and faces up with a normal cosine of at least 0.85, when a head at
+1.5\,m above it has at least 2\,m of clearance in every direction on a 96
+direction probe, and when at least 1\% of the directions from that head reach
+sky. The survivors are chained into a walk by nearest neighbour and 80 of them
+are taken at even index spacing along that chain. The candidate count in
+\cref{tab:si-sites} is the number that survived, and it runs from 801 at
+Korenmarkt to 2114 at Krakow, so the 80 traced standpoints are a sample of
+between 4 and 10\% of the walkable positions.
+
+\begin{table*}[t]
+  \centering
+  \caption{The eleven squares at three surface interactions and the 250\,m
+  crop, 80 standpoints each. $\chi$ columns are the median over the 80
+  standpoints in dB. The spread column is the 95th percentile over the 5th
+  within one square, also in dB.}
+  \label{tab:si-sites}
+  \footnotesize
+  \begin{tabular}{lrrrrrrrrrr}
+    \toprule
+    & & Ground & Walk & \multicolumn{2}{c}{Isotropic} & \multicolumn{2}{c}{Rooftop macro} & \multicolumn{2}{c}{Street small cell} & Sky \\
+    \cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+    Square & Triangles & datum (m) & candidates & median & spread & median & spread & median & spread & fraction \\
+    \midrule
+    Brussels, Grand-Place       & 706\,720   & 65.57   & 1079 & $-6.53$ & 5.88 & $-10.06$ & 12.89 & $-21.77$ & 19.01 & 0.170 \\
+    Ghent, Korenmarkt           & 617\,091   & 50.87   & 801  & $-5.35$ & 2.85 & $-7.89$  & 6.39  & $-18.45$ & 8.43  & 0.231 \\
+    Krakow, Rynek Glowny        & 557\,526   & 250.94  & 2114 & $-4.16$ & 1.70 & $-5.72$  & 2.86  & $-16.35$ & 4.80  & 0.314 \\
+    London, Trafalgar Square    & 783\,425   & 54.81   & 1619 & $-4.04$ & 4.04 & $-5.40$  & 4.55  & $-15.59$ & 8.31  & 0.330 \\
+    Madrid, Plaza Mayor         & 720\,373   & 702.68  & 977  & $-4.64$ & 6.46 & $-8.40$  & 9.35  & $-21.01$ & 11.08 & 0.278 \\
+    Mexico City, Zocalo         & 707\,812   & 2223.38 & 1343 & $-4.00$ & 2.19 & $-5.13$  & 5.06  & $-15.35$ & 9.16  & 0.324 \\
+    Milan, Piazza del Duomo     & 779\,421   & 163.12  & 2026 & $-4.49$ & 2.80 & $-6.11$  & 2.55  & $-14.26$ & 6.20  & 0.286 \\
+    New York, Times Square      & 1\,064\,389 & $-18.39$ & 1083 & $-7.71$ & 3.92 & $-8.96$  & 5.77  & $-12.19$ & 7.90  & 0.121 \\
+    Prague, Old Town Square     & 664\,619   & 236.65  & 1495 & $-4.46$ & 4.29 & $-6.24$  & 4.95  & $-17.06$ & 7.27  & 0.288 \\
+    Tokyo, Hachiko crossing     & 797\,615   & 51.60   & 1138 & $-6.32$ & 3.36 & $-10.02$ & 5.46  & $-17.92$ & 10.70 & 0.174 \\
+    Toulouse, Place du Capitole & 1\,016\,440 & 191.23  & 1312 & $-5.28$ & 5.17 & $-6.54$  & 11.40 & $-17.59$ & 13.49 & 0.238 \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+Reading the table across gives the comparison the paper is built on. Between
+squares the medians span 3.71\,dB isotropic, 4.93\,dB rooftop and 9.58\,dB
+street. Within one square the spread runs 1.70 to 6.46\,dB isotropic, 2.55 to
+12.89\,dB rooftop and 4.80 to 19.01\,dB street. Under isotropic illumination the
+smallest within-square spread in the set, 1.70\,dB at Krakow, is already half
+the whole between-square range, and the median within-square spread of 3.92\,dB
+exceeds it. Under street illumination the ordering reverses, because there the
+between-square range is 9.58\,dB against a median within-square spread of
+8.43\,dB, and that is the case the paper reports as going the other way.
+
+The between-square range is set by different pairs under the three models.
+Isotropic runs from the Zocalo down to Times Square, rooftop from the Zocalo
+down to Grand-Place, and street from Times Square down to Grand-Place, so Times
+Square is at one end under two models and at the other end under the third. That
+is the shape of the square doing the work. Its towers block the horizon, which
+costs it under isotropic illumination, and they leave the high elevations
+comparatively open, which pays under an illumination model whose weight sits low
+and near.
+
+The ground datum column is worth reading beside the rest, because it is a
+measured surface height in each mesh's own vertical frame and not a free choice.
+Its absolute value carries no meaning across squares and cancels in a ratio.
+Krakow and Toulouse are the two squares whose datum was corrected during the
+study, having previously sat 18.19\,m and 13.94\,m too high, which put their
+whole walks on a roof. Coming down to the pavement costs Krakow 1.40\,dB
+isotropic, 5.26\,dB rooftop and 12.97\,dB street, and Toulouse 1.29, 1.83 and
+2.61\,dB. Every other square moved by less than 0.25\,dB isotropic under the
+same fix, so the datum is not a detail at the two squares where it was wrong and
+is not a worry anywhere else.
+
+\section{Material assignment}
+\label{sec:si-materials}
+
+Every square in the headline run carries the same four-class assignment, so
+material is held fixed while form varies. The class of a triangle follows from
+its normal and its height. A triangle whose unit normal has $\hat{n}_z > 0.5$ is
+ground when its centroid is within 4\,m of the ground datum and roof when it is
+above that. A triangle with $\hat{n}_z < -0.5$ is a soffit. Everything else is a
+facade. The datum is the one measured for that square, so the ground and roof
+split is anchored to the pavement the walk stands on.
+
+\cref{tab:si-materials} gives what each class is made of. The permittivity is
+the ITU-R P.2040-4 power-law row for that material, $\epsilon_r = a f^b$ with
+$f$ in GHz, evaluated at 15\,GHz, with the conductivity from the same row
+carried into the imaginary part \cite{itu2040}. The roughness is an RMS height
+that sets the specular and diffuse split.
+
+The roughness column is the weakest part of the table and it is worth saying
+why. P.2040-4 tabulates permittivity and conductivity and supplies no facade
+roughness at all, so the roughness values come from a separate file that carries
+no ITU standing. The functional form it uses, a coherent reflected fraction of
+$\exp(-g^2)$ with $g = 4\pi s \cos\theta / \lambda$, is the one in ITU-R
+P.2146-0, which is a sea-surface recommendation, so applying it to a brick wall
+is an extrapolation. Of the four rows, the facade rests on a millimetre-wave
+measurement of a brick wall and the soffit on laboratory metrology of cast
+concrete, while the ground and the roof are extrapolated, and together those two
+hold about half the triangle area of every square. The RMS height in
+\cref{tab:si-materials} is also the effective one the tracer uses, which folds
+any periodic step in the surface into the random part in quadrature. That
+treatment overstates the coherent loss for a strictly periodic grating, so the
+specular fractions in this study are a lower bound and the diffuse shares an
+upper bound.
+
+\begin{table}[t]
+  \centering
+  \caption{The four-class material assignment, common to all eleven squares.}
+  \label{tab:si-materials}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{llrl}
+    \toprule
+    Class & ITU-R row & RMS (mm) & Roughness evidence \\
+    \midrule
+    Ground  & asphalt concrete & 3.79 & extrapolated \\
+    Facade  & brick            & 1.16 & mm-wave measurement \\
+    Roof    & concrete         & 0.60 & extrapolated \\
+    Soffit  & concrete         & 0.15 & laboratory metrology \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+What that assignment amounts to in each square is set by how much area each
+class holds, and that varies a great deal. \cref{tab:si-areas} gives the split.
+Facade area runs from 43.9\% at the Zocalo to 72.6\% at Times Square, and ground
+area runs from 10.8\% at Times Square to 25.7\% at Korenmarkt. The two are not
+independent, because a square hemmed in by tall buildings has a large facade and
+a small visible pavement. So although the material table is identical
+everywhere, the material a ray meets is not, and part of what
+\cref{tab:si-sites} shows as a difference in form is carried by that.
+
+\begin{table}[t]
+  \centering
+  \caption{Share of triangle area per class at the 250\,m crop.}
+  \label{tab:si-areas}
+  \footnotesize
+  \begin{tabular}{lrrrr}
+    \toprule
+    Square & Ground & Facade & Roof & Soffit \\
+    \midrule
+    Brussels, Grand-Place       & 0.197 & 0.501 & 0.251 & 0.051 \\
+    Ghent, Korenmarkt           & 0.257 & 0.441 & 0.248 & 0.054 \\
+    Krakow, Rynek Glowny        & 0.187 & 0.498 & 0.259 & 0.056 \\
+    London, Trafalgar Square    & 0.152 & 0.531 & 0.212 & 0.104 \\
+    Madrid, Plaza Mayor         & 0.149 & 0.529 & 0.281 & 0.041 \\
+    Mexico City, Zocalo         & 0.201 & 0.439 & 0.246 & 0.114 \\
+    Milan, Piazza del Duomo     & 0.187 & 0.577 & 0.147 & 0.089 \\
+    New York, Times Square      & 0.108 & 0.726 & 0.095 & 0.072 \\
+    Prague, Old Town Square     & 0.231 & 0.468 & 0.257 & 0.044 \\
+    Tokyo, Hachiko crossing     & 0.144 & 0.608 & 0.163 & 0.086 \\
+    Toulouse, Place du Capitole & 0.133 & 0.508 & 0.311 & 0.048 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The image-derived route replaces the class of a triangle a panorama saw with one
+read from the photograph, and leaves every other triangle on the geometric rule.
+It reaches 3.2\% of triangle area at Korenmarkt at the 250\,m crop and less at
+every other square, which is why the eleven-square comparison runs on the
+geometric assignment and the image comparison is reported separately at one
+square.
+
+% LAW CHANGE NOTE, see ../docs/LAW_CHANGE.md. The crop radius sweep is per
+% illumination model, and the rooftop and street radii set the operating point,
+% so the choice of 250 m has to be measured again under the new law. The 60 m
+% isotropic radius and the sky fraction column stand. The surface interaction
+% sweep stands, because truncation is measured as a fraction of escaping power
+% before any weighting, though its per-model decibel columns move.
+\section{Convergence sweeps}
+\label{sec:si-convergence}
+
+Two operating points had to be chosen, the crop radius and the number of surface
+interactions, and both were measured rather than assumed. This section gives
+both sweeps at more resolution than the body has room for.
+
+\subsection{Crop radius}
+
+\cref{tab:si-crop} sweeps the radius the scene is cut at while holding the
+standpoints fixed inside the smallest crop, so every radius scores the same 32
+observers and only the surroundings change. Every radius uses the same seed, so
+the launch set is common to all nine and the comparison is paired at that level.
+
+\begin{table}[t]
+  \centering
+  \caption{Crop radius sweep at Korenmarkt, 32 fixed observers, 200\,000 rays,
+  three surface interactions. $\chi$ entries are means over the 32 observers.}
+  \label{tab:si-crop}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{rrrrrr}
+    \toprule
+    Radius (m) & Triangles & Isotropic & Rooftop & Street & Sky \\
+    \midrule
+    60  & 31\,706    & 0.30195 & 0.23900 & 0.14088 & 0.2351 \\
+    100 & 97\,114    & 0.28731 & 0.17428 & 0.08365 & 0.2233 \\
+    120 & 135\,640   & 0.28493 & 0.16344 & 0.06424 & 0.2216 \\
+    130 & 157\,862   & 0.28755 & 0.16567 & 0.06253 & 0.2235 \\
+    160 & 245\,112   & 0.28459 & 0.15131 & 0.02203 & 0.2215 \\
+    200 & 390\,518   & 0.28376 & 0.14606 & 0.01376 & 0.2210 \\
+    250 & 617\,091   & 0.28367 & 0.14559 & 0.01235 & 0.2209 \\
+    300 & 903\,712   & 0.28365 & 0.14559 & 0.01218 & 0.2209 \\
+    340 & 1\,159\,281 & 0.28364 & 0.14558 & 0.01209 & 0.2209 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Convergence is read as the smallest radius from which every later step is under
+half a decibel. On that rule the isotropic model and the sky fraction converge
+at 60\,m, the rooftop model at 100\,m and the street model at 200\,m. The
+ordering is the order in which the three models put their weight near the
+horizon, which is also the order of how much scene each one needs, because a ray
+leaving a standing head near the horizon travels a long way before it rises high
+enough for a building of ordinary height to intercept it. The published radius
+is 250\,m, past the last of the three.
+
+The 130\,m row breaks the monotone trend in all three columns. The builds at 60,
+100 and 120\,m are single precision and those from 130\,m up are double
+precision, so the series carries a real discontinuity at 125\,m and the 130\,m
+row should not be read as scene structure.
+
+\subsection{Number of surface interactions}
+
+\cref{tab:si-budget} sweeps the interaction budget at four squares against a
+reference of eight interactions with roulette off, on the same standpoints and
+the same seeds, so every row is a paired comparison and the differences carry
+almost no Monte Carlo noise. The shipped operating point is three interactions
+with roulette disabled.
+
+\begin{table}[t]
+  \centering
+  \caption{Three surface interactions against a reference of eight, 40
+  standpoints, 200\,000 rays, roulette off in both. Worst is the largest
+  absolute change over the 40 standpoints, in dB. Truncated share is the power
+  still in flight at the cut, as a share of the power that escaped.}
+  \label{tab:si-budget}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{Worst change (dB)} & \multicolumn{2}{c}{Truncated share} \\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-6}
+    Square & Isotr. & Rooftop & Street & median & worst \\
+    \midrule
+    Korenmarkt, 130\,m & 0.006 & 0.016 & 0.063 & 0.0037 & 0.0201 \\
+    Korenmarkt, 250\,m & 0.006 & 0.016 & 0.049 & 0.0044 & 0.0201 \\
+    Zocalo             & 0.006 & 0.031 & 0.071 & 0.0049 & 0.0267 \\
+    Plaza Mayor        & 0.017 & 0.047 & 0.169 & 0.0048 & 0.0747 \\
+    Grand-Place        & 0.017 & 0.071 & 0.384 & 0.0094 & 0.0798 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+No standpoint at any of the four squares moves by half a decibel when the budget
+is cut from eight interactions to three. The worst single standpoint in the
+whole set is 0.384\,dB under street illumination at Grand-Place, which is also
+the most enclosed square in the study and the one with the largest truncated
+share. The paper quotes 0.063\,dB as the worst change, and that is the
+Korenmarkt figure at the 130\,m crop. It is not the worst across the four
+squares that were measured, and \cref{tab:si-budget} is the fuller statement.
+
+Truncation deletes power and never adds it, so a susceptibility at this budget
+is a lower bound rather than a two-sided estimate. The share still in flight at
+the cut is a few thousandths of the power that escaped at the median standpoint
+and under a tenth at the worst.
+
+One row of the sweep does cross half a decibel and it is not the shipped one.
+With roulette switched on from the third interaction, two of the 40 Grand-Place
+standpoints move past 0.5\,dB under street illumination, and they do so at the
+four, six and three interaction budgets alike. Roulette is unbiased, so those
+crossings are seed noise on the noisiest model at the most enclosed square
+rather than a truncation effect, and they are absent from the roulette-off
+configuration the study ships. The repository notes carry a claim that no
+standpoint out of 40 moves half a decibel at any budget, and that is true at
+Korenmarkt, where it was measured, and not at Grand-Place.
+
+Russian roulette is disabled at the shipped budget and this was also measured
+rather than preferred. At three interactions roulette can only kill a ray one
+step before the hard cap drops it anyway, so there is no work to buy. Measured
+over four Korenmarkt standpoints at the 250\,m crop with eight seeds each, the
+relative standard deviation of $\chi$ is 0.00083, 0.00807 and 0.02218 with
+roulette on against 0.00081, 0.00825 and 0.02177 with it off, which is the same
+number to the accuracy four standpoints can resolve, and off is the faster of
+the two at 101.9\,s against 106.4\,s for the same work. Roulette is unbiased
+whichever way the switch is set, so it never was and is not now what bounds the
+truncation.
+
+\subsection{Where the power is}
+
+Of the power launched from a standpoint at Korenmarkt, 79.0\% reaches a first
+surface, 8.85\% reaches a second, 1.19\% reaches a third, and everything past
+the third interaction adds up to 0.23\%. The remaining 21.0\% leaves the square
+without touching anything, which is the sky fraction seen from the other side.
+
+Those shares are pooled over the eight camera positions at the 130\,m crop
+rather than over the pedestrian walk, which is the standpoint set every exposure
+number in the paper uses. Pooled over the 40 walk standpoints instead, the
+untouched share is 23.6\% at the 130\,m crop and 22.6\% at 250\,m. The cameras
+stand in more open parts of the square than the average walk position, which is
+the whole of the difference. The three shares should be read as the shape of the
+budget and not as a per-standpoint figure.
+
+A caution about a related number. One in the repository notes gives the
+untouched share as 10.7\%, computed as one minus the sum of the per-depth
+incident shares. Those shares are not a partition, because a ray that reaches
+the third interaction was counted at the first and the second as well, so their
+sum is not the touched fraction and one minus it is not the untouched one. The
+correct figure is the first-depth complement given above.
+
+\begin{thebibliography}{99}
+
+\bibitem{itu2040}
+International Telecommunication Union, ``Effects of building materials and
+structures on radio-wave propagation in the range of 1 MHz to 450 GHz,''
+Recommendation ITU-R P.2040-4, 2025.
+
+\bibitem{numpy}
+C.~R.~Harris \emph{et al.}, ``Array programming with NumPy,'' \emph{Nature},
+vol. 585, no. 7825, pp. 357--362, 2020.
+
+
+\bibitem{storn}
+R.~Storn and K.~Price, ``Differential evolution: a simple and efficient
+heuristic for global optimization over continuous spaces,'' \emph{J. Global
+Optim.}, vol. 11, no. 4, pp. 341--359, 1997.
+
+\bibitem{scipy}
+P.~Virtanen \emph{et al.}, ``SciPy 1.0: fundamental algorithms for scientific
+computing in Python,'' \emph{Nat. Methods}, vol. 17, no. 3, pp. 261--272, 2020.
+
+\bibitem{mask2former}
+B.~Cheng, I.~Misra, A.~G.~Schwing, A.~Kirillov, and R.~Girdhar,
+``Masked-attention mask transformer for universal image segmentation,'' in
+\emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit.}, 2022,
+pp. 1290--1299.
+
+\bibitem{vistas}
+G.~Neuhold, T.~Ollmann, S.~Rota~Bul\`o, and P.~Kontschieder, ``The Mapillary
+Vistas dataset for semantic understanding of street scenes,'' in \emph{Proc.
+IEEE Int. Conf. Comput. Vis.}, 2017, pp. 4990--4999.
+
+\bibitem{douglas}
+D.~H.~Douglas and T.~K.~Peucker, ``Algorithms for the reduction of the number of
+points required to represent a digitized line or its caricature,''
+\emph{Cartographica}, vol. 10, no. 2, pp. 112--122, 1973.
+
+\end{thebibliography}
+
+\end{document}

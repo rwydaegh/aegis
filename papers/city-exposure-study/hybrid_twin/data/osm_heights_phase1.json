@@ -1,0 +1,6468 @@
+[
+ {
+  "id": 96826469,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "18;20;22;24",
+   "addr:street": "Jan Breydelstraat",
+   "building": "yes",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19253",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19253",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1363850",
+   "start_date": "early C18"
+  }
+ },
+ {
+  "id": 96826470,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "30",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "description": "Gereconstrueerde gevel van 1653",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19259",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19259",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363848",
+   "start_date": "1653..1960"
+  }
+ },
+ {
+  "id": 96826626,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "36",
+   "addr:street": "Jan Breydelstraat",
+   "building": "yes",
+   "description": "Traditioneel diephuis anno 1645",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19261",
+   "ref:OnroerendErfgoed": "19261",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363846",
+   "start_date": "1645"
+  }
+ },
+ {
+  "id": 96826627,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "32;34",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19260",
+   "historic": "building",
+   "ref:OnroerendErfgoed": "19260",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363847",
+   "start_date": "C16",
+   "wikimedia_commons": "File:Gent_Huis_met_Houten_Gevel_R01.jpg"
+  }
+ },
+ {
+  "id": 96826628,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "38;40;42",
+   "addr:street": "Jan Breydelstraat",
+   "building": "yes",
+   "description": "Diephuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19262",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19262",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1363844",
+   "start_date": "C17..early C18"
+  }
+ },
+ {
+  "id": 97004269,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "11;13;15;17;19",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19254",
+   "ref:OnroerendErfgoed": "19254",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363853"
+  }
+ },
+ {
+  "id": 97004271,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "7;9",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "yes",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363341"
+  }
+ },
+ {
+  "id": 97004272,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "35;37",
+   "addr:street": "Jan Breydelstraat",
+   "building": "yes",
+   "description": "Burgerhuis in second-empirestijl",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19258",
+   "ref:OnroerendErfgoed": "19258",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363845"
+  }
+ },
+ {
+  "id": 97004274,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "9",
+   "addr:street": "Jan Breydelstraat",
+   "building": "yes",
+   "description": "Woonhuis met ateliers en voortuin",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19249",
+   "ref:OnroerendErfgoed": "19249",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1365409"
+  }
+ },
+ {
+  "id": 97004275,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363363"
+  }
+ },
+ {
+  "id": 97004276,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "11",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "yes",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363326"
+  }
+ },
+ {
+  "id": 97004277,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "33",
+   "addr:street": "Jan Breydelstraat",
+   "building": "yes",
+   "description": "Breedhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19257",
+   "ref:OnroerendErfgoed": "19257",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363343"
+  }
+ },
+ {
+  "id": 97004279,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:city": "Gent",
+   "addr:housename": "Huis der Gekroonde Hoofden",
+   "addr:housenumber": "4",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "yes",
+   "building:levels": "3",
+   "description": "Renaissancehuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19003",
+   "ref:OnroerendErfgoed": "19003",
+   "roof:levels": "2",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363839",
+   "wikidata": "Q2480460",
+   "wikimedia_commons": "File:Old_house_in_Ghent.JPG",
+   "wikipedia": "nl:De Gekroonde Hoofden"
+  }
+ },
+ {
+  "id": 97004280,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "21;23;25;27",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "description": "Dubbelhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19255",
+   "ref:OnroerendErfgoed": "19255",
+   "source:geometry:date": "2018-11-14",
+   "source:geometry:ref": "Gbg/1363852"
+  }
+ },
+ {
+  "id": 97004282,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380489"
+  }
+ },
+ {
+  "id": 97004283,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "29;31",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "description": "Diephuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19256",
+   "ref:OnroerendErfgoed": "19256",
+   "source:geometry:date": "2018-11-14",
+   "source:geometry:ref": "Gbg/5380530"
+  }
+ },
+ {
+  "id": 97507956,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "16;16A-16B",
+   "addr:postcode": "9000",
+   "addr:street": "Klein Turkije",
+   "amenity": "bar",
+   "building": "yes",
+   "dog": "no",
+   "entrance:kerb:height": "0.85",
+   "entrance:ramp": "no",
+   "entrance:step_count": "5",
+   "entrance:width": "1.05",
+   "name": "Missy Sippy Blues & Roots Club",
+   "opening_hours": "Mo off; Tu-Su 14:00+",
+   "roof:colour": "#551111",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360562",
+   "website": "https://www.missy-sippy.be/"
+  }
+ },
+ {
+  "id": 97507957,
+  "height": 15.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "10",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "building:colour": "#373636",
+   "building:levels": "3",
+   "height": "15",
+   "roof:colour": "#555856",
+   "roof:material": "slate",
+   "roof:shape": "mansard",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359915"
+  }
+ },
+ {
+  "id": 97507960,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "9",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361147"
+  }
+ },
+ {
+  "id": 97507961,
+  "height": 18.0,
+  "source": "tag:height",
+  "tags": {
+   "access": "yes",
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "4",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "amenity": "cafe",
+   "brand": "Starbucks",
+   "brand:wikidata": "Q37158",
+   "building": "yes",
+   "building:colour": "#7e766e",
+   "building:levels": "3",
+   "building:material": "brick",
+   "check_date": "2025-04-20",
+   "created_by": "On Wheels: 3.0.3",
+   "drive_through": "no",
+   "entrance:kerb:height": "0.76",
+   "entrance:step_count": "4",
+   "entrance:width": "1.82",
+   "height": "18",
+   "internet_access": "wlan",
+   "internet_access:fee": "no",
+   "name": "Starbucks",
+   "official_name": "Starbucks Coffee",
+   "outdoor_seating": "yes",
+   "payment:cash": "yes",
+   "payment:mastercard": "yes",
+   "payment:visa": "yes",
+   "roof:shape": "gabled",
+   "smoking": "no",
+   "source": "survey",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361825",
+   "takeaway": "yes",
+   "toilets": "yes",
+   "toilets:access": "yes",
+   "toilets:menstrual_products": "no",
+   "website": "https://www.starbucks.nl/store-locator/search/location/gent/detail/68691",
+   "wheelchair": "yes",
+   "wheelchair:description": "Er is een rolstoellift en de beide deuren kunnen open"
+  }
+ },
+ {
+  "id": 97507963,
+  "height": 14.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "12",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "building": "retail",
+   "building:colour": "white",
+   "building:levels": "4",
+   "building:material": "plaster",
+   "height": "14",
+   "roof:colour": "#6e6c62",
+   "roof:material": "slate",
+   "roof:shape": "hipped",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/1361146"
+  }
+ },
+ {
+  "id": 97507965,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "8;10",
+   "addr:postcode": "9000",
+   "addr:street": "Klein Turkije",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359914"
+  }
+ },
+ {
+  "id": 97507966,
+  "height": 18.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:country": "BE",
+   "addr:flats": "201;401",
+   "addr:housename": "Borluutsteen",
+   "addr:housenumber": "7-8",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "building:colour": "#999995",
+   "building:levels": "5",
+   "building:material": "brick",
+   "description": "Diephuis",
+   "height": "18",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25153",
+   "ref:OnroerendErfgoed": "25153",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359730",
+   "wikimedia_commons": "File:ID25153-Gent_Borluutsteen-PM_66810.jpg"
+  }
+ },
+ {
+  "id": 97507969,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2;4;6",
+   "addr:street": "Klein Turkije",
+   "building": "yes",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/1361822"
+  }
+ },
+ {
+  "id": 97507970,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "18",
+   "addr:postcode": "9000",
+   "addr:street": "Klein Turkije",
+   "building": "yes",
+   "image": "https://images.mapillary.com/7cDMhZ2fNdrg9PmqaSH4RF/thumb-2048.jpg",
+   "mapillary": "2077565292386034",
+   "roof:colour": "#551111",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361823"
+  }
+ },
+ {
+  "id": 97507971,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "1",
+   "addr:street": "Goudenleeuwplein",
+   "building": "yes",
+   "description": "Hoekhuis, eertijds De Spiegel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24711",
+   "historic": "building",
+   "old_name": "De Spiegel",
+   "ref:OnroerendErfgoed": "24711",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361821",
+   "start_date": "C13..1778"
+  }
+ },
+ {
+  "id": 97507973,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "20",
+   "addr:postcode": "9000",
+   "addr:street": "Klein Turkije",
+   "building": "yes",
+   "image": "https://images.mapillary.com/7cDMhZ2fNdrg9PmqaSH4RF/thumb-2048.jpg",
+   "mapillary": "2077565292386034",
+   "roof:colour": "#551111",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360516"
+  }
+ },
+ {
+  "id": 97507974,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "14;14A",
+   "addr:postcode": "9000",
+   "addr:street": "Klein Turkije",
+   "building": "yes",
+   "roof:colour": "#551111",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361154"
+  }
+ },
+ {
+  "id": 97507975,
+  "height": 13.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "11",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "building": "retail",
+   "building:colour": "#b38968",
+   "building:levels": "3",
+   "building:material": "brick",
+   "height": "13",
+   "roof:shape": "flat",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360437"
+  }
+ },
+ {
+  "id": 97507976,
+  "height": 18.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "5-6",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "building:colour": "#966f60",
+   "building:levels": "3",
+   "building:material": "brick",
+   "height": "18",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360600"
+  }
+ },
+ {
+  "id": 97507978,
+  "height": 17.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "14;14A-14C",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "building:colour": "#e08d63",
+   "building:levels": "4",
+   "building:material": "brick",
+   "height": "17",
+   "image": "https://images.mapillary.com/V1hXyiaVeyXGHgk0oV2LMn/thumb-2048.jpg",
+   "mapillary": "323234559318875",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361145"
+  }
+ },
+ {
+  "id": 105194546,
+  "height": 18.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "30",
+   "addr:street": "Sint-Michielsplein",
+   "amenity": "place_of_worship",
+   "building": "church",
+   "building:architecture": "gothic;baroque",
+   "denomination": "roman_catholic",
+   "entrance:kerb:height": "0",
+   "entrance:step_count": "0",
+   "entrance:width": "0.9",
+   "height": "18",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25841",
+   "historic": "church",
+   "image": "https://commons.wikimedia.org/wiki/File:Sint-Michielskerk.JPG",
+   "name": "Sint-Michielskerk",
+   "name:de": "Kirche Sankt Michael",
+   "name:en": "Saint Michael's Church",
+   "name:es": "Iglesia de San Miguel",
+   "name:etymology:wikidata": "Q45581",
+   "name:fr": "\u00c9glise Saint-Michel",
+   "ref:OnroerendErfgoed": "25841",
+   "religion": "christian",
+   "roof:height": "5",
+   "roof:shape": "hipped",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1364006",
+   "start_date": "C15..C17",
+   "wikidata": "Q1317676",
+   "wikimedia_commons": "Category:Sint-Michielskerk (Gent)",
+   "wikipedia": "nl:Sint-Michielskerk (Gent)"
+  }
+ },
+ {
+  "id": 105194548,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "5",
+   "addr:street": "Onderbergen",
+   "building": "university",
+   "description": "Pand of Voormalig Dominicanerklooster",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25435",
+   "historic": "monastery",
+   "name": "Het Pand",
+   "old_name": "Dominicanenklooster",
+   "operator": "Universiteit Gent",
+   "ref:OnroerendErfgoed": "25435",
+   "start_date": "C13",
+   "wikidata": "Q1927690",
+   "wikimedia_commons": "Category:Pand",
+   "wikipedia": "nl:Het Pand"
+  }
+ },
+ {
+  "id": 107474538,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:housenumber": "8",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "house",
+   "building:levels": "3",
+   "description": "Gerestaureerde trapgevel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19005",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19005",
+   "roof:levels": "1",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363837",
+   "start_date": "C17"
+  }
+ },
+ {
+  "id": 107474539,
+  "height": 10.4,
+  "source": "tag:levels",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:flats": "1;101",
+   "addr:housenumber": "12",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "house",
+   "building:levels": "2",
+   "description": "Diephuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19009",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19009",
+   "roof:levels": "1",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2020-12-10",
+   "source:geometry:ref": "Gbg/1363836",
+   "start_date": "1712..1945"
+  }
+ },
+ {
+  "id": 107474540,
+  "height": 10.4,
+  "source": "tag:levels",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:city": "Gent",
+   "addr:housename": "In het Meuleken",
+   "addr:housenumber": "10",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "house",
+   "building:levels": "2",
+   "description": "Diephuis In het Meuleken",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19007",
+   "ref:OnroerendErfgoed": "19007",
+   "roof:levels": "1",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363835"
+  }
+ },
+ {
+  "id": 107474542,
+  "height": 10.4,
+  "source": "tag:levels",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:housenumber": "16",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "house",
+   "building:levels": "2",
+   "description": "Twee gerestaureerde huizen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19013",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19013",
+   "roof:levels": "1",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363833",
+   "start_date": "1671"
+  }
+ },
+ {
+  "id": 107474543,
+  "height": 10.4,
+  "source": "tag:levels",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:city": "Gent",
+   "addr:housenumber": "14;14A",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "house",
+   "building:levels": "2",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19011",
+   "ref:OnroerendErfgoed": "19011",
+   "roof:levels": "1",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2020-12-10",
+   "source:geometry:ref": "Gbg/6204825"
+  }
+ },
+ {
+  "id": 107539763,
+  "height": 7.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "16",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "building:colour": "#ddaa44",
+   "check_date:shop": "2023-11-13",
+   "description": "Postgebouw in eclectische stijl",
+   "entrance:kerb:height": "1.44",
+   "entrance:step_count": "9",
+   "entrance:width": "1.18",
+   "height": "7",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25159",
+   "mapillary": "963147854503880",
+   "name": "De Post",
+   "note": "height to lowest eaves",
+   "opening_hours": "Mo-Sa 10:00-18:00",
+   "ref:OnroerendErfgoed": "25159",
+   "shop": "mall",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362637",
+   "wheelchair": "no",
+   "wikidata": "Q2526465",
+   "wikimedia_commons": "File:Gent_Korenmarkt_Oud_Postkantoor_9-11-2010_16-28-56.JPG",
+   "wikipedia": "nl:Oude Postkantoor (Gent)"
+  }
+ },
+ {
+  "id": 107539768,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "addr:housenumber": "1",
+   "addr:street": "Sint-Michielshelling",
+   "building": "retail",
+   "building:levels": "3",
+   "roof:levels": "4",
+   "roof:shape": "mansard",
+   "source:geometry:date": "2018-05-11",
+   "source:geometry:ref": "Gbg/6309480"
+  }
+ },
+ {
+  "id": 107540014,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "22;22B",
+   "addr:postcode": "9000",
+   "addr:street": "Klein Turkije",
+   "building": "yes",
+   "image": "https://images.mapillary.com/7cDMhZ2fNdrg9PmqaSH4RF/thumb-2048.jpg",
+   "mapillary": "2077565292386034",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361824"
+  }
+ },
+ {
+  "id": 107686696,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "10-15",
+   "addr:street": "Cataloni\u00ebstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107686700,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6-9",
+   "addr:street": "Cataloni\u00ebstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107686933,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "9-11",
+   "addr:street": "Veldstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107686934,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5-7",
+   "addr:street": "Veldstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107687450,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "15",
+   "addr:street": "Veldstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107687451,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "13",
+   "addr:street": "Veldstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107687455,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "19",
+   "addr:street": "Veldstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107687457,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "17",
+   "addr:street": "Veldstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107715477,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "4",
+   "addr:postcode": "9000",
+   "addr:street": "Cataloni\u00ebstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107715479,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "3",
+   "addr:postcode": "9000",
+   "addr:street": "Cataloni\u00ebstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107715480,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "2",
+   "addr:postcode": "9000",
+   "addr:street": "Cataloni\u00ebstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107716563,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "14-30",
+   "addr:street": "Sint-Niklaasstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 107718067,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:street": "Veldstraat",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362077"
+  }
+ },
+ {
+  "id": 107718068,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "10;12;16;22;24;26;28;30;32",
+   "addr:street": "Veldstraat",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361611"
+  }
+ },
+ {
+  "id": 107718071,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361609"
+  }
+ },
+ {
+  "id": 107718075,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6",
+   "addr:street": "Veldstraat",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361610"
+  }
+ },
+ {
+  "id": 107725021,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "access": "customers",
+   "addr:city": "Gent",
+   "addr:housenumber": "4",
+   "addr:postcode": "9000",
+   "addr:street": "Schuurkenstraat",
+   "amenity": "restaurant",
+   "building": "yes",
+   "cuisine": "regional",
+   "entrance:kerb:height": "0.09",
+   "entrance:ramp": "yes",
+   "entrance:step_count": "1",
+   "entrance:width": "0.95",
+   "name": "Pakhuis",
+   "phone": "+32 9 223 55 55",
+   "toilets:wheelchair": "yes",
+   "toilets:wheelchair:accessible_via": "bereikbaar met helling",
+   "website": "https://www.pakhuis.be/"
+  }
+ },
+ {
+  "id": 107725356,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3",
+   "addr:postcode": "9000",
+   "addr:street": "Predikherenlei",
+   "building": "house",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/6204834"
+  }
+ },
+ {
+  "id": 107725358,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:postcode": "9000",
+   "addr:street": "Predikherenlei",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361608"
+  }
+ },
+ {
+  "id": 107725359,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4;4A",
+   "addr:postcode": "9000",
+   "addr:street": "Predikherenlei",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361287"
+  }
+ },
+ {
+  "id": 107725785,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6",
+   "addr:postcode": "9000",
+   "addr:street": "Predikherenlei",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361261"
+  }
+ },
+ {
+  "id": 107725788,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "1;101-102",
+   "addr:housenumber": "5",
+   "addr:postcode": "9000",
+   "addr:street": "Predikherenlei",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361895"
+  }
+ },
+ {
+  "id": 107725918,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "roof:colour": "#333333",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361265"
+  }
+ },
+ {
+  "id": 107725919,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5-6",
+   "addr:street": "Sint-Michielshelling",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380342"
+  }
+ },
+ {
+  "id": 107725920,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3",
+   "addr:street": "Sint-Michielshelling",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361264"
+  }
+ },
+ {
+  "id": 107725921,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:postcode": "9000",
+   "addr:street": "Jan van Stopenberghestraat",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362070"
+  }
+ },
+ {
+  "id": 107833123,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:street": "Sint-Michielshelling",
+   "building": "yes",
+   "source:geometry:date": "2018-05-11",
+   "source:geometry:ref": "Gbg/1362076"
+  }
+ },
+ {
+  "id": 112571851,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1",
+   "addr:street": "Schuurkenstraat",
+   "building": "apartments",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362065"
+  }
+ },
+ {
+  "id": 121290167,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "21",
+   "addr:street": "Korenlei",
+   "building": "yes",
+   "building:architecture": "neoclassicism",
+   "castle_type": "manor",
+   "description": "Neoclassicistisch herenhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25145",
+   "historic": "castle",
+   "image": "https://commons.wikimedia.org/wiki/File:20111023_Gent_(0006).jpg",
+   "ref:OnroerendErfgoed": "25145",
+   "start_date": "1850",
+   "start_date:edtf": "1830~/1870~",
+   "start_date:note": "Mid of the 19th century.",
+   "wikimedia_commons": "Category:Korenlei 21"
+  }
+ },
+ {
+  "id": 121290170,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "16",
+   "addr:street": "Sint-Michielsplein",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362703"
+  }
+ },
+ {
+  "id": 121291703,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "13",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363325"
+  }
+ },
+ {
+  "id": 134866547,
+  "height": 20.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:housename": "Stadshal",
+   "building": "public",
+   "height": "20",
+   "image": "https://commons.wikimedia.org/wiki/File:20160416-Belgium-Gent-Stadshal.jpg",
+   "loc_name": "Schaapstal",
+   "name": "Stadshal",
+   "name:es": "Pabell\u00f3n Municipal",
+   "wikidata": "Q4359785",
+   "wikimedia_commons": "Category:Stadshal (Gent)",
+   "wikipedia": "en:Stadshal (Ghent)"
+  }
+ },
+ {
+  "id": 139868656,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "19",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361160"
+  }
+ },
+ {
+  "id": 139868661,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "18",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359913"
+  }
+ },
+ {
+  "id": 139868666,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "17",
+   "addr:street": "Korenmarkt",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359912"
+  }
+ },
+ {
+  "id": 139870206,
+  "height": 10.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "14",
+   "addr:street": "Graslei",
+   "building": "yes",
+   "description": "Dubbelhuis, gildehuis der Vrije Schippers",
+   "height": "10",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24761",
+   "ref:OnroerendErfgoed": "24761",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2012-02-14",
+   "source:geometry:ref": "Gbg/1361157",
+   "wikidata": "Q2912014",
+   "wikimedia_commons": "File:Gent_Vrije_Schippers.JPG",
+   "wikipedia": "nl:Gildehuis der Vrije Schippers"
+  }
+ },
+ {
+  "id": 140244218,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "access": "customers",
+   "addr:city": "Gent",
+   "addr:housename": "De Fonteyne",
+   "addr:housenumber": "7",
+   "addr:postcode": "9000",
+   "addr:street": "Goudenleeuwplein",
+   "amenity": "restaurant",
+   "building": "yes",
+   "check_date": "2025-02-03",
+   "created_by": "On Wheels: 3.0.3",
+   "cuisine": "american",
+   "entrance:kerb:height": "0.5",
+   "entrance:step_count": "3",
+   "entrance:width": "1.22",
+   "heritage": "4",
+   "heritage:description": "De Fonteyne, hoekhuis",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24714",
+   "layer": "1",
+   "name": "Amadeus",
+   "phone": "+32 497 49 51 05",
+   "ref:OnroerendErfgoed": "24714",
+   "website": "https://amadeus-resto.be/amadeus-gent-2/",
+   "wheelchair:description": "Terras toegankelijk"
+  }
+ },
+ {
+  "id": 140244221,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "35",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360375"
+  }
+ },
+ {
+  "id": 140244355,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:flats": "101;201",
+   "addr:housenumber": "13;13A",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361150"
+  }
+ },
+ {
+  "id": 166384756,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:street": "Mageleinstraat",
+   "building": "apartments",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362084"
+  }
+ },
+ {
+  "id": 175020059,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "19",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360723"
+  }
+ },
+ {
+  "id": 175020060,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "25",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361148"
+  }
+ },
+ {
+  "id": 175020061,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "17",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361149"
+  }
+ },
+ {
+  "id": 175020062,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "27;29;31;27A-27F",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/1360906"
+  }
+ },
+ {
+  "id": 175020063,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "9",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2018-08-20",
+   "source:geometry:ref": "Gbg/1360832"
+  }
+ },
+ {
+  "id": 175020064,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "7",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361152"
+  }
+ },
+ {
+  "id": 175020065,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "23",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360788"
+  }
+ },
+ {
+  "id": 175020066,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2018-08-20",
+   "source:geometry:ref": "Gbg/1360787"
+  }
+ },
+ {
+  "id": 175020067,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3-3A",
+   "addr:street": "Goudenleeuwplein",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360786"
+  }
+ },
+ {
+  "id": 175020068,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "11",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380336"
+  }
+ },
+ {
+  "id": 175020069,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "21",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361828"
+  }
+ },
+ {
+  "id": 175020072,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "1;101-102",
+   "addr:housenumber": "1",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361153"
+  }
+ },
+ {
+  "id": 175020073,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "33",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361827"
+  }
+ },
+ {
+  "id": 175020074,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "3",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360871"
+  }
+ },
+ {
+  "id": 241296641,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "image": "https://images.mapillary.com/gUwzc38DD2qNB8Aj7MxTz0/thumb-2048.jpg",
+   "layer": "1",
+   "man_made": "tower",
+   "mapillary": "223795275805342",
+   "tower:type": "bell_tower"
+  }
+ },
+ {
+  "id": 247728798,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "26",
+   "addr:street": "Jan Breydelstraat",
+   "building": "apartments",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19253",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19253",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1363849",
+   "start_date": "early C18"
+  }
+ },
+ {
+  "id": 247728816,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:housenumber": "6",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "house",
+   "building:levels": "3",
+   "description": "Gerestaureerde trapgevel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19005",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19005",
+   "roof:levels": "1",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363838",
+   "start_date": "C17"
+  }
+ },
+ {
+  "id": 256401204,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "2",
+   "addr:street": "Onderbergen",
+   "building": "house",
+   "description": "Hoekhuis, deel van Hof van Ravenstein",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25436",
+   "ref:OnroerendErfgoed": "25436",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1364749"
+  }
+ },
+ {
+  "id": 256401206,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "access": "private",
+   "addr:housenumber": "20",
+   "addr:street": "Korenlei",
+   "architect": "Achille Marchand",
+   "architect:wikidata": "Q87649230",
+   "building": "residential",
+   "castle_type": "manor",
+   "description": "Breedhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25144",
+   "historic": "castle",
+   "ref:OnroerendErfgoed": "25144",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1362896",
+   "start_date": "early C20"
+  }
+ },
+ {
+  "id": 256401207,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "22",
+   "addr:street": "Korenlei",
+   "building": "yes",
+   "description": "Hoekhuis met het Hof van Fiennes",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25146",
+   "ref:OnroerendErfgoed": "25146",
+   "wikimedia_commons": "File:20111023_Gent_(0005).jpg"
+  }
+ },
+ {
+  "id": 256401208,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "access": "private",
+   "addr:housenumber": "17-19",
+   "addr:street": "Korenlei",
+   "building": "residential",
+   "building:architecture": "neoclassicism",
+   "castle_type": "manor",
+   "description": "Neoclassicistisch herenhuis Hotel de Ghellinck",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25143",
+   "historic": "castle",
+   "old_name": "Hotel de Ghellinck",
+   "ref:OnroerendErfgoed": "25143",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363020",
+   "start_date": "1849",
+   "wikimedia_commons": "File:Gent_Korenlei_17-19,_18_-_179268_-_onroerenderfgoed.jpg"
+  }
+ },
+ {
+  "id": 257028577,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "2;3",
+   "addr:street": "Sint-Michielsplein",
+   "building": "house",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25843",
+   "ref:OnroerendErfgoed": "25843",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1364748"
+  }
+ },
+ {
+  "id": 422159948,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Sint-Michielsplein",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1364751"
+  }
+ },
+ {
+  "id": 422159952,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5;5A-5E",
+   "addr:street": "Sint-Michielsplein",
+   "building": "yes",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1364750"
+  }
+ },
+ {
+  "id": 425262065,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "1;101;201",
+   "addr:housenumber": "19",
+   "addr:street": "Sint-Michielsplein",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362704"
+  }
+ },
+ {
+  "id": 425262066,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362649"
+  }
+ },
+ {
+  "id": 425262067,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "building": "house",
+   "building:architecture": "romanesque",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25148",
+   "historic": "building",
+   "old_name": "De Lintworm en Krocht",
+   "ref:OnroerendErfgoed": "25148",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363029",
+   "start_date": "~1200..1662"
+  }
+ },
+ {
+  "id": 426632589,
+  "height": 10.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housename": "Cooremetershuys",
+   "addr:housenumber": "12",
+   "addr:street": "Graslei",
+   "building": "yes",
+   "description": "Dubbelhuis, Cooremetershuys",
+   "height": "10",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24760",
+   "ref:OnroerendErfgoed": "24760",
+   "roof:colour": "darkred",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362514",
+   "wikidata": "Q55441742",
+   "wikimedia_commons": "File:Gildehuis_van_de_korenmeters_(Gent).JPG"
+  }
+ },
+ {
+  "id": 426632591,
+  "height": 7.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "11",
+   "addr:street": "Graslei",
+   "building": "yes",
+   "description": "Enkelhuisje, oorspronkelijk een tolhuisje",
+   "flickr": "https://www.flickr.com/photos/erfgoed/3130889710",
+   "height": "7",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24759",
+   "historic": "building",
+   "image": "https://commons.wikimedia.org/wiki/File:House_on_the_Graslei,_Ghent,_Belgium.jpg",
+   "ref:OnroerendErfgoed": "24759",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360376",
+   "start_date": "1682",
+   "wikidata": "Q14495587",
+   "wikimedia_commons": "Category:Tolhuisje (Graslei)",
+   "wikipedia": "nl:Tolhuisje (Gent)"
+  }
+ },
+ {
+  "id": 426632593,
+  "height": 10.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "10",
+   "addr:street": "Graslei",
+   "building": "yes",
+   "building:architecture": "romanesque",
+   "height": "10",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24758",
+   "historic": "warehouse",
+   "old_name": "Spijker",
+   "ref:OnroerendErfgoed": "24758",
+   "roof:colour": "darkred",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360216",
+   "start_date": "late C12"
+  }
+ },
+ {
+  "id": 426636343,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:flats": "1-2;101-102;201-202;301-302;401",
+   "addr:housenumber": "2",
+   "addr:street": "Schuurkenstraat",
+   "building": "apartments",
+   "description": "Onderstation",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/200956",
+   "ref:OnroerendErfgoed": "200956"
+  }
+ },
+ {
+  "id": 437959997,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "17-23",
+   "addr:postcode": "9000",
+   "addr:street": "Sint-Niklaasstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 437959998,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 437959999,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 437960001,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 437960002,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "2-4",
+   "addr:postcode": "9000",
+   "addr:street": "Heilige-Geeststraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 438011482,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "101-102;201",
+   "addr:housenumber": "4;6",
+   "addr:street": "Mageleinstraat",
+   "building": "apartments",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361361"
+  }
+ },
+ {
+  "id": 438011483,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "8",
+   "addr:street": "Mageleinstraat",
+   "building": "yes",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/1361250"
+  }
+ },
+ {
+  "id": 438011484,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3;3A-3D",
+   "addr:street": "Heilige-Geeststraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361303"
+  }
+ },
+ {
+  "id": 438011487,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1-5",
+   "addr:street": "Emile Braunplein",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362083"
+  }
+ },
+ {
+  "id": 438011492,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "10",
+   "addr:street": "Mageleinstraat",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361633"
+  }
+ },
+ {
+  "id": 438011494,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "101;201;301",
+   "addr:housenumber": "1",
+   "addr:street": "Heilige-Geeststraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361251"
+  }
+ },
+ {
+  "id": 438011495,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362081"
+  }
+ },
+ {
+  "id": 438011498,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "12;14;16;18;20;22;24;26;28;30",
+   "addr:street": "Mageleinstraat",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361257"
+  }
+ },
+ {
+  "id": 438011499,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6-11",
+   "addr:street": "Emile Braunplein",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362082"
+  }
+ },
+ {
+  "id": 438321653,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 438321656,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "11",
+   "addr:street": "Mageleinstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 438321657,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Sint-Baafsplein",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 438321658,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 438321659,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3",
+   "addr:street": "Mageleinstraat",
+   "building": "apartments"
+  }
+ },
+ {
+  "id": 438321664,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "7-7A",
+   "addr:street": "Mageleinstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 438321665,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "8",
+   "addr:street": "Sint-Baafsplein",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 438321667,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "9",
+   "addr:street": "Mageleinstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 438321668,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "10;10A",
+   "addr:street": "Sint-Baafsplein",
+   "alt_name": "Hotel De Cock;Hotel D'Elhougne;Hotel Van Branteghem",
+   "building": "yes",
+   "building:architecture": "baroque",
+   "castle_type": "manor",
+   "description": "Herenhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25750",
+   "historic": "castle",
+   "old_name": "Hotel Haemelinck",
+   "ref:OnroerendErfgoed": "25750",
+   "start_date": "1739"
+  }
+ },
+ {
+  "id": 482744738,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "2-6C",
+   "addr:postcode": "9000",
+   "addr:street": "Sint-Niklaasstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 482744739,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "1",
+   "addr:postcode": "9000",
+   "addr:street": "Cataloni\u00ebstraat",
+   "building": "yes",
+   "description": "https://photos.app.goo.gl/DqPfRcFSUQFLhWKL8",
+   "image": "https://images.mapillary.com/VQhjZEfNFWRwt3ROhFRIoL/thumb-2048.jpg",
+   "mapillary": "1438456133155558"
+  }
+ },
+ {
+  "id": 482744741,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "12",
+   "addr:postcode": "9000",
+   "addr:street": "Sint-Niklaasstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 482744742,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "10",
+   "addr:street": "Sint-Niklaasstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 482744743,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "8",
+   "addr:postcode": "9000",
+   "addr:street": "Sint-Niklaasstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 482747877,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "37",
+   "addr:postcode": "9000",
+   "addr:street": "Donkersteeg",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361826"
+  }
+ },
+ {
+  "id": 487172335,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "12",
+   "addr:street": "Ravensteinstraat",
+   "building": "yes",
+   "name": "Hotel de Smet de Naeyer",
+   "operator": "Volkshaard cvba-so",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362650"
+  }
+ },
+ {
+  "id": 487220676,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1365419"
+  }
+ },
+ {
+  "id": 493778669,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "11",
+   "addr:street": "Kleine Vismarkt",
+   "building": "house",
+   "description": "Twee diephuizen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25083",
+   "ref:OnroerendErfgoed": "25083",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362537"
+  }
+ },
+ {
+  "id": 493778672,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "29",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380400"
+  }
+ },
+ {
+  "id": 493778676,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:flats": "1;101;201;301",
+   "addr:housenumber": "3",
+   "addr:postcode": "9000",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "description": "Traditionele lijstgevels",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25885",
+   "ref:OnroerendErfgoed": "25885",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362564"
+  }
+ },
+ {
+  "id": 493778677,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "8",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "description": "Drie trapgevels",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25887",
+   "ref:OnroerendErfgoed": "25887",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362561"
+  }
+ },
+ {
+  "id": 493778678,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3",
+   "addr:street": "Schoenlapperstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362215"
+  }
+ },
+ {
+  "id": 493778679,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "1-2;101-103;201-203",
+   "addr:housenumber": "43;45;47",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360722"
+  }
+ },
+ {
+  "id": 493778680,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "35",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360783"
+  }
+ },
+ {
+  "id": 493778681,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "41",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362271"
+  }
+ },
+ {
+  "id": 493778682,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "39",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360852"
+  }
+ },
+ {
+  "id": 493778683,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6",
+   "addr:street": "Hoefslagstraatje",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360905"
+  }
+ },
+ {
+  "id": 493778684,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "33",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362272"
+  }
+ },
+ {
+  "id": 493778685,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "37",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361784"
+  }
+ },
+ {
+  "id": 493778686,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "31",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362274"
+  }
+ },
+ {
+  "id": 493778689,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "25",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362276"
+  }
+ },
+ {
+  "id": 493778690,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "27",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361202"
+  }
+ },
+ {
+  "id": 493778691,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:street": "Hoefslagstraatje",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360782"
+  }
+ },
+ {
+  "id": 493778694,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "19",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360785"
+  }
+ },
+ {
+  "id": 493778696,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1;1A-1G",
+   "addr:street": "Schoenlapperstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360206"
+  }
+ },
+ {
+  "id": 493778702,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "19-23",
+   "addr:street": "Kraanlei",
+   "building": "house",
+   "description": "Breedhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25235",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "25235",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360044",
+   "start_date": "C19",
+   "start_date:edtf": "18XX"
+  }
+ },
+ {
+  "id": 493778704,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361203"
+  }
+ },
+ {
+  "id": 493778705,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "3-11",
+   "addr:interpolation": "odd",
+   "addr:street": "Kraanlei",
+   "building": "house",
+   "building:architecture": "gothic",
+   "description": "Gotische trapgevel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25228",
+   "old_name": "De Lelye",
+   "ref:OnroerendErfgoed": "25228",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359944",
+   "start_date": "early C16"
+  }
+ },
+ {
+  "id": 493778706,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "13",
+   "addr:street": "Kraanlei",
+   "building": "house",
+   "description": "Gotische trapgevel In den Bliekenmarkt",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25232",
+   "ref:OnroerendErfgoed": "25232",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360483"
+  }
+ },
+ {
+  "id": 493778707,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "15",
+   "addr:street": "Kraanlei",
+   "building": "house",
+   "description": "Enkelhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25233",
+   "ref:OnroerendErfgoed": "25233",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360482"
+  }
+ },
+ {
+  "id": 493778708,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "17",
+   "addr:street": "Kraanlei",
+   "building": "house",
+   "description": "Classicistische klokgevel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25234",
+   "ref:OnroerendErfgoed": "25234",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380293"
+  }
+ },
+ {
+  "id": 493778709,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "1;101;201-202",
+   "addr:housenumber": "2",
+   "addr:street": "Kraanlei",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362558"
+  }
+ },
+ {
+  "id": 493778710,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:flats": "1-2;101;201",
+   "addr:housenumber": "2-4",
+   "addr:street": "Kleine Vismarkt",
+   "building": "yes",
+   "description": "Herenhuis, Wijnschroeders- of Kraankinderentehuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25080",
+   "ref:OnroerendErfgoed": "25080",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361796"
+  }
+ },
+ {
+  "id": 493778711,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "1",
+   "addr:street": "Kraanlei",
+   "building": "house",
+   "description": "Hoekhuis in traditionele stijl",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25227",
+   "ref:OnroerendErfgoed": "25227",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361856"
+  }
+ },
+ {
+  "id": 493778712,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housename": "'t Gauden Hant",
+   "addr:housenumber": "8",
+   "addr:street": "Kleine Vismarkt",
+   "building": "yes",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25084",
+   "ref:OnroerendErfgoed": "25084",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362565"
+  }
+ },
+ {
+  "id": 493778713,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housename": "'t Groen Cruys",
+   "addr:housenumber": "6",
+   "addr:street": "Kleine Vismarkt",
+   "building": "yes",
+   "description": "Breedhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25082",
+   "ref:OnroerendErfgoed": "25082",
+   "source:geometry:date": "2012-02-14",
+   "source:geometry:ref": "Gbg/1361797"
+  }
+ },
+ {
+  "id": 493778714,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Hoefslagstraatje",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360910"
+  }
+ },
+ {
+  "id": 493778715,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "10",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25889",
+   "ref:OnroerendErfgoed": "25889",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362560"
+  }
+ },
+ {
+  "id": 493778716,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1",
+   "addr:street": "Sint-Veerleplein",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362536"
+  }
+ },
+ {
+  "id": 493778717,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "2",
+   "addr:postcode": "9000",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "description": "Diephuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25884",
+   "ref:OnroerendErfgoed": "25884",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360199"
+  }
+ },
+ {
+  "id": 493778718,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "9",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "description": "Ingang en gevels van het Wenemaershospitaal",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25888",
+   "ref:OnroerendErfgoed": "25888",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360196"
+  }
+ },
+ {
+  "id": 493778719,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "9",
+   "addr:street": "Kleine Vismarkt",
+   "building": "house",
+   "description": "Twee diephuizen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25083",
+   "ref:OnroerendErfgoed": "25083",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362535"
+  }
+ },
+ {
+  "id": 493778723,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "1",
+   "addr:street": "Rekelingestraat",
+   "building": "house",
+   "description": "Twee woningen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25702",
+   "ref:OnroerendErfgoed": "25702",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360197"
+  }
+ },
+ {
+  "id": 493778724,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "3",
+   "addr:street": "Rekelingestraat",
+   "building": "house",
+   "description": "Twee woningen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25702",
+   "ref:OnroerendErfgoed": "25702",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360601"
+  }
+ },
+ {
+  "id": 493778726,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "7",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "description": "Drie trapgevels",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25887",
+   "ref:OnroerendErfgoed": "25887",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1360559"
+  }
+ },
+ {
+  "id": 493778727,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360194"
+  }
+ },
+ {
+  "id": 493778728,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housename": "Oude Vismijn",
+   "addr:postcode": "9000",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "import": "https://images.mapillary.com/xUb3VeqrBnKwyMF0D0eyC2/thumb-2048.jpg",
+   "mapillary": "974888473338271",
+   "name": "Oude Vismijn",
+   "name:es": "Antigua Lonja del Pescado",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380294",
+   "wikidata": "Q2332094",
+   "wikimedia_commons": "Category:Oude Vismijn (Gent)",
+   "wikipedia": "nl:Oude vismijn"
+  }
+ },
+ {
+  "id": 493778729,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housename": "Het Trompetje",
+   "addr:housenumber": "2",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "yes",
+   "building:levels": "3",
+   "description": "Groot hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/19002",
+   "ref:OnroerendErfgoed": "19002",
+   "roof:levels": "1",
+   "roof:shape": "hipped",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1365454",
+   "wikimedia_commons": "File:Gent_Burgstraat-PM_04594.jpg"
+  }
+ },
+ {
+  "id": 493778730,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "1",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "yes",
+   "building:architecture": "baroque",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19263",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19263",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1365451",
+   "start_date": "1706"
+  }
+ },
+ {
+  "id": 493778731,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "3",
+   "addr:postcode": "9000",
+   "addr:street": "Burgstraat",
+   "building": "yes",
+   "building:architecture": "baroque",
+   "description": "Hoekcomplex met de Burgstraat",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/19263",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "19263",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363274",
+   "start_date": "1706"
+  }
+ },
+ {
+  "id": 493993648,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "38",
+   "addr:postcode": "9000",
+   "addr:street": "Langemunt",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360738"
+  }
+ },
+ {
+  "id": 493993649,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360736"
+  }
+ },
+ {
+  "id": 493993652,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360830"
+  }
+ },
+ {
+  "id": 493993653,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362513"
+  }
+ },
+ {
+  "id": 493993655,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362531"
+  }
+ },
+ {
+  "id": 493993656,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "13",
+   "addr:street": "Groentenmarkt",
+   "building": "house",
+   "description": "Breedhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24837",
+   "ref:OnroerendErfgoed": "24837",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362532"
+  }
+ },
+ {
+  "id": 493993657,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5",
+   "addr:street": "Kleine Vismarkt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1359911"
+  }
+ },
+ {
+  "id": 493993658,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "5",
+   "addr:street": "Sint-Veerleplein",
+   "building": "house",
+   "description": "Vismarkt, thans garage",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25886",
+   "ref:OnroerendErfgoed": "25886",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387667",
+   "wikimedia_commons": "File:Gent_Oude_Vismarkt_R01.jpg"
+  }
+ },
+ {
+  "id": 493993663,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1362300"
+  }
+ },
+ {
+  "id": 493993664,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387328"
+  }
+ },
+ {
+  "id": 493993665,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "15",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "description": "Diephuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24839",
+   "ref:OnroerendErfgoed": "24839",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360203"
+  }
+ },
+ {
+  "id": 493993666,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387569"
+  }
+ },
+ {
+  "id": 493993669,
+  "height": 20.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Groentenmarkt",
+   "amenity": "bank",
+   "atm": "yes",
+   "brand": "Europabank",
+   "brand:wikidata": "Q2134017",
+   "building": "yes",
+   "building:colour": "#aeafa7",
+   "building:levels": "3",
+   "building:material": "plaster",
+   "email": "groentenmarkt@europabank.be",
+   "entrance:step_count": "0",
+   "entrance:width": "1.3",
+   "height": "20",
+   "name": "Europabank",
+   "opening_hours": "Mo 10:00-12:00; Tu 14:00-16:00; We 10:00-12:00; Th 14:00-16:00; Fr 10:00-12:00",
+   "phone": "+32 9 223 60 61",
+   "roof:colour": "#535353",
+   "roof:material": "slate",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361161",
+   "website": "https://www.europabank.be/nl/onze-kantoren/gent-groentenmarkt"
+  }
+ },
+ {
+  "id": 493993672,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "10",
+   "addr:street": "Onderstraat",
+   "building": "school",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387298"
+  }
+ },
+ {
+  "id": 493993674,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360892"
+  }
+ },
+ {
+  "id": 493993676,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "9;11;13;11A-11B",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360851"
+  }
+ },
+ {
+  "id": 493993678,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "17",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360205"
+  }
+ },
+ {
+  "id": 493993679,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "4",
+   "addr:postcode": "9000",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "description": "Traditionele lijstgevels",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25885",
+   "ref:OnroerendErfgoed": "25885",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387650"
+  }
+ },
+ {
+  "id": 493993682,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "34",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362282"
+  }
+ },
+ {
+  "id": 493993690,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "9",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380338"
+  }
+ },
+ {
+  "id": 493993691,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "21;21A-21D",
+   "addr:street": "Onderstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361189"
+  }
+ },
+ {
+  "id": 493993692,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "roof",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gba/84497"
+  }
+ },
+ {
+  "id": 493993693,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2;4;6",
+   "addr:street": "Onderstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360807"
+  }
+ },
+ {
+  "id": 493993697,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "26",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360886"
+  }
+ },
+ {
+  "id": 493993698,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "28",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362279"
+  }
+ },
+ {
+  "id": 493993699,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "22",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1362278"
+  }
+ },
+ {
+  "id": 493993700,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "24",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360885"
+  }
+ },
+ {
+  "id": 493993701,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "32",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362281"
+  }
+ },
+ {
+  "id": 493993702,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "30",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362280"
+  }
+ },
+ {
+  "id": 493993703,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "21;23",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362277"
+  }
+ },
+ {
+  "id": 493993704,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "36",
+   "addr:postcode": "9000",
+   "addr:street": "Langemunt",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360831"
+  }
+ },
+ {
+  "id": 493993705,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387383"
+  }
+ },
+ {
+  "id": 493993706,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "15",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361177"
+  }
+ },
+ {
+  "id": 493993707,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:city": "Gent",
+   "addr:housenumber": "11",
+   "addr:street": "Groentenmarkt",
+   "building": "house",
+   "description": "Rijhuis verdeeld in twee woningen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24836",
+   "ref:OnroerendErfgoed": "24836",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362530"
+  }
+ },
+ {
+  "id": 493993708,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:city": "Gent",
+   "addr:housenumber": "10",
+   "addr:street": "Groentenmarkt",
+   "building": "house",
+   "description": "Rijhuis verdeeld in twee woningen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24836",
+   "ref:OnroerendErfgoed": "24836",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362529"
+  }
+ },
+ {
+  "id": 493993709,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "9",
+   "addr:street": "Groentenmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362148"
+  }
+ },
+ {
+  "id": 493993710,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387446"
+  }
+ },
+ {
+  "id": 493993711,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360215"
+  }
+ },
+ {
+  "id": 493993712,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "1",
+   "addr:street": "Kleine Vismarkt",
+   "building": "yes",
+   "description": "Hoekhuis palend aan brug over de Leie",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25079",
+   "ref:OnroerendErfgoed": "25079",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360584"
+  }
+ },
+ {
+  "id": 493993713,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "3",
+   "addr:street": "Kleine Vismarkt",
+   "building": "yes",
+   "description": "Dubbelhuisje",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25081",
+   "ref:OnroerendErfgoed": "25081",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359910"
+  }
+ },
+ {
+  "id": 493993714,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "1;101;201;301",
+   "addr:housenumber": "3",
+   "addr:street": "Sint-Veerleplein",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380279"
+  }
+ },
+ {
+  "id": 493993715,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "101;201;301",
+   "addr:housenumber": "7",
+   "addr:street": "Kleine Vismarkt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360607"
+  }
+ },
+ {
+  "id": 493993716,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "8",
+   "addr:street": "Onderstraat",
+   "building": "school",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25477",
+   "name": "School van Onze-Lieve-Vrouw Visitatie",
+   "ref:OnroerendErfgoed": "25477",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380312"
+  }
+ },
+ {
+  "id": 493993717,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387507"
+  }
+ },
+ {
+  "id": 493993718,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "16",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380397"
+  }
+ },
+ {
+  "id": 493993719,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3B",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360823"
+  }
+ },
+ {
+  "id": 493993720,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1362284"
+  }
+ },
+ {
+  "id": 493993721,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "20",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361144"
+  }
+ },
+ {
+  "id": 493993724,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "12",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362221"
+  }
+ },
+ {
+  "id": 493993728,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "7",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380309"
+  }
+ },
+ {
+  "id": 493993730,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "101",
+   "addr:housenumber": "3",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360883"
+  }
+ },
+ {
+  "id": 493993731,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "10",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360873"
+  }
+ },
+ {
+  "id": 493993732,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380319"
+  }
+ },
+ {
+  "id": 493993734,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360730"
+  }
+ },
+ {
+  "id": 493993735,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "building:min_level": "1",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gba/84494"
+  }
+ },
+ {
+  "id": 493993736,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "7",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380280"
+  }
+ },
+ {
+  "id": 493993738,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "16;16A-16B",
+   "addr:street": "Groentenmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359918"
+  }
+ },
+ {
+  "id": 493993739,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "7",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387527"
+  }
+ },
+ {
+  "id": 493993740,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3;5",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1359917"
+  }
+ },
+ {
+  "id": 493993741,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "8",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361199"
+  }
+ },
+ {
+  "id": 493993742,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "13",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380308"
+  }
+ },
+ {
+  "id": 493993743,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360528"
+  }
+ },
+ {
+  "id": 493993744,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housename": "De grote steur",
+   "addr:housenumber": "17",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24840",
+   "ref:OnroerendErfgoed": "24840",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362527"
+  }
+ },
+ {
+  "id": 493993745,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "11",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361176"
+  }
+ },
+ {
+  "id": 493993747,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387397"
+  }
+ },
+ {
+  "id": 493993748,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "19",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "description": "Breedhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24841",
+   "ref:OnroerendErfgoed": "24841",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380414"
+  }
+ },
+ {
+  "id": 493993749,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "2",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "description": "Twee rijhuizen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24831",
+   "historic": "building",
+   "ref:OnroerendErfgoed": "24831",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360209",
+   "start_date": "~1800",
+   "wikimedia_commons": "File:20081122_Gent_(0040).jpg"
+  }
+ },
+ {
+  "id": 493993750,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1;1A-1C",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362285"
+  }
+ },
+ {
+  "id": 493993751,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2;2A-2D",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1360803"
+  }
+ },
+ {
+  "id": 493993752,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "14",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "description": "Gildehuis der Visverkopers",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24838",
+   "ref:OnroerendErfgoed": "24838",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362533",
+   "wikidata": "Q2226502",
+   "wikipedia": "nl:Viskopershuis (Gent)"
+  }
+ },
+ {
+  "id": 493993753,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housename": "De grote steur",
+   "addr:housenumber": "18",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24840",
+   "ref:OnroerendErfgoed": "24840",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360204"
+  }
+ },
+ {
+  "id": 493993754,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "20",
+   "addr:postcode": "9000",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24842",
+   "ref:OnroerendErfgoed": "24842",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362512"
+  }
+ },
+ {
+  "id": 493993755,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "1",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "description": "Twee rijhuizen",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24831",
+   "historic": "building",
+   "ref:OnroerendErfgoed": "24831",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362510",
+   "start_date": "~1800",
+   "wikimedia_commons": "File:N\u00b024831_11-04_Gand_Twee_rijhuizen_2.jpg"
+  }
+ },
+ {
+  "id": 493993756,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:housenumber": "2",
+   "addr:postcode": "9000",
+   "addr:street": "Hoogpoort",
+   "building": "yes",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24904",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "24904",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362511",
+   "start_date": "C18",
+   "start_date:edtf": "17XX"
+  }
+ },
+ {
+  "id": 493993757,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:housenumber": "4",
+   "addr:postcode": "9000",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24904",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "24904",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360210",
+   "start_date": "C18",
+   "start_date:edtf": "17XX"
+  }
+ },
+ {
+  "id": 493993759,
+  "height": 8.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:housenumber": "5",
+   "addr:street": "Groentenmarkt",
+   "building": "retail",
+   "building:colour": "#d2d2d2",
+   "building:levels": "2",
+   "building:material": "plaster",
+   "height": "8",
+   "roof:shape": "flat",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362534"
+  }
+ },
+ {
+  "id": 493993760,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387607"
+  }
+ },
+ {
+  "id": 493993761,
+  "height": 16.0,
+  "source": "tag:height",
+  "tags": {
+   "access": "no",
+   "addr:housename": "Groot Vleeshuis",
+   "addr:street": "Groentenmarkt",
+   "building": "public",
+   "building:colour": "#bcbdb7",
+   "building:levels": "1",
+   "building:material": "brick",
+   "height": "16",
+   "name": "Groot Vleeshuis",
+   "name:es": "Lonja de la Carne",
+   "roof:colour": "#878590",
+   "roof:height": "12",
+   "roof:material": "slate",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380337"
+  }
+ },
+ {
+  "id": 493993762,
+  "height": 18.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "3-9",
+   "addr:interpolation": "odd",
+   "addr:postcode": "9000",
+   "addr:street": "Pensmarkt",
+   "building": "yes",
+   "building:colour": "#8b8a78",
+   "building:levels": "3",
+   "building:material": "brick",
+   "description": "Graanspijker",
+   "height": "18",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25614",
+   "name": "Graanspijker",
+   "ref:OnroerendErfgoed": "25614",
+   "roof:colour": "#8c7c6d",
+   "roof:height": "9",
+   "roof:material": "roof_tiles",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361896"
+  }
+ },
+ {
+  "id": 493993763,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "3;5;7;9",
+   "addr:street": "Pensmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387499"
+  }
+ },
+ {
+  "id": 493993764,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387463"
+  }
+ },
+ {
+  "id": 493993765,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387593"
+  }
+ },
+ {
+  "id": 493993768,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Langemunt",
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1360802"
+  }
+ },
+ {
+  "id": 494007816,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1360805"
+  }
+ },
+ {
+  "id": 494007821,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "building": "house",
+   "building:levels": "3",
+   "building:min_level": "1",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gba/84570"
+  }
+ },
+ {
+  "id": 494007823,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "3",
+   "addr:street": "Hooiaard",
+   "building": "yes",
+   "description": "Diephuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24951",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "24951",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362517",
+   "start_date": "mid C18"
+  }
+ },
+ {
+  "id": 494007824,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "6",
+   "addr:street": "Hooiaard",
+   "building": "yes",
+   "description": "Hoekhuis met de Graslei",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24954",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "24954",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362521",
+   "start_date": "1725"
+  }
+ },
+ {
+  "id": 494007831,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "19-23",
+   "addr:interpolation": "odd",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360900"
+  }
+ },
+ {
+  "id": 494007837,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "31",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362286"
+  }
+ },
+ {
+  "id": 494007842,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1-4",
+   "addr:postcode": "9000",
+   "addr:street": "Korenmarkt",
+   "building": "retail",
+   "entrance:kerb:height": "0",
+   "entrance:ramp": "no",
+   "entrance:step_count": "0",
+   "entrance:width": "1,1",
+   "name": "Sarmacomplex",
+   "old_name": "Sarma",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361173"
+  }
+ },
+ {
+  "id": 494007850,
+  "height": 16.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:housenumber": "8",
+   "addr:street": "Kortemunt",
+   "building": "retail",
+   "building:colour": "white",
+   "building:levels": "4",
+   "building:material": "plaster",
+   "height": "16",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362524"
+  }
+ },
+ {
+  "id": 494007857,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360585"
+  }
+ },
+ {
+  "id": 494007860,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "25",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1360806"
+  }
+ },
+ {
+  "id": 494007865,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363017"
+  }
+ },
+ {
+  "id": 494007870,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "29",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1362287"
+  }
+ },
+ {
+  "id": 494007879,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "15",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361802"
+  }
+ },
+ {
+  "id": 494007886,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "27",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Diephuis met achterhuis De Zonne",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24921",
+   "historic": "house",
+   "old_name": "De Zonne",
+   "ref:OnroerendErfgoed": "24921",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1360804",
+   "start_date": "C13..C19"
+  }
+ },
+ {
+  "id": 494007891,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "32",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Traditionele trapgevel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24918",
+   "ref:OnroerendErfgoed": "24918",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360817"
+  }
+ },
+ {
+  "id": 494007898,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housename": "De Oude Sterre",
+   "addr:housenumber": "17",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Diephuis De Oude Sterre",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24914",
+   "ref:OnroerendErfgoed": "24914",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360865"
+  }
+ },
+ {
+  "id": 494007905,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "1-2;101-102;201",
+   "addr:housenumber": "30",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361166"
+  }
+ },
+ {
+  "id": 494007908,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "26",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Herenhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24913",
+   "ref:OnroerendErfgoed": "24913",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362288"
+  }
+ },
+ {
+  "id": 494007910,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "101;201",
+   "addr:housenumber": "28;28A",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362289"
+  }
+ },
+ {
+  "id": 494007913,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "38-44",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360858"
+  }
+ },
+ {
+  "id": 494007915,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "24",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361170"
+  }
+ },
+ {
+  "id": 494007916,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "34;36",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1361167"
+  }
+ },
+ {
+  "id": 494007917,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387449"
+  }
+ },
+ {
+  "id": 494007920,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380311"
+  }
+ },
+ {
+  "id": 494007921,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "1",
+   "addr:street": "Kortemunt",
+   "building": "yes",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25197",
+   "historic": "building",
+   "ref:OnroerendErfgoed": "25197",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360506"
+  }
+ },
+ {
+  "id": 494007922,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:street": "Kortemunt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361162"
+  }
+ },
+ {
+  "id": 494007925,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housename": "A la demie Lune",
+   "addr:housenumber": "3",
+   "addr:street": "Groentenmarkt",
+   "building": "yes",
+   "description": "Voormalige mostaardfabriek",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24832",
+   "old_name": "Vve Tierenteyn-Verlent",
+   "ref:OnroerendErfgoed": "24832",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360505"
+  }
+ },
+ {
+  "id": 494007927,
+  "height": 16.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:housenumber": "8-15",
+   "addr:street": "Hooiaard",
+   "building": "house",
+   "building:colour": "#cb8d6d",
+   "building:levels": "4",
+   "building:material": "brick",
+   "building:part": "yes",
+   "height": "16",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360443"
+  }
+ },
+ {
+  "id": 494007930,
+  "height": 16.0,
+  "source": "tag:height",
+  "tags": {
+   "addr:housenumber": "7A-7H",
+   "addr:street": "Hooiaard",
+   "building": "retail",
+   "building:colour": "#d9a283",
+   "building:levels": "4",
+   "building:material": "brick",
+   "height": "16",
+   "roof:shape": "gabled",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362520"
+  }
+ },
+ {
+  "id": 494007932,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "3",
+   "addr:street": "Kortemunt",
+   "building": "house",
+   "building:architecture": "classicism",
+   "description": "Dubbelhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25198",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "25198",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362509",
+   "start_date": "1784"
+  }
+ },
+ {
+  "id": 494007934,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "37",
+   "addr:street": "Korenmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360201"
+  }
+ },
+ {
+  "id": 494007936,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "5",
+   "addr:street": "Kortemunt",
+   "building": "house",
+   "building:architecture": "rococo",
+   "description": "Dubbelhuis met rococo-gevel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25200",
+   "ref:OnroerendErfgoed": "25200",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361168",
+   "start_date": "1746"
+  }
+ },
+ {
+  "id": 494007940,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "36",
+   "addr:street": "Korenmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360200"
+  }
+ },
+ {
+  "id": 494007944,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "8;10;12;10A-10F;10H-10I",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360497"
+  }
+ },
+ {
+  "id": 494007950,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Kortemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360217"
+  }
+ },
+ {
+  "id": 494007953,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1;1A",
+   "addr:street": "Hooiaard",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361155"
+  }
+ },
+ {
+  "id": 494007955,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "7",
+   "addr:street": "Kortemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361169"
+  }
+ },
+ {
+  "id": 494007957,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:flats": "201;301;401",
+   "addr:housenumber": "35",
+   "addr:street": "Korenmarkt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361156"
+  }
+ },
+ {
+  "id": 494007959,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6;6A-6E",
+   "addr:street": "Kortemunt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360193"
+  }
+ },
+ {
+  "id": 494007960,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "14-22",
+   "addr:interpolation": "even",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360734"
+  }
+ },
+ {
+  "id": 494007963,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "building": "house",
+   "building:levels": "3",
+   "building:min_level": "1",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gba/84568"
+  }
+ },
+ {
+  "id": 494007971,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380340"
+  }
+ },
+ {
+  "id": 494007972,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "roof",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gba/84489"
+  }
+ },
+ {
+  "id": 494007974,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "roof",
+   "image": "https://images.mapillary.com/60oxXR5UydkuoAIiOWf3fR/thumb-2048.jpg",
+   "mapillary": "507059550333874",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gba/84427"
+  }
+ },
+ {
+  "id": 494007975,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "34",
+   "addr:street": "Korenmarkt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362515"
+  }
+ },
+ {
+  "id": 494007977,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "1",
+   "addr:street": "Korenlei",
+   "building": "house",
+   "description": "Hoekhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25132",
+   "ref:OnroerendErfgoed": "25132",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380655"
+  }
+ },
+ {
+  "id": 494007983,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "5",
+   "addr:street": "Hooiaard",
+   "building": "yes",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24953",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "24953",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362522"
+  }
+ },
+ {
+  "id": 494007984,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "2",
+   "addr:street": "Hooiaard",
+   "building": "yes",
+   "description": "Breedhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24950",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "24950",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362516",
+   "start_date": "1714"
+  }
+ },
+ {
+  "id": 494007986,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "4",
+   "addr:street": "Hooiaard",
+   "building": "yes",
+   "description": "Lijstgevel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24952",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "24952",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362523",
+   "start_date": "C19",
+   "start_date:edtf": "18XX"
+  }
+ },
+ {
+  "id": 494007989,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "2",
+   "addr:street": "Korenlei",
+   "building": "yes",
+   "description": "Diephuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25133",
+   "ref:OnroerendErfgoed": "25133",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363019"
+  }
+ },
+ {
+  "id": 494007992,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "32",
+   "addr:street": "Korenmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360212"
+  }
+ },
+ {
+  "id": 494007995,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "3",
+   "addr:street": "Korenlei",
+   "building": "house",
+   "description": "Hoekhuis met de Jan Breydelstraat",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25134",
+   "ref:OnroerendErfgoed": "25134",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363018"
+  }
+ },
+ {
+  "id": 494007997,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "33",
+   "addr:street": "Korenmarkt",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360587"
+  }
+ },
+ {
+  "id": 494007999,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387810"
+  }
+ },
+ {
+  "id": 494008001,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "roof",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gba/84490"
+  }
+ },
+ {
+  "id": 494008004,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "8",
+   "addr:street": "Graslei",
+   "building": "apartments",
+   "building:architecture": "gothic",
+   "description": "Gildehuis van de metselaars Den Enghel",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24755",
+   "historic": "building",
+   "old_name": "Den Enghel",
+   "ref:OnroerendErfgoed": "24755",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361159",
+   "start_date": "~1373",
+   "wikimedia_commons": "File:20110410_Gent_(0057).jpg"
+  }
+ },
+ {
+  "id": 494008006,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "7",
+   "addr:street": "Graslei",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360213"
+  }
+ },
+ {
+  "id": 494008008,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "5",
+   "addr:street": "Graslei",
+   "building": "yes",
+   "building:architecture": "baroque",
+   "description": "Enkelhuis vanouds De Beerie",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24752",
+   "historic": "house",
+   "old_name": "De Beerie",
+   "ref:OnroerendErfgoed": "24752",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360586",
+   "start_date": "1626..1726",
+   "wikidata": "Q55442015",
+   "wikimedia_commons": "File:Belgi\u00eb_-_Gent_-_Burgerhuis_De_Beerie_-_01.jpg"
+  }
+ },
+ {
+  "id": 494008011,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:housenumber": "6",
+   "addr:street": "Graslei",
+   "alt_name": "De Witte Leeuw",
+   "building": "house",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24753",
+   "historic": "house",
+   "old_name": "'t Middelhuus",
+   "ref:OnroerendErfgoed": "24753",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360211",
+   "start_date": "C17..1913"
+  }
+ },
+ {
+  "id": 494012318,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "4A",
+   "addr:postcode": "9000",
+   "addr:street": "Korenlei",
+   "building": "house",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1365423"
+  }
+ },
+ {
+  "id": 494012324,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "building": "house",
+   "building:levels": "3",
+   "building:min_level": "1",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gba/84569"
+  }
+ },
+ {
+  "id": 494012325,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "3",
+   "addr:postcode": "9000",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362858"
+  }
+ },
+ {
+  "id": 494012327,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "1;1A-1B",
+   "addr:postcode": "9000",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363015"
+  }
+ },
+ {
+  "id": 494012328,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "23-31;30B",
+   "addr:street": "Korenmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360214"
+  }
+ },
+ {
+  "id": 494012329,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:flats": "101;201;301",
+   "addr:housenumber": "2",
+   "addr:postcode": "9000",
+   "addr:street": "Drabstraat",
+   "building": "house",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1362891"
+  }
+ },
+ {
+  "id": 494012331,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "22",
+   "addr:street": "Korenmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362525"
+  }
+ },
+ {
+  "id": 494012334,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "17",
+   "addr:street": "Drabstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363014"
+  }
+ },
+ {
+  "id": 494012336,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "15",
+   "addr:street": "Drabstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363013"
+  }
+ },
+ {
+  "id": 494012337,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "11",
+   "addr:postcode": "9000",
+   "addr:street": "Drabstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362894"
+  }
+ },
+ {
+  "id": 494012338,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1362909"
+  }
+ },
+ {
+  "id": 494012339,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5010242"
+  }
+ },
+ {
+  "id": 494012340,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362895"
+  }
+ },
+ {
+  "id": 494012341,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:housenumber": "6;6A",
+   "addr:postcode": "9000",
+   "addr:street": "Korenlei",
+   "architect": "Theofiel Desmet",
+   "building": "house",
+   "description": "Diephuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/25136",
+   "historic": "house",
+   "ref:OnroerendErfgoed": "25136",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gbg/1363027",
+   "start_date": "1934"
+  }
+ },
+ {
+  "id": 494012342,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5011107"
+  }
+ },
+ {
+  "id": 494012343,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "10-13",
+   "addr:postcode": "9000",
+   "addr:street": "Korenlei",
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/5011106"
+  }
+ },
+ {
+  "id": 494012344,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1363025"
+  }
+ },
+ {
+  "id": 494012345,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "10",
+   "addr:postcode": "9000",
+   "addr:street": "Korenlei",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5009601"
+  }
+ },
+ {
+  "id": 494012347,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "18",
+   "addr:postcode": "9000",
+   "addr:street": "Drabstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363009"
+  }
+ },
+ {
+  "id": 494012348,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5",
+   "addr:street": "Gruuthuusestraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363023"
+  }
+ },
+ {
+  "id": 494012349,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "20",
+   "addr:postcode": "9000",
+   "addr:street": "Drabstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363010"
+  }
+ },
+ {
+  "id": 494012351,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "16",
+   "addr:street": "Drabstraat",
+   "building": "house",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/6204655"
+  }
+ },
+ {
+  "id": 494012353,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gba/84673"
+  }
+ },
+ {
+  "id": 494012354,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363022"
+  }
+ },
+ {
+  "id": 494012356,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:housenumber": "14",
+   "addr:postcode": "9000",
+   "addr:street": "Drabstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363012"
+  }
+ },
+ {
+  "id": 494018085,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "46",
+   "addr:postcode": "9000",
+   "addr:street": "Langemunt",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360796"
+  }
+ },
+ {
+  "id": 494018086,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360195"
+  }
+ },
+ {
+  "id": 494018087,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362301"
+  }
+ },
+ {
+  "id": 494018139,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "23;23A-23C",
+   "addr:street": "Onderstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361188"
+  }
+ },
+ {
+  "id": 494018147,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362303"
+  }
+ },
+ {
+  "id": 494018252,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "55-57",
+   "addr:street": "Vrijdagmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360828"
+  }
+ },
+ {
+  "id": 494018256,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "53-54",
+   "addr:street": "Vrijdagmarkt",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360724"
+  }
+ },
+ {
+  "id": 494018268,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/5011796"
+  }
+ },
+ {
+  "id": 494018269,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387600"
+  }
+ },
+ {
+  "id": 494018270,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360829"
+  }
+ },
+ {
+  "id": 494018335,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "14;16;18",
+   "addr:street": "Onderstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360808"
+  }
+ },
+ {
+  "id": 494018339,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "12",
+   "addr:street": "Onderstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360809"
+  }
+ },
+ {
+  "id": 494018341,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "building": "house",
+   "building:levels": "3",
+   "building:min_level": "1",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gba/84498"
+  }
+ },
+ {
+  "id": 494018342,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362298"
+  }
+ },
+ {
+  "id": 494018347,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "48",
+   "addr:street": "Langemunt",
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360797"
+  }
+ },
+ {
+  "id": 494018348,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "6",
+   "addr:street": "Sint-Veerleplein",
+   "building": "yes",
+   "description": "Drie trapgevels",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25887",
+   "ref:OnroerendErfgoed": "25887",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362563"
+  }
+ },
+ {
+  "id": 494018350,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gbg/1362562"
+  }
+ },
+ {
+  "id": 494018351,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "8",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362800"
+  }
+ },
+ {
+  "id": 494018352,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362799"
+  }
+ },
+ {
+  "id": 494027313,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "57",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Diephuis met middeleeuwse kelder",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24940",
+   "ref:OnroerendErfgoed": "24940",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360709"
+  }
+ },
+ {
+  "id": 494027333,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "35;37",
+   "addr:street": "Hoogpoort",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380339"
+  }
+ },
+ {
+  "id": 494027334,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "55;55A",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361181"
+  }
+ },
+ {
+  "id": 494027335,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "53",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360901"
+  }
+ },
+ {
+  "id": 494027336,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "43-49",
+   "addr:interpolation": "odd",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Rijhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24933",
+   "ref:OnroerendErfgoed": "24933",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361818"
+  }
+ },
+ {
+  "id": 494027338,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "51",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360710"
+  }
+ },
+ {
+  "id": 494027341,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "39",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361180"
+  }
+ },
+ {
+  "id": 494027343,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Werregarenstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362220"
+  }
+ },
+ {
+  "id": 494027345,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360708"
+  }
+ },
+ {
+  "id": 494027346,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "building": "house",
+   "building:levels": "3",
+   "building:min_level": "1",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gba/84499"
+  }
+ },
+ {
+  "id": 494027347,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362302"
+  }
+ },
+ {
+  "id": 494027348,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "33",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Breedhuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24927",
+   "ref:OnroerendErfgoed": "24927",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361201"
+  }
+ },
+ {
+  "id": 494027349,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:city": "Gent",
+   "addr:flats": "1;101;201;301",
+   "addr:housenumber": "50",
+   "addr:postcode": "9000",
+   "addr:street": "Hoogpoort",
+   "building": "yes",
+   "check_date": "2023-11-15",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360818"
+  }
+ },
+ {
+  "id": 494027350,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "22",
+   "addr:street": "Donkersteeg",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360814"
+  }
+ },
+ {
+  "id": 494027351,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "28;28A-28B",
+   "addr:street": "Donkersteeg",
+   "building": "house",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1361222"
+  }
+ },
+ {
+  "id": 494027352,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "26",
+   "addr:street": "Donkersteeg",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360815"
+  }
+ },
+ {
+  "id": 494027353,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361164"
+  }
+ },
+ {
+  "id": 501469592,
+  "height": 16.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:postcode": "9000",
+   "addr:street": "Botermarkt",
+   "building": "yes",
+   "building:colour": "#E2DCCE",
+   "building:material": "stone",
+   "description": "Lakenhal",
+   "height": "16",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24556",
+   "historic": "building",
+   "name": "Lakenhalle",
+   "note": "height up to eaves",
+   "ref:OnroerendErfgoed": "24556",
+   "roof:colour": "brown",
+   "roof:shape": "flat",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361775",
+   "tourism": "museum",
+   "wikidata": "Q55453597",
+   "wikimedia_commons": "File:Belfort_Gent.jpg"
+  }
+ },
+ {
+  "id": 501472628,
+  "height": 95.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:country": "BE",
+   "addr:housenumber": "17",
+   "addr:postcode": "9000",
+   "addr:street": "Botermarkt",
+   "building": "yes",
+   "building:colour": "#C5C1B8",
+   "building:material": "stone",
+   "description": "Belfort",
+   "fee": "yes",
+   "height": "95",
+   "heritage": "1",
+   "heritage:operator": "whc",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24555",
+   "historic": "tower",
+   "image": "File:Gent_Belfort_R03.jpg",
+   "man_made": "tower",
+   "mapillary": "2654547154840699",
+   "name": "Belfort",
+   "name:es": "Campanario Municipal",
+   "ref:OnroerendErfgoed": "24555",
+   "ref:whc": "943-008",
+   "roof:height": "95",
+   "roof:material": "slate",
+   "roof:shape": "pyramidal",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361776",
+   "start_date": "1313",
+   "tourism": "museum",
+   "tower:type": "bell_tower",
+   "whc:criteria": "(ii)(iv)",
+   "whc:inscription_date": "1999",
+   "wikidata": "Q815443",
+   "wikimedia_commons": "Category:Belfry of Ghent",
+   "wikipedia": "nl:Belfort van Gent"
+  }
+ },
+ {
+  "id": 501472629,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:street": "Sint-Baafsplein",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361247"
+  }
+ },
+ {
+  "id": 501472630,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "40",
+   "addr:street": "Emile Braunplein",
+   "building": "yes",
+   "source:geometry:date": "2014-01-02",
+   "source:geometry:ref": "Gbg/4528199"
+  }
+ },
+ {
+  "id": 501472631,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1",
+   "addr:street": "Mageleinstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5380363"
+  }
+ },
+ {
+  "id": 501472632,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "roof",
+   "description": "https://photos.app.goo.gl/2kQHwPe4EJqVB9U68",
+   "image": "https://images.mapillary.com/LBQIEn7qcV4A8xwUd6O76w/thumb-2048.jpg",
+   "layer": "1",
+   "mapillary": "505354177254189",
+   "source:geometry:date": "2014-12-01",
+   "source:geometry:ref": "Gba/357535"
+  }
+ },
+ {
+  "id": 501475229,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/3152754"
+  }
+ },
+ {
+  "id": 514011586,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "roof",
+   "source:geometry:date": "2009-08-21",
+   "source:geometry:ref": "Gba/84627"
+  }
+ },
+ {
+  "id": 514019311,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "2",
+   "addr:street": "Ravensteinstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362651"
+  }
+ },
+ {
+  "id": 514019312,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "15",
+   "addr:street": "Korenlei",
+   "alt_name": "Hof van Fiennes",
+   "building": "yes",
+   "name": "Hof van Gruuthuuse",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1363021"
+  }
+ },
+ {
+  "id": 514020945,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "1",
+   "addr:street": "Pensmarkt",
+   "building": "house",
+   "description": "Classicistisch hoekhuis met de Graslei",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25613",
+   "layer": "1",
+   "ref:OnroerendErfgoed": "25613",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362518"
+  }
+ },
+ {
+  "id": 514020946,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "1-3;2A;3A-3B",
+   "addr:street": "Graslei",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362519"
+  }
+ },
+ {
+  "id": 528124462,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 528124464,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 528124466,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 528124470,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 528195120,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "15",
+   "addr:street": "Graslei",
+   "building": "house",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25159",
+   "note": "Conci\u00ebrgewoning van het Postgebouw",
+   "ref:OnroerendErfgoed": "25159",
+   "source:geometry:date": "2012-02-14",
+   "source:geometry:ref": "Gbg/1362638"
+  }
+ },
+ {
+  "id": 528195122,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361158"
+  }
+ },
+ {
+  "id": 591005763,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 591005766,
+  "height": 21.0,
+  "source": "tag:height",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:street": "Cataloni\u00ebstraat",
+   "amenity": "place_of_worship",
+   "building": "church",
+   "building:colour": "#C5C1B8",
+   "building:levels": "5",
+   "building:material": "stone",
+   "denomination": "roman_catholic",
+   "description": "Parochiekerk Sint-Niklaas https://photos.app.goo.gl/xKawrGxQKpXBcgci7",
+   "height": "21",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/25149",
+   "layer": "1",
+   "mapillary": "1170946706753567",
+   "name": "Sint-Niklaaskerk",
+   "name:en": "Saint Nicholas' Church",
+   "name:es": "Iglesia de San Nicol\u00e1s",
+   "name:fr": "iglesia de san nicolas",
+   "name:nl": "Sint-Niklaaskerk",
+   "opening_hours": "Mo 14:00-17:00; Tu-Su 10:00-17:00",
+   "ref:OnroerendErfgoed": "25149",
+   "religion": "christian",
+   "roof:colour": "#333333",
+   "roof:shape": "many",
+   "service_times": "Su 10:00",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361897",
+   "wikidata": "Q1841314",
+   "wikimedia_commons": "File:Sint-Niklaaskerk1.jpg",
+   "wikipedia": "nl:Sint-Niklaaskerk (Gent)"
+  }
+ },
+ {
+  "id": 646501309,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/6204654"
+  }
+ },
+ {
+  "id": 646501310,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1365410"
+  }
+ },
+ {
+  "id": 646503574,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362806"
+  }
+ },
+ {
+  "id": 646503575,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362798"
+  }
+ },
+ {
+  "id": 646503576,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362857"
+  }
+ },
+ {
+  "id": 688119832,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source": "GRB"
+  }
+ },
+ {
+  "id": 900885712,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 900932393,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "18",
+   "addr:street": "Donkersteeg",
+   "building": "house"
+  }
+ },
+ {
+  "id": 900932394,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "20",
+   "addr:street": "Donkersteeg",
+   "building": "house"
+  }
+ },
+ {
+  "id": 900932395,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "18b",
+   "addr:street": "Donkersteeg",
+   "building": "house"
+  }
+ },
+ {
+  "id": 900932396,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "14,16",
+   "addr:street": "Donkersteeg",
+   "building": "house"
+  }
+ },
+ {
+  "id": 900932397,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "12",
+   "addr:street": "Donkersteeg",
+   "building": "house"
+  }
+ },
+ {
+  "id": 900932398,
+  "height": 13.600000000000001,
+  "source": "tag:levels",
+  "tags": {
+   "addr:housenumber": "10",
+   "addr:street": "Donkersteeg",
+   "building": "house",
+   "building:levels": "3",
+   "roof:levels": "1"
+  }
+ },
+ {
+  "id": 900932399,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "8",
+   "addr:street": "Donkersteeg",
+   "building": "house"
+  }
+ },
+ {
+  "id": 900932400,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6",
+   "addr:street": "Donkersteeg",
+   "building": "house"
+  }
+ },
+ {
+  "id": 900932401,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Donkersteeg",
+   "building": "house"
+  }
+ },
+ {
+  "id": 900932402,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "24",
+   "addr:street": "Donkersteeg",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1360815"
+  }
+ },
+ {
+  "id": 900934249,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 1023940166,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 1092684769,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "house",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/6204807"
+  }
+ },
+ {
+  "id": 1092684770,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1359729"
+  }
+ },
+ {
+  "id": 1092684771,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "roof",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gba/84483"
+  }
+ },
+ {
+  "id": 1092845318,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Sint-Michielshelling",
+   "building": "commercial",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361607"
+  }
+ },
+ {
+  "id": 1092845319,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1362071"
+  }
+ },
+ {
+  "id": 1245453763,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": 1377912252,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "10;12",
+   "addr:street": "Jan Breydelstraat",
+   "building": "yes"
+  }
+ },
+ {
+  "id": 1410437092,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5",
+   "addr:street": "Burgstraat",
+   "building": "yes",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387683"
+  }
+ },
+ {
+  "id": 1410440317,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2018-11-14",
+   "source:geometry:ref": "Gbg/5387815"
+  }
+ },
+ {
+  "id": 1410440318,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "yes",
+   "source:geometry:date": "2018-01-11",
+   "source:geometry:ref": "Gbg/6204653"
+  }
+ },
+ {
+  "id": 1410441581,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "roof",
+   "source:geometry:date": "2021-12-15",
+   "source:geometry:ref": "Gba/764154"
+  }
+ },
+ {
+  "id": 1410441582,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "4",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "source:geometry:date": "2018-08-20",
+   "source:geometry:ref": "Gbg/6408403"
+  }
+ },
+ {
+  "id": 1410441583,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "6;6A",
+   "addr:street": "Jan Breydelstraat",
+   "building": "house",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362801"
+  }
+ },
+ {
+  "id": 1541129522,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "building": "shed",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/5387609"
+  }
+ },
+ {
+  "id": 7249489,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:housenumber": "1",
+   "addr:street": "Hoefslagstraatje",
+   "building": "yes",
+   "description": "Rococohuis",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24892",
+   "name": "Banier",
+   "ref:OnroerendErfgoed": "24892",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362273",
+   "type": "multipolygon"
+  }
+ },
+ {
+  "id": 7252113,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "17;19;19A",
+   "addr:street": "Onderstraat",
+   "building": "school",
+   "source:geometry:date": "2009-11-20",
+   "source:geometry:ref": "Gbg/1360725",
+   "type": "multipolygon"
+  }
+ },
+ {
+  "id": 7252219,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "M",
+   "addr:flats": "1;101-102;201-202;301",
+   "addr:housename": "De Grote Arend",
+   "addr:housenumber": "46;48",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "description": "Lijstgevels De Grote Arend",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://inventaris.onroerenderfgoed.be/dibe/relict/24926",
+   "ref:OnroerendErfgoed": "24926",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1362290",
+   "type": "multipolygon"
+  }
+ },
+ {
+  "id": 7252288,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "5",
+   "addr:street": "Jan Breydelstraat",
+   "building": "yes",
+   "name": "Hotel de Coninck",
+   "source:geometry:date": "2023-04-04",
+   "source:geometry:ref": "Gbg/7261909",
+   "type": "multipolygon"
+  }
+ },
+ {
+  "id": 7252498,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "addr:housenumber": "41",
+   "addr:street": "Hoogpoort",
+   "building": "house",
+   "image": "https://images.mapillary.com/ygtQ6uKZX5fBmfNGAHHhrO/thumb-2048.jpg",
+   "mapillary": "160165619388473",
+   "source:geometry:date": "2015-10-01",
+   "source:geometry:ref": "Gbg/1361179",
+   "type": "multipolygon"
+  }
+ },
+ {
+  "id": 7340960,
+  "height": 9.0,
+  "source": "default",
+  "tags": {
+   "OnroerendErfgoed:criteria": "BE",
+   "addr:city": "Gent",
+   "addr:housenumber": "1",
+   "addr:postcode": "9000",
+   "addr:street": "Botermarkt",
+   "amenity": "townhall",
+   "building": "public",
+   "building:architecture": "baroque;gothic;renaissance",
+   "heritage": "4",
+   "heritage:operator": "OnroerendErfgoed",
+   "heritage:website": "https://id.erfgoed.net/erfgoedobjecten/24558",
+   "historic": "townhall",
+   "image": "File:Standhuis_in_Gent.JPG",
+   "name": "Stadhuis Gent",
+   "name:ru": "\u0420\u0430\u0442\u0443\u0448\u0430",
+   "ref:OnroerendErfgoed": "24558",
+   "source:geometry:date": "2015/10/01",
+   "source:geometry:ref": "Gbg/3152589",
+   "start_date": "1519..1539",
+   "townhall:type": "city",
+   "type": "multipolygon",
+   "wikidata": "Q2084563",
+   "wikimedia_commons": "Category:Town hall of Ghent",
+   "wikipedia": "nl:Stadhuis van Gent"
+  }
+ }
+]

@@ -1,0 +1,57 @@
+name: City exposure study
+
+# The semantic_twin study is a separate package inside papers/, with its own
+# pyproject and its own test suite. The main ci.yml does not cover it, so this
+# runs the part of it that can run anywhere.
+#
+# Scope is deliberate. Most tests build small fixtures in temporary directories
+# and can run on a clean checkout. Tests marked ``local_data`` inspect the full
+# panorama, mesh, fishnet, or published-output archive, which is gitignored and
+# stays on the study machine. Tests marked ``slow`` run the production drivers
+# against city geometry. CI runs every other test, plus lint.
+#
+# Pull requests only. This is a private repository and a push trigger on a
+# directory this active would burn minutes for no extra signal.
+
+on:
+  pull_request:
+    paths:
+      - "papers/city-exposure-study/**"
+      - ".github/workflows/city-exposure-study.yml"
+
+concurrency:
+  group: city-exposure-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: papers/city-exposure-study/semantic_twin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ../../.. -e ".[test]"
+
+      - name: Lint
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+
+      - name: Portable non-slow suite
+        # Keep the broad unit and numeric suite. Capability-dependent tests use
+        # their own skip guards, while local_data and slow are explicit scopes.
+        run: python -m pytest tests/ -m "not slow and not local_data" -q
+
+      - name: Confirm the golden fixtures are still readable
+        # Cheap guard. The fixtures cannot be regenerated here, but a truncated
+        # or malformed one should fail loudly rather than at the next capture.
+        run: python -c "import json,pathlib; [json.loads(p.read_text()) for p in pathlib.Path('tests/golden').glob('*.json')]"

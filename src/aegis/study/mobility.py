@@ -1,10 +1,11 @@
-"""Pedestrian mobility: GHSL population sampling and Google Directions routing.
+"""Pedestrian mobility: GHSL population sampling and Google Routes routing.
 
 Origins and destinations are sampled weighted by GHSL population density, routed
-with the Google Directions API in walking mode, and decoded to lat/lon polylines.
-Routing is billed per call, so results are cached on disk keyed by rounded
-endpoints. The HTTP call is isolated behind ``_call_directions`` so tests inject
-a fake.
+with the Google Routes API (computeRoutes) in WALK mode, and decoded to lat/lon
+polylines. The legacy Directions API this module used before is no longer
+enabled on new Google projects and returns REQUEST_DENIED. Routing is billed
+per call, so results are cached on disk keyed by rounded endpoints. The HTTP
+call is isolated behind ``_call_routes`` so tests inject a fake.
 """
 
 from __future__ import annotations
@@ -16,8 +17,9 @@ from pathlib import Path
 
 import numpy as np
 
-_DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json"
+_ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 _API_KEY_ENV = "GOOGLE_DIRECTIONS_API_KEY"
+_API_KEY_ENV_FALLBACK = "GOOGLE_API_KEY"
 
 
 def decode_polyline(encoded: str) -> list[tuple[float, float]]:
@@ -73,16 +75,21 @@ def _cache_key(orig, dest) -> str:
     return hashlib.sha1(raw.encode()).hexdigest()[:16]
 
 
-def _call_directions(orig, dest, api_key):  # pragma: no cover - network
+def _call_routes(orig, dest, api_key):  # pragma: no cover - network
     import requests
 
-    params = {
-        "origin": f"{orig[0]},{orig[1]}",
-        "destination": f"{dest[0]},{dest[1]}",
-        "mode": "walking",
-        "key": api_key,
+    body = {
+        "origin": {"location": {"latLng": {"latitude": orig[0], "longitude": orig[1]}}},
+        "destination": {"location": {"latLng": {"latitude": dest[0], "longitude": dest[1]}}},
+        "travelMode": "WALK",
+        "polylineQuality": "HIGH_QUALITY",
     }
-    resp = requests.get(_DIRECTIONS_URL, params=params, timeout=30)
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": api_key,
+        "X-Goog-FieldMask": "routes.polyline.encodedPolyline",
+    }
+    resp = requests.post(_ROUTES_URL, json=body, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
@@ -90,9 +97,9 @@ def _call_directions(orig, dest, api_key):  # pragma: no cover - network
 def route_walk(orig, dest, cache_dir, api_key=None):
     """Return a decoded (lat, lon) walking route, cached on disk.
 
-    Reads the API key from the GOOGLE_DIRECTIONS_API_KEY env var if not given.
-    Raises if no key is available rather than falling back to a straight line,
-    which would silently degrade the routing realism.
+    Reads the API key from GOOGLE_DIRECTIONS_API_KEY, then GOOGLE_API_KEY, if
+    not given. Raises if no key is available rather than falling back to a
+    straight line, which would silently degrade the routing realism.
     """
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -100,18 +107,18 @@ def route_walk(orig, dest, cache_dir, api_key=None):
     if cache_file.exists():
         return [tuple(p) for p in json.loads(cache_file.read_text())]
 
-    key = api_key or os.environ.get(_API_KEY_ENV)
+    key = api_key or os.environ.get(_API_KEY_ENV) or os.environ.get(_API_KEY_ENV_FALLBACK)
     if not key:
         raise RuntimeError(
-            f"No Google Directions API key. Set {_API_KEY_ENV} or pass api_key. "
+            f"No Google Routes API key. Set {_API_KEY_ENV} or pass api_key. "
             "Refusing to fall back to straight-line routing."
         )
 
-    payload = _call_directions(orig, dest, key)
+    payload = _call_routes(orig, dest, key)
     routes = payload.get("routes", [])
     if not routes:
-        raise RuntimeError(f"Directions returned no route: status={payload.get('status')}")
-    encoded = routes[0]["overview_polyline"]["points"]
+        raise RuntimeError(f"Routes API returned no route: {payload.get('error') or payload}")
+    encoded = routes[0]["polyline"]["encodedPolyline"]
     coords = decode_polyline(encoded)
     cache_file.write_text(json.dumps(coords))
     return coords

@@ -34,6 +34,45 @@ export function sampleInferno(t: number, stops: ColorStops): [number, number, nu
   return [last[1], last[2], last[3]]
 }
 
+// Perceptually-uniform colormap anchor stops (matplotlib plasma/inferno/magma/
+// cividis + Google turbo), evenly spaced t with rgb in 0..255. Eight to nine
+// anchors track the luminance ramp closely enough for field visualisation; the
+// generic sampleInferno interpolates between them.
+function evenStops(rgb: [number, number, number][]): ColorStops {
+  return rgb.map(([r, g, b], i) => [i / (rgb.length - 1), r, g, b])
+}
+
+export const COLORMAP_STOPS: Record<string, ColorStops> = {
+  plasma: evenStops([
+    [13, 8, 135], [84, 2, 163], [139, 10, 165], [185, 50, 137],
+    [219, 92, 104], [244, 136, 73], [254, 188, 43], [240, 249, 33],
+  ]),
+  inferno: evenStops([
+    [0, 0, 4], [40, 11, 84], [101, 21, 110], [159, 42, 99],
+    [212, 72, 66], [245, 125, 21], [250, 193, 39], [252, 255, 164],
+  ]),
+  magma: evenStops([
+    [0, 0, 4], [28, 16, 68], [79, 18, 123], [129, 37, 129], [181, 54, 122],
+    [229, 80, 100], [251, 135, 97], [254, 194, 135], [252, 253, 191],
+  ]),
+  cividis: evenStops([
+    [0, 32, 76], [0, 67, 110], [71, 92, 108], [124, 121, 107],
+    [178, 150, 90], [238, 184, 52], [253, 231, 55],
+  ]),
+  turbo: evenStops([
+    [48, 18, 59], [50, 123, 252], [26, 228, 182], [133, 249, 57],
+    [249, 213, 40], [246, 107, 21], [122, 4, 3],
+  ]),
+}
+
+/** Sample a registered perceptually-uniform colormap, or null if unknown. [r,g,b] 0..255. */
+export function sampleNamedStops(name: string, t: number): [number, number, number] | null {
+  const stops = COLORMAP_STOPS[name]
+  if (!stops) return null
+  const [r, g, b] = sampleInferno(t, stops)
+  return [Math.round(r), Math.round(g), Math.round(b)]
+}
+
 export function jetColor(t: number): [number, number, number] {
   t = Math.max(0, Math.min(1, t))
   let r: number, g: number, b: number

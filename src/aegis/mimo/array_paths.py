@@ -55,19 +55,26 @@ def expand_paths_to_array(
     k0 = 2 * np.pi * freq_hz / C_0
     offsets = array.element_positions - array.reference_position
 
+    # Steering and element pattern act at the SOURCE, so they use the departure
+    # direction when the tracer supplies it (a bounced path leaves the array
+    # toward the reflector, not toward the body). k_hat (arrival) is exact for
+    # LOS and stays the fallback for producers without departure angles.
+    k_dep = center_paths.k_hat_tx if center_paths.k_hat_tx is not None else center_paths.k_hat
+
     # Element gain is the same for all elements (same pattern and broadside),
     # so compute once. This matches the gain baked into steering_matrix() for
     # the communication channel h, keeping G_tilde and h consistent.
     # Monograph eq. (4.4): psi_n includes the element pattern C_{T,j(n)}.
-    gain = array.element_gain(center_paths.k_hat)  # (N,)
+    gain = array.element_gain(k_dep)  # (N,)
     psi_gained = center_paths.psi * gain[:, None]  # (N, 3)
 
     # Phase advance for all elements at once: (N, M)
-    phase_all = np.exp(1j * k0 * (center_paths.k_hat @ offsets.T))
+    phase_all = np.exp(1j * k0 * (k_dep @ offsets.T))
 
     # Tile shared arrays: repeat each path M times (element-major ordering)
     # Layout: [elem0_path0, elem0_path1, ..., elem0_pathN, elem1_path0, ...]
     k_hat_all = np.tile(center_paths.k_hat, (M, 1)) if M > 1 else center_paths.k_hat.copy()
+    k_dep_all = np.tile(k_dep, (M, 1)) if M > 1 else k_dep.copy()
     delay_all = np.tile(center_paths.delay, M) if M > 1 else center_paths.delay.copy()
     is_los_all = np.tile(center_paths.is_los, M) if M > 1 else center_paths.is_los.copy()
 
@@ -85,4 +92,5 @@ def expand_paths_to_array(
         delay=delay_all,
         is_los=is_los_all,
         polarised=center_paths.polarised,
+        k_hat_tx=k_dep_all if center_paths.k_hat_tx is not None else None,
     )

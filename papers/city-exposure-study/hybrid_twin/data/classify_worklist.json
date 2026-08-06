@@ -1,0 +1,384 @@
+[
+ {
+  "id": "494012344",
+  "png": "renders/facades/494012344.png",
+  "name": null,
+  "tier": "detailed",
+  "d_walk": 2.3,
+  "height_m": 19.5,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "107539763",
+  "png": "renders/facades/107539763.png",
+  "name": "De Post",
+  "tier": "detailed",
+  "d_walk": 95.5,
+  "height_m": 20.5,
+  "tags": {
+   "building": "yes",
+   "height": "7",
+   "name": "De Post",
+   "shop": "mall"
+  }
+ },
+ {
+  "id": "493993669",
+  "png": "renders/facades/493993669.png",
+  "name": "Europabank",
+  "tier": "detailed",
+  "d_walk": 18.3,
+  "height_m": 16.9,
+  "tags": {
+   "amenity": "bank",
+   "building": "yes",
+   "building:levels": "3",
+   "building:material": "plaster",
+   "height": "20",
+   "name": "Europabank"
+  }
+ },
+ {
+  "id": "514020946",
+  "png": "renders/facades/514020946.png",
+  "name": null,
+  "tier": "detailed",
+  "d_walk": 8.1,
+  "height_m": 17.7,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "514019312",
+  "png": "renders/facades/514019312.png",
+  "name": "Hof van Gruuthuuse",
+  "tier": "prism",
+  "d_walk": 14.1,
+  "height_m": 15.1,
+  "tags": {
+   "building": "yes",
+   "name": "Hof van Gruuthuuse"
+  }
+ },
+ {
+  "id": "493993754",
+  "png": "renders/facades/493993754.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 6.6,
+  "height_m": 15.0,
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": "494007930",
+  "png": "renders/facades/494007930.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 8.2,
+  "height_m": 16.0,
+  "tags": {
+   "building": "retail",
+   "building:levels": "4",
+   "building:material": "brick",
+   "height": "16"
+  }
+ },
+ {
+  "id": "494007927",
+  "png": "renders/facades/494007927.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 22.7,
+  "height_m": 16.0,
+  "tags": {
+   "building": "house",
+   "building:levels": "4",
+   "building:material": "brick",
+   "height": "16"
+  }
+ },
+ {
+  "id": "493993738",
+  "png": "renders/facades/493993738.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 19.8,
+  "height_m": 13.9,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "493993764",
+  "png": "renders/facades/493993764.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 6.4,
+  "height_m": 9.0,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "494012345",
+  "png": "renders/facades/494012345.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 16.4,
+  "height_m": 19.1,
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": "493993744",
+  "png": "renders/facades/493993744.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 15.5,
+  "height_m": 14.9,
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": "514020945",
+  "png": "renders/facades/514020945.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 3.0,
+  "height_m": 9.0,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "494007824",
+  "png": "renders/facades/494007824.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 14.8,
+  "height_m": 13.6,
+  "tags": {
+   "building": "yes",
+   "historic": "house",
+   "start_date": "1725"
+  }
+ },
+ {
+  "id": "493993753",
+  "png": "renders/facades/493993753.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 16.7,
+  "height_m": 13.1,
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": "494012343",
+  "png": "renders/facades/494012343.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 9.7,
+  "height_m": 19.3,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "493993762",
+  "png": "renders/facades/493993762.png",
+  "name": "Graanspijker",
+  "tier": "prism",
+  "d_walk": 14.7,
+  "height_m": 18.0,
+  "tags": {
+   "building": "yes",
+   "building:levels": "3",
+   "building:material": "brick",
+   "height": "18",
+   "name": "Graanspijker"
+  }
+ },
+ {
+  "id": "494012338",
+  "png": "renders/facades/494012338.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 12.2,
+  "height_m": 16.2,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "494007989",
+  "png": "renders/facades/494007989.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 18.1,
+  "height_m": 17.1,
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": "493993749",
+  "png": "renders/facades/493993749.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 19.3,
+  "height_m": 16.4,
+  "tags": {
+   "building": "yes",
+   "historic": "building",
+   "start_date": "~1800"
+  }
+ },
+ {
+  "id": "494012340",
+  "png": "renders/facades/494012340.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 16.4,
+  "height_m": 13.8,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "493993665",
+  "png": "renders/facades/493993665.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 17.8,
+  "height_m": 12.5,
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": "494007995",
+  "png": "renders/facades/494007995.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 13.7,
+  "height_m": 13.9,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "493993748",
+  "png": "renders/facades/493993748.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 11.6,
+  "height_m": 14.0,
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": "493993759",
+  "png": "renders/facades/493993759.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 4.7,
+  "height_m": 8.0,
+  "tags": {
+   "building": "retail",
+   "building:levels": "2",
+   "building:material": "plaster",
+   "height": "8"
+  }
+ },
+ {
+  "id": "493993751",
+  "png": "renders/facades/493993751.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 11.3,
+  "height_m": 15.0,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "493993755",
+  "png": "renders/facades/493993755.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 14.4,
+  "height_m": 17.3,
+  "tags": {
+   "building": "yes",
+   "historic": "building",
+   "start_date": "~1800"
+  }
+ },
+ {
+  "id": "121290167",
+  "png": "renders/facades/121290167.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 19.0,
+  "height_m": 21.6,
+  "tags": {
+   "building": "yes",
+   "historic": "castle",
+   "start_date": "1850"
+  }
+ },
+ {
+  "id": "493993704",
+  "png": "renders/facades/493993704.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 21.7,
+  "height_m": 14.7,
+  "tags": {
+   "building": "yes"
+  }
+ },
+ {
+  "id": "494007977",
+  "png": "renders/facades/494007977.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 9.9,
+  "height_m": 16.7,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "494012342",
+  "png": "renders/facades/494012342.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 16.6,
+  "height_m": 16.0,
+  "tags": {
+   "building": "house"
+  }
+ },
+ {
+  "id": "493778691",
+  "png": "renders/facades/493778691.png",
+  "name": null,
+  "tier": "prism",
+  "d_walk": 29.2,
+  "height_m": 9.0,
+  "tags": {
+   "building": "house"
+  }
+ }
+]

@@ -1,0 +1,91 @@
+{
+ "osm_id": 494007983,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 4,
+   "evidence": "inferred"
+  },
+  "confidence": 0.62,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "seen"
+  },
+  "identification": "A heritage-listed 17th-century Flemish traditional-style brick-and-sandstone corner house at Hooiaard / Schuddeveestraatje in Ghent's old harbour quarter, red-painted brick with cream sandstone quoins and window surrounds over a bluestone plinth, now in restaurant use with a glazed, awninged ground floor and pavement terrace.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "notes": "EVIDENCE SPLIT. Seen in set B: painted brick wall with spalled paint over irregular handmade brick; cream-painted sandstone toothed quoins at the corner and around openings; bluestone plinth ~0.8 m; projecting stone sills; tall multi-light windows with iron bars (diefijzers) and clearly recessed glazing planes; caf\u00e9 glazing under a retractable awning, chalkboard, festoon lights, bistro terrace. Seen in set A (only roof view, photogrammetry heavily smeared): one pitched plane, ridge along the long axis of the block, eaves line legible, no dormer resolvable.\n\nSTOREYS marked inferred: the magenta outline in set B runs off the top of the frame, so the building continues above the photo. Two upper storeys plus the shopfront are directly visible; count=3 with 3.5 m ground and 3.1 m upper reconciles that against the 13.6 m adopted height, leaving ~3.9 m of roof over a 4.8 m depth (~58 deg pitch, steep but normal for this quarter). If the generator prefers a shallower roof, 4 storeys at ~2.85 m is the alternative reading; I did not see enough to choose.\n\nBAYS marked inferred: the corner is ambiguous as to which face carries the 13.9 m frontage. I count four large openings on the long face; 13.9/4 = ~3.5 m bay pitch, which fits either reading of the corner.\n\nLEDGES marked inferred as a group because the cornice is not seen \u2014 the wall is cut off in set B and set A resolves only a bright eaves band. Sills, the horizontal stone band above the shopfront, and the absence of balconies are directly seen; a modest corbelled brick eaves is the prior for this type.\n\nPHYSICS. The sandstone toothing that makes this facade legible projects only 2-4 cm and the brick relief 3-8 mm. Both sit in the 1-10 cm regime: do NOT mesh the toothing, the speklagen or the joints. They are carried by roughness_mm = 6 (plain historic brick ~4 mm, raised for the localised 2-4 cm stone toothing). Only the window reveals, the projecting sills, the plinth nosing and the eaves exceed 10 cm and deserve explicit geometry. trim = marble is the closest dielectric proxy in the enum for Belgian bluestone (dense limestone, eps ~7) and the Balegem sandstone dressings; concrete would under-state permittivity for the plinth, which is the trim element the beam actually sees at street level.\n\nCLUTTER. fronting_street has car_access=none on sett-paved living_street. No parked vehicles on Schuddeveestraatje. Correct clutter for this frontage: bistro chairs and tables with cushions, zinc planters with rosemary/laurel, two utility cabinets against the plinth, wall-mounted stainless extract ducting on the alley side, wheelie bins, refuse sacks, and bicycles.\n\nDETAIL BUDGET. The building is 0.9 m from the corridor, so it earns full treatment on openings and the ground floor; the roof is the weakest-evidence element and should not be over-articulated.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 3.5,
+   "upper_height_m": 3.1,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.3,
+   "height_m": 2.2,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494007983,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "heritage": "4",
+   "historic": "house",
+   "addr:street": "Hooiaard"
+  },
+  "frontage_width_m": 13.9,
+  "footprint_m": [
+   14.6,
+   4.8
+  ],
+  "footprint_area_m2": 64,
+  "height_m": 13.6,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "living_street",
+   "name": "Schuddeveestraatje",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.9
+  },
+  "plate_view": "oblique",
+  "street_photos": 1,
+  "target_box_normalised": {
+   "x0": 0.239,
+   "x1": 0.762,
+   "y0": 0.443,
+   "y1": 0.845
+  }
+ },
+ "plate": "renders/plates/graslei/494007983.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007983_0.jpg"
+ ],
+ "view": "oblique",
+ "cost_usd": 0.5962755,
+ "model": "claude-opus-5"
+}

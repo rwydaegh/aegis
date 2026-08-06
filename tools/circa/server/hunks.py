@@ -63,15 +63,18 @@ def _ids_in_hunk(hunk_text: str) -> set[str]:
 
 
 class HunkManager:
-    def __init__(self, paper_dir: Path) -> None:
+    def __init__(self, paper_dir: Path, tex_name: str = "paper.tex") -> None:
         self.paper_dir = paper_dir
-        self.paper_tex = paper_dir / "paper.tex"
+        self.tex_name = tex_name
+        self.paper_tex = paper_dir / tex_name
 
     def extract_for_batch(self, batch_id: str, annotation_ids: list[str]) -> dict[str, str]:
         snap = paths.snapshots_dir(self.paper_dir) / f"{batch_id}.tex"
         pre = snap.read_text().splitlines(keepends=True)
         post = self.paper_tex.read_text().splitlines(keepends=True)
-        diff = "".join(difflib.unified_diff(pre, post, fromfile="a/paper.tex", tofile="b/paper.tex", n=3))
+        diff = "".join(
+            difflib.unified_diff(pre, post, fromfile=f"a/{self.tex_name}", tofile=f"b/{self.tex_name}", n=3)
+        )
         result: dict[str, str] = {}
         for hunk in _split_unified_diff_into_hunks(diff):
             for aid in _ids_in_hunk(hunk) & set(annotation_ids):

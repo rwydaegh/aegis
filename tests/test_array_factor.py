@@ -47,10 +47,11 @@ def test_short_dipole_1x1_along_axis():
 
 
 def test_patch_1x1_broadside():
-    # k along broadside: cos(theta) = 1, G = 1.0^1.5 = 1.0
+    # k along broadside: cos(theta) = 1, G = D * 1.0^3 = 8 (9.0 dBi peak, the
+    # energy-conserving directivity of the cos^3 power pattern)
     k = np.array([1.0, 0.0, 0.0])
     result = array_factor_gain(k, 1, 1, 0.5, 0.5, _BROADSIDE, "patch", _FREQ)
-    assert result == pytest.approx(1.0)
+    assert result == pytest.approx(8.0)
 
 
 def test_patch_1x1_backside_zero():
@@ -62,10 +63,10 @@ def test_patch_1x1_backside_zero():
 
 def test_4x4_broadside_gain_equals_N_squared_times_element():
     # 4x4 patch at broadside: all phases identical -> |AF|^2 = (4*4)^2 = 256
-    # G_element(broadside) = 1.0, total = 256
+    # G_element(broadside) = 8.0, total = 2048
     k = np.array([1.0, 0.0, 0.0])
     result = array_factor_gain(k, 4, 4, 0.5, 0.5, _BROADSIDE, "patch", _FREQ)
-    assert result == pytest.approx(256.0, rel=1e-10)
+    assert result == pytest.approx(2048.0, rel=1e-10)
 
 
 def test_2x2_isotropic_broadside():

@@ -379,6 +379,21 @@ def paths_from_differt(
     k0 = 2 * np.pi * freq_hz / C_0
     psi = psi * np.exp(-1j * k0 * total_length)[:, np.newaxis]
 
+    # psi so far is the field AT the receiver, but the coherent kernels phase
+    # at absolute coordinates (exp(-i k0 k_hat . r)): re-reference to the world
+    # origin so the expansion reproduces the field around the actual rx point
+    # (the path's final non-degenerate vertex).
+    nz = seg_lengths > 1e-12
+    last_idx = nz.shape[1] - 1 - np.argmax(nz[:, ::-1], axis=1)
+    rx_point = path_vertices[row_idx, last_idx + 1]  # (N, 3), all equal to rx
+    psi = psi * np.exp(1j * k0 * np.einsum("nj,nj->n", k_hat, rx_point))[:, np.newaxis]
+
+    # Departure direction at the source: first non-degenerate segment.
+    first_idx = np.argmax(nz, axis=1)
+    first_seg = segments[row_idx, first_idx]
+    first_len = seg_lengths[row_idx, first_idx]
+    k_hat_tx = first_seg / np.maximum(first_len, 1e-12)[:, np.newaxis]
+
     # LOS: one non-degenerate segment (handles max-length padding / repeated RX verts)
     n_nonzero_segs = np.sum(seg_lengths > 1e-12, axis=1)
     is_los = n_nonzero_segs == 1
@@ -390,6 +405,7 @@ def paths_from_differt(
         delay=delay,
         is_los=is_los,
         polarised=polarised,
+        k_hat_tx=k_hat_tx,
     )
 
 

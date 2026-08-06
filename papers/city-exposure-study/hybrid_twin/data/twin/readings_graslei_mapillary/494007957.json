@@ -1,0 +1,92 @@
+{
+ "osm_id": 494007957,
+ "status": "ok",
+ "reading": {
+  "identification": "Mid-19th-century Ghent townhouse on the east side of the Korenmarkt: a narrow (7.8 m) four-storey burgher house in painted cement render over a full-width commercial ground floor (restaurant/fast-food unit with fascia signage and pavement terrace), with wrought-iron Juliet balconettes to the upper windows and a slate pitched roof running parallel to the square.",
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 4.2,
+   "upper_height_m": 3.1,
+   "evidence": "inferred"
+  },
+  "bays": {
+   "count": 3,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.4,
+   "height_m": 2.2,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "seen"
+  },
+  "ground_floor": {
+   "kind": "shopfront",
+   "evidence": "seen"
+  },
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "seen"
+  },
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": true,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "concrete",
+   "roughness_mm": 1.2,
+   "trim": "wood",
+   "evidence": "seen"
+  },
+  "confidence": 0.6,
+  "notes": "IDENTITY CAVEAT: the magenta box in B/0 straddles a party joint between two near-identical rendered houses (the \"...ville\" unit and the Pizza Hut unit). Both are the same type and period, so this grammar holds for either; do not treat the box edges as the party walls.\n\nSTOREYS: marked inferred, not seen. B/0 clearly shows the ground floor plus three upper window rows, but the top of the facade is clipped in both street photos and the set A tile has a duplicated-band render glitch straight through the facade, so I cannot count the top row directly. 4 storeys reconciles the visible rows with the 17.1 m measured height: 4.2 ground + 3 x 3.1 upper = 13.5 m of wall, leaving 3.6 m eaves-to-ridge, right for a ~45 deg pitch on a 7.8 m span. If the generator needs a fallback, 5 storeys at 2.8 m with a shallower roof is the only competing reading.\n\nROOF: read from set A, which is the right source for massing. The roof zone at the top of the box is clean of the glitch and shows a slate-grey pitched plane with a street-parallel eaves line and light dormer patches along the row. B/1 shows a red pantile eave inside the box on a neighbour, so the row is mixed slate/pantile \u2014 vary tile colour along the terrace rather than making the whole row uniform. A mansard is the plausible alternative if the generator has one; the lower slope in the tile is steep.\n\nMATERIAL, and what to keep out of geometry: the wall is smooth painted cement render (anthracite/charcoal grey), NOT brick. At 3x in B/0 there is no bond pattern and no joint shadow, only a flat painted surface with rain-streak staining below the ledges. So concrete is the dielectric class and roughness stays low \u2014 1.2 mm RMS, i.e. a smooth painted surface with age, nowhere near the 3-8 mm of exposed brick. Do not mesh the render texture or the staining.\n\nTRIM SPLIT \u2014 important, one enum value cannot carry this: window frames are white painted timber/PVC (wood is the correct dielectric class, which is why trim=wood), but three elements on this facade are genuinely metal and should be assigned metal separately if the generator supports it: (a) the wrought-iron Juliet balustrades, (b) the shopfront framing and fascia, (c) the projecting box sign brackets. Sills, surrounds and the string course are painted render/stone, i.e. concrete. Getting the sills wrong as metal would over-reflect a lot of small horizontal area.\n\nWHAT TO SPEND GEOMETRY ON (>10 cm regime, this is where the 28 GHz street-level field is decided): the Juliet balconettes are the defining feature and project roughly 10-15 cm with open scrollwork \u2014 model them as real facets, they sit directly at first/second floor and will dominate off-specular scatter down onto the pavement. Then the projecting sills, the string course above the shop fascia, the eaves cornice, and the window reveals (shallow class, ~0.12 m \u2014 B/0 shows jamb shadow but reference imagery cannot resolve depth better than a class, so do not invent a number). The ironwork is thin-bar: keep it as bars, not a solid panel, or it becomes a mirror it is not.\n\nWHAT MUST STAY A NUMBER (1-10 cm regime): render texture, the fascia lettering, the sign graphics, the window decals. These are roughness and scattering coefficient only. Meshing them produces specular garbage.\n\nGROUND FLOOR: dark-framed full-height glazing with a solid fascia band above and a recessed entry \u2014 classed shopfront rather than cafe_glazing because of the fascia and the retail-style stallriser framing, but the unit functions as a restaurant. Large flat glass panes at eye level: this is the single most radio-significant surface on the building and deserves the finest facet budget, along with the balconettes.\n\nCLUTTER \u2014 calibrate to this street, do not apply a generic rule: fronting_street is highway=pedestrian, car_access=none, surface=paving_stones, distance 0.0 m. NO PARKED CARS, NO MOVING VEHICLES. What the photos actually show on this pavement: cafe terrace tables and stacked metal chairs, tall black market-parasols, A-board menu boards, a wooden terrace enclosure with planting, a parked scooter and bicycles, tram rails and overhead catenary wires in the carriageway, and dense pedestrian traffic. The catenary wires are worth including \u2014 they are metal, they cross the corridor, and nothing else in the scene is at that height.\n\nSECOND FRONTAGE: street_frontages=2 with 4 attached neighbours means this is a corner unit. The return elevation should carry the same render, sill and cornice grammar but with a sparser and more irregular bay rhythm, and a largely blank or service-doored ground floor rather than a second shopfront."
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 494007957,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "addr:street": "Korenmarkt"
+  },
+  "frontage_width_m": 7.8,
+  "footprint_m": [
+   16.5,
+   7.8
+  ],
+  "footprint_area_m2": 96,
+  "height_m": 17.1,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 4,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Korenmarkt",
+   "surface": "paving_stones",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.397,
+   "x1": 0.59,
+   "y0": 0.1,
+   "y1": 0.827
+  }
+ },
+ "plate": "renders/plates/graslei/494007957.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007957_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007957_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 1.230769,
+ "model": "claude-opus-5"
+}

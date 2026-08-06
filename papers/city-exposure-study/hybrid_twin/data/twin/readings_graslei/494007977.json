@@ -1,0 +1,93 @@
+{
+ "osm_id": 494007977,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 3,
+   "evidence": "seen"
+  },
+  "confidence": 0.78,
+  "ground_floor": {
+   "kind": "residential_door",
+   "evidence": "seen"
+  },
+  "identification": "A three-bay, three-storey 17th-century Ghent quayside merchant's house on the Korenlei (heritage 4), brick with sandstone speklagen and stone-framed cross-windows rising from a water-level cellar, crowned by a steep slate mansard with a monumental scrolled baroque dormer; now in guest-house use (\"Rooms with a View\").",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": true,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "notes": "SEPARATE GROUND PLANES: the Korenlei has a lower stone quay at the water and the street above. The three round-arched, oxblood-painted cellar doors in B_1 sit on the LOWER quay, below Korenlei level, and are excluded from the storey count (basement). They must still be generated \u2014 they are the whole base of the elevation seen from Graslei and from the water, i.e. exactly the angles a rotating judge camera will take. The ground_floor field describes the Korenlei-level storey, which is tall windows plus a house door, not a shopfront; the cafe terrace and parasols in both photos belong to the NEIGHBOUR to the left, not this plot.\n\nDO NOT COPY THE NEIGHBOUR. The house immediately left in B_0 has a stepped gable (trapgevel). This building does not. Its crown is a mansard with one wide central dormer carrying volute scrolls, an oculus and a segmental pediment. Defaulting this plot to a Ghent stepped gable would be the generic-plausible failure.\n\nSTOREY HEIGHTS are derived, not measured directly: count is seen in both photos; heights come from scaling B_1 proportions against the supplied 16.7 m, which yields ~10 m of wall, ~5.5 m of roof, and the balance absorbed by the plinth/quay offset. Do not treat 3.6/3.2 m as surveyed.\n\nWINDOW REVEAL is the one inferred field inside the window group; everything else there (width, height, glazing bars) is read off B_1. Reveal cannot be resolved by either image set \u2014 \"deep\" is the prior for a thick 17th-century brick wall with recessed stone-framed cross-windows, supported only by the shadow banding on the jambs in B_1.\n\nDETAIL BUDGET: fronting street is 0.0 m away and pedestrian, so this facade is at maximum illumination. Spend on the >10 cm regime \u2014 projecting stone sills, the sandstone string courses banding the brick, the eaves cornice, wrought-iron balconets on the centre bay of the upper two storeys and on the dormer, window reveals and the scrolled dormer crown. The flower boxes on the sills are ~25 cm deep and are genuine geometry, not decoration; they recur on nearly every sill and are a real scatterer. Spend nothing on brick bond or mortar joints: at 1.07 cm wavelength that is the 1-10 cm regime and meshing it produces specular garbage. It is carried entirely by roughness_mm 6 (weathered historic brick, recessed and irregular joints) plus a scattering coefficient.\n\nCLUTTER: car_access none, surface sett, highway pedestrian. NO vehicles on this frontage under any circumstance. Appropriate clutter is terrace tables and chairs, folded and open parasols, bicycles against the quay railing, bollards, and the iron quay balustrade visible at the foot of B_0.\n\nREAR/SIDE: two street frontages, footprint only 9.1 x 5.3 m, so the flank is short and the mass reads almost as a slab. Give the corner a real arris and carry the string courses and cornice around it \u2014 a flat-topped extruded footprint here would be immediately readable as a primitive from the Graslei bank.",
+  "roof": {
+   "form": "mansard",
+   "ridge_parallel_to_street": true,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 3.6,
+   "upper_height_m": 3.2,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.5,
+   "height_m": 2,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 494007977,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "heritage": "4",
+   "addr:street": "Korenlei"
+  },
+  "frontage_width_m": 9.1,
+  "footprint_m": [
+   9.1,
+   5.3
+  ],
+  "footprint_area_m2": 36,
+  "height_m": 16.7,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Korenlei",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.361,
+   "x1": 0.627,
+   "y0": 0.109,
+   "y1": 0.819
+  }
+ },
+ "plate": "renders/plates/graslei/494007977.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007977_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007977_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.45139050000000003,
+ "model": "claude-opus-5"
+}

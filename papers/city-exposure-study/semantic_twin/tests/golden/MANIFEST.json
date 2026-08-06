@@ -1,0 +1,658 @@
+{
+ "captured_utc": "2026-08-05T09:04:34Z",
+ "cases": {
+  "cities_250m_all_sites": {
+   "argv": [
+    "--all-sites",
+    "--crop-m",
+    "250",
+    "--locations",
+    "8",
+    "--rays",
+    "200000",
+    "--local-cells",
+    "512",
+    "--frequency-ghz",
+    "15.0",
+    "--seed",
+    "7",
+    "--workers",
+    "2",
+    "--tag-suffix",
+    "_golden"
+   ],
+   "clears": [],
+   "command": "python run_exposure.py --all-sites --crop-m 250 --locations 8 --rays 200000 --local-cells 512 --frequency-ghz 15.0 --seed 7 --workers 2 --tag-suffix _golden",
+   "driver": "run_exposure.py",
+   "fixture": "cities_250m_all_sites.json",
+   "fixture_bytes": 205729,
+   "prerequisites": [],
+   "tier": "slow",
+   "wall_seconds": 294.74,
+   "what_it_locks": "All eleven squares at the published 250 m crop, and the cross city table built from them. Two different failures: the per site rows catch a geometry regression at a square nothing else samples, and cities250_golden_15ghz_summary catches a change in the reduction from rows to table. The completeness fields are locked too, because a partial sweep once became a published figure.",
+   "writes": [
+    "outputs/exposure_korenmarkt/city250_golden_<site>_15ghz_*",
+    "outputs/exposure_korenmarkt/cities250_golden_15ghz_summary.json"
+   ]
+  },
+  "cities_250m_report_only": {
+   "argv": [
+    "--cities-report",
+    "--crop-m",
+    "250",
+    "--frequency-ghz",
+    "15.0",
+    "--tag-suffix",
+    "_golden"
+   ],
+   "clears": [],
+   "command": "python run_exposure.py --cities-report --crop-m 250 --frequency-ghz 15.0 --tag-suffix _golden",
+   "driver": "run_exposure.py",
+   "fixture": "cities_250m_report_only.json",
+   "fixture_bytes": 25112,
+   "prerequisites": [
+    "cities_250m_all_sites"
+   ],
+   "tier": "slow",
+   "wall_seconds": 1.54,
+   "what_it_locks": "The aggregation on its own, with no tracing at all. It reads the eleven per site row files the case above wrote and rebuilds the table, so a refactor that changes only the reduction fails here in seconds rather than after a nine minute sweep.",
+   "writes": [
+    "outputs/exposure_korenmarkt/cities250_golden_15ghz_summary.json"
+   ]
+  },
+  "coverage_ladder_korenmarkt_130m": {
+   "argv": [
+    "--coverage-ladder",
+    "--ladder-sites",
+    "korenmarkt",
+    "--ladder-seeds",
+    "7",
+    "--crop-m",
+    "130",
+    "--locations",
+    "8",
+    "--rays",
+    "200000",
+    "--local-cells",
+    "512",
+    "--frequency-ghz",
+    "15.0",
+    "--workers",
+    "2",
+    "--tag-suffix",
+    "_golden"
+   ],
+   "captured_utc": "2026-08-05T19:22:15Z",
+   "clears": [
+    "exposure_korenmarkt/korenmarkt_geometric_golden_15ghz*",
+    "exposure_korenmarkt/korenmarkt_semantic_golden_15ghz*",
+    "exposure_korenmarkt/korenmarkt_walk_golden_15ghz*"
+   ],
+   "command": "python run_exposure.py --coverage-ladder --ladder-sites korenmarkt --ladder-seeds 7 --crop-m 130 --locations 8 --rays 200000 --local-cells 512 --frequency-ghz 15.0 --workers 2 --tag-suffix _golden",
+   "driver": "run_exposure.py",
+   "fixture": "coverage_ladder_korenmarkt_130m.json",
+   "fixture_bytes": 71154,
+   "git_dirty": true,
+   "git_sha": "88d5202c33150e0b98667bbebb3cf19aadb75981",
+   "prerequisites": [],
+   "source_dirty": false,
+   "tier": "slow",
+   "wall_seconds": 42.26,
+   "what_it_locks": "The evidence ladder, which is the experiment that says whether the material assignment matters. Three rungs at one site and one seed: orientation rule, fishnet surfaces, fused stations, with everything but the binding held fixed. The distribution median moves by 0.011749 dB and the largest absolute change is 0.459 %. The paired median is 3.6e-8 dB across eight standpoints. It locks the three runs, the per site ladder report and the cross site report. The tag suffix is mandatory here and the driver enforces it: without one the sweep would overwrite the published korenmarkt_geometric, korenmarkt_semantic and korenmarkt_walk stems, which hold 120 standpoint runs made under the superseded illumination law.",
+   "writes": [
+    "outputs/exposure_korenmarkt/korenmarkt_{geometric,semantic,walk}_golden_15ghz_*",
+    "outputs/exposure_korenmarkt/coverage_ladder_golden_15ghz.json",
+    "outputs/exposure_korenmarkt/coverage_ladder_cross_site_130m_golden_15ghz.json"
+   ]
+  },
+  "exposure_brussels_250m_geometric": {
+   "argv": [
+    "--site",
+    "brussels_grandplace",
+    "--crop-m",
+    "250",
+    "--locations",
+    "16",
+    "--rays",
+    "200000",
+    "--local-cells",
+    "512",
+    "--frequency-ghz",
+    "15.0",
+    "--materials",
+    "geometric",
+    "--seed",
+    "7",
+    "--workers",
+    "2",
+    "--tag",
+    "golden_bru250_geo"
+   ],
+   "clears": [],
+   "command": "python run_exposure.py --site brussels_grandplace --crop-m 250 --locations 16 --rays 200000 --local-cells 512 --frequency-ghz 15.0 --materials geometric --seed 7 --workers 2 --tag golden_bru250_geo",
+   "driver": "run_exposure.py",
+   "fixture": "exposure_brussels_250m_geometric.json",
+   "fixture_bytes": 36021,
+   "prerequisites": [],
+   "tier": "slow",
+   "wall_seconds": 46.04,
+   "what_it_locks": "A second city at the published 250 m crop radius. Catches anything that is accidentally specific to Korenmarkt, which is the site every hardcoded path in the driver names.",
+   "writes": [
+    "outputs/exposure_korenmarkt/golden_bru250_geo_15ghz_*"
+   ]
+  },
+  "exposure_korenmarkt_130m_geometric": {
+   "argv": [
+    "--site",
+    "korenmarkt",
+    "--crop-m",
+    "130",
+    "--locations",
+    "16",
+    "--rays",
+    "200000",
+    "--local-cells",
+    "512",
+    "--frequency-ghz",
+    "15.0",
+    "--materials",
+    "geometric",
+    "--seed",
+    "7",
+    "--workers",
+    "2",
+    "--tag",
+    "golden_km130_geo"
+   ],
+   "clears": [],
+   "command": "python run_exposure.py --site korenmarkt --crop-m 130 --locations 16 --rays 200000 --local-cells 512 --frequency-ghz 15.0 --materials geometric --seed 7 --workers 2 --tag golden_km130_geo",
+   "driver": "run_exposure.py",
+   "fixture": "exposure_korenmarkt_130m_geometric.json",
+   "fixture_bytes": 35945,
+   "prerequisites": [],
+   "tier": "slow",
+   "wall_seconds": 39.19,
+   "what_it_locks": "The fast case at the published ray count, 200 000 per standpoint.",
+   "writes": [
+    "outputs/exposure_korenmarkt/golden_km130_geo_15ghz_*"
+   ]
+  },
+  "exposure_korenmarkt_130m_geometric_fast": {
+   "argv": [
+    "--site",
+    "korenmarkt",
+    "--crop-m",
+    "130",
+    "--locations",
+    "8",
+    "--rays",
+    "50000",
+    "--local-cells",
+    "512",
+    "--frequency-ghz",
+    "15.0",
+    "--materials",
+    "geometric",
+    "--seed",
+    "7",
+    "--workers",
+    "1",
+    "--tag",
+    "golden_km130_geo_fast"
+   ],
+   "clears": [],
+   "command": "python run_exposure.py --site korenmarkt --crop-m 130 --locations 8 --rays 50000 --local-cells 512 --frequency-ghz 15.0 --materials geometric --seed 7 --workers 1 --tag golden_km130_geo_fast",
+   "driver": "run_exposure.py",
+   "fixture": "exposure_korenmarkt_130m_geometric_fast.json",
+   "fixture_bytes": 20155,
+   "prerequisites": [],
+   "tier": "fast",
+   "wall_seconds": 23.14,
+   "what_it_locks": "The escape estimator end to end on the Korenmarkt 130 m mesh: ground datum, walkable grid, triangle orientation materials, three illumination laws, and the Duke phantom coupling.",
+   "writes": [
+    "outputs/exposure_korenmarkt/golden_km130_geo_fast_15ghz_*"
+   ]
+  },
+  "exposure_korenmarkt_130m_semantic": {
+   "argv": [
+    "--site",
+    "korenmarkt",
+    "--crop-m",
+    "130",
+    "--locations",
+    "8",
+    "--rays",
+    "200000",
+    "--local-cells",
+    "512",
+    "--frequency-ghz",
+    "15.0",
+    "--materials",
+    "semantic",
+    "--seed",
+    "7",
+    "--workers",
+    "2",
+    "--tag",
+    "golden_km130_semantic"
+   ],
+   "captured_utc": "2026-08-05T19:20:54Z",
+   "clears": [],
+   "command": "python run_exposure.py --site korenmarkt --crop-m 130 --locations 8 --rays 200000 --local-cells 512 --frequency-ghz 15.0 --materials semantic --seed 7 --workers 2 --tag golden_km130_semantic",
+   "driver": "run_exposure.py",
+   "fixture": "exposure_korenmarkt_130m_semantic.json",
+   "fixture_bytes": 25368,
+   "git_dirty": true,
+   "git_sha": "88d5202c33150e0b98667bbebb3cf19aadb75981",
+   "prerequisites": [],
+   "source_dirty": false,
+   "tier": "slow",
+   "wall_seconds": 16.28,
+   "what_it_locks": "The per-view fishnet binding route through bind() at Korenmarkt. It covers 1.75 % of faces and 2.63 % of area. The support check accepts 2,770 faces and records 501 faces with a conflict or tie. The coverage, class area fractions, accepted counts, and support report form a fingerprint of the binding. The fixture also locks its mesh provenance.",
+   "writes": [
+    "outputs/exposure_korenmarkt/golden_km130_semantic_15ghz_*"
+   ]
+  },
+  "exposure_korenmarkt_130m_walk": {
+   "argv": [
+    "--site",
+    "korenmarkt",
+    "--crop-m",
+    "130",
+    "--locations",
+    "8",
+    "--rays",
+    "200000",
+    "--local-cells",
+    "512",
+    "--frequency-ghz",
+    "15.0",
+    "--materials",
+    "walk",
+    "--seed",
+    "7",
+    "--workers",
+    "2",
+    "--tag",
+    "golden_km130_walk"
+   ],
+   "captured_utc": "2026-08-05T19:20:37Z",
+   "clears": [],
+   "command": "python run_exposure.py --site korenmarkt --crop-m 130 --locations 8 --rays 200000 --local-cells 512 --frequency-ghz 15.0 --materials walk --seed 7 --workers 2 --tag golden_km130_walk",
+   "driver": "run_exposure.py",
+   "fixture": "exposure_korenmarkt_130m_walk.json",
+   "fixture_bytes": 24898,
+   "git_dirty": true,
+   "git_sha": "88d5202c33150e0b98667bbebb3cf19aadb75981",
+   "prerequisites": [],
+   "source_dirty": false,
+   "tier": "slow",
+   "wall_seconds": 16.19,
+   "what_it_locks": "The fused image evidence arm at Korenmarkt. It covers 4.79 % of faces and 6.95 % of area. Against the geometric case at the same eight standpoints, it changes chi_rooftop by -0.29 % to +1.30 %. This fixture catches a refactor that disconnects the fused materials.",
+   "writes": [
+    "outputs/exposure_korenmarkt/golden_km130_walk_15ghz_*"
+   ]
+  },
+  "exposure_prague_130m_semantic": {
+   "argv": [
+    "--site",
+    "prague_staromestske",
+    "--crop-m",
+    "130",
+    "--locations",
+    "8",
+    "--rays",
+    "200000",
+    "--local-cells",
+    "512",
+    "--frequency-ghz",
+    "15.0",
+    "--materials",
+    "semantic",
+    "--seed",
+    "7",
+    "--workers",
+    "2",
+    "--tag",
+    "golden_prague130_semantic"
+   ],
+   "captured_utc": "2026-08-05T19:21:11Z",
+   "clears": [],
+   "command": "python run_exposure.py --site prague_staromestske --crop-m 130 --locations 8 --rays 200000 --local-cells 512 --frequency-ghz 15.0 --materials semantic --seed 7 --workers 2 --tag golden_prague130_semantic",
+   "driver": "run_exposure.py",
+   "fixture": "exposure_prague_130m_semantic.json",
+   "fixture_bytes": 25561,
+   "git_dirty": true,
+   "git_sha": "88d5202c33150e0b98667bbebb3cf19aadb75981",
+   "prerequisites": [],
+   "source_dirty": false,
+   "tier": "slow",
+   "wall_seconds": 17.24,
+   "what_it_locks": "The per-view fishnet binding at Prague, where the evidence covers much more of the mesh. It covers 17.315 % of faces and 27.294 % of area. The support check accepts 29,738 faces and records 8,484 faces with a conflict or tie. Prague cuts and traces the same mesh, so this case also locks the direct mesh join.",
+   "writes": [
+    "outputs/exposure_korenmarkt/golden_prague130_semantic_15ghz_*"
+   ]
+  },
+  "next_event_250m_default": {
+   "argv": [
+    "--sites",
+    "korenmarkt",
+    "brussels_grandplace",
+    "--crop-m",
+    "250",
+    "--rays",
+    "200000",
+    "--builders",
+    "128",
+    "--held-out",
+    "16",
+    "--azimuths",
+    "1440",
+    "--elevations",
+    "600",
+    "--cell-m",
+    "1.0",
+    "--dims",
+    "3",
+    "--connections",
+    "1",
+    "--frequency-hz",
+    "15000000000.0",
+    "--max-bounces",
+    "3",
+    "--walk",
+    "route",
+    "--walk-path",
+    "links",
+    "--walk-stride-m",
+    "6.0",
+    "--seed",
+    "7",
+    "--tag",
+    "golden_ne_250m"
+   ],
+   "captured_utc": "2026-08-05T19:21:32Z",
+   "clears": [],
+   "command": "python run_next_event.py --sites korenmarkt brussels_grandplace --crop-m 250 --rays 200000 --builders 128 --held-out 16 --azimuths 1440 --elevations 600 --cell-m 1.0 --dims 3 --connections 1 --frequency-hz 15000000000.0 --max-bounces 3 --walk route --walk-path links --walk-stride-m 6.0 --seed 7 --tag golden_ne_250m",
+   "driver": "run_next_event.py",
+   "fixture": "next_event_250m_default.json",
+   "fixture_bytes": 9034,
+   "git_dirty": true,
+   "git_sha": "88d5202c33150e0b98667bbebb3cf19aadb75981",
+   "prerequisites": [],
+   "source_dirty": false,
+   "tier": "slow",
+   "wall_seconds": 20.95,
+   "what_it_locks": "run_next_event.py on every one of its own defaults, at both pilot squares. Its routes are aligned with the registered camera endpoints. The measured multipath surplus is +0.57 to +0.59 dB.",
+   "writes": [
+    "outputs/next_event/golden_ne_250m_250m.json"
+   ]
+  },
+  "next_event_korenmarkt_130m_fast": {
+   "argv": [
+    "--sites",
+    "korenmarkt",
+    "--crop-m",
+    "130",
+    "--rays",
+    "50000",
+    "--builders",
+    "32",
+    "--held-out",
+    "16",
+    "--azimuths",
+    "720",
+    "--elevations",
+    "300",
+    "--cell-m",
+    "1.0",
+    "--dims",
+    "3",
+    "--connections",
+    "1",
+    "--frequency-hz",
+    "15000000000.0",
+    "--max-bounces",
+    "3",
+    "--walk",
+    "route",
+    "--walk-path",
+    "links",
+    "--walk-stride-m",
+    "6.0",
+    "--seed",
+    "7",
+    "--tag",
+    "golden_ne_km130_fast"
+   ],
+   "clears": [],
+   "command": "python run_next_event.py --sites korenmarkt --crop-m 130 --rays 50000 --builders 32 --held-out 16 --azimuths 720 --elevations 300 --cell-m 1.0 --dims 3 --connections 1 --frequency-hz 15000000000.0 --max-bounces 3 --walk route --walk-path links --walk-stride-m 6.0 --seed 7 --tag golden_ne_km130_fast",
+   "driver": "run_next_event.py",
+   "fixture": "next_event_korenmarkt_130m_fast.json",
+   "fixture_bytes": 4699,
+   "prerequisites": [],
+   "tier": "fast",
+   "wall_seconds": 1.95,
+   "what_it_locks": "The second estimator: skyline extraction, the explicit source set on facade tips, the exact line of sight term, and next event connection at every path vertex. Also carries the escape estimator's own surplus for the same points, so the factor of three gap between the two is locked as a number.",
+   "writes": [
+    "outputs/next_event/golden_ne_km130_fast_130m.json"
+   ]
+  }
+ },
+ "deliberate_holes": {
+  "clean_checkout": "None of the end to end cases can run from a fresh clone. They read meshes under data/geometry, fishnet surfaces under outputs/<site>_fishnet_vistas, the fused walk under outputs/walk_korenmarkt, and outputs/evidence_coverage.json, which decides whether a fishnet rung is offered at all. outputs/ is 3.7 GB and gitignored, and the 250 m meshes are gitignored too. So the fixtures are a lock on this working tree, not a lock anyone can reproduce from git alone. The numeric tier is the part that does run anywhere: it needs no mesh and no outputs/.",
+  "coverage_ladder_breadth": "The ladder is locked at one site and one seed, korenmarkt at 130 m on seed 7. Six more sites are admitted at 130 m and seven at 250 m, and the published error bar comes from several seeds. What is locked is the ladder arithmetic, not the published spread.",
+  "coverage_ladder_resumes": "Not a hole any more, but worth recording because it was one for an afternoon. run_exposure.reusable() lets --coverage-ladder accept a rung already on disk whose settings match, which is right for a sweep that has to survive being stopped. It means a golden test on that flag re-reads three runs instead of making them: the case took 1.7 s and checked nothing but the two reports. The Case now carries a clears list, and both capture.py and the test delete the three golden tagged rungs first, so the run traces. It takes 53 s and it reproduced the reused numbers to the last bit. Only paths whose name holds 'golden' can be deleted; Case.clear() raises on anything else.",
+  "cross_machine_bit_equality": "Every reproducibility claim in this manifest was measured on the machine recorded above. tests/test_determinism.py records that the two elevation weighted susceptibilities drift one or two units in the last place across libm versions. The tolerance is sized for that and it was not tested.",
+  "materials_walk_variants": "walk_material, walk_material_mixture, walk_material_over_entity and walk_material_facade_only are not locked. Plain walk and plain semantic are.",
+  "next_event_walk_paths": "run_next_event.py --walk-path street and --walk-path closest are not locked. Both ask the Google Routes API, and a network call does not belong in a golden test. Only --walk-path links, which walks the local capture chain, is covered.",
+  "per_site_single_runs": "There is no separate --site case for the eight squares other than korenmarkt, brussels_grandplace and prague_staromestske. They are not unlocked: cities_250m_all_sites traces every one of the eleven through the same run() the single site cases use, and its fixture keeps all eight standpoint rows per site, so a geometry regression at any square fails there and the failing key names the site. test_every_site_is_locked_by_the_sweep asserts each square separately off that fixture. What is genuinely not covered is the other nine at the 130 m crop, and a site whose mesh is missing at 250 m, which run_all_sites skips by design and sites_present would then record as fewer than eleven."
+ },
+ "git_branch": "feature/coherent-exposure-studio",
+ "git_dirty": true,
+ "git_sha": "1ceedaaa546b0d797d8dd1ba3da48d526489bf35",
+ "machine": {
+  "cpu_count": 4,
+  "env": {
+   "AEGIS_DATA_DIR": null,
+   "MKL_NUM_THREADS": null,
+   "OMP_NUM_THREADS": null,
+   "OPENBLAS_NUM_THREADS": null
+  },
+  "platform": "Linux-5.15.0-171-generic-x86_64-with-glibc2.35",
+  "processor": "x86_64",
+  "versions": {
+   "drjit": "1.3.1",
+   "mitsuba": "3.8.0",
+   "numpy": "2.4.6",
+   "python": "3.12.13",
+   "scipy": "1.17.1",
+   "trimesh": "4.12.2"
+  }
+ },
+ "monte_carlo_noise": {
+  "note": "one standpoint, one walk, eight trace seeds, 200 000 rays",
+  "rays": 200000,
+  "standpoints": {
+   "213": {
+    "isotropic": {
+     "mean": 0.26211530705999053,
+     "relative_range": 0.002774000427306966,
+     "relative_std": 0.0008848546803263162
+    },
+    "rooftop": {
+     "mean": 0.2469414998176911,
+     "relative_range": 0.022040928372938043,
+     "relative_std": 0.00707379561662698
+    },
+    "street_small_cell": {
+     "mean": 0.105691218566112,
+     "relative_range": 0.0757603106426364,
+     "relative_std": 0.023806704649911692
+    }
+   },
+   "427": {
+    "isotropic": {
+     "mean": 0.42534720202018944,
+     "relative_range": 0.002231583365887455,
+     "relative_std": 0.0007480639806723311
+    },
+    "rooftop": {
+     "mean": 0.4448074672537337,
+     "relative_range": 0.014265617931663113,
+     "relative_std": 0.004518240794689881
+    },
+    "street_small_cell": {
+     "mean": 0.23640389370254342,
+     "relative_range": 0.07094194299021789,
+     "relative_std": 0.024046400977147
+    }
+   }
+  }
+ },
+ "provenance_rule": "Each cases entry records the capture time and source state for that fixture. source_dirty covers executable study inputs and src/aegis while excluding golden JSON and local handoffs. The top-level captured_utc, git_sha, and git_dirty fields are a legacy fallback only for entries which have not yet been recaptured with per-case provenance.",
+ "reproducibility": {
+  "blas_threads": "The fast tier passes at rtol 1e-12 with OMP_NUM_THREADS, OPENBLAS_NUM_THREADS and MKL_NUM_THREADS all pinned to 1 and with all three unset.",
+  "same_seed_rerun": "Every case was run at least twice and reduced twice, and every fixture came back byte identical. That includes the eleven city sweep, captured once at 294.7 s and once at 236.4 s of wall time for the same numbers to the last bit, and the coverage ladder, whose three rungs were once read from disk and once retraced from scratch, again for the same numbers.",
+  "seed_meaning": "--seed moves the walk as well as the tracer, so two seeds do not sample the same standpoints. The spread recorded under seed_spread is therefore standpoint resampling and Monte Carlo noise together, and the resampling dominates. It is a scale for reading a failure, not a tolerance.",
+  "worker_count": "exposure_korenmarkt_130m_geometric at --workers 1 and at --workers 4 gives bit identical rows. The pool splits standpoints, it does not split rays."
+ },
+ "seed_spread": {
+  "case": "exposure_korenmarkt_130m_geometric",
+  "median_over_16_standpoints": {
+   "chi_isotropic": {
+    "db_range": 0.5300653924490165,
+    "mean": 0.279387041206845,
+    "medians": [
+     0.2646176318487473,
+     0.296557074853131,
+     0.2981621960825498,
+     0.273694262913032,
+     0.26390404033676473
+    ],
+    "relative_range": 0.12516943315202333,
+    "std": 0.0168640371015793
+   },
+   "chi_rooftop": {
+    "db_range": 1.0513102484866914,
+    "mean": 0.18559466377117043,
+    "medians": [
+     0.16172488504255456,
+     0.18715410271829858,
+     0.2060192851698308,
+     0.19936286936568767,
+     0.1737121765594804
+    ],
+    "relative_range": 0.23667341235873143,
+    "std": 0.018166730121917864
+   },
+   "chi_street_small_cell": {
+    "db_range": 1.3801051353091245,
+    "mean": 0.06870994782176604,
+    "medians": [
+     0.0581444639308389,
+     0.07185440327730729,
+     0.07989486815106417,
+     0.07501758518484782,
+     0.05863841856477205
+    ],
+    "relative_range": 0.3027010625400932,
+    "std": 0.009846845731155506
+   },
+   "isotropic_peak_sab_w_m2": {
+    "db_range": 0.5226568298171459,
+    "mean": 0.08223875864317959,
+    "medians": [
+     0.077639758423652,
+     0.08756889275241647,
+     0.086523381418421,
+     0.08055008708731387,
+     0.07891167353409456
+    ],
+    "relative_range": 0.12326658713604596,
+    "std": 0.00452327956007773
+   },
+   "isotropic_sar_wb_w_kg": {
+    "db_range": 0.49163954632984,
+    "mean": 0.0008282518123662739,
+    "medians": [
+     0.0007881178287249649,
+     0.0008741622821641401,
+     0.0008797711282139764,
+     0.0008136000876888339,
+     0.0007856077350394541
+    ],
+    "relative_range": 0.11573670480052316,
+    "std": 4.584195172676514e-05
+   },
+   "mean_bounces": {
+    "db_range": 0.31592936309268516,
+    "mean": 1.2059501972772257,
+    "medians": [
+     1.2420764353717522,
+     1.1932250267947906,
+     1.1549292649089513,
+     1.2025451742812838,
+     1.236975085029351
+    ],
+    "relative_range": 0.07246893699015128,
+    "std": 0.035511647469641396
+   },
+   "rooftop_peak_sab_w_m2": {
+    "db_range": 1.3245087936082531,
+    "mean": 0.05506754172777793,
+    "medians": [
+     0.04576038268331595,
+     0.05699941640577783,
+     0.06207840173164672,
+     0.05890071852274802,
+     0.051598789295401154
+    ],
+    "relative_range": 0.2862839670526288,
+    "std": 0.006446568758317711
+   },
+   "rooftop_sar_wb_w_kg": {
+    "db_range": 1.089713639562552,
+    "mean": 0.0006910776797897489,
+    "medians": [
+     0.0006028879474557571,
+     0.0006980956122261087,
+     0.0007748327445308118,
+     0.0007279591053092227,
+     0.0006516129894268439
+    ],
+    "relative_range": 0.24630551182917756,
+    "std": 6.663199769703468e-05
+   },
+   "sky_fraction": {
+    "db_range": 0.7423820931840635,
+    "mean": 0.21500899999999995,
+    "medians": [
+     0.19837,
+     0.234685,
+     0.23535,
+     0.2073775,
+     0.1992625
+    ],
+    "relative_range": 0.17832214198743843,
+    "std": 0.01860073676296184
+   }
+  },
+  "note": "run_exposure.py's --seed drives the walk and the trace together, so this spread is standpoint resampling plus Monte Carlo, not Monte Carlo alone",
+  "seeds": [
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "standpoint_sets_identical": false
+ },
+ "study_root": "/home/user/aegis/papers/city-exposure-study/semantic_twin",
+ "thin_statistics": {
+  "coverage_ladder_korenmarkt_130m:paired_median_shift_db": "Locked at eight standpoints, where the published ladder used 120. The paired median shift for the fishnet rung is 3.6e-8 dB. The distribution median shift is 0.011749 dB and the largest absolute change is 0.459 %. The paired median alone hides the small changes at this standpoint count, so read all three statistics.",
+  "next_event_250m_default:korenmarkt": "The published median at Korenmarkt is a median of TWO standpoints. run_next_event.py at its own defaults asks for 16 held out of 144, the capture route there is 49 m long and yields 14 standpoints, and the shrink rule held_out * points / (held_out + builders) rounds 14 * 16 / 144 down to 2. The p5 and p95 either side of it are therefore the two points themselves. Escalated as a paper question. The rule was not changed and this fixture records the behaviour as it stands.",
+  "next_event_korenmarkt_130m_fast:korenmarkt": "Four held out standpoints, for the same reason and to a lesser degree."
+ },
+ "what": "reference outputs captured before the semantic_twin refactor"
+}

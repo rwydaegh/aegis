@@ -442,6 +442,34 @@ class TestECBF:
         alignment = abs(np.vdot(x_star_n, x_mrt_n))
         assert alignment > 0.99
 
+    def test_ecbf_sweep_matches_per_point(self):
+        """solve_ecbf_sweep must equal looping solve_ecbf, but with one eigh.
+
+        The budget sweep shares one (h, Q) across many absorbed-power budgets, so
+        the sweep solver factorises Q once and reuses it. It must be numerically
+        identical to calling solve_ecbf per budget (otherwise the fast path would
+        silently change the chart). Covers the MRT-feasible, binding, and
+        power-slack branches by spanning loose to tight budgets.
+        """
+        from aegis.coherent.ecbf import solve_ecbf_sweep
+
+        rng = np.random.default_rng(2024)
+        M_ant = 12
+        G_tilde = rng.standard_normal((40, 3, M_ant)) + 1j * rng.standard_normal((40, 3, M_ant))
+        areas = np.ones(40) * 0.01
+        Q = compute_exposure_operator(G_tilde, areas)
+        h = rng.standard_normal(M_ant) + 1j * rng.standard_normal(M_ant)
+        P = 1.5
+        x_mrt = np.sqrt(P) * h.conj() / np.linalg.norm(h)
+        p_abs_mrt = float(np.real(x_mrt.conj() @ Q @ x_mrt))
+        budgets = [f * p_abs_mrt for f in (0.01, 0.05, 0.2, 0.5, 0.8, 0.99, 1.0, 1.5)]
+
+        swept = solve_ecbf_sweep(h, Q, budgets, P)
+        assert len(swept) == len(budgets)
+        for b, x_sweep in zip(budgets, swept, strict=True):
+            x_ref = np.asarray(solve_ecbf(h, Q, b, P))
+            np.testing.assert_allclose(np.asarray(x_sweep), x_ref, rtol=0, atol=1e-12)
+
     def test_ecbf_respects_power_budget(self):
         """||x*||^2 must not exceed P (may be strictly less in the slack regime)."""
         rng = np.random.default_rng(66)

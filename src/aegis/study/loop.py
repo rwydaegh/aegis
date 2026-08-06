@@ -122,9 +122,12 @@ def run_agent(
                 slot_peak = max(slot_peak, float(sab_fn(body, sector, x, st.center_paths)))
         exposure[t] = total
         if peak_sab is not None:
-            if recompute_frame and lit:
-                last_peak = slot_peak
-            peak_sab[t] = last_peak
+            if recompute_frame:
+                # An unlit recompute frame clears the carry: without this an
+                # agent that walks out of coverage keeps its last lit peak
+                # forever, inflating the time-averaged ICNIRP fraction.
+                last_peak = slot_peak if lit else 0.0
+            peak_sab[t] = last_peak if lit else 0.0
 
     return AgentResult(
         exposure_w=exposure,
