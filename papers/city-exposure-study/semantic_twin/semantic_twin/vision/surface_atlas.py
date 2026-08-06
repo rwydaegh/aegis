@@ -17,6 +17,8 @@ from __future__ import annotations
 import hashlib
 import json
 import pathlib
+import zipfile
+import zlib
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -50,6 +52,112 @@ WEIGHTING_RULE = (
     "declared concept posterior and the smaller of Vistas and concept confidence. Camera "
     "means are then added. Range and raw image-pixel density add no further weight."
 )
+
+
+def semantic_evidence_directory(folder: pathlib.Path, dirname: str) -> pathlib.Path:
+    """Resolve one physically isolated evidence directory beneath a camera."""
+    relative = pathlib.PurePath(dirname)
+    if relative.is_absolute() or not relative.parts or ".." in relative.parts:
+        raise ValueError("semantic evidence directory must be a relative path beneath each panorama folder")
+    candidate = folder.joinpath(*relative.parts)
+    current = folder
+    for part in relative.parts:
+        current /= part
+        if current.is_symlink():
+            raise ValueError("semantic evidence directory must not contain symlinks")
+    try:
+        resolved_folder = folder.resolve(strict=True)
+        resolved_candidate = candidate.resolve(strict=False)
+    except (OSError, RuntimeError) as error:
+        raise ValueError(f"semantic evidence directory cannot be resolved: {error}") from error
+    if not resolved_candidate.is_relative_to(resolved_folder):
+        raise ValueError("semantic evidence directory must remain physically beneath each panorama folder")
+    return candidate
+
+
+def semantic_artifact_reasons(
+    metadata_path: pathlib.Path,
+    semantics_path: pathlib.Path,
+) -> list[str]:
+    """Name each missing, invalid, or incomplete hybrid semantic artifact."""
+    reasons: list[str] = []
+    metadata: dict[str, Any] | None = None
+    if not metadata_path.is_file():
+        reasons.append(f"missing semantic metadata artifact: {metadata_path.name}")
+    else:
+        try:
+            loaded = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if not isinstance(loaded, dict):
+                raise TypeError("top level must be an object")
+            metadata = loaded
+        except (OSError, UnicodeError, json.JSONDecodeError, TypeError) as error:
+            reasons.append(f"invalid semantic metadata artifact: {metadata_path.name} ({error})")
+
+    if not semantics_path.is_file():
+        reasons.append(f"missing dense semantic artifact: {semantics_path.name}")
+        reasons.append(f"missing SAM material artifact: {semantics_path.name}")
+        return reasons
+
+    try:
+        with np.load(semantics_path, allow_pickle=False) as document:
+            missing = sorted(set(REQUIRED_SEMANTIC_RASTERS) - set(document.files))
+            shapes, unreadable = _semantic_raster_shapes(document, semantics_path)
+    except (OSError, ValueError, EOFError, zipfile.BadZipFile, zipfile.LargeZipFile, zlib.error) as error:
+        reasons.append(f"invalid dense semantic artifact: {semantics_path.name} ({error})")
+        reasons.append(f"invalid SAM material artifact: {semantics_path.name} ({error})")
+        return reasons
+
+    missing_dense = sorted(set(missing) & set(SEMANTIC_DENSE_RASTERS))
+    missing_sam = sorted(set(missing) & set(SEMANTIC_SAM_RASTERS))
+    if missing_dense:
+        reasons.append(f"incomplete dense semantic artifact: {', '.join(missing_dense)}")
+    if missing_sam:
+        reasons.append(f"incomplete SAM material artifact: {', '.join(missing_sam)}")
+    reasons.extend(unreadable)
+    reasons.extend(_semantic_shape_reasons(shapes))
+    if metadata is not None and metadata.get("backend") != "hybrid":
+        reasons.append("missing SAM material artifact: semantic backend is not hybrid")
+    return reasons
+
+
+def _semantic_raster_shapes(
+    document: Any,
+    path: pathlib.Path,
+) -> tuple[dict[str, tuple[int, ...]], list[str]]:
+    """Force every present required member through NumPy and record failures."""
+    shapes: dict[str, tuple[int, ...]] = {}
+    unreadable: list[str] = []
+    for name in REQUIRED_SEMANTIC_RASTERS:
+        if name not in document.files:
+            continue
+        axis = "dense semantic" if name in SEMANTIC_DENSE_RASTERS else "SAM material"
+        try:
+            shapes[name] = np.asarray(document[name]).shape
+        except (OSError, ValueError, EOFError, zipfile.BadZipFile, zipfile.LargeZipFile, zlib.error) as error:
+            unreadable.append(f"invalid {axis} artifact: {path.name} ({name}: {error})")
+    return shapes, unreadable
+
+
+def _semantic_shape_reasons(shapes: dict[str, tuple[int, ...]]) -> list[str]:
+    """Require nonempty 2-D rasters with one shared pixel grid."""
+    reasons: list[str] = []
+    for axis, names in (
+        ("dense semantic", SEMANTIC_DENSE_RASTERS),
+        ("SAM material", SEMANTIC_SAM_RASTERS),
+    ):
+        present = {name: shapes[name] for name in names if name in shapes}
+        invalid = any(len(shape) != 2 or any(size <= 0 for size in shape) for shape in present.values())
+        if invalid or len(set(present.values())) > 1:
+            rendered = ", ".join(f"{name}={shape}" for name, shape in present.items())
+            reasons.append(f"incompatible {axis} raster shapes: {rendered}")
+    if len(shapes) == len(REQUIRED_SEMANTIC_RASTERS):
+        dense_shapes = {shapes[name] for name in SEMANTIC_DENSE_RASTERS}
+        sam_shapes = {shapes[name] for name in SEMANTIC_SAM_RASTERS}
+        if len(dense_shapes) == len(sam_shapes) == 1 and dense_shapes != sam_shapes:
+            dense_shape = next(iter(dense_shapes))
+            sam_shape = next(iter(sam_shapes))
+            reasons.append(f"incompatible dense and SAM semantic raster shapes: dense={dense_shape}, SAM={sam_shape}")
+    return reasons
 
 
 @dataclass(frozen=True)

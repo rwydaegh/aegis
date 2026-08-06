@@ -12,6 +12,7 @@ import semantic_twin.scene.site_semantics as site_semantics
 from semantic_twin.scene.site_fishnets import pose_verdict
 from semantic_twin.scene.site_semantics import _modal_class, _prior_semantics, station_verdict, stations
 from semantic_twin.vision.provenance import AdmissionGate, Registration
+from semantic_twin.vision.surface_atlas import REQUIRED_SEMANTIC_RASTERS
 
 GATE = {"max_residual_deg": 4.0, "max_sky_conflict": 0.5, "min_conflict_range_m": 2.0}
 
@@ -179,6 +180,23 @@ def build(root, name, *, residual=1.0):
     return folder
 
 
+def write_hybrid(folder, dirname="semantics_sam3_revision"):
+    """Write the smallest selected hybrid product accepted by station gating."""
+    selected = folder / dirname
+    selected.mkdir(parents=True)
+    arrays = {name: np.zeros((2, 4), dtype=np.float32) for name in REQUIRED_SEMANTIC_RASTERS}
+    np.savez_compressed(selected / "panorama_semantics.npz", **arrays)
+    (selected / "semantics.json").write_text(json.dumps({"backend": "hybrid"}))
+    return selected
+
+
+def build_with_selected_semantics(root, name, dirname="semantics_sam3_revision"):
+    folder = root / name
+    (folder / "alignment").mkdir(parents=True)
+    (folder / "alignment" / "pose_aligned.json").write_text(json.dumps(pose(1.0) | {"position_enu_m": [0.0, 0.0, 2.0]}))
+    return folder, write_hybrid(folder, dirname)
+
+
 def test_a_companion_campaign_is_read_as_the_same_site(tmp_path):
     panoramas = tmp_path / "data" / "panoramas"
     build(panoramas / "korenmarkt", "pano_00_a")
@@ -230,6 +248,95 @@ def test_station_artifacts_are_reported_separately(tmp_path):
         "missing pose artifact: alignment/pose_aligned.json",
         "missing dense semantic artifact: semantics/panorama_semantics.npz",
         "missing semantic metadata artifact: semantics/semantics.json",
+    ]
+
+
+def test_explicit_hybrid_directory_is_discovered_without_legacy_semantics(tmp_path):
+    panoramas = tmp_path / "data" / "panoramas"
+    folder, selected = build_with_selected_semantics(panoramas / "korenmarkt", ".")
+    # The flat Korenmarkt layout used to be discoverable only through this
+    # legacy directory, even when another evidence product was selected.
+    assert not (folder / "semantics").exists()  # nosec B101 - pytest assertion
+
+    admitted, refused = stations(
+        "korenmarkt",
+        root=tmp_path,
+        semantics_dirname="semantics_sam3_revision",
+        **GATE,
+    )
+
+    assert refused == []  # nosec B101 - pytest assertion
+    assert [record["station"] for record in admitted] == ["korenmarkt"]  # nosec B101 - pytest assertion
+    assert admitted[0]["semantic_evidence_directory"] == str(selected)  # nosec B101 - pytest assertion
+
+
+def test_explicit_hybrid_directory_refuses_partial_product_without_legacy_fallback(tmp_path):
+    panoramas = tmp_path / "data" / "panoramas"
+    folder = build(panoramas / "prague_staromestske", "pano_00_complete_legacy")
+    selected = folder / "semantics_sam3_revision"
+    selected.mkdir()
+    (selected / "semantics.json").write_text(json.dumps({"backend": "hybrid"}))
+    np.savez_compressed(
+        selected / "panorama_semantics.npz",
+        entity=np.zeros((2, 4)),
+        confidence=np.ones((2, 4)),
+    )
+
+    admitted, refused = stations(
+        "prague_staromestske",
+        root=tmp_path,
+        semantics_dirname="semantics_sam3_revision",
+        **GATE,
+    )
+
+    assert admitted == []  # nosec B101 - pytest assertion
+    assert refused[0]["semantic_evidence_directory"] == str(selected)  # nosec B101 - pytest assertion
+    assert refused[0]["refused_because"] == [  # nosec B101 - pytest assertion
+        "incomplete SAM material artifact: material_concept, material_confidence, material_source, "
+        "rf_material, rf_material_prior_mass"
+    ]
+
+
+def test_explicit_hybrid_directory_reports_corrupt_artifacts_without_mixing(tmp_path):
+    panoramas = tmp_path / "data" / "panoramas"
+    folder = build(panoramas / "prague_staromestske", "pano_00_complete_legacy")
+    selected = folder / "semantics_sam3_revision"
+    selected.mkdir()
+    (selected / "semantics.json").write_text("not json")
+    (selected / "panorama_semantics.npz").write_bytes(b"not an npz")
+
+    admitted, refused = stations(
+        "prague_staromestske",
+        root=tmp_path,
+        semantics_dirname="semantics_sam3_revision",
+        **GATE,
+    )
+
+    assert admitted == []  # nosec B101 - pytest assertion
+    reasons = refused[0]["refused_because"]
+    assert reasons[0].startswith("invalid semantic metadata artifact: semantics.json")  # nosec B101
+    assert reasons[1].startswith("invalid dense semantic artifact: panorama_semantics.npz")  # nosec B101
+    assert reasons[2].startswith("invalid SAM material artifact: panorama_semantics.npz")  # nosec B101
+
+
+def test_explicit_hybrid_directory_never_borrows_a_missing_npz_from_legacy(tmp_path):
+    panoramas = tmp_path / "data" / "panoramas"
+    folder = build(panoramas / "prague_staromestske", "pano_00_complete_legacy")
+    selected = folder / "semantics_sam3_revision"
+    selected.mkdir()
+    (selected / "semantics.json").write_text(json.dumps({"backend": "hybrid"}))
+
+    admitted, refused = stations(
+        "prague_staromestske",
+        root=tmp_path,
+        semantics_dirname="semantics_sam3_revision",
+        **GATE,
+    )
+
+    assert admitted == []  # nosec B101 - pytest assertion
+    assert refused[0]["refused_because"] == [  # nosec B101 - pytest assertion
+        "missing dense semantic artifact: panorama_semantics.npz",
+        "missing SAM material artifact: panorama_semantics.npz",
     ]
 
 
