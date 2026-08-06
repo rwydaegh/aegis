@@ -217,6 +217,92 @@ def test_reference_loader_accepts_only_one_sealed_output_generation(
         load_reference(mixed)
 
 
+def _atlas_reference_config(tmp_path: pathlib.Path) -> AngularConvergenceConfig:
+    config = _reference_config(tmp_path)
+    manifest = json.loads(config.reference_manifest.read_text())
+    atlas = tmp_path / "atlas.npz"
+    atlas.write_bytes(b"atlas")
+    atlas_sha256 = file_sha256(atlas)
+    sidecar = atlas.with_suffix(".json")
+    sidecar.write_text(
+        json.dumps(
+            {
+                "schema": "aegis.joint_semantic_material_atlas",
+                "format_version": 1,
+                "artifact": {
+                    "path": atlas.name,
+                    "sha256": atlas_sha256,
+                    "content_sha256": "3" * 64,
+                },
+                "mesh": {"sha256": manifest["mesh_sha256"]},
+            }
+        )
+    )
+    manifest["run"].update({"materials": "atlas", "atlas_npz": atlas.name})
+    manifest["semantic_binding"] = {
+        "atlas_npz": atlas.name,
+        "atlas_npz_sha256": atlas_sha256,
+        "atlas_manifest": sidecar.name,
+        "atlas_manifest_sha256": file_sha256(sidecar),
+    }
+    manifest["walk"] = {
+        "route_geometry": "registered_road_v1",
+        "path": "links",
+        "stride_m": 6.0,
+        "stations": 2,
+        "road_length_m": 12.5,
+    }
+    config.reference_manifest.write_text(json.dumps(manifest))
+    return config
+
+
+def test_reference_loader_exposes_the_canonical_atlas_and_route_identity(
+    tmp_path: pathlib.Path,
+) -> None:
+    body = tmp_path / "body.stl"
+    body.write_bytes(b"body")
+    config = _atlas_reference_config(tmp_path / "reference")
+
+    identity = load_reference(config, body_path=body)
+
+    assert identity.material_evidence.role == "joint_surface_atlas"
+    assert identity.material_evidence.path == "atlas.npz"
+    assert identity.material_evidence.atlas_json_sidecar_path == "atlas.json"
+    assert identity.route is not None
+    assert identity.route.geometry == "registered_road_v1"
+    assert identity.route.path == "links"
+    assert identity.route.stride_m == 6.0
+    assert identity.route.registered_standpoints == 2
+    assert identity.route.road_length_m == 12.5
+    assert len(identity.route.canonical_walk_provenance_sha256) == 64
+
+
+@pytest.mark.parametrize(
+    ("field", "changed", "message"),
+    (
+        ("atlas_npz", "other.npz", "different surface atlases"),
+        ("atlas_npz_sha256", "4" * 64, "atlas bytes differ"),
+        ("atlas_manifest", "other.json", "noncanonical surface atlas sidecar path"),
+        ("atlas_manifest_sha256", "5" * 64, "sidecar bytes differ"),
+    ),
+)
+def test_reference_loader_rejects_each_atlas_pair_mutation(
+    tmp_path: pathlib.Path,
+    field: str,
+    changed: str,
+    message: str,
+) -> None:
+    body = tmp_path / "body.stl"
+    body.write_bytes(b"body")
+    config = _atlas_reference_config(tmp_path / "reference")
+    manifest = json.loads(config.reference_manifest.read_text())
+    manifest["semantic_binding"][field] = changed
+    config.reference_manifest.write_text(json.dumps(manifest))
+
+    with pytest.raises(ValueError, match=message):
+        load_reference(config, body_path=body)
+
+
 def test_reference_loader_rejects_publish_during_snapshot(
     tmp_path: pathlib.Path,
     monkeypatch: pytest.MonkeyPatch,

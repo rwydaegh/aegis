@@ -205,7 +205,7 @@ class CdfConvergenceConfig:
             "body_mass_kg": contract.body.mass_kg,
             "seed_stream_stride": contract.seed_stream_stride,
             "thresholds": contract.threshold_values(),
-            "model_names": contract.model_names,
+            "model_names": contract.run.models,
         }
         actual = {
             "output_dir": relative(self.output_dir),
@@ -1380,29 +1380,46 @@ def _validate_production_reference(config: CdfConvergenceConfig, reference: Any)
         return
     identity = reference.as_dict()
     expected_hashes = {
-        **contract.identity_hash_values(),
+        **contract.reference_identity_values(),
         "body_sha256": contract.body.sha256,
     }
-    actual_hashes = {name: identity[name] for name in expected_hashes}
+    actual_hashes = _pinned_values(identity, expected_hashes, "reference identity")
     if actual_hashes != expected_hashes:
-        raise ValueError(f"production CDF reference hashes changed: {actual_hashes} != {expected_hashes}")
+        raise ValueError(f"production CDF reference identity changed: {actual_hashes} != {expected_hashes}")
     expected_files = contract.reference.hashes()
-    actual_files = {name: identity["reference_files"][name]["sha256"] for name in expected_files}
+    reference_files = identity.get("reference_files") if isinstance(identity, dict) else None
+    if not isinstance(reference_files, dict):
+        raise ValueError("production CDF output generation changed: reference files are missing")
+    actual_files: dict[str, Any] = {}
+    for name in expected_files:
+        record = reference_files.get(name)
+        actual_files[name] = record.get("sha256") if isinstance(record, dict) else None
     if actual_files != expected_files:
         raise ValueError(f"production CDF output generation changed: {actual_files} != {expected_files}")
-    run = reference.manifest["run"]
+    manifest = reference.manifest if isinstance(reference.manifest, dict) else {}
+    run = manifest.get("run")
     expected_run = contract.run_setting_values()
-    actual_run = {name: run[name] for name in expected_run}
+    actual_run = _pinned_values(run, expected_run, "run settings")
     if actual_run != expected_run:
         raise ValueError(f"production CDF run settings changed: {actual_run} != {expected_run}")
     expected_body = contract.body.manifest_fields()
-    actual_body = {name: reference.manifest["body"][name] for name in expected_body}
+    actual_body = _pinned_values(manifest.get("body"), expected_body, "body source")
     if actual_body != expected_body:
         raise ValueError(f"production CDF body source changed: {actual_body} != {expected_body}")
     expected_point_kinds = contract.point_kind_count_values()
     actual_point_kinds = dict(Counter(reference.standpoints.point_kind))
     if actual_point_kinds != expected_point_kinds:
         raise ValueError(f"production CDF point kinds changed: {actual_point_kinds} != {expected_point_kinds}")
+
+
+def _pinned_values(document: Any, expected: dict[str, Any], label: str) -> dict[str, Any]:
+    """Read every required field while turning omissions into a closed failure."""
+    if not isinstance(document, dict):
+        raise ValueError(f"production CDF {label} changed: expected an object")
+    missing = set(expected) - set(document)
+    if missing:
+        raise ValueError(f"production CDF {label} changed: missing {', '.join(sorted(missing))}")
+    return {name: document[name] for name in expected}
 
 
 def _tissue_database_identity() -> dict[str, Any]:
