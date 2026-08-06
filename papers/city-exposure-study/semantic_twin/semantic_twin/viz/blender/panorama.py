@@ -46,6 +46,10 @@ PANORAMA_DISPLAY_CLIP_RULE = (
 PANORAMA_CAPTURE_SCENE_PREFIX = "07 PANO"
 PANORAMA_RENDER_CAMERA_COLLECTION_NAME = "Panorama active render cameras"
 EQUIRECTANGULAR_PROJECTION = "equirectangular, full longitude and latitude"
+PANORAMA_PREVIEW_RESOLUTION_PERCENT = 5
+PANORAMA_PREVIEW_SAMPLES = 16
+PANORAMA_PUBLICATION_RESOLUTION_PERCENT = 100
+PANORAMA_PUBLICATION_SAMPLES = 96
 
 
 @dataclass(frozen=True)
@@ -1039,13 +1043,16 @@ def configure_panorama_scene(
     prepared_scene.render.engine = "CYCLES"
     prepared_scene.render.resolution_x = asset.width
     prepared_scene.render.resolution_y = asset.height
-    prepared_scene.render.resolution_percentage = 100
+    prepared_scene.render.resolution_percentage = PANORAMA_PREVIEW_RESOLUTION_PERCENT
     prepared_scene.render.pixel_aspect_x = 1.0
     prepared_scene.render.pixel_aspect_y = 1.0
     prepared_scene.render.film_transparent = True
+    prepared_scene.render.use_compositing = True
     prepared_scene.render.image_settings.file_format = "PNG"
     prepared_scene.render.image_settings.color_mode = "RGBA"
     prepared_scene.render.image_settings.color_depth = "8"
+    prepared_scene.cycles.samples = PANORAMA_PREVIEW_SAMPLES
+    prepared_scene.cycles.use_denoising = True
     prepared_scene.view_settings.view_transform = "Standard"
     prepared_scene.view_settings.look = "None"
     prepared_scene.view_settings.exposure = 0.0
@@ -1119,6 +1126,20 @@ def configure_panorama_scene(
         "panorama_linked_path": linked_path,
         "panorama_image_packed": False,
         "panorama_projection": EQUIRECTANGULAR_PROJECTION,
+        "panorama_source_width_px": asset.width,
+        "panorama_source_height_px": asset.height,
+        "panorama_source_resolution_json": json.dumps([asset.width, asset.height]),
+        "panorama_preview_resolution_percentage": PANORAMA_PREVIEW_RESOLUTION_PERCENT,
+        "panorama_preview_samples": PANORAMA_PREVIEW_SAMPLES,
+        "panorama_preview_denoising": True,
+        "panorama_publication_resolution_percentage": PANORAMA_PUBLICATION_RESOLUTION_PERCENT,
+        "panorama_publication_samples": PANORAMA_PUBLICATION_SAMPLES,
+        "panorama_render_instructions": (
+            f"F12 renders a fast {PANORAMA_PREVIEW_RESOLUTION_PERCENT}% preview at "
+            f"{PANORAMA_PREVIEW_SAMPLES} samples with denoising. For a publication render, keep Resolution X/Y "
+            f"at the linked source dimensions, set Percentage to {PANORAMA_PUBLICATION_RESOLUTION_PERCENT}, and "
+            f"set Render Max Samples to {PANORAMA_PUBLICATION_SAMPLES}."
+        ),
         "panorama_active_render_camera": camera.name,
         "panorama_active_render_camera_audit_source": acquisition_camera.name,
         "panorama_default_render_view_layer": compositor_layer,
@@ -1221,6 +1242,10 @@ __all__ = [
     "KORENMARKT_HERO_CAPTURE",
     "PANORAMA_DISPLAY_CLIP_START_M",
     "PANORAMA_CAPTURE_SCENE_PREFIX",
+    "PANORAMA_PREVIEW_RESOLUTION_PERCENT",
+    "PANORAMA_PREVIEW_SAMPLES",
+    "PANORAMA_PUBLICATION_RESOLUTION_PERCENT",
+    "PANORAMA_PUBLICATION_SAMPLES",
     "RECTILINEAR_FOV_DEG",
     "RECTILINEAR_PLANE_DISTANCE_M",
     "SUPPORT_OVERLAY_OPACITY",
