@@ -6,8 +6,8 @@ contains 13 exposure standpoints, a 4,096-cell angular grid, and a 1.6 million-r
 production trace at each standpoint. The blend uses a separate bounded 1,200-ray
 trace only for visible path lines. That small trace supplies no exposure values.
 
-The final blend is 93,745,064 bytes. Its SHA-256 is
-`ea4da11b627388b2df15a9f6a5763e6ab663d32906e3ef669c251b7a2858cd1f`.
+The final blend is 93,811,902 bytes. Its SHA-256 is
+`c364620f62f8befa91caca7e6bd478741c6b86306b568c9292e935ba1388871a`.
 
 ## Start here
 
@@ -63,10 +63,28 @@ All six audit objects are linked views of one fused atlas mesh. They do not copy
 
 ## Panorama cameras
 
-The blend has nine equirectangular PANO acquisition cameras. Each camera has its
-own 2:1 source panorama as a linked, unpacked `FIT` background. Select an
-`Acquisition 360 | ...` camera and enter camera view to inspect that capture at its
-registered pose. The image path and SHA-256 are stored on the camera.
+The blend has one saved panorama-registration scene for each of the nine admitted
+captures. `07 VIEW - panorama registration` remains the hero capture. The eight
+scenes named `07 PANO 02` through `07 PANO 09` open the other captures directly.
+Each scene has all of the data needed to render that capture after reopening the
+blend:
+
+- An equirectangular PANO camera at the registered pose.
+- The matching 2:1 source panorama in the compositor.
+- The source image's own pixel resolution.
+- A translucent support copy scaled about that capture's camera centre.
+- An orange marker and metadata for the nearest other admitted capture.
+- A normal perspective camera with its linked 90 degree forward crop.
+
+The hero scene still contains all nine PANO cameras and all nine normal perspective
+cameras for quick comparison. The eight sibling scenes keep only their active
+PANO and perspective camera. Their support objects share the same display mesh
+data, so the per-capture scenes do not copy the full support mesh eight more times.
+
+The image path and SHA-256 are stored on each scene and camera. No handler, driver,
+or saved Python script changes the active photograph. The scene camera, compositor
+image, output resolution, and support-overlay centre are saved as ordinary Blender
+data.
 
 The images stay linked so the blend does not copy nine large panoramas into its
 file. Keep the repository's `data/panoramas/korenmarkt` and
