@@ -209,6 +209,29 @@ class FrozenStandpoints:
 
 
 @dataclass(frozen=True)
+class MaterialEvidenceIdentity:
+    """Resolved material artifact and canonical atlas sidecar, if any."""
+
+    role: str
+    path: str | None
+    sha256: str | None
+    atlas_json_sidecar_path: str | None
+    atlas_json_sidecar_sha256: str | None
+
+
+@dataclass(frozen=True)
+class RouteIdentity:
+    """Canonical route fields recorded by the accepted exposure run."""
+
+    canonical_walk_provenance_sha256: str
+    geometry: str
+    path: str
+    stride_m: float
+    registered_standpoints: int
+    road_length_m: float
+
+
+@dataclass(frozen=True)
 class ReferenceIdentity:
     """Files and numerical arrays that define the production scene."""
 
@@ -217,21 +240,32 @@ class ReferenceIdentity:
     files: dict[str, dict[str, Any]]
     mesh_sha256: str
     body_sha256: str
-    material_evidence_role: str
-    material_evidence_sha256: str | None
+    material_evidence: MaterialEvidenceIdentity
     surface_binding_sha256: str
+    reference_run_digest: str
+    route: RouteIdentity | None
 
     def as_dict(self) -> dict[str, Any]:
+        route = self.route
         return {
             "reference_files": self.files,
             "mesh_sha256": self.mesh_sha256,
             "body_sha256": self.body_sha256,
-            "material_evidence_role": self.material_evidence_role,
-            "material_evidence_sha256": self.material_evidence_sha256,
+            "material_evidence_role": self.material_evidence.role,
+            "material_evidence_path": self.material_evidence.path,
+            "material_evidence_sha256": self.material_evidence.sha256,
+            "atlas_json_sidecar_path": self.material_evidence.atlas_json_sidecar_path,
+            "atlas_json_sidecar_sha256": self.material_evidence.atlas_json_sidecar_sha256,
             "surface_binding_sha256": self.surface_binding_sha256,
             "standpoint_array_sha256": self.standpoints.sha256,
             "standpoints": int(self.standpoints.index.size),
-            "reference_run_digest": self.manifest["run_digest"],
+            "reference_run_digest": self.reference_run_digest,
+            "canonical_walk_provenance_sha256": (route.canonical_walk_provenance_sha256 if route is not None else None),
+            "route_geometry": route.geometry if route is not None else None,
+            "route_path": route.path if route is not None else None,
+            "route_stride_m": route.stride_m if route is not None else None,
+            "route_registered_standpoints": route.registered_standpoints if route is not None else None,
+            "route_road_length_m": route.road_length_m if route is not None else None,
         }
 
 
@@ -293,7 +327,11 @@ def load_reference(
         if body_path is not None
         else pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data")) / "duke.stl"
     )
-    evidence_role, material_evidence = _material_evidence_path(config.root, manifest)
+    material_evidence = _material_evidence_identity(config.root, manifest, mesh_sha)
+    _normalize_material_evidence_paths(manifest, material_evidence)
+    reference_run_digest = manifest.get("run_digest")
+    if not isinstance(reference_run_digest, str) or not reference_run_digest:
+        raise ValueError("reference manifest has no valid run digest")
     files = {
         name: {"path": str(path), "sha256": hashlib.sha256(content[name]).hexdigest()}
         for name, path in reference_paths.items()
@@ -304,9 +342,10 @@ def load_reference(
         files=files,
         mesh_sha256=mesh_sha,
         body_sha256=file_sha256(body),
-        material_evidence_role=evidence_role,
-        material_evidence_sha256=file_sha256(material_evidence) if material_evidence is not None else None,
+        material_evidence=material_evidence,
         surface_binding_sha256=canonical_sha256(manifest["surface_binding"]),
+        reference_run_digest=reference_run_digest,
+        route=_route_identity(manifest),
     )
 
 
@@ -358,22 +397,149 @@ def _material_evidence_path(
     run = manifest["run"]
     mode = str(run["materials"])
     if mode == "atlas":
-        value = run.get("atlas_npz") or manifest.get("semantic_binding", {}).get("atlas_npz")
+        semantic = manifest.get("semantic_binding", {})
+        semantic_value = semantic.get("atlas_npz") if isinstance(semantic, dict) else None
+        values = [value for value in (run.get("atlas_npz"), semantic_value) if value is not None]
+        if not values:
+            raise ValueError("reference material mode 'atlas' does not name its evidence artifact")
+        paths = [_study_artifact_path(root, value, "surface atlas") for value in values]
+        if any(candidate != paths[0] for candidate in paths[1:]):
+            raise ValueError("reference run and semantic binding name different surface atlases")
+        path = paths[0]
         role = "joint_surface_atlas"
     elif mode == "walk":
         value = run.get("walk_npz")
+        path = _study_artifact_path(root, value, "walk material evidence")
         role = "walk_semantics"
     elif mode == "geometric":
         return "geometric_only", None
     else:
         raise ValueError(f"angular convergence does not yet freeze material evidence for mode {mode!r}")
-    if not isinstance(value, str) or not value:
-        raise ValueError(f"reference material mode {mode!r} does not name its evidence artifact")
-    path = pathlib.Path(value)
-    path = path if path.is_absolute() else root / path
     if not path.is_file():
         raise FileNotFoundError(f"reference material evidence is missing: {path}")
     return role, path
+
+
+def _study_artifact_path(root: pathlib.Path, value: Any, label: str) -> pathlib.Path:
+    """Resolve one absolute or study-relative artifact path canonically."""
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"reference {label} path is invalid")
+    path = pathlib.Path(value)
+    return (path if path.is_absolute() else root / path).resolve()
+
+
+def _portable_study_artifact_path(root: pathlib.Path, path: pathlib.Path) -> str:
+    """Use one stable study-relative spelling whenever the artifact is inside it."""
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
+def _material_evidence_identity(
+    root: pathlib.Path,
+    manifest: dict[str, Any],
+    mesh_sha256: str,
+) -> MaterialEvidenceIdentity:
+    """Resolve and verify the exact material artifact pair in a reference."""
+    role, path = _material_evidence_path(root, manifest)
+    if path is None:
+        return MaterialEvidenceIdentity(role, None, None, None, None)
+    run = manifest["run"]
+    mode = str(run["materials"])
+    if mode != "atlas":
+        return MaterialEvidenceIdentity(
+            role,
+            _portable_study_artifact_path(root, path),
+            file_sha256(path),
+            None,
+            None,
+        )
+
+    semantic = manifest.get("semantic_binding")
+    if not isinstance(semantic, dict):
+        raise ValueError("reference atlas material mode has no semantic binding")
+    semantic_atlas = _study_artifact_path(root, semantic.get("atlas_npz"), "semantic-binding surface atlas")
+    if semantic_atlas != path:
+        raise ValueError("reference run and semantic binding name different surface atlases")
+    recorded_atlas_sha256 = semantic.get("atlas_npz_sha256")
+    if not _valid_hex(recorded_atlas_sha256, 64):
+        raise ValueError("reference semantic binding has no valid surface atlas SHA-256")
+    atlas_sha256 = file_sha256(path)
+    if atlas_sha256 != recorded_atlas_sha256:
+        raise ValueError("reference surface atlas bytes differ from its semantic binding")
+
+    sidecar = path.with_suffix(".json")
+    named_sidecar = _study_artifact_path(root, semantic.get("atlas_manifest"), "surface atlas JSON sidecar")
+    if named_sidecar != sidecar:
+        raise ValueError("reference semantic binding names a noncanonical surface atlas sidecar path")
+    if not sidecar.is_file():
+        raise FileNotFoundError(f"reference surface atlas JSON sidecar is missing: {sidecar}")
+    recorded_sidecar_sha256 = semantic.get("atlas_manifest_sha256")
+    if not _valid_hex(recorded_sidecar_sha256, 64):
+        raise ValueError("reference semantic binding has no valid surface atlas sidecar SHA-256")
+    sidecar_sha256 = file_sha256(sidecar)
+    if sidecar_sha256 != recorded_sidecar_sha256:
+        raise ValueError("reference surface atlas JSON sidecar bytes differ from its semantic binding")
+    from semantic_twin.vision.surface_atlas import load_surface_atlas
+
+    try:
+        load_surface_atlas(path, sidecar, expected_mesh_sha256=mesh_sha256)
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        raise ValueError(f"reference surface atlas failed canonical provenance validation: {error}") from error
+    return MaterialEvidenceIdentity(
+        role,
+        _portable_study_artifact_path(root, path),
+        atlas_sha256,
+        _portable_study_artifact_path(root, sidecar),
+        sidecar_sha256,
+    )
+
+
+def _normalize_material_evidence_paths(
+    manifest: dict[str, Any],
+    identity: MaterialEvidenceIdentity,
+) -> None:
+    """Keep path-bearing in-memory provenance portable after canonical resolution."""
+    run = manifest["run"]
+    if identity.role == "joint_surface_atlas":
+        run["atlas_npz"] = identity.path
+        semantic = manifest["semantic_binding"]
+        semantic["atlas_npz"] = identity.path
+        semantic["atlas_manifest"] = identity.atlas_json_sidecar_path
+    elif identity.role == "walk_semantics":
+        run["walk_npz"] = identity.path
+
+
+def _route_identity(manifest: dict[str, Any]) -> RouteIdentity | None:
+    """Read the route fields that define the fixed standpoint population."""
+    walk = manifest.get("walk")
+    if walk is None:
+        return None
+    if not isinstance(walk, dict):
+        raise ValueError("reference walk provenance must be an object")
+    geometry = walk.get("route_geometry")
+    path = walk.get("path")
+    stride_m = walk.get("stride_m")
+    registered = walk.get("stations")
+    road_length_m = walk.get("road_length_m")
+    if not isinstance(geometry, str) or not geometry or not isinstance(path, str) or not path:
+        raise ValueError("reference route provenance does not name its geometry and path")
+    if isinstance(stride_m, bool) or not isinstance(stride_m, int | float) or stride_m <= 0.0:
+        raise ValueError("reference route provenance has an invalid stride")
+    if isinstance(registered, bool) or not isinstance(registered, int) or registered < 1:
+        raise ValueError("reference route provenance has an invalid registered standpoint count")
+    if isinstance(road_length_m, bool) or not isinstance(road_length_m, int | float) or road_length_m <= 0.0:
+        raise ValueError("reference route provenance has an invalid road length")
+    return RouteIdentity(
+        canonical_walk_provenance_sha256=canonical_sha256(walk),
+        geometry=geometry,
+        path=path,
+        stride_m=float(stride_m),
+        registered_standpoints=registered,
+        road_length_m=float(road_length_m),
+    )
 
 
 def spectrum_metrics(

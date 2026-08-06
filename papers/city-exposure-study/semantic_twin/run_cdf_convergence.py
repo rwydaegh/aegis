@@ -25,7 +25,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="validate and hash the frozen inputs, then write a plan without loading CUDA",
+        help="validate and hash the frozen inputs without writing or moving output files or loading CUDA",
     )
     parser.add_argument(
         "--analyse-only",

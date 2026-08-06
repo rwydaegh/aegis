@@ -12,6 +12,7 @@ import pytest
 
 from run_angular_convergence import arguments
 from semantic_twin.illumination import fibonacci_sphere
+from semantic_twin.materials.atlas import FALLBACK_BOUND, JointSemanticMaterialAtlas
 from semantic_twin.exposure.angular_convergence import (
     AngularConvergenceConfig,
     AngularRunSpec,
@@ -34,6 +35,7 @@ from semantic_twin.exposure.angular_convergence import (
     spectrum_metrics,
 )
 from semantic_twin.runconfig import RunConfig
+from semantic_twin.vision.surface_atlas import save_surface_atlas
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -215,6 +217,197 @@ def test_reference_loader_accepts_only_one_sealed_output_generation(
     mixed.reference_locations.write_text("".join(json.dumps(row) + "\n" for row in rows))
     with pytest.raises(ValueError, match="sealed output generation"):
         load_reference(mixed)
+
+
+def _tiny_surface_atlas(mesh_sha256: str) -> JointSemanticMaterialAtlas:
+    return JointSemanticMaterialAtlas(
+        atlas_resolution=2,
+        triangle_count=1,
+        mesh_sha256=mesh_sha256,
+        entity_names=np.asarray(["Road"]),
+        material_names=np.asarray(["asphalt_concrete"]),
+        station_ids=np.asarray(["camera"]),
+        station_weight=np.asarray([1.0], dtype=np.float32),
+        triangle_ids=np.asarray([0], dtype=np.int64),
+        texel_offsets=np.asarray([0, 1], dtype=np.int64),
+        texel_row=np.asarray([0], dtype=np.uint16),
+        texel_column=np.asarray([0], dtype=np.uint16),
+        entity_offsets=np.asarray([0, 1], dtype=np.int64),
+        entity_index=np.asarray([0], dtype=np.uint16),
+        entity_weight=np.asarray([1.0], dtype=np.float32),
+        joint_offsets=np.asarray([0, 1], dtype=np.int64),
+        joint_entity=np.asarray([0], dtype=np.uint16),
+        joint_material=np.asarray([0], dtype=np.uint16),
+        joint_weight=np.asarray([1.0], dtype=np.float32),
+        support_weight=np.asarray([1.0], dtype=np.float32),
+        observation_count=np.asarray([1], dtype=np.uint32),
+        camera_count=np.asarray([1], dtype=np.uint16),
+        station_mask=np.asarray([1], dtype=np.uint64),
+        source_mask=np.asarray([1], dtype=np.uint8),
+        concept_weight=np.asarray([0.0], dtype=np.float32),
+        prior_weight=np.asarray([1.0], dtype=np.float32),
+        compatible_weight=np.asarray([1.0], dtype=np.float32),
+        incompatible_weight=np.asarray([0.0], dtype=np.float32),
+        fallback_state=np.asarray([FALLBACK_BOUND], dtype=np.uint8),
+        entity_label=np.asarray([0], dtype=np.int16),
+        material_label=np.asarray([0], dtype=np.int16),
+        entity_confidence=np.asarray([1.0], dtype=np.float32),
+        material_confidence=np.asarray([1.0], dtype=np.float32),
+        mean_entity_score=np.asarray([1.0], dtype=np.float32),
+        mean_concept_confidence=np.asarray([0.0], dtype=np.float32),
+        vegetation_form_names=np.asarray([], dtype="U1"),
+        vegetation_subtype_names=np.asarray([], dtype="U1"),
+        vegetation_form_posterior=np.zeros((1, 0), dtype=np.float32),
+        vegetation_subtype_posterior=np.zeros((1, 0), dtype=np.float32),
+    )
+
+
+def _atlas_reference_config(tmp_path: pathlib.Path) -> AngularConvergenceConfig:
+    config = _reference_config(tmp_path)
+    manifest = json.loads(config.reference_manifest.read_text())
+    atlas = tmp_path / "atlas.npz"
+    sidecar = save_surface_atlas(
+        _tiny_surface_atlas(manifest["mesh_sha256"]),
+        atlas,
+        metadata={"vocabularies": {"material_concept": []}},
+    )
+    atlas_sha256 = file_sha256(atlas)
+    manifest["run"].update({"materials": "atlas", "atlas_npz": atlas.name})
+    manifest["semantic_binding"] = {
+        "atlas_npz": atlas.name,
+        "atlas_npz_sha256": atlas_sha256,
+        "atlas_manifest": sidecar.name,
+        "atlas_manifest_sha256": file_sha256(sidecar),
+    }
+    manifest["walk"] = {
+        "route_geometry": "registered_road_v1",
+        "path": "links",
+        "stride_m": 6.0,
+        "stations": 2,
+        "road_length_m": 12.5,
+    }
+    config.reference_manifest.write_text(json.dumps(manifest))
+    return config
+
+
+def test_reference_loader_exposes_the_canonical_atlas_and_route_identity(
+    tmp_path: pathlib.Path,
+) -> None:
+    body = tmp_path / "body.stl"
+    body.write_bytes(b"body")
+    config = _atlas_reference_config(tmp_path / "reference")
+
+    identity = load_reference(config, body_path=body)
+
+    assert identity.material_evidence.role == "joint_surface_atlas"
+    assert identity.material_evidence.path == "atlas.npz"
+    assert identity.material_evidence.atlas_json_sidecar_path == "atlas.json"
+    assert identity.manifest["run"]["atlas_npz"] == "atlas.npz"
+    assert identity.manifest["semantic_binding"]["atlas_npz"] == "atlas.npz"
+    assert identity.manifest["semantic_binding"]["atlas_manifest"] == "atlas.json"
+    assert identity.route is not None
+    assert identity.route.geometry == "registered_road_v1"
+    assert identity.route.path == "links"
+    assert identity.route.stride_m == 6.0
+    assert identity.route.registered_standpoints == 2
+    assert identity.route.road_length_m == 12.5
+    assert len(identity.route.canonical_walk_provenance_sha256) == 64
+
+
+def test_reference_loader_normalizes_equivalent_atlas_path_spellings(
+    tmp_path: pathlib.Path,
+) -> None:
+    body = tmp_path / "body.stl"
+    body.write_bytes(b"body")
+    config = _atlas_reference_config(tmp_path / "reference")
+    manifest = json.loads(config.reference_manifest.read_text())
+    manifest["run"]["atlas_npz"] = "./atlas.npz"
+    manifest["semantic_binding"]["atlas_npz"] = "nested/../atlas.npz"
+    manifest["semantic_binding"]["atlas_manifest"] = "sidecars/../atlas.json"
+    config.reference_manifest.write_text(json.dumps(manifest))
+
+    identity = load_reference(config, body_path=body)
+
+    assert identity.material_evidence.path == "atlas.npz"
+    assert identity.material_evidence.atlas_json_sidecar_path == "atlas.json"
+
+
+@pytest.mark.parametrize(
+    ("field", "changed", "message"),
+    (
+        ("atlas_npz", "other.npz", "different surface atlases"),
+        ("atlas_npz_sha256", "4" * 64, "atlas bytes differ"),
+        ("atlas_manifest", "other.json", "noncanonical surface atlas sidecar path"),
+        ("atlas_manifest_sha256", "5" * 64, "sidecar bytes differ"),
+    ),
+)
+def test_reference_loader_rejects_each_atlas_pair_mutation(
+    tmp_path: pathlib.Path,
+    field: str,
+    changed: str,
+    message: str,
+) -> None:
+    body = tmp_path / "body.stl"
+    body.write_bytes(b"body")
+    config = _atlas_reference_config(tmp_path / "reference")
+    manifest = json.loads(config.reference_manifest.read_text())
+    manifest["semantic_binding"][field] = changed
+    config.reference_manifest.write_text(json.dumps(manifest))
+
+    with pytest.raises(ValueError, match=message):
+        load_reference(config, body_path=body)
+
+
+def _refresh_reference_atlas_hashes(config: AngularConvergenceConfig) -> None:
+    manifest = json.loads(config.reference_manifest.read_text())
+    atlas = config.root / "atlas.npz"
+    sidecar = atlas.with_suffix(".json")
+    sidecar_document = json.loads(sidecar.read_text())
+    sidecar_document["artifact"]["sha256"] = file_sha256(atlas)
+    sidecar.write_text(json.dumps(sidecar_document))
+    manifest["semantic_binding"]["atlas_npz_sha256"] = file_sha256(atlas)
+    manifest["semantic_binding"]["atlas_manifest_sha256"] = file_sha256(sidecar)
+    config.reference_manifest.write_text(json.dumps(manifest))
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("corrupt_npz", "failed canonical provenance validation"),
+        ("fabricated_content_digest", "content digest differs"),
+        ("wrong_mesh", "different support mesh"),
+        ("wrong_vocabulary", "vocabulary differs"),
+    ),
+)
+def test_reference_loader_rejects_invalid_surface_atlas_content(
+    tmp_path: pathlib.Path,
+    mutation: str,
+    message: str,
+) -> None:
+    body = tmp_path / "body.stl"
+    body.write_bytes(b"body")
+    config = _atlas_reference_config(tmp_path / "reference")
+    atlas = config.root / "atlas.npz"
+    sidecar = atlas.with_suffix(".json")
+    if mutation == "corrupt_npz":
+        atlas.write_bytes(b"not a NumPy archive")
+    elif mutation == "wrong_mesh":
+        save_surface_atlas(
+            _tiny_surface_atlas("b" * 64),
+            atlas,
+            metadata={"vocabularies": {"material_concept": []}},
+        )
+    else:
+        document = json.loads(sidecar.read_text())
+        if mutation == "fabricated_content_digest":
+            document["artifact"]["content_sha256"] = "f" * 64
+        else:
+            document["vocabularies"]["entity"] = ["Building"]
+        sidecar.write_text(json.dumps(document))
+    _refresh_reference_atlas_hashes(config)
+
+    with pytest.raises(ValueError, match=message):
+        load_reference(config, body_path=body)
 
 
 def test_reference_loader_rejects_publish_during_snapshot(

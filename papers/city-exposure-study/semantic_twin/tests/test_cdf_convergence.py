@@ -6,7 +6,7 @@ import os
 import pathlib
 import subprocess
 import sys
-from dataclasses import replace
+from dataclasses import fields, replace
 from types import SimpleNamespace
 
 import numpy as np
@@ -34,6 +34,7 @@ from semantic_twin.exposure.cdf_convergence import (
     analyse_chi_replicas,
     analyse_joint_replicas,
     archived_rooftop_diagnostic,
+    run_campaign,
 )
 from semantic_twin.exposure.cdf_contracts import (
     CdfProductionContract,
@@ -243,10 +244,13 @@ def test_unknown_named_contract_fails_and_custom_is_visibly_unpinned(tmp_path: p
     }
 
 
-def test_cli_exposes_input_only_and_archived_validation_modes() -> None:
+def test_cli_exposes_input_only_and_archived_validation_modes(capsys: pytest.CaptureFixture[str]) -> None:
     assert arguments(["--dry-run"]).dry_run is True
     assert arguments(["--analyse-only"]).analyse_only is True
     assert arguments(["--archived-rooftop-diagnostic"]).archived_rooftop_diagnostic is True
+    with pytest.raises(SystemExit):
+        arguments(["--help"])
+    assert "without writing or moving output files" in " ".join(capsys.readouterr().out.split())
 
 
 def test_compact_checkpoint_round_trip_rejects_a_different_identity(tmp_path: pathlib.Path) -> None:
@@ -721,7 +725,7 @@ def test_reached_look_files_are_regenerated_after_checkpoint_crash(tmp_path: pat
     assert look24_path.read_bytes() == look24_bytes
 
 
-def test_same_identity_dry_run_preserves_a_sealed_plan(tmp_path: pathlib.Path) -> None:
+def test_same_identity_preserves_a_sealed_plan(tmp_path: pathlib.Path) -> None:
     output = tmp_path / "output"
     output.mkdir()
     identity = "campaign"
@@ -752,7 +756,6 @@ def test_same_identity_dry_run_preserves_a_sealed_plan(tmp_path: pathlib.Path) -
         output,
         identity,
         {"identity_sha256": identity, "created_utc": "replacement"},
-        dry_run=True,
     )
 
     assert prepared == plan_path
@@ -764,12 +767,10 @@ def test_same_identity_dry_run_preserves_a_sealed_plan(tmp_path: pathlib.Path) -
             output,
             identity,
             {"identity_sha256": identity, "created_utc": "replacement"},
-            dry_run=True,
         )
 
 
-@pytest.mark.parametrize("dry_run", [False, True])
-def test_missing_sealed_plan_is_never_recreated(tmp_path: pathlib.Path, dry_run: bool) -> None:
+def test_missing_sealed_plan_is_never_recreated(tmp_path: pathlib.Path) -> None:
     output = tmp_path / "output"
     output.mkdir()
     identity = "campaign"
@@ -797,7 +798,6 @@ def test_missing_sealed_plan_is_never_recreated(tmp_path: pathlib.Path, dry_run:
             output,
             identity,
             {"identity_sha256": identity, "created_utc": "replacement"},
-            dry_run=dry_run,
         )
 
     assert not plan_path.exists()
@@ -819,7 +819,7 @@ def _production_reference(
     contract: CdfProductionContract = KORENMARKT_CDF_STOPPING_4096_V1,
 ) -> SimpleNamespace:
     identity = {
-        **contract.identity_hash_values(),
+        **contract.reference_identity_values(),
         "body_sha256": contract.body.sha256,
         "reference_files": {name: {"sha256": sha256} for name, sha256 in contract.reference.hashes().items()},
     }
@@ -840,15 +840,160 @@ def test_unchanged_production_reference_hashes_and_run_settings_pass() -> None:
     _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), _production_reference())
 
 
+def _tree_sha256(root: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    if not root.exists():
+        return digest.hexdigest()
+    for path in sorted((root, *root.rglob("*"))):
+        relative = path.relative_to(root).as_posix() if path != root else "."
+        status = path.lstat()
+        digest.update(relative.encode())
+        digest.update(f"{status.st_mode:o}".encode())
+        if path.is_symlink():
+            digest.update(os.readlink(path).encode())
+        elif path.is_file():
+            digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def test_production_dry_run_leaves_a_stale_sealed_output_tree_exactly_unchanged(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from semantic_twin.exposure import angular_convergence
+
+    contract = KORENMARKT_CDF_STOPPING_4096_V1
+    config = replace(CdfConvergenceConfig.load(PRODUCTION_CONFIG), output_dir=tmp_path / "campaign")
+    reference = _production_reference()
+    config.output_dir.mkdir()
+    stale_identity = "stale-campaign"
+    artifacts = {
+        "plan": config.output_dir / "plan.json",
+        "checkpoint": config.output_dir / "checkpoint.npz",
+        "analysis": config.output_dir / "analysis.json",
+        "ensemble_locations": config.output_dir / "ensemble_locations.jsonl",
+        "figure_png": config.output_dir / "cdf_convergence.png",
+        "figure_pdf": config.output_dir / "cdf_convergence.pdf",
+        "formal_look_16": config.output_dir / "analysis_look16.json",
+    }
+    artifacts["plan"].write_text(json.dumps({"identity_sha256": stale_identity}))
+    np.savez_compressed(artifacts["checkpoint"], identity_sha256=np.asarray(stale_identity))
+    artifacts["analysis"].write_text(json.dumps({"identity_sha256": stale_identity}))
+    artifacts["ensemble_locations"].write_text("sealed rows\n")
+    artifacts["figure_png"].write_bytes(b"sealed png")
+    artifacts["figure_pdf"].write_bytes(b"sealed pdf")
+    artifacts["formal_look_16"].write_text(json.dumps({"identity_sha256": stale_identity}))
+
+    def metadata(path: pathlib.Path) -> dict[str, object]:
+        payload = path.read_bytes()
+        return {"path": path.name, "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)}
+
+    (config.output_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema": "fixed-walk-cdf-manifest-v3",
+                "identity_sha256": stale_identity,
+                "artifacts": {name: metadata(path) for name, path in artifacts.items()},
+            }
+        )
+    )
+    (config.output_dir / "unmanaged").mkdir()
+    (config.output_dir / "unmanaged" / "note.txt").write_text("keep me\n")
+    before = _tree_sha256(config.output_dir)
+    calls: list[str] = []
+
+    def load(*_args: object, **_kwargs: object) -> SimpleNamespace:
+        calls.append("reference")
+        return reference
+
+    def provenance(_root: pathlib.Path) -> dict[str, object]:
+        calls.append("code")
+        return {"source_tree_sha256": "source", "runtime_versions": {}}
+
+    def tissue() -> dict[str, object]:
+        calls.append("tissue")
+        return {"path": "/data/itis_v5.db", **vars(contract.tissue_database)}
+
+    canonical_sha256 = angular_convergence.canonical_sha256
+
+    def canonical(value: object) -> str:
+        calls.append("identity")
+        return canonical_sha256(value)
+
+    def timestamp() -> str:
+        raise AssertionError("dry-run requested a timestamp")
+
+    monkeypatch.setattr(angular_convergence, "load_reference", load)
+    monkeypatch.setattr(
+        angular_convergence,
+        "code_provenance",
+        provenance,
+    )
+    monkeypatch.setattr(angular_convergence, "canonical_sha256", canonical)
+    monkeypatch.setattr(cdf_convergence, "_utc_now", timestamp)
+    monkeypatch.setattr(
+        cdf_convergence,
+        "_tissue_database_identity",
+        tissue,
+    )
+
+    future_plan_path = run_campaign(config, dry_run=True)
+
+    assert future_plan_path == config.output_dir / "plan.json"
+    assert calls == ["reference", "tissue", "code", "identity"]
+    assert _tree_sha256(config.output_dir) == before
+    assert not (config.output_dir / "quarantine").exists()
+
+
+def test_production_dry_run_rejects_a_reference_identity_mutation(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from semantic_twin.exposure import angular_convergence
+
+    config = replace(CdfConvergenceConfig.load(PRODUCTION_CONFIG), output_dir=tmp_path / "campaign")
+    reference = _production_reference()
+    reference.as_dict()["reference_run_digest"] = "changed"
+    monkeypatch.setattr(angular_convergence, "load_reference", lambda *_args, **_kwargs: reference)
+
+    with pytest.raises(ValueError, match="reference identity changed"):
+        run_campaign(config, dry_run=True)
+    assert not (config.output_dir / "plan.json").exists()
+
+
+def test_production_dry_run_does_not_create_a_missing_output_directory(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from semantic_twin.exposure import angular_convergence
+
+    contract = KORENMARKT_CDF_STOPPING_4096_V1
+    config = replace(CdfConvergenceConfig.load(PRODUCTION_CONFIG), output_dir=tmp_path / "missing" / "campaign")
+    monkeypatch.setattr(angular_convergence, "load_reference", lambda *_args, **_kwargs: _production_reference())
+    monkeypatch.setattr(
+        angular_convergence,
+        "code_provenance",
+        lambda _root: {"source_tree_sha256": "source", "runtime_versions": {}},
+    )
+    monkeypatch.setattr(
+        cdf_convergence,
+        "_tissue_database_identity",
+        lambda: {"path": "/data/itis_v5.db", **vars(contract.tissue_database)},
+    )
+
+    assert run_campaign(config, dry_run=True) == config.output_dir / "plan.json"
+    assert not config.output_dir.exists()
+
+
 @pytest.mark.parametrize(
     "field",
-    (*KORENMARKT_CDF_STOPPING_4096_V1.identity_hash_values(), "body_sha256"),
+    (*KORENMARKT_CDF_STOPPING_4096_V1.reference_identity_values(), "body_sha256"),
 )
-def test_each_production_identity_hash_mutation_fails(field: str) -> None:
+def test_each_production_reference_identity_mutation_fails(field: str) -> None:
     reference = _production_reference()
     identity = reference.as_dict()
     identity[field] = "changed"
-    with pytest.raises(ValueError, match="reference hashes changed"):
+    with pytest.raises(ValueError, match="reference identity changed"):
         _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), reference)
 
 
@@ -866,6 +1011,31 @@ def test_each_production_run_setting_mutation_fails(field: str) -> None:
     reference.manifest["run"][field] = "changed"
     with pytest.raises(ValueError, match="run settings changed"):
         _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), reference)
+
+
+@pytest.mark.parametrize(
+    ("section", "field", "message"),
+    (
+        ("identity", "reference_run_digest", "reference identity changed"),
+        ("run", "ray_epsilon_m", "run settings changed"),
+    ),
+)
+def test_missing_production_pin_fails_closed(section: str, field: str, message: str) -> None:
+    reference = _production_reference()
+    document = reference.as_dict() if section == "identity" else reference.manifest["run"]
+    del document[field]
+
+    with pytest.raises(ValueError, match=message):
+        _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), reference)
+
+
+def test_production_run_pin_covers_every_run_config_field() -> None:
+    contract = KORENMARKT_CDF_STOPPING_4096_V1
+    assert set(contract.run_setting_values()) == {field.name for field in fields(contract.run)}
+    assert contract.run_setting_values() == {
+        **contract.run.as_dict(),
+        "models": list(contract.run.models),
+    }
 
 
 @pytest.mark.parametrize("field", KORENMARKT_CDF_STOPPING_4096_V1.body.manifest_fields())
