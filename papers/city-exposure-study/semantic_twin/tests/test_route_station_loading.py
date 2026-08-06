@@ -19,6 +19,7 @@ def _write_station(
     metadata: dict,
     *,
     report_fields: dict | None = None,
+    canonical_image_id: str | None = None,
 ) -> tuple[pathlib.Path, bytes]:
     folder = root / "data" / "panoramas" / directory / station
     folder.mkdir(parents=True)
@@ -34,6 +35,21 @@ def _write_station(
         **(report_fields or {}),
     }
     (report / "walk_semantic_250m.json").write_text(json.dumps({"stations_admitted": [entry]}))
+    image_id = str(canonical_image_id or metadata.get("panoId") or metadata.get("id"))
+    screening = root / "outputs" / "city_screening"
+    screening.mkdir(parents=True)
+    (screening / "screening.json").write_text(
+        json.dumps(
+            {
+                "rows": [
+                    {
+                        "key": site,
+                        "panoramas": [{"pano_id": image_id, "east_m": 1.0, "north_m": 2.0, "links": []}],
+                    }
+                ]
+            }
+        )
+    )
     return folder, payload
 
 
@@ -71,6 +87,7 @@ def test_a_missing_capture_at_the_active_root_is_refused_even_if_the_recorded_ab
                     {
                         "station": "pano_00_4CxfyuveHLZwX5MG",
                         "folder": "/home/admin/aegis/data/panoramas/prague_staromestske/pano_00_4CxfyuveHLZwX5MG",
+                        "capture_id": "4CxfyuveHLZwX5MGoFES4A",
                         "position_enu_m": [1.0, 2.0, 3.0],
                     }
                 ]
@@ -103,9 +120,25 @@ def test_a_capture_identity_mismatch_is_refused(tmp_path: pathlib.Path) -> None:
         "prague_staromestske",
         "pano_00_4CxfyuveHLZwX5MG",
         {"panoId": "another_capture_identifier"},
+        canonical_image_id="4CxfyuveHLZwX5MGoFES4A",
     )
 
     with pytest.raises(ValueError, match="capture identity mismatch"):
+        load_admitted_stations("prague_staromestske", root=tmp_path)
+
+
+def test_a_same_prefix_full_capture_replacement_is_refused_for_a_legacy_report(tmp_path: pathlib.Path) -> None:
+    prefix = "abcdefghijklmnop"
+    _write_station(
+        tmp_path,
+        "prague_staromestske",
+        "prague_staromestske",
+        f"pano_00_{prefix}",
+        {"panoId": f"{prefix}DIFFERENT"},
+        canonical_image_id=f"{prefix}ORIGINAL",
+    )
+
+    with pytest.raises(ValueError, match="provider link graph says"):
         load_admitted_stations("prague_staromestske", root=tmp_path)
 
 

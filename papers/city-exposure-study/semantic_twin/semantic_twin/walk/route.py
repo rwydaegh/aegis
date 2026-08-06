@@ -467,12 +467,41 @@ def _expected_metadata_sha256(entry: Mapping[str, Any]) -> str | None:
     return digest
 
 
+def _has_frozen_capture_identity(entry: Mapping[str, Any]) -> bool:
+    exact_id = any(entry.get(key) is not None for key in ("node", "capture_id", "image_id", "pano_id"))
+    return exact_id or _expected_metadata_sha256(entry) is not None
+
+
+def _legacy_capture_id(entry: Mapping[str, Any], graph: LinkGraph, *, identity_in_directory: bool) -> str:
+    """Recover the full ID that an older report shortened to a folder suffix."""
+    station = str(entry["station"])
+    if identity_in_directory:
+        matches = [node for node in graph.position if station.endswith(str(node)[:16])]
+        if len(matches) != 1:
+            raise ValueError(
+                f"legacy station {station!r} does not identify exactly one full capture ID in the provider link graph"
+            )
+        return str(matches[0])
+
+    camera = np.asarray(entry["position_enu_m"], dtype=float)
+    if camera.shape != (3,) or not np.isfinite(camera).all() or not graph.position:
+        raise ValueError(f"legacy station {station!r} cannot be matched to a full capture ID")
+    distance = sorted(
+        (float(np.linalg.norm(np.asarray(position) - camera[:2])), str(node))
+        for node, position in graph.position.items()
+    )
+    if len(distance) > 1 and np.isclose(distance[0][0], distance[1][0], atol=1.0e-9, rtol=0.0):
+        raise ValueError(f"legacy station {station!r} is tied between two provider capture IDs")
+    return distance[0][1]
+
+
 def _station_metadata(
     entry: Mapping[str, Any],
     metadata_path: pathlib.Path,
     provider: str | None,
     *,
     identity_in_directory: bool,
+    expected_legacy_id: str | None,
 ) -> tuple[dict[str, Any], str, str, str]:
     """Read one capture identity and refuse a relocated lookalike."""
     if not metadata_path.is_file():
@@ -508,6 +537,11 @@ def _station_metadata(
     if not image_id:
         raise ValueError(f"{metadata_path} carries an empty panorama identifier")
     _verify_recorded_capture(entry, image_id)
+    if expected_legacy_id is not None and image_id != expected_legacy_id:
+        raise ValueError(
+            f"capture identity mismatch for legacy station {entry['station']!r}: "
+            f"provider link graph says {expected_legacy_id}, metadata says {image_id}"
+        )
     if identity_in_directory and not str(entry["station"]).endswith(image_id[:16]):
         raise ValueError(f"capture identity mismatch for station {entry['station']!r}: metadata names {image_id!r}")
     return metadata, image_id, expected_provider, digest
@@ -552,17 +586,37 @@ def load_admitted_stations(site: str, *, root: pathlib.Path | None = None, repor
             f"{path} does not exist, so {site} has no admitted station set. Build it with build_site_semantics.py."
         )
     document = json.loads(path.read_text())
+    entries = list(document.get("stations_admitted", ()))
+    legacy_graph = None
+    if any(not _has_frozen_capture_identity(entry) for entry in entries):
+        try:
+            legacy_graph = load_link_graph(site, root=base)
+        except FileNotFoundError as error:
+            raise FileNotFoundError(
+                f"{path} has legacy station rows without full capture identities, "
+                f"and no provider link graph can recover them"
+            ) from error
     out = []
-    for entry in document.get("stations_admitted", ()):
+    for entry in entries:
         station = str(entry["station"])
         recorded_folder = str(entry["folder"])
         folder, registered_provider, identity_in_directory = _station_location(site, station, recorded_folder, base)
+        expected_legacy_id = None
+        if not _has_frozen_capture_identity(entry):
+            if legacy_graph is None:
+                raise RuntimeError("legacy capture graph was not loaded")
+            expected_legacy_id = _legacy_capture_id(
+                entry,
+                legacy_graph,
+                identity_in_directory=identity_in_directory,
+            )
         metadata_path = folder / "metadata.json"
         document_meta, node, provider, metadata_sha256 = _station_metadata(
             entry,
             metadata_path,
             registered_provider,
             identity_in_directory=identity_in_directory,
+            expected_legacy_id=expected_legacy_id,
         )
         record: dict[str, Any] = {
             "name": station,
