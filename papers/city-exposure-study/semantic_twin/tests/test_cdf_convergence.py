@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 from dataclasses import fields, replace
@@ -195,6 +196,8 @@ def test_config_pins_the_production_replica_sequence() -> None:
         (("body_peak", "selection_stability_min_fraction"), 0.90),
         (("body_model",), "isotropic"),
         (("body_source", "phantom"), "ella"),
+        (("body_source", "filename"), "ella.stl"),
+        (("body_source", "data_dir"), "../../different-data"),
         (("body_source", "mass_kg"), 58.0),
         (("thresholds", "point_p90_db"), 0.11),
         (("thresholds", "point_max_db"), 0.16),
@@ -1120,7 +1123,14 @@ def test_non_duke_named_contract_controls_body_path_hash_and_sync_inventory(
     ella_path.write_bytes(b"named Ella body")
     ella_sha = hashlib.sha256(ella_path.read_bytes()).hexdigest()
     base = KORENMARKT_CDF_STOPPING_4096_V1
-    ella_body = replace(base.body, phantom="ella", mass_kg=58.0, sha256=ella_sha)
+    ella_body = replace(
+        base.body,
+        phantom="ella",
+        filename="ella.stl",
+        data_dir=".",
+        mass_kg=58.0,
+        sha256=ella_sha,
+    )
     contract = replace(
         base,
         name="ella_cdf_contract",
@@ -1133,8 +1143,13 @@ def test_non_duke_named_contract_controls_body_path_hash_and_sync_inventory(
     document.update(
         {
             "contract": contract.name,
-            "root": str(STUDY_ROOT),
-            "body_source": {"phantom": "ella", "mass_kg": 58.0},
+            "root": str(tmp_path),
+            "body_source": {
+                "phantom": "ella",
+                "filename": "ella.stl",
+                "data_dir": ".",
+                "mass_kg": 58.0,
+            },
         }
     )
     config_path = tmp_path / "cdf_ella.json"
@@ -1149,6 +1164,103 @@ def test_non_duke_named_contract_controls_body_path_hash_and_sync_inventory(
     inventory = capsys.readouterr().out.splitlines()
     assert f"body\tella.stl\t{ella_sha}" in inventory
     assert any(line.startswith("reference\tconfig/cdf_ella.json\t") for line in inventory)
+
+
+def test_production_body_path_relocates_with_the_checkout(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AEGIS_DATA_DIR", raising=False)
+    relocated = tmp_path / "relocated-aegis"
+    config_dir = relocated / "papers" / "city-exposure-study" / "semantic_twin" / "config"
+    config_dir.mkdir(parents=True)
+    data_dir = relocated / "data"
+    data_dir.mkdir()
+    shutil.copyfile(STUDY_ROOT.parents[2] / "data" / "duke.stl", data_dir / "duke.stl")
+    config_path = config_dir / PRODUCTION_CONFIG.name
+    shutil.copyfile(PRODUCTION_CONFIG, config_path)
+
+    config = CdfConvergenceConfig.load(config_path)
+
+    assert config.body_path == (data_dir / "duke.stl").resolve()
+    assert config.validate_body_file() == config.body_path
+    body_record = config.scientific_config()["body_source"]
+    assert body_record["filename"] == "duke.stl"
+    assert "path" not in body_record
+    scientific = json.dumps(config.scientific_config())
+    assert str(tmp_path) not in scientific
+    assert "/home/user" not in scientific
+
+
+def test_aegis_data_dir_overrides_the_configured_repository_data_dir(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shutil.copyfile(STUDY_ROOT.parents[2] / "data" / "duke.stl", tmp_path / "duke.stl")
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path))
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+
+    assert config.body_path == (tmp_path / "duke.stl").resolve()
+    assert config.validate_body_file() == config.body_path
+
+
+def test_production_body_override_rejects_bad_bytes(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    body = bytearray((STUDY_ROOT.parents[2] / "data" / "duke.stl").read_bytes())
+    body[-3] ^= 1
+    (tmp_path / "duke.stl").write_bytes(body)
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path))
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+
+    with pytest.raises(ValueError, match="production body hash changed"):
+        config.validate_body_file()
+
+
+def test_production_body_override_rejects_wrong_triangle_count(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "duke.stl").write_bytes(b"\0" * 80 + (1).to_bytes(4, "little") + b"\0" * 50)
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        cdf_convergence,
+        "_file_sha256",
+        lambda _path: KORENMARKT_CDF_STOPPING_4096_V1.body.sha256,
+    )
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+
+    with pytest.raises(ValueError, match="production body triangle count changed.*1 != 56024"):
+        config.validate_body_file()
+
+
+def test_legacy_custom_body_resolution_fails_when_repository_roots_are_ambiguous(
+    tmp_path: pathlib.Path,
+) -> None:
+    outer = tmp_path / "outer"
+    inner = outer / "inner"
+    for root in (outer, inner):
+        (root / "data").mkdir(parents=True)
+        (root / "data" / "phantoms.yaml").write_text("{}\n")
+        (root / "pyproject.toml").write_text("[project]\nname = 'test'\nversion = '0'\n")
+    config_path = inner / "custom.json"
+    config_path.write_text(json.dumps(_custom_config_document()))
+
+    with pytest.raises(ValueError, match="body_source.data_dir is required"):
+        CdfConvergenceConfig.load(config_path)
+
+
+def test_korenmarkt_body_contract_keeps_exact_filename_hash_and_triangles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AEGIS_DATA_DIR", raising=False)
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+    contract = KORENMARKT_CDF_STOPPING_4096_V1
+
+    assert config.body_filename == contract.body.filename == "duke.stl"
+    assert hashlib.sha256(config.validate_body_file().read_bytes()).hexdigest() == contract.body.sha256
+    assert cdf_convergence._binary_stl_triangle_count(config.body_path) == contract.body.triangles == 56_024
 
 
 @pytest.mark.parametrize(
@@ -1183,7 +1295,21 @@ def test_custom_contract_accepts_collision_free_seed_streams_after_route_load(tm
     _validate_production_reference(config, reference)
 
 
-def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> None:
+def test_final_rows_reuse_the_validated_body_when_the_environment_changes(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    validated_dir = tmp_path / "validated"
+    validated_dir.mkdir()
+    shutil.copyfile(STUDY_ROOT.parents[2] / "data" / "duke.stl", validated_dir / "duke.stl")
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(validated_dir))
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+    validated_body = config.validate_body_file()
+    late_dir = tmp_path / "late-override"
+    late_dir.mkdir()
+    (late_dir / "duke.stl").write_bytes(b"different body selected after validation")
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(late_dir))
+    config = replace(config, looks=(2, 3), body_chunk_cells=2)
     checkpoint = CampaignCheckpoint(
         base_seeds=np.asarray([7, 8]),
         chi=np.ones((2, 2, 3)),
@@ -1220,10 +1346,16 @@ def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> No
 
     exposures = tuple(Exposure(float(index + 1)) for index in range(6))
     coupler = SimpleNamespace(couple_many=lambda *args, **kwargs: exposures)
+    selected_paths: list[str] = []
+
+    def body_coupler(path: str, *_args: object, **_kwargs: object) -> SimpleNamespace:
+        selected_paths.append(path)
+        return coupler
+
     study = SimpleNamespace(
         PHANTOM="body",
         PHANTOM_MASS_KG=70.0,
-        BodyCoupler=lambda *args, **kwargs: coupler,
+        BodyCoupler=body_coupler,
     )
     reference = SimpleNamespace(
         manifest={"run": {"frequency_hz": 15.0e9}, "reference_s0_w_m2": 1.0},
@@ -1236,21 +1368,31 @@ def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> No
     )
 
     ensemble = _final_ensemble(
-        SimpleNamespace(
-            looks=(2, 3),
-            body_chunk_cells=2,
-            body_model="rooftop",
-            body_path=pathlib.Path("duke.stl"),
-            body_mass_kg=72.4,
-        ),
+        config,
         reference,
         checkpoint,
         {"stop_at_replicas": 2},
         study,
+        body_path=validated_body,
     )
 
+    assert selected_paths == [str(validated_body)]
     assert [row["rooftop_peak_sab_w_m2"] for row in ensemble["rows"]] == [3.0, 6.0]
     assert [row["rooftop_seed_mean_peak_sab_w_m2"] for row in ensemble["rows"]] == [3.5, 6.5]
     assert ensemble["published_body_peak"]["field"] == "rooftop_peak_sab_w_m2"
     assert ensemble["body_peak_jensen_diagnostic"]["confidence_bounded"] is False
     assert ensemble["body_peak_retained_field_check"]["maximum_absolute_difference_db"] == pytest.approx(0.0)
+
+    body = bytearray(validated_body.read_bytes())
+    body[-3] ^= 1
+    validated_body.write_bytes(body)
+    with pytest.raises(ValueError, match="production body hash changed"):
+        _final_ensemble(
+            config,
+            reference,
+            checkpoint,
+            {"stop_at_replicas": 2},
+            study,
+            body_path=validated_body,
+        )
+    assert selected_paths == [str(validated_body)]

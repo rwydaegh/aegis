@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -120,12 +121,20 @@ class BodySourcePin:
 
     model: str
     phantom: str
+    filename: str
+    data_dir: str
     mass_kg: float
     sha256: str
     frequency_hz: float
     level: int
     triangles: int
     transmission_coefficient: float
+
+    def __post_init__(self) -> None:
+        if self.filename != f"{self.phantom}.stl":
+            raise ValueError("production body filename must match its phantom name")
+        if PurePosixPath(self.data_dir).is_absolute():
+            raise ValueError("production body data_dir must be repository-relative")
 
     def manifest_fields(self) -> dict[str, Any]:
         return {
@@ -233,6 +242,8 @@ KORENMARKT_CDF_STOPPING_4096_V1 = CdfProductionContract(
     body=BodySourcePin(
         model="rooftop",
         phantom="duke",
+        filename="duke.stl",
+        data_dir="../../../data",
         mass_kg=72.4,
         sha256="781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b",
         frequency_hz=15.0e9,
@@ -335,7 +346,7 @@ def body_sources(
     """Deduplicate named phantom files and reject conflicting hash pins."""
     sources: dict[str, str] = {}
     for contract in contracts:
-        filename = f"{contract.body.phantom}.stl"
+        filename = contract.body.filename
         previous = sources.setdefault(filename, contract.body.sha256)
         if previous != contract.body.sha256:
             raise ValueError(f"conflicting production body hashes for {filename}: {previous} != {contract.body.sha256}")

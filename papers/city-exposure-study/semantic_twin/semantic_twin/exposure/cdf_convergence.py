@@ -17,6 +17,7 @@ import json
 import os
 import pathlib
 import platform
+import struct
 import time
 from collections import Counter
 from dataclasses import dataclass
@@ -32,6 +33,37 @@ from semantic_twin.exposure.cdf_contracts import (
 MODEL_NAMES = ("isotropic", "rooftop", "street_small_cell")
 CDF_STATISTICS = ("minimum", "q10", "q50", "q90", "maximum")
 ENDPOINT_RANKS = ("minimum", "second_lowest", "second_highest", "maximum")
+
+
+def _repository_data_dir(config_path: pathlib.Path, root: pathlib.Path) -> pathlib.Path:
+    """Find one checkout data directory for legacy custom configurations."""
+    candidates: set[pathlib.Path] = set()
+    for anchor in (config_path.parent, root, pathlib.Path(__file__).resolve().parent):
+        for parent in (anchor, *anchor.parents):
+            data_dir = parent / "data"
+            if (parent / "pyproject.toml").is_file() and (data_dir / "phantoms.yaml").is_file():
+                candidates.add(data_dir.resolve())
+    if len(candidates) != 1:
+        rendered = ", ".join(str(path) for path in sorted(candidates)) or "none"
+        raise ValueError(
+            "body_source.data_dir is required when one repository data directory "
+            f"cannot be selected; candidates: {rendered}"
+        )
+    return candidates.pop()
+
+
+def _binary_stl_triangle_count(path: pathlib.Path) -> int:
+    """Read the count while rejecting truncated or extended binary STL files."""
+    size = path.stat().st_size
+    with path.open("rb") as stream:
+        header = stream.read(84)
+    if len(header) != 84:
+        raise ValueError(f"production body is not a complete binary STL: {path}")
+    triangles = int(struct.unpack("<I", header[80:84])[0])
+    expected_size = 84 + 50 * triangles
+    if size != expected_size:
+        raise ValueError(f"production body has an invalid binary STL size: {size} != {expected_size}")
+    return triangles
 
 
 @dataclass(frozen=True)
@@ -84,6 +116,9 @@ class CdfConvergenceConfig:
     body_peak_selection_min_fraction: float
     body_model: str
     body_source: str
+    body_filename: str
+    body_data_dir: pathlib.Path
+    body_data_dir_setting: str | None
     body_mass_kg: float
     seed_stream_stride: int
     thresholds: StoppingThresholds
@@ -108,6 +143,12 @@ class CdfConvergenceConfig:
         bootstrap = document["bootstrap"]
         body = document.get("body_peak", {})
         body_source = document["body_source"]
+        body_data_dir_setting = body_source.get("data_dir")
+        body_data_dir = (
+            resolve(str(body_data_dir_setting))
+            if body_data_dir_setting is not None
+            else _repository_data_dir(config_path, root)
+        )
         config = cls(
             root=root,
             output_dir=resolve(document["output_dir"]),
@@ -125,6 +166,9 @@ class CdfConvergenceConfig:
             body_peak_selection_min_fraction=float(body.get("selection_stability_min_fraction", 0.95)),
             body_model=str(document["body_model"]),
             body_source=str(body_source["phantom"]),
+            body_filename=str(body_source.get("filename", f"{body_source['phantom']}.stl")),
+            body_data_dir=body_data_dir,
+            body_data_dir_setting=(str(body_data_dir_setting) if body_data_dir_setting is not None else None),
             body_mass_kg=float(body_source["mass_kg"]),
             seed_stream_stride=int(document["seed_stream_stride"]),
             thresholds=StoppingThresholds.from_dict(document.get("thresholds")),
@@ -161,6 +205,12 @@ class CdfConvergenceConfig:
             raise ValueError(f"body_model must be one of {', '.join(MODEL_NAMES)}")
         if not self.body_source:
             raise ValueError("body_source.phantom must be nonempty")
+        if (
+            not self.body_filename
+            or pathlib.PurePath(self.body_filename).name != self.body_filename
+            or pathlib.Path(self.body_filename).suffix.lower() != ".stl"
+        ):
+            raise ValueError("body_source.filename must be one plain STL filename")
         if self.body_mass_kg <= 0.0:
             raise ValueError("body_source.mass_kg must be positive")
         if self.seed_stream_stride < 1:
@@ -176,8 +226,36 @@ class CdfConvergenceConfig:
 
     @property
     def body_path(self) -> pathlib.Path:
-        data_dir = pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data"))
-        return data_dir / f"{self.body_source}.stl"
+        override = os.environ.get("AEGIS_DATA_DIR")
+        if override is not None and not override.strip():
+            raise ValueError("AEGIS_DATA_DIR is set but empty")
+        data_dir = pathlib.Path(override).expanduser() if override is not None else self.body_data_dir
+        path = data_dir.resolve() / self.body_filename
+        if not path.is_file():
+            source = "AEGIS_DATA_DIR" if override is not None else "body_source.data_dir"
+            raise FileNotFoundError(f"production body file from {source} is missing: {path}")
+        return path
+
+    def validate_body_file(self, path: str | pathlib.Path | None = None) -> pathlib.Path:
+        """Resolve and validate the exact body bytes before each coupling stage."""
+        selected = pathlib.Path(path).resolve() if path is not None else self.body_path
+        if selected.name != self.body_filename or not selected.is_file():
+            raise FileNotFoundError(f"validated production body file is missing or misnamed: {selected}")
+        contract = self.production_contract
+        if contract is None:
+            return selected
+        actual_sha256 = _file_sha256(selected)
+        if actual_sha256 != contract.body.sha256:
+            raise ValueError(
+                f"production body hash changed for {contract.body.filename}: {actual_sha256} != {contract.body.sha256}"
+            )
+        triangles = _binary_stl_triangle_count(selected)
+        if triangles != contract.body.triangles:
+            raise ValueError(
+                f"production body triangle count changed for {contract.body.filename}: "
+                f"{triangles} != {contract.body.triangles}"
+            )
+        return selected
 
     def _validate_production_config(self, contract: CdfProductionContract) -> None:
         def relative(path: pathlib.Path) -> str:
@@ -202,6 +280,8 @@ class CdfConvergenceConfig:
             "body_peak_selection_min_fraction": contract.body_peak_selection_min_fraction,
             "body_model": contract.body.model,
             "body_source": contract.body.phantom,
+            "body_filename": contract.body.filename,
+            "body_data_dir_setting": contract.body.data_dir,
             "body_mass_kg": contract.body.mass_kg,
             "seed_stream_stride": contract.seed_stream_stride,
             "thresholds": contract.threshold_values(),
@@ -223,6 +303,8 @@ class CdfConvergenceConfig:
             "body_peak_selection_min_fraction": self.body_peak_selection_min_fraction,
             "body_model": self.body_model,
             "body_source": self.body_source,
+            "body_filename": self.body_filename,
+            "body_data_dir_setting": self.body_data_dir_setting,
             "body_mass_kg": self.body_mass_kg,
             "seed_stream_stride": self.seed_stream_stride,
             "thresholds": dataclasses.asdict(self.thresholds),
@@ -236,15 +318,27 @@ class CdfConvergenceConfig:
         return (self.diagnostic_look, *self.looks)
 
     def scientific_config(self) -> dict[str, Any]:
+        contract = self.production_contract
+        config_path = contract.config_path if contract is not None else str(self.config_path)
+        output_dir = contract.output_dir if contract is not None else str(self.output_dir)
+        reference_paths = (
+            contract.reference.paths()
+            if contract is not None
+            else (
+                str(self.reference_manifest),
+                str(self.reference_locations),
+                str(self.reference_spectra),
+            )
+        )
         return {
             "contract": self.contract,
-            "config_path": str(self.config_path),
+            "config_path": config_path,
             "config_sha256": self.config_sha256,
-            "output_dir": str(self.output_dir),
+            "output_dir": output_dir,
             "reference": {
-                "manifest": str(self.reference_manifest),
-                "locations": str(self.reference_locations),
-                "spectra": str(self.reference_spectra),
+                "manifest": reference_paths[0],
+                "locations": reference_paths[1],
+                "spectra": reference_paths[2],
             },
             "base_seeds": list(self.base_seeds),
             "diagnostic_look": self.diagnostic_look,
@@ -267,15 +361,16 @@ class CdfConvergenceConfig:
             },
             "body_source": {
                 "phantom": self.body_source,
+                "filename": self.body_filename,
+                "data_dir": (contract.body.data_dir if contract is not None else self.body_data_dir_setting),
                 "mass_kg": self.body_mass_kg,
-                "path": str(self.body_path),
+                "sha256": contract.body.sha256 if contract is not None else None,
+                "triangles": contract.body.triangles if contract is not None else None,
             },
             "seed_stream_stride": self.seed_stream_stride,
             "contract_pinning": {
-                "production": self.production_contract is not None,
-                "status": "pinned production contract"
-                if self.production_contract is not None
-                else "unpinned custom campaign",
+                "production": contract is not None,
+                "status": "pinned production contract" if contract is not None else "unpinned custom campaign",
             },
             "thresholds": dataclasses.asdict(self.thresholds),
         }
@@ -1015,7 +1110,8 @@ def run_campaign(
         load_reference,
     )
 
-    reference = load_reference(config, body_path=config.body_path)
+    body_path = config.validate_body_file()
+    reference = load_reference(config, body_path=body_path)
     _validate_production_reference(config, reference)
     tissue_database = _tissue_database_identity()
     _validate_production_tissue_database(config, tissue_database)
@@ -1094,7 +1190,7 @@ def run_campaign(
         )
         _scene, _material, tracer, _run = _prepare_trace(spec, shared)
         coupler = study.BodyCoupler(
-            str(config.body_path),
+            str(body_path),
             float(manifest_run["frequency_hz"]),
             body_mass_kg=config.body_mass_kg,
         )
@@ -1115,7 +1211,14 @@ def run_campaign(
     analysis = trace_analysis or _write_reached_formal_analyses(config, checkpoint, identity)
     if analysis is None:
         raise RuntimeError(f"at least {config.looks[0]} complete replicas are needed for a formal analysis")
-    ensemble = _final_ensemble(config, reference, checkpoint, analysis, study)
+    ensemble = _final_ensemble(
+        config,
+        reference,
+        checkpoint,
+        analysis,
+        study,
+        body_path=body_path,
+    )
     analysis["ensemble"] = ensemble
     analysis["identity_sha256"] = identity
     analysis["reference"] = reference.as_dict()
@@ -1248,7 +1351,8 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
     contract = config.production_contract
     if contract is None or contract.archived_rooftop_run_dir is None:
         raise ValueError("the archived rooftop diagnostic is available only for the Korenmarkt production contract")
-    reference = load_reference(config, body_path=config.body_path)
+    body_path = config.validate_body_file()
+    reference = load_reference(config, body_path=body_path)
     _validate_production_reference(config, reference)
     run_root = config.root / contract.archived_rooftop_run_dir
     seeds = tuple(range(7, 15))
@@ -1312,7 +1416,7 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
         raise AssertionError("archived rooftop angular grid was not loaded")
     rho = np.asarray(rho_rows, dtype=np.float64)
     coupler = BodyCoupler(
-        str(config.body_path),
+        str(body_path),
         float(reference.manifest["run"]["frequency_hz"]),
         body_mass_kg=config.body_mass_kg,
     )
@@ -1641,13 +1745,16 @@ def _final_ensemble(
     checkpoint: CampaignCheckpoint,
     analysis: dict[str, Any],
     study: Any,
+    *,
+    body_path: pathlib.Path,
 ) -> dict[str, Any]:
+    body_path = config.validate_body_file(body_path)
     count = analysis["stop_at_replicas"] or min(checkpoint.replicas, config.looks[-1])
     if count != checkpoint.replicas:
         raise RuntimeError("the compact checkpoint cannot remove replicas after the sequential stop")
     mean_rho = checkpoint.rho_sum / count
     coupler = study.BodyCoupler(
-        str(config.body_path),
+        str(body_path),
         float(reference.manifest["run"]["frequency_hz"]),
         body_mass_kg=config.body_mass_kg,
     )
