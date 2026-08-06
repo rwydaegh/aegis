@@ -11,6 +11,7 @@ import numpy as np
 from ..illumination.model import AngularIllumination, PlacedIllumination
 from ..illumination.sources import direct_from_sites, normalized_source_weights, visible
 from ..illumination.sphere import nearest_cell
+from .directional import DirectionalMeasure, _directions
 from .model import Surplus, require_credit
 from .tracer import SbrTracer
 
@@ -35,12 +36,50 @@ def _direct_field_masses(
     this branch. ``u0`` points from the receiver to the source and is binned
     directly because it is the reciprocal direction consumed by BodyCoupler.
     """
+    masses, _directions, _atom_mass, _direct, seen = _direct_field_data(
+        geometry, origin, sources, local_grid, epsilon_m=epsilon_m
+    )
+    return masses, seen
+
+
+def _direct_field_atoms(
+    geometry: Any,
+    origin: np.ndarray,
+    sources: PlacedIllumination,
+    *,
+    epsilon_m: float = 1.0e-3,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return visible direct sources as exact physical-arrival atoms.
+
+    The source-side direction is receiver-to-source. Reciprocity changes its
+    sign for the body arrival direction, while the transfer mass itself stays
+    in the raw placed-source scale used by :func:`_direct_field_masses`.
+    """
+    _masses, directions, atom_mass, _direct, _seen = _direct_field_data(
+        geometry, origin, sources, None, epsilon_m=epsilon_m
+    )
+    return directions, atom_mass
+
+
+def _direct_field_data(
+    geometry: Any,
+    origin: np.ndarray,
+    sources: PlacedIllumination,
+    local_grid: np.ndarray | None,
+    *,
+    epsilon_m: float = 1.0e-3,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, float]:
+    """Collect direct bins, exact atoms, and scalar bookkeeping in one pass."""
     sites = np.asarray(sources.sites(), dtype=np.float64)
-    masses = np.zeros(local_grid.shape[0], dtype=np.float64)
+    masses = (
+        np.zeros(local_grid.shape[0], dtype=np.float64) if local_grid is not None else np.empty(0, dtype=np.float64)
+    )
     if sites.shape[0] == 0:
-        return masses, 0.0
-    probabilities = normalized_source_weights(sources)
+        empty_directions = np.empty((0, 3), dtype=np.float64)
+        return masses, empty_directions, np.empty(0, dtype=np.float64), 0.0, 0.0
+
     receiver = np.asarray(origin, dtype=np.float64)
+    probabilities = normalized_source_weights(sources)
     clear, distance = visible(
         geometry,
         np.broadcast_to(receiver, sites.shape),
@@ -48,10 +87,36 @@ def _direct_field_masses(
         epsilon_m=epsilon_m,
     )
     direction = (sites - receiver[None, :]) / np.maximum(distance, 1.0e-12)[:, None]
-    bins = nearest_cell(direction, local_grid)
-    contribution = probabilities * np.where(clear, 1.0 / np.square(distance), 0.0)
-    np.add.at(masses, bins, contribution)
-    return masses, float(np.sum(probabilities[clear], dtype=np.float64))
+    unweighted = np.zeros_like(distance)
+    unweighted[clear] = 1.0 / np.square(distance[clear])
+    weighted = probabilities * unweighted
+    if local_grid is not None:
+        np.add.at(masses, nearest_cell(direction, local_grid), weighted)
+
+    raw_weights = getattr(sources, "source_weights", None)
+    equal_sources = raw_weights is None or np.all(np.asarray(raw_weights) == np.asarray(raw_weights)[0])
+    direct_total = 0.0
+    seen_total = 0.0
+    for start in range(0, sites.shape[0], 400_000):
+        stop = min(start + 400_000, sites.shape[0])
+        clear_chunk = clear[start:stop]
+        distance_chunk = distance[start:stop][clear_chunk]
+        direct_total += float(np.sum(1.0 / np.square(distance_chunk), dtype=np.float64))
+        seen_total += float(np.sum(clear_chunk, dtype=np.float64))
+    if equal_sources:
+        direct = direct_total / sites.shape[0]
+        seen = seen_total / sites.shape[0]
+    else:
+        weighted_total = 0.0
+        weighted_seen = 0.0
+        for start in range(0, sites.shape[0], 400_000):
+            stop = min(start + 400_000, sites.shape[0])
+            clear_chunk = clear[start:stop]
+            weighted_total += float(np.sum(weighted[start:stop][clear_chunk], dtype=np.float64))
+            weighted_seen += float(np.sum(probabilities[start:stop][clear_chunk], dtype=np.float64))
+        direct = weighted_total
+        seen = weighted_seen
+    return masses, -direction[clear], weighted[clear], direct, seen
 
 
 @dataclass(frozen=True)
@@ -76,16 +141,18 @@ class NextEventField:
     diagnostic: bool = True
     includes_specular: bool = False
     missing_specular: bool = True
+    #: Exact visible direct source atoms in physical arrival convention.
+    direct_k_hat: np.ndarray = field(default_factory=lambda: np.empty((0, 3), dtype=np.float64))
+    direct_atom_mass: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.float64))
 
     def __post_init__(self) -> None:
         grid = np.asarray(self.local_grid, dtype=np.float64)
         direct = np.asarray(self.direct_mass, dtype=np.float64)
         bounced = np.asarray(self.bounced_mass, dtype=np.float64)
-        if grid.ndim != 2 or grid.shape[1] != 3:
-            raise ValueError(f"local_grid must have shape (cells, 3), got {grid.shape}")
+        grid = _directions(grid, "local_grid")
         if direct.shape != (grid.shape[0],) or bounced.shape != (grid.shape[0],):
             raise ValueError("direct_mass and bounced_mass must match local_grid")
-        if not np.all(np.isfinite(grid)) or not np.all(np.isfinite(direct)) or not np.all(np.isfinite(bounced)):
+        if not np.all(np.isfinite(direct)) or not np.all(np.isfinite(bounced)):
             raise ValueError("field arrays must be finite")
         if np.any(direct < 0.0) or np.any(bounced < 0.0):
             raise ValueError("field masses must be nonnegative")
@@ -94,6 +161,20 @@ class NextEventField:
         object.__setattr__(self, "local_grid", grid)
         object.__setattr__(self, "direct_mass", direct)
         object.__setattr__(self, "bounced_mass", bounced)
+        atom_k_hat = np.asarray(self.direct_k_hat, dtype=np.float64)
+        atom_mass = np.asarray(self.direct_atom_mass, dtype=np.float64)
+        if atom_k_hat.ndim != 2 or atom_k_hat.shape[1] != 3:
+            raise ValueError(f"direct_k_hat must have shape (atoms, 3), got {atom_k_hat.shape}")
+        if atom_mass.shape != (atom_k_hat.shape[0],):
+            raise ValueError("direct_atom_mass must match direct_k_hat")
+        if not np.all(np.isfinite(atom_k_hat)) or not np.all(np.isfinite(atom_mass)):
+            raise ValueError("direct atom arrays must be finite")
+        if np.any(atom_mass < 0.0):
+            raise ValueError("direct_atom_mass must be nonnegative")
+        if not np.allclose(np.linalg.norm(atom_k_hat, axis=1), 1.0, rtol=1.0e-7, atol=1.0e-7):
+            raise ValueError("direct_k_hat rows must be unit directions")
+        object.__setattr__(self, "direct_k_hat", atom_k_hat)
+        object.__setattr__(self, "direct_atom_mass", atom_mass)
 
     @property
     def arrival_directions(self) -> np.ndarray:
@@ -145,6 +226,39 @@ class NextEventField:
     def total(self) -> float:
         return self.direct + self.bounced
 
+    @property
+    def direct_atoms(self) -> float:
+        """Total transfer mass in the exact direct atoms."""
+        return float(np.sum(self.direct_atom_mass, dtype=np.float64))
+
+    def directional_measure(
+        self,
+        reference_transfer: float,
+        reference_id: str | None = None,
+    ) -> DirectionalMeasure:
+        """Return normalized direct atoms plus bounced diffuse grid cells.
+
+        The diagnostic ``direct_mass`` bins remain available for visualization,
+        but are intentionally excluded here so a direct source cannot be counted
+        once as an atom and again as a diffuse cell. ``reference_transfer`` is
+        the caller-supplied positive free-space transfer scale for this field.
+        """
+        if not np.isfinite(reference_transfer) or reference_transfer <= 0.0:
+            raise ValueError("reference_transfer must be positive and finite")
+        if self.bounced_mass.size == 0:
+            diffuse_k_hat = np.empty((0, 3), dtype=np.float64)
+            diffuse_mass = np.empty(0, dtype=np.float64)
+        else:
+            diffuse_k_hat = -self.local_grid
+            diffuse_mass = self.bounced_mass / float(reference_transfer)
+        return DirectionalMeasure(
+            atom_k_hat=self.direct_k_hat,
+            atom_mass=self.direct_atom_mass / float(reference_transfer),
+            diffuse_k_hat=diffuse_k_hat,
+            diffuse_mass=diffuse_mass,
+            reference_id=reference_id,
+        )
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "diagnostic": self.diagnostic,
@@ -157,6 +271,7 @@ class NextEventField:
             "direct": self.direct,
             "bounced": self.bounced,
             "total": self.total,
+            "direct_atoms": self.direct_atoms,
         }
 
 
@@ -215,8 +330,7 @@ class NextEventGather:
             grid = np.asarray(self.field_grid, dtype=np.float64)
             if grid.ndim != 2 or grid.shape[1] != 3 or grid.shape[0] == 0:
                 raise ValueError("field_grid must have shape (positive cells, 3)")
-            if not np.all(np.isfinite(grid)):
-                raise ValueError("field_grid must be finite")
+            grid = _directions(grid, "field_grid")
             self.field_grid = grid
             self.bounced_mass = np.zeros(grid.shape[0], dtype=np.float64)
 
@@ -327,7 +441,13 @@ class NextEventGather:
             return np.zeros_like(self.by_order)
         return 4.0 * np.pi * self.by_order / (self.rays * self.samples)
 
-    def field(self, direct_mass: np.ndarray | None = None) -> NextEventField:
+    def field(
+        self,
+        direct_mass: np.ndarray | None = None,
+        *,
+        direct_k_hat: np.ndarray | None = None,
+        direct_atom_mass: np.ndarray | None = None,
+    ) -> NextEventField:
         """Reduce this gather to a diagnostic field.
 
         ``direct_mass`` is supplied by the estimator's exact source-side
@@ -343,11 +463,21 @@ class NextEventGather:
         direct = np.zeros_like(bounced) if direct_mass is None else np.asarray(direct_mass, dtype=np.float64)
         if direct.shape != bounced.shape:
             raise ValueError("direct_mass must match the field grid")
+        atom_k_hat = (
+            np.empty((0, 3), dtype=np.float64) if direct_k_hat is None else np.asarray(direct_k_hat, dtype=np.float64)
+        )
+        atom_mass = (
+            np.empty(0, dtype=np.float64)
+            if direct_atom_mass is None
+            else np.asarray(direct_atom_mass, dtype=np.float64)
+        )
         return NextEventField(
             local_grid=self.field_grid,
             solid_angle=4.0 * np.pi / self.field_grid.shape[0],
             direct_mass=direct,
             bounced_mass=bounced,
+            direct_k_hat=atom_k_hat,
+            direct_atom_mass=atom_mass,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -403,7 +533,7 @@ class NextEventEstimator:
         seed: int | None = None,
     ) -> Surplus:
         """Return the historical scalar next-event result."""
-        surplus, _gather = self._estimate_and_gather(
+        surplus, _gather, _field_data = self._estimate_and_gather(
             origin,
             ground_z_m=ground_z_m,
             seed=seed,
@@ -419,19 +549,20 @@ class NextEventEstimator:
         seed: int | None = None,
     ) -> tuple[Surplus, NextEventField]:
         """Return the scalar result and a diagnostic local angular field."""
-        surplus, gather = self._estimate_and_gather(
+        surplus, gather, field_data = self._estimate_and_gather(
             origin,
             ground_z_m=ground_z_m,
             seed=seed,
             field_grid=self.tracer.local_grid,
         )
-        direct_mass, _seen = _direct_field_masses(
-            self.geometry,
-            np.asarray(origin, dtype=np.float64),
-            self.sources,
-            self.tracer.local_grid,
+        if field_data is None:
+            raise RuntimeError("field estimate did not collect direct field data")
+        direct_mass, direct_k_hat, direct_atom_mass, _direct, _seen = field_data
+        return surplus, gather.field(
+            direct_mass,
+            direct_k_hat=direct_k_hat,
+            direct_atom_mass=direct_atom_mass,
         )
-        return surplus, gather.field(direct_mass)
 
     def _estimate_and_gather(
         self,
@@ -440,14 +571,26 @@ class NextEventEstimator:
         ground_z_m: float,
         seed: int | None,
         field_grid: np.ndarray | None,
-    ) -> tuple[Surplus, NextEventGather]:
+    ) -> tuple[Surplus, NextEventGather, tuple[np.ndarray, np.ndarray, np.ndarray, float, float] | None]:
         trace_seed = self.tracer.config.seed if seed is None else seed
-        direct, seen = direct_from_sites(
-            self.geometry,
-            np.atleast_2d(origin),
-            self.sources.sites(),
-            weights=getattr(self.sources, "source_weights", None),
-        )
+        if field_grid is None:
+            direct, seen = direct_from_sites(
+                self.geometry,
+                np.atleast_2d(origin),
+                self.sources.sites(),
+                weights=getattr(self.sources, "source_weights", None),
+            )
+            field_data = None
+        else:
+            direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value = _direct_field_data(
+                self.geometry,
+                np.asarray(origin, dtype=np.float64),
+                self.sources,
+                field_grid,
+            )
+            direct = np.array([direct_value], dtype=np.float64)
+            seen = np.array([seen_value], dtype=np.float64)
+            field_data = (direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value)
         gather = NextEventGather(
             geometry=self.geometry,
             sources=self.sources,
@@ -482,4 +625,4 @@ class NextEventEstimator:
                 "clear_fraction": gather.cleared / max(gather.connections, 1),
             },
         )
-        return surplus, gather
+        return surplus, gather, field_data

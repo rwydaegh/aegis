@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .escape import EscapeEstimator
+from .directional import DirectionalMeasure
 from .model import Estimator, Gather, Surplus, require_credit
 from .next_event import MIN_CONNECT_M, NextEventEstimator, NextEventField, NextEventGather
 from .observers import TERMINATIONS, BounceEvidenceTally, MultiGather, PathRecord, PathRecorder
@@ -18,6 +19,7 @@ from .tracer import (
 
 __all__ = [
     "DEFAULT_MAX_BOUNCES",
+    "DirectionalMeasure",
     "MIN_CONNECT_M",
     "TERMINATIONS",
     "BounceEvidenceTally",

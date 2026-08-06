@@ -14,6 +14,8 @@ from typing import Any
 
 import numpy as np
 
+from ..transport.directional import DirectionalMeasure
+
 
 @dataclass(frozen=True)
 class BodyExposure:
@@ -96,6 +98,123 @@ class BodyCoupler:
             absorbed_power_w=p_abs,
             sar_wb_w_kg=float(result.sar_wb) if result.sar_wb is not None else float("nan"),
         )
+
+    def couple_measure(
+        self,
+        measure: DirectionalMeasure,
+        reference_s0_w_m2: float,
+    ) -> BodyExposure:
+        """Couple exact direct atoms and bounced diffuse cells to the body.
+
+        ``measure`` carries dimensionless transfer factors and physical arrival
+        directions in the current world/body frame. This adapter supplies the
+        paired free-space incident density, then
+        constructs one incoherent AEGIS path per retained atom or grid cell.
+        Direct diagnostic bins are never involved, so changing the diagnostic
+        grid cannot alter an atom-only result.
+        """
+        if not isinstance(measure, DirectionalMeasure):
+            raise TypeError("measure must be a DirectionalMeasure")
+        if self.level == 2:
+            exposure, _sab = self.couple_measure_with_sab(measure, reference_s0_w_m2)
+            return exposure
+        from aegis.paths import PropagationPaths
+
+        if not np.isfinite(reference_s0_w_m2) or reference_s0_w_m2 < 0.0:
+            raise ValueError("reference_s0_w_m2 must be nonnegative and finite")
+        directions, powers = measure.scaled_paths_data(reference_s0_w_m2)
+        susceptibility = measure.total_transfer
+        keep = powers > 0.0
+        if not np.any(keep):
+            return BodyExposure(
+                reference_s0_w_m2=float(reference_s0_w_m2),
+                arriving_power_density_w_m2=0.0,
+                susceptibility=0.0,
+                peak_sab_w_m2=0.0,
+                mean_sab_w_m2=0.0,
+                absorbed_power_w=0.0,
+                sar_wb_w_kg=0.0,
+            )
+
+        paths = PropagationPaths.from_powers(directions[keep], powers[keep])
+        result = self.engine.compute(self.body, paths, level=self.level, body_mass=self.body_mass_kg)
+        sab = np.asarray(result.sab, dtype=np.float64)
+        arriving = float(np.sum(powers[keep], dtype=np.float64))
+        p_abs = float(result.p_abs)
+        total_area = float(self.body.total_area)
+        return BodyExposure(
+            reference_s0_w_m2=float(reference_s0_w_m2),
+            arriving_power_density_w_m2=arriving,
+            susceptibility=float(susceptibility),
+            peak_sab_w_m2=float(np.max(sab)),
+            mean_sab_w_m2=p_abs / total_area if total_area > 0.0 else 0.0,
+            absorbed_power_w=p_abs,
+            sar_wb_w_kg=float(result.sar_wb) if result.sar_wb is not None else float("nan"),
+        )
+
+    def couple_measure_with_sab(
+        self,
+        measure: DirectionalMeasure,
+        reference_s0_w_m2: float,
+        *,
+        chunk_cells: int = 512,
+    ) -> tuple[BodyExposure, np.ndarray]:
+        """Couple a measure and retain its per-triangle ``Sab`` field.
+
+        Level 2 is evaluated in directional chunks so a large set of exact
+        atoms does not allocate a body-triangle by path incidence matrix. The
+        returned field is in triangle order, matching ``DosimetryResult.sab``.
+        The retained surface-field path is intentionally level-2 only.
+        """
+        if not isinstance(measure, DirectionalMeasure):
+            raise TypeError("measure must be a DirectionalMeasure")
+        if not np.isfinite(reference_s0_w_m2) or reference_s0_w_m2 < 0.0:
+            raise ValueError("reference_s0_w_m2 must be nonnegative and finite")
+        if chunk_cells < 1:
+            raise ValueError("chunk_cells must be positive")
+        if self.level != 2:
+            raise ValueError("surface-field body coupling currently implements AEGIS level 2 only")
+        directions, powers = measure.scaled_paths_data(reference_s0_w_m2)
+        keep = powers > 0.0
+        if not np.any(keep):
+            sab = np.zeros(np.asarray(self.body.normals).shape[0], dtype=np.float64)
+            return (
+                BodyExposure(
+                    reference_s0_w_m2=float(reference_s0_w_m2),
+                    arriving_power_density_w_m2=0.0,
+                    susceptibility=0.0,
+                    peak_sab_w_m2=0.0,
+                    mean_sab_w_m2=0.0,
+                    absorbed_power_w=0.0,
+                    sar_wb_w_kg=0.0,
+                ),
+                sab,
+            )
+
+        normals = np.asarray(self.body.normals, dtype=np.float64)
+        sab = np.zeros(normals.shape[0], dtype=np.float64)
+        kept_directions = directions[keep]
+        kept_powers = powers[keep]
+        for start in range(0, kept_directions.shape[0], chunk_cells):
+            stop = min(start + chunk_cells, kept_directions.shape[0])
+            # AEGIS defines k_hat as the direction of arrival. Its geometric
+            # factor is ReLU[n_hat dot (-k_hat)], so the body-facing side is
+            # opposite the physical propagation vector.
+            incidence = np.maximum(normals @ (-kept_directions[start:stop]).T, 0.0)
+            sab += incidence @ kept_powers[start:stop]
+        sab *= float(self.engine.T0)
+        p_abs = float(np.sum(sab * np.asarray(self.body.areas, dtype=np.float64), dtype=np.float64))
+        total_area = float(self.body.total_area)
+        exposure = BodyExposure(
+            reference_s0_w_m2=float(reference_s0_w_m2),
+            arriving_power_density_w_m2=float(np.sum(kept_powers, dtype=np.float64)),
+            susceptibility=float(measure.total_transfer if reference_s0_w_m2 > 0.0 else 0.0),
+            peak_sab_w_m2=float(np.max(sab)),
+            mean_sab_w_m2=p_abs / total_area if total_area > 0.0 else 0.0,
+            absorbed_power_w=p_abs,
+            sar_wb_w_kg=(p_abs / self.body_mass_kg if self.body_mass_kg is not None else float("nan")),
+        )
+        return exposure, sab
 
     def couple_many(
         self,
