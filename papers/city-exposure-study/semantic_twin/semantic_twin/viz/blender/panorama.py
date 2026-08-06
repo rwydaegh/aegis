@@ -1224,6 +1224,11 @@ def configure_panorama_scene(
     for name, value in properties.items():
         prepared_scene[name] = value
         camera[name] = value
+    if prepared_scene.get("panorama_pipeline_scene", False):
+        from .panorama_panels import stamp_pipeline_contract
+
+        stamp_pipeline_contract(prepared_scene, capture=asset.capture)
+        stamp_pipeline_contract(camera, capture=asset.capture)
     return properties
 
 

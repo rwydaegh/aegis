@@ -723,6 +723,21 @@ def test_blender_cli_accepts_zero_animation_counts(tmp_path: pathlib.Path) -> No
     assert args.animation_nee_paths == 0
 
 
+def test_blender_cli_accepts_an_external_asset_root(tmp_path: pathlib.Path) -> None:
+    asset_root = tmp_path / "sealed-data-checkout"
+    args = blender_cli.arguments(
+        [
+            "--payload",
+            str(tmp_path / "a.npz"),
+            "--blend",
+            str(tmp_path / "a.blend"),
+            "--asset-root",
+            str(asset_root),
+        ]
+    )
+    assert args.asset_root == asset_root
+
+
 def test_blender_cli_stamps_collection_status_after_building_animation() -> None:
     source = inspect.getsource(blender_cli.main)
 
