@@ -236,24 +236,26 @@ class CdfConvergenceConfig:
             raise FileNotFoundError(f"production body file from {source} is missing: {path}")
         return path
 
-    def validate_body_file(self) -> pathlib.Path:
-        """Resolve and validate the exact body bytes before any campaign work."""
-        path = self.body_path
+    def validate_body_file(self, path: str | pathlib.Path | None = None) -> pathlib.Path:
+        """Resolve and validate the exact body bytes before each coupling stage."""
+        selected = pathlib.Path(path).resolve() if path is not None else self.body_path
+        if selected.name != self.body_filename or not selected.is_file():
+            raise FileNotFoundError(f"validated production body file is missing or misnamed: {selected}")
         contract = self.production_contract
         if contract is None:
-            return path
-        actual_sha256 = _file_sha256(path)
+            return selected
+        actual_sha256 = _file_sha256(selected)
         if actual_sha256 != contract.body.sha256:
             raise ValueError(
                 f"production body hash changed for {contract.body.filename}: {actual_sha256} != {contract.body.sha256}"
             )
-        triangles = _binary_stl_triangle_count(path)
+        triangles = _binary_stl_triangle_count(selected)
         if triangles != contract.body.triangles:
             raise ValueError(
                 f"production body triangle count changed for {contract.body.filename}: "
                 f"{triangles} != {contract.body.triangles}"
             )
-        return path
+        return selected
 
     def _validate_production_config(self, contract: CdfProductionContract) -> None:
         def relative(path: pathlib.Path) -> str:
@@ -1209,7 +1211,14 @@ def run_campaign(
     analysis = trace_analysis or _write_reached_formal_analyses(config, checkpoint, identity)
     if analysis is None:
         raise RuntimeError(f"at least {config.looks[0]} complete replicas are needed for a formal analysis")
-    ensemble = _final_ensemble(config, reference, checkpoint, analysis, study)
+    ensemble = _final_ensemble(
+        config,
+        reference,
+        checkpoint,
+        analysis,
+        study,
+        body_path=body_path,
+    )
     analysis["ensemble"] = ensemble
     analysis["identity_sha256"] = identity
     analysis["reference"] = reference.as_dict()
@@ -1736,13 +1745,16 @@ def _final_ensemble(
     checkpoint: CampaignCheckpoint,
     analysis: dict[str, Any],
     study: Any,
+    *,
+    body_path: pathlib.Path,
 ) -> dict[str, Any]:
+    body_path = config.validate_body_file(body_path)
     count = analysis["stop_at_replicas"] or min(checkpoint.replicas, config.looks[-1])
     if count != checkpoint.replicas:
         raise RuntimeError("the compact checkpoint cannot remove replicas after the sequential stop")
     mean_rho = checkpoint.rho_sum / count
     coupler = study.BodyCoupler(
-        str(config.body_path),
+        str(body_path),
         float(reference.manifest["run"]["frequency_hz"]),
         body_mass_kg=config.body_mass_kg,
     )

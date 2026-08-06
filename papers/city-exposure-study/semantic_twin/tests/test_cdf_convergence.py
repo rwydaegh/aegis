@@ -1295,7 +1295,21 @@ def test_custom_contract_accepts_collision_free_seed_streams_after_route_load(tm
     _validate_production_reference(config, reference)
 
 
-def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> None:
+def test_final_rows_reuse_the_validated_body_when_the_environment_changes(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    validated_dir = tmp_path / "validated"
+    validated_dir.mkdir()
+    shutil.copyfile(STUDY_ROOT.parents[2] / "data" / "duke.stl", validated_dir / "duke.stl")
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(validated_dir))
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+    validated_body = config.validate_body_file()
+    late_dir = tmp_path / "late-override"
+    late_dir.mkdir()
+    (late_dir / "duke.stl").write_bytes(b"different body selected after validation")
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(late_dir))
+    config = replace(config, looks=(2, 3), body_chunk_cells=2)
     checkpoint = CampaignCheckpoint(
         base_seeds=np.asarray([7, 8]),
         chi=np.ones((2, 2, 3)),
@@ -1332,10 +1346,16 @@ def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> No
 
     exposures = tuple(Exposure(float(index + 1)) for index in range(6))
     coupler = SimpleNamespace(couple_many=lambda *args, **kwargs: exposures)
+    selected_paths: list[str] = []
+
+    def body_coupler(path: str, *_args: object, **_kwargs: object) -> SimpleNamespace:
+        selected_paths.append(path)
+        return coupler
+
     study = SimpleNamespace(
         PHANTOM="body",
         PHANTOM_MASS_KG=70.0,
-        BodyCoupler=lambda *args, **kwargs: coupler,
+        BodyCoupler=body_coupler,
     )
     reference = SimpleNamespace(
         manifest={"run": {"frequency_hz": 15.0e9}, "reference_s0_w_m2": 1.0},
@@ -1348,21 +1368,31 @@ def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> No
     )
 
     ensemble = _final_ensemble(
-        SimpleNamespace(
-            looks=(2, 3),
-            body_chunk_cells=2,
-            body_model="rooftop",
-            body_path=pathlib.Path("duke.stl"),
-            body_mass_kg=72.4,
-        ),
+        config,
         reference,
         checkpoint,
         {"stop_at_replicas": 2},
         study,
+        body_path=validated_body,
     )
 
+    assert selected_paths == [str(validated_body)]
     assert [row["rooftop_peak_sab_w_m2"] for row in ensemble["rows"]] == [3.0, 6.0]
     assert [row["rooftop_seed_mean_peak_sab_w_m2"] for row in ensemble["rows"]] == [3.5, 6.5]
     assert ensemble["published_body_peak"]["field"] == "rooftop_peak_sab_w_m2"
     assert ensemble["body_peak_jensen_diagnostic"]["confidence_bounded"] is False
     assert ensemble["body_peak_retained_field_check"]["maximum_absolute_difference_db"] == pytest.approx(0.0)
+
+    body = bytearray(validated_body.read_bytes())
+    body[-3] ^= 1
+    validated_body.write_bytes(body)
+    with pytest.raises(ValueError, match="production body hash changed"):
+        _final_ensemble(
+            config,
+            reference,
+            checkpoint,
+            {"stop_at_replicas": 2},
+            study,
+            body_path=validated_body,
+        )
+    assert selected_paths == [str(validated_body)]
