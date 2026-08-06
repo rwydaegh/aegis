@@ -320,8 +320,124 @@ KORENMARKT_CDF_STOPPING_4096_V1 = CdfProductionContract(
 )
 
 
+PRAGUE_CDF_STOPPING_4096_V1 = CdfProductionContract(
+    name="prague_cdf_stopping_4096_v1",
+    config_path="config/cdf_convergence_prague_4096.json",
+    output_dir="outputs/cdf_convergence_prague_4096_atlas_v1",
+    reference=ReferenceFiles(
+        manifest=("outputs/exposure_korenmarkt/final_prague_walk_drjit_atlas_4096_v1_15ghz_manifest.json"),
+        locations=("outputs/exposure_korenmarkt/final_prague_walk_drjit_atlas_4096_v1_15ghz_locations.jsonl"),
+        spectra=("outputs/exposure_korenmarkt/final_prague_walk_drjit_atlas_4096_v1_15ghz_spectra.npz"),
+        manifest_sha256="4a0b6753b512d1e18fc26efcbf01a68d2d60b97b960b4fed23e541549ae93189",
+        locations_sha256="9a513fd8f70112124e0d9721b740a7c2ff5c2bd5ffc0b5b004a54bdd6e67289b",
+        spectra_sha256="f8c763660bd1f5453505c2263591935adc58d64a167a47c22e1b38dc4aa16cea",
+    ),
+    base_seeds=tuple(range(7, 39)),
+    diagnostic_look=8,
+    looks=(16, 24, 32),
+    bootstrap_replicates=20_000,
+    bootstrap_seed=20260806,
+    confidence=0.95,
+    bootstrap_alpha_allocation="equal Bonferroni allocation over formal looks 16, 24, and 32",
+    body_chunk_cells=512,
+    body_peak_selection_min_fraction=0.95,
+    thresholds=(
+        ("point_p90_db", 0.10),
+        ("point_max_db", 0.15),
+        ("cdf_q50_db", 0.05),
+        ("cdf_q10_q90_db", 0.10),
+        ("cdf_endpoint_db", 0.15),
+        ("stability_wasserstein_db", 0.03),
+        ("stability_q50_db", 0.03),
+        ("stability_q10_q90_db", 0.05),
+        ("stability_endpoint_db", 0.10),
+        ("body_peak_max_db", 0.15),
+    ),
+    body=BodySourcePin(
+        model="rooftop",
+        phantom="duke",
+        filename="duke.stl",
+        data_dir="../../../data",
+        mass_kg=72.4,
+        sha256="781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b",
+        frequency_hz=15.0e9,
+        level=2,
+        triangles=56_024,
+        transmission_coefficient=0.5001397541911426,
+    ),
+    seed_stream_stride=1000,
+    seed_stream_rule="base seed + 1000 * frozen production standpoint index",
+    reference_identity=ReferenceIdentityPin(
+        mesh_sha256="a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4",
+        standpoint_array_sha256="f1761deb913aa772f7e68189b1fdaa04b64cd55b18e31e4b4e1260243484240b",
+        standpoints=68,
+        surface_binding_sha256="2441abf4bc3e9d7190e45ef3de154fbc7507e82cf5d5f64f77f4320e58b9a0aa",
+        reference_run_digest="2daef0c8931a",
+        material_evidence=MaterialEvidencePin(
+            role="joint_surface_atlas",
+            artifact=ArtifactPin(
+                path="outputs/site_semantics/prague_staromestske/joint_atlas_250m_r8.npz",
+                sha256="323b6c3f371c711cb81d287325c4ae8b3790bcc8b77d6cd5013819cb08080023",
+            ),
+            atlas_json_sidecar=ArtifactPin(
+                path="outputs/site_semantics/prague_staromestske/joint_atlas_250m_r8.json",
+                sha256="8ec1ab2485545abd0ddeaf461dc6ce01ff319fb994b4c12e4ec9cb1be70d2b5d",
+            ),
+        ),
+        route=RoutePin(
+            canonical_walk_provenance_sha256=("0a983775a019cf351daf0ec927b299c0ffbc1e389bf604b3acdc2fac45d7e9e8"),
+            geometry="registered_road_v1",
+            path="links",
+            stride_m=6.0,
+            registered_standpoints=12,
+            road_length_m=339.7173561271683,
+        ),
+    ),
+    run=RunConfig(
+        site="prague_staromestske",
+        crop_m=250,
+        law="band",
+        models=("isotropic", "rooftop", "street_small_cell"),
+        estimator="escape",
+        next_event=None,
+        walk="route",
+        walk_path="links",
+        walk_radius_m=90.0,
+        walk_spacing_m=3.0,
+        walk_stride_m=6.0,
+        head_height_m=1.5,
+        locations=0,
+        frequency_hz=15.0e9,
+        max_bounces=3,
+        roulette_start=4,
+        roulette_floor=0.05,
+        ray_epsilon_m=1.0e-3,
+        range_weighted_escape=False,
+        materials="atlas",
+        walk_npz=None,
+        atlas_npz="outputs/site_semantics/prague_staromestske/joint_atlas_250m_r8.npz",
+        rays=1_600_000,
+        batch=400_000,
+        local_cells=4096,
+        exit_bands=18,
+        seed=7,
+        variant="cuda_ad_rgb",
+        transport_kernel="drjit",
+        tag="final_prague_walk_drjit_atlas_4096_v1",
+    ),
+    point_kind_counts=(("camera_registered", 12), ("stride_interpolated", 56)),
+    tissue_database=TissueDatabasePin(
+        sha256="51dc983da2fa4e40bde9ca4e9830ecd6b41739c2b92b28b5efbdc5d5e556aa8f",
+        bytes=7_094_272,
+    ),
+)
+
+
 PRODUCTION_CDF_CONTRACTS: Mapping[str, CdfProductionContract] = MappingProxyType(
-    {KORENMARKT_CDF_STOPPING_4096_V1.name: KORENMARKT_CDF_STOPPING_4096_V1}
+    {
+        KORENMARKT_CDF_STOPPING_4096_V1.name: KORENMARKT_CDF_STOPPING_4096_V1,
+        PRAGUE_CDF_STOPPING_4096_V1.name: PRAGUE_CDF_STOPPING_4096_V1,
+    }
 )
 
 

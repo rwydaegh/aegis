@@ -40,6 +40,7 @@ from semantic_twin.exposure.cdf_convergence import (
 from semantic_twin.exposure.cdf_contracts import (
     CdfProductionContract,
     KORENMARKT_CDF_STOPPING_4096_V1,
+    PRAGUE_CDF_STOPPING_4096_V1,
     PRODUCTION_CDF_CONTRACTS,
     body_sources,
     registered_body_sources,
@@ -50,6 +51,7 @@ from tools.cdf_contract_references import main as reference_helper_main
 
 STUDY_ROOT = pathlib.Path(__file__).resolve().parents[1]
 PRODUCTION_CONFIG = STUDY_ROOT / "config" / "cdf_convergence_4096.json"
+PRAGUE_PRODUCTION_CONFIG = STUDY_ROOT / "config" / "cdf_convergence_prague_4096.json"
 
 
 def _custom_config_document() -> dict[str, object]:
@@ -175,6 +177,18 @@ def test_config_pins_the_production_replica_sequence() -> None:
     assert config.body_source == "duke"
     assert config.seed_stream_stride == 1000
     assert config.production_contract is KORENMARKT_CDF_STOPPING_4096_V1
+
+
+def test_prague_config_pins_its_long_registered_route_and_reference() -> None:
+    config = CdfConvergenceConfig.load(PRAGUE_PRODUCTION_CONFIG)
+    contract = config.production_contract
+
+    assert contract is PRAGUE_CDF_STOPPING_4096_V1
+    assert contract.reference_identity.standpoints == 68
+    assert contract.point_kind_count_values() == {"camera_registered": 12, "stride_interpolated": 56}
+    assert contract.reference_identity.route.road_length_m == pytest.approx(339.7173561271683)
+    assert contract.run.site == "prague_staromestske"
+    assert contract.run.atlas_npz == "outputs/site_semantics/prague_staromestske/joint_atlas_250m_r8.npz"
 
 
 @pytest.mark.parametrize(
@@ -1072,6 +1086,10 @@ def test_reference_enumeration_matches_every_registered_production_config() -> N
         (
             "config/cdf_convergence_4096.json",
             KORENMARKT_CDF_STOPPING_4096_V1.reference.paths(),
+        ),
+        (
+            "config/cdf_convergence_prague_4096.json",
+            PRAGUE_CDF_STOPPING_4096_V1.reference.paths(),
         ),
     )
 
