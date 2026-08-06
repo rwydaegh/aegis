@@ -53,24 +53,36 @@ Coupled to finding 1: at the larger roughness the discarded specular fraction
 falls from 0.544 to 0.400 and the gap closed rises to 56 percent, so finding 1
 survives either reading. Settle this one first, then re-measure that one.
 
-### 3. The absorbed density mean is unweighted over unequal triangles
+### 3. The absorbed density mean was unweighted over unequal triangles
 
-`propagation/exposure.py:93`. `mean_sab_w_m2` is a plain mean over Duke's 56,024
-triangles, whose areas vary by a factor of 9,300 with a coefficient of variation
-of 1.02.
+Status: fixed on 2026-08-06. Scalar and batched couplers now report the
+area-weighted body mean as `p_abs / body.total_area`. Checkpoint identity binds
+the exact float64 triangle areas. Legacy monolithic checkpoints retain full
+`Sab`, so the weighted mean can be recomputed without retracing. Independent
+verification passed 247 tests, skipped 4, marked 10 as expected failures, and
+deselected 1. See [the publication physics decisions](PUBLICATION_PHYSICS_DECISIONS.md)
+for the corrected result medians.
 
-Against the published spectra, area weighting raises it by a median of 5.18
-percent, or +0.219 dB, varying 2.3 to 6.1 percent across standpoints. The p95 over
-p05 spread moves from 3.827 to 3.869 dB.
+Historical evidence: `propagation/exposure.py:93` used `mean_sab_w_m2` as a plain
+mean over Duke's 56,024 triangles, whose areas varied by a factor of 9,300 with
+a coefficient of variation of 1.02. The current scalar and batched couplers are
+in `semantic_twin/exposure/coupler.py:89-95` and
+`semantic_twin/exposure/coupler.py:194-204`, where they compute
+`p_abs / body.total_area`.
 
-Published at `run_exposure.py:675`, `propagation/report.py:244` and
+Pre-fix measurements: against the published spectra, area weighting raised it by
+a median of 5.18 percent, or +0.219 dB, varying 2.3 to 6.1 percent across
+standpoints. The p95 over p05 spread moved from 3.827 to 3.869 dB.
+
+The pre-fix values were published at `run_exposure.py:675`,
+`propagation/report.py:244` and
 `FIGURES/make_walk_exposure_cdf.py:186`.
 
-One line to fix. The correct value is already computed as
-`result.p_abs / total_area`.
+The audit identified a one-line correction, `result.p_abs / total_area`. The
+current couplers apply it as `p_abs / body.total_area`.
 
-Why no test caught it: `tests/test_propagation.py:650` asserts the isotropic case
-equals `T0/4`, which is exactly unbiased by symmetry.
+Why no test caught the pre-fix behavior: `tests/test_propagation.py:650` asserts
+the isotropic case equals `T0/4`, which is exactly unbiased by symmetry.
 
 ### 4. Foliage converts nepers to decibels with the wrong factor
 

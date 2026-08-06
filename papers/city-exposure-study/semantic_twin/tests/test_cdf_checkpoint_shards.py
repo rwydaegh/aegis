@@ -49,6 +49,7 @@ def _empty() -> CampaignCheckpoint:
         rho_sum=np.zeros((2, 3, 3), dtype=np.float64),
         local_grid=np.eye(3, dtype=np.float64),
         solid_angle=4.0 * np.pi / 3.0,
+        body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
     )
 
 
@@ -87,7 +88,7 @@ def _tracer() -> object:
 
 
 def _coupler() -> SimpleNamespace:
-    exposure = SimpleNamespace(peak_sab_w_m2=2.0, mean_sab_w_m2=1.0)
+    exposure = SimpleNamespace(peak_sab_w_m2=2.0, mean_sab_w_m2=4.0 / 6.0)
     return SimpleNamespace(
         couple_many_with_sab=lambda *args, **kwargs: (
             (exposure,),
@@ -116,6 +117,7 @@ def _store(tmp_path) -> CheckpointStore:
             model_names=("isotropic", "rooftop", "street_small_cell"),
             planned_seeds=(7, 8),
             surface_elements=3,
+            body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
             local_grid=np.eye(3, dtype=np.float64),
             solid_angle=4.0 * np.pi / 3.0,
         ),
@@ -165,6 +167,7 @@ def test_shard_trace_does_not_grow_history_arrays_per_replica(tmp_path, monkeypa
             model_names=("isotropic", "rooftop", "street_small_cell"),
             planned_seeds=(7, 8, 9),
             surface_elements=3,
+            body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
             local_grid=np.eye(3, dtype=np.float64),
             solid_angle=4.0 * np.pi / 3.0,
         ),
@@ -212,6 +215,7 @@ def test_shard_accumulation_matches_legacy_trace_and_resume_exactly(tmp_path) ->
                 model_names=("isotropic", "rooftop", "street_small_cell"),
                 planned_seeds=seeds,
                 surface_elements=3,
+                body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
                 local_grid=np.eye(3, dtype=np.float64),
                 solid_angle=4.0 * np.pi / 3.0,
             ),
@@ -325,12 +329,13 @@ def test_legacy_checkpoint_path_still_writes_and_reads_monolithic_prefix(tmp_pat
         chi=np.ones((1, 2, 3), dtype=np.float64),
         chi_direct=np.full((1, 2, 3), 0.5, dtype=np.float64),
         body_peak_rooftop=np.full((1, 2), 2.0, dtype=np.float64),
-        body_mean_rooftop=np.ones((1, 2), dtype=np.float64),
+        body_mean_rooftop=np.full((1, 2), 4.0 / 6.0, dtype=np.float64),
         body_sab_rooftop=np.asarray([[[2.0, 1.0, 0.0], [2.0, 1.0, 0.0]]], dtype=np.float64),
         trace_seconds=np.full((1, 2), 0.2, dtype=np.float64),
         rho_sum=np.ones((2, 3, 3), dtype=np.float64),
         local_grid=fibonacci_sphere(3),
         solid_angle=4.0 * np.pi / 3.0,
+        body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
     )
     reference = _reference()
     config = SimpleNamespace(base_seeds=(7, 8), looks=(3,), body_model="rooftop")
@@ -340,3 +345,118 @@ def test_legacy_checkpoint_path_still_writes_and_reads_monolithic_prefix(tmp_pat
     assert loaded is not None
     np.testing.assert_array_equal(loaded.base_seeds, [7])
     np.testing.assert_array_equal(loaded.rho_sum, checkpoint.rho_sum)
+
+
+def test_legacy_checkpoint_migrates_plain_mean_for_unequal_surface_areas(tmp_path) -> None:
+    checkpoint = CampaignCheckpoint(
+        base_seeds=np.asarray([7], dtype=np.int64),
+        chi=np.ones((1, 2, 3), dtype=np.float64),
+        chi_direct=np.full((1, 2, 3), 0.5, dtype=np.float64),
+        body_peak_rooftop=np.full((1, 2), 2.0, dtype=np.float64),
+        body_mean_rooftop=np.ones((1, 2), dtype=np.float64),
+        body_sab_rooftop=np.asarray([[[2.0, 1.0, 0.0], [2.0, 1.0, 0.0]]], dtype=np.float64),
+        trace_seconds=np.full((1, 2), 0.2, dtype=np.float64),
+        rho_sum=np.ones((2, 3, 3), dtype=np.float64),
+        local_grid=fibonacci_sphere(3),
+        solid_angle=4.0 * np.pi / 3.0,
+        body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
+    )
+    reference = _reference()
+    config = SimpleNamespace(base_seeds=(7, 8), looks=(3,), body_model="rooftop")
+    path = tmp_path / "checkpoint.npz"
+    _write_campaign_checkpoint(path, checkpoint, "identity", reference, "tissue")
+    with np.load(path, allow_pickle=False) as artifact:
+        legacy = {name: np.asarray(artifact[name]) for name in artifact.files if not name.startswith("body_surface")}
+    np.savez_compressed(path, **legacy)
+    loaded = _load_campaign_checkpoint(
+        path,
+        "identity",
+        reference,
+        config,
+        "tissue",
+        body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
+    )
+    assert loaded is not None
+    np.testing.assert_array_equal(loaded.body_mean_rooftop, np.full((1, 2), 4.0 / 6.0))
+
+
+@pytest.mark.parametrize("missing", ["body_surface_areas", "body_surface_areas_sha256"])
+def test_legacy_checkpoint_rejects_incomplete_area_metadata(tmp_path, missing: str) -> None:
+    checkpoint = CampaignCheckpoint(
+        base_seeds=np.asarray([7], dtype=np.int64),
+        chi=np.ones((1, 2, 3), dtype=np.float64),
+        chi_direct=np.full((1, 2, 3), 0.5, dtype=np.float64),
+        body_peak_rooftop=np.full((1, 2), 2.0, dtype=np.float64),
+        body_mean_rooftop=np.full((1, 2), 4.0 / 6.0, dtype=np.float64),
+        body_sab_rooftop=np.asarray([[[2.0, 1.0, 0.0], [2.0, 1.0, 0.0]]], dtype=np.float64),
+        trace_seconds=np.full((1, 2), 0.2, dtype=np.float64),
+        rho_sum=np.ones((2, 3, 3), dtype=np.float64),
+        local_grid=fibonacci_sphere(3),
+        solid_angle=4.0 * np.pi / 3.0,
+        body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
+    )
+    reference = _reference()
+    config = SimpleNamespace(base_seeds=(7, 8), looks=(3,), body_model="rooftop")
+    path = tmp_path / "checkpoint.npz"
+    _write_campaign_checkpoint(path, checkpoint, "identity", reference, "tissue")
+    with np.load(path, allow_pickle=False) as artifact:
+        incomplete = {name: np.asarray(artifact[name]) for name in artifact.files if name != missing}
+    np.savez_compressed(path, **incomplete)
+    assert _load_campaign_checkpoint(path, "identity", reference, config, "tissue") is None
+
+
+def test_legacy_checkpoint_rejects_non_float64_area_metadata(tmp_path) -> None:
+    checkpoint = CampaignCheckpoint(
+        base_seeds=np.asarray([7], dtype=np.int64),
+        chi=np.ones((1, 2, 3), dtype=np.float64),
+        chi_direct=np.full((1, 2, 3), 0.5, dtype=np.float64),
+        body_peak_rooftop=np.full((1, 2), 2.0, dtype=np.float64),
+        body_mean_rooftop=np.full((1, 2), 4.0 / 6.0, dtype=np.float64),
+        body_sab_rooftop=np.asarray([[[2.0, 1.0, 0.0], [2.0, 1.0, 0.0]]], dtype=np.float64),
+        trace_seconds=np.full((1, 2), 0.2, dtype=np.float64),
+        rho_sum=np.ones((2, 3, 3), dtype=np.float64),
+        local_grid=fibonacci_sphere(3),
+        solid_angle=4.0 * np.pi / 3.0,
+        body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
+    )
+    reference = _reference()
+    config = SimpleNamespace(base_seeds=(7, 8), looks=(3,), body_model="rooftop")
+    path = tmp_path / "checkpoint.npz"
+    _write_campaign_checkpoint(path, checkpoint, "identity", reference, "tissue")
+    with np.load(path, allow_pickle=False) as artifact:
+        altered = {name: np.asarray(artifact[name]) for name in artifact.files}
+    altered["body_surface_areas"] = altered["body_surface_areas"].astype(np.float32)
+    altered["body_surface_areas_sha256"] = np.asarray(cdf_convergence._array_sha256(altered["body_surface_areas"]))
+    np.savez_compressed(path, **altered)
+    assert _load_campaign_checkpoint(path, "identity", reference, config, "tissue") is None
+
+
+def test_legacy_checkpoint_rejects_area_array_different_from_runtime(tmp_path) -> None:
+    checkpoint = CampaignCheckpoint(
+        base_seeds=np.asarray([7], dtype=np.int64),
+        chi=np.ones((1, 2, 3), dtype=np.float64),
+        chi_direct=np.full((1, 2, 3), 0.5, dtype=np.float64),
+        body_peak_rooftop=np.full((1, 2), 2.0, dtype=np.float64),
+        body_mean_rooftop=np.full((1, 2), 4.0 / 6.0, dtype=np.float64),
+        body_sab_rooftop=np.asarray([[[2.0, 1.0, 0.0], [2.0, 1.0, 0.0]]], dtype=np.float64),
+        trace_seconds=np.full((1, 2), 0.2, dtype=np.float64),
+        rho_sum=np.ones((2, 3, 3), dtype=np.float64),
+        local_grid=fibonacci_sphere(3),
+        solid_angle=4.0 * np.pi / 3.0,
+        body_surface_areas=np.asarray([1.0, 2.0, 3.0], dtype=np.float64),
+    )
+    reference = _reference()
+    config = SimpleNamespace(base_seeds=(7, 8), looks=(3,), body_model="rooftop")
+    path = tmp_path / "checkpoint.npz"
+    _write_campaign_checkpoint(path, checkpoint, "identity", reference, "tissue")
+    assert (
+        _load_campaign_checkpoint(
+            path,
+            "identity",
+            reference,
+            config,
+            "tissue",
+            body_surface_areas=np.asarray([1.0, 4.0, 3.0], dtype=np.float64),
+        )
+        is None
+    )

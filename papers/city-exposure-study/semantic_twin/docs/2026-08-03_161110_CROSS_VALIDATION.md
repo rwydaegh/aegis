@@ -29,8 +29,9 @@ gives the two site tables and section 8 the exact wording the claim can carry.
 > **Old illumination law, see `LAW_CHANGE.md`.** The 0.25 dB and 0.31 dB medians are
 > quoted "under all three illumination models", two of which are the old height band
 > and range band models. The check survives as a check, because it tests the
-> transport into the exit direction bins, and both per model figures have to be
-> recomputed under the facade tip law.
+> scalar transport integrated over the exit directions. Exit-direction profiles
+> were retained for audit but did not receive a numerical acceptance test. Both
+> per model figures have to be recomputed under the facade tip law.
 
 Three qualifications belong with that headline and none of them is cosmetic.
 
@@ -154,6 +155,11 @@ this comparison **measures** it rather than eliminating it. The measurement is t
   built to do, and the distinction should survive into the paper.
 - **Shared material constants.** The permittivities come from the same binding
   file. A wrong permittivity moves both.
+- **Local arrival spectrum.** The comparison retains broad external exit profiles,
+  but its numerical acceptance result is the integrated scalar susceptibility.
+  It does not compare the estimator's receiver-side `rho` cells or the body
+  coupling built from them. It therefore cannot validate the local launch
+  sampler or the accuracy of every angular cell.
 - **Shared omissions.** Diffraction is off in both for the primary comparison, so
   the omission cancels rather than showing up. Section 7.3 turns it on in the
   oracle alone and measures what it is worth, which is about 0.01 dB.
@@ -417,8 +423,9 @@ error of the oracle's own sky integral, and it is the floor below which the
 comparison cannot resolve anything.
 
 The two Monte Carlo errors do not cancel and only one of them is large. The
-oracle integrates `T Q` over 3000 importance sampled sky directions, which is the
-`MC` column at 0.24 to 0.46 dB. The estimator does not use that sample at all: it
+oracle integrates `T Q` over 3000 importance sampled sky directions, with
+150,000 Sionna candidate shots per source direction. This produces the `MC`
+column at 0.24 to 0.46 dB. The estimator does not use that sample at all: it
 evaluates `Q` analytically on the exit direction of each of 200,000 rays and bins
 them on a 512 cell lattice, and `CODE_AUDIT.md` section 4 measures its per
 standpoint spread over eight disjoint seed streams at 0.004 dB isotropic, 0.024 dB
@@ -530,8 +537,8 @@ It is not a bit identical reproduction and should not be quoted as one. The
 published manifest starts Russian roulette at the third interaction and the
 current `TraceConfig` starts it at the fourth, so the two ray streams diverge
 wherever roulette fires, and the residual above is that divergence rather than
-zero. Both legs are at four interactions and 200,000 rays, and the oracle is at
-four interactions as well.
+zero. Both legs are at four interactions. The estimator uses 200,000 rays. The
+oracle uses 150,000 candidate shots per source direction.
 
 > **Old illumination law, see `LAW_CHANGE.md`.** The reproduction residuals are given
 > per model, 0.00098 dB isotropic, 0.0099 rooftop and 0.083 street. That the
@@ -684,9 +691,9 @@ sentences that are all supported by the tables above:
 - In the fully diffuse configuration, where the roughness model is an exact match
   rather than an approximate one and neither tool's answer depends on the
   tessellation, they agree to within 0.31 dB on the median.
-- The check covers the propagation kernel. It does not cover the illumination
-  law, the mesh, the crop or the material constants, all of which are shared
-  inputs and would move both tools identically.
+- The check covers the integrated scalar propagation result. It does not cover
+  the receiver-side angular cells, body coupling, illumination law, mesh, crop,
+  or material constants. Shared inputs would move both tools identically.
 
 Three things the paper may **not** claim on this evidence.
 

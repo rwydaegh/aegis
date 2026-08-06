@@ -783,11 +783,10 @@ def test_the_absorbed_power_and_the_peak_survive_remeshing(remeshed_exposures) -
 # The remesh invariance itself is pinned in
 # ``test_invariant_remesh.py::test_the_mean_absorbed_density_survives_the_remesh``,
 # which runs the real ``BodyCoupler`` constructor over a mesh on disk rather than
-# hand building the object, and moves the mean 28 percent rather than 6.7. What
-# is kept here is the identity below, which the invariance test does not state.
+# hand building the object. What is kept here is the identity below, which the
+# invariance test does not state.
 
 
-@finding(3, "mean_sab_w_m2 is a plain mean over triangles of unequal area")
 def test_the_mean_absorbed_density_is_the_area_weighted_mean(remeshed_exposures) -> None:
     """`mean = p_abs / total_area`, which is the identity the fix establishes.
 
@@ -804,8 +803,8 @@ def test_class_area_fractions_survive_remeshing() -> None:
     """The same invariant on the environment side, where it already holds.
 
     ``class_area_fractions`` weights by area and so is blind to the
-    triangulation. Kept as the paired positive case: the surface side of the
-    study does this correctly and the body side does not.
+    triangulation. Kept as the paired positive case for the surface and body
+    reductions.
     """
     vertices = np.array(
         [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [10.0, 10.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 12.0], [10.0, 0.0, 12.0]]

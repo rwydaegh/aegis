@@ -133,6 +133,7 @@ class CheckpointSpec:
     model_names: tuple[str, ...]
     planned_seeds: tuple[int, ...]
     surface_elements: int
+    body_surface_areas: np.ndarray
     local_grid: np.ndarray
     solid_angle: float
     schema: ClassVar[str] = SCHEMA
@@ -153,6 +154,13 @@ class CheckpointSpec:
             raise CheckpointStoreError("planned_seeds must be unique")
         if not isinstance(self.surface_elements, (int, np.integer)) or int(self.surface_elements) < 1:
             raise CheckpointStoreError("surface_elements must be a positive integer")
+        areas = np.asarray(self.body_surface_areas)
+        if areas.dtype != np.dtype(np.float64) or areas.ndim != 1 or areas.shape != (int(self.surface_elements),):
+            raise CheckpointStoreError(
+                "body_surface_areas must be a finite float64 array with shape (surface_elements,)"
+            )
+        if not np.all(np.isfinite(areas)) or np.any(areas < 0.0) or not np.any(areas > 0.0):
+            raise CheckpointStoreError("body_surface_areas must be finite, nonnegative, and nonzero")
         grid = np.asarray(self.local_grid)
         if grid.dtype != np.dtype(np.float64) or grid.ndim != 2 or grid.shape[1] != 3:
             raise CheckpointStoreError("local_grid must be a finite float64 array with shape (cells, 3)")
@@ -165,6 +173,9 @@ class CheckpointSpec:
         object.__setattr__(self, "model_names", tuple(self.model_names))
         object.__setattr__(self, "planned_seeds", tuple(int(seed) for seed in self.planned_seeds))
         object.__setattr__(self, "surface_elements", int(self.surface_elements))
+        areas_copy = np.array(areas, dtype=np.float64, copy=True)
+        areas_copy.setflags(write=False)
+        object.__setattr__(self, "body_surface_areas", areas_copy)
         object.__setattr__(self, "local_grid", grid_copy)
         object.__setattr__(self, "solid_angle", float(self.solid_angle))
 
@@ -182,6 +193,16 @@ class CheckpointSpec:
     def local_grid_sha256(self) -> str:
         return array_sha256(self.local_grid)
 
+    @property
+    def body_surface_areas_sha256(self) -> str:
+        """Hash of the exact float64 body surface measure used for means."""
+        return array_sha256(self.body_surface_areas)
+
+    @property
+    def surface_areas(self) -> np.ndarray:
+        """Compatibility alias for the body surface measure."""
+        return self.body_surface_areas
+
     def with_points(self, points: int) -> CheckpointSpec:
         """Return a spec carrying the first shard's standpoint count."""
         if points < 1:
@@ -194,6 +215,7 @@ class CheckpointSpec:
             "model_names",
             "planned_seeds",
             "surface_elements",
+            "body_surface_areas",
             "local_grid",
             "solid_angle",
         ):
@@ -231,6 +253,7 @@ class CheckpointPrefix:
     body_sab_rooftop: np.ndarray
     trace_seconds: np.ndarray
     rho_sum: np.ndarray
+    body_surface_areas: np.ndarray
     local_grid: np.ndarray
     solid_angle: float
 
@@ -269,6 +292,9 @@ class CheckpointStore:
             "model_names": list(self.spec.model_names),
             "planned_seeds": list(self.spec.planned_seeds),
             "surface_elements": self.spec.surface_elements,
+            "body_surface_areas_count": int(self.spec.body_surface_areas.size),
+            "body_surface_areas_dtype": self.spec.body_surface_areas.dtype.str,
+            "body_surface_areas_sha256": self.spec.body_surface_areas_sha256,
             "local_grid": self.spec.local_grid.tolist(),
             "local_grid_dtype": self.spec.local_grid.dtype.str,
             "local_grid_sha256": self.spec.local_grid_sha256,
@@ -336,6 +362,39 @@ class CheckpointStore:
             raise CheckpointCorruptionError("checkpoint surface_elements must be a positive integer")
         if surface_elements != self.spec.surface_elements:
             raise CheckpointIdentityError("checkpoint surface element count does not match the requested campaign")
+        area_fields = {
+            "body_surface_areas",
+            "body_surface_areas_count",
+            "body_surface_areas_dtype",
+            "body_surface_areas_sha256",
+        }
+        identity_area_fields = area_fields - {"body_surface_areas"}
+        present_identity_area_fields = identity_area_fields.intersection(index)
+        if "body_surface_areas" in index and not present_identity_area_fields:
+            raise CheckpointCorruptionError("checkpoint body surface area identity is incomplete")
+        if present_identity_area_fields and present_identity_area_fields != identity_area_fields:
+            raise CheckpointCorruptionError("checkpoint body surface area identity is incomplete")
+        if not present_identity_area_fields:
+            # Shard indexes written before area weighting can be resumed only
+            # when unit triangle weights and area weighting are equivalent.
+            if not np.all(self.spec.body_surface_areas == self.spec.body_surface_areas[0]):
+                raise CheckpointIdentityError("legacy checkpoint has no body surface area identity")
+        else:
+            count = index["body_surface_areas_count"]
+            if not isinstance(count, int) or isinstance(count, bool) or count != self.spec.surface_elements:
+                raise CheckpointIdentityError(
+                    "checkpoint body surface area count does not match the requested campaign"
+                )
+            if not isinstance(index["body_surface_areas_dtype"], str):
+                raise CheckpointCorruptionError("checkpoint body_surface_areas_dtype must be a string")
+            if index["body_surface_areas_dtype"] != np.dtype(np.float64).str:
+                raise CheckpointIdentityError(
+                    "checkpoint body surface area dtype does not match the requested campaign"
+                )
+            if not isinstance(index["body_surface_areas_sha256"], str) or not index["body_surface_areas_sha256"]:
+                raise CheckpointCorruptionError("checkpoint body_surface_areas_sha256 must be a nonempty string")
+            if index["body_surface_areas_sha256"] != self.spec.body_surface_areas_sha256:
+                raise CheckpointIdentityError("checkpoint body surface areas do not match the requested campaign")
         if not isinstance(index["local_grid_dtype"], str):
             raise CheckpointCorruptionError("checkpoint local_grid_dtype must be a string")
         if index["local_grid_dtype"] != np.dtype(np.float64).str:
@@ -508,8 +567,10 @@ class CheckpointStore:
             raise CheckpointStoreError("body or rho arrays contain invalid values")
         if not np.array_equal(np.max(sab, axis=1), arrays["body_peak_rooftop"]):
             raise CheckpointStoreError("body_peak_rooftop is not the exact surface maximum")
-        if not np.array_equal(np.mean(sab, axis=1), arrays["body_mean_rooftop"]):
-            raise CheckpointStoreError("body_mean_rooftop is not the exact surface mean")
+        weighted_mean = np.sum(sab * self.spec.body_surface_areas[None, :], axis=1, dtype=np.float64)
+        weighted_mean /= float(np.sum(self.spec.body_surface_areas, dtype=np.float64))
+        if not np.array_equal(weighted_mean, arrays["body_mean_rooftop"]):
+            raise CheckpointStoreError("body_mean_rooftop is not the exact area-weighted surface mean")
         return ReplicaPayload(int(payload.base_seed), **arrays)
 
     def _read_shard(self, path: pathlib.Path, replica: int, points: int | None = None) -> ReplicaPayload:
@@ -593,6 +654,7 @@ class CheckpointStore:
             body_sab_rooftop=arrays["body_sab_rooftop"],
             trace_seconds=arrays["trace_seconds"],
             rho_sum=rho_sum,
+            body_surface_areas=np.array(self.spec.body_surface_areas, copy=True),
             local_grid=np.array(self.spec.local_grid, copy=True),
             solid_angle=self.spec.solid_angle,
         )
@@ -608,6 +670,7 @@ class CheckpointStore:
             body_sab_rooftop=np.empty((0, points, surface), dtype=np.float64),
             trace_seconds=np.empty((0, points), dtype=np.float64),
             rho_sum=np.zeros((points, len(self.spec.model_names), self.spec.cells), dtype=np.float64),
+            body_surface_areas=np.array(self.spec.body_surface_areas, copy=True),
             local_grid=np.array(self.spec.local_grid, copy=True),
             solid_angle=self.spec.solid_angle,
         )
@@ -641,6 +704,8 @@ class CheckpointStore:
                     body_sab_sha256=np.asarray(array_sha256(prefix.body_sab_rooftop)),
                     trace_seconds=prefix.trace_seconds,
                     rho_sum=prefix.rho_sum,
+                    body_surface_areas=prefix.body_surface_areas,
+                    body_surface_areas_sha256=np.asarray(self.spec.body_surface_areas_sha256),
                     local_grid=prefix.local_grid,
                     local_grid_sha256=np.asarray(array_sha256(prefix.local_grid)),
                     solid_angle=np.asarray(prefix.solid_angle, dtype=np.float64),
@@ -675,6 +740,8 @@ class CheckpointStore:
                     "body_sab_sha256",
                     "trace_seconds",
                     "rho_sum",
+                    "body_surface_areas",
+                    "body_surface_areas_sha256",
                     "local_grid",
                     "local_grid_sha256",
                     "solid_angle",
@@ -703,6 +770,7 @@ class CheckpointStore:
                         "body_sab_rooftop",
                         "trace_seconds",
                         "rho_sum",
+                        "body_surface_areas",
                         "local_grid",
                     )
                 }
@@ -715,6 +783,7 @@ class CheckpointStore:
                     "body_sab_rooftop": prefix.body_sab_rooftop,
                     "trace_seconds": prefix.trace_seconds,
                     "rho_sum": prefix.rho_sum,
+                    "body_surface_areas": prefix.body_surface_areas,
                     "local_grid": prefix.local_grid,
                 }
                 for name, expected_array in expected_arrays.items():
@@ -722,6 +791,12 @@ class CheckpointStore:
                         raise CheckpointCorruptionError(f"consolidated checkpoint array {name!r} changed")
                 if str(np.asarray(artifact["body_sab_sha256"]).item()) != array_sha256(prefix.body_sab_rooftop):
                     raise CheckpointCorruptionError("consolidated checkpoint body hash changed")
+                if str(np.asarray(artifact["body_surface_areas_sha256"]).item()) != self.spec.body_surface_areas_sha256:
+                    raise CheckpointCorruptionError("consolidated checkpoint body surface areas hash changed")
+                if arrays["body_surface_areas"].dtype != prefix.body_surface_areas.dtype or not np.array_equal(
+                    arrays["body_surface_areas"], prefix.body_surface_areas
+                ):
+                    raise CheckpointCorruptionError("consolidated checkpoint body surface areas changed")
                 if str(np.asarray(artifact["local_grid_sha256"]).item()) != self.spec.local_grid_sha256:
                     raise CheckpointCorruptionError("consolidated checkpoint grid hash changed")
                 if float(np.asarray(artifact["solid_angle"]).item()) != self.spec.solid_angle:

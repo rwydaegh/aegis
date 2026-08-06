@@ -89,8 +89,8 @@ def test_couple_many_forced_chunks_match_normal_level_two_coupling() -> None:
             ), field.name
         assert retained[index] == chunked
         assert np.max(sab[index]) == chunked.peak_sab_w_m2
-        assert np.mean(sab[index]) == chunked.mean_sab_w_m2
         assert np.sum(sab[index] * coupler.body.areas) == chunked.absorbed_power_w
+        assert np.sum(sab[index] * coupler.body.areas) / coupler.body.total_area == chunked.mean_sab_w_m2
 
     weights = np.asarray([0.2, 0.3, 0.5])
     _mean_exposure, mean_sab = coupler.couple_many_with_sab(

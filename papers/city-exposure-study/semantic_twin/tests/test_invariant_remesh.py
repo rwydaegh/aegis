@@ -155,18 +155,12 @@ def test_the_correct_mean_is_already_in_the_result(pair):
     assert fine_mean == pytest.approx(coarse_mean, rel=1e-7)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="docs/BUGS.md finding 3: exposure.py:93 takes a plain mean over triangles "
-    "whose areas vary by a factor of 9300, so the reported mean tracks the tessellation",
-)
 def test_the_mean_absorbed_density_survives_the_remesh(pair):
     """The average over the body's surface cannot depend on how it was cut.
 
-    Splitting the illuminated half moves the reported mean from 0.838 to 1.074,
-    a 28 percent shift, with no surface and no physics changed. On the shipped
-    spectra against Duke the same defect is worth 5.18 percent, or 0.219 dB, and
-    it is published in three places.
+    The reported mean is the absorbed power divided by the total body area.
+    Splitting the illuminated half therefore leaves it unchanged, just like the
+    total absorbed power and the peak density.
     """
     (_, coarse), (_, fine) = pair
     assert fine.mean_sab_w_m2 == pytest.approx(coarse.mean_sab_w_m2, rel=1e-6)
