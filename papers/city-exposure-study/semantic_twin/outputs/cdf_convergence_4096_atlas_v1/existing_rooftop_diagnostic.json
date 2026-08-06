@@ -1,11 +1,12 @@
 {
-  "analysis_source_sha256": "97b8786123596e6da4ee099988a8d0bdcb2c437423e5b09b923aadf7d0f23439",
+  "analysis_source_sha256": "06bc8f163af0035896df3bf0a89a26a8e42395f21203212e2d887951516c1ae9",
+  "body_coupler_source_sha256": "9efdbf442d343d20baaf2d5d716911f73d3e69a27d1b9f1a6906088ed48093c5",
   "bootstrap": {
     "confidence": 0.95,
     "replicates": 20000,
     "seed": 20260805
   },
-  "created_utc": "2026-08-05T23:37:06Z",
+  "created_utc": "2026-08-06T00:06:43Z",
   "inputs": [
     {
       "base_seed": 7,
@@ -13,7 +14,9 @@
       "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed7/manifest.json",
       "manifest_sha256": "7fbee2a4aaa9c13f73151be8c0be08443c56bc4f945cd233f12b3b9574b68926",
       "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed7/metrics.json",
-      "metrics_sha256": "826a9f0137f72a05e727a247a973d614ad192fda7f7e8ad54cccb73cfbe3e74a"
+      "metrics_sha256": "826a9f0137f72a05e727a247a973d614ad192fda7f7e8ad54cccb73cfbe3e74a",
+      "spectra_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed7/spectra.npz",
+      "spectra_sha256": "6efb116f18b44195631fa8d7a989d537e09d25bf9fe901b2180ac70602b6b97e"
     },
     {
       "base_seed": 8,
@@ -21,7 +24,9 @@
       "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed8/manifest.json",
       "manifest_sha256": "e72cd6d181b90e2bb02335a5470284fe6a9fee005951eeaedb79cee77f06a345",
       "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed8/metrics.json",
-      "metrics_sha256": "14f1397e2309d5a7c8546f4704e03bb7cc69526aa0caf27b7e812bc16f3a3ba4"
+      "metrics_sha256": "14f1397e2309d5a7c8546f4704e03bb7cc69526aa0caf27b7e812bc16f3a3ba4",
+      "spectra_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed8/spectra.npz",
+      "spectra_sha256": "86d1c7ee7911631cecea366479c863e6641722e09d5c9dbdfeb74babc60a4b5b"
     },
     {
       "base_seed": 9,
@@ -29,7 +34,9 @@
       "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed9/manifest.json",
       "manifest_sha256": "988dd3bfe542f76a0cd5d12f3d5d98fd27bee4726b0ad67cfa3b45f18518dca8",
       "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed9/metrics.json",
-      "metrics_sha256": "71c4defff022180b03a192c73c6a69c60b0b8188cc3ce84a4fc4e5e6df743e85"
+      "metrics_sha256": "71c4defff022180b03a192c73c6a69c60b0b8188cc3ce84a4fc4e5e6df743e85",
+      "spectra_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed9/spectra.npz",
+      "spectra_sha256": "5e19097c6d6eebd00417050f8a920ca360198548b17d31330396010cfa7e7cf8"
     },
     {
       "base_seed": 10,
@@ -37,7 +44,9 @@
       "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed10/manifest.json",
       "manifest_sha256": "3116303fd4664ab7e4ce316cf3e56e796fc936ec87306b1011c610646d9409ba",
       "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed10/metrics.json",
-      "metrics_sha256": "b892a080ec720dc85bb908e4d3b97e9e5acd31e680b1e4d85af49d172d9a0fee"
+      "metrics_sha256": "b892a080ec720dc85bb908e4d3b97e9e5acd31e680b1e4d85af49d172d9a0fee",
+      "spectra_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed10/spectra.npz",
+      "spectra_sha256": "4cc2577748a77568b7fc7df64b3d3e94cad159e84670af98ae0e7c68019aaf98"
     },
     {
       "base_seed": 11,
@@ -45,7 +54,9 @@
       "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed11/manifest.json",
       "manifest_sha256": "977d1c42ac08d75449cbaab185b29c9cd723093e8b8c8a015b3a79aae1b0da14",
       "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed11/metrics.json",
-      "metrics_sha256": "f5907fe17a6bec21501b120ac99ab5196c3a971b1e971609aecaf611f9d9620c"
+      "metrics_sha256": "f5907fe17a6bec21501b120ac99ab5196c3a971b1e971609aecaf611f9d9620c",
+      "spectra_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed11/spectra.npz",
+      "spectra_sha256": "aab43db9ba2bb42eaeb0a3046d3af615297e9545657937ddf441aae4a49f68b5"
     },
     {
       "base_seed": 12,
@@ -53,7 +64,9 @@
       "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed12/manifest.json",
       "manifest_sha256": "be939daac88d58be19a7e1e280947b519ae6c5c5dccb81fab6c74ebf73bcbdf1",
       "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed12/metrics.json",
-      "metrics_sha256": "11028f76a232758e3d493fbeb424bcfbf760ec9cd0cb11c3d68ed1592a256fc4"
+      "metrics_sha256": "11028f76a232758e3d493fbeb424bcfbf760ec9cd0cb11c3d68ed1592a256fc4",
+      "spectra_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed12/spectra.npz",
+      "spectra_sha256": "4db89715b65e439061aa530f57e24409fb8049fb5bf273b367033cb20d23de5c"
     },
     {
       "base_seed": 13,
@@ -61,7 +74,9 @@
       "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed13/manifest.json",
       "manifest_sha256": "759e1b0f6b89c5349a92696dbb12b5de1d8a1128f495fb4fbc0d8e567010f317",
       "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed13/metrics.json",
-      "metrics_sha256": "7b90cec971737ac9135565714380cf98ca4a5372f9fce9013fa084717165fe23"
+      "metrics_sha256": "7b90cec971737ac9135565714380cf98ca4a5372f9fce9013fa084717165fe23",
+      "spectra_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed13/spectra.npz",
+      "spectra_sha256": "6a4ad55302ce05e965e19838287fc995da1e2ca2e9e3e1c13131fffb8361974f"
     },
     {
       "base_seed": 14,
@@ -69,12 +84,15 @@
       "manifest_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed14/manifest.json",
       "manifest_sha256": "8bd7840cd1a48dce8f2542842d4b433e1e91d58d4fc2d6a9cae38fd7df84707d",
       "metrics_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed14/metrics.json",
-      "metrics_sha256": "442d5c8c959a901da4ec5358280e9b78a92cb803eaf907ab427cbad337d6c4fb"
+      "metrics_sha256": "442d5c8c959a901da4ec5358280e9b78a92cb803eaf907ab427cbad337d6c4fb",
+      "spectra_path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/angular_convergence_4096_atlas_v2/runs/cells4096_rays1600000_seed14/spectra.npz",
+      "spectra_sha256": "4bb1d10e66c75d300cad30d135a9f0d1c4fe98f0386b3e7f20a1c1fc0d54ab2d"
     }
   ],
   "joint_analysis": {
     "aggregation": "arithmetic mean in linear power for each fixed standpoint, then 10 log10",
     "bootstrap": {
+      "body_peak_resampling": "tie-robust simultaneous band over every retained level-2 surface Sab mean, projected through max",
       "replicates": 20000,
       "resampling": "base-seed walk clusters with every standpoint and confidence-bounded metric kept together",
       "seed": 20260805,
@@ -84,12 +102,12 @@
     "confidence_family": {
       "excluded": [
         "direct susceptibility, whose physical zero is reported as an atom at zero without a dB confidence interval",
-        "peak absorbed density of the ensemble-mean angular spectrum, which is a separate plug-in diagnostic"
+        "linear mean of per-replica rooftop peaks, which is retained only as a Jensen-gap diagnostic"
       ],
       "included": [
         "total susceptibility at every standpoint and source law",
         "total susceptibility fixed-route CDF ranks and minimum, q10, q50, q90, maximum",
-        "linear mean of per-replica rooftop peak absorbed density at every standpoint and its fixed-route CDF",
+        "every rooftop surface Sab mean, whose band is projected to the peak of the ensemble-mean spectrum and CDF",
         "linear mean of per-replica rooftop mean absorbed density at every standpoint and its fixed-route CDF"
       ]
     },
@@ -130,44 +148,44 @@
               -15.70700098132544
             ],
             "ordered_simultaneous_half_width_db": [
-              0.005257252737030019,
-              0.0037961127919115094,
-              0.008282287714711963,
-              0.009055758087129022,
-              0.0073544907629940395,
-              0.002841217361879141,
-              0.005482510161357185,
-              0.007006254985023422,
-              0.004819777642216052,
-              0.009564713974030664,
-              0.007364717990154502,
-              0.006101046772482146,
-              0.007461048036878069
+              0.006048578061734488,
+              0.004367506319659462,
+              0.00952894340029021,
+              0.010418837069097618,
+              0.008461493808533381,
+              0.0032688793678558844,
+              0.006307741389651232,
+              0.008060841339971626,
+              0.005545253912524603,
+              0.011004401348748933,
+              0.008473260445012436,
+              0.0070193805600639505,
+              0.00858409015711549
             ],
             "statistics": {
               "maximum": {
                 "estimate_db": -15.70700098132544,
-                "half_width_db": 0.0074610480368780705
+                "half_width_db": 0.008584090157115492
               },
               "minimum": {
                 "estimate_db": -16.291453141559387,
-                "half_width_db": 0.005257252737030036
+                "half_width_db": 0.006048578061734508
               },
               "q10": {
                 "estimate_db": -16.246387801038704,
-                "half_width_db": 0.003369054709570753
+                "half_width_db": 0.003876167158858156
               },
               "q50": {
                 "estimate_db": -16.116260047651384,
-                "half_width_db": 0.00548251016135717
+                "half_width_db": 0.006307741389651215
               },
               "q90": {
                 "estimate_db": -15.84170549521831,
-                "half_width_db": 0.004820212329005632
+                "half_width_db": 0.0055457540286709415
               }
             }
           },
-          "max_half_width_db": 0.009564713974030664,
+          "max_half_width_db": 0.011004401348748933,
           "maximum_half_width_threshold_db": null,
           "pass": true,
           "point_estimate_db": [
@@ -186,24 +204,26 @@
             -15.70700098132544
           ],
           "point_simultaneous_half_width_db": [
-            0.009564713974030664,
-            0.004819973594615224,
-            0.007006717426545244,
-            0.007364717990154502,
-            0.007524632933494603,
-            0.005482510161357185,
-            0.0037961127919115094,
-            0.005257252737030019,
-            0.0029384912013767335,
-            0.009055758087129022,
-            0.008282287714711963,
-            0.006101046772482146,
-            0.007461048036878069
+            0.011004401348748933,
+            0.005545479359814673,
+            0.008061373388511739,
+            0.008473260445012436,
+            0.008657245896428432,
+            0.006307741389651232,
+            0.004367506319659462,
+            0.006048578061734488,
+            0.0033807949330752598,
+            0.010418837069097618,
+            0.00952894340029021,
+            0.0070193805600639505,
+            0.00858409015711549
           ],
           "stopping_role": "reported in the joint family but does not enter the stop"
         },
         "body_peak_rooftop": {
-          "estimator": "linear mean of per-replica peak absorbed power density",
+          "estimator": "maximum surface absorbed density of the linear mean across per-replica Sab fields, equal to max Sab(mean rho) at level 2",
+          "face_mean_family_statistics": 728312,
+          "finite_lower_bound": true,
           "fixed_route_cdf": {
             "cdf_probability": [
               0.038461538461538464,
@@ -223,95 +243,326 @@
             "ordered_estimate_db": [
               -13.261042886083118,
               -13.24538994357874,
-              -13.132641213209755,
+              -13.132659743815507,
               -13.113272462473454,
               -13.106808587384297,
               -12.982993843082504,
               -12.912812094004781,
-              -12.896110002809154,
+              -12.896114894297412,
               -12.812494908756287,
               -12.810527724824679,
               -12.805762414973954,
-              -12.779741180470946,
+              -12.77974191943141,
               -12.760362954467661
             ],
+            "ordered_lower_db": [
+              -13.269726408354563,
+              -13.253660883878133,
+              -13.144256735774233,
+              -13.120392080643384,
+              -13.11553924034566,
+              -12.99295311725309,
+              -12.921297515571883,
+              -12.905300524418426,
+              -12.822195006605652,
+              -12.819114116176548,
+              -12.817841568048443,
+              -12.786361979709968,
+              -12.767517676309899
+            ],
             "ordered_simultaneous_half_width_db": [
-              0.007531138469843418,
-              0.007175803117864783,
-              0.010048721902481334,
-              0.005881425583833383,
-              0.007182262601717166,
-              0.008605867731457193,
-              0.007306190302541573,
-              0.007942001338234092,
-              0.004750724442798133,
-              0.006432545045615217,
-              0.012404678119703758,
-              0.005733126743960249,
-              0.006269957945378771
+              0.008683522271445199,
+              0.008270940299393459,
+              0.011596991958725766,
+              0.007119618169930675,
+              0.008730652961363106,
+              0.009959274170586951,
+              0.008485421567101525,
+              0.009185630121013588,
+              0.009700097849364653,
+              0.008586391351869338,
+              0.016370649211475907,
+              0.006620060278557105,
+              0.0071547218422374215
+            ],
+            "ordered_upper_db": [
+              -13.252376691482642,
+              -13.237134724971355,
+              -13.121093636920659,
+              -13.106164496768661,
+              -13.098095450510062,
+              -12.973057355351305,
+              -12.90434321927355,
+              -12.886943093596642,
+              -12.807154823717337,
+              -12.801958276046996,
+              -12.789391765762478,
+              -12.773131934920837,
+              -12.753220000185152
             ],
             "statistics": {
               "maximum": {
                 "estimate_db": -12.760362954467661,
-                "half_width_db": 0.006269957945378786
+                "half_width_db": 0.0071547218422374215,
+                "lower_db": -12.767517676309899,
+                "upper_db": -12.753220000185152
               },
               "minimum": {
                 "estimate_db": -13.261042886083118,
-                "half_width_db": 0.007531138469843412
+                "half_width_db": 0.008683522271445199,
+                "lower_db": -13.269726408354563,
+                "upper_db": -13.252376691482642
               },
               "q10": {
-                "estimate_db": -13.222840197504944,
-                "half_width_db": 0.007042420153745477
+                "estimate_db": -13.222843903626094,
+                "half_width_db": 0.008936150631258855,
+                "lower_db": -13.231780054257353,
+                "upper_db": -13.213926507361215
               },
               "q50": {
                 "estimate_db": -12.912812094004781,
-                "half_width_db": 0.007306190302541577
+                "half_width_db": 0.008485421567101525,
+                "lower_db": -12.921297515571883,
+                "upper_db": -12.90434321927355
               },
               "q90": {
-                "estimate_db": -12.784945427371548,
-                "half_width_db": 0.005118948936445816
+                "estimate_db": -12.78494601853992,
+                "half_width_db": 0.008562117450754414,
+                "lower_db": -12.792657897377662,
+                "upper_db": -12.776383901089165
               }
             }
           },
-          "max_half_width_db": 0.014177837302642347,
+          "interval_method": "one joint max-t band over every surface Sab mean, projected as max(lower) and max(upper). This remains valid for tied peak surfaces whenever the joint face band covers",
+          "max_half_width_db": 0.0164325916316983,
           "maximum_half_width_threshold_db": 0.15,
           "pass": true,
+          "peak_selection_stability": {
+            "criterion": "the full-sample peak response class wins at least the declared fraction of bootstrap resamples and every leave-one-replica-out ensemble",
+            "minimum_bootstrap_equivalent_winner_fraction": 0.95,
+            "ordinary_peak_bootstrap_quantiles_db": {
+              "q025": [
+                -13.250159641515376,
+                -13.111920525821358,
+                -13.116896980303686,
+                -12.988541455761764,
+                -12.90147378567852,
+                -12.783742426117161,
+                -12.76435989043584,
+                -12.8154541079618,
+                -12.81576714187219,
+                -12.815548909014128,
+                -12.917421784182864,
+                -13.265822481758116,
+                -13.139564908978576
+              ],
+              "q50": [
+                -13.245380702849987,
+                -13.106731478867191,
+                -13.11338962658398,
+                -12.982993843082504,
+                -12.8960297665969,
+                -12.779691475408445,
+                -12.760397293298382,
+                -12.810479509537494,
+                -12.812417353795054,
+                -12.80546066362183,
+                -12.912890205118705,
+                -13.261094114857968,
+                -13.132545480415807
+              ],
+              "q975": [
+                -13.240728305530904,
+                -13.102052635682774,
+                -13.10896050485213,
+                -12.977577304768058,
+                -12.891148637174394,
+                -12.776376988182728,
+                -12.756189520874484,
+                -12.805848071664446,
+                -12.80974240796452,
+                -12.797257194956577,
+                -12.907969304360474,
+                -13.25603047407039,
+                -13.126569391291147
+              ]
+            },
+            "pass": false,
+            "points": [
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 52621
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 52621
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 48313
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 16320
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 0.53225,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": false,
+                "pass": false,
+                "seed_mean_peak_minus_physical_peak_db": 4.891488258224685e-06,
+                "surface_element": 53841
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 0.9998,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 7.389604633456418e-07,
+                "surface_element": 22570
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 18389
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 10948
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 13807
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 1651
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 37389
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 1.0,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": true,
+                "seed_mean_peak_minus_physical_peak_db": 0.0,
+                "surface_element": 13528
+              },
+              {
+                "bootstrap_equivalent_winner_fraction": 0.79955,
+                "equivalent_surface_elements": 1,
+                "leave_one_out_equivalent_winner": true,
+                "pass": false,
+                "seed_mean_peak_minus_physical_peak_db": 1.853060575229873e-05,
+                "surface_element": 24367
+              }
+            ],
+            "stopping_role": "regularity diagnostic only. The tie-robust projected surface band remains the formal interval",
+            "surface_elements": 56024
+          },
           "point_estimate_db": [
             -13.24538994357874,
             -13.106808587384297,
             -13.113272462473454,
             -12.982993843082504,
-            -12.896110002809154,
-            -12.779741180470946,
+            -12.896114894297412,
+            -12.77974191943141,
             -12.760362954467661,
             -12.810527724824679,
             -12.812494908756287,
             -12.805762414973954,
             -12.912812094004781,
             -13.261042886083118,
-            -13.132641213209755
+            -13.132659743815507
+          ],
+          "point_lower_db": [
+            -13.253660883878133,
+            -13.11553924034566,
+            -13.120392080643384,
+            -12.99295311725309,
+            -12.905300524418426,
+            -12.786361979709968,
+            -12.767517676309899,
+            -12.819114116176548,
+            -12.817841568048443,
+            -12.822195006605652,
+            -12.921297515571883,
+            -13.269726408354563,
+            -13.144256735774233
           ],
           "point_simultaneous_half_width_db": [
-            0.007175803117864783,
-            0.007538442718724169,
-            0.006176229584065746,
-            0.008605867731457193,
-            0.007948309749643053,
-            0.005733126743960249,
-            0.006269957945378771,
-            0.007400678971037848,
-            0.004677853173985356,
-            0.014177837302642347,
-            0.007311335215635364,
-            0.007531138469843418,
-            0.010048721902481334
+            0.008270940299393459,
+            0.008730652961363106,
+            0.007119618169930675,
+            0.009959274170586951,
+            0.009185630121013588,
+            0.006620060278557105,
+            0.0071547218422374215,
+            0.008586391351869338,
+            0.005346659292156275,
+            0.0164325916316983,
+            0.008485421567101525,
+            0.008683522271445199,
+            0.011596991958725766
+          ],
+          "point_upper_db": [
+            -13.237134724971355,
+            -13.098095450510062,
+            -13.106164496768661,
+            -12.973057355351305,
+            -12.886943093596642,
+            -12.773131934920837,
+            -12.753220000185152,
+            -12.801958276046996,
+            -12.807154823717337,
+            -12.789391765762478,
+            -12.90434321927355,
+            -13.252376691482642,
+            -13.121093636920659
           ],
           "stopping_role": "enters the formal stop"
         },
         "consecutive_formal_passes": 0,
         "coverage": {
-          "joint_family_statistics": 93,
-          "joint_max_t_critical_value": 3.011856609999695,
+          "joint_family_statistics": 728374,
+          "joint_max_t_critical_value": 3.46520335383871,
           "per_look_alpha": 0.050000000000000044,
           "per_look_confidence_nominal": 0.95,
           "role": "diagnostic only, excluded from formal coverage"
@@ -428,41 +679,41 @@
                 -7.1123576515069376
               ],
               "ordered_simultaneous_half_width_db": [
-                0.005049363749517821,
-                0.003596238625822008,
-                0.007581616118381291,
-                0.008627470287230302,
-                0.0028563423206781884,
-                0.0053156761296695295,
-                0.0072059556498115475,
-                0.006702387258382164,
-                0.0044870817808129754,
-                0.009166285380905243,
-                0.0071280543788800515,
-                0.006130691001849712,
-                0.007306238831040897
+                0.0058093974797766125,
+                0.004137546955598261,
+                0.008722806229787657,
+                0.009926083092799458,
+                0.0032862809459333806,
+                0.006115795383915403,
+                0.008290601087195352,
+                0.00771123523256775,
+                0.0051624804395396726,
+                0.0105460010077169,
+                0.008200974062985807,
+                0.007053486859376275,
+                0.008405978962349106
               ],
               "pass": true,
               "statistics": {
                 "maximum": {
                   "estimate_db": -7.1123576515069376,
-                  "half_width_db": 0.007306238831040873
+                  "half_width_db": 0.008405978962349079
                 },
                 "minimum": {
                   "estimate_db": -7.72963171349549,
-                  "half_width_db": 0.0050493637495178075
+                  "half_width_db": 0.005809397479776596
                 },
                 "q10": {
                   "estimate_db": -7.683874945651607,
-                  "half_width_db": 0.0033111958432708944
+                  "half_width_db": 0.0038095993359126947
                 },
                 "q50": {
                   "estimate_db": -7.519125314610583,
-                  "half_width_db": 0.007205955649811571
+                  "half_width_db": 0.008290601087195378
                 },
                 "q90": {
                   "estimate_db": -7.243011657665512,
-                  "half_width_db": 0.004774675428255378
+                  "half_width_db": 0.005493362882067448
                 }
               }
             }
@@ -492,22 +743,22 @@
           "models": {
             "rooftop": {
               "half_width_db": [
-                0.009166285380905243,
-                0.0044870817808129754,
-                0.006702387258382164,
-                0.0071280543788800515,
-                0.007206911444239322,
-                0.005316345049060438,
-                0.003611198449085059,
-                0.005049363749517821,
-                0.0028563423206781884,
-                0.008627470287230302,
-                0.007958031645221566,
-                0.006130691001849712,
-                0.007306238831040897
+                0.0105460010077169,
+                0.0051624804395396726,
+                0.00771123523256775,
+                0.008200974062985807,
+                0.00829170074846266,
+                0.006116564989516522,
+                0.00415475854182446,
+                0.0058093974797766125,
+                0.0032862809459333806,
+                0.009926083092799458,
+                0.009155880082544551,
+                0.007053486859376275,
+                0.008405978962349106
               ],
-              "max_half_width_db": 0.009166285380905243,
-              "p90_half_width_db": 0.008493582558828556,
+              "max_half_width_db": 0.0105460010077169,
+              "p90_half_width_db": 0.009772042490748476,
               "pass": true
             }
           },
@@ -547,7 +798,7 @@
       "spatial_sampling_uncertainty_included": false,
       "standpoints": 13
     },
-    "schema": "fixed-walk-cdf-stopping-v2",
+    "schema": "fixed-walk-cdf-stopping-v3",
     "stop_at_replicas": null,
     "stopped": false,
     "thresholds": {
@@ -587,7 +838,7 @@
     "standpoints": 13,
     "surface_binding_sha256": "2441abf4bc3e9d7190e45ef3de154fbc7507e82cf5d5f64f77f4320e58b9a0aa"
   },
-  "schema": "archived-rooftop-seed-diagnostic-v2",
+  "schema": "archived-rooftop-seed-diagnostic-v3",
   "scope": "one-look rooftop diagnostic with one joint confidence family for total susceptibility and both body metrics. It cannot replace the required three-law planned-look campaign",
   "seeds": [
     7,

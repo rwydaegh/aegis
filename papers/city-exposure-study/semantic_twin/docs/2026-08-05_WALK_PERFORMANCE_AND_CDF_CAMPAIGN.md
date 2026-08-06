@@ -33,10 +33,10 @@ accepted angular study.
 
 | Method | Three source laws | Relative time |
 | --- | ---: | ---: |
-| Three separate body calls | 16.026 s | 1.00 |
-| One batched body call | 1.982 s | 0.124 |
+| Three separate body calls | 9.317 s | 1.00 |
+| One batched body call | 1.332 s | 0.143 |
 
-The measured speedup was 8.09 times. Peak resident memory was 3.88 GiB because
+The measured speedup was 7.00 times. Peak resident memory was 3.88 GiB because
 the separate path forms the full body-triangle by angular-cell incidence
 matrix. The benchmark command is:
 
@@ -93,14 +93,21 @@ The output states that the CDF is conditional on the fixed 49.2 m route. More
 ray seeds reduce tracing error. They do not create new street samples.
 
 One joint bootstrap family contains total susceptibility for all three source
-laws, rooftop peak absorbed density, and rooftop mean absorbed density. It
-covers every standpoint, route rank, and declared CDF summary. A single max-t
-critical value applies to that family at each formal look.
+laws, rooftop mean absorbed density, and every rooftop surface absorbed-density
+mean. It covers 728,436 statistics in production. A single max-t critical value
+applies to that family at each formal look.
 
-The published body peak is the linear mean of the peak absorbed density from
-each full replica. This is the estimator bounded by the joint band. The peak of
-the ensemble-mean spectrum is stored under a separate field as an unbounded
-plug-in diagnostic.
+The published body peak is the maximum absorbed density of the ensemble-mean
+angular spectrum. Level-2 absorbed density is linear in that spectrum. The
+runner therefore retains each replica's complete surface field, averages those
+fields with the bootstrap walk weights, and computes every weighted peak
+exactly.
+
+An ordinary bootstrap of a maximum can fail when two surface elements tie. The
+formal interval avoids that problem. It first forms a simultaneous band over
+all 56,024 surface means, then projects it to the peak as the maximum lower and
+upper face bounds. The mean of the per-replica peaks is larger by construction
+and appears only as a Jensen-gap diagnostic.
 
 Direct susceptibility stays outside the confidence family and the stop. An
 exact zero remains an atom at zero in linear units. Positive direct estimates
@@ -114,20 +121,28 @@ The runner keeps a single atomic checkpoint. It contains:
 
 - rooftop peak and mean absorbed density for each replica and point
 
+- the complete rooftop level-2 surface field for each replica and point
+
 - trace time for each replica and point
 
 - one running sum of the three angular spectra
 
-It does not keep one 4,096-cell spectrum for every seed. The running sum is
-enough to compute the final ensemble body result. This keeps the retained
-campaign output near a few megabytes instead of duplicating tens of megabytes
-of raw spectra.
+It does not keep one 4,096-cell angular spectrum for every seed. It does retain
+the body surface fields needed for the nonlinear peak. At the 32-replica cap,
+that float64 array contains 23,305,984 values and occupies 177.8 MiB before NPZ
+compression. The other checkpoint arrays are small by comparison.
 
 Each checkpoint records the exact deterministic Fibonacci grid and its hash.
 Resume requires byte-for-byte equality with the expected grid. The campaign
 identity also includes the exact IT'IS SQLite database bytes. If an output
 generation carries another identity, the runner moves all its managed files to
 a recoverable `quarantine/` directory before it writes a new plan.
+
+Every resume and analysis-only run regenerates all reached formal-look files
+from the checkpoint. This closes the crash window between a checkpoint write
+and its look analysis. A same-identity dry-run preserves an existing plan. If a
+sealed manifest exists, the dry-run verifies every sealed artifact before it
+returns.
 
 The exact-input dry-run completed locally:
 
@@ -155,20 +170,20 @@ source laws, so they cannot complete the new campaign. They provide a useful
 check of the analysis code.
 
 For the archived rooftop traces at seeds 7 through 14, one joint 95 percent
-max-t diagnostic family covered total susceptibility, body peak, and body mean.
-It contained 93 point, CDF-rank, and CDF-summary statistics. The total and body
-peak results were:
+max-t diagnostic family covered total susceptibility, body mean, and all
+rooftop surface means. It contained 728,374 statistics. The total and projected
+body-peak results were:
 
 | Quantity | Half-width |
 | --- | ---: |
-| Per-point p90 | 0.0085 dB |
-| Per-point maximum | 0.0092 dB |
-| Fixed-route q10 | 0.0033 dB |
-| Fixed-route q50 | 0.0072 dB |
-| Fixed-route q90 | 0.0048 dB |
-| Fixed-route minimum | 0.0050 dB |
-| Fixed-route maximum | 0.0073 dB |
-| Rooftop body-peak maximum | 0.0142 dB |
+| Per-point p90 | 0.0098 dB |
+| Per-point maximum | 0.0105 dB |
+| Fixed-route q10 | 0.0038 dB |
+| Fixed-route q50 | 0.0083 dB |
+| Fixed-route q90 | 0.0055 dB |
+| Fixed-route minimum | 0.0058 dB |
+| Fixed-route maximum | 0.0084 dB |
+| Rooftop body-peak maximum | 0.0164 dB |
 
 These values are below the planned limits. They support the expected campaign
 cost and the analysis implementation. They remain a one-law diagnostic.

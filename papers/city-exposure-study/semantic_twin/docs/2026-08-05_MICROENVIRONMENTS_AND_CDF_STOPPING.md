@@ -90,10 +90,11 @@ The 8-replica diagnostic has no role in this coverage claim or the stop.
 
 Use one cluster resample and one studentized maximum for the whole bounded
 family at a formal look. The family contains total susceptibility for all three
-source laws, the rooftop body-peak estimator, and rooftop mean absorbed density.
-It includes every standpoint, all fixed-route CDF ranks, and the minimum, q10,
-q50, q90, and maximum summaries. Direct susceptibility stays outside this
-family because a true direct-path zero has no finite dB value.
+source laws, rooftop mean absorbed density, and every rooftop surface
+absorbed-density mean. It also includes each fixed-route CDF rank and the
+minimum, q10, q50, q90, and maximum summaries for the scalar curves. Direct
+susceptibility stays outside this family because a true direct-path zero has no
+finite dB value.
 
 Require all three source laws to pass these alpha-spent bootstrap criteria:
 
@@ -111,10 +112,18 @@ Require all three source laws to pass these alpha-spent bootstrap criteria:
 Keep the minimum, second-lowest, second-highest, and maximum in the output. Do not
 trim or winsorize endpoints. If body peak absorbed power is reported, apply a
 0.15 dB maximum confidence half-width rule to it in the same joint family.
-Define the published body-peak estimator as the linear mean of the peak absorbed
-density returned by each full replica. The peak of the ensemble-mean angular
-spectrum is a different nonlinear plug-in statistic. It may be reported as an
-unbounded diagnostic, but it must not replace the confidence-bounded value.
+Define the published body-peak estimator as the maximum absorbed density of the
+ensemble-mean angular spectrum. At level 2, average the retained per-replica
+surface fields before taking that maximum. Do not average the per-replica
+maxima. That order has a positive Jensen and peak-selection bias.
+
+Build one simultaneous band over every surface mean, then project it through
+the maximum. The body-peak lower bound is the maximum of the face lower bounds.
+The upper bound is the maximum of the face upper bounds. This construction
+still covers the peak when two or more faces tie, conditional on coverage of
+the joint face band. Bootstrap winner fractions and leave-one-replica-out
+winners are useful regularity diagnostics. They do not carry the formal
+coverage claim.
 
 Keep exact direct-path zeros in linear units. Report the fraction of fixed-route
 standpoints whose direct estimate is zero as a probability atom at zero. Do not

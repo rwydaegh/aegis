@@ -74,6 +74,7 @@ class CdfConvergenceConfig:
     bootstrap_seed: int
     confidence: float
     body_chunk_cells: int
+    body_peak_selection_min_fraction: float
     thresholds: StoppingThresholds
     contract: str
     config_path: pathlib.Path
@@ -108,6 +109,7 @@ class CdfConvergenceConfig:
             bootstrap_seed=int(bootstrap["seed"]),
             confidence=float(bootstrap.get("confidence", 0.95)),
             body_chunk_cells=int(body.get("chunk_cells", 512)),
+            body_peak_selection_min_fraction=float(body.get("selection_stability_min_fraction", 0.95)),
             thresholds=StoppingThresholds.from_dict(document.get("thresholds")),
             contract=str(document.get("contract", "custom")),
             config_path=config_path,
@@ -136,6 +138,8 @@ class CdfConvergenceConfig:
             raise ValueError("bootstrap confidence must lie between zero and one")
         if self.body_chunk_cells < 1:
             raise ValueError("body chunk count must be positive")
+        if not 0.0 < self.body_peak_selection_min_fraction <= 1.0:
+            raise ValueError("body peak selection stability fraction must lie in (0, 1]")
         self.thresholds.validate()
         if self.contract == "korenmarkt_cdf_stopping_4096_v1":
             expected = {
@@ -145,6 +149,7 @@ class CdfConvergenceConfig:
                 "bootstrap_replicates": 20_000,
                 "bootstrap_seed": 20260805,
                 "confidence": 0.95,
+                "body_peak_selection_min_fraction": 0.95,
             }
             actual = {name: getattr(self, name) for name in expected}
             if actual != expected:
@@ -179,8 +184,9 @@ class CdfConvergenceConfig:
             },
             "body_peak": {
                 "chunk_cells": self.body_chunk_cells,
-                "bootstrap_target": "linear mean of per-replica peak absorbed power density",
-                "ensemble_check": "peak recomputed from the ensemble-mean angular spectrum",
+                "bootstrap_target": "peak absorbed density of the ensemble-mean angular spectrum",
+                "retained_replica_field": "complete rooftop level-2 surface absorbed density",
+                "selection_stability_min_fraction": self.body_peak_selection_min_fraction,
             },
             "thresholds": dataclasses.asdict(self.thresholds),
         }
@@ -322,6 +328,7 @@ class CampaignCheckpoint:
     chi_direct: np.ndarray
     body_peak_rooftop: np.ndarray
     body_mean_rooftop: np.ndarray
+    body_sab_rooftop: np.ndarray
     trace_seconds: np.ndarray
     rho_sum: np.ndarray
     local_grid: np.ndarray
@@ -335,7 +342,7 @@ class CampaignCheckpoint:
 def analyse_joint_replicas(
     chi: np.ndarray,
     chi_direct: np.ndarray,
-    body_peak: np.ndarray,
+    body_sab: np.ndarray,
     body_mean: np.ndarray,
     *,
     looks: tuple[int, ...],
@@ -344,6 +351,7 @@ def analyse_joint_replicas(
     bootstrap_replicates: int = 10_000,
     bootstrap_seed: int = 20260805,
     familywise_confidence: float = 0.95,
+    body_peak_selection_min_fraction: float = 0.95,
     thresholds: StoppingThresholds | None = None,
 ) -> dict[str, Any]:
     """Analyse every confidence-bounded curve with one planned-look family.
@@ -360,22 +368,24 @@ def analyse_joint_replicas(
     """
     total = np.asarray(chi, dtype=np.float64)
     direct = np.asarray(chi_direct, dtype=np.float64)
-    peak = np.asarray(body_peak, dtype=np.float64)
+    sab = np.asarray(body_sab, dtype=np.float64)
     mean = np.asarray(body_mean, dtype=np.float64)
     if total.ndim != 3 or total.shape[2] != len(model_names):
         raise ValueError("chi must have shape (replicas, standpoints, models)")
     if direct.shape != total.shape:
         raise ValueError("direct susceptibility must match total susceptibility")
-    if peak.shape != total.shape[:2] or mean.shape != total.shape[:2]:
-        raise ValueError("body metrics must have shape (replicas, standpoints)")
+    if sab.ndim != 3 or sab.shape[:2] != total.shape[:2] or sab.shape[2] < 2:
+        raise ValueError("body Sab must have shape (replicas, standpoints, surface elements)")
+    if mean.shape != total.shape[:2]:
+        raise ValueError("body mean must have shape (replicas, standpoints)")
     if total.shape[1] < 2:
         raise ValueError("at least two standpoints are required for a route CDF")
     if np.any(total <= 0.0) or not np.all(np.isfinite(total)):
         raise ValueError("total susceptibility must be finite and positive")
     if np.any(direct < 0.0) or not np.all(np.isfinite(direct)):
         raise ValueError("direct susceptibility must be finite and nonnegative")
-    if np.any(peak <= 0.0) or not np.all(np.isfinite(peak)):
-        raise ValueError("body peak must be finite and positive")
+    if np.any(sab < 0.0) or not np.all(np.isfinite(sab)) or np.any(np.max(sab, axis=2) <= 0.0):
+        raise ValueError("body Sab must be finite, nonnegative, and positive at its peak")
     if np.any(mean <= 0.0) or not np.all(np.isfinite(mean)):
         raise ValueError("body mean must be finite and positive")
     if not looks or tuple(sorted(set(looks))) != looks or looks[-1] > total.shape[0]:
@@ -386,6 +396,8 @@ def analyse_joint_replicas(
         raise ValueError("bootstrap_replicates must be at least 100")
     if not 0.0 < familywise_confidence < 1.0:
         raise ValueError("familywise_confidence must lie between zero and one")
+    if not 0.0 < body_peak_selection_min_fraction <= 1.0:
+        raise ValueError("body_peak_selection_min_fraction must lie in (0, 1]")
     limits = thresholds or StoppingThresholds()
     limits.validate()
 
@@ -403,17 +415,24 @@ def analyse_joint_replicas(
 
         total_estimate_db = _to_db(np.mean(total[:look], axis=0, dtype=np.float64))
         total_bootstrap_db = _to_db(np.mean(total[:look][indices], axis=1, dtype=np.float64))
-        peak_estimate_db = _to_db(np.mean(peak[:look], axis=0, dtype=np.float64))
-        peak_bootstrap_db = _to_db(np.mean(peak[:look][indices], axis=1, dtype=np.float64))
+        peak_estimate, peak_face_band, peak_selection = _bootstrap_peak_of_mean_sab(
+            sab[:look],
+            indices,
+            minimum_stable_fraction=body_peak_selection_min_fraction,
+        )
+        peak_estimate_db = _to_db(peak_estimate)
         mean_estimate_db = _to_db(np.mean(mean[:look], axis=0, dtype=np.float64))
         mean_bootstrap_db = _to_db(np.mean(mean[:look][indices], axis=1, dtype=np.float64))
 
         components = {
             **_confidence_components("total", total_estimate_db, total_bootstrap_db),
-            **_confidence_components("body_peak", peak_estimate_db, peak_bootstrap_db),
             **_confidence_components("body_mean", mean_estimate_db, mean_bootstrap_db),
         }
-        widths, critical = _joint_simultaneous_half_widths(components, per_look_confidence)
+        widths, critical = _joint_simultaneous_half_widths(
+            components,
+            per_look_confidence,
+            extra_standardized_max=peak_face_band["standardized_max"],
+        )
         point_report = _point_report(widths["total.point"], model_names, limits)
         cdf_report = _cdf_report_from_joint(
             total_estimate_db,
@@ -422,14 +441,18 @@ def analyse_joint_replicas(
             model_names,
             limits,
         )
-        peak_report = _body_report_from_joint(
+        peak_report = _body_peak_face_band_report(
             peak_estimate_db,
-            widths["body_peak.point"],
-            widths["body_peak.statistics"],
-            widths["body_peak.ordered"],
+            peak_face_band["estimate_surface"],
+            peak_face_band["scale_surface"],
+            critical,
             maximum_half_width_db=limits.body_peak_max_db,
-            estimator="linear mean of per-replica peak absorbed power density",
+            estimator=(
+                "maximum surface absorbed density of the linear mean across per-replica Sab fields, "
+                "equal to max Sab(mean rho) at level 2"
+            ),
             stopping_role="enters the formal stop",
+            selection_stability=peak_selection,
         )
         mean_report = _body_report_from_joint(
             mean_estimate_db,
@@ -455,7 +478,10 @@ def analyse_joint_replicas(
                 "per_look_confidence_nominal": per_look_confidence,
                 "per_look_alpha": 1.0 - per_look_confidence,
                 "joint_max_t_critical_value": critical,
-                "joint_family_statistics": int(sum(estimate.size for _bootstrap, estimate in components.values())),
+                "joint_family_statistics": int(
+                    sum(estimate.size for _bootstrap, estimate in components.values())
+                    + peak_face_band["estimate_surface"].size
+                ),
             },
             "point_estimate_db": {
                 name: [float(value) for value in total_estimate_db[:, model]] for model, name in enumerate(model_names)
@@ -475,7 +501,7 @@ def analyse_joint_replicas(
         previous_db = total_estimate_db
 
     return {
-        "schema": "fixed-walk-cdf-stopping-v2",
+        "schema": "fixed-walk-cdf-stopping-v3",
         "independent_unit": "one complete base-seed walk replica",
         "aggregation": "arithmetic mean in linear power for each fixed standpoint, then 10 log10",
         "bootstrap": {
@@ -483,6 +509,9 @@ def analyse_joint_replicas(
             "seed": bootstrap_seed,
             "resampling": "base-seed walk clusters with every standpoint and confidence-bounded metric kept together",
             "simultaneous_interval": "one max-t band over total susceptibility and both body metrics",
+            "body_peak_resampling": (
+                "tie-robust simultaneous band over every retained level-2 surface Sab mean, projected through max"
+            ),
         },
         "planned_look_coverage": {
             "familywise_confidence_nominal": familywise_confidence,
@@ -513,12 +542,12 @@ def analyse_joint_replicas(
             "included": [
                 "total susceptibility at every standpoint and source law",
                 "total susceptibility fixed-route CDF ranks and minimum, q10, q50, q90, maximum",
-                "linear mean of per-replica rooftop peak absorbed density at every standpoint and its fixed-route CDF",
+                "every rooftop surface Sab mean, whose band is projected to the peak of the ensemble-mean spectrum and CDF",
                 "linear mean of per-replica rooftop mean absorbed density at every standpoint and its fixed-route CDF",
             ],
             "excluded": [
                 "direct susceptibility, whose physical zero is reported as an atom at zero without a dB confidence interval",
-                "peak absorbed density of the ensemble-mean angular spectrum, which is a separate plug-in diagnostic",
+                "linear mean of per-replica rooftop peaks, which is retained only as a Jensen-gap diagnostic",
             ],
         },
         "route_sample": {
@@ -549,9 +578,116 @@ def _confidence_components(
     }
 
 
+def _bootstrap_peak_of_mean_sab(
+    sab: np.ndarray,
+    bootstrap_indices: np.ndarray,
+    *,
+    minimum_stable_fraction: float,
+    bootstrap_batch: int = 16,
+) -> tuple[np.ndarray, dict[str, np.ndarray], dict[str, Any]]:
+    """Evaluate bootstrap peaks and a tie-robust band over all surface means."""
+    fields = np.asarray(sab, dtype=np.float64)
+    indices = np.asarray(bootstrap_indices, dtype=np.int64)
+    replicas, points, surface_elements = fields.shape
+    if indices.ndim != 2 or indices.shape[1] != replicas:
+        raise ValueError("bootstrap indices must resample every retained body replica")
+    if np.any(indices < 0) or np.any(indices >= replicas):
+        raise ValueError("bootstrap indices are outside the retained replica prefix")
+    if bootstrap_batch < 1:
+        raise ValueError("body bootstrap batch must be positive")
+
+    bootstrap_replicates = indices.shape[0]
+    weights = np.zeros((bootstrap_replicates, replicas), dtype=np.float64)
+    rows = np.repeat(np.arange(bootstrap_replicates), replicas)
+    np.add.at(weights, (rows, indices.reshape(-1)), 1.0 / replicas)
+
+    flat = fields.reshape(replicas, points * surface_elements)
+    surface_sum = np.sum(fields, axis=0, dtype=np.float64)
+    estimate_surface = surface_sum / replicas
+    estimate_winner = np.argmax(estimate_surface, axis=1)
+    estimate = np.max(estimate_surface, axis=1)
+    scale_surface = np.std(fields, axis=0, ddof=0) / np.sqrt(replicas)
+    safe_scale = np.where(scale_surface > 0.0, scale_surface, np.inf)
+    bootstrap_peak = np.empty((bootstrap_replicates, points), dtype=np.float64)
+    bootstrap_winner = np.empty((bootstrap_replicates, points), dtype=np.int64)
+    standardized_max = np.empty(bootstrap_replicates, dtype=np.float64)
+    for start in range(0, bootstrap_replicates, bootstrap_batch):
+        stop = min(start + bootstrap_batch, bootstrap_replicates)
+        weighted = (weights[start:stop] @ flat).reshape(stop - start, points, surface_elements)
+        bootstrap_peak[start:stop] = np.max(weighted, axis=2)
+        bootstrap_winner[start:stop] = np.argmax(weighted, axis=2)
+        weighted -= estimate_surface
+        np.abs(weighted, out=weighted)
+        weighted /= safe_scale
+        standardized_max[start:stop] = np.max(weighted, axis=(1, 2))
+
+    leave_one_out_winner = np.empty((replicas, points), dtype=np.int64)
+    for replica in range(replicas):
+        leave_one_out = (surface_sum - fields[replica]) / (replicas - 1)
+        leave_one_out_winner[replica] = np.argmax(leave_one_out, axis=1)
+
+    seed_mean_peak = np.mean(np.max(fields, axis=2), axis=0, dtype=np.float64)
+    bootstrap_peak_db = _to_db(bootstrap_peak)
+    by_point: list[dict[str, Any]] = []
+    for point in range(points):
+        winner = int(estimate_winner[point])
+        reference_profile = fields[:, point, winner]
+        equivalent = np.all(
+            np.isclose(
+                fields[:, point, :],
+                reference_profile[:, None],
+                rtol=1.0e-12,
+                atol=1.0e-15,
+            ),
+            axis=0,
+        )
+        bootstrap_fraction = float(np.mean(equivalent[bootstrap_winner[:, point]]))
+        leave_one_out_stable = bool(np.all(equivalent[leave_one_out_winner[:, point]]))
+        passed = bootstrap_fraction >= minimum_stable_fraction and leave_one_out_stable
+        by_point.append(
+            {
+                "surface_element": winner,
+                "equivalent_surface_elements": int(np.count_nonzero(equivalent)),
+                "bootstrap_equivalent_winner_fraction": bootstrap_fraction,
+                "leave_one_out_equivalent_winner": leave_one_out_stable,
+                "seed_mean_peak_minus_physical_peak_db": float(
+                    10.0 * np.log10(seed_mean_peak[point] / estimate[point])
+                ),
+                "pass": passed,
+            }
+        )
+    return (
+        estimate,
+        {
+            "estimate_surface": estimate_surface,
+            "scale_surface": scale_surface,
+            "standardized_max": standardized_max,
+        },
+        {
+            "criterion": (
+                "the full-sample peak response class wins at least the declared fraction of bootstrap resamples "
+                "and every leave-one-replica-out ensemble"
+            ),
+            "minimum_bootstrap_equivalent_winner_fraction": minimum_stable_fraction,
+            "surface_elements": surface_elements,
+            "ordinary_peak_bootstrap_quantiles_db": {
+                name: [float(value) for value in np.quantile(bootstrap_peak_db, quantile, axis=0)]
+                for name, quantile in (("q025", 0.025), ("q50", 0.5), ("q975", 0.975))
+            },
+            "stopping_role": (
+                "regularity diagnostic only. The tie-robust projected surface band remains the formal interval"
+            ),
+            "points": by_point,
+            "pass": all(point["pass"] for point in by_point),
+        },
+    )
+
+
 def _joint_simultaneous_half_widths(
     components: dict[str, tuple[np.ndarray, np.ndarray]],
     confidence: float,
+    *,
+    extra_standardized_max: np.ndarray | None = None,
 ) -> tuple[dict[str, np.ndarray], float]:
     """Use one studentized maximum over every component in a reported family."""
     if not components:
@@ -573,6 +709,11 @@ def _joint_simultaneous_half_widths(
         standardized.append(value)
         scales[name] = scale.reshape(estimate.shape)
     maximum = np.max(np.concatenate(standardized, axis=1), axis=1)
+    if extra_standardized_max is not None:
+        extra = np.asarray(extra_standardized_max, dtype=np.float64)
+        if extra.shape != maximum.shape or not np.all(np.isfinite(extra)):
+            raise ValueError("extra standardized maximum must be finite and match the bootstrap count")
+        maximum = np.maximum(maximum, extra)
     critical = float(np.quantile(maximum, confidence))
     return {name: critical * scale for name, scale in scales.items()}, critical
 
@@ -611,6 +752,89 @@ def _cdf_report_from_joint(
     return {"models": by_model, "pass": all(value["pass"] for value in by_model.values())}
 
 
+def _body_peak_face_band_report(
+    estimate_db: np.ndarray,
+    estimate_surface: np.ndarray,
+    scale_surface: np.ndarray,
+    critical: float,
+    *,
+    maximum_half_width_db: float,
+    estimator: str,
+    stopping_role: str,
+    selection_stability: dict[str, Any],
+) -> dict[str, Any]:
+    """Project a simultaneous surface-mean band through the peak functional."""
+    lower_peak = np.max(estimate_surface - critical * scale_surface, axis=1)
+    upper_peak = np.max(estimate_surface + critical * scale_surface, axis=1)
+    finite_lower = bool(np.all(lower_peak > 0.0))
+    upper_db = _to_db(upper_peak)
+    if finite_lower:
+        lower_db = _to_db(lower_peak)
+        point_width = np.maximum(estimate_db - lower_db, upper_db - estimate_db)
+        ordered_estimate = np.sort(estimate_db)
+        ordered_lower = np.sort(lower_db)
+        ordered_upper = np.sort(upper_db)
+        ordered_width = np.maximum(ordered_estimate - ordered_lower, ordered_upper - ordered_estimate)
+        quantiles = np.asarray([0.0, 0.10, 0.50, 0.90, 1.0])
+        estimate_statistics = np.quantile(estimate_db, quantiles)
+        lower_statistics = np.quantile(lower_db, quantiles)
+        upper_statistics = np.quantile(upper_db, quantiles)
+        statistic_width = np.maximum(
+            estimate_statistics - lower_statistics,
+            upper_statistics - estimate_statistics,
+        )
+        maximum = float(np.max(point_width))
+        statistics = {
+            name: {
+                "estimate_db": float(estimate_statistics[row]),
+                "lower_db": float(lower_statistics[row]),
+                "upper_db": float(upper_statistics[row]),
+                "half_width_db": float(statistic_width[row]),
+            }
+            for row, name in enumerate(CDF_STATISTICS)
+        }
+        lower_values: list[float | None] = [float(value) for value in lower_db]
+        point_width_values: list[float | None] = [float(value) for value in point_width]
+        ordered_lower_values: list[float | None] = [float(value) for value in ordered_lower]
+        ordered_width_values: list[float | None] = [float(value) for value in ordered_width]
+    else:
+        maximum = float("inf")
+        ordered_estimate = np.sort(estimate_db)
+        ordered_upper = np.sort(upper_db)
+        statistics = {}
+        lower_values = [None] * estimate_db.size
+        point_width_values = [None] * estimate_db.size
+        ordered_lower_values = [None] * estimate_db.size
+        ordered_width_values = [None] * estimate_db.size
+    passed = finite_lower and maximum <= maximum_half_width_db
+    return {
+        "point_estimate_db": [float(value) for value in estimate_db],
+        "point_lower_db": lower_values,
+        "point_upper_db": [float(value) for value in upper_db],
+        "point_simultaneous_half_width_db": point_width_values,
+        "max_half_width_db": maximum if np.isfinite(maximum) else None,
+        "finite_lower_bound": finite_lower,
+        "fixed_route_cdf": {
+            "statistics": statistics,
+            "ordered_estimate_db": [float(value) for value in ordered_estimate],
+            "ordered_lower_db": ordered_lower_values,
+            "ordered_upper_db": [float(value) for value in ordered_upper],
+            "ordered_simultaneous_half_width_db": ordered_width_values,
+            "cdf_probability": [float((rank + 0.5) / ordered_estimate.size) for rank in range(ordered_estimate.size)],
+        },
+        "pass": passed,
+        "maximum_half_width_threshold_db": maximum_half_width_db,
+        "estimator": estimator,
+        "interval_method": (
+            "one joint max-t band over every surface Sab mean, projected as max(lower) and max(upper). "
+            "This remains valid for tied peak surfaces whenever the joint face band covers"
+        ),
+        "face_mean_family_statistics": int(estimate_surface.size),
+        "stopping_role": stopping_role,
+        "peak_selection_stability": selection_stability,
+    }
+
+
 def _body_report_from_joint(
     estimate_db: np.ndarray,
     point_widths: np.ndarray,
@@ -620,6 +844,7 @@ def _body_report_from_joint(
     maximum_half_width_db: float | None,
     estimator: str,
     stopping_role: str,
+    selection_stability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     quantiles = np.asarray([0.0, 0.10, 0.50, 0.90, 1.0])
     statistics = np.quantile(estimate_db, quantiles)
@@ -645,6 +870,7 @@ def _body_report_from_joint(
         "maximum_half_width_threshold_db": maximum_half_width_db,
         "estimator": estimator,
         "stopping_role": stopping_role,
+        **({"peak_selection_stability": selection_stability} if selection_stability is not None else {}),
     }
 
 
@@ -711,7 +937,7 @@ def run_campaign(
     }
     identity = canonical_sha256(
         {
-            "schema": "fixed-walk-cdf-campaign-v2",
+            "schema": "fixed-walk-cdf-campaign-v3",
             "config": config.scientific_config(),
             "reference": reference.as_dict(),
             "tissue_database": {
@@ -723,7 +949,7 @@ def run_campaign(
         }
     )
     plan = {
-        "schema": "fixed-walk-cdf-plan-v2",
+        "schema": "fixed-walk-cdf-plan-v3",
         "created_utc": _utc_now(),
         "identity_sha256": identity,
         "scientific_config": config.scientific_config(),
@@ -734,14 +960,14 @@ def run_campaign(
         "models": list(MODEL_NAMES),
         "seed_rule": "base seed + 1000 * frozen production standpoint index",
         "retention": (
-            "per-replica scalar rows and one running linear-power rho sum. "
-            "individual replica spectra and paths are not retained"
+            "per-replica scalar rows, complete rooftop level-2 surface Sab fields, and one running linear-power "
+            "rho sum. Individual replica spectra and paths are not retained"
         ),
     }
     _quarantine_stale_generation(config.output_dir, identity)
-    _write_json_atomic(config.output_dir / "plan.json", plan)
+    plan_path = _prepare_campaign_plan(config.output_dir, identity, plan, dry_run=dry_run)
     if dry_run:
-        return config.output_dir / "plan.json"
+        return plan_path
 
     checkpoint_path = config.output_dir / "checkpoint.npz"
     checkpoint = _load_campaign_checkpoint(
@@ -754,6 +980,7 @@ def run_campaign(
     if analyse_only and checkpoint is None:
         raise RuntimeError("no valid campaign checkpoint is available to analyse")
 
+    trace_analysis: dict[str, Any] | None = None
     if not analyse_only:
         shared = _prepare_shared_scene(config, reference)
         manifest_run = reference.manifest["run"]
@@ -768,8 +995,8 @@ def run_campaign(
             float(manifest_run["frequency_hz"]),
             body_mass_kg=study.PHANTOM_MASS_KG,
         )
-        checkpoint = _empty_checkpoint(tracer, reference) if checkpoint is None else checkpoint
-        checkpoint = _trace_until_stop(
+        checkpoint = _empty_checkpoint(tracer, coupler, reference) if checkpoint is None else checkpoint
+        checkpoint, trace_analysis = _trace_until_stop(
             config,
             reference,
             tracer,
@@ -782,7 +1009,9 @@ def run_campaign(
 
     if checkpoint is None:
         raise AssertionError("campaign checkpoint was not prepared")
-    analysis = _analyse_checkpoint(config, checkpoint, identity)
+    analysis = trace_analysis or _write_reached_formal_analyses(config, checkpoint, identity)
+    if analysis is None:
+        raise RuntimeError(f"at least {config.looks[0]} complete replicas are needed for a formal analysis")
     ensemble = _final_ensemble(config, reference, checkpoint, analysis, study)
     analysis["ensemble"] = ensemble
     analysis["identity_sha256"] = identity
@@ -864,9 +1093,55 @@ def _quarantine_stale_generation(output_dir: pathlib.Path, identity: str) -> pat
     return destination
 
 
+def _prepare_campaign_plan(
+    output_dir: pathlib.Path,
+    identity: str,
+    plan: dict[str, Any],
+    *,
+    dry_run: bool,
+) -> pathlib.Path:
+    """Preserve a same-identity plan and verify its seal before a dry run."""
+    path = output_dir / "plan.json"
+    if path.is_file():
+        try:
+            saved_identity = json.loads(path.read_text())["identity_sha256"]
+        except (KeyError, OSError, TypeError, ValueError) as error:
+            raise RuntimeError("campaign plan is unreadable after generation quarantine") from error
+        if saved_identity != identity:
+            raise RuntimeError("campaign plan has a different identity after generation quarantine")
+        manifest_path = output_dir / "manifest.json"
+        if dry_run and manifest_path.is_file():
+            _verify_sealed_generation(output_dir, identity)
+        return path
+    _write_json_atomic(path, plan)
+    return path
+
+
+def _verify_sealed_generation(output_dir: pathlib.Path, identity: str) -> None:
+    """Verify every artifact sealed by a same-identity final manifest."""
+    manifest_path = output_dir / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text())
+        if manifest["identity_sha256"] != identity:
+            raise RuntimeError("sealed manifest belongs to a different campaign identity")
+        artifacts = manifest["artifacts"]
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        raise RuntimeError("sealed campaign manifest is unreadable") from error
+    for name, metadata in artifacts.items():
+        path = output_dir / str(metadata["path"])
+        if path.parent.resolve() != output_dir.resolve():
+            raise RuntimeError(f"sealed artifact {name} escapes the campaign output directory")
+        if not path.is_file():
+            raise RuntimeError(f"sealed artifact {name} is missing")
+        if path.stat().st_size != int(metadata["bytes"]) or _file_sha256(path) != metadata["sha256"]:
+            raise RuntimeError(f"sealed artifact {name} does not match its manifest")
+
+
 def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
     """Validate the analysis with the archived eight-seed rooftop campaign."""
+    from semantic_twin.exposure import study
     from semantic_twin.exposure.angular_convergence import file_sha256, load_reference
+    from semantic_twin.exposure.coupler import BodyCoupler
 
     reference = load_reference(config)
     _validate_production_reference(config, reference)
@@ -876,12 +1151,16 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
     direct_rows: list[list[float]] = []
     peak_rows: list[list[float]] = []
     mean_rows: list[list[float]] = []
+    rho_rows: list[np.ndarray] = []
+    common_grid: np.ndarray | None = None
+    common_solid_angle: float | None = None
     inputs: list[dict[str, Any]] = []
     expected_index = [int(value) for value in reference.standpoints.index]
     for seed in seeds:
         run_dir = run_root / f"cells4096_rays1600000_seed{seed}"
         manifest_path = run_dir / "manifest.json"
         metrics_path = run_dir / "metrics.json"
+        spectra_path = run_dir / "spectra.npz"
         manifest = json.loads(manifest_path.read_text())
         metrics = json.loads(metrics_path.read_text())
         rows = list(metrics["rows"])
@@ -889,12 +1168,25 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
             raise ValueError(f"archived rooftop seed {seed} is incomplete")
         if manifest.get("metrics_file_sha256") != file_sha256(metrics_path):
             raise ValueError(f"archived rooftop seed {seed} metrics do not match their manifest")
+        if manifest.get("spectra_file_sha256") != file_sha256(spectra_path):
+            raise ValueError(f"archived rooftop seed {seed} spectra do not match their manifest")
         if [int(row["index"]) for row in rows] != expected_index:
             raise ValueError(f"archived rooftop seed {seed} uses a different frozen route")
         chi_rows.append([float(row["chi"]) for row in rows])
         direct_rows.append([float(row["trace"]["chi_rooftop_direct"]) for row in rows])
         peak_rows.append([float(row["body"]["peak_sab_w_m2"]) for row in rows])
         mean_rows.append([float(row["body"]["mean_sab_w_m2"]) for row in rows])
+        with np.load(spectra_path) as spectra:
+            if not np.array_equal(np.asarray(spectra["index"], dtype=np.int64), reference.standpoints.index):
+                raise ValueError(f"archived rooftop seed {seed} spectra use a different frozen route")
+            grid = np.asarray(spectra["local_grid"], dtype=np.float64)
+            solid_angle = float(spectra["solid_angle"])
+            if common_grid is None:
+                common_grid = grid
+                common_solid_angle = solid_angle
+            elif not np.array_equal(grid, common_grid) or solid_angle != common_solid_angle:
+                raise ValueError("archived rooftop spectra use different angular grids")
+            rho_rows.append(np.asarray(spectra["rho_rooftop"], dtype=np.float64))
         inputs.append(
             {
                 "base_seed": seed,
@@ -903,16 +1195,40 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
                 "manifest_sha256": file_sha256(manifest_path),
                 "metrics_path": str(metrics_path),
                 "metrics_sha256": file_sha256(metrics_path),
+                "spectra_path": str(spectra_path),
+                "spectra_sha256": file_sha256(spectra_path),
             }
         )
     chi = np.asarray(chi_rows, dtype=np.float64)[:, :, None]
     direct = np.asarray(direct_rows, dtype=np.float64)[:, :, None]
-    peak = np.asarray(peak_rows, dtype=np.float64)
+    archived_peak = np.asarray(peak_rows, dtype=np.float64)
     mean = np.asarray(mean_rows, dtype=np.float64)
+    if common_grid is None or common_solid_angle is None:
+        raise AssertionError("archived rooftop angular grid was not loaded")
+    rho = np.asarray(rho_rows, dtype=np.float64)
+    coupler = BodyCoupler(
+        study.PHANTOM,
+        float(reference.manifest["run"]["frequency_hz"]),
+        body_mass_kg=study.PHANTOM_MASS_KG,
+    )
+    exposures, flat_sab = coupler.couple_many_with_sab(
+        common_grid,
+        rho.reshape(-1, rho.shape[-1]),
+        common_solid_angle,
+        float(reference.manifest["reference_s0_w_m2"]),
+        chunk_cells=config.body_chunk_cells,
+    )
+    body_sab = flat_sab.reshape(len(seeds), chi.shape[1], -1)
+    computed_peak = np.asarray([exposure.peak_sab_w_m2 for exposure in exposures]).reshape(archived_peak.shape)
+    computed_mean = np.asarray([exposure.mean_sab_w_m2 for exposure in exposures]).reshape(mean.shape)
+    if not np.allclose(computed_peak, archived_peak, rtol=2.0e-14, atol=1.0e-15):
+        raise ValueError("recomputed archived body peaks disagree with their metrics")
+    if not np.allclose(computed_mean, mean, rtol=2.0e-14, atol=1.0e-15):
+        raise ValueError("recomputed archived body means disagree with their metrics")
     joint_analysis = analyse_joint_replicas(
         chi,
         direct,
-        peak,
+        body_sab,
         mean,
         looks=(8,),
         planned_formal_looks=config.looks,
@@ -920,10 +1236,11 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
         bootstrap_replicates=config.bootstrap_replicates,
         bootstrap_seed=config.bootstrap_seed,
         familywise_confidence=config.confidence,
+        body_peak_selection_min_fraction=config.body_peak_selection_min_fraction,
         thresholds=config.thresholds,
     )
     document = {
-        "schema": "archived-rooftop-seed-diagnostic-v2",
+        "schema": "archived-rooftop-seed-diagnostic-v3",
         "created_utc": _utc_now(),
         "scope": (
             "one-look rooftop diagnostic with one joint confidence family for total susceptibility and both body metrics. "
@@ -937,6 +1254,7 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
             "confidence": config.confidence,
         },
         "analysis_source_sha256": file_sha256(pathlib.Path(__file__)),
+        "body_coupler_source_sha256": file_sha256(pathlib.Path(__file__).with_name("coupler.py")),
         "reference": reference.as_dict(),
         "inputs": inputs,
         "joint_analysis": joint_analysis,
@@ -1030,11 +1348,14 @@ def _validate_production_tissue_database(
         raise ValueError(f"production IT'IS tissue database changed: {actual} != {expected}")
 
 
-def _empty_checkpoint(tracer: Any, reference: Any) -> CampaignCheckpoint:
+def _empty_checkpoint(tracer: Any, coupler: Any, reference: Any) -> CampaignCheckpoint:
     from semantic_twin.illumination import fibonacci_sphere
 
     cells = int(np.asarray(tracer.local_grid).shape[0])
     points = int(reference.standpoints.index.size)
+    surface_elements = int(coupler.body.n_triangles)
+    if surface_elements != int(reference.manifest["body"]["triangles"]):
+        raise RuntimeError("body surface count differs from the frozen reference")
     local_grid = np.asarray(tracer.local_grid, dtype=np.float64)
     expected_grid = fibonacci_sphere(cells)
     if not np.array_equal(local_grid, expected_grid):
@@ -1045,6 +1366,7 @@ def _empty_checkpoint(tracer: Any, reference: Any) -> CampaignCheckpoint:
         chi_direct=np.empty((0, points, len(MODEL_NAMES)), dtype=np.float64),
         body_peak_rooftop=np.empty((0, points), dtype=np.float64),
         body_mean_rooftop=np.empty((0, points), dtype=np.float64),
+        body_sab_rooftop=np.empty((0, points, surface_elements), dtype=np.float64),
         trace_seconds=np.empty((0, points), dtype=np.float64),
         rho_sum=np.zeros((points, len(MODEL_NAMES), cells), dtype=np.float64),
         local_grid=local_grid,
@@ -1061,11 +1383,11 @@ def _trace_until_stop(
     checkpoint_path: pathlib.Path,
     identity: str,
     tissue_database_sha256: str,
-) -> CampaignCheckpoint:
+) -> tuple[CampaignCheckpoint, dict[str, Any] | None]:
     formal_targets = set(config.looks)
-    if checkpoint.replicas in formal_targets and checkpoint.replicas >= config.looks[1]:
-        if _analyse_checkpoint(config, checkpoint, identity)["stopped"]:
-            return checkpoint
+    analysis = _write_reached_formal_analyses(config, checkpoint, identity)
+    if analysis is not None and analysis["stopped"]:
+        return checkpoint, analysis
     for base_seed in config.base_seeds[checkpoint.replicas :]:
         checkpoint = _trace_replica(config, reference, tracer, coupler, checkpoint, int(base_seed))
         _write_campaign_checkpoint(
@@ -1078,12 +1400,12 @@ def _trace_until_stop(
         print(f"replica {checkpoint.replicas}/{config.looks[-1]} complete at base seed {base_seed}", flush=True)
         if checkpoint.replicas not in formal_targets:
             continue
-        analysis = _analyse_checkpoint(config, checkpoint, identity)
-        partial = config.output_dir / f"analysis_look{checkpoint.replicas}.json"
-        _write_json_atomic(partial, analysis)
+        analysis = _write_reached_formal_analyses(config, checkpoint, identity)
+        if analysis is None:
+            raise AssertionError("a formal target did not produce an analysis")
         if analysis["stopped"]:
-            return checkpoint
-    return checkpoint
+            return checkpoint, analysis
+    return checkpoint, analysis
 
 
 def _trace_replica(
@@ -1100,6 +1422,7 @@ def _trace_replica(
     direct = np.empty_like(chi)
     peak = np.empty(points, dtype=np.float64)
     mean = np.empty(points, dtype=np.float64)
+    sab = np.empty((points, checkpoint.body_sab_rooftop.shape[2]), dtype=np.float64)
     seconds = np.empty(points, dtype=np.float64)
     rho = np.empty((points, len(MODEL_NAMES), cells), dtype=np.float64)
     models = {name: _illumination_models()[name] for name in MODEL_NAMES}
@@ -1119,15 +1442,17 @@ def _trace_replica(
             chi[row, model] = float(scalars[f"chi_{name}"])
             direct[row, model] = float(scalars[f"chi_{name}_direct"])
             rho[row, model] = np.asarray(result.rho[name], dtype=np.float64)
-        exposure = coupler.couple_many(
+        exposures, surface_sab = coupler.couple_many_with_sab(
             checkpoint.local_grid,
             rho[row, 1:2],
             checkpoint.solid_angle,
             float(reference.manifest["reference_s0_w_m2"]),
             chunk_cells=config.body_chunk_cells,
-        )[0]
+        )
+        exposure = exposures[0]
         peak[row] = exposure.peak_sab_w_m2
         mean[row] = exposure.mean_sab_w_m2
+        sab[row] = surface_sab[0]
         seconds[row] = float(result.seconds)
         print(
             f"  [{row + 1}/{points}] seed={base_seed} index={int(index)} "
@@ -1140,6 +1465,7 @@ def _trace_replica(
         chi_direct=np.concatenate((checkpoint.chi_direct, direct[None, ...]), axis=0),
         body_peak_rooftop=np.concatenate((checkpoint.body_peak_rooftop, peak[None, ...]), axis=0),
         body_mean_rooftop=np.concatenate((checkpoint.body_mean_rooftop, mean[None, ...]), axis=0),
+        body_sab_rooftop=np.concatenate((checkpoint.body_sab_rooftop, sab[None, ...]), axis=0),
         trace_seconds=np.concatenate((checkpoint.trace_seconds, seconds[None, ...]), axis=0),
         rho_sum=checkpoint.rho_sum + rho,
         local_grid=checkpoint.local_grid,
@@ -1164,17 +1490,43 @@ def _analyse_checkpoint(
     report = analyse_joint_replicas(
         checkpoint.chi,
         checkpoint.chi_direct,
-        checkpoint.body_peak_rooftop,
+        checkpoint.body_sab_rooftop,
         checkpoint.body_mean_rooftop,
         looks=available_looks,
         planned_formal_looks=config.looks,
         bootstrap_replicates=config.bootstrap_replicates,
         bootstrap_seed=config.bootstrap_seed,
         familywise_confidence=config.confidence,
+        body_peak_selection_min_fraction=config.body_peak_selection_min_fraction,
         thresholds=config.thresholds,
     )
     if identity is not None:
         report["identity_sha256"] = identity
+    return report
+
+
+def _write_reached_formal_analyses(
+    config: CdfConvergenceConfig,
+    checkpoint: CampaignCheckpoint,
+    identity: str,
+) -> dict[str, Any] | None:
+    """Regenerate every reached formal-look file from the checkpoint prefix."""
+    if checkpoint.replicas < config.looks[0]:
+        return None
+    report = _analyse_checkpoint(config, checkpoint, identity)
+    for look in config.looks:
+        if look > checkpoint.replicas:
+            continue
+        stopped_at = report["stop_at_replicas"]
+        partial_stop = stopped_at if stopped_at is not None and stopped_at <= look else None
+        partial = {
+            **report,
+            "looks": [document for document in report["looks"] if int(document["replicas"]) <= look],
+            "stopped": partial_stop is not None,
+            "stop_at_replicas": partial_stop,
+            "cap_reached": look >= config.looks[-1] and partial_stop is None,
+        }
+        _write_json_atomic(config.output_dir / f"analysis_look{look}.json", partial)
     return report
 
 
@@ -1203,7 +1555,11 @@ def _final_ensemble(
         chunk_cells=config.body_chunk_cells,
     )
     direct = np.mean(checkpoint.chi_direct, axis=0, dtype=np.float64)
-    raw_peak_mean = np.mean(checkpoint.body_peak_rooftop, axis=0, dtype=np.float64)
+    seed_mean_peak = np.mean(checkpoint.body_peak_rooftop, axis=0, dtype=np.float64)
+    retained_peak_of_mean = np.max(
+        np.mean(checkpoint.body_sab_rooftop, axis=0, dtype=np.float64),
+        axis=1,
+    )
     raw_body_mean = np.mean(checkpoint.body_mean_rooftop, axis=0, dtype=np.float64)
     rows: list[dict[str, Any]] = []
     for point, index in enumerate(reference.standpoints.index):
@@ -1222,10 +1578,9 @@ def _final_ensemble(
             for key, value in exposure.as_dict().items():
                 row[f"{name}_{key}"] = value
             if name == "rooftop":
-                row["rooftop_peak_of_mean_spectrum_w_m2"] = exposure.peak_sab_w_m2
-                row["rooftop_peak_sab_w_m2"] = float(raw_peak_mean[point])
+                row["rooftop_seed_mean_peak_sab_w_m2"] = float(seed_mean_peak[point])
         rows.append(row)
-    plugin_peak = np.asarray([row["rooftop_peak_of_mean_spectrum_w_m2"] for row in rows])
+    physical_peak = np.asarray([row["rooftop_peak_sab_w_m2"] for row in rows])
     plugin_mean = np.asarray([row["rooftop_mean_sab_w_m2"] for row in rows])
     return {
         "replicas": count,
@@ -1235,17 +1590,23 @@ def _final_ensemble(
         "local_grid_sha256": _array_sha256(checkpoint.local_grid),
         "published_body_peak": {
             "field": "rooftop_peak_sab_w_m2",
-            "estimator": "linear mean of the per-replica peak absorbed power density",
+            "estimator": "maximum absorbed density of the ensemble-mean angular spectrum",
             "confidence_family": "joint planned-look max-t family",
         },
-        "body_peak_plugin_diagnostic": {
-            "field": "rooftop_peak_of_mean_spectrum_w_m2",
-            "estimator": "peak absorbed power density of the ensemble-mean angular spectrum",
+        "body_peak_retained_field_check": {
+            "retained_surface_estimator_db": [float(value) for value in _to_db(retained_peak_of_mean)],
+            "recomputed_mean_spectrum_estimator_db": [float(value) for value in _to_db(physical_peak)],
+            "maximum_absolute_difference_db": float(
+                np.max(np.abs(_to_db(retained_peak_of_mean) - _to_db(physical_peak)))
+            ),
+        },
+        "body_peak_jensen_diagnostic": {
+            "field": "rooftop_seed_mean_peak_sab_w_m2",
+            "estimator": "linear mean of per-replica peak absorbed density",
             "confidence_bounded": False,
-            "published_estimator_db": [float(value) for value in _to_db(raw_peak_mean)],
-            "plugin_estimator_db": [float(value) for value in _to_db(plugin_peak)],
-            "plugin_minus_published_db": [float(value) for value in _to_db(plugin_peak) - _to_db(raw_peak_mean)],
-            "maximum_absolute_difference_db": float(np.max(np.abs(_to_db(plugin_peak) - _to_db(raw_peak_mean)))),
+            "seed_mean_peak_minus_physical_peak_db": [
+                float(value) for value in _to_db(seed_mean_peak) - _to_db(physical_peak)
+            ],
         },
         "body_mean_linearity_check": {
             "seed_mean_db": [float(value) for value in _to_db(raw_body_mean)],
@@ -1266,7 +1627,7 @@ def _write_campaign_checkpoint(
     with temporary.open("wb") as stream:
         np.savez_compressed(
             stream,
-            schema=np.asarray("fixed-walk-cdf-checkpoint-v2"),
+            schema=np.asarray("fixed-walk-cdf-checkpoint-v3"),
             identity_sha256=np.asarray(identity),
             standpoint_array_sha256=np.asarray(reference.standpoints.sha256),
             tissue_database_sha256=np.asarray(tissue_database_sha256),
@@ -1275,6 +1636,8 @@ def _write_campaign_checkpoint(
             chi_direct=checkpoint.chi_direct,
             body_peak_rooftop=checkpoint.body_peak_rooftop,
             body_mean_rooftop=checkpoint.body_mean_rooftop,
+            body_sab_rooftop=checkpoint.body_sab_rooftop,
+            body_sab_sha256=np.asarray(_array_sha256(checkpoint.body_sab_rooftop)),
             trace_seconds=checkpoint.trace_seconds,
             rho_sum=checkpoint.rho_sum,
             local_grid=checkpoint.local_grid,
@@ -1303,6 +1666,7 @@ def _load_campaign_checkpoint(
             standpoint_hash = str(artifact["standpoint_array_sha256"])
             saved_tissue_hash = str(artifact["tissue_database_sha256"])
             saved_grid_hash = str(artifact["local_grid_sha256"])
+            saved_body_sab_hash = str(artifact["body_sab_sha256"])
             model_names = tuple(str(value) for value in artifact["model_names"])
             checkpoint = CampaignCheckpoint(
                 base_seeds=np.asarray(artifact["base_seeds"], dtype=np.int64),
@@ -1310,6 +1674,7 @@ def _load_campaign_checkpoint(
                 chi_direct=np.asarray(artifact["chi_direct"], dtype=np.float64),
                 body_peak_rooftop=np.asarray(artifact["body_peak_rooftop"], dtype=np.float64),
                 body_mean_rooftop=np.asarray(artifact["body_mean_rooftop"], dtype=np.float64),
+                body_sab_rooftop=np.asarray(artifact["body_sab_rooftop"], dtype=np.float64),
                 trace_seconds=np.asarray(artifact["trace_seconds"], dtype=np.float64),
                 rho_sum=np.asarray(artifact["rho_sum"], dtype=np.float64),
                 local_grid=np.asarray(artifact["local_grid"], dtype=np.float64),
@@ -1325,7 +1690,7 @@ def _load_campaign_checkpoint(
     expected_grid = fibonacci_sphere(cells)
     valid = all(
         (
-            schema == "fixed-walk-cdf-checkpoint-v2",
+            schema == "fixed-walk-cdf-checkpoint-v3",
             saved_identity == identity,
             standpoint_hash == reference.standpoints.sha256,
             saved_tissue_hash == tissue_database_sha256,
@@ -1335,6 +1700,8 @@ def _load_campaign_checkpoint(
             checkpoint.chi_direct.shape == checkpoint.chi.shape,
             checkpoint.body_peak_rooftop.shape == (replicas, points),
             checkpoint.body_mean_rooftop.shape == (replicas, points),
+            checkpoint.body_sab_rooftop.shape == (replicas, points, int(reference.manifest["body"]["triangles"])),
+            saved_body_sab_hash == _array_sha256(checkpoint.body_sab_rooftop),
             checkpoint.trace_seconds.shape == (replicas, points),
             checkpoint.rho_sum.shape == (points, len(MODEL_NAMES), cells),
             checkpoint.local_grid.shape == (cells, 3),
@@ -1349,6 +1716,7 @@ def _load_campaign_checkpoint(
                     checkpoint.chi_direct,
                     checkpoint.body_peak_rooftop,
                     checkpoint.body_mean_rooftop,
+                    checkpoint.body_sab_rooftop,
                     checkpoint.trace_seconds,
                     checkpoint.rho_sum,
                     checkpoint.local_grid,
@@ -1358,6 +1726,9 @@ def _load_campaign_checkpoint(
             np.all(checkpoint.chi_direct >= 0.0),
             np.all(checkpoint.body_peak_rooftop > 0.0),
             np.all(checkpoint.body_mean_rooftop > 0.0),
+            np.all(checkpoint.body_sab_rooftop >= 0.0),
+            np.array_equal(np.max(checkpoint.body_sab_rooftop, axis=2), checkpoint.body_peak_rooftop),
+            np.array_equal(np.mean(checkpoint.body_sab_rooftop, axis=2), checkpoint.body_mean_rooftop),
             np.all(checkpoint.rho_sum >= 0.0),
         )
     )
@@ -1407,7 +1778,7 @@ def _campaign_manifest(
         for name, path in artifact_paths.items()
     }
     return {
-        "schema": "fixed-walk-cdf-manifest-v2",
+        "schema": "fixed-walk-cdf-manifest-v3",
         "created_utc": _utc_now(),
         "identity_sha256": identity,
         "complete_replicas": checkpoint.replicas,

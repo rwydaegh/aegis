@@ -22,7 +22,8 @@
     "alpha_allocation": "equal Bonferroni allocation over formal looks 16, 24, and 32"
   },
   "body_peak": {
-    "chunk_cells": 512
+    "chunk_cells": 512,
+    "selection_stability_min_fraction": 0.95
   },
   "thresholds": {
     "point_p90_db": 0.10,

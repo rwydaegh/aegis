@@ -133,8 +133,46 @@ class BodyCoupler:
             raise ValueError("reference_s0_w_m2 must be nonnegative and finite")
         if grid.shape[0] <= chunk_cells:
             return tuple(self.couple(grid, spectrum, solid_angle, reference_s0_w_m2) for spectrum in spectra)
+        exposures, _sab = self.couple_many_with_sab(
+            grid,
+            spectra,
+            solid_angle,
+            reference_s0_w_m2,
+            chunk_cells=chunk_cells,
+        )
+        return exposures
+
+    def couple_many_with_sab(
+        self,
+        local_grid: np.ndarray,
+        rho: np.ndarray,
+        solid_angle: float,
+        reference_s0_w_m2: float,
+        *,
+        chunk_cells: int = 512,
+    ) -> tuple[tuple[BodyExposure, ...], np.ndarray]:
+        """Return level-2 exposures and their complete surface fields.
+
+        The retained surface fields are linear in the angular spectra. This
+        permits an exact cluster bootstrap of the peak of an ensemble-mean
+        spectrum without repeating the body-to-grid incidence calculation.
+        """
+        grid = np.asarray(local_grid, dtype=np.float64)
+        spectra = np.asarray(rho, dtype=np.float64)
+        if grid.ndim != 2 or grid.shape[1] != 3:
+            raise ValueError(f"local_grid must have shape (cells, 3), got {grid.shape}")
+        if spectra.ndim != 2 or spectra.shape[1] != grid.shape[0]:
+            raise ValueError(f"rho must have shape (spectra, {grid.shape[0]}), got {spectra.shape}")
+        if chunk_cells < 1:
+            raise ValueError("chunk_cells must be positive")
+        if not np.all(np.isfinite(grid)) or not np.all(np.isfinite(spectra)):
+            raise ValueError("local_grid and rho must be finite")
+        if not np.isfinite(solid_angle) or solid_angle <= 0.0:
+            raise ValueError("solid_angle must be positive and finite")
+        if not np.isfinite(reference_s0_w_m2) or reference_s0_w_m2 < 0.0:
+            raise ValueError("reference_s0_w_m2 must be nonnegative and finite")
         if self.level != 2:
-            raise ValueError("chunked body coupling currently implements AEGIS level 2 only")
+            raise ValueError("surface-field body coupling currently implements AEGIS level 2 only")
 
         norms = np.linalg.norm(grid, axis=1)
         if np.any(norms <= 0.0):
@@ -165,7 +203,7 @@ class BodyCoupler:
                     sar_wb_w_kg=(p_abs / self.body_mass_kg if self.body_mass_kg is not None else float("nan")),
                 )
             )
-        return tuple(out)
+        return tuple(out), sab
 
 
 def describe(coupler: BodyCoupler) -> dict[str, Any]:

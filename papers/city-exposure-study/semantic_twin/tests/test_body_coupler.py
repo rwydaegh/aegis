@@ -69,13 +69,35 @@ def test_couple_many_forced_chunks_match_normal_level_two_coupling() -> None:
         reference_s0,
         chunk_cells=chunk_cells,
     )
+    retained, sab = coupler.couple_many_with_sab(
+        grid,
+        spectra,
+        solid_angle,
+        reference_s0,
+        chunk_cells=chunk_cells,
+    )
 
     assert chunk_cells < cells
     assert len(actual) == len(expected)
-    for chunked, normal in zip(actual, expected, strict=True):
+    assert sab.shape == (len(spectra), coupler.body.n_triangles)
+    for index, (chunked, normal) in enumerate(zip(actual, expected, strict=True)):
         for field in fields(BodyExposure):
             assert getattr(chunked, field.name) == pytest.approx(
                 getattr(normal, field.name),
                 rel=2.0e-14,
                 abs=1.0e-15,
             ), field.name
+        assert retained[index] == chunked
+        assert np.max(sab[index]) == chunked.peak_sab_w_m2
+        assert np.mean(sab[index]) == chunked.mean_sab_w_m2
+        assert np.sum(sab[index] * coupler.body.areas) == chunked.absorbed_power_w
+
+    weights = np.asarray([0.2, 0.3, 0.5])
+    _mean_exposure, mean_sab = coupler.couple_many_with_sab(
+        grid,
+        np.sum(weights[:, None] * spectra, axis=0, keepdims=True),
+        solid_angle,
+        reference_s0,
+        chunk_cells=chunk_cells,
+    )
+    assert mean_sab[0] == pytest.approx(np.sum(weights[:, None] * sab, axis=0), rel=2.0e-14, abs=1.0e-15)

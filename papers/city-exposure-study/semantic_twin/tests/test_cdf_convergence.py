@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 from dataclasses import replace
@@ -14,13 +15,16 @@ from semantic_twin.exposure.cdf_convergence import (
     CampaignCheckpoint,
     StoppingThresholds,
     _analyse_checkpoint,
+    _bootstrap_peak_of_mean_sab,
     _campaign_manifest,
     _final_ensemble,
     _load_campaign_checkpoint,
+    _prepare_campaign_plan,
     _quarantine_stale_generation,
     _trace_replica,
     _validate_production_tissue_database,
     _write_campaign_checkpoint,
+    _write_reached_formal_analyses,
     analyse_chi_replicas,
     analyse_joint_replicas,
 )
@@ -172,7 +176,7 @@ def test_compact_checkpoint_round_trip_rejects_a_different_identity(tmp_path: pa
     config = CdfConvergenceConfig.load(config_path)
     reference = SimpleNamespace(
         standpoints=SimpleNamespace(index=np.asarray([0, 2]), sha256="points"),
-        manifest={"run": {"local_cells": 3}},
+        manifest={"run": {"local_cells": 3}, "body": {"triangles": 3}},
     )
     checkpoint = CampaignCheckpoint(
         base_seeds=np.asarray([7]),
@@ -180,6 +184,7 @@ def test_compact_checkpoint_round_trip_rejects_a_different_identity(tmp_path: pa
         chi_direct=np.full((1, 2, 3), 0.5),
         body_peak_rooftop=np.ones((1, 2)),
         body_mean_rooftop=np.full((1, 2), 0.5),
+        body_sab_rooftop=np.tile(np.asarray([1.0, 0.5, 0.0]), (1, 2, 1)),
         trace_seconds=np.full((1, 2), 0.1),
         rho_sum=np.ones((2, 3, 3)),
         local_grid=fibonacci_sphere(3),
@@ -235,7 +240,7 @@ def test_replica_keeps_the_base_seed_mapping_and_only_one_spectrum_sum() -> None
             return Result(seed)
 
     exposure = SimpleNamespace(peak_sab_w_m2=2.0, mean_sab_w_m2=1.0)
-    coupler = SimpleNamespace(couple_many=lambda *args, **kwargs: (exposure,))
+    coupler = SimpleNamespace(couple_many_with_sab=lambda *args, **kwargs: ((exposure,), np.asarray([[2.0, 1.0, 0.0]])))
     reference = SimpleNamespace(
         standpoints=SimpleNamespace(
             index=np.asarray([0, 3]),
@@ -250,6 +255,7 @@ def test_replica_keeps_the_base_seed_mapping_and_only_one_spectrum_sum() -> None
         chi_direct=np.empty((0, 2, 3)),
         body_peak_rooftop=np.empty((0, 2)),
         body_mean_rooftop=np.empty((0, 2)),
+        body_sab_rooftop=np.empty((0, 2, 3)),
         trace_seconds=np.empty((0, 2)),
         rho_sum=np.zeros((2, 3, 3)),
         local_grid=grid,
@@ -263,6 +269,7 @@ def test_replica_keeps_the_base_seed_mapping_and_only_one_spectrum_sum() -> None
     assert result.chi.shape == (1, 2, 3)
     assert result.rho_sum.shape == (2, 3, 3)
     assert result.body_peak_rooftop.tolist() == [[2.0, 2.0]]
+    assert result.body_sab_rooftop.shape == (1, 2, 3)
 
 
 def test_checkpoint_analysis_covers_every_curve_in_the_published_cdf(tmp_path: pathlib.Path) -> None:
@@ -281,12 +288,14 @@ def test_checkpoint_analysis_covers_every_curve_in_the_published_cdf(tmp_path: p
     )
     config = CdfConvergenceConfig.load(config_path)
     replicas = _quiet_replicas()
+    rooftop_peak = replicas[:, :, 1] * 0.2
     checkpoint = CampaignCheckpoint(
         base_seeds=np.arange(7, 39),
         chi=replicas,
         chi_direct=replicas * 0.8,
-        body_peak_rooftop=replicas[:, :, 1] * 0.2,
+        body_peak_rooftop=rooftop_peak,
         body_mean_rooftop=replicas[:, :, 1] * 0.1,
+        body_sab_rooftop=np.stack((rooftop_peak, np.zeros_like(rooftop_peak)), axis=2),
         trace_seconds=np.ones((32, 13)),
         rho_sum=np.ones((13, 3, 4)),
         local_grid=np.ones((4, 3)),
@@ -303,7 +312,8 @@ def test_checkpoint_analysis_covers_every_curve_in_the_published_cdf(tmp_path: p
     }
     assert len(final["body_peak_rooftop"]["fixed_route_cdf"]["ordered_estimate_db"]) == 13
     assert len(final["body_mean_rooftop"]["fixed_route_cdf"]["ordered_estimate_db"]) == 13
-    assert final["coverage"]["joint_family_statistics"] == 155
+    assert final["coverage"]["joint_family_statistics"] == 150
+    assert final["body_peak_rooftop"]["face_mean_family_statistics"] == 26
     assert final["coverage"]["per_look_confidence_nominal"] == pytest.approx(59.0 / 60.0)
     assert report["planned_look_coverage"]["production_exact_values"]["alpha_per_formal_look"] == "1/60"
     assert report["identity_sha256"] == "campaign"
@@ -315,13 +325,14 @@ def test_joint_analysis_keeps_physical_direct_zeros_without_a_db_floor() -> None
     direct = np.ones_like(total)
     direct[:, 0, 0] = 0.0
     direct[:8, 1, 0] = 0.0
-    peak = np.full((16, 3), 0.2)
+    sab = np.zeros((16, 3, 2), dtype=np.float64)
+    sab[:, :, 0] = 0.2
     mean = np.full((16, 3), 0.1)
 
     report = analyse_joint_replicas(
         total,
         direct,
-        peak,
+        sab,
         mean,
         looks=(8, 16),
         planned_formal_looks=(8, 16),
@@ -337,6 +348,73 @@ def test_joint_analysis_keeps_physical_direct_zeros_without_a_db_floor() -> None
     assert rooftop["zero_replica_count_by_standpoint"] == [16, 8, 0]
     assert "No logarithmic floor" in direct_report["zero_policy"]
     assert any("direct susceptibility" in value for value in report["confidence_family"]["excluded"])
+
+
+def test_body_peak_targets_maximum_of_the_mean_surface_field() -> None:
+    replicas = 16
+    total = np.ones((replicas, 2, 1), dtype=np.float64)
+    direct = np.full_like(total, 0.5)
+    sab = np.empty((replicas, 2, 2), dtype=np.float64)
+    sab[0::2, 0] = (1.01, 1.0)
+    sab[1::2, 0] = (1.0, 1.01)
+    sab[:, 1] = (4.0, 1.0)
+    mean = np.mean(sab, axis=2)
+
+    report = analyse_joint_replicas(
+        total,
+        direct,
+        sab,
+        mean,
+        looks=(16,),
+        planned_formal_looks=(16,),
+        model_names=("rooftop",),
+        bootstrap_replicates=200,
+    )
+
+    body = report["looks"][0]["body_peak_rooftop"]
+    assert body["point_estimate_db"][0] == pytest.approx(10.0 * np.log10(1.005))
+    assert body["point_estimate_db"][0] != pytest.approx(10.0 * np.log10(1.01))
+    selection = body["peak_selection_stability"]
+    assert selection["points"][0]["seed_mean_peak_minus_physical_peak_db"] == pytest.approx(
+        10.0 * np.log10(1.01 / 1.005)
+    )
+    assert selection["points"][0]["pass"] is False
+    assert "tied peak surfaces" in body["interval_method"]
+    assert report["looks"][0]["uncertainty_pass"] is True
+
+
+def test_chunked_body_peak_bootstrap_matches_brute_force() -> None:
+    rng = np.random.default_rng(104)
+    sab = rng.uniform(0.1, 2.0, size=(4, 2, 5))
+    indices = rng.integers(0, 4, size=(101, 4))
+
+    estimate, face_band, _selection = _bootstrap_peak_of_mean_sab(
+        sab,
+        indices,
+        minimum_stable_fraction=0.5,
+        bootstrap_batch=3,
+    )
+    brute_fields = np.mean(sab[indices], axis=1)
+    scale = np.std(sab, axis=0, ddof=0) / np.sqrt(4)
+    standardized = np.divide(
+        np.abs(brute_fields - np.mean(sab, axis=0)),
+        scale,
+        out=np.zeros_like(brute_fields),
+        where=scale > 0.0,
+    )
+
+    assert estimate == pytest.approx(np.max(np.mean(sab, axis=0), axis=1))
+    assert face_band["estimate_surface"] == pytest.approx(np.mean(sab, axis=0))
+    assert face_band["scale_surface"] == pytest.approx(scale)
+    assert face_band["standardized_max"] == pytest.approx(np.max(standardized, axis=(1, 2)))
+
+    _estimate_one, face_band_one, _selection_one = _bootstrap_peak_of_mean_sab(
+        sab,
+        indices,
+        minimum_stable_fraction=0.5,
+        bootstrap_batch=1,
+    )
+    assert face_band_one["standardized_max"] == pytest.approx(face_band["standardized_max"])
 
 
 def test_identity_mismatch_quarantines_every_managed_look_file(tmp_path: pathlib.Path) -> None:
@@ -414,6 +492,100 @@ def test_manifest_names_only_matching_planned_look_analyses(tmp_path: pathlib.Pa
         )
 
 
+def test_reached_look_files_are_regenerated_after_checkpoint_crash(tmp_path: pathlib.Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "root": ".",
+                "output_dir": "output",
+                "reference": {"manifest": "m", "locations": "l", "spectra": "s"},
+                "base_seeds": list(range(7, 39)),
+                "diagnostic_look": 8,
+                "looks": [16, 24, 32],
+                "bootstrap": {"replicates": 100, "seed": 4},
+            }
+        )
+    )
+    config = CdfConvergenceConfig.load(config_path)
+    replicas = _quiet_replicas()[:24]
+    peak = replicas[:, :, 1] * 0.2
+    checkpoint = CampaignCheckpoint(
+        base_seeds=np.arange(7, 31),
+        chi=replicas,
+        chi_direct=replicas * 0.8,
+        body_peak_rooftop=peak,
+        body_mean_rooftop=peak / 2.0,
+        body_sab_rooftop=np.stack((peak, np.zeros_like(peak)), axis=2),
+        trace_seconds=np.ones((24, 13)),
+        rho_sum=np.ones((13, 3, 4)),
+        local_grid=np.ones((4, 3)),
+        solid_angle=np.pi,
+    )
+
+    report = _write_reached_formal_analyses(config, checkpoint, "campaign")
+
+    assert report is not None
+    look16_path = config.output_dir / "analysis_look16.json"
+    look24_path = config.output_dir / "analysis_look24.json"
+    assert [look["replicas"] for look in json.loads(look16_path.read_text())["looks"]] == [8, 16]
+    assert [look["replicas"] for look in json.loads(look24_path.read_text())["looks"]] == [8, 16, 24]
+    look24_bytes = look24_path.read_bytes()
+
+    look16_path.unlink()
+    _write_reached_formal_analyses(config, checkpoint, "campaign")
+
+    assert look16_path.is_file()
+    assert look24_path.read_bytes() == look24_bytes
+
+
+def test_same_identity_dry_run_preserves_a_sealed_plan(tmp_path: pathlib.Path) -> None:
+    output = tmp_path / "output"
+    output.mkdir()
+    identity = "campaign"
+    plan_path = output / "plan.json"
+    analysis_path = output / "analysis.json"
+    plan_path.write_text(json.dumps({"identity_sha256": identity, "created_utc": "original"}) + "\n")
+    analysis_path.write_text("sealed analysis\n")
+
+    def metadata(path: pathlib.Path) -> dict[str, object]:
+        payload = path.read_bytes()
+        return {
+            "path": path.name,
+            "bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+        }
+
+    (output / "manifest.json").write_text(
+        json.dumps(
+            {
+                "identity_sha256": identity,
+                "artifacts": {"plan": metadata(plan_path), "analysis": metadata(analysis_path)},
+            }
+        )
+    )
+    original = plan_path.read_bytes()
+
+    prepared = _prepare_campaign_plan(
+        output,
+        identity,
+        {"identity_sha256": identity, "created_utc": "replacement"},
+        dry_run=True,
+    )
+
+    assert prepared == plan_path
+    assert plan_path.read_bytes() == original
+
+    analysis_path.write_text("changed\n")
+    with pytest.raises(RuntimeError, match="does not match its manifest"):
+        _prepare_campaign_plan(
+            output,
+            identity,
+            {"identity_sha256": identity, "created_utc": "replacement"},
+            dry_run=True,
+        )
+
+
 def test_production_tissue_database_hash_is_pinned() -> None:
     config = SimpleNamespace(contract="korenmarkt_cdf_stopping_4096_v1")
     expected = {
@@ -431,8 +603,14 @@ def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> No
         base_seeds=np.asarray([7, 8]),
         chi=np.ones((2, 2, 3)),
         chi_direct=np.full((2, 2, 3), 0.5),
-        body_peak_rooftop=np.asarray([[10.0, 20.0], [14.0, 24.0]]),
-        body_mean_rooftop=np.asarray([[4.0, 8.0], [6.0, 10.0]]),
+        body_peak_rooftop=np.asarray([[4.0, 7.0], [3.0, 6.0]]),
+        body_mean_rooftop=np.asarray([[2.5, 5.5], [2.5, 5.5]]),
+        body_sab_rooftop=np.asarray(
+            [
+                [[4.0, 1.0], [7.0, 4.0]],
+                [[2.0, 3.0], [5.0, 6.0]],
+            ]
+        ),
         trace_seconds=np.ones((2, 2)),
         rho_sum=np.ones((2, 3, 2)),
         local_grid=fibonacci_sphere(2),
@@ -480,7 +658,8 @@ def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> No
         study,
     )
 
-    assert [row["rooftop_peak_sab_w_m2"] for row in ensemble["rows"]] == [12.0, 22.0]
-    assert [row["rooftop_peak_of_mean_spectrum_w_m2"] for row in ensemble["rows"]] == [3.0, 6.0]
+    assert [row["rooftop_peak_sab_w_m2"] for row in ensemble["rows"]] == [3.0, 6.0]
+    assert [row["rooftop_seed_mean_peak_sab_w_m2"] for row in ensemble["rows"]] == [3.5, 6.5]
     assert ensemble["published_body_peak"]["field"] == "rooftop_peak_sab_w_m2"
-    assert ensemble["body_peak_plugin_diagnostic"]["confidence_bounded"] is False
+    assert ensemble["body_peak_jensen_diagnostic"]["confidence_bounded"] is False
+    assert ensemble["body_peak_retained_field_check"]["maximum_absolute_difference_db"] == pytest.approx(0.0)
