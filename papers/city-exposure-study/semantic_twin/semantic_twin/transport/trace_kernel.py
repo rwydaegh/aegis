@@ -434,6 +434,9 @@ def run_batch(
         observers.recorder.begin(origin, count)
     if observers.gather is not None:
         observers.gather.begin(origin, count)
+        set_launch_cells = getattr(observers.gather, "set_launch_cells", None)
+        if set_launch_cells is not None:
+            set_launch_cells(state.cell)
 
     for depth in range(tracer.config.max_bounces + 1):
         if state.alive.size == 0:

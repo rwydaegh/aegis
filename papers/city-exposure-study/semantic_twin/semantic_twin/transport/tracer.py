@@ -103,6 +103,10 @@ class TraceConfig:
     seed: int = 0
     batch: int = 400_000
 
+    def __post_init__(self) -> None:
+        if self.rays <= 0:
+            raise ValueError("rays must be positive")
+
     def as_dict(self) -> dict[str, Any]:
         return dict(self.__dict__)
 

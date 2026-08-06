@@ -244,6 +244,13 @@ class MultiGather:
         for observer in self.observers:
             observer.begin(origin, count)
 
+    def set_launch_cells(self, cells: np.ndarray) -> None:
+        """Forward optional local launch-cell state to field observers."""
+        for observer in self.observers:
+            setter = getattr(observer, "set_launch_cells", None)
+            if setter is not None:
+                setter(cells)
+
     def vertex(self, *args: Any, **kwargs: Any) -> None:
         for observer in self.observers:
             observer.vertex(*args, **kwargs)

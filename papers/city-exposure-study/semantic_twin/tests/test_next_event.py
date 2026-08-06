@@ -15,7 +15,8 @@ from semantic_twin.illumination import ISOTROPIC
 from semantic_twin.propagation.geometry import PlaneGeometry
 from semantic_twin.illumination.sources import SourceSet
 from semantic_twin.transport.tracer import SbrTracer, TraceConfig
-from semantic_twin.transport.next_event import NextEventGather
+from semantic_twin.transport.next_event import NextEventEstimator, NextEventGather, _direct_field_masses
+from semantic_twin.transport.observers import MultiGather
 
 
 def one_site(height_m: float) -> SourceSet:
@@ -26,6 +27,19 @@ def one_site(height_m: float) -> SourceSet:
         azimuths=0,
         builders=0,
     )
+
+
+class OpenSky:
+    """Controlled geometry with exact visibility and no tracer intersections."""
+
+    def intersect(self, origins: np.ndarray, directions: np.ndarray) -> tuple[np.ndarray, ...]:
+        count = np.asarray(origins).shape[0]
+        return (
+            np.zeros(count, dtype=bool),
+            np.full(count, 1.0e30),
+            np.zeros((count, 3)),
+            np.zeros(count, dtype=np.int64),
+        )
 
 
 def bounce_over_plane(
@@ -195,3 +209,165 @@ def test_the_plane_answer_does_not_care_where_the_connection_starts():
     """
     values = np.array([bounce_over_plane(20.0, 10.0, rays=100_000, lift_m=lift) for lift in (0.0, 1e-3, 1e-2, 1e-1)])
     assert values.max() / values.min() < 1.01
+
+
+def test_direct_field_uses_receiver_directions_and_explicit_source_weights():
+    geometry = OpenSky()
+    sources = SourceSet(
+        positions=np.array([[3.0, 0.0, 0.0], [0.0, 0.0, 8.0]]),
+        cell_m=1.0,
+        dims=3,
+        azimuths=0,
+        builders=0,
+        source_weights=np.array([1.0, 3.0]),
+    )
+    grid = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    masses, seen = _direct_field_masses(geometry, np.zeros(3), sources, grid)
+    assert masses == pytest.approx([0.25 / 9.0, 0.75 / 64.0])
+    assert seen == pytest.approx(1.0)
+
+
+def test_field_bounced_deposits_follow_original_launch_cells():
+    geometry = OpenSky()
+    sources = one_site(10.0)
+    grid = np.array([[0.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
+    gather = NextEventGather(
+        geometry=geometry,
+        sources=sources,
+        rng=np.random.default_rng(1),
+        max_order=2,
+        field_grid=grid,
+    )
+    gather.begin(np.zeros(3), 2)
+    gather.set_launch_cells(np.array([0, 1]))
+    gather.vertex(
+        index=np.array([0, 1]),
+        position=np.zeros((2, 3)),
+        incoming=np.tile([0.0, 0.0, -1.0], (2, 1)),
+        normal=np.tile([0.0, 0.0, 1.0], (2, 1)),
+        throughput=np.array([1.0, 2.0]),
+        share=np.zeros(2),
+        order=np.ones(2, dtype=np.int64),
+        path_length=np.ones(2),
+    )
+    field = gather.field()
+    expected = np.array([0.02, 0.04])
+    assert field.bounced_mass == pytest.approx(expected)
+    assert field.bounced == pytest.approx(gather.chi_bounce(), rel=1.0e-14)
+    assert field.arrival_directions == pytest.approx(-grid)
+
+
+def test_field_direction_sign_matches_body_coupler_reciprocity():
+    grid = np.array([[1.0, 0.0, 0.0]])
+    field = NextEventGather(
+        geometry=OpenSky(),
+        sources=one_site(10.0),
+        rng=np.random.default_rng(0),
+        field_grid=grid,
+    ).field(np.array([1.0]))
+    body_normal = np.array([1.0, 0.0, 0.0])
+    # BodyCoupler constructs k_hat=-local_grid and evaluates n dot (-k_hat).
+    assert np.dot(body_normal, -field.arrival_directions[0]) == pytest.approx(1.0)
+    assert field.normalized_density("direct", field.direct)[0] == pytest.approx(1.0 / field.solid_angle)
+
+
+def test_multi_gather_forwards_launch_cells_only_to_field_observers():
+    field_gather = NextEventGather(
+        geometry=OpenSky(),
+        sources=one_site(10.0),
+        rng=np.random.default_rng(0),
+        field_grid=np.array([[0.0, 0.0, 1.0]]),
+    )
+
+    class ScalarObserver:
+        def begin(self, origin: np.ndarray, count: int) -> None:
+            del origin, count
+
+        def vertex(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
+
+    combined = MultiGather((ScalarObserver(), field_gather))
+    cells = np.array([3, 7], dtype=np.int64)
+    combined.begin(np.zeros(3), cells.size)
+    combined.set_launch_cells(cells)
+    assert field_gather._launch_cells is not None
+    assert np.array_equal(field_gather._launch_cells, cells)
+
+
+def test_estimate_field_conserves_direct_and_bounced_scalars_across_batches():
+    geometry = PlaneGeometry(0.0)
+    config = TraceConfig(rays=2_000, batch=137, max_bounces=2, seed=5, local_cells=32)
+    tracer = SbrTracer(geometry, None, np.array([PEC_PERMITTIVITY]), np.array([1.0]), config)
+    sources = SourceSet(
+        positions=np.array([[0.0, 0.0, 20.0], [8.0, 0.0, 18.0]]),
+        cell_m=1.0,
+        dims=3,
+        azimuths=0,
+        builders=0,
+        source_weights=np.array([1.0, 2.0]),
+    )
+    estimator = NextEventEstimator(tracer, geometry, sources, samples=2)
+    scalar = estimator.estimate(np.array([0.0, 0.0, 10.0]), seed=11)
+    with_field, field = estimator.estimate_field(np.array([0.0, 0.0, 10.0]), seed=11)
+    assert with_field == scalar
+    assert field.direct == pytest.approx(scalar.direct, rel=1.0e-14, abs=1.0e-15)
+    assert field.bounced == pytest.approx(scalar.bounced, rel=1.0e-14, abs=1.0e-15)
+    assert field.total == pytest.approx(scalar.total, rel=1.0e-14, abs=1.0e-15)
+    assert np.sum(field.direct_density) * field.solid_angle == pytest.approx(scalar.direct)
+    assert np.sum(field.bounced_density) * field.solid_angle == pytest.approx(scalar.bounced)
+    assert field.diagnostic and field.missing_specular and not field.includes_specular
+
+
+def test_source_weights_are_validated_and_equal_defaults_remain_legacy():
+    with pytest.raises(ValueError, match="source_weights"):
+        SourceSet(np.zeros((2, 3)), 1.0, 3, 0, 0, source_weights=np.ones(1))
+    with pytest.raises(ValueError, match="nonnegative"):
+        SourceSet(np.zeros((2, 3)), 1.0, 3, 0, 0, source_weights=np.array([1.0, -1.0]))
+    equal = SourceSet(np.zeros((2, 3)), 1.0, 3, 0, 0)
+    explicit = SourceSet(np.zeros((2, 3)), 1.0, 3, 0, 0, source_weights=np.ones(2))
+    assert equal.normalized_source_weights() == pytest.approx(explicit.normalized_source_weights())
+
+
+def test_sources_preserve_existing_position_dtype_and_weight_provenance():
+    positions = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+    unweighted = SourceSet(positions, 1.0, 3, 0, 0)
+    assert unweighted.positions.dtype == np.float32
+    assert "weight_provenance" not in unweighted.describe()
+    assert unweighted.weight_provenance()["mode"] == "equal"
+
+    first = SourceSet(positions, 1.0, 3, 0, 0, source_weights=np.array([1.0, 2.0]))
+    second = SourceSet(positions, 1.0, 3, 0, 0, source_weights=np.array([10.0, 20.0]))
+    first_provenance = first.weight_provenance()
+    second_provenance = second.weight_provenance()
+    assert first_provenance["mode"] == "explicit"
+    assert first_provenance["count"] == 2
+    assert first_provenance["nonzero"] == 2
+    assert first_provenance["normalized_weights_sha256"] == second_provenance["normalized_weights_sha256"]
+    assert first_provenance["canonicalization"].endswith("ascii_v1")
+    assert first.describe()["weight_provenance"] == first_provenance
+
+    triple_positions = np.vstack([positions, [[7.0, 8.0, 9.0]]]).astype(np.float32)
+    decimal = SourceSet(triple_positions, 1.0, 3, 0, 0, source_weights=np.array([0.1, 0.2, 0.3]))
+    integer = SourceSet(triple_positions, 1.0, 3, 0, 0, source_weights=np.array([1.0, 2.0, 3.0]))
+    different = SourceSet(triple_positions, 1.0, 3, 0, 0, source_weights=np.array([1.0, 2.0, 4.0]))
+    assert (
+        decimal.weight_provenance()["normalized_weights_sha256"]
+        == integer.weight_provenance()["normalized_weights_sha256"]
+    )
+    assert (
+        decimal.weight_provenance()["normalized_weights_sha256"]
+        != different.weight_provenance()["normalized_weights_sha256"]
+    )
+
+    zero = SourceSet(triple_positions, 1.0, 3, 0, 0, source_weights=np.array([0.0, 1.0, 3.0]))
+    assert zero.weight_provenance()["nonzero"] == 2
+    little = SourceSet(triple_positions, 1.0, 3, 0, 0, source_weights=np.array([1.0, 2.0, 3.0], dtype="<f8"))
+    big = SourceSet(triple_positions, 1.0, 3, 0, 0, source_weights=np.array([1.0, 2.0, 3.0], dtype=">f8"))
+    assert (
+        little.weight_provenance()["normalized_weights_sha256"] == big.weight_provenance()["normalized_weights_sha256"]
+    )
+
+
+def test_trace_config_rejects_zero_rays_early():
+    with pytest.raises(ValueError, match="rays must be positive"):
+        TraceConfig(rays=0)
