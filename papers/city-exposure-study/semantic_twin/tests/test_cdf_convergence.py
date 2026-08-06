@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 from dataclasses import fields, replace
@@ -195,6 +196,8 @@ def test_config_pins_the_production_replica_sequence() -> None:
         (("body_peak", "selection_stability_min_fraction"), 0.90),
         (("body_model",), "isotropic"),
         (("body_source", "phantom"), "ella"),
+        (("body_source", "filename"), "ella.stl"),
+        (("body_source", "data_dir"), "../../different-data"),
         (("body_source", "mass_kg"), 58.0),
         (("thresholds", "point_p90_db"), 0.11),
         (("thresholds", "point_max_db"), 0.16),
@@ -1120,7 +1123,14 @@ def test_non_duke_named_contract_controls_body_path_hash_and_sync_inventory(
     ella_path.write_bytes(b"named Ella body")
     ella_sha = hashlib.sha256(ella_path.read_bytes()).hexdigest()
     base = KORENMARKT_CDF_STOPPING_4096_V1
-    ella_body = replace(base.body, phantom="ella", mass_kg=58.0, sha256=ella_sha)
+    ella_body = replace(
+        base.body,
+        phantom="ella",
+        filename="ella.stl",
+        data_dir=".",
+        mass_kg=58.0,
+        sha256=ella_sha,
+    )
     contract = replace(
         base,
         name="ella_cdf_contract",
@@ -1133,8 +1143,13 @@ def test_non_duke_named_contract_controls_body_path_hash_and_sync_inventory(
     document.update(
         {
             "contract": contract.name,
-            "root": str(STUDY_ROOT),
-            "body_source": {"phantom": "ella", "mass_kg": 58.0},
+            "root": str(tmp_path),
+            "body_source": {
+                "phantom": "ella",
+                "filename": "ella.stl",
+                "data_dir": ".",
+                "mass_kg": 58.0,
+            },
         }
     )
     config_path = tmp_path / "cdf_ella.json"
@@ -1149,6 +1164,103 @@ def test_non_duke_named_contract_controls_body_path_hash_and_sync_inventory(
     inventory = capsys.readouterr().out.splitlines()
     assert f"body\tella.stl\t{ella_sha}" in inventory
     assert any(line.startswith("reference\tconfig/cdf_ella.json\t") for line in inventory)
+
+
+def test_production_body_path_relocates_with_the_checkout(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AEGIS_DATA_DIR", raising=False)
+    relocated = tmp_path / "relocated-aegis"
+    config_dir = relocated / "papers" / "city-exposure-study" / "semantic_twin" / "config"
+    config_dir.mkdir(parents=True)
+    data_dir = relocated / "data"
+    data_dir.mkdir()
+    shutil.copyfile(STUDY_ROOT.parents[2] / "data" / "duke.stl", data_dir / "duke.stl")
+    config_path = config_dir / PRODUCTION_CONFIG.name
+    shutil.copyfile(PRODUCTION_CONFIG, config_path)
+
+    config = CdfConvergenceConfig.load(config_path)
+
+    assert config.body_path == (data_dir / "duke.stl").resolve()
+    assert config.validate_body_file() == config.body_path
+    body_record = config.scientific_config()["body_source"]
+    assert body_record["filename"] == "duke.stl"
+    assert "path" not in body_record
+    scientific = json.dumps(config.scientific_config())
+    assert str(tmp_path) not in scientific
+    assert "/home/user" not in scientific
+
+
+def test_aegis_data_dir_overrides_the_configured_repository_data_dir(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shutil.copyfile(STUDY_ROOT.parents[2] / "data" / "duke.stl", tmp_path / "duke.stl")
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path))
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+
+    assert config.body_path == (tmp_path / "duke.stl").resolve()
+    assert config.validate_body_file() == config.body_path
+
+
+def test_production_body_override_rejects_bad_bytes(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    body = bytearray((STUDY_ROOT.parents[2] / "data" / "duke.stl").read_bytes())
+    body[-3] ^= 1
+    (tmp_path / "duke.stl").write_bytes(body)
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path))
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+
+    with pytest.raises(ValueError, match="production body hash changed"):
+        config.validate_body_file()
+
+
+def test_production_body_override_rejects_wrong_triangle_count(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "duke.stl").write_bytes(b"\0" * 80 + (1).to_bytes(4, "little") + b"\0" * 50)
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        cdf_convergence,
+        "_file_sha256",
+        lambda _path: KORENMARKT_CDF_STOPPING_4096_V1.body.sha256,
+    )
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+
+    with pytest.raises(ValueError, match="production body triangle count changed.*1 != 56024"):
+        config.validate_body_file()
+
+
+def test_legacy_custom_body_resolution_fails_when_repository_roots_are_ambiguous(
+    tmp_path: pathlib.Path,
+) -> None:
+    outer = tmp_path / "outer"
+    inner = outer / "inner"
+    for root in (outer, inner):
+        (root / "data").mkdir(parents=True)
+        (root / "data" / "phantoms.yaml").write_text("{}\n")
+        (root / "pyproject.toml").write_text("[project]\nname = 'test'\nversion = '0'\n")
+    config_path = inner / "custom.json"
+    config_path.write_text(json.dumps(_custom_config_document()))
+
+    with pytest.raises(ValueError, match="body_source.data_dir is required"):
+        CdfConvergenceConfig.load(config_path)
+
+
+def test_korenmarkt_body_contract_keeps_exact_filename_hash_and_triangles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AEGIS_DATA_DIR", raising=False)
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
+    contract = KORENMARKT_CDF_STOPPING_4096_V1
+
+    assert config.body_filename == contract.body.filename == "duke.stl"
+    assert hashlib.sha256(config.validate_body_file().read_bytes()).hexdigest() == contract.body.sha256
+    assert cdf_convergence._binary_stl_triangle_count(config.body_path) == contract.body.triangles == 56_024
 
 
 @pytest.mark.parametrize(

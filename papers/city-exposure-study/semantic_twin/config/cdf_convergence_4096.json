@@ -29,6 +29,8 @@
   "body_model": "rooftop",
   "body_source": {
     "phantom": "duke",
+    "filename": "duke.stl",
+    "data_dir": "../../../data",
     "mass_kg": 72.4
   },
   "thresholds": {
