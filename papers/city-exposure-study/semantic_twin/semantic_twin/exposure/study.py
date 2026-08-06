@@ -20,7 +20,6 @@ Usage
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 from typing import Any, Sequence
 
@@ -114,7 +113,7 @@ REFERENCE_S0_W_M2 = 1.0
 #: aegis/data/phantoms.yaml. ``AEGIS_DATA_DIR`` is AEGIS's own documented data
 #: override, so honouring it here is what lets this script run on a machine
 #: where the AEGIS checkout does not sit at the same absolute path.
-PHANTOM = str(pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data")) / "duke.stl")
+PHANTOM = str(paths.aegis_data_dir() / "duke.stl")
 PHANTOM_MASS_KG = 72.4
 
 #: The Mapillary Vistas entity to RF material prior. It is a property of the
