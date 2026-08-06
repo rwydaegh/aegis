@@ -189,12 +189,14 @@ triggers it.
 
 ### 10. A passive grating returns more power than it receives (fixed)
 
-Fixed on 2026-08-06. The numerical eigensystem now separates propagating modes
-from evanescent modes using a scale-aware eigenpair residual. Propagating modes
-are directed by their normal Poynting flux. Evanescent and lossy modes are
-directed by decay. The strict passivity witness now covers both polarisations,
-five truncations and periods from the masonry pitch down to one four hundredth
-of a wavelength. It passes under Haswell, SkylakeX, Prescott and Zen OpenBLAS
+Fixed on 2026-08-06. The numerical eigensystem now removes each candidate mode's
+local eigenvalue residual with a biorthogonal Rayleigh quotient. A local
+roundoff bound separates lossless propagating modes from lossy modes without
+letting deeply evanescent orders set their tolerance. Propagating modes are
+directed by their normal Poynting flux. Evanescent and lossy modes are directed
+by decay. The strict passivity witness now covers both polarisations, five
+truncations and periods from the masonry pitch down to one four hundredth of a
+wavelength. It passes under Haswell, SkylakeX, Prescott and Zen OpenBLAS
 dispatch.
 
 `rcwa.py`, the same solver as finding 5 and a separate failure from it. A lossless

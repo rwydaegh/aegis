@@ -44,10 +44,11 @@ itself. Under the inverse rule the same step moves it by 3 parts in a million.
 The separate mode-selection failure in finding 10 is fixed. Lossless
 propagating eigenvalues lie on the negative real axis, but LAPACK leaves a tiny
 imaginary residual whose sign changes with its BLAS kernel. The solver now
-compares that residual with the computed eigenpair's backward error. It directs
-propagating modes by normal Poynting flux and every other mode by decay. The
-passivity ladder covers periods down to one four hundredth of a wavelength on
-both polarisations and across four OpenBLAS dispatch targets.
+removes the local eigenvalue residual with a biorthogonal Rayleigh quotient and
+compares its imaginary part with a local roundoff bound. It directs propagating
+modes by normal Poynting flux and every other mode by decay. The passivity ladder
+covers periods down to one four hundredth of a wavelength on both polarisations
+and across four OpenBLAS dispatch targets.
 
 The remaining factorisation defect is not visible to an energy identity.
 ``R + T`` stays consistent to 1e-15 while ``R`` is wrong. Test this module
@@ -236,6 +237,7 @@ def _normal_flux(w_matrix: np.ndarray, v_matrix: np.ndarray) -> np.ndarray:
 def _numerical_mode_branches(
     omega_squared: np.ndarray,
     eigenvalues: np.ndarray,
+    left_eigenvectors: np.ndarray,
     w_matrix: np.ndarray,
     q_matrix: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -244,24 +246,40 @@ def _numerical_mode_branches(
     A lossless propagating mode has a negative real eigenvalue. LAPACK leaves a
     small imaginary residual whose sign depends on the BLAS kernel. Taking its
     square root turns that residual into an artificial real part, so decay alone
-    cannot choose the direction. Residuals below the backward error of the
-    computed eigenpair are projected back to the negative real axis. Those
-    modes are then directed by their normal Poynting flux. Every other mode is
-    directed by decay under ``exp(-lam z')``.
+    cannot choose the direction. A biorthogonal Rayleigh quotient removes the
+    local eigenvalue residual without importing the scale of deeply evanescent
+    modes. Imaginary parts below that quotient's roundoff bound are projected
+    back to the negative real axis. Those modes are then directed by their
+    normal Poynting flux. Every other mode is directed by decay under
+    ``exp(-lam z')``.
     """
     dimension = omega_squared.shape[0]
-    roots = np.sqrt(np.asarray(eigenvalues, dtype=np.complex128))
     candidates = np.flatnonzero(eigenvalues.real < 0.0)
     propagating = np.zeros(dimension, dtype=bool)
     if candidates.size:
-        vectors = w_matrix[:, candidates]
-        residual = omega_squared @ vectors - vectors * eigenvalues[candidates][None, :]
-        residual_norm = np.linalg.norm(residual, axis=0) / np.linalg.norm(vectors, axis=0)
-        matrix_scale = max(float(np.linalg.norm(omega_squared, ord=np.inf)), 1.0)
-        roundoff = np.finfo(np.float64).eps * dimension * (matrix_scale + np.abs(eigenvalues[candidates]))
-        uncertainty = np.maximum(residual_norm, roundoff)
-        propagating[candidates] = np.abs(eigenvalues[candidates].imag) <= uncertainty
+        right = w_matrix[:, candidates]
+        left = left_eigenvectors[:, candidates]
+        action = omega_squared @ right
+        overlap = np.sum(np.conj(left) * right, axis=0)
+        overlap_scale = np.sum(np.abs(left) * np.abs(right), axis=0)
+        stable = np.abs(overlap) > np.finfo(np.float64).eps * dimension * overlap_scale
+        refined = np.asarray(eigenvalues[candidates], dtype=np.complex128).copy()
+        refined[stable] = np.sum(np.conj(left[:, stable]) * action[:, stable], axis=0) / overlap[stable]
+        eigenvalues = np.asarray(eigenvalues, dtype=np.complex128).copy()
+        eigenvalues[candidates] = refined
 
+        action_scale = np.abs(omega_squared) @ np.abs(right[:, stable])
+        numerator_scale = np.sum(np.abs(left[:, stable]) * action_scale, axis=0)
+        local_roundoff = np.zeros(candidates.size)
+        local_roundoff[stable] = (
+            np.finfo(np.float64).eps
+            * dimension
+            * (numerator_scale + np.abs(refined[stable]) * overlap_scale[stable])
+            / np.abs(overlap[stable])
+        )
+        propagating[candidates] = stable & (refined.real < 0.0) & (np.abs(refined.imag) <= local_roundoff)
+
+    roots = np.sqrt(np.asarray(eigenvalues, dtype=np.complex128))
     roots[propagating] = 1j * np.sqrt(-eigenvalues[propagating].real)
     v_matrix = np.asarray(q_matrix @ w_matrix, dtype=np.complex128)
     v_matrix /= roots[None, :]
@@ -324,8 +342,19 @@ def _layer_modes(
     # every intermediate is released before the next one is formed.
     omega_squared = p_matrix @ q_matrix
     del p_matrix
-    eigenvalues, w_matrix = sla.eig(omega_squared, overwrite_a=False)
-    v_matrix, lam = _numerical_mode_branches(omega_squared, eigenvalues, w_matrix, q_matrix)
+    eigenvalues, left_eigenvectors, w_matrix = sla.eig(
+        omega_squared,
+        left=True,
+        overwrite_a=False,
+    )
+    v_matrix, lam = _numerical_mode_branches(
+        omega_squared,
+        eigenvalues,
+        left_eigenvectors,
+        w_matrix,
+        q_matrix,
+    )
+    del left_eigenvectors
     del omega_squared
     del q_matrix
     return w_matrix, v_matrix, lam
