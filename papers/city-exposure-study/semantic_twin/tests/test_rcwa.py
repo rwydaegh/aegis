@@ -2,9 +2,15 @@ import math
 
 import numpy as np
 import pytest
+import scipy.linalg as sla
 
 from semantic_twin.materials.masonry import BRICK_FORMATS, RECESSED_JOINT, STACK_BOND, JointGeometry, MasonryWall
 from semantic_twin.materials.masonry import Layer, convolution_matrix, harmonic_indices, solve
+from semantic_twin.materials.masonry.rcwa import (
+    _normal_flux,
+    _numerical_mode_branches,
+    _pq_matrices,
+)
 
 
 def fresnel(permittivity: complex, theta_deg: float, polarisation: str) -> float:
@@ -97,6 +103,123 @@ def test_a_lossless_patterned_grating_conserves_energy() -> None:
     )
     assert solution.diffuse_efficiency > 1e-4
     assert solution.total_reflectance + solution.total_transmittance == pytest.approx(1.0, abs=2e-3)
+
+
+def test_lossless_propagating_modes_ignore_cross_dispatch_eigenvalue_residuals() -> None:
+    """Tiny residuals on either side of the branch cut select the same modes.
+
+    The two imaginary perturbations bracket those measured from Haswell and
+    SkylakeX on the passive grating witness. Both transverse field modes must
+    carry power towards ``+z`` after selection.
+    """
+    kx = np.array([0.2])
+    ky = np.array([0.0])
+    eps = 4.0 * np.eye(1)
+    p_matrix, q_matrix = _pq_matrices(eps, np.eye(1) / 4.0, kx, ky)
+    omega_squared = p_matrix @ q_matrix
+    eigenvalues = np.array([-3.96 + 4.1e-12j, -3.96 - 3.8e-12j])
+
+    v_matrix, roots = _numerical_mode_branches(
+        omega_squared,
+        eigenvalues,
+        np.eye(2),
+        np.eye(2),
+        q_matrix,
+    )
+
+    assert np.all(roots.real == 0.0)
+    assert np.all(roots.imag < 0.0)
+    assert np.all(_normal_flux(np.eye(2), v_matrix) > 0.0)
+
+
+@pytest.mark.parametrize("kx_value", [0.2, 3.0])
+@pytest.mark.parametrize("loss", [0.0, 2e-6, 0.2])
+def test_numerical_modes_are_outgoing_or_decaying(kx_value: float, loss: float) -> None:
+    """TE and TM modes use power flow when propagating and decay otherwise."""
+    permittivity = complex(4.0, loss)
+    kx = np.array([kx_value])
+    ky = np.array([0.0])
+    eps = permittivity * np.eye(1)
+    p_matrix, q_matrix = _pq_matrices(eps, np.eye(1) / permittivity, kx, ky)
+    omega_squared = p_matrix @ q_matrix
+    eigenvalues, left_eigenvectors, w_matrix = sla.eig(omega_squared, left=True)
+
+    v_matrix, roots = _numerical_mode_branches(
+        omega_squared,
+        eigenvalues,
+        left_eigenvectors,
+        w_matrix,
+        q_matrix,
+    )
+    flux = _normal_flux(w_matrix, v_matrix)
+
+    if kx_value < permittivity.real**0.5:
+        assert np.all(flux > 0.0)
+        assert np.all(roots.imag < 0.0)
+    else:
+        assert np.all(roots.real > 0.0)
+    if loss > 0.0:
+        assert np.all(roots.real > 0.0)
+
+
+@pytest.mark.parametrize(
+    ("polarisation", "expected_absorption"),
+    [("te", 7.85e-7), ("tm", 1.57e-6)],
+)
+def test_weak_loss_survives_deeply_evanescent_matrix_scales(
+    polarisation: str,
+    expected_absorption: float,
+) -> None:
+    """Large evanescent eigenvalues must not hide physical material loss."""
+    frequency = 15.0e9
+    wavelength = 299_792_458.0 / frequency
+    x = (np.arange(1024) + 0.5) / 1024
+    profile = np.where(
+        np.abs(x - 0.5) < 0.25,
+        6.0 + 2e-6j,
+        1.5 + 2e-6j,
+    )[None, :]
+
+    solution = solve(
+        [Layer(1.0), Layer(profile, thickness_m=0.003), Layer(2.0)],
+        period_x_m=wavelength / 400.0,
+        period_y_m=wavelength / 400.0,
+        frequency_hz=frequency,
+        theta_deg=17.0,
+        polarisation=polarisation,
+        harmonics=(32, 0),
+    )
+
+    assert solution.absorbed == pytest.approx(expected_absorption, rel=0.01)
+
+
+@pytest.mark.parametrize("polarisation", ["te", "tm"])
+@pytest.mark.parametrize("loss", [0.0, 0.2])
+def test_a_subwavelength_patterned_slab_is_passive_and_reciprocal(polarisation: str, loss: float) -> None:
+    frequency = 15.0e9
+    wavelength = 299_792_458.0 / frequency
+    x = (np.arange(1024) + 0.5) / 1024
+    profile = np.where(np.abs(x - 0.5) < 0.25, 6.0 + 1j * loss, 1.5 + 1j * loss)[None, :]
+    common = dict(
+        layers=[Layer(1.0), Layer(profile, thickness_m=0.003), Layer(2.0)],
+        period_x_m=wavelength / 20.0,
+        period_y_m=wavelength / 20.0,
+        frequency_hz=frequency,
+        polarisation=polarisation,
+        harmonics=(16, 0),
+    )
+
+    reverse = solve(theta_deg=-17.0, **common)
+    forward = solve(theta_deg=17.0, **common)
+
+    assert forward.total_reflectance == pytest.approx(reverse.total_reflectance, abs=1e-9)
+    assert forward.total_transmittance == pytest.approx(reverse.total_transmittance, abs=1e-9)
+    assert 0.0 <= forward.total_reflectance <= 1.0
+    assert 0.0 <= forward.total_transmittance <= 1.0
+    if loss == 0.0:
+        assert forward.total_reflectance + forward.total_transmittance == pytest.approx(1.0, abs=1e-9)
+    else:
+        assert 0.0 < forward.absorbed < 1.0
 
 
 def test_a_uniform_substrate_is_recognised_and_a_patterned_one_is_not() -> None:

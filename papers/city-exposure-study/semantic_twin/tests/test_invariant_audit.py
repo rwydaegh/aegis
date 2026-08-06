@@ -987,12 +987,9 @@ def test_a_deeply_subwavelength_grating_is_its_own_effective_medium(
     ("regime", "period_over_wavelength", "harmonics"),
     [
         ("masonry pitch", 3.75, (4, 8, 16, 24, 32)),
-        pytest.param(
-            "deeply subwavelength",
-            20.0,
-            (4, 8, 16, 24, 32),
-            marks=finding(10, "the solve returns a total reflectance above 1 for a passive grating"),
-        ),
+        ("subwavelength", 20.0, (4, 8, 16, 24, 32)),
+        ("deeply subwavelength", 100.0, (4, 8, 16, 24, 32)),
+        ("effective-medium limit", 400.0, (4, 8, 16, 24, 32)),
     ],
 )
 def test_a_passive_grating_never_reflects_more_than_it_receives(
@@ -1004,12 +1001,10 @@ def test_a_passive_grating_never_reflects_more_than_it_receives(
     that ``convergence_sweep`` reports it. That claim needs the solve to stay
     physical along the whole ladder, and at the masonry pitch it does.
 
-    Push the period far below the wavelength and it does not. The retained
-    orders then carry transverse wavenumbers in the hundreds, the gap medium
-    permittivity goes as the square of that, and somewhere in the matrix
-    inversions the answer detaches: a passive lossless grating comes back with a
-    total reflectance of 12.8, 54, 56.7 or 58 depending on period, polarisation
-    and truncation, and nothing warns.
+    The ladder reaches one four hundredth of a wavelength. The retained orders
+    then carry transverse wavenumbers in the thousands and the gap medium
+    permittivity grows as their square. This is the regime where a numerical
+    mode-direction error used to return reflectances of 12.8, 54, 56.7 or 58.
 
     The reason no existing test catches it is not the energy identity, and this
     is worth stating because the obvious guess is wrong. On a patterned half
@@ -1018,24 +1013,16 @@ def test_a_passive_grating_never_reflects_more_than_it_receives(
     rather than guessing it. So ``R + T`` is ``nan`` here on every run, the
     sound ones included, and no energy test is applied to this geometry at all.
 
-    The blind spot is narrower and more ordinary. ``tests/test_rcwa.py:129``
-    already asserts ``0 < total_reflectance < 1`` on exactly this patterned half
-    space. It evaluates it at one point: the masonry cell, 10 GHz, 20 degrees,
-    harmonics ``(6, 4)``. The failure is not monotone in the period, the
-    polarisation or the truncation, so one point steps straight over it and so
-    does a convergence sweep that reads only its last row.
+    The old blind spot was narrow. ``tests/test_rcwa.py`` asserted
+    ``0 < total_reflectance < 1`` on this patterned half space at one masonry
+    point. The failure was not monotone in period, polarisation or truncation.
+    This ladder keeps every one of those axes in the invariant.
 
     Finding 5 lives in the same solver and is a separate defect. That one is a
     steady bias from Laurent's rule; this one is a broken solve.
 
-    On an unexpected pass: this is marked strict like every other pin here, but
-    treat an unexpected pass with suspicion rather than as a fix. Of the ten
-    points on the ladder exactly one violates the bound on this machine, TM at
-    32 harmonics, and it comes back as 54 rather than as something marginal.
-    Which point detaches moves with the LAPACK build, so another machine can
-    land all ten in the good region and turn this green while the solver is
-    unchanged. Confirm against the period and truncation sweep in the finding
-    before concluding anything.
+    The former strict xfail was removed only after this full ladder passed with
+    Haswell, SkylakeX, Prescott and Zen OpenBLAS dispatch.
     """
     from semantic_twin.materials.mmwave import wavelength_m
 

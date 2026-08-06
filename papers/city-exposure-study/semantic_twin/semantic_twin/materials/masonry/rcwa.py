@@ -27,12 +27,10 @@ The layer scattering matrices and the Redheffer product follow the usual
 gap-medium construction, with the gap permittivity chosen as ``1 + Kx^2 + Ky^2``
 so that the gap eigenvectors are the identity.
 
-Two defects, and neither is a truncation you can outrun
---------------------------------------------------------
+One open factorisation defect
+-----------------------------
 This solver is research code, it reaches no published number, and it carries
-two independent failures recorded as findings 5 and 10 in ``docs/BUGS.md``.
-Both are still here on purpose: the refactor moves them intact so that each fix
-lands with its own before and after number.
+the Fourier factorisation failure recorded as finding 5 in ``docs/BUGS.md``.
 
 :func:`_pq_matrices` factorises ``eps * E`` by Laurent's rule. The TM case needs
 Li's inverse rule, because the field across a stripe boundary has a
@@ -43,15 +41,18 @@ successive increments halve as the truncation doubles, a clean ``1/M`` tail, and
 going from ``M = 16`` to ``M = 32`` still moves the answer by 4.4 percent of
 itself. Under the inverse rule the same step moves it by 3 parts in a million.
 
-Separately, a lossless passive grating on a semi-infinite substrate can return a
-total reflectance far above one, with 54, 56.7 and 58 all measured. That is a
-broken solve rather than a slow one, and it is not monotone in the truncation,
-so a convergence sweep can step straight over it and a larger truncation is as
-likely to land on a bad value as a good one.
+The separate mode-selection failure in finding 10 is fixed. Lossless
+propagating eigenvalues lie on the negative real axis, but LAPACK leaves a tiny
+imaginary residual whose sign changes with its BLAS kernel. The solver now
+removes the local eigenvalue residual with a biorthogonal Rayleigh quotient and
+compares its imaginary part with a local roundoff bound. It directs propagating
+modes by normal Poynting flux and every other mode by decay. The passivity ladder
+covers periods down to one four hundredth of a wavelength on both polarisations
+and across four OpenBLAS dispatch targets.
 
-Neither is visible to an energy identity. ``R`` and ``T`` blow up together, so
-``R + T`` stays consistent to 1e-15 while both terms are nonsense. Test this
-module against a known limit, never against its own conservation.
+The remaining factorisation defect is not visible to an energy identity.
+``R + T`` stays consistent to 1e-15 while ``R`` is wrong. Test this module
+against a known limit, never against its own conservation.
 
 A residual that is physics and not either defect
 ------------------------------------------------
@@ -65,8 +66,8 @@ subwavelength facade layer cannot simply be homogenised: the effective medium is
 the limit, not the answer at any finite period.
 
 Validity. The method is exact for the permittivity profile it is given, up to
-the two defects above. Its remaining errors are the Fourier truncation, which is
-reported by :func:`convergence_sweep`, and the assumption of a strictly
+the factorisation defect above. Its remaining errors are the Fourier truncation,
+which is reported by :func:`convergence_sweep`, and the assumption of a strictly
 periodic, infinite, plane-wave-illuminated structure. Disorder and finite
 illumination are handled in :mod:`~.kirchhoff`, not here.
 """
@@ -215,11 +216,83 @@ def convolution_matrix(profile: np.ndarray, m_index: np.ndarray, n_index: np.nda
 
 
 def _branch(values: np.ndarray) -> np.ndarray:
-    """Pick the root that decays or propagates towards ``+z'`` under ``exp(-lam z')``."""
+    """Pick the analytic homogeneous root directed towards ``+z'``."""
     root = np.sqrt(np.asarray(values, dtype=np.complex128))
-    flip = (root.real < 0.0) | ((np.abs(root.real) < 1e-12) & (root.imag > 0.0))
+    flip = (root.real < 0.0) | ((root.real == 0.0) & (root.imag > 0.0))
     root = np.where(flip, -root, root)
     return root
+
+
+def _normal_flux(w_matrix: np.ndarray, v_matrix: np.ndarray) -> np.ndarray:
+    """Cell-averaged normal Poynting flux of each field mode."""
+    count = w_matrix.shape[0] // 2
+    electric_x = w_matrix[:count]
+    electric_y = w_matrix[count:]
+    magnetic_x = v_matrix[:count]
+    magnetic_y = v_matrix[count:]
+    cross = np.sum(electric_x * np.conj(magnetic_y) - electric_y * np.conj(magnetic_x), axis=0)
+    return np.real(-1j * cross)
+
+
+def _numerical_mode_branches(
+    omega_squared: np.ndarray,
+    eigenvalues: np.ndarray,
+    left_eigenvectors: np.ndarray,
+    w_matrix: np.ndarray,
+    q_matrix: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Choose outgoing or decaying roots of a numerical layer eigensystem.
+
+    A lossless propagating mode has a negative real eigenvalue. LAPACK leaves a
+    small imaginary residual whose sign depends on the BLAS kernel. Taking its
+    square root turns that residual into an artificial real part, so decay alone
+    cannot choose the direction. A biorthogonal Rayleigh quotient removes the
+    local eigenvalue residual without importing the scale of deeply evanescent
+    modes. Imaginary parts below that quotient's roundoff bound are projected
+    back to the negative real axis. Those modes are then directed by their
+    normal Poynting flux. Every other mode is directed by decay under
+    ``exp(-lam z')``.
+    """
+    dimension = omega_squared.shape[0]
+    candidates = np.flatnonzero(eigenvalues.real < 0.0)
+    propagating = np.zeros(dimension, dtype=bool)
+    if candidates.size:
+        right = w_matrix[:, candidates]
+        left = left_eigenvectors[:, candidates]
+        action = omega_squared @ right
+        overlap = np.sum(np.conj(left) * right, axis=0)
+        overlap_scale = np.sum(np.abs(left) * np.abs(right), axis=0)
+        stable = np.abs(overlap) > np.finfo(np.float64).eps * dimension * overlap_scale
+        refined = np.asarray(eigenvalues[candidates], dtype=np.complex128).copy()
+        refined[stable] = np.sum(np.conj(left[:, stable]) * action[:, stable], axis=0) / overlap[stable]
+        eigenvalues = np.asarray(eigenvalues, dtype=np.complex128).copy()
+        eigenvalues[candidates] = refined
+
+        action_scale = np.abs(omega_squared) @ np.abs(right[:, stable])
+        numerator_scale = np.sum(np.abs(left[:, stable]) * action_scale, axis=0)
+        local_roundoff = np.zeros(candidates.size)
+        local_roundoff[stable] = (
+            np.finfo(np.float64).eps
+            * dimension
+            * (numerator_scale + np.abs(refined[stable]) * overlap_scale[stable])
+            / np.abs(overlap[stable])
+        )
+        propagating[candidates] = stable & (refined.real < 0.0) & (np.abs(refined.imag) <= local_roundoff)
+
+    roots = np.sqrt(np.asarray(eigenvalues, dtype=np.complex128))
+    roots[propagating] = 1j * np.sqrt(-eigenvalues[propagating].real)
+    v_matrix = np.asarray(q_matrix @ w_matrix, dtype=np.complex128)
+    v_matrix /= roots[None, :]
+
+    flux = _normal_flux(w_matrix, v_matrix)
+    flux_scale = np.sum(np.abs(w_matrix) * np.abs(v_matrix), axis=0)
+    flux_roundoff = np.finfo(np.float64).eps * dimension * np.maximum(flux_scale, 1.0)
+    flip_propagating = propagating & ((flux < -flux_roundoff) | ((np.abs(flux) <= flux_roundoff) & (roots.imag > 0.0)))
+    flip_decaying = ~propagating & (roots.real < 0.0)
+    flip = flip_propagating | flip_decaying
+    roots[flip] *= -1.0
+    v_matrix[:, flip] *= -1.0
+    return v_matrix, roots
 
 
 def _pq_matrices(
@@ -269,12 +342,21 @@ def _layer_modes(
     # every intermediate is released before the next one is formed.
     omega_squared = p_matrix @ q_matrix
     del p_matrix
-    eigenvalues, w_matrix = sla.eig(omega_squared, overwrite_a=True)
+    eigenvalues, left_eigenvectors, w_matrix = sla.eig(
+        omega_squared,
+        left=True,
+        overwrite_a=False,
+    )
+    v_matrix, lam = _numerical_mode_branches(
+        omega_squared,
+        eigenvalues,
+        left_eigenvectors,
+        w_matrix,
+        q_matrix,
+    )
+    del left_eigenvectors
     del omega_squared
-    lam = _branch(eigenvalues)
-    v_matrix = q_matrix @ w_matrix
     del q_matrix
-    v_matrix /= lam[None, :]
     return w_matrix, v_matrix, lam
 
 
