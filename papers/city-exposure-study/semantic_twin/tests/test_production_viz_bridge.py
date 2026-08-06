@@ -595,6 +595,24 @@ def test_hero_mesh_must_match_the_production_bytes(tmp_path: pathlib.Path) -> No
         validate_mesh_digest(mesh, manifest)
 
 
+def test_production_mesh_relocates_with_the_checkout(tmp_path: pathlib.Path, monkeypatch) -> None:
+    local_root = tmp_path / "relocated-study"
+    local_mesh = local_root / "data" / "geometry" / "prague_staromestske" / "inhouse_leaf_250m_f64.ply"
+    local_mesh.parent.mkdir(parents=True)
+    local_mesh.write_bytes(b"the production mesh")
+    monkeypatch.setattr(exporter_module, "SCRIPT_DIR", local_root)
+
+    resolved = exporter_module._recorded_mesh(
+        {
+            "site": "prague_staromestske",
+            "mesh": "/home/worker/aegis/papers/city-exposure-study/semantic_twin/data/geometry/"
+            "prague_staromestske/inhouse_leaf_250m_f64.ply",
+        }
+    )
+
+    assert resolved == local_mesh
+
+
 def test_visible_path_trace_is_bounded_without_changing_physics_settings() -> None:
     production = TraceConfig(frequency_hz=15.0e9, rays=200_000, batch=400_000, max_bounces=3, seed=7)
     visible = visible_path_config(production, 1_200)

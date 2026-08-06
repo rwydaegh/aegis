@@ -721,7 +721,15 @@ def _validate_production_mode(data: ProductionData, run: RunConfig) -> None:
 
 def _recorded_mesh(manifest: dict[str, Any]) -> pathlib.Path:
     path = pathlib.Path(manifest["mesh"])
-    return path if path.is_absolute() else SCRIPT_DIR / path
+    if not path.is_absolute():
+        return SCRIPT_DIR / path
+    if path.is_file():
+        return path
+    site = manifest.get("site")
+    if not isinstance(site, str) or not site:
+        return path
+    relocated = SCRIPT_DIR / "data" / "geometry" / site / path.name
+    return relocated if relocated.is_file() else path
 
 
 def validate_face_class_digest(face_class: np.ndarray, manifest: dict[str, Any]) -> None:

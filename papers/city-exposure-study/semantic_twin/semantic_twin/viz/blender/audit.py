@@ -434,18 +434,51 @@ def check_walk_builder(manifest: pathlib.Path) -> list[str]:
     return []
 
 
+def resolve_bundle_paths(
+    site: str,
+    summary: dict,
+    *,
+    directory: pathlib.Path = VIZ,
+) -> tuple[pathlib.Path, pathlib.Path, list[str]]:
+    """Find the payload pair named by the bundle identity stored in the blend."""
+    fallback_payload = directory / f"{site}_payload.npz"
+    fallback_manifest = directory / f"{site}_manifest.json"
+    identity = summary.get("scene", {}).get("visualization_bundle_sha256")
+    if not isinstance(identity, str) or not identity:
+        return fallback_payload, fallback_manifest, []
+
+    matches: list[pathlib.Path] = []
+    for candidate in sorted(directory.glob(f"{site}*_manifest.json")):
+        try:
+            recorded = json.loads(candidate.read_text()).get("bundle", {}).get("identity_sha256")
+        except (json.JSONDecodeError, OSError, AttributeError):
+            continue
+        if recorded == identity:
+            matches.append(candidate)
+    if len(matches) != 1:
+        return (
+            fallback_payload,
+            fallback_manifest,
+            [f"bundle: expected one manifest with identity {identity}, found {len(matches)}"],
+        )
+    manifest = matches[0]
+    payload = manifest.with_name(manifest.name.replace("_manifest.json", "_payload.npz"))
+    return payload, manifest, []
+
+
 def audit(site: str, scratch: pathlib.Path) -> list[str]:
     blend = VIZ / f"{site}_propagation.blend"
     if not blend.exists():
         return [f"no blend at {blend.relative_to(ROOT)}"]
     summary = dump_blend(blend, scratch / f"{site}.json")
+    payload, manifest, bundle_problems = resolve_bundle_paths(site, summary)
     city = (summary["collections"].get("01 city mesh") or [None])[0]
-    problems = check_stale(blend, summary, last_builder_commit())
+    problems = bundle_problems + check_stale(blend, summary, last_builder_commit())
     problems += check_populated(summary)
     problems += check_finite(summary)
     problems += check_hair_curves(summary)
-    problems += check_standpoints(summary, VIZ / f"{site}_payload.npz")
-    problems += check_walk_builder(VIZ / f"{site}_manifest.json")
+    problems += check_standpoints(summary, payload)
+    problems += check_walk_builder(manifest)
     if city:
         problems += check_grounded(summary, city)
         problems += check_inside(summary, select_inside_support(summary, city))

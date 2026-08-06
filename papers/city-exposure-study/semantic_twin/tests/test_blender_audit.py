@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
+
 from semantic_twin.viz.blender.audit import (
     check_finite,
     check_hair_curves,
     check_inside,
+    resolve_bundle_paths,
     select_inside_support,
 )
 
@@ -135,3 +138,22 @@ def test_inside_check_keeps_legacy_inner_support_without_displayed_outer_mesh() 
     assert check_inside(summary, support) == [
         "outside the drawn mesh: evidence reaches 160 m, 1.6 times the drawn mesh's 100 m"
     ]
+
+
+def test_bundle_paths_follow_the_identity_stored_in_the_blend(tmp_path) -> None:
+    old = tmp_path / "prague_staromestske_manifest.json"
+    old.write_text(json.dumps({"locations": 60}))
+    current = tmp_path / "prague_staromestske_15ghz_digest_manifest.json"
+    current.write_text(json.dumps({"bundle": {"identity_sha256": "accepted-bundle"}, "locations": 68}))
+    payload = tmp_path / "prague_staromestske_15ghz_digest_payload.npz"
+    payload.touch()
+
+    resolved_payload, resolved_manifest, problems = resolve_bundle_paths(
+        "prague_staromestske",
+        {"scene": {"visualization_bundle_sha256": "accepted-bundle"}},
+        directory=tmp_path,
+    )
+
+    assert problems == []
+    assert resolved_manifest == current
+    assert resolved_payload == payload

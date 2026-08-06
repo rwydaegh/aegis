@@ -13,7 +13,6 @@ import hashlib
 import io
 import json
 import math
-import os
 import pathlib
 import platform
 import subprocess
@@ -24,6 +23,7 @@ from typing import Any
 
 import numpy as np
 
+from semantic_twin import paths
 from semantic_twin.illumination import ROOFTOP, fibonacci_sphere
 
 PRODUCTION_CELLS = (512, 1024, 2048, 4096)
@@ -322,11 +322,7 @@ def load_reference(
     mesh_sha = file_sha256(mesh)
     if mesh_sha != manifest["mesh_sha256"]:
         raise ValueError("production mesh bytes no longer match the accepted v2 manifest")
-    body = (
-        pathlib.Path(body_path)
-        if body_path is not None
-        else pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data")) / "duke.stl"
-    )
+    body = pathlib.Path(body_path) if body_path is not None else paths.aegis_data_dir() / "duke.stl"
     material_evidence = _material_evidence_identity(config.root, manifest, mesh_sha)
     _normalize_material_evidence_paths(manifest, material_evidence)
     reference_run_digest = manifest.get("run_digest")

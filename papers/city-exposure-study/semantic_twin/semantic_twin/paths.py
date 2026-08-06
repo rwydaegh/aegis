@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 import pathlib
 from dataclasses import dataclass
 
@@ -79,6 +80,20 @@ def config_dir() -> pathlib.Path:
 
 def data_dir() -> pathlib.Path:
     return root() / "data"
+
+
+def aegis_data_dir() -> pathlib.Path:
+    """Resolve AEGIS phantom data without assuming one checkout location."""
+    override = os.environ.get("AEGIS_DATA_DIR")
+    if override is not None:
+        if not override.strip():
+            raise ValueError("AEGIS_DATA_DIR is set but empty")
+        return pathlib.Path(override).expanduser().resolve()
+    for parent in (root(), *root().parents):
+        candidate = parent / "data"
+        if (parent / "pyproject.toml").is_file() and (candidate / "phantoms.yaml").is_file():
+            return candidate.resolve()
+    raise FileNotFoundError("could not find the AEGIS data directory containing phantoms.yaml")
 
 
 def outputs_dir() -> pathlib.Path:

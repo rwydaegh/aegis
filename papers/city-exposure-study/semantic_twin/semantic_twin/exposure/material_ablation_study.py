@@ -20,7 +20,7 @@ from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.model import stratified_subset
 
 GROUND_DATUM_M = 50.83747424667166
-PHANTOM = pathlib.Path("/home/user/aegis/data/duke.stl")
+PHANTOM = paths.aegis_data_dir() / "duke.stl"
 PHANTOM_MASS_KG = 72.4
 MODELS = {"isotropic": ISOTROPIC, "rooftop": ROOFTOP, "street_small_cell": STREET_SMALL_CELL}
 

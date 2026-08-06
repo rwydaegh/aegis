@@ -28,6 +28,28 @@ def test_the_root_is_the_directory_holding_config_data_and_outputs():
     assert paths.config_dir().parent == root
 
 
+def test_aegis_data_dir_finds_the_parent_repository_phantoms(monkeypatch):
+    monkeypatch.delenv("AEGIS_DATA_DIR", raising=False)
+
+    data = paths.aegis_data_dir()
+
+    assert (data / "phantoms.yaml").is_file()
+    assert (data / "duke.stl").is_file()
+
+
+def test_aegis_data_dir_honours_an_explicit_override(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path))
+
+    assert paths.aegis_data_dir() == tmp_path.resolve()
+
+
+def test_aegis_data_dir_refuses_an_empty_override(monkeypatch):
+    monkeypatch.setenv("AEGIS_DATA_DIR", "   ")
+
+    with pytest.raises(ValueError, match="set but empty"):
+        paths.aegis_data_dir()
+
+
 def test_korenmarkt_at_130_m_resolves_to_the_double_precision_rebuild():
     """The one case where two builds of the same crop sit side by side.
 
