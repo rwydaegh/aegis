@@ -162,6 +162,40 @@ It verified these frozen hashes:
 | Accepted location rows | `66b4e5c70494dc653a8d99ab33d4551fac99d70029114995ef9523d831e34534` |
 | Accepted rooftop spectra | `1186e952d4edc65046e69940a54c1024cb29c1fee6e6ae72acbe95b76f59b90b` |
 
+## Production contract registry
+
+The runner now reads named production pins from one typed registry. The
+Korenmarkt entry contains its schedule, thresholds, reference paths and hashes,
+run settings, model order, rooftop body law, Duke source, tissue database,
+point-kind counts, and random-stream stride. Changing any pinned value rejects
+the config or reference before tracing.
+
+`custom` remains available for exploratory routes and carries an explicit
+`unpinned custom campaign` status in the scientific config. Any other unknown
+name fails. A custom campaign cannot be presented as a production contract.
+
+The GPU sync enumerates every config in the same registry. For each entry it
+copies only the exact manifest, location, and spectrum triple, then runs the
+remote dry-run to validate all hashes. Korenmarkt keeps the accepted reference
+fingerprint listed above.
+
+Hachiko has no registry entry yet. Production requires these inputs first:
+
+- acceptance of the 250 m format-version-3 crop with mesh SHA-256
+  `1bccad9bedd7c1764e15d06042b0340530e795396f15f6d3fc40a759f3249e71`
+
+- a complete hybrid SAM3 material product for each admitted camera and a joint
+  `joint_atlas_250m_r8` artifact bound to that mesh
+
+- review of the 23-point, 120.199 m route, including the vertical-search-bound
+  warning, followed by frozen route arrays and point-kind counts
+
+- a sealed CUDA seed-7 reference at 1.6 million rays and 4,096 cells, with
+  frozen manifest, location, spectrum, mesh, atlas, body, tissue, and run hashes
+
+The existing eight-point geometric Hachiko run satisfies none of the material,
+route, or resolution requirements. It cannot be promoted to production.
+
 ## Archived-data validation
 
 The existing angular study has eight independent full-walk rooftop traces at

@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+import semantic_twin.exposure.cdf_convergence as cdf_convergence
 from run_cdf_convergence import arguments
 from semantic_twin.exposure.cdf_convergence import (
     CdfConvergenceConfig,
@@ -23,12 +24,38 @@ from semantic_twin.exposure.cdf_convergence import (
     _quarantine_stale_generation,
     _trace_replica,
     _validate_production_tissue_database,
+    _validate_production_reference,
     _write_campaign_checkpoint,
     _write_reached_formal_analyses,
     analyse_chi_replicas,
     analyse_joint_replicas,
+    archived_rooftop_diagnostic,
+)
+from semantic_twin.exposure.cdf_contracts import (
+    KORENMARKT_CDF_STOPPING_4096_V1,
+    PRODUCTION_CDF_CONTRACTS,
+    registered_reference_triples,
 )
 from semantic_twin.illumination import fibonacci_sphere
+
+STUDY_ROOT = pathlib.Path(__file__).resolve().parents[1]
+PRODUCTION_CONFIG = STUDY_ROOT / "config" / "cdf_convergence_4096.json"
+
+
+def _custom_config_document() -> dict[str, object]:
+    return {
+        "contract": "custom",
+        "root": ".",
+        "output_dir": "output",
+        "reference": {"manifest": "m", "locations": "l", "spectra": "s"},
+        "base_seeds": list(range(7, 39)),
+        "seed_stream_stride": 1000,
+        "diagnostic_look": 8,
+        "looks": [16, 24, 32],
+        "bootstrap": {"replicates": 100, "seed": 4, "confidence": 0.95},
+        "body_model": "rooftop",
+        "body_source": {"phantom": "duke", "mass_kg": 72.4},
+    }
 
 
 def _quiet_replicas() -> np.ndarray:
@@ -130,27 +157,82 @@ def test_large_seed_noise_fails_the_uncertainty_gate() -> None:
     assert any(not look["point_uncertainty"]["pass"] for look in report["looks"])
 
 
-def test_config_pins_the_production_replica_sequence(tmp_path: pathlib.Path) -> None:
-    document = {
-        "contract": "korenmarkt_cdf_stopping_4096_v1",
-        "root": ".",
-        "output_dir": "output",
-        "reference": {"manifest": "m.json", "locations": "l.jsonl", "spectra": "s.npz"},
-        "base_seeds": list(range(7, 39)),
-        "diagnostic_look": 8,
-        "looks": [16, 24, 32],
-        "bootstrap": {"replicates": 20000, "seed": 20260805, "confidence": 0.95},
-    }
-    path = tmp_path / "config.json"
-    path.write_text(json.dumps(document))
-    config = CdfConvergenceConfig.load(path)
-
+def test_config_pins_the_production_replica_sequence() -> None:
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
     assert config.all_looks == (8, 16, 24, 32)
     assert config.base_seeds == tuple(range(7, 39))
-    document["looks"] = [16, 32]
-    path.write_text(json.dumps(document))
+    assert config.body_model == "rooftop"
+    assert config.body_source == "duke"
+    assert config.seed_stream_stride == 1000
+    assert config.production_contract is KORENMARKT_CDF_STOPPING_4096_V1
+
+
+@pytest.mark.parametrize(
+    ("path", "replacement"),
+    [
+        (("output_dir",), "outputs/changed"),
+        (("reference", "manifest"), "outputs/changed_manifest.json"),
+        (("reference", "locations"), "outputs/changed_locations.jsonl"),
+        (("reference", "spectra"), "outputs/changed_spectra.npz"),
+        (("base_seeds",), list(range(8, 40))),
+        (("seed_stream_stride",), 999),
+        (("diagnostic_look",), 9),
+        (("looks",), [16, 25, 32]),
+        (("bootstrap", "replicates"), 19_999),
+        (("bootstrap", "seed"), 20260806),
+        (("bootstrap", "confidence"), 0.94),
+        (("bootstrap", "alpha_allocation"), "changed allocation"),
+        (("body_peak", "chunk_cells"), 256),
+        (("body_peak", "selection_stability_min_fraction"), 0.90),
+        (("body_model",), "isotropic"),
+        (("body_source", "phantom"), "ella"),
+        (("body_source", "mass_kg"), 58.0),
+        (("thresholds", "point_p90_db"), 0.11),
+        (("thresholds", "point_max_db"), 0.16),
+        (("thresholds", "cdf_q50_db"), 0.06),
+        (("thresholds", "cdf_q10_q90_db"), 0.11),
+        (("thresholds", "cdf_endpoint_db"), 0.16),
+        (("thresholds", "stability_wasserstein_db"), 0.04),
+        (("thresholds", "stability_q50_db"), 0.04),
+        (("thresholds", "stability_q10_q90_db"), 0.06),
+        (("thresholds", "stability_endpoint_db"), 0.11),
+        (("thresholds", "body_peak_max_db"), 0.16),
+    ],
+)
+def test_every_production_config_pin_rejects_mutation(
+    tmp_path: pathlib.Path,
+    path: tuple[str, ...],
+    replacement: object,
+) -> None:
+    document = json.loads(PRODUCTION_CONFIG.read_text())
+    document["root"] = str(STUDY_ROOT)
+    target = document
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = replacement
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(document))
+
     with pytest.raises(ValueError, match="production CDF stopping contract changed"):
+        CdfConvergenceConfig.load(config_path)
+
+
+def test_unknown_named_contract_fails_and_custom_is_visibly_unpinned(tmp_path: pathlib.Path) -> None:
+    document = _custom_config_document()
+    document["contract"] = "tokyo_unsealed_claim"
+    path = tmp_path / "unknown.json"
+    path.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="unknown production CDF contract"):
         CdfConvergenceConfig.load(path)
+
+    document["contract"] = "custom"
+    path.write_text(json.dumps(document))
+    config = CdfConvergenceConfig.load(path)
+    assert config.production_contract is None
+    assert config.scientific_config()["contract_pinning"] == {
+        "production": False,
+        "status": "unpinned custom campaign",
+    }
 
 
 def test_cli_exposes_input_only_and_archived_validation_modes() -> None:
@@ -161,18 +243,7 @@ def test_cli_exposes_input_only_and_archived_validation_modes() -> None:
 
 def test_compact_checkpoint_round_trip_rejects_a_different_identity(tmp_path: pathlib.Path) -> None:
     config_path = tmp_path / "config.json"
-    config_path.write_text(
-        json.dumps(
-            {
-                "root": ".",
-                "output_dir": "output",
-                "reference": {"manifest": "m", "locations": "l", "spectra": "s"},
-                "base_seeds": list(range(7, 39)),
-                "looks": [16, 24, 32],
-                "bootstrap": {"replicates": 100, "seed": 4},
-            }
-        )
-    )
+    config_path.write_text(json.dumps(_custom_config_document()))
     config = CdfConvergenceConfig.load(config_path)
     reference = SimpleNamespace(
         standpoints=SimpleNamespace(index=np.asarray([0, 2]), sha256="points"),
@@ -204,6 +275,55 @@ def test_compact_checkpoint_round_trip_rejects_a_different_identity(tmp_path: pa
     altered = replace(checkpoint, local_grid=changed_grid)
     _write_campaign_checkpoint(path, altered, "identity", reference, "tissue")
     assert _load_campaign_checkpoint(path, "identity", reference, config, "tissue") is None
+
+
+def test_non_thirteen_point_custom_route_keeps_checkpoint_and_bootstrap_guarantees(
+    tmp_path: pathlib.Path,
+) -> None:
+    document = _custom_config_document()
+    document.update(
+        {
+            "base_seeds": [7, 8, 9, 10],
+            "diagnostic_look": 2,
+            "looks": [3, 4],
+        }
+    )
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(document))
+    config = CdfConvergenceConfig.load(config_path)
+    replicas = 4
+    points = 5
+    chi = np.ones((replicas, points, 3), dtype=np.float64)
+    body_sab = np.tile(np.asarray([2.0, 0.0]), (replicas, points, 1))
+    checkpoint = CampaignCheckpoint(
+        base_seeds=np.asarray(config.base_seeds),
+        chi=chi,
+        chi_direct=chi / 2.0,
+        body_peak_rooftop=np.full((replicas, points), 2.0),
+        body_mean_rooftop=np.ones((replicas, points)),
+        body_sab_rooftop=body_sab,
+        trace_seconds=np.ones((replicas, points)),
+        rho_sum=np.ones((points, 3, 3)),
+        local_grid=fibonacci_sphere(3),
+        solid_angle=4.0 * np.pi / 3.0,
+    )
+    reference = SimpleNamespace(
+        standpoints=SimpleNamespace(index=np.arange(points), sha256="five-points"),
+        manifest={"run": {"local_cells": 3}, "body": {"triangles": 2}},
+    )
+    path = tmp_path / "checkpoint.npz"
+    _write_campaign_checkpoint(path, checkpoint, "custom-five", reference, "tissue")
+
+    loaded = _load_campaign_checkpoint(path, "custom-five", reference, config, "tissue")
+    assert loaded is not None
+    report = _analyse_checkpoint(config, loaded, "custom-five")
+    assert report["route_sample"] == {
+        "standpoints": 5,
+        "cdf_step": pytest.approx(0.2),
+        "spatial_sampling_uncertainty_included": False,
+    }
+    assert report["bootstrap"]["resampling"].startswith("base-seed walk clusters")
+    assert [look["replicas"] for look in report["looks"]] == [2, 3, 4]
 
 
 def test_replica_keeps_the_base_seed_mapping_and_only_one_spectrum_sum() -> None:
@@ -262,7 +382,18 @@ def test_replica_keeps_the_base_seed_mapping_and_only_one_spectrum_sum() -> None
         solid_angle=4.0 * np.pi / 3.0,
     )
 
-    result = _trace_replica(SimpleNamespace(body_chunk_cells=2), reference, Tracer(), coupler, empty, 7)
+    result = _trace_replica(
+        SimpleNamespace(
+            body_chunk_cells=2,
+            body_model="rooftop",
+            seed_stream_stride=1000,
+        ),
+        reference,
+        Tracer(),
+        coupler,
+        empty,
+        7,
+    )
 
     assert calls == [7, 3007]
     assert result.base_seeds.tolist() == [7]
@@ -272,20 +403,75 @@ def test_replica_keeps_the_base_seed_mapping_and_only_one_spectrum_sum() -> None
     assert result.body_sab_rooftop.shape == (1, 2, 3)
 
 
+def test_body_spectrum_follows_its_name_when_model_order_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    order = ("street_small_cell", "isotropic", "rooftop")
+    monkeypatch.setattr(cdf_convergence, "MODEL_NAMES", order)
+    selected: list[np.ndarray] = []
+
+    class Result:
+        local_grid = np.eye(3)
+        local_solid_angle = 4.0 * np.pi / 3.0
+        seconds = 0.1
+        rho = {
+            "isotropic": np.full(3, 1.0),
+            "rooftop": np.full(3, 22.0),
+            "street_small_cell": np.full(3, 333.0),
+        }
+
+        def scalars(self) -> dict[str, float]:
+            return {
+                **{f"chi_{name}": float(index + 1) for index, name in enumerate(order)},
+                **{f"chi_{name}_direct": 0.5 for name in order},
+            }
+
+    tracer = SimpleNamespace(trace=lambda *args, **kwargs: Result())
+    exposure = SimpleNamespace(peak_sab_w_m2=2.0, mean_sab_w_m2=1.0)
+
+    def couple(
+        _grid: np.ndarray, spectra: np.ndarray, *_args: object, **_kwargs: object
+    ) -> tuple[tuple[object], np.ndarray]:
+        selected.append(np.array(spectra, copy=True))
+        return (exposure,), np.asarray([[2.0, 1.0, 0.0]])
+
+    reference = SimpleNamespace(
+        standpoints=SimpleNamespace(
+            index=np.asarray([4]),
+            points=np.zeros((1, 3)),
+            ground_z_m=np.zeros(1),
+        ),
+        manifest={"reference_s0_w_m2": 1.0},
+    )
+    checkpoint = CampaignCheckpoint(
+        base_seeds=np.empty(0, dtype=np.int64),
+        chi=np.empty((0, 1, 3)),
+        chi_direct=np.empty((0, 1, 3)),
+        body_peak_rooftop=np.empty((0, 1)),
+        body_mean_rooftop=np.empty((0, 1)),
+        body_sab_rooftop=np.empty((0, 1, 3)),
+        trace_seconds=np.empty((0, 1)),
+        rho_sum=np.zeros((1, 3, 3)),
+        local_grid=np.eye(3),
+        solid_angle=4.0 * np.pi / 3.0,
+    )
+
+    _trace_replica(
+        SimpleNamespace(body_chunk_cells=2, body_model="rooftop", seed_stream_stride=1000),
+        reference,
+        tracer,
+        SimpleNamespace(couple_many_with_sab=couple),
+        checkpoint,
+        7,
+    )
+
+    assert len(selected) == 1
+    assert selected[0] == pytest.approx(np.full((1, 3), 22.0))
+
+
 def test_checkpoint_analysis_covers_every_curve_in_the_published_cdf(tmp_path: pathlib.Path) -> None:
     config_path = tmp_path / "config.json"
-    config_path.write_text(
-        json.dumps(
-            {
-                "root": ".",
-                "output_dir": "output",
-                "reference": {"manifest": "m", "locations": "l", "spectra": "s"},
-                "base_seeds": list(range(7, 39)),
-                "looks": [16, 24, 32],
-                "bootstrap": {"replicates": 200, "seed": 4},
-            }
-        )
-    )
+    document = _custom_config_document()
+    document["bootstrap"] = {"replicates": 200, "seed": 4, "confidence": 0.95}
+    config_path.write_text(json.dumps(document))
     config = CdfConvergenceConfig.load(config_path)
     replicas = _quiet_replicas()
     rooftop_peak = replicas[:, :, 1] * 0.2
@@ -494,19 +680,7 @@ def test_manifest_names_only_matching_planned_look_analyses(tmp_path: pathlib.Pa
 
 def test_reached_look_files_are_regenerated_after_checkpoint_crash(tmp_path: pathlib.Path) -> None:
     config_path = tmp_path / "config.json"
-    config_path.write_text(
-        json.dumps(
-            {
-                "root": ".",
-                "output_dir": "output",
-                "reference": {"manifest": "m", "locations": "l", "spectra": "s"},
-                "base_seeds": list(range(7, 39)),
-                "diagnostic_look": 8,
-                "looks": [16, 24, 32],
-                "bootstrap": {"replicates": 100, "seed": 4},
-            }
-        )
-    )
+    config_path.write_text(json.dumps(_custom_config_document()))
     config = CdfConvergenceConfig.load(config_path)
     replicas = _quiet_replicas()[:24]
     peak = replicas[:, :, 1] * 0.2
@@ -622,7 +796,7 @@ def test_missing_sealed_plan_is_never_recreated(tmp_path: pathlib.Path, dry_run:
 
 
 def test_production_tissue_database_hash_is_pinned() -> None:
-    config = SimpleNamespace(contract="korenmarkt_cdf_stopping_4096_v1")
+    config = CdfConvergenceConfig.load(PRODUCTION_CONFIG)
     expected = {
         "path": "/data/itis_v5.db",
         "sha256": "51dc983da2fa4e40bde9ca4e9830ecd6b41739c2b92b28b5efbdc5d5e556aa8f",
@@ -631,6 +805,89 @@ def test_production_tissue_database_hash_is_pinned() -> None:
     _validate_production_tissue_database(config, expected)
     with pytest.raises(ValueError, match="IT'IS tissue database changed"):
         _validate_production_tissue_database(config, {**expected, "sha256": "changed"})
+
+
+def _production_reference() -> SimpleNamespace:
+    contract = KORENMARKT_CDF_STOPPING_4096_V1
+    identity = {
+        **contract.identity_hash_values(),
+        "reference_files": {name: {"sha256": sha256} for name, sha256 in contract.reference.hashes().items()},
+    }
+    return SimpleNamespace(
+        manifest={
+            "run": contract.run_setting_values(),
+            "body": contract.body.manifest_fields(),
+        },
+        standpoints=SimpleNamespace(
+            index=np.arange(sum(contract.point_kind_count_values().values())),
+            point_kind=tuple(kind for kind, count in contract.point_kind_counts for _ in range(count)),
+        ),
+        as_dict=lambda: identity,
+    )
+
+
+def test_unchanged_production_reference_hashes_and_run_settings_pass() -> None:
+    _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), _production_reference())
+
+
+@pytest.mark.parametrize("field", KORENMARKT_CDF_STOPPING_4096_V1.identity_hash_values())
+def test_each_production_identity_hash_mutation_fails(field: str) -> None:
+    reference = _production_reference()
+    identity = reference.as_dict()
+    identity[field] = "changed"
+    with pytest.raises(ValueError, match="reference hashes changed"):
+        _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), reference)
+
+
+@pytest.mark.parametrize("field", KORENMARKT_CDF_STOPPING_4096_V1.reference.hashes())
+def test_each_production_reference_file_hash_mutation_fails(field: str) -> None:
+    reference = _production_reference()
+    reference.as_dict()["reference_files"][field]["sha256"] = "changed"
+    with pytest.raises(ValueError, match="output generation changed"):
+        _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), reference)
+
+
+@pytest.mark.parametrize("field", KORENMARKT_CDF_STOPPING_4096_V1.run_setting_values())
+def test_each_production_run_setting_mutation_fails(field: str) -> None:
+    reference = _production_reference()
+    reference.manifest["run"][field] = "changed"
+    with pytest.raises(ValueError, match="run settings changed"):
+        _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), reference)
+
+
+@pytest.mark.parametrize("field", KORENMARKT_CDF_STOPPING_4096_V1.body.manifest_fields())
+def test_each_production_body_source_mutation_fails(field: str) -> None:
+    reference = _production_reference()
+    reference.manifest["body"][field] = "changed"
+    with pytest.raises(ValueError, match="body source changed"):
+        _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), reference)
+
+
+def test_production_point_kind_counts_are_pinned() -> None:
+    reference = _production_reference()
+    reference.standpoints.point_kind = (*reference.standpoints.point_kind[:-1], "camera_registered")
+    with pytest.raises(ValueError, match="point kinds changed"):
+        _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), reference)
+
+
+def test_archived_rooftop_diagnostic_rejects_non_korenmarkt_contract(tmp_path: pathlib.Path) -> None:
+    path = tmp_path / "custom.json"
+    path.write_text(json.dumps(_custom_config_document()))
+    with pytest.raises(ValueError, match="only for the Korenmarkt production contract"):
+        archived_rooftop_diagnostic(CdfConvergenceConfig.load(path))
+
+
+def test_reference_enumeration_matches_every_registered_production_config() -> None:
+    enumerated = registered_reference_triples()
+    assert {config for config, _reference in enumerated} == {
+        contract.config_path for contract in PRODUCTION_CDF_CONTRACTS.values()
+    }
+    assert enumerated == (
+        (
+            "config/cdf_convergence_4096.json",
+            KORENMARKT_CDF_STOPPING_4096_V1.reference.paths(),
+        ),
+    )
 
 
 def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> None:
@@ -686,7 +943,13 @@ def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> No
     )
 
     ensemble = _final_ensemble(
-        SimpleNamespace(looks=(2, 3), body_chunk_cells=2),
+        SimpleNamespace(
+            looks=(2, 3),
+            body_chunk_cells=2,
+            body_model="rooftop",
+            body_path=pathlib.Path("duke.stl"),
+            body_mass_kg=72.4,
+        ),
         reference,
         checkpoint,
         {"stop_at_replicas": 2},

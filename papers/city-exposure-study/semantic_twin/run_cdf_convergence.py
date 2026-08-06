@@ -1,4 +1,4 @@
-"""Run the frozen Korenmarkt full-walk replica stopping experiment."""
+"""Run a registered or custom fixed-walk replica stopping experiment."""
 
 from __future__ import annotations
 

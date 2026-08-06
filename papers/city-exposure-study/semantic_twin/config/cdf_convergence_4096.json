@@ -13,6 +13,7 @@
     23, 24, 25, 26, 27, 28, 29, 30,
     31, 32, 33, 34, 35, 36, 37, 38
   ],
+  "seed_stream_stride": 1000,
   "diagnostic_look": 8,
   "looks": [16, 24, 32],
   "bootstrap": {
@@ -24,6 +25,11 @@
   "body_peak": {
     "chunk_cells": 512,
     "selection_stability_min_fraction": 0.95
+  },
+  "body_model": "rooftop",
+  "body_source": {
+    "phantom": "duke",
+    "mass_kg": 72.4
   },
   "thresholds": {
     "point_p90_db": 0.10,

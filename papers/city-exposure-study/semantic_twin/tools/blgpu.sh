@@ -208,16 +208,20 @@ PY
       --exclude '*' \
       "$LOCAL_STUDY/outputs/$sub" "$HOST:$REMOTE_STUDY/outputs/"
   done
-  # The sequential CDF campaign freezes this sealed production generation as
-  # an input. Copy only its three numerical files. The rest of
-  # exposure_korenmarkt is 182 MB of older results that the GPU does not read.
-  local cdf_reference="final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz"
-  rsh "mkdir -p $(printf '%q' "$REMOTE_STUDY/outputs/exposure_korenmarkt")"
-  rs \
-    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_manifest.json" \
-    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_locations.jsonl" \
-    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_spectra.npz" \
-    "$HOST:$REMOTE_STUDY/outputs/exposure_korenmarkt/"
+  # Each named CDF contract freezes one sealed reference triple. The registry
+  # supplies the config and exact files, so adding a production contract also
+  # adds its inputs and remote hash check to the default sync.
+  local cdf_config manifest locations spectra reference parent
+  while IFS=$'\t' read -r cdf_config manifest locations spectra; do
+    for reference in "$manifest" "$locations" "$spectra"; do
+      parent="$(dirname "$reference")"
+      rsh "mkdir -p $(printf '%q' "$REMOTE_STUDY/$parent")"
+      rs "$LOCAL_STUDY/$reference" "$HOST:$REMOTE_STUDY/$parent/"
+    done
+    echo "blgpu: validate CDF inputs for $cdf_config"
+    cmd_sh "python run_cdf_convergence.py --config $cdf_config --dry-run" >/dev/null
+  done < <(PYTHONPATH="$LOCAL_STUDY" \
+    "$LOCAL_REPO/.venv/bin/python" "$LOCAL_STUDY/tools/cdf_contract_references.py")
   echo "blgpu: sync done"
 }
 
