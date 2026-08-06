@@ -175,9 +175,10 @@ the config or reference before tracing.
 name fails. A custom campaign cannot be presented as a production contract.
 
 The GPU sync enumerates every config in the same registry. For each entry it
-copies only the exact manifest, location, and spectrum triple, then runs the
-remote dry-run to validate all hashes. Korenmarkt keeps the accepted reference
-fingerprint listed above.
+copies the selected phantom after checking its pinned hash, then copies only the
+exact manifest, location, and spectrum triple. A remote dry-run validates all
+hashes. Contracts that share Duke transfer one copy. Korenmarkt keeps the
+accepted reference fingerprint listed above.
 
 Hachiko has no registry entry yet. Production requires these inputs first:
 

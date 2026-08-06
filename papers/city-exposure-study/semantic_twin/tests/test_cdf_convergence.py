@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pathlib
+import subprocess
+import sys
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -10,6 +13,7 @@ import numpy as np
 import pytest
 
 import semantic_twin.exposure.cdf_convergence as cdf_convergence
+import semantic_twin.exposure.cdf_contracts as cdf_contracts
 from run_cdf_convergence import arguments
 from semantic_twin.exposure.cdf_convergence import (
     CdfConvergenceConfig,
@@ -32,11 +36,15 @@ from semantic_twin.exposure.cdf_convergence import (
     archived_rooftop_diagnostic,
 )
 from semantic_twin.exposure.cdf_contracts import (
+    CdfProductionContract,
     KORENMARKT_CDF_STOPPING_4096_V1,
     PRODUCTION_CDF_CONTRACTS,
+    body_sources,
+    registered_body_sources,
     registered_reference_triples,
 )
 from semantic_twin.illumination import fibonacci_sphere
+from tools.cdf_contract_references import main as reference_helper_main
 
 STUDY_ROOT = pathlib.Path(__file__).resolve().parents[1]
 PRODUCTION_CONFIG = STUDY_ROOT / "config" / "cdf_convergence_4096.json"
@@ -807,10 +815,12 @@ def test_production_tissue_database_hash_is_pinned() -> None:
         _validate_production_tissue_database(config, {**expected, "sha256": "changed"})
 
 
-def _production_reference() -> SimpleNamespace:
-    contract = KORENMARKT_CDF_STOPPING_4096_V1
+def _production_reference(
+    contract: CdfProductionContract = KORENMARKT_CDF_STOPPING_4096_V1,
+) -> SimpleNamespace:
     identity = {
         **contract.identity_hash_values(),
+        "body_sha256": contract.body.sha256,
         "reference_files": {name: {"sha256": sha256} for name, sha256 in contract.reference.hashes().items()},
     }
     return SimpleNamespace(
@@ -830,7 +840,10 @@ def test_unchanged_production_reference_hashes_and_run_settings_pass() -> None:
     _validate_production_reference(CdfConvergenceConfig.load(PRODUCTION_CONFIG), _production_reference())
 
 
-@pytest.mark.parametrize("field", KORENMARKT_CDF_STOPPING_4096_V1.identity_hash_values())
+@pytest.mark.parametrize(
+    "field",
+    (*KORENMARKT_CDF_STOPPING_4096_V1.identity_hash_values(), "body_sha256"),
+)
 def test_each_production_identity_hash_mutation_fails(field: str) -> None:
     reference = _production_reference()
     identity = reference.as_dict()
@@ -888,6 +901,116 @@ def test_reference_enumeration_matches_every_registered_production_config() -> N
             KORENMARKT_CDF_STOPPING_4096_V1.reference.paths(),
         ),
     )
+
+
+def test_blgpu_sync_propagates_inventory_failure_and_cleans_its_temp_dir(tmp_path: pathlib.Path) -> None:
+    helper = tmp_path / "fail_inventory.py"
+    helper.write_text("raise SystemExit(23)\n")
+    scratch = tmp_path / "tmp"
+    scratch.mkdir()
+    environment = {
+        **os.environ,
+        "TMPDIR": str(scratch),
+        "BLGPU_CDF_CONTRACT_HELPER": str(helper),
+        "BLGPU_PYTHON": sys.executable,
+    }
+
+    result = subprocess.run(
+        [STUDY_ROOT / "tools" / "blgpu.sh", "sync"],
+        cwd=STUDY_ROOT,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 23
+    assert sorted(path.name for path in scratch.iterdir()) == [f"blgpu-ssh-{os.getuid()}"]
+
+
+def test_registered_body_sources_are_hash_pinned_and_deduplicate_duke() -> None:
+    contract = KORENMARKT_CDF_STOPPING_4096_V1
+    expected = (("duke.stl", contract.body.sha256),)
+    assert registered_body_sources() == expected
+    hachiko = replace(contract, name="hachiko", config_path="config/hachiko.json")
+    assert body_sources((contract, hachiko)) == expected
+
+    conflicting_body = replace(contract.body, sha256="changed")
+    conflicting_hachiko = replace(hachiko, body=conflicting_body)
+    with pytest.raises(ValueError, match="conflicting production body hashes"):
+        body_sources((contract, conflicting_hachiko))
+
+
+def test_non_duke_named_contract_controls_body_path_hash_and_sync_inventory(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ella_path = tmp_path / "ella.stl"
+    ella_path.write_bytes(b"named Ella body")
+    ella_sha = hashlib.sha256(ella_path.read_bytes()).hexdigest()
+    base = KORENMARKT_CDF_STOPPING_4096_V1
+    ella_body = replace(base.body, phantom="ella", mass_kg=58.0, sha256=ella_sha)
+    contract = replace(
+        base,
+        name="ella_cdf_contract",
+        config_path="config/cdf_ella.json",
+        body=ella_body,
+    )
+    monkeypatch.setattr(cdf_contracts, "PRODUCTION_CDF_CONTRACTS", {contract.name: contract})
+    monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path))
+    document = json.loads(PRODUCTION_CONFIG.read_text())
+    document.update(
+        {
+            "contract": contract.name,
+            "root": str(STUDY_ROOT),
+            "body_source": {"phantom": "ella", "mass_kg": 58.0},
+        }
+    )
+    config_path = tmp_path / "cdf_ella.json"
+    config_path.write_text(json.dumps(document))
+
+    config = CdfConvergenceConfig.load(config_path)
+    assert config.body_path == ella_path
+    assert hashlib.sha256(config.body_path.read_bytes()).hexdigest() == contract.body.sha256
+    _validate_production_reference(config, _production_reference(contract))
+
+    assert reference_helper_main(["--sync-inventory"]) == 0
+    inventory = capsys.readouterr().out.splitlines()
+    assert f"body\tella.stl\t{ella_sha}" in inventory
+    assert any(line.startswith("reference\tconfig/cdf_ella.json\t") for line in inventory)
+
+
+@pytest.mark.parametrize(
+    ("stride", "indices"),
+    [
+        (1, [0, 1]),
+        (1000, [0, 0]),
+    ],
+)
+def test_custom_contract_rejects_seed_stream_collisions_after_route_load(
+    tmp_path: pathlib.Path,
+    stride: int,
+    indices: list[int],
+) -> None:
+    document = _custom_config_document()
+    document["seed_stream_stride"] = stride
+    path = tmp_path / "custom.json"
+    path.write_text(json.dumps(document))
+    config = CdfConvergenceConfig.load(path)
+    reference = SimpleNamespace(standpoints=SimpleNamespace(index=np.asarray(indices)))
+
+    with pytest.raises(ValueError, match="random-stream collision"):
+        _validate_production_reference(config, reference)
+
+
+def test_custom_contract_accepts_collision_free_seed_streams_after_route_load(tmp_path: pathlib.Path) -> None:
+    path = tmp_path / "custom.json"
+    path.write_text(json.dumps(_custom_config_document()))
+    config = CdfConvergenceConfig.load(path)
+    reference = SimpleNamespace(standpoints=SimpleNamespace(index=np.asarray([0, 3, 8])))
+
+    _validate_production_reference(config, reference)
 
 
 def test_final_rows_publish_the_body_peak_estimator_that_the_stop_bounds() -> None:

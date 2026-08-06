@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, Mapping
@@ -151,7 +152,6 @@ KORENMARKT_CDF_STOPPING_4096_V1 = CdfProductionContract(
     seed_stream_rule="base seed + 1000 * frozen production standpoint index",
     identity_hashes=(
         ("mesh_sha256", "bfbdba0657a1dd4b8b819e7e611dbfd4eea919e5c08538078ff1948599957264"),
-        ("body_sha256", "781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b"),
         (
             "material_evidence_sha256",
             "c452c34e1d9422022d55fc758d228c22a39b80d9a770042e89e13f9110f43a76",
@@ -210,3 +210,21 @@ def production_contract(name: str) -> CdfProductionContract | None:
 def registered_reference_triples() -> tuple[tuple[str, tuple[str, str, str]], ...]:
     """Return each production config and the exact reference files it requires."""
     return tuple((contract.config_path, contract.reference.paths()) for contract in PRODUCTION_CDF_CONTRACTS.values())
+
+
+def body_sources(
+    contracts: Iterable[CdfProductionContract],
+) -> tuple[tuple[str, str], ...]:
+    """Deduplicate named phantom files and reject conflicting hash pins."""
+    sources: dict[str, str] = {}
+    for contract in contracts:
+        filename = f"{contract.body.phantom}.stl"
+        previous = sources.setdefault(filename, contract.body.sha256)
+        if previous != contract.body.sha256:
+            raise ValueError(f"conflicting production body hashes for {filename}: {previous} != {contract.body.sha256}")
+    return tuple(sorted(sources.items()))
+
+
+def registered_body_sources() -> tuple[tuple[str, str], ...]:
+    """Return each phantom file and exact hash needed by named contracts."""
+    return body_sources(PRODUCTION_CDF_CONTRACTS.values())

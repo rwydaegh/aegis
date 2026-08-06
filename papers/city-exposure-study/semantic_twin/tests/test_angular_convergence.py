@@ -195,6 +195,12 @@ def test_reference_loader_accepts_only_one_sealed_output_generation(
     identity = load_reference(sealed)
     assert identity.standpoints.index.tolist() == [0, 1]
     assert identity.files["locations"]["sha256"] == file_sha256(sealed.reference_locations)
+    assert load_reference(sealed, body_path=data_dir / "duke.stl").body_sha256 == identity.body_sha256
+
+    ella = data_dir / "ella.stl"
+    ella.write_bytes(b"different body")
+    assert load_reference(sealed, body_path=ella).body_sha256 == file_sha256(ella)
+    assert load_reference(sealed, body_path=ella).body_sha256 != identity.body_sha256
 
     unsealed = _reference_config(tmp_path / "unsealed")
     document = json.loads(unsealed.reference_manifest.read_text())

@@ -1012,7 +1012,7 @@ def run_campaign(
     )
 
     config.output_dir.mkdir(parents=True, exist_ok=True)
-    reference = load_reference(config)
+    reference = load_reference(config, body_path=config.body_path)
     _validate_production_reference(config, reference)
     tissue_database = _tissue_database_identity()
     _validate_production_tissue_database(config, tissue_database)
@@ -1244,7 +1244,7 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
     contract = config.production_contract
     if contract is None or contract.archived_rooftop_run_dir is None:
         raise ValueError("the archived rooftop diagnostic is available only for the Korenmarkt production contract")
-    reference = load_reference(config)
+    reference = load_reference(config, body_path=config.body_path)
     _validate_production_reference(config, reference)
     run_root = config.root / contract.archived_rooftop_run_dir
     seeds = tuple(range(7, 15))
@@ -1367,11 +1367,22 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
 
 def _validate_production_reference(config: CdfConvergenceConfig, reference: Any) -> None:
     """Pin the named production contract to the accepted final generation."""
+    streams = {
+        int(base + config.seed_stream_stride * index)
+        for base in config.base_seeds
+        for index in reference.standpoints.index
+    }
+    expected_streams = len(config.base_seeds) * reference.standpoints.index.size
+    if len(streams) != expected_streams:
+        raise ValueError("CDF base-seed mapping contains a random-stream collision")
     contract = config.production_contract
     if contract is None:
         return
     identity = reference.as_dict()
-    expected_hashes = contract.identity_hash_values()
+    expected_hashes = {
+        **contract.identity_hash_values(),
+        "body_sha256": contract.body.sha256,
+    }
     actual_hashes = {name: identity[name] for name in expected_hashes}
     if actual_hashes != expected_hashes:
         raise ValueError(f"production CDF reference hashes changed: {actual_hashes} != {expected_hashes}")
@@ -1392,14 +1403,6 @@ def _validate_production_reference(config: CdfConvergenceConfig, reference: Any)
     actual_point_kinds = dict(Counter(reference.standpoints.point_kind))
     if actual_point_kinds != expected_point_kinds:
         raise ValueError(f"production CDF point kinds changed: {actual_point_kinds} != {expected_point_kinds}")
-    streams = {
-        int(base + config.seed_stream_stride * index)
-        for base in config.base_seeds
-        for index in reference.standpoints.index
-    }
-    expected_streams = len(config.base_seeds) * reference.standpoints.index.size
-    if len(streams) != expected_streams:
-        raise ValueError("production CDF base-seed mapping contains a random-stream collision")
 
 
 def _tissue_database_identity() -> dict[str, Any]:
