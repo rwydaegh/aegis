@@ -20,9 +20,8 @@ offered to the live material layer:
 :func:`semantic_twin.materials.roughness.masonry_equivalent_rms_height`, and
 not as a default. That route is closed form algebra over the wall geometry and
 touches neither :mod:`~.rcwa` nor the Kirchhoff order machinery, which carry
-findings 5, 6 and 10 of ``docs/BUGS.md`` between them. Finding 10 in particular
-returns reflectances of 58 from a passive structure without raising, so nothing
-that runs the rigorous solver should be wired to a result until it is fixed.
+findings 5 and 6 of ``docs/BUGS.md`` between them. The RCWA mode-selection
+failure in finding 10 is fixed, while its Fourier factorisation failure remains.
 """
 
 from __future__ import annotations
