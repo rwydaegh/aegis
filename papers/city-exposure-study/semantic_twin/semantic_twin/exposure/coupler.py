@@ -15,6 +15,15 @@ from typing import Any
 import numpy as np
 
 from ..transport.directional import DirectionalMeasure
+from .orientation import uniform_z_yaw_mean_incidence
+
+
+def _validated_chunk_size(value: int, name: str) -> int:
+    if not isinstance(value, (int, np.integer)) or isinstance(value, (bool, np.bool_)):
+        raise ValueError(f"{name} must be a positive integer")
+    if value < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return int(value)
 
 
 @dataclass(frozen=True)
@@ -34,6 +43,29 @@ class BodyExposure:
     mean_sab_w_m2: float
     absorbed_power_w: float
     sar_wb_w_kg: float
+
+    def as_dict(self) -> dict[str, float]:
+        return dict(self.__dict__)
+
+
+@dataclass(frozen=True)
+class UniformYawBodyExposure:
+    """Level-2 exposure after an exact uniform rotation around the Z axis.
+
+    The peak is taken after averaging the per-triangle ``Sab`` field over yaw.
+    It is therefore distinct from the average of the peak ``Sab`` over each
+    individual yaw. The retained field from
+    :meth:`BodyCoupler.couple_measure_uniform_yaw_with_sab` uses the same
+    estimand.
+    """
+
+    reference_s0_w_m2: float
+    arriving_power_density_w_m2: float
+    susceptibility: float
+    peak_of_yaw_mean_sab_w_m2: float
+    yaw_mean_area_mean_sab_w_m2: float
+    yaw_mean_absorbed_power_w: float
+    yaw_mean_sar_wb_w_kg: float
 
     def as_dict(self) -> dict[str, float]:
         return dict(self.__dict__)
@@ -215,6 +247,99 @@ class BodyCoupler:
             sar_wb_w_kg=(p_abs / self.body_mass_kg if self.body_mass_kg is not None else float("nan")),
         )
         return exposure, sab
+
+    def couple_measure_uniform_yaw(
+        self,
+        measure: DirectionalMeasure,
+        reference_s0_w_m2: float,
+        *,
+        chunk_directions: int = 128,
+        chunk_normals: int = 4096,
+    ) -> UniformYawBodyExposure:
+        """Couple a measure after exact uniform Z-yaw averaging.
+
+        This endpoint is deliberately separate from the fixed-yaw methods.
+        It implements only the level-2 ReLU incidence factor and averages that
+        factor analytically over all body yaws. The source measure itself stays
+        fixed in the world frame.
+        """
+        exposure, _sab = self.couple_measure_uniform_yaw_with_sab(
+            measure,
+            reference_s0_w_m2,
+            chunk_directions=chunk_directions,
+            chunk_normals=chunk_normals,
+        )
+        return exposure
+
+    def couple_measure_uniform_yaw_with_sab(
+        self,
+        measure: DirectionalMeasure,
+        reference_s0_w_m2: float,
+        *,
+        chunk_directions: int = 128,
+        chunk_normals: int = 4096,
+    ) -> tuple[UniformYawBodyExposure, np.ndarray]:
+        """Return exact uniform-Z-yaw mean exposure and its per-triangle ``Sab``.
+
+        The returned field is the mean of ``Sab`` at each triangle over body
+        yaw. Its area-weighted mean and absorbed power are consequently exact
+        yaw averages, while the reported peak is the peak of this mean field.
+        Direction and body-normal chunks bound the temporary
+        triangle-by-direction array. The defaults are intentionally
+        conservative for large phantom meshes.
+        """
+        if not isinstance(measure, DirectionalMeasure):
+            raise TypeError("measure must be a DirectionalMeasure")
+        if self.level != 2:
+            raise ValueError("uniform-yaw body coupling currently implements AEGIS level 2 only")
+        if not np.isfinite(reference_s0_w_m2) or reference_s0_w_m2 < 0.0:
+            raise ValueError("reference_s0_w_m2 must be nonnegative and finite")
+        chunk_directions = _validated_chunk_size(chunk_directions, "chunk_directions")
+        chunk_normals = _validated_chunk_size(chunk_normals, "chunk_normals")
+
+        reference_s0 = float(reference_s0_w_m2)
+        directions, powers = measure.scaled_paths_data(reference_s0)
+        keep = powers > 0.0
+        normals = np.asarray(self.body.normals, dtype=np.float64)
+        sab = np.zeros(normals.shape[0], dtype=np.float64)
+        kept_directions = directions[keep]
+        kept_powers = powers[keep]
+        for normal_start in range(0, normals.shape[0], chunk_normals):
+            normal_stop = min(normal_start + chunk_normals, normals.shape[0])
+            normal_sab = sab[normal_start:normal_stop]
+            normal_chunk = normals[normal_start:normal_stop]
+            for direction_start in range(0, kept_directions.shape[0], chunk_directions):
+                direction_stop = min(direction_start + chunk_directions, kept_directions.shape[0])
+                incidence = uniform_z_yaw_mean_incidence(
+                    normal_chunk,
+                    kept_directions[direction_start:direction_stop],
+                    chunk_directions=direction_stop - direction_start,
+                    chunk_normals=normal_stop - normal_start,
+                )
+                normal_sab += incidence @ kept_powers[direction_start:direction_stop]
+        sab *= float(self.engine.T0)
+
+        arriving = float(np.sum(kept_powers, dtype=np.float64))
+        susceptibility = float(measure.total_transfer if reference_s0 > 0.0 else 0.0)
+        areas = np.asarray(self.body.areas, dtype=np.float64)
+        absorbed = float(np.sum(sab * areas, dtype=np.float64))
+        total_area = float(self.body.total_area)
+        if absorbed == 0.0:
+            sar = 0.0
+        elif self.body_mass_kg is None:
+            sar = float("nan")
+        else:
+            sar = absorbed / self.body_mass_kg
+        result = UniformYawBodyExposure(
+            reference_s0_w_m2=reference_s0,
+            arriving_power_density_w_m2=arriving,
+            susceptibility=susceptibility,
+            peak_of_yaw_mean_sab_w_m2=(float(np.max(sab)) if sab.size else 0.0),
+            yaw_mean_area_mean_sab_w_m2=(absorbed / total_area if total_area > 0.0 else 0.0),
+            yaw_mean_absorbed_power_w=absorbed,
+            yaw_mean_sar_wb_w_kg=float(sar),
+        )
+        return result, sab
 
     def couple_many(
         self,
