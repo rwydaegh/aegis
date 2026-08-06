@@ -308,6 +308,7 @@ def main() -> int:
     raw_scene = bpy.context.scene
     panorama_asset = None
     panorama_hook = None
+    panorama_scene_hooks = ()
     if manifest["site"] == "korenmarkt":
         panorama_asset = panorama.select_panorama_asset(manifest, ROOT)
         panorama_hook = functools.partial(
@@ -316,7 +317,17 @@ def main() -> int:
             blend_path=args.blend,
             support_collection_name=scene.COLLECTION_NAMES["twin"],
         )
-    prepared = views.build_prepared_scenes(raw_scene, scene.BUILT, panorama_hook=panorama_hook)
+        panorama_scene_hooks = panorama.prepared_capture_scene_hooks(
+            panorama_asset,
+            blend_path=args.blend,
+            support_collection_name=scene.COLLECTION_NAMES["twin"],
+        )
+    prepared = views.build_prepared_scenes(
+        raw_scene,
+        scene.BUILT,
+        panorama_hook=panorama_hook,
+        panorama_scene_hooks=panorama_scene_hooks,
+    )
     views.set_default_scene(prepared)
 
     args.blend.parent.mkdir(parents=True, exist_ok=True)

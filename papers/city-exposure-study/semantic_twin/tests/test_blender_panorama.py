@@ -688,6 +688,497 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
 
 
 @pytest.mark.skipif(not BLENDER.is_file(), reason="Blender is not installed at the default location")
+def test_each_admitted_capture_has_a_saved_render_ready_scene(tmp_path: pathlib.Path) -> None:
+    study = pathlib.Path(__file__).resolve().parents[1]
+    hero_image = tmp_path / "hero_64x32.png"
+    companion_image = tmp_path / "companion_80x40.png"
+    Image.new("RGB", (64, 32), (210, 25, 20)).save(hero_image)
+    Image.new("RGB", (80, 40), (15, 190, 215)).save(companion_image)
+    hero_digest = hashlib.sha256(hero_image.read_bytes()).hexdigest()
+    companion_digest = hashlib.sha256(companion_image.read_bytes()).hexdigest()
+    pose = tmp_path / "pose.json"
+    pose.write_text("{}")
+    blend = tmp_path / "capture_scenes.blend"
+    report = tmp_path / "capture_scenes.json"
+    script = tmp_path / "capture_scenes_probe.py"
+    script.write_text(
+        textwrap.dedent(
+            f"""
+            import hashlib
+            import json
+            import pathlib
+            import sys
+            from dataclasses import replace
+
+            import bpy
+            import numpy as np
+            from mathutils import Matrix, Vector
+
+            sys.path.insert(0, {str(study)!r})
+            from semantic_twin.viz.blender.panorama import (
+                PanoramaAsset,
+                SUPPORT_OVERLAY_SCALE,
+                camera_matrix,
+                configure_panorama_scene,
+                finalize_panorama_render_cameras,
+                prepared_capture_scene_hooks,
+            )
+
+            bpy.ops.wm.read_factory_settings(use_empty=True)
+            hero_scene = bpy.context.scene
+            hero_scene.name = "07 VIEW - panorama registration"
+            hero_scene.view_layers[0].name = "Registered photograph"
+            support = bpy.data.collections.new("01 city mesh")
+            hero_scene.collection.children.link(support)
+            mesh = bpy.data.meshes.new("shared city support")
+            mesh.from_pydata(
+                [(99.0, 99.0, 99.0), (100.0, 99.0, 99.0), (99.0, 100.0, 99.0)],
+                [],
+                [(0, 1, 2)],
+            )
+            city = bpy.data.objects.new("city support", mesh)
+            support.objects.link(city)
+            for name in ("Panorama capture poses", "Exposure standpoints"):
+                hero_scene.view_layers.new(name)
+
+            hero = PanoramaAsset(
+                capture="hero_capture",
+                provider="Mapillary",
+                image_id="hero-image",
+                image_path=pathlib.Path({str(hero_image)!r}),
+                image_sha256={hero_digest!r},
+                width=64,
+                height=32,
+                pose_path=pathlib.Path({str(pose)!r}),
+                position_enu_m=(0.0, 0.0, 2.0),
+                heading_deg=0.0,
+                pitch_deg=0.0,
+                roll_deg=0.0,
+                skyline_residual_deg=1.0,
+                sky_with_mesh_hit_fraction=0.01,
+                registration_verdict="usable",
+                captured_at="2025-01-01",
+                atlas_panorama_sha256={hero_digest!r},
+            )
+            companion = replace(
+                hero,
+                capture="companion_capture",
+                image_id="companion-image",
+                image_path=pathlib.Path({str(companion_image)!r}),
+                image_sha256={companion_digest!r},
+                atlas_panorama_sha256={companion_digest!r},
+                width=80,
+                height=40,
+                position_enu_m=(10.0, 0.0, 3.0),
+                heading_deg=90.0,
+                captured_at="2025-01-02",
+            )
+            hero = replace(hero, companion_assets=(companion,))
+            hooks = prepared_capture_scene_hooks(hero, blend_path=pathlib.Path({str(blend)!r}))
+            assert len(hooks) == 1
+
+            companion_scene = bpy.data.scenes.new(hooks[0].name)
+            companion_scene.view_layers[0].name = "Registered photograph"
+            companion_scene.collection.children.link(support)
+            for name in ("Panorama capture poses", "Exposure standpoints"):
+                companion_scene.view_layers.new(name)
+
+            handler_counts_before = {{
+                "frame_change_pre": len(bpy.app.handlers.frame_change_pre),
+                "frame_change_post": len(bpy.app.handlers.frame_change_post),
+                "render_pre": len(bpy.app.handlers.render_pre),
+            }}
+            configure_panorama_scene(hero_scene, hero, blend_path=pathlib.Path({str(blend)!r}))
+            hooks[0].configure(companion_scene)
+            for scene, active_asset in ((hero_scene, hero), (companion_scene, companion)):
+                acquisition_name = scene["panorama_acquisition_collection"]
+                scene.view_layers[0].layer_collection.children[acquisition_name].exclude = True
+                bpy.context.window.scene = scene
+                bpy.context.view_layer.update()
+                marker_position = Vector(
+                    (camera_matrix(active_asset) @ np.array((0.0, 0.0, -5.0, 1.0)))[:3]
+                )
+                bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.55, location=marker_position)
+                marker = bpy.context.object
+                marker.name = f"camera projection probe | {{scene['panorama_capture']}}"
+                marker_material = bpy.data.materials.new(marker.name)
+                marker_material.use_nodes = True
+                marker_nodes = marker_material.node_tree.nodes
+                marker_nodes.clear()
+                marker_emission = marker_nodes.new("ShaderNodeEmission")
+                marker_emission.inputs["Color"].default_value = (1.0, 0.0, 1.0, 1.0)
+                marker_emission.inputs["Strength"].default_value = 5.0
+                marker_output = marker_nodes.new("ShaderNodeOutputMaterial")
+                marker_material.node_tree.links.new(marker_emission.outputs[0], marker_output.inputs["Surface"])
+                marker.data.materials.append(marker_material)
+            handler_counts_after = {{
+                "frame_change_pre": len(bpy.app.handlers.frame_change_pre),
+                "frame_change_post": len(bpy.app.handlers.frame_change_post),
+                "render_pre": len(bpy.app.handlers.render_pre),
+            }}
+
+            neutral_scene = bpy.data.scenes.new("01 VIEW - neutral default")
+            finalize_panorama_render_cameras(
+                (hero_scene, companion_scene),
+                cold_open_anchor=neutral_scene,
+            )
+            bpy.context.window.scene = neutral_scene
+            bpy.ops.wm.save_as_mainfile(filepath={str(blend)!r}, compress=True)
+            bpy.ops.wm.open_mainfile(filepath={str(blend)!r})
+            city = bpy.data.objects["city support"]
+
+            rows = []
+            render_paths = []
+            for scene_name in ("07 VIEW - panorama registration", hooks[0].name):
+                scene = bpy.data.scenes[scene_name]
+                bpy.context.window.scene = scene
+                bpy.context.view_layer.update()
+                scene.cycles.samples = 1
+                scene.cycles.use_denoising = False
+                render_path = pathlib.Path({str(tmp_path)!r}) / f"{{scene['panorama_capture']}}.png"
+                scene.render.filepath = str(render_path)
+                bpy.ops.render.render(write_still=True)
+                render_paths.append(render_path)
+
+                camera = scene.camera
+                evaluated_camera = camera.evaluated_get(bpy.context.evaluated_depsgraph_get())
+                source = scene.node_tree.nodes["Linked source panorama"].image
+                overlay_collection = bpy.data.collections[scene["panorama_support_overlay_collection"]]
+                overlay = next(obj for obj in overlay_collection.objects if obj.type == "MESH")
+                centre = Vector(json.loads(scene["panorama_support_overlay_centre_enu_m_json"]))
+                display = Matrix.Translation(centre) @ Matrix.Diagonal(
+                    (SUPPORT_OVERLAY_SCALE, SUPPORT_OVERLAY_SCALE, SUPPORT_OVERLAY_SCALE, 1.0)
+                ) @ Matrix.Translation(-centre)
+                expected_overlay = display @ city.matrix_world
+                acquisition = bpy.data.collections[scene["panorama_acquisition_collection"]]
+                normal = next(obj for obj in acquisition.objects if obj.get("view_role") == "normal camera view with linked panorama crop")
+                drivers = []
+                for datablock in (scene, camera, camera.data, normal, normal.data, overlay):
+                    animation = getattr(datablock, "animation_data", None)
+                    drivers.extend([] if animation is None else animation.drivers)
+                rows.append({{
+                    "scene": scene.name,
+                    "capture": scene["panorama_capture"],
+                    "camera_capture": camera["capture"],
+                    "camera_position": list(evaluated_camera.matrix_world.translation),
+                    "camera_basis_position": list(camera.matrix_basis.translation),
+                    "camera_original_world_position": list(camera.matrix_world.translation),
+                    "camera_root_linked": camera.name in scene.collection.objects,
+                    "camera_preload_linked": camera.name in bpy.data.collections[
+                        scene["panorama_render_camera_collection"]
+                    ].objects,
+                    "view_layer_use": {{layer.name: layer.use for layer in scene.view_layers}},
+                    "source_path": source.filepath,
+                    "source_sha256": camera["panorama_image_sha256"],
+                    "resolution": [scene.render.resolution_x, scene.render.resolution_y],
+                    "overlay_centre": list(centre),
+                    "overlay_matrix_error": max(
+                        abs(overlay.matrix_world[row][column] - expected_overlay[row][column])
+                        for row in range(4) for column in range(4)
+                    ),
+                    "overlay_mesh": overlay.data.name,
+                    "overlay_mesh_shared": overlay.data["panorama_display_mesh_shared_between_capture_scenes"],
+                    "nearest_capture": scene["panorama_marker_capture"],
+                    "nearest_distance_m": scene["panorama_marker_distance_m"],
+                    "admitted_count": scene["panorama_admitted_capture_count"],
+                    "scene_count": scene["panorama_capture_scene_count"],
+                    "scene_captures": json.loads(scene["panorama_capture_scene_captures_json"]),
+                    "active_camera_count": acquisition["capture_count"],
+                    "normal_capture": normal["capture"],
+                    "driver_count": len(drivers),
+                }})
+
+            pathlib.Path({str(report)!r}).write_text(json.dumps({{
+                "rows": rows,
+                "handler_counts_before": handler_counts_before,
+                "handler_counts_after": handler_counts_after,
+                "render_paths": [str(path) for path in render_paths],
+            }}))
+            """
+        )
+    )
+    result = subprocess.run(
+        [str(BLENDER), "--background", "--factory-startup", "--python", str(script)],
+        capture_output=True,
+        text=True,
+        timeout=90,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout[-4000:] + result.stderr[-4000:]
+    assert report.is_file(), result.stdout[-4000:] + result.stderr[-4000:]
+    measured = json.loads(report.read_text())
+    assert measured["handler_counts_after"] == measured["handler_counts_before"]
+    hero, companion = measured["rows"]
+    assert [hero["capture"], companion["capture"]] == ["hero_capture", "companion_capture"]
+    assert hero["camera_capture"] == hero["normal_capture"] == "hero_capture"
+    assert companion["camera_capture"] == companion["normal_capture"] == "companion_capture"
+    assert hero["camera_position"] == pytest.approx([0.0, 0.0, 2.0])
+    assert companion["camera_position"] == pytest.approx([10.0, 0.0, 3.0])
+    assert hero["camera_basis_position"] == pytest.approx(hero["camera_position"])
+    assert companion["camera_basis_position"] == pytest.approx(companion["camera_position"])
+    assert not hero["camera_root_linked"] and not companion["camera_root_linked"]
+    assert hero["camera_preload_linked"] and companion["camera_preload_linked"]
+    expected_layer_use = {
+        "Registered photograph": True,
+        "Panorama capture poses": False,
+        "Exposure standpoints": False,
+    }
+    assert hero["view_layer_use"] == companion["view_layer_use"] == expected_layer_use
+    assert pathlib.Path(hero["source_path"]).name == hero_image.name
+    assert pathlib.Path(companion["source_path"]).name == companion_image.name
+    assert hero["source_sha256"] == hero_digest
+    assert companion["source_sha256"] == companion_digest
+    assert hero["resolution"] == [64, 32]
+    assert companion["resolution"] == [80, 40]
+    assert hero["overlay_centre"] == pytest.approx(hero["camera_position"])
+    assert companion["overlay_centre"] == pytest.approx(companion["camera_position"])
+    assert hero["overlay_matrix_error"] < 1e-9
+    assert companion["overlay_matrix_error"] < 1e-9
+    assert hero["overlay_mesh"] == companion["overlay_mesh"]
+    assert hero["overlay_mesh_shared"] and companion["overlay_mesh_shared"]
+    assert hero["nearest_capture"] == "companion_capture"
+    assert companion["nearest_capture"] == "hero_capture"
+    assert hero["nearest_distance_m"] == pytest.approx(np.sqrt(101.0))
+    assert companion["nearest_distance_m"] == pytest.approx(np.sqrt(101.0))
+    assert hero["admitted_count"] == hero["scene_count"] == 2
+    assert companion["admitted_count"] == companion["scene_count"] == 2
+    assert hero["scene_captures"] == ["hero_capture", "companion_capture"]
+    assert companion["scene_captures"] == ["companion_capture", "hero_capture"]
+    assert hero["active_camera_count"] == 2
+    assert companion["active_camera_count"] == 1
+    assert hero["driver_count"] == companion["driver_count"] == 0
+
+    hero_render = np.asarray(Image.open(measured["render_paths"][0]).convert("RGB"))
+    companion_render = np.asarray(Image.open(measured["render_paths"][1]).convert("RGB"))
+    assert hero_render.shape == (32, 64, 3)
+    assert companion_render.shape == (40, 80, 3)
+    assert hero_render[:, :, 0].mean() > hero_render[:, :, 2].mean() + 100
+    assert companion_render[:, :, 2].mean() > companion_render[:, :, 0].mean() + 100
+    for rendered in (hero_render, companion_render):
+        centre = rendered[rendered.shape[0] // 2, rendered.shape[1] // 2]
+        assert centre[0] > 150 and centre[2] > 150 and centre[1] < 100
+
+
+@pytest.mark.skipif(not BLENDER.is_file(), reason="Blender is not installed at the default location")
+def test_saved_panorama_cameras_have_correct_raw_transform_on_cold_open(tmp_path: pathlib.Path) -> None:
+    study = pathlib.Path(__file__).resolve().parents[1]
+    hero_image = tmp_path / "cold_hero.png"
+    companion_image = tmp_path / "cold_companion.png"
+    Image.new("RGB", (64, 32), (210, 25, 20)).save(hero_image)
+    Image.new("RGB", (80, 40), (15, 190, 215)).save(companion_image)
+    hero_digest = hashlib.sha256(hero_image.read_bytes()).hexdigest()
+    companion_digest = hashlib.sha256(companion_image.read_bytes()).hexdigest()
+    pose = tmp_path / "pose.json"
+    pose.write_text("{}")
+    blend = tmp_path / "cold_capture_scenes.blend"
+    build_script = tmp_path / "build_cold_capture_scenes.py"
+    inspect_script = tmp_path / "inspect_cold_capture_scenes.py"
+    report = tmp_path / "cold_capture_scenes.json"
+    build_script.write_text(
+        textwrap.dedent(
+            f"""
+            import json
+            import pathlib
+            import sys
+            from dataclasses import replace
+
+            import bpy
+
+            sys.path.insert(0, {str(study)!r})
+            from semantic_twin.viz.blender.panorama import (
+                PanoramaAsset,
+                camera_matrix,
+                configure_panorama_scene,
+                finalize_panorama_render_cameras,
+                prepared_capture_scene_hooks,
+            )
+
+            bpy.ops.wm.read_factory_settings(use_empty=True)
+            hero_scene = bpy.context.scene
+            hero_scene.name = "07 VIEW - panorama registration"
+            hero_scene.view_layers[0].name = "Registered photograph"
+            support = bpy.data.collections.new("01 city mesh")
+            hero_scene.collection.children.link(support)
+            mesh = bpy.data.meshes.new("cold support")
+            mesh.from_pydata(
+                [(99.0, 99.0, 99.0), (100.0, 99.0, 99.0), (99.0, 100.0, 99.0)],
+                [],
+                [(0, 1, 2)],
+            )
+            support.objects.link(bpy.data.objects.new("cold support", mesh))
+            for name in ("Panorama capture poses", "Exposure standpoints"):
+                hero_scene.view_layers.new(name)
+
+            hero = PanoramaAsset(
+                capture="cold_hero",
+                provider="Mapillary",
+                image_id="cold-hero-image",
+                image_path=pathlib.Path({str(hero_image)!r}),
+                image_sha256={hero_digest!r},
+                width=64,
+                height=32,
+                pose_path=pathlib.Path({str(pose)!r}),
+                position_enu_m=(1.25, -4.5, 2.75),
+                heading_deg=12.0,
+                pitch_deg=-1.5,
+                roll_deg=0.5,
+                skyline_residual_deg=1.0,
+                sky_with_mesh_hit_fraction=0.01,
+                registration_verdict="usable",
+                captured_at="2025-01-01",
+                atlas_panorama_sha256={hero_digest!r},
+            )
+            companion = replace(
+                hero,
+                capture="cold_companion",
+                image_id="cold-companion-image",
+                image_path=pathlib.Path({str(companion_image)!r}),
+                image_sha256={companion_digest!r},
+                atlas_panorama_sha256={companion_digest!r},
+                width=80,
+                height=40,
+                position_enu_m=(11.0, 2.5, 3.25),
+                heading_deg=97.0,
+                captured_at="2025-01-02",
+            )
+            hero = replace(hero, companion_assets=(companion,))
+            hook = prepared_capture_scene_hooks(hero, blend_path=pathlib.Path({str(blend)!r}))[0]
+            companion_scene = bpy.data.scenes.new(hook.name)
+            companion_scene.view_layers[0].name = "Registered photograph"
+            companion_scene.collection.children.link(support)
+            for name in ("Panorama capture poses", "Exposure standpoints"):
+                companion_scene.view_layers.new(name)
+
+            configure_panorama_scene(hero_scene, hero, blend_path=pathlib.Path({str(blend)!r}))
+            hook.configure(companion_scene)
+            hero_scene["_test_expected_camera_matrix_json"] = json.dumps(camera_matrix(hero).tolist())
+            companion_scene["_test_expected_camera_matrix_json"] = json.dumps(camera_matrix(companion).tolist())
+            neutral = bpy.data.scenes.new("01 VIEW - neutral cold-open default")
+            bpy.data.scenes.new("08 VIEW - ordinary scene without panorama cameras")
+            finalize_panorama_render_cameras(
+                (hero_scene, companion_scene),
+                cold_open_anchor=neutral,
+            )
+            bpy.context.window.scene = neutral
+            bpy.ops.wm.save_as_mainfile(filepath={str(blend)!r}, compress=True)
+            """
+        )
+    )
+    inspect_script.write_text(
+        textwrap.dedent(
+            f"""
+            import json
+            import pathlib
+
+            import bpy
+
+            default_scene = bpy.context.scene.name
+            scenes = sorted(
+                (item for item in bpy.data.scenes if item.get("panorama_capture")),
+                key=lambda item: item.name,
+            )
+            raw_by_scene = {{
+                scene.name: [list(row) for row in scene.camera.matrix_world]
+                for scene in scenes
+            }}
+            rows = []
+            for scene in scenes:
+                camera = scene.camera
+                rows.append({{
+                    "scene": scene.name,
+                    "capture": scene["panorama_capture"],
+                    "raw": raw_by_scene[scene.name],
+                    "expected": json.loads(scene["_test_expected_camera_matrix_json"]),
+                    "camera": camera.name,
+                }})
+            for scene, row in zip(scenes, rows, strict=True):
+                camera = scene.camera
+                preload = bpy.data.collections[scene["panorama_render_camera_collection"]]
+                row.update({{
+                    "camera_collections": [item.name for item in camera.users_collection],
+                    "preload": preload.name,
+                    "preload_linked_scenes": sorted(
+                        item.name for item in bpy.data.scenes if preload.name in item.collection.children
+                    ),
+                    "preload_visible_in_target_layer": not scene.view_layers[0].layer_collection.children[
+                        preload.name
+                    ].exclude,
+                    "camera_hide_select": camera.hide_select,
+                    "camera_display_size": camera.data.display_size,
+                    "layer_use": {{item.name: item.use for item in scene.view_layers}},
+                    "basis": [list(values) for values in camera.matrix_basis],
+                }})
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            for row in rows:
+                camera = bpy.data.objects[row["camera"]]
+                row["evaluated"] = [list(values) for values in camera.evaluated_get(depsgraph).matrix_world]
+            pathlib.Path({str(report)!r}).write_text(json.dumps({{
+                "default_scene": default_scene,
+                "rows": rows,
+            }}))
+            """
+        )
+    )
+
+    built = subprocess.run(
+        [
+            str(BLENDER),
+            "--background",
+            "--factory-startup",
+            "--python-exit-code",
+            "1",
+            "--python",
+            str(build_script),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=90,
+        check=False,
+    )
+    assert built.returncode == 0, built.stdout[-4000:] + built.stderr[-4000:]
+    assert blend.is_file(), built.stdout[-4000:] + built.stderr[-4000:]
+    inspected = subprocess.run(
+        [
+            str(BLENDER),
+            "--background",
+            str(blend),
+            "--python-exit-code",
+            "1",
+            "--python",
+            str(inspect_script),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=90,
+        check=False,
+    )
+    assert inspected.returncode == 0, inspected.stdout[-4000:] + inspected.stderr[-4000:]
+    measured = json.loads(report.read_text())
+    assert measured["default_scene"] == "01 VIEW - neutral cold-open default"
+    assert [row["capture"] for row in measured["rows"]] == ["cold_companion", "cold_hero"]
+    expected_layer_use = {
+        "Registered photograph": True,
+        "Panorama capture poses": False,
+        "Exposure standpoints": False,
+    }
+    expected_linked_scenes = [
+        "01 VIEW - neutral cold-open default",
+        "07 PANO 02 - cold_companion",
+        "07 VIEW - panorama registration",
+    ]
+    for row in measured["rows"]:
+        assert np.asarray(row["raw"]) == pytest.approx(np.asarray(row["expected"]), abs=2e-6)
+        assert np.asarray(row["basis"]) == pytest.approx(np.asarray(row["expected"]), abs=2e-6)
+        assert np.asarray(row["evaluated"]) == pytest.approx(np.asarray(row["expected"]), abs=2e-6)
+        assert row["camera_collections"] == [row["preload"]]
+        assert row["preload_linked_scenes"] == expected_linked_scenes
+        assert row["preload_visible_in_target_layer"]
+        assert row["camera_hide_select"]
+        assert row["camera_display_size"] == pytest.approx(0.15)
+        assert row["layer_use"] == expected_layer_use
+
+
+@pytest.mark.skipif(not BLENDER.is_file(), reason="Blender is not installed at the default location")
 def test_cycles_projection_and_support_holdout_are_visible_in_rendered_pixels(tmp_path: pathlib.Path) -> None:
     study = pathlib.Path(__file__).resolve().parents[1]
     source = tmp_path / "black_panorama.jpg"

@@ -43,6 +43,16 @@ class PreparedView:
     requires_objects: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class PreparedSceneHook:
+    """One extra saved scene that uses a prepared view's base layout."""
+
+    key: str
+    name: str
+    purpose: str
+    configure: Callable[[Any], Any]
+
+
 def prepared_view_specs() -> tuple[PreparedView, ...]:
     """The stable scenes saved in every propagation blend."""
     return (
@@ -402,6 +412,7 @@ def build_prepared_scenes(
     groups: Mapping[str, Any],
     *,
     panorama_hook: Callable[[Any], None] | None = None,
+    panorama_scene_hooks: Sequence[PreparedSceneHook] = (),
 ) -> dict[str, Any]:
     """Build linked prepared scenes and leave the raw archive intact.
 
@@ -414,7 +425,12 @@ def build_prepared_scenes(
     raw_scene["prepared_view"] = False
     raw_scene["scene_role"] = "complete data archive; collections may start excluded in its view layer"
 
+    extra_keys = [hook.key for hook in panorama_scene_hooks]
+    if len(set(extra_keys)) != len(extra_keys) or PANORAMA_VIEW_KEY in extra_keys:
+        raise ValueError("extra panorama scene hooks must have unique keys distinct from the primary panorama scene")
+
     built: dict[str, Any] = {}
+    written_specs: list[PreparedView] = []
     specs = available_view_specs(groups)
     for spec in specs:
         made, view_layers = _new_prepared_scene(raw_scene, groups, spec)
@@ -423,8 +439,34 @@ def build_prepared_scenes(
             _run_panorama_hook(made, view_layers, panorama_hook)
         _stamp_prepared_view(made, spec)
         built[spec.key] = made
+        written_specs.append(spec)
 
-    _write_start_here(raw_scene, specs)
+        if spec.key == PANORAMA_VIEW_KEY:
+            for hook in panorama_scene_hooks:
+                extra_spec = PreparedView(
+                    key=hook.key,
+                    name=hook.name,
+                    purpose=hook.purpose,
+                    camera=spec.camera,
+                    layers=spec.layers,
+                )
+                extra, extra_layers = _new_prepared_scene(raw_scene, groups, extra_spec)
+                _set_prepared_camera_timeline(raw_scene, extra, extra_spec)
+                _run_panorama_hook(extra, extra_layers, hook.configure)
+                _stamp_prepared_view(extra, extra_spec)
+                built[extra_spec.key] = extra
+                written_specs.append(extra_spec)
+
+    if panorama_hook is not None or panorama_scene_hooks:
+        from .panorama import finalize_panorama_render_cameras
+
+        panorama_scenes = tuple(scene for scene in built.values() if scene.get("panorama_capture"))
+        finalize_panorama_render_cameras(
+            panorama_scenes,
+            cold_open_anchor=built["exposure_overview"],
+        )
+
+    _write_start_here(raw_scene, written_specs)
     return built
 
 

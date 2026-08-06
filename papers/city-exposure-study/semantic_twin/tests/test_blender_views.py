@@ -565,6 +565,7 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
             from semantic_twin.viz.blender.scene import build_walk_camera
             from semantic_twin.viz.blender.views import (
                 RAW_SCENE_NAME,
+                PreparedSceneHook,
                 activate_raw_scene,
                 build_prepared_scenes,
                 prepared_view_specs,
@@ -622,17 +623,40 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
             raw.render.resolution_x = 32
             raw.render.resolution_y = 32
             raw.render.resolution_percentage = 100
-            def panorama_hook(prepared_scene):
-                overlay = bpy.data.collections.new("panorama hook overlay")
+            def add_panorama_groups(prepared_scene, prefix):
+                overlay = bpy.data.collections.new(f"{{prefix}} overlay")
                 overlay["panorama_overlay_collection"] = True
                 overlay["panorama_overlay_role"] = "support registration overlay"
                 prepared_scene.collection.children.link(overlay)
-                acquisition = bpy.data.collections.new("panorama hook acquisitions")
+                acquisition = bpy.data.collections.new(f"{{prefix}} acquisitions")
                 acquisition["panorama_overlay_collection"] = True
                 acquisition["panorama_overlay_role"] = "registered acquisition cameras and projection planes"
                 prepared_scene.collection.children.link(acquisition)
+                camera = bpy.data.objects.new(
+                    f"{{prefix}} active render camera",
+                    bpy.data.cameras.new(f"{{prefix}} active render camera"),
+                )
+                camera["active_render_camera"] = True
+                camera["capture"] = prefix
+                prepared_scene.collection.objects.link(camera)
+                prepared_scene.camera = camera
+                prepared_scene["panorama_capture"] = prefix
 
-            made = build_prepared_scenes(raw, groups, panorama_hook=panorama_hook)
+            def panorama_hook(prepared_scene):
+                add_panorama_groups(prepared_scene, "panorama hook")
+
+            sibling = PreparedSceneHook(
+                key="panorama_registration_probe",
+                name="07 PANO 02 - probe",
+                purpose="second saved panorama capture",
+                configure=lambda prepared_scene: add_panorama_groups(prepared_scene, "panorama sibling"),
+            )
+            made = build_prepared_scenes(
+                raw,
+                groups,
+                panorama_hook=panorama_hook,
+                panorama_scene_hooks=(sibling,),
+            )
             bpy.ops.wm.save_as_mainfile(filepath={str(blend)!r})
             bpy.ops.wm.open_mainfile(filepath={str(blend)!r})
 
@@ -642,6 +666,7 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
                 for spec in prepared_view_specs()
                 if spec.name in bpy.data.scenes
             }}
+            made["panorama_registration_probe"] = bpy.data.scenes["07 PANO 02 - probe"]
             groups = {{key: bpy.data.collections[key] for key in keys}}
             walk_camera = bpy.data.objects["cam_walk"]
             animated = bpy.data.objects["prepared frame probe"]
@@ -692,7 +717,37 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
                     layer.name: layer.layer_collection.children["panorama hook acquisitions"].exclude
                     for layer in made["panorama_registration"].view_layers
                 }},
+                "panorama_sibling_overlay_excluded": {{
+                    layer.name: layer.layer_collection.children["panorama sibling overlay"].exclude
+                    for layer in made["panorama_registration_probe"].view_layers
+                }},
+                "panorama_sibling_key": made["panorama_registration_probe"]["prepared_view_key"],
+                "panorama_preload": {{}},
                 "views": {{}},
+            }}
+            preload_name = made["panorama_registration"]["panorama_render_camera_collection"]
+            preload = bpy.data.collections[preload_name]
+            result["panorama_preload"] = {{
+                "camera_count": preload["camera_count"],
+                "object_types": sorted(obj.type for obj in preload.objects),
+                "linked_scenes": sorted(
+                    scene.name for scene in bpy.data.scenes if preload.name in scene.collection.children
+                ),
+                "camera_collections": {{
+                    scene.camera.name: sorted(collection.name for collection in scene.camera.users_collection)
+                    for scene in (
+                        made["panorama_registration"],
+                        made["panorama_registration_probe"],
+                    )
+                }},
+                "target_layer_visible": all(
+                    not scene.view_layers[0].layer_collection.children[preload.name].exclude
+                    for scene in (
+                        made["exposure_overview"],
+                        made["panorama_registration"],
+                        made["panorama_registration_probe"],
+                    )
+                ),
             }}
             for key, scene in made.items():
                 layers = {{}}
@@ -701,9 +756,14 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
                         name for name, group in groups.items()
                         if layer.layer_collection.children[group.name].exclude
                     )
+                matching_spec = next(
+                    spec
+                    for spec in prepared_view_specs()
+                    if spec.key == ("panorama_registration" if key == "panorama_registration_probe" else key)
+                )
                 layers_expected = {{
                     layer.name: sorted(set(groups).difference(layer.show))
-                    for layer in next(spec for spec in prepared_view_specs() if spec.key == key).layers
+                    for layer in matching_spec.layers
                 }}
                 result["views"][key] = {{
                     "name": scene.name,
@@ -758,7 +818,26 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
         "Panorama capture poses": False,
         "Exposure standpoints": True,
     }
-    assert len(measured["views"]) == 9
+    assert measured["panorama_sibling_overlay_excluded"] == {
+        "Registered photograph": False,
+        "Panorama capture poses": True,
+        "Exposure standpoints": True,
+    }
+    assert measured["panorama_sibling_key"] == "panorama_registration_probe"
+    assert measured["panorama_preload"]["camera_count"] == 2
+    assert measured["panorama_preload"]["object_types"] == ["CAMERA", "CAMERA"]
+    assert measured["panorama_preload"]["linked_scenes"] == [
+        "01 VIEW - exposure overview",
+        "07 PANO 02 - probe",
+        "07 VIEW - panorama registration",
+    ]
+    assert all(
+        collections == ["Panorama active render cameras"]
+        for collections in measured["panorama_preload"]["camera_collections"].values()
+    )
+    assert measured["panorama_preload"]["target_layer_visible"]
+    assert "07 PANO 02 - probe: second saved panorama capture" in measured["readme"]
+    assert len(measured["views"]) == 10
     for view in measured["views"].values():
         assert view["shared"]
         assert not view["global_hide_render"]

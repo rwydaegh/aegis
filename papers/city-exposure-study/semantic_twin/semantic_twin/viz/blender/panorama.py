@@ -20,12 +20,15 @@ import pathlib
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from PIL import Image
 
 from ...pano_geometry import PerspectiveView, extract_perspective, panorama_to_world_matrix
+
+if TYPE_CHECKING:
+    from .views import PreparedSceneHook
 
 KORENMARKT_HERO_CAPTURE = "walk_05_1084407470281938"
 SUPPORT_OVERLAY_SCALE = 0.99999
@@ -40,6 +43,9 @@ PANORAMA_DISPLAY_CLIP_RULE = (
     "The equirectangular camera ignores display geometry within 2 m of its acquisition pose. The linked photograph "
     "is composited independently. Companion markers and scene geometry beyond 2 m remain visible."
 )
+PANORAMA_CAPTURE_SCENE_PREFIX = "07 PANO"
+PANORAMA_RENDER_CAMERA_COLLECTION_NAME = "Panorama active render cameras"
+EQUIRECTANGULAR_PROJECTION = "equirectangular, full longitude and latitude"
 
 
 @dataclass(frozen=True)
@@ -473,25 +479,30 @@ def _support_overlay(prepared_scene: Any, support: Any, asset: PanoramaAsset) ->
     import bpy
     from mathutils import Matrix, Vector
 
-    material = bpy.data.materials.new(f"Panorama support overlay | {asset.capture}")
-    material.use_nodes = True
-    nodes = material.node_tree.nodes
-    nodes.clear()
-    transparent = nodes.new("ShaderNodeBsdfTransparent")
-    emission = nodes.new("ShaderNodeEmission")
-    emission.inputs["Color"].default_value = (0.02, 0.68, 0.92, 1.0)
-    emission.inputs["Strength"].default_value = 1.0
-    mixed = nodes.new("ShaderNodeMixShader")
-    mixed.inputs[0].default_value = SUPPORT_OVERLAY_OPACITY
-    output = nodes.new("ShaderNodeOutputMaterial")
-    material.node_tree.links.new(transparent.outputs[0], mixed.inputs[1])
-    material.node_tree.links.new(emission.outputs[0], mixed.inputs[2])
-    material.node_tree.links.new(mixed.outputs[0], output.inputs["Surface"])
+    material_name = "Panorama support registration overlay"
+    material = bpy.data.materials.get(material_name)
+    if material is None:
+        material = bpy.data.materials.new(material_name)
+        material.use_nodes = True
+        nodes = material.node_tree.nodes
+        nodes.clear()
+        transparent = nodes.new("ShaderNodeBsdfTransparent")
+        emission = nodes.new("ShaderNodeEmission")
+        emission.inputs["Color"].default_value = (0.02, 0.68, 0.92, 1.0)
+        emission.inputs["Strength"].default_value = 1.0
+        mixed = nodes.new("ShaderNodeMixShader")
+        mixed.inputs[0].default_value = SUPPORT_OVERLAY_OPACITY
+        output = nodes.new("ShaderNodeOutputMaterial")
+        material.node_tree.links.new(transparent.outputs[0], mixed.inputs[1])
+        material.node_tree.links.new(emission.outputs[0], mixed.inputs[2])
+        material.node_tree.links.new(mixed.outputs[0], output.inputs["Surface"])
+        material["panorama_support_overlay_opacity"] = SUPPORT_OVERLAY_OPACITY
 
     overlay_group = bpy.data.collections.new(f"Panorama support overlay | {asset.capture}")
     prepared_scene.collection.children.link(overlay_group)
     overlay_group["panorama_overlay_collection"] = True
     overlay_group["panorama_overlay_role"] = "support registration overlay"
+    overlay_group["scale_centre_enu_m_json"] = json.dumps(asset.position_enu_m)
     centre = Matrix.Translation(Vector(asset.position_enu_m))
     scale = Matrix.Diagonal((SUPPORT_OVERLAY_SCALE, SUPPORT_OVERLAY_SCALE, SUPPORT_OVERLAY_SCALE, 1.0))
     display_transform = centre @ scale @ centre.inverted()
@@ -500,17 +511,33 @@ def _support_overlay(prepared_scene: Any, support: Any, asset: PanoramaAsset) ->
         if source.type != "MESH":
             continue
         overlay = source.copy()
-        overlay.data = source.data.copy()
+        shared_data = next(
+            (
+                mesh
+                for mesh in bpy.data.meshes
+                if mesh.get("panorama_source_mesh_datablock") == source.data.name
+                and len(mesh.vertices) == len(source.data.vertices)
+                and len(mesh.polygons) == len(source.data.polygons)
+            ),
+            None,
+        )
+        if shared_data is None:
+            shared_data = source.data.copy()
+            shared_data.name = f"Panorama shared support display mesh | {source.data.name}"
+            shared_data.materials.clear()
+            shared_data.materials.append(material)
+            shared_data["panorama_source_mesh_datablock"] = source.data.name
+            shared_data["panorama_display_mesh_shared_between_capture_scenes"] = True
+        overlay.data = shared_data
         overlay.name = f"Panorama support registration | {source.name}"
-        overlay.data.name = f"Panorama support display mesh | {source.data.name}"
-        overlay.data.materials.clear()
-        overlay.data.materials.append(material)
         overlay.matrix_world = display_transform @ source.matrix_world
         overlay.hide_select = True
         if hasattr(overlay, "visible_shadow"):
             overlay.visible_shadow = False
         overlay["role"] = "display-only support registration overlay"
         overlay["scale_about_panorama_camera"] = SUPPORT_OVERLAY_SCALE
+        overlay["scale_centre_enu_m_json"] = json.dumps(asset.position_enu_m)
+        overlay["shared_display_mesh"] = True
         overlay["angular_projection_changed"] = False
         overlay["production_geometry_changed"] = False
         overlay_group.objects.link(overlay)
@@ -532,18 +559,11 @@ def _add_nearby_capture_marker(prepared_scene: Any, asset: PanoramaAsset) -> dic
 
     origin = np.asarray(asset.position_enu_m, dtype=np.float64)
     candidates = []
-    for obj in prepared_scene.objects:
-        if (
-            obj.type != "CAMERA"
-            or obj.get("pose_role") != "registered panorama acquisition pose"
-            or "capture" not in obj
-            or str(obj["capture"]) == asset.capture
-        ):
-            continue
-        position = np.asarray(obj.matrix_world.translation, dtype=np.float64)
+    for companion in asset.companion_assets:
+        position = np.asarray(companion.position_enu_m, dtype=np.float64)
         distance = float(np.linalg.norm(position - origin))
         if distance > 0.1:
-            candidates.append((distance, obj, position))
+            candidates.append((distance, companion, position))
     if not candidates:
         return None
     distance, source, position = min(candidates, key=lambda candidate: candidate[0])
@@ -574,7 +594,9 @@ def _add_nearby_capture_marker(prepared_scene: Any, asset: PanoramaAsset) -> dic
     marker = bpy.data.objects.new(NEARBY_MARKER_NAME, mesh)
     marker.location = tuple(float(value) for value in position)
     marker["meaning"] = "recorded ENU position of the nearest other registered panorama camera"
-    marker["capture"] = str(source["capture"])
+    marker["capture"] = source.capture
+    marker["image_id"] = source.image_id
+    marker["provider"] = source.provider
     marker["distance_from_active_capture_m"] = distance
 
     from .scene import emissive_material
@@ -593,7 +615,9 @@ def _add_nearby_capture_marker(prepared_scene: Any, asset: PanoramaAsset) -> dic
     overlay["panorama_overlay_role"] = "nearby acquisition marker"
     overlay.objects.link(marker)
     return {
-        "panorama_marker_capture": str(source["capture"]),
+        "panorama_marker_capture": source.capture,
+        "panorama_marker_image_id": source.image_id,
+        "panorama_marker_provider": source.provider,
         "panorama_marker_distance_m": distance,
         "panorama_marker_radius_m": radius,
     }
@@ -664,12 +688,14 @@ def _new_panorama_camera(collection: Any, asset: PanoramaAsset, blend_path: path
     background.frame_method = "FIT"
     camera = bpy.data.objects.new(camera_data.name, camera_data)
     collection.objects.link(camera)
-    camera.matrix_world = Matrix(camera_matrix(asset).tolist())
+    transform = Matrix(camera_matrix(asset).tolist())
+    camera.matrix_world = transform
+    camera.matrix_basis = transform
     properties = _asset_pose_properties(asset)
     properties.update(
         {
             "view_role": "true equirectangular 360 acquisition camera",
-            "projection": "equirectangular, full longitude and latitude",
+            "projection": EQUIRECTANGULAR_PROJECTION,
             "panorama_display_clip_start_m": PANORAMA_DISPLAY_CLIP_START_M,
             "panorama_display_clip_rule": PANORAMA_DISPLAY_CLIP_RULE,
             "camera_background_role": "linked 2:1 source panorama shown when this acquisition camera is active",
@@ -680,6 +706,109 @@ def _new_panorama_camera(collection: Any, asset: PanoramaAsset, blend_path: path
     )
     _stamp_properties(camera, properties)
     return camera
+
+
+def _new_active_render_camera(prepared_scene: Any, acquisition_camera: Any, asset: PanoramaAsset) -> Any:
+    """Copy one audit camera for use as a saved scene's render camera."""
+    import bpy
+    from mathutils import Matrix
+
+    camera_data = acquisition_camera.data.copy()
+    camera_data.name = f"Active panorama render | {asset.capture}"
+    camera = bpy.data.objects.new(camera_data.name, camera_data)
+    prepared_scene.collection.objects.link(camera)
+    camera.hide_select = True
+    camera_data.display_size = 0.15
+    transform = Matrix(camera_matrix(asset).tolist())
+    camera.matrix_world = transform
+    camera.matrix_basis = transform
+    _stamp_properties(camera, _asset_pose_properties(asset))
+    _stamp_properties(
+        camera,
+        {
+            "view_role": "active render camera for saved panorama scene",
+            "audit_camera": acquisition_camera.name,
+            "active_render_camera": True,
+            "active_render_camera_scene": prepared_scene.name,
+            "projection": EQUIRECTANGULAR_PROJECTION,
+            "saved_transform_initialisation": (
+                "This camera is moved into one shared collection linked to the cold-open anchor and panorama scenes "
+                "before the blend is saved."
+            ),
+        },
+    )
+    return camera
+
+
+def _validated_render_cameras(panorama_scenes: tuple[Any, ...]) -> tuple[Any, ...]:
+    cameras = []
+    for scene in panorama_scenes:
+        camera = scene.camera
+        if not scene.get("panorama_capture") or camera is None or not camera.get("active_render_camera", False):
+            raise RuntimeError("every saved panorama scene must have one active render camera")
+        cameras.append(camera)
+    if len({camera.name for camera in cameras}) != len(cameras):
+        raise RuntimeError("each saved panorama scene must own a distinct active render camera")
+    return tuple(cameras)
+
+
+def _replace_preload_cameras(collection: Any, cameras: tuple[Any, ...]) -> None:
+    for existing in tuple(collection.objects):
+        if existing not in cameras:
+            collection.objects.unlink(existing)
+    for camera in cameras:
+        if camera.name not in collection.objects:
+            collection.objects.link(camera)
+        for owner in tuple(camera.users_collection):
+            if owner != collection:
+                owner.objects.unlink(camera)
+
+
+def _link_preload_to_targets(collection: Any, targets: tuple[Any, ...]) -> None:
+    import bpy
+
+    for scene in bpy.data.scenes:
+        if scene not in targets and collection.name in scene.collection.children:
+            scene.collection.children.unlink(collection)
+    for scene in targets:
+        if collection.name not in scene.collection.children:
+            scene.collection.children.link(collection)
+
+
+def finalize_panorama_render_cameras(panorama_scenes: tuple[Any, ...], *, cold_open_anchor: Any) -> Any | None:
+    """Keep every saved panorama camera evaluated when the saved anchor opens first."""
+    import bpy
+
+    if not panorama_scenes:
+        return None
+    cameras = _validated_render_cameras(panorama_scenes)
+
+    collection = bpy.data.collections.get(PANORAMA_RENDER_CAMERA_COLLECTION_NAME)
+    if collection is None:
+        collection = bpy.data.collections.new(PANORAMA_RENDER_CAMERA_COLLECTION_NAME)
+    _replace_preload_cameras(collection, cameras)
+    targets = (cold_open_anchor, *panorama_scenes)
+    _link_preload_to_targets(collection, targets)
+
+    captures = [str(camera.get("capture", "")) for camera in cameras]
+    collection["role"] = "shared camera-only preload for saved panorama render cameras"
+    collection["reason"] = (
+        "Blender otherwise leaves a camera outside the scene that opens first with a stale raw matrix_world until its "
+        "dependency graph is evaluated. Linking this camera-only collection to the cold-open anchor and panorama "
+        "scenes makes the saved transforms available immediately after a cold open."
+    )
+    collection["camera_count"] = len(cameras)
+    collection["captures_json"] = json.dumps(captures)
+    collection["linked_scene_names_json"] = json.dumps([scene.name for scene in targets])
+    collection["cold_open_anchor_scene"] = cold_open_anchor.name
+    collection["ordinary_scene_policy"] = "linked only to the cold-open anchor and panorama scenes"
+    collection["camera_display_size_m"] = 0.15
+    collection["camera_selectable"] = False
+    collection["uses_handler_or_driver"] = False
+    for scene in panorama_scenes:
+        scene["panorama_render_camera_collection"] = collection.name
+        scene["panorama_render_camera_collection_shared"] = True
+    return collection
 
 
 def _safe_capture_name(capture: str) -> str:
@@ -736,7 +865,9 @@ def _new_rectilinear_camera(
 
     camera = bpy.data.objects.new(camera_data.name, camera_data)
     collection.objects.link(camera)
-    camera.matrix_world = Matrix(camera_matrix(asset).tolist())
+    transform = Matrix(camera_matrix(asset).tolist())
+    camera.matrix_world = transform
+    camera.matrix_basis = transform
 
     half_width = RECTILINEAR_PLANE_DISTANCE_M * math.tan(math.radians(RECTILINEAR_FOV_DEG) / 2.0)
     mesh = bpy.data.meshes.new(f"Projection-aligned image plane | {asset.capture}")
@@ -812,15 +943,19 @@ def _new_rectilinear_camera(
 
 
 def _build_acquisition_views(
-    prepared_scene: Any, asset: PanoramaAsset, blend_path: pathlib.Path
+    prepared_scene: Any,
+    asset: PanoramaAsset,
+    blend_path: pathlib.Path,
+    *,
+    include_companion_views: bool,
 ) -> tuple[Any, Any, dict[str, Any]]:
     import bpy
 
-    acquisitions = asset.acquisition_assets
-    capture_ids = [item.capture for item in acquisitions]
+    admitted = asset.acquisition_assets
+    capture_ids = [item.capture for item in admitted]
     if any(not capture for capture in capture_ids) or len(set(capture_ids)) != len(capture_ids):
         raise ValueError("panorama acquisition assets must have unique non-empty capture ids")
-    for acquisition in acquisitions:
+    for acquisition in admitted:
         position = np.asarray(acquisition.position_enu_m, dtype=np.float64)
         if position.shape != (3,) or not np.isfinite(position).all():
             raise ValueError(f"panorama acquisition {acquisition.capture!r} has an invalid ENU position")
@@ -834,6 +969,7 @@ def _build_acquisition_views(
     normal_cameras = []
     image_planes = []
     crop_paths = []
+    acquisitions = admitted if include_companion_views else (asset,)
     for acquisition in acquisitions:
         panorama_cameras.append(_new_panorama_camera(collection, acquisition, blend_path))
         normal, image_plane, crop_path = _new_rectilinear_camera(collection, acquisition, blend_path)
@@ -843,7 +979,10 @@ def _build_acquisition_views(
     collection["pose_role"] = "registered panorama acquisition poses"
     collection["separate_from"] = "walk exposure standpoints and interpolated route points"
     collection["capture_count"] = len(acquisitions)
-    collection["captures_json"] = json.dumps(capture_ids)
+    collection["captures_json"] = json.dumps([item.capture for item in acquisitions])
+    collection["admitted_capture_count"] = len(admitted)
+    collection["admitted_captures_json"] = json.dumps(capture_ids)
+    collection["active_capture"] = asset.capture
     collection["unavailable_admitted_captures_json"] = json.dumps(asset.unavailable_admitted_captures)
     collection["omitted_admitted_captures_json"] = asset.omitted_admitted_captures_json
     return (
@@ -853,6 +992,8 @@ def _build_acquisition_views(
             "panorama_acquisition_collection": collection.name,
             "panorama_acquisition_capture_count": len(panorama_cameras),
             "panorama_acquisition_captures_json": collection["captures_json"],
+            "panorama_admitted_capture_count": len(admitted),
+            "panorama_admitted_captures_json": collection["admitted_captures_json"],
             "panorama_acquisition_360_camera_count": len(panorama_cameras),
             "panorama_acquisition_rectilinear_camera_count": len(normal_cameras),
             "panorama_acquisition_image_plane_count": len(image_planes),
@@ -873,6 +1014,7 @@ def configure_panorama_scene(
     *,
     blend_path: pathlib.Path,
     support_collection_name: str = "01 city mesh",
+    include_companion_views: bool = True,
 ) -> dict[str, Any]:
     """Make one prepared scene a registered 360 photograph overlay.
 
@@ -885,9 +1027,13 @@ def configure_panorama_scene(
     """
     import bpy
 
-    camera, _acquisition_collection, acquisition_properties = _build_acquisition_views(
-        prepared_scene, asset, blend_path
+    acquisition_camera, _acquisition_collection, acquisition_properties = _build_acquisition_views(
+        prepared_scene,
+        asset,
+        blend_path,
+        include_companion_views=include_companion_views,
     )
+    camera = _new_active_render_camera(prepared_scene, acquisition_camera, asset)
     prepared_scene.camera = camera
 
     prepared_scene.render.engine = "CYCLES"
@@ -951,6 +1097,13 @@ def configure_panorama_scene(
             support = layer_support
     if support is None:
         raise RuntimeError("panorama scene has no view layers")
+    matching_layers = [view_layer for view_layer in prepared_scene.view_layers if view_layer.name == compositor_layer]
+    if len(matching_layers) != 1:
+        raise RuntimeError(f"panorama scene must have exactly one compositor view layer named {compositor_layer!r}")
+    for view_layer in prepared_scene.view_layers:
+        view_layer.use = view_layer.name == compositor_layer
+    if sum(view_layer.use for view_layer in prepared_scene.view_layers) != 1:
+        raise RuntimeError("panorama scene must enable exactly one default render view layer")
     support_overlay, support_overlay_objects = _support_overlay(prepared_scene, support, asset)
 
     marker_properties = _add_nearby_capture_marker(prepared_scene, asset)
@@ -965,7 +1118,11 @@ def configure_panorama_scene(
         "panorama_surface_atlas_image_verification": asset.atlas_panorama_verification,
         "panorama_linked_path": linked_path,
         "panorama_image_packed": False,
-        "panorama_projection": "equirectangular, full longitude and latitude",
+        "panorama_projection": EQUIRECTANGULAR_PROJECTION,
+        "panorama_active_render_camera": camera.name,
+        "panorama_active_render_camera_audit_source": acquisition_camera.name,
+        "panorama_default_render_view_layer": compositor_layer,
+        "panorama_default_render_view_layer_count": 1,
         "panorama_display_clip_start_m": PANORAMA_DISPLAY_CLIP_START_M,
         "panorama_display_clip_rule": PANORAMA_DISPLAY_CLIP_RULE,
         "panorama_pose_file": str(asset.pose_path),
@@ -977,6 +1134,9 @@ def configure_panorama_scene(
         "panorama_support_overlay_objects": support_overlay_objects,
         "panorama_support_overlay_scale_about_camera": SUPPORT_OVERLAY_SCALE,
         "panorama_support_overlay_opacity": SUPPORT_OVERLAY_OPACITY,
+        "panorama_support_overlay_centre_enu_m_json": json.dumps(asset.position_enu_m),
+        "panorama_capture_scene_count": len(asset.acquisition_assets),
+        "panorama_capture_scene_captures_json": json.dumps([item.capture for item in asset.acquisition_assets]),
         "panorama_support_holdout_view_layers_json": json.dumps(support_holdout_layers),
         "panorama_support_holdout_view_layer_count": len(support_holdout_layers),
         "panorama_support_overlay_offset_rule": (
@@ -1012,10 +1172,55 @@ def configure_panorama_scene(
     return properties
 
 
+def prepared_capture_scene_hooks(
+    asset: PanoramaAsset,
+    *,
+    blend_path: pathlib.Path,
+    support_collection_name: str = "01 city mesh",
+) -> tuple[PreparedSceneHook, ...]:
+    """Build saved-scene hooks for every admitted capture after the hero.
+
+    The primary scene keeps its stable name and all acquisition cameras. Each
+    sibling scene contains the active PANO camera, its normal perspective crop,
+    its own compositor, and its own camera-centred support overlay.
+    """
+    import functools
+
+    from .views import PreparedSceneHook
+
+    admitted = asset.acquisition_assets
+    hooks = []
+    for index, active in enumerate(asset.companion_assets, start=2):
+        companions = tuple(item for item in admitted if item.capture != active.capture)
+        scene_asset = replace(
+            active,
+            companion_assets=companions,
+            unavailable_admitted_captures=asset.unavailable_admitted_captures,
+            omitted_admitted_captures_json=asset.omitted_admitted_captures_json,
+        )
+        safe_capture = _safe_capture_name(active.capture)
+        hooks.append(
+            PreparedSceneHook(
+                key=f"panorama_registration_{safe_capture}",
+                name=f"{PANORAMA_CAPTURE_SCENE_PREFIX} {index:02d} - {active.capture}",
+                purpose=f"registered source photograph and support overlay for admitted capture {active.capture}",
+                configure=functools.partial(
+                    configure_panorama_scene,
+                    asset=scene_asset,
+                    blend_path=blend_path,
+                    support_collection_name=support_collection_name,
+                    include_companion_views=False,
+                ),
+            )
+        )
+    return tuple(hooks)
+
+
 __all__ = [
     "ACQUISITION_COLLECTION_NAME",
     "KORENMARKT_HERO_CAPTURE",
     "PANORAMA_DISPLAY_CLIP_START_M",
+    "PANORAMA_CAPTURE_SCENE_PREFIX",
     "RECTILINEAR_FOV_DEG",
     "RECTILINEAR_PLANE_DISTANCE_M",
     "SUPPORT_OVERLAY_OPACITY",
@@ -1023,6 +1228,8 @@ __all__ = [
     "PanoramaAsset",
     "camera_matrix",
     "configure_panorama_scene",
+    "finalize_panorama_render_cameras",
+    "prepared_capture_scene_hooks",
     "select_panorama_asset",
     "select_panorama_assets",
 ]
