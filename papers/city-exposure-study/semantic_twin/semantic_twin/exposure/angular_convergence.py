@@ -328,6 +328,7 @@ def load_reference(
         else pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data")) / "duke.stl"
     )
     material_evidence = _material_evidence_identity(config.root, manifest, mesh_sha)
+    _normalize_material_evidence_paths(manifest, material_evidence)
     reference_run_digest = manifest.get("run_digest")
     if not isinstance(reference_run_digest, str) or not reference_run_digest:
         raise ValueError("reference manifest has no valid run digest")
@@ -396,22 +397,44 @@ def _material_evidence_path(
     run = manifest["run"]
     mode = str(run["materials"])
     if mode == "atlas":
-        value = run.get("atlas_npz") or manifest.get("semantic_binding", {}).get("atlas_npz")
+        semantic = manifest.get("semantic_binding", {})
+        semantic_value = semantic.get("atlas_npz") if isinstance(semantic, dict) else None
+        values = [value for value in (run.get("atlas_npz"), semantic_value) if value is not None]
+        if not values:
+            raise ValueError("reference material mode 'atlas' does not name its evidence artifact")
+        paths = [_study_artifact_path(root, value, "surface atlas") for value in values]
+        if any(candidate != paths[0] for candidate in paths[1:]):
+            raise ValueError("reference run and semantic binding name different surface atlases")
+        path = paths[0]
         role = "joint_surface_atlas"
     elif mode == "walk":
         value = run.get("walk_npz")
+        path = _study_artifact_path(root, value, "walk material evidence")
         role = "walk_semantics"
     elif mode == "geometric":
         return "geometric_only", None
     else:
         raise ValueError(f"angular convergence does not yet freeze material evidence for mode {mode!r}")
-    if not isinstance(value, str) or not value:
-        raise ValueError(f"reference material mode {mode!r} does not name its evidence artifact")
-    path = pathlib.Path(value)
-    path = path if path.is_absolute() else root / path
     if not path.is_file():
         raise FileNotFoundError(f"reference material evidence is missing: {path}")
     return role, path
+
+
+def _study_artifact_path(root: pathlib.Path, value: Any, label: str) -> pathlib.Path:
+    """Resolve one absolute or study-relative artifact path canonically."""
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"reference {label} path is invalid")
+    path = pathlib.Path(value)
+    return (path if path.is_absolute() else root / path).resolve()
+
+
+def _portable_study_artifact_path(root: pathlib.Path, path: pathlib.Path) -> str:
+    """Use one stable study-relative spelling whenever the artifact is inside it."""
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
 
 
 def _material_evidence_identity(
@@ -426,16 +449,19 @@ def _material_evidence_identity(
     run = manifest["run"]
     mode = str(run["materials"])
     if mode != "atlas":
-        value = run.get("walk_npz")
-        if not isinstance(value, str):
-            raise ValueError("reference walk material evidence path is invalid")
-        return MaterialEvidenceIdentity(role, value, file_sha256(path), None, None)
+        return MaterialEvidenceIdentity(
+            role,
+            _portable_study_artifact_path(root, path),
+            file_sha256(path),
+            None,
+            None,
+        )
 
     semantic = manifest.get("semantic_binding")
     if not isinstance(semantic, dict):
         raise ValueError("reference atlas material mode has no semantic binding")
-    atlas_value = run.get("atlas_npz") or semantic.get("atlas_npz")
-    if semantic.get("atlas_npz") != atlas_value:
+    semantic_atlas = _study_artifact_path(root, semantic.get("atlas_npz"), "semantic-binding surface atlas")
+    if semantic_atlas != path:
         raise ValueError("reference run and semantic binding name different surface atlases")
     recorded_atlas_sha256 = semantic.get("atlas_npz_sha256")
     if not _valid_hex(recorded_atlas_sha256, 64):
@@ -445,48 +471,45 @@ def _material_evidence_identity(
         raise ValueError("reference surface atlas bytes differ from its semantic binding")
 
     sidecar = path.with_suffix(".json")
-    sidecar_value = semantic.get("atlas_manifest")
-    if not isinstance(sidecar_value, str) or not sidecar_value:
-        raise ValueError("reference surface atlas has no named canonical JSON sidecar")
-    named_sidecar = pathlib.Path(sidecar_value)
-    named_sidecar = named_sidecar if named_sidecar.is_absolute() else root / named_sidecar
-    if named_sidecar.resolve() != sidecar.resolve():
+    named_sidecar = _study_artifact_path(root, semantic.get("atlas_manifest"), "surface atlas JSON sidecar")
+    if named_sidecar != sidecar:
         raise ValueError("reference semantic binding names a noncanonical surface atlas sidecar path")
     if not sidecar.is_file():
         raise FileNotFoundError(f"reference surface atlas JSON sidecar is missing: {sidecar}")
     recorded_sidecar_sha256 = semantic.get("atlas_manifest_sha256")
     if not _valid_hex(recorded_sidecar_sha256, 64):
         raise ValueError("reference semantic binding has no valid surface atlas sidecar SHA-256")
-    sidecar_content = sidecar.read_bytes()
-    sidecar_sha256 = hashlib.sha256(sidecar_content).hexdigest()
+    sidecar_sha256 = file_sha256(sidecar)
     if sidecar_sha256 != recorded_sidecar_sha256:
         raise ValueError("reference surface atlas JSON sidecar bytes differ from its semantic binding")
+    from semantic_twin.vision.surface_atlas import load_surface_atlas
+
     try:
-        sidecar_document = json.loads(sidecar_content)
-    except (TypeError, ValueError) as error:
-        raise ValueError("reference surface atlas JSON sidecar is invalid") from error
-    if not isinstance(sidecar_document, dict):
-        raise ValueError("reference surface atlas JSON sidecar must be an object")
-    artifact = sidecar_document.get("artifact")
-    atlas_mesh = sidecar_document.get("mesh")
-    if (
-        sidecar_document.get("schema") != "aegis.joint_semantic_material_atlas"
-        or sidecar_document.get("format_version") != 1
-        or not isinstance(artifact, dict)
-        or artifact.get("path") != path.name
-        or artifact.get("sha256") != atlas_sha256
-        or not _valid_hex(artifact.get("content_sha256"), 64)
-        or not isinstance(atlas_mesh, dict)
-        or atlas_mesh.get("sha256") != mesh_sha256
-    ):
-        raise ValueError("reference surface atlas JSON sidecar does not describe the accepted atlas and mesh")
+        load_surface_atlas(path, sidecar, expected_mesh_sha256=mesh_sha256)
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        raise ValueError(f"reference surface atlas failed canonical provenance validation: {error}") from error
     return MaterialEvidenceIdentity(
         role,
-        str(atlas_value),
+        _portable_study_artifact_path(root, path),
         atlas_sha256,
-        sidecar_value,
+        _portable_study_artifact_path(root, sidecar),
         sidecar_sha256,
     )
+
+
+def _normalize_material_evidence_paths(
+    manifest: dict[str, Any],
+    identity: MaterialEvidenceIdentity,
+) -> None:
+    """Keep path-bearing in-memory provenance portable after canonical resolution."""
+    run = manifest["run"]
+    if identity.role == "joint_surface_atlas":
+        run["atlas_npz"] = identity.path
+        semantic = manifest["semantic_binding"]
+        semantic["atlas_npz"] = identity.path
+        semantic["atlas_manifest"] = identity.atlas_json_sidecar_path
+    elif identity.role == "walk_semantics":
+        run["walk_npz"] = identity.path
 
 
 def _route_identity(manifest: dict[str, Any]) -> RouteIdentity | None:

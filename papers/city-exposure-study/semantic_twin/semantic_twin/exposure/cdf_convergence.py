@@ -1000,7 +1000,11 @@ def run_campaign(
     dry_run: bool = False,
     analyse_only: bool = False,
 ) -> pathlib.Path:
-    """Run, resume, and analyse the sequential production campaign."""
+    """Run, resume, and analyse the sequential production campaign.
+
+    A dry-run validates every identity input and returns the future plan path.
+    It leaves the output tree untouched.
+    """
     from semantic_twin.exposure import study
     from semantic_twin.exposure.angular_convergence import (
         AngularRunSpec,
@@ -1011,7 +1015,6 @@ def run_campaign(
         load_reference,
     )
 
-    config.output_dir.mkdir(parents=True, exist_ok=True)
     reference = load_reference(config, body_path=config.body_path)
     _validate_production_reference(config, reference)
     tissue_database = _tissue_database_identity()
@@ -1040,6 +1043,11 @@ def run_campaign(
             "models": list(MODEL_NAMES),
         }
     )
+    plan_path = config.output_dir / "plan.json"
+    if dry_run:
+        return plan_path
+
+    config.output_dir.mkdir(parents=True, exist_ok=True)
     plan = {
         "schema": "fixed-walk-cdf-plan-v3",
         "created_utc": _utc_now(),
@@ -1062,9 +1070,7 @@ def run_campaign(
         ),
     }
     _quarantine_stale_generation(config.output_dir, identity)
-    plan_path = _prepare_campaign_plan(config.output_dir, identity, plan, dry_run=dry_run)
-    if dry_run:
-        return plan_path
+    plan_path = _prepare_campaign_plan(config.output_dir, identity, plan)
 
     checkpoint_path = config.output_dir / "checkpoint.npz"
     checkpoint = _load_campaign_checkpoint(
@@ -1194,8 +1200,6 @@ def _prepare_campaign_plan(
     output_dir: pathlib.Path,
     identity: str,
     plan: dict[str, Any],
-    *,
-    dry_run: bool,
 ) -> pathlib.Path:
     """Verify any final seal before preserving or creating a campaign plan."""
     path = output_dir / "plan.json"
