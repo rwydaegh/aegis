@@ -84,6 +84,12 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--payload", type=pathlib.Path, required=True)
     parser.add_argument("--manifest", type=pathlib.Path)
     parser.add_argument("--blend", type=pathlib.Path, required=True)
+    parser.add_argument(
+        "--asset-root",
+        type=pathlib.Path,
+        default=ROOT,
+        help="Repository-relative evidence root. Defaults to the checkout containing this runner.",
+    )
     parser.add_argument("--walk-model", default="rooftop", choices=list(MODEL_NAMES))
     parser.add_argument("--lobe-scale-m", type=float, default=7.0)
     parser.add_argument("--lobe-offset-m", type=float, default=13.0)
@@ -172,6 +178,7 @@ def main() -> int:
     from semantic_twin.viz.blender import animation, estimator, evidence, panorama, renders, scene, views
 
     args = arguments()
+    asset_root = args.asset_root.resolve()
     manifest_path = args.manifest or args.payload.with_name(args.payload.name.replace("_payload.npz", "_manifest.json"))
     manifest = json.loads(manifest_path.read_text())
     payload = np.load(args.payload)
@@ -193,6 +200,10 @@ def main() -> int:
     atlas_audit_groups = {
         key: scene.collection(key)
         for key in (
+            "entity_semantics",
+            "atlas_confidence",
+            "atlas_camera_count",
+            "atlas_observation_count",
             "transport_state",
             "transport_material",
             "transport_fallback",
@@ -303,7 +314,7 @@ def main() -> int:
         legs=legs,
         connections=connections,
         layers=layers,
-        root=ROOT,
+        root=asset_root,
     )
     bpy.context.scene["support_display"] = json.dumps(support_summary)
     bpy.context.scene["all_camera_fused_atlas"] = json.dumps(fused_summary)
@@ -312,9 +323,9 @@ def main() -> int:
     panorama_asset = None
     panorama_hook = None
     panorama_scene_hooks = ()
-    panorama_capture = panorama.default_panorama_capture(manifest, ROOT)
+    panorama_capture = panorama.default_panorama_capture(manifest, asset_root)
     if panorama_capture is not None:
-        panorama_asset = panorama.select_panorama_asset(manifest, ROOT, capture=panorama_capture)
+        panorama_asset = panorama.select_panorama_asset(manifest, asset_root, capture=panorama_capture)
         panorama_hook = functools.partial(
             panorama.configure_panorama_scene,
             asset=panorama_asset,
@@ -331,6 +342,7 @@ def main() -> int:
         scene.BUILT,
         panorama_hook=panorama_hook,
         panorama_scene_hooks=panorama_scene_hooks,
+        include_panorama_pipeline=panorama_asset is not None,
     )
     views.set_default_scene(prepared)
 

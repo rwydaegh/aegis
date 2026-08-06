@@ -14,12 +14,16 @@ its recorded path. It does not pack the image into the blend.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from . import panorama_panels
+
 RAW_SCENE_NAME = "99 DATA - raw layers and audit"
 PANORAMA_VIEW_KEY = "panorama_registration"
+PANORAMA_PIPELINE_VIEW_KEY = "panorama_pipeline"
 
 
 @dataclass(frozen=True)
@@ -53,9 +57,9 @@ class PreparedSceneHook:
     configure: Callable[[Any], Any]
 
 
-def prepared_view_specs() -> tuple[PreparedView, ...]:
+def prepared_view_specs(*, include_panorama_pipeline: bool = False) -> tuple[PreparedView, ...]:
     """The stable scenes saved in every propagation blend."""
-    return (
+    specs = (
         PreparedView(
             key="exposure_overview",
             name="01 VIEW - exposure overview",
@@ -189,11 +193,30 @@ def prepared_view_specs() -> tuple[PreparedView, ...]:
             requires_objects=("vistas_contribution", "sam3_contribution", "source_contribution"),
         ),
     )
+    if not include_panorama_pipeline:
+        return specs
+    pipeline_layers = tuple(
+        PreparedLayer(name, show) for name, show in panorama_panels.pipeline_layer_specs(include_audit=True)
+    )
+    return specs + (
+        PreparedView(
+            key=PANORAMA_PIPELINE_VIEW_KEY,
+            name="13 VIEW - synchronized panorama pipeline",
+            purpose=(
+                "one registered equirectangular camera shared by the photograph, support, fused atlas, "
+                "host-gated mixture, final transport state, and separate audit channels"
+            ),
+            camera="cam_evidence",
+            layers=pipeline_layers,
+        ),
+    )
 
 
-def available_view_specs(groups: Mapping[str, Any]) -> tuple[PreparedView, ...]:
+def available_view_specs(
+    groups: Mapping[str, Any], *, include_panorama_pipeline: bool = False
+) -> tuple[PreparedView, ...]:
     """Keep optional prepared views only when their evidence geometry exists."""
-    specs = prepared_view_specs()
+    specs = prepared_view_specs(include_panorama_pipeline=include_panorama_pipeline)
     available = set(groups)
     for spec in specs:
         missing = set(spec.requires_objects).difference(available)
@@ -368,17 +391,27 @@ def _set_prepared_camera_timeline(raw_scene: Any, made: Any, spec: PreparedView)
 def _route_panorama_hook_collections(made: Any, view_layers: Sequence[Any], before_hook: set[str]) -> None:
     hook_groups = [group for group in made.collection.children if group.name not in before_hook]
     photograph_layer, capture_pose_layer = view_layers[:2]
+    pipeline_scene = bool(made.get("panorama_pipeline_scene", False))
     for group in hook_groups:
         marked = bool(group.get("panorama_overlay_collection", False))
         role = str(group.get("panorama_overlay_role", ""))
-        admitted_layer = (
-            capture_pose_layer if role == "registered acquisition cameras and projection planes" else photograph_layer
-        )
+        if pipeline_scene:
+            admitted_layers = (
+                (capture_pose_layer,)
+                if role == "registered acquisition cameras and projection planes"
+                else tuple(view_layers[1:])
+            )
+        else:
+            admitted_layers = (
+                (capture_pose_layer,)
+                if role == "registered acquisition cameras and projection planes"
+                else (photograph_layer,)
+            )
         for layer in view_layers:
             linked = layer.layer_collection.children.get(group.name)
             if linked is None:
                 raise RuntimeError(f"panorama hook collection {group.name!r} is not linked to its view layer")
-            linked.exclude = not (marked and layer == admitted_layer)
+            linked.exclude = not (marked and layer in admitted_layers)
     made["panorama_hook_collections"] = [group.name for group in hook_groups]
     made["panorama_overlay_collections"] = [
         group.name for group in hook_groups if bool(group.get("panorama_overlay_collection", False))
@@ -408,6 +441,20 @@ def _stamp_prepared_view(made: Any, spec: PreparedView) -> None:
     made["visible_collections_by_view_layer"] = str({layer.name: list(layer.show) for layer in spec.layers})
     made["prepared_render_base_resolution_x"] = int(made.render.resolution_x)
     made["prepared_render_base_resolution_y"] = int(made.render.resolution_y)
+    if spec.key == PANORAMA_PIPELINE_VIEW_KEY:
+        made["panorama_pipeline_panels_json"] = json.dumps(
+            [
+                {
+                    "key": panel.key,
+                    "title": panel.title,
+                    "channel": panel.channel,
+                    "role": panel.role,
+                }
+                for panel in panorama_panels.pipeline_panel_specs()
+            ],
+            sort_keys=True,
+        )
+        made["panorama_pipeline_projection"] = panorama_panels.EQUIRECTANGULAR_PROJECTION
 
 
 def build_prepared_scenes(
@@ -416,6 +463,7 @@ def build_prepared_scenes(
     *,
     panorama_hook: Callable[[Any], None] | None = None,
     panorama_scene_hooks: Sequence[PreparedSceneHook] = (),
+    include_panorama_pipeline: bool = False,
 ) -> dict[str, Any]:
     """Build linked prepared scenes and leave the raw archive intact.
 
@@ -434,11 +482,13 @@ def build_prepared_scenes(
 
     built: dict[str, Any] = {}
     written_specs: list[PreparedView] = []
-    specs = available_view_specs(groups)
+    specs = available_view_specs(groups, include_panorama_pipeline=include_panorama_pipeline)
     for spec in specs:
         made, view_layers = _new_prepared_scene(raw_scene, groups, spec)
         _set_prepared_camera_timeline(raw_scene, made, spec)
-        if spec.key == PANORAMA_VIEW_KEY:
+        if spec.key in (PANORAMA_VIEW_KEY, PANORAMA_PIPELINE_VIEW_KEY):
+            if spec.key == PANORAMA_PIPELINE_VIEW_KEY:
+                made["panorama_pipeline_scene"] = True
             _run_panorama_hook(made, view_layers, panorama_hook)
         _stamp_prepared_view(made, spec)
         built[spec.key] = made

@@ -142,6 +142,10 @@ COLLECTION_NAMES: dict[str, str] = {
     "outer_support": "01B outer traced support",
     "support_extent": "01C support extent markers",
     "fused_semantics": "02A all-camera fused semantic and material evidence",
+    "entity_semantics": "02A1 all-camera fused entity evidence",
+    "atlas_confidence": "02A2 all-camera atlas confidence",
+    "atlas_camera_count": "02A3 all-camera atlas camera count",
+    "atlas_observation_count": "02A4 all-camera atlas observation count",
     "transport_state": "02B final transport state per atlas cell",
     "transport_material": "02C host-gated transport mixture",
     "transport_fallback": "02D geometric fallback per atlas cell",
@@ -183,6 +187,12 @@ COLLECTION_DESCRIPTIONS: dict[str, str] = {
         "Display audit of the joint semantic and material atlas used at supported ray-hit positions. "
         "Its shown classes are posterior winners; transport retains the full compatible material mixture."
     ),
+    "entity_semantics": (
+        "Projection-aligned all-camera entity posterior winner. This is an atlas display, not per-pixel segmentation."
+    ),
+    "atlas_confidence": "Projection-aligned all-camera atlas confidence channel.",
+    "atlas_camera_count": "Projection-aligned count of admitted cameras contributing to each atlas cell.",
+    "atlas_observation_count": "Projection-aligned count of image observations contributing to each atlas cell.",
     "transport_state": (
         "Display of the exact final state at each observed atlas cell: host-gated interface mixture, "
         "nonblocking woody vegetation, or geometric fallback."
@@ -238,6 +248,10 @@ EVIDENCE_COLLECTIONS: tuple[str, ...] = (
     "outer_support",
     "support_extent",
     "fused_semantics",
+    "entity_semantics",
+    "atlas_confidence",
+    "atlas_camera_count",
+    "atlas_observation_count",
     "transport_state",
     "transport_material",
     "transport_fallback",
@@ -1048,23 +1062,34 @@ def _linked_audit_display(source: Any, name: str, channel: str, into: Any) -> An
     copy["display_copy_only"] = True
     copy["colour_layers"] = [channel]
     copy["default_colour_layer"] = channel
-    copy["display_purpose"] = (
-        "categorical source coverage; overlap is expected"
-        if channel == "source_contribution_state"
-        else "accumulated source evidence weight; intensity is not class confidence"
-    )
+    copy["display_purpose"] = {
+        "source_contribution_state": "categorical source coverage; overlap is expected",
+        "vistas_prior_weight": "accumulated Vistas evidence weight; intensity is not class confidence",
+        "sam3_concept_weight": "accumulated SAM 3 evidence weight; intensity is not class confidence",
+        "entity_posterior_winner": "all-camera entity posterior winner for display; not per-pixel segmentation",
+        "confidence": "all-camera atlas confidence channel",
+        "camera_count": "number of admitted panorama cameras contributing to each atlas cell",
+        "observation_count": "number of image observations contributing to each atlas cell",
+    }.get(channel, "atlas audit channel")
     return copy
 
 
 def _build_linked_atlas_audit_displays(source: Any, collections: Mapping[str, Any]) -> None:
-    specifications = (
+    specifications = [
         ("source_contribution", "atlas_contribution_source_state", "source_contribution_state"),
         ("vistas_contribution", "atlas_vistas_prior_contribution", "vistas_prior_weight"),
         ("sam3_contribution", "atlas_sam3_concept_contribution", "sam3_concept_weight"),
         ("transport_state", "atlas_final_transport_state", "transport_state"),
         ("transport_material", "atlas_host_gated_material_mixture", "transport_posterior_dominant"),
         ("transport_fallback", "atlas_geometric_fallback_per_cell", "geometric_fallback_class"),
+    ]
+    optional = (
+        ("entity_semantics", "all_camera_fused_entity_semantics", "entity_posterior_winner"),
+        ("atlas_confidence", "all_camera_atlas_confidence", "confidence"),
+        ("atlas_camera_count", "all_camera_atlas_camera_count", "camera_count"),
+        ("atlas_observation_count", "all_camera_atlas_observation_count", "observation_count"),
     )
+    specifications.extend(item for item in optional if item[0] in collections)
     missing = [key for key, _name, _channel in specifications if key not in collections]
     if missing:
         raise KeyError(f"atlas audit display collections are missing: {missing}")
