@@ -76,6 +76,14 @@ from semantic_twin.propagation import (
 )
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.vision.surface_atlas import load_surface_atlas, sha256_file, to_surface_mesh
+from semantic_twin.vision.provenance import (
+    SKY_CONFLICT_INSIDE_GEOMETRY,
+    SKY_CONFLICT_LARGE_MISMATCH,
+    SKY_CONFLICT_UNKNOWN,
+    AdmissionGate,
+    Registration,
+    Verdict,
+)
 from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.model import stratified_subset
 from semantic_twin.walk.site import site_walk
@@ -97,6 +105,39 @@ DEFAULT_DRAW_RADIUS_M = 110.0
 # The roofline and visible-path arms explain geometry. The production escape
 # run alone owns these numerical outputs.
 NO_EXPOSURE_OUTPUT = ("rho", "body dose", "walk exposure")
+
+# This atlas was accepted before admission manifests carried a version. Its
+# exact manifest hash is the only unversioned input allowed to select v1.
+SEALED_LEGACY_ADMISSION_MANIFESTS = {
+    "80d8f0bb448d6677fc29c9c51e81036e9b54913d52f1480030095ac16f08d783",
+}
+
+
+def artifact_admission_gate(manifest: dict[str, Any]) -> AdmissionGate:
+    """Select the gate recorded by an atlas, defaulting absent versions to v2."""
+    atlas = manifest.get("surface_atlas")
+    atlas = atlas if isinstance(atlas, dict) else {}
+    admission = atlas.get("admission")
+    admission = admission if isinstance(admission, dict) else None
+    version = None if admission is None else admission.get("version")
+    if version is not None:
+        return AdmissionGate.from_dict(admission)
+
+    manifest_record = atlas.get("manifest")
+    manifest_sha256 = manifest_record.get("sha256") if isinstance(manifest_record, dict) else None
+    transport = atlas.get("transport_binding")
+    if not isinstance(transport, dict):
+        transport = manifest.get("semantic_binding")
+    if manifest_sha256 is None and isinstance(transport, dict):
+        manifest_sha256 = transport.get("atlas_manifest_sha256")
+    if manifest_sha256 in SEALED_LEGACY_ADMISSION_MANIFESTS:
+        thresholds = admission or {}
+        return AdmissionGate.legacy_v1(
+            max_residual_deg=float(thresholds.get("max_residual_deg", 4.0)),
+            max_sky_conflict=float(thresholds.get("max_sky_conflict", 0.5)),
+            min_conflict_range_m=float(thresholds.get("min_conflict_range_m", 2.0)),
+        )
+    return AdmissionGate.from_dict(admission)
 
 
 #: Height above head, in metres, of each site population, read off the models
@@ -1026,6 +1067,15 @@ def attach_production_surface_atlas(
         expected_mesh_sha256=data.manifest["mesh_sha256"],
     )
     document = json.loads(json_path.read_text(encoding="utf-8"))
+    manifest_sha256 = sha256_file(json_path)
+    admission_gate = artifact_admission_gate(
+        {
+            "surface_atlas": {
+                "admission": document.get("admission"),
+                "manifest": {"sha256": manifest_sha256},
+            }
+        }
+    )
     audit = to_surface_mesh(atlas, geometry.vertices, geometry.faces)
     arrays = audit.as_arrays()
 
@@ -1050,7 +1100,8 @@ def attach_production_surface_atlas(
             "triangulated audit view of observed atlas cells; display winners do not replace the stored posteriors"
         ),
         "npz": {"path": str(npz_path.resolve()), "sha256": actual_npz_sha256},
-        "manifest": {"path": str(json_path.resolve()), "sha256": sha256_file(json_path)},
+        "manifest": {"path": str(json_path.resolve()), "sha256": manifest_sha256},
+        "admission": admission_gate.as_dict(),
         "content_sha256": atlas.content_digest(),
         "mesh_sha256": atlas.mesh_sha256,
         "resolution": atlas.atlas_resolution,
@@ -1331,13 +1382,6 @@ def body_field_from_spectrum(
 # ---------------------------------------------------------------------------
 
 OUTPUTS = SCRIPT_DIR / "outputs"
-
-#: Sky conflict verdict thresholds, taken from the reading note the audit writes
-#: into ``outputs/registration_sky_conflict.json`` rather than invented here: a
-#: healthy pose sits below a few percent, and a pose above half has the camera
-#: inside the geometry, in which case its skyline residual is not an error bar.
-POSE_SUSPECT_SKY_CONFLICT = 0.05
-POSE_UNUSABLE_SKY_CONFLICT = 0.5
 
 #: How a rejection reason is grouped when it is aggregated back onto the support
 #: triangle it came from. The split that matters is the one the pipeline itself
@@ -2120,7 +2164,20 @@ def depth_cloud(
     return layer
 
 
-def registration_layer(site: str) -> dict[str, Any] | None:
+def _registration_verdict_label(admission: Verdict) -> str:
+    """Compact display label for one versioned admission verdict."""
+    if admission.sky_conflict_state == SKY_CONFLICT_INSIDE_GEOMETRY:
+        return "camera inside the geometry"
+    if admission.sky_conflict_state == SKY_CONFLICT_LARGE_MISMATCH:
+        return SKY_CONFLICT_LARGE_MISMATCH
+    if admission.sky_conflict_state == SKY_CONFLICT_UNKNOWN:
+        return "unknown diagnostics"
+    if not admission.admitted:
+        return "registration refused"
+    return "usable"
+
+
+def registration_layer(site: str, gate: AdmissionGate | None = None) -> dict[str, Any] | None:
     """Every pose registered against this site's geometry, with its covariance.
 
     The audit table is the filter: a pose belongs here when the mesh it was
@@ -2131,6 +2188,8 @@ def registration_layer(site: str) -> dict[str, Any] | None:
     such instead of being averaged into a residual.
     """
     from semantic_twin.pano_geometry import panorama_to_world_matrix
+
+    gate = AdmissionGate() if gate is None else gate
 
     audit = OUTPUTS / "registration_sky_conflict.json"
     if not audit.exists():
@@ -2162,12 +2221,10 @@ def registration_layer(site: str) -> dict[str, Any] | None:
             block = covariance[np.ix_(take, take)]
         values, vectors = np.linalg.eigh(block)
         sigmas.append(vectors * np.sqrt(np.clip(values, 0.0, None)))
-        conflict = float(row["sky_with_mesh_hit_fraction"])
-        verdict = "usable"
-        if conflict > POSE_UNUSABLE_SKY_CONFLICT:
-            verdict = "camera inside the geometry"
-        elif conflict > POSE_SUSPECT_SKY_CONFLICT:
-            verdict = "suspect"
+        registration = Registration.from_pose(pose)
+        admission = registration.verdict(gate)
+        conflict = registration.sky_conflict
+        verdict = _registration_verdict_label(admission)
         records.append(
             {
                 "capture": row["capture"],
@@ -2175,7 +2232,12 @@ def registration_layer(site: str) -> dict[str, Any] | None:
                 "position_enu_m": positions[-1].tolist(),
                 "skyline_residual_deg": row["skyline_residual_deg"],
                 "sky_with_mesh_hit_fraction": conflict,
-                "conflict_median_range_m": row.get("conflict_median_range_m"),
+                "conflict_median_range_m": registration.conflict_median_range_m,
+                "sky_conflict_state": admission.sky_conflict_state,
+                "dz_at_bound": registration.dz_at_bound,
+                "admitted": admission.admitted,
+                "refused_because": list(admission.reasons),
+                "admission_gate_version": gate.version,
                 "position_sigma_m": float(np.sqrt(np.trace(block) / 3.0)),
                 "verdict": verdict,
             }
@@ -2188,9 +2250,16 @@ def registration_layer(site: str) -> dict[str, Any] | None:
         "sigma_vectors": np.stack(sigmas).astype(np.float32),
         "verdict": np.array([VERDICT_CODES[record["verdict"]] for record in records], dtype=np.int8),
         "residual_deg": np.array([record["skyline_residual_deg"] for record in records], dtype=np.float32),
-        "sky_conflict": np.array([record["sky_with_mesh_hit_fraction"] for record in records], dtype=np.float32),
+        "sky_conflict": np.array(
+            [
+                np.nan if record["sky_with_mesh_hit_fraction"] is None else record["sky_with_mesh_hit_fraction"]
+                for record in records
+            ],
+            dtype=np.float32,
+        ),
         "records": records,
         "reading": document["reading"],
+        "admission": gate.as_dict(),
     }
 
 
@@ -2208,7 +2277,14 @@ EVIDENCE_PREFIXES = (
     "evidence_camera",
 )
 
-VERDICT_CODES = {"usable": 0, "suspect": 1, "camera inside the geometry": 2}
+VERDICT_CODES = {
+    "usable": 0,
+    "suspect": 1,
+    "camera inside the geometry": 2,
+    "large sky-mesh mismatch": 3,
+    "registration refused": 4,
+    "unknown diagnostics": 5,
+}
 
 
 def body_layer(directory: pathlib.Path) -> dict[str, Any] | None:
@@ -2566,9 +2642,15 @@ def record_excluded_evidence_statuses(report: dict[str, Any]) -> None:
     }
 
 
-def _attach_registration(site: str, payload: dict[str, Any], report: dict[str, Any]) -> None:
+def _attach_registration(
+    site: str,
+    payload: dict[str, Any],
+    report: dict[str, Any],
+    manifest: dict[str, Any],
+) -> None:
     audit_name = "outputs/registration_sky_conflict.json"
-    registration = registration_layer(site)
+    gate = artifact_admission_gate(manifest)
+    registration = registration_layer(site, gate)
     if registration is None:
         reason = (
             "audit contains no usable pose files registered against this site's mesh"
@@ -2585,6 +2667,7 @@ def _attach_registration(site: str, payload: dict[str, Any], report: dict[str, A
         "verdict_codes": VERDICT_CODES,
         "reading": registration["reading"],
         "audit": audit_name,
+        "admission": registration["admission"],
     }
     report["layer_status"]["registration"] = {
         "status": "built",
@@ -2656,7 +2739,7 @@ def attach_evidence(args: Any, bundle: dict[str, Any]) -> None:
     _attach_mesh_depth(args, payload, report, directories, pose)
     _attach_monocular_depth(args, payload, report, directories, pose)
     record_excluded_evidence_statuses(report)
-    _attach_registration(args.site, payload, report)
+    _attach_registration(args.site, payload, report, manifest)
     _attach_bodies(payload, report, directories.get("bodies"))
 
 

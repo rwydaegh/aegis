@@ -9,7 +9,9 @@ import pytest
 
 import build_site_semantics
 import semantic_twin.scene.site_semantics as site_semantics
+from semantic_twin.scene.site_fishnets import pose_verdict
 from semantic_twin.scene.site_semantics import _modal_class, _prior_semantics, station_verdict, stations
+from semantic_twin.vision.provenance import AdmissionGate, Registration
 
 GATE = {"max_residual_deg": 4.0, "max_sky_conflict": 0.5, "min_conflict_range_m": 2.0}
 
@@ -30,7 +32,7 @@ def test_material_prior_keeps_the_original_korenmarkt_source(tmp_path, monkeypat
 
 
 def pose(residual: float, sky_hit: float | None = 0.02, conflict_range: float = 30.0) -> dict:
-    document: dict = {"skyline_score_mean_deg": residual}
+    document: dict = {"skyline_score_mean_deg": residual, "skyline_dz_at_bound": False}
     if sky_hit is not None:
         document["sky_conflict"] = {
             "sky_with_mesh_hit_fraction": sky_hit,
@@ -69,13 +71,21 @@ def test_a_distant_sky_conflict_is_not_a_camera_inside_the_geometry():
     # a pose error, and it should not cost the station.
     verdict = station_verdict(pose(1.1, sky_hit=0.9, conflict_range=60.0), **GATE)
     assert verdict["admitted"]
-    assert verdict["sky_conflict_state"] == "clear"
+    assert verdict["sky_conflict_state"] == "large sky-mesh mismatch"
 
 
-def test_a_missing_sky_conflict_is_recorded_as_unknown_rather_than_passed():
+def test_a_missing_sky_conflict_is_recorded_as_unknown_and_refused():
     verdict = station_verdict(pose(1.1, sky_hit=None), **GATE)
     assert verdict["sky_conflict_state"] == "unknown"
-    assert verdict["admitted"]
+    assert not verdict["admitted"]
+
+
+def test_semantic_builder_refuses_a_boundary_optimum():
+    document = pose(0.2)
+    document["skyline_dz_at_bound"] = True
+    verdict = station_verdict(document, **GATE)
+    assert not verdict["admitted"]
+    assert "altitude search bound" in " ".join(verdict["refused_because"])
 
 
 def test_the_pose_sigma_is_the_horizontal_part_of_the_seed_covariance():
@@ -207,3 +217,46 @@ def test_a_walk_manifest_beside_the_stations_is_not_counted_as_one(tmp_path):
     admitted, refused = stations("prague_staromestske", root=tmp_path, **GATE)
     assert [entry["station"] for entry in admitted] == ["pano_00_a"]
     assert refused == []
+
+
+def test_station_artifacts_are_reported_separately(tmp_path):
+    folder = tmp_path / "data" / "panoramas" / "prague_staromestske" / "pano_05_missing"
+    folder.mkdir(parents=True)
+
+    admitted, refused = stations("prague_staromestske", root=tmp_path, **GATE)
+
+    assert admitted == []
+    assert refused[0]["refused_because"] == [
+        "missing pose artifact: alignment/pose_aligned.json",
+        "missing dense semantic artifact: semantics/panorama_semantics.npz",
+        "missing semantic metadata artifact: semantics/semantics.json",
+    ]
+
+
+def test_prague_pano05_inside_geometry_regression():
+    document = pose(0.481, sky_hit=1.0, conflict_range=0.559)
+    verdict = station_verdict(document, **GATE)
+    assert verdict["sky_conflict_state"] == "inside the geometry"
+    assert not verdict["admitted"]
+
+
+@pytest.mark.parametrize(
+    ("fraction", "distance"),
+    [(0.5, 1.999), (0.500001, 1.999), (0.500001, 2.0), (0.9, 60.0), (0.9997, 4.95)],
+)
+def test_semantic_and_fishnet_builders_share_the_central_verdict(tmp_path, fraction, distance):
+    document = pose(0.3, sky_hit=fraction, conflict_range=distance)
+    pose_path = tmp_path / "pose_aligned.json"
+    pose_path.write_text(json.dumps(document))
+    central = Registration.from_pose(document).verdict(AdmissionGate())
+    semantic = station_verdict(document, **GATE)
+    fishnet = pose_verdict(
+        pose_path,
+        max_residual_deg=GATE["max_residual_deg"],
+        max_sky_hit=GATE["max_sky_conflict"],
+        min_conflict_range_m=GATE["min_conflict_range_m"],
+    )
+    assert semantic["admitted"] is central.admitted
+    assert fishnet["admitted"] is central.admitted
+    assert semantic["sky_conflict_state"] == central.sky_conflict_state
+    assert fishnet["sky_conflict_state"] == central.sky_conflict_state

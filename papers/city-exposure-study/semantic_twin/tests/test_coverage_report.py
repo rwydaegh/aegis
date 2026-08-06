@@ -15,6 +15,7 @@ from semantic_twin.scene import site_config_build
 trimesh = pytest.importorskip("trimesh")
 pytest.importorskip("trimesh.ray.ray_pyembree")
 
+from semantic_twin.report import evidence_coverage as coverage_report  # noqa: E402
 from semantic_twin.report.evidence_coverage import markdown, splice  # noqa: E402
 from semantic_twin.scene.site_config_build import ground_datum  # noqa: E402
 
@@ -214,6 +215,55 @@ def test_the_fishnet_column_says_none_rather_than_zero_faces():
 def test_the_material_axis_column_is_a_count_out_of_the_panoramas_acquired():
     row = ROW | {"panoramas": 13, "panoramas_with_sam3_material_axis": 11}
     assert "11 of 13" in markdown([row], (250,))
+
+
+@pytest.mark.parametrize("artifact", ["partial", "corrupt"])
+def test_the_sam_axis_refuses_partial_or_corrupt_dense_artifacts(tmp_path, monkeypatch, artifact):
+    folder = tmp_path / "pano_00"
+    semantics = folder / "semantics"
+    semantics.mkdir(parents=True)
+    (semantics / "semantics.json").write_text('{"backend": "hybrid"}')
+    dense = semantics / "panorama_semantics.npz"
+    if artifact == "partial":
+        np.savez(dense, rf_material=np.zeros((2, 3), dtype=np.int16))
+    else:
+        dense.write_bytes(b"not an npz")
+    monkeypatch.setattr(coverage_report, "panorama_dirs", lambda _site: [folder])
+
+    result = coverage_report.row(
+        "square",
+        (250,),
+        max_residual_deg=4.0,
+        max_sky_conflict=0.5,
+        min_conflict_range_m=2.0,
+    )
+
+    assert result["panoramas_with_sam3_material_axis"] == 0
+    assert not result["sam3_material_axis"]
+    reason = result["panorama_sam_artifact_failures"][0]["reason"]
+    assert ("incomplete" if artifact == "partial" else "unreadable") in reason
+
+
+def test_the_sam_axis_counts_a_hybrid_artifact_only_after_reading_all_arrays(tmp_path, monkeypatch):
+    folder = tmp_path / "pano_00"
+    semantics = folder / "semantics"
+    semantics.mkdir(parents=True)
+    (semantics / "semantics.json").write_text('{"backend": "hybrid"}')
+    arrays = {name: np.zeros((2, 3), dtype=np.int16) for name in coverage_report.SEMANTIC_SAM_RASTERS}
+    np.savez(semantics / "panorama_semantics.npz", **arrays)
+    monkeypatch.setattr(coverage_report, "panorama_dirs", lambda _site: [folder])
+
+    result = coverage_report.row(
+        "square",
+        (250,),
+        max_residual_deg=4.0,
+        max_sky_conflict=0.5,
+        min_conflict_range_m=2.0,
+    )
+
+    assert result["panoramas_with_sam3_material_axis"] == 1
+    assert result["sam3_material_axis"]
+    assert result["panorama_sam_artifact_failures"] == []
 
 
 def test_a_site_with_no_panoramas_reads_none_rather_than_zero_of_zero():

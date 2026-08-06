@@ -341,6 +341,30 @@ def test_versioned_semantic_evidence_is_selected_without_a_symlink(tmp_path: pat
         build_surface_atlas._semantics_directory(capture, "../elsewhere")
 
 
+def test_atlas_reports_missing_dense_metadata_and_sam_artifacts_separately(tmp_path: pathlib.Path) -> None:
+    metadata = tmp_path / "semantics.json"
+    semantics = tmp_path / "panorama_semantics.npz"
+
+    assert build_surface_atlas._semantic_artifact_reasons(metadata, semantics) == [
+        "missing semantic metadata artifact: semantics.json",
+        "missing dense semantic artifact: panorama_semantics.npz",
+        "missing SAM material artifact: panorama_semantics.npz",
+    ]
+
+
+def test_atlas_names_an_incomplete_sam_axis(tmp_path: pathlib.Path) -> None:
+    metadata = tmp_path / "semantics.json"
+    semantics = tmp_path / "panorama_semantics.npz"
+    metadata.write_text('{"backend": "mask2former"}')
+    np.savez_compressed(semantics, entity=np.zeros((2, 4)), confidence=np.ones((2, 4)))
+
+    reasons = build_surface_atlas._semantic_artifact_reasons(metadata, semantics)
+
+    assert "missing SAM material artifact: semantic backend is not hybrid" in reasons
+    assert any(reason.startswith("incomplete SAM material artifact:") for reason in reasons)
+    assert not any("dense semantic" in reason for reason in reasons)
+
+
 def test_camera_provenance_hashes_every_present_input_and_names_models(tmp_path: pathlib.Path) -> None:
     pose = tmp_path / "pose.json"
     semantics = tmp_path / "semantics.npz"

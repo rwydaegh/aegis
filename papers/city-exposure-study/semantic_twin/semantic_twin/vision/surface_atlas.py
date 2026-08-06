@@ -31,6 +31,15 @@ from semantic_twin.materials.atlas import (
 
 SURFACE_ATLAS_SCHEMA = "aegis.joint_semantic_material_atlas"
 SURFACE_ATLAS_MANIFEST_VERSION = 1
+SEMANTIC_DENSE_RASTERS = ("entity", "confidence")
+SEMANTIC_SAM_RASTERS = (
+    "rf_material",
+    "rf_material_prior_mass",
+    "material_concept",
+    "material_confidence",
+    "material_source",
+)
+REQUIRED_SEMANTIC_RASTERS = SEMANTIC_DENSE_RASTERS + SEMANTIC_SAM_RASTERS
 WEIGHTING_RULE = (
     "A camera contributes at most one confidence-weighted vote to one barycentric texel. "
     "Within each camera and texel, entity and joint entity-material weights are divided by "

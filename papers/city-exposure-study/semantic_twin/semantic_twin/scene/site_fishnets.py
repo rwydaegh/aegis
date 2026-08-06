@@ -16,14 +16,12 @@ is the propagation stage's problem, not this one's.
 Which poses are admitted
 ------------------------
 
-A pose is skipped when its recorded ``sky_conflict`` says the camera sits inside
-the geometry: the segmentation calls more than ``--max-sky-hit-fraction`` of the
-directions sky while the support mesh returns a first hit along them, and the
-median range of those conflicts is under ``--min-conflict-range-m``.  A camera
-outside the buildings has a handful of sky conflicts tens of metres away.  A
-camera inside one has almost all of them, at arm's length, and its fishnet is
-the inside of a wall.  The skyline residual does not see this, so it is reported
-next to the verdict rather than used as the gate.
+A pose passes the same versioned production gate as the walk and atlas builders.
+It needs complete diagnostics, a skyline residual at most 4 degrees, an interior
+vertical optimum, and no inside-geometry signature. The inside signature is a
+sky-hit fraction above ``--max-sky-hit-fraction`` AND a median conflict range
+below ``--min-conflict-range-m``. A large distant mismatch remains a separate,
+visible state.
 
 Where the surface sets land
 ---------------------------
@@ -64,6 +62,7 @@ from typing import Any
 import numpy as np
 
 from semantic_twin import paths, sites
+from semantic_twin.vision.provenance import AdmissionGate, Registration
 
 #: The sites that carry registered panoramas with segmented semantics beside
 #: them. Korenmarkt and Milan are here even though each has only one camera:
@@ -81,10 +80,19 @@ class FishnetBuildOptions:
     out_suffix: str = ""
     size: int = 1536
     workers: int = 2
+    max_residual_deg: float = 4.0
     max_sky_hit_fraction: float = 0.5
     min_conflict_range_m: float = 2.0
     keep_intermediates: bool = False
     flatten_only: bool = False
+
+    @property
+    def admission_gate(self) -> AdmissionGate:
+        return AdmissionGate(
+            max_residual_deg=self.max_residual_deg,
+            max_sky_conflict=self.max_sky_hit_fraction,
+            min_conflict_range_m=self.min_conflict_range_m,
+        )
 
 
 def panorama_image(directory: pathlib.Path) -> pathlib.Path | None:
@@ -93,35 +101,45 @@ def panorama_image(directory: pathlib.Path) -> pathlib.Path | None:
     return candidates[-1] if candidates else None
 
 
-def pose_verdict(pose_path: pathlib.Path, *, max_sky_hit: float, min_conflict_range_m: float) -> dict[str, Any]:
-    """Admit or reject one registered pose on its recorded sky conflict."""
+def pose_verdict(
+    pose_path: pathlib.Path,
+    *,
+    max_sky_hit: float,
+    min_conflict_range_m: float,
+    max_residual_deg: float = 4.0,
+) -> dict[str, Any]:
+    """Admit or reject one registered pose with the shared production gate."""
+    gate = AdmissionGate(
+        max_residual_deg=max_residual_deg,
+        max_sky_conflict=max_sky_hit,
+        min_conflict_range_m=min_conflict_range_m,
+    )
     if not pose_path.exists():
-        return {"admitted": False, "reason": "no pose_aligned.json"}
-    pose = json.loads(pose_path.read_text())
-    conflict = pose.get("sky_conflict")
-    residual = pose.get("skyline_score_mean_deg")
-    if conflict is None:
-        return {"admitted": False, "reason": "pose carries no sky_conflict block", "residual_deg": residual}
-    fraction = conflict.get("sky_with_mesh_hit_fraction")
-    median_range = conflict.get("conflict_median_range_m")
-    record = {
-        "residual_deg": residual,
-        "sky_with_mesh_hit_fraction": fraction,
-        "conflict_median_range_m": median_range,
-        "sky_conflict_mesh": conflict.get("mesh"),
-    }
-    if fraction is None or median_range is None:
-        return {"admitted": False, "reason": "sky_conflict is incomplete", **record}
-    if fraction > max_sky_hit and median_range < min_conflict_range_m:
         return {
             "admitted": False,
-            "reason": (
-                f"camera inside the geometry: {fraction:.3f} of sky directions hit the mesh at a median "
-                f"{median_range:.2f} m"
-            ),
-            **record,
+            "reason": "missing pose artifact: alignment/pose_aligned.json",
+            "refused_because": ["missing pose artifact: alignment/pose_aligned.json"],
+            "admission_gate_version": gate.version,
         }
-    return {"admitted": True, **record}
+    pose = json.loads(pose_path.read_text())
+    conflict = pose.get("sky_conflict") if isinstance(pose.get("sky_conflict"), dict) else {}
+    registration = Registration.from_pose(pose)
+    verdict = registration.verdict(gate)
+    record = {
+        "residual_deg": registration.residual_deg,
+        "sky_with_mesh_hit_fraction": registration.sky_conflict,
+        "conflict_median_range_m": registration.conflict_median_range_m,
+        "sky_conflict_mesh": conflict.get("mesh"),
+        "sky_conflict_state": verdict.sky_conflict_state,
+        "dz_at_bound": registration.dz_at_bound,
+        "admission_gate_version": gate.version,
+        "refused_because": list(verdict.reasons),
+    }
+    return {
+        "admitted": verdict.admitted,
+        "reason": ". ".join(verdict.reasons) if verdict.reasons else None,
+        **record,
+    }
 
 
 def flatten(out: pathlib.Path) -> int:
@@ -284,11 +302,23 @@ def site_jobs(
     for directory in panorama_dirs(site):
         verdict = pose_verdict(
             directory / "alignment" / "pose_aligned.json",
+            max_residual_deg=options.max_residual_deg,
             max_sky_hit=options.max_sky_hit_fraction,
             min_conflict_range_m=options.min_conflict_range_m,
         )
+        missing_semantics: list[str] = []
         if not (directory / "semantics" / "panorama_semantics.npz").exists():
-            verdict = {**verdict, "admitted": False, "reason": "no segmented panorama"}
+            missing_semantics.append("missing dense semantic artifact: semantics/panorama_semantics.npz")
+        if not (directory / "semantics" / "semantics.json").exists():
+            missing_semantics.append("missing semantic metadata artifact: semantics/semantics.json")
+        if missing_semantics:
+            previous = list(verdict.get("refused_because", []))
+            verdict = {
+                **verdict,
+                "admitted": False,
+                "reason": ". ".join([*previous, *missing_semantics]),
+                "refused_because": [*previous, *missing_semantics],
+            }
         if not verdict["admitted"]:
             skipped.append({"panorama": directory.name, **verdict})
             continue
@@ -353,11 +383,10 @@ def build_sites(
                     "crop_size_px": options.size,
                     "semantics_source": "fused equirectangular panorama semantics, cut back into the crop geometry",
                     "admission": {
-                        "max_sky_hit_fraction": options.max_sky_hit_fraction,
-                        "min_conflict_range_m": options.min_conflict_range_m,
+                        **options.admission_gate.as_dict(),
                         "rule": (
-                            "a pose is rejected when more than max_sky_hit_fraction of its sky directions return a "
-                            "mesh first hit and the median range of those conflicts is under min_conflict_range_m"
+                            "a pose needs complete diagnostics, residual at or below the limit, an interior vertical "
+                            "optimum, and no paired inside-geometry signature"
                         ),
                     },
                     "panoramas_present": len(jobs) + len(skipped),

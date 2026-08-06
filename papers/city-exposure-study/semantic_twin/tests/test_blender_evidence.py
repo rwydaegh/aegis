@@ -31,6 +31,124 @@ def _support_mesh(directory, tmp_path, monkeypatch):
     (directory / "fishnet_manifest.json").write_text(json.dumps({"mesh": str(path)}))
 
 
+def test_exporter_labels_a_large_distant_sky_mismatch_without_calling_it_inside(tmp_path, monkeypatch) -> None:
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    pose_path = tmp_path / "pose.json"
+    pose_path.write_text(
+        json.dumps(
+            {
+                "position_enu_m": [1.0, 2.0, 3.0],
+                "heading_deg": 0.0,
+                "pitch_correction_deg": 0.0,
+                "roll_correction_deg": 0.0,
+                "skyline_score_mean_deg": 0.2,
+                "skyline_dz_at_bound": False,
+                "sky_conflict": {
+                    "sky_with_mesh_hit_fraction": 0.9997,
+                    "conflict_median_range_m": 4.95,
+                },
+            }
+        )
+    )
+    (outputs / "registration_sky_conflict.json").write_text(
+        json.dumps(
+            {
+                "reading": "paired sky rule",
+                "poses": [
+                    {
+                        "mesh": "data/geometry/square/inhouse_leaf_250m.ply",
+                        "pose_file": "pose.json",
+                        "capture": "pano_00",
+                        "skyline_residual_deg": 0.2,
+                        "sky_with_mesh_hit_fraction": 0.9997,
+                        "conflict_median_range_m": 4.95,
+                    }
+                ],
+            }
+        )
+    )
+    monkeypatch.setattr(exporter, "SCRIPT_DIR", tmp_path)
+    monkeypatch.setattr(exporter, "OUTPUTS", outputs)
+
+    layer = exporter.registration_layer("square")
+
+    assert layer is not None
+    assert layer["records"][0]["verdict"] == "large sky-mesh mismatch"
+    assert layer["records"][0]["admitted"] is True
+
+
+def test_exporter_preserves_the_sealed_korenmarkt_v1_cohort_but_defaults_new_inputs_to_v2(
+    tmp_path, monkeypatch
+) -> None:
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    rows = []
+    for index in range(9):
+        pose_path = tmp_path / f"pose_{index}.json"
+        pose_path.write_text(
+            json.dumps(
+                {
+                    "position_enu_m": [float(index), 0.0, 2.0],
+                    "heading_deg": 0.0,
+                    "pitch_correction_deg": 0.0,
+                    "roll_correction_deg": 0.0,
+                    "skyline_score_mean_deg": 1.0,
+                    "skyline_dz_at_bound": True,
+                    "sky_conflict": {
+                        "sky_with_mesh_hit_fraction": 0.1,
+                        "conflict_median_range_m": 20.0,
+                    },
+                }
+            )
+        )
+        rows.append(
+            {
+                "mesh": "data/geometry/korenmarkt/inhouse_leaf_250m_f64.ply",
+                "pose_file": pose_path.name,
+                "capture": f"pano_{index:02d}",
+                "skyline_residual_deg": 1.0,
+            }
+        )
+    (outputs / "registration_sky_conflict.json").write_text(json.dumps({"reading": "fixture", "poses": rows}))
+    monkeypatch.setattr(exporter, "SCRIPT_DIR", tmp_path)
+    monkeypatch.setattr(exporter, "OUTPUTS", outputs)
+
+    sealed = {"semantic_binding": {"atlas_manifest_sha256": next(iter(exporter.SEALED_LEGACY_ADMISSION_MANIFESTS))}}
+    sealed_gate = exporter.artifact_admission_gate(sealed)
+    sealed_layer = exporter.registration_layer("korenmarkt", sealed_gate)
+    assert sealed_layer is not None
+    assert sealed_gate.version == "registration-admission-v1"
+    assert sum(record["admitted"] for record in sealed_layer["records"]) == 9
+
+    unversioned = {"surface_atlas": {"admission": {"max_residual_deg": 4.0}}}
+    strict_gate = exporter.artifact_admission_gate(unversioned)
+    strict_layer = exporter.registration_layer("korenmarkt", strict_gate)
+    assert strict_layer is not None
+    assert strict_gate.version == "registration-admission-v2"
+    assert sum(record["admitted"] for record in strict_layer["records"]) == 0
+
+
+def test_exporter_reads_an_explicit_v1_atlas_admission_stamp() -> None:
+    manifest = {
+        "surface_atlas": {
+            "admission": {
+                "version": "registration-admission-v1",
+                "max_residual_deg": 3.0,
+                "max_sky_conflict": 0.4,
+                "min_conflict_range_m": 1.5,
+                "require_complete_sky_diagnostics": False,
+                "require_interior_optimum": False,
+            }
+        }
+    }
+
+    gate = exporter.artifact_admission_gate(manifest)
+
+    assert gate.version == "registration-admission-v1"
+    assert gate.max_residual_deg == 3.0
+
+
 def test_found_sam3_fishnet_records_a_missing_taxonomy_sidecar(tmp_path, monkeypatch) -> None:
     outputs = tmp_path / "outputs"
     fishnet = outputs / "square_fishnet_sam3"

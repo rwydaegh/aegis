@@ -21,17 +21,18 @@ was cast against. A binding is therefore built per site *and per crop radius*,
 and `bind_walk_entities` will refuse a mismatch on the column count. A 130 m
 binding is not valid for a 250 m run.
 
-**Admission is on two tests, not one.** `build_walk_twin.py` admits a station
-on its skyline residual alone. The residual is blind to the failure mode that
-actually matters: a pose whose camera has been driven inside the geometry
-scores a low residual because the silhouette it is matching is the inside of a
-wall. The second test is the sky conflict already recorded in every
+**Admission uses one shared versioned gate.** `build_walk_twin.py` admitted a
+station on its skyline residual alone. The residual is blind to the failure
+mode that actually matters: a pose whose camera has been driven inside the
+geometry scores a low residual because the silhouette it is matching is the
+inside of a wall. The second test is the sky conflict already recorded in every
 `pose_aligned.json`, the fraction of directions the segmentation calls sky for
 which the support mesh returns a first hit. A healthy pose sits near zero with
 its few conflicts tens of metres away. A pose at 1.0 with a median conflict
 range under a metre is inside a building. Of the 83 poses in this repository 26
-fail that test and 6 of those pass the residual gate, so the two tests are not
-redundant and the residual is not sufficient.
+fail that paired test and 6 of those pass the residual gate. Production v2 also
+requires complete sky diagnostics and a vertical optimum inside the search
+interval.
 
 **The material prior is a table, not a site measurement.** `vistas_material_prior`
 maps a Mapillary Vistas entity class to a distribution over the RF material
@@ -131,6 +132,14 @@ class SemanticBuildOptions:
     min_conflict_range_m: float = 2.0
     out_root: pathlib.Path = DEFAULT_OUT
 
+    @property
+    def admission_gate(self) -> AdmissionGate:
+        return AdmissionGate(
+            max_residual_deg=self.max_residual_deg,
+            max_sky_conflict=self.max_sky_conflict,
+            min_conflict_range_m=self.min_conflict_range_m,
+        )
+
 
 def _relative(path: pathlib.Path) -> str:
     try:
@@ -172,7 +181,7 @@ def station_verdict(
 ) -> dict[str, Any]:
     """Admit or refuse one registered pose, and say which test decided.
 
-    The two tests and the gate they compare against now live in
+    The tests and the gate they compare against now live in
     :class:`~semantic_twin.vision.provenance.Registration` and
     :class:`~semantic_twin.vision.provenance.AdmissionGate`, so that anything
     else asking how good a pose is gets the same answer as the admission does.
@@ -203,6 +212,7 @@ def station_verdict(
         "position_sigma_m": registration.position_sigma_m,
         "admitted": verdict.admitted,
         "refused_because": list(verdict.reasons),
+        "admission_gate_version": gate.version,
     }
 
 
@@ -263,11 +273,19 @@ def _station_record(
     aligned = paths.panorama_pose(folder)
     semantics = folder / "semantics" / "panorama_semantics.npz"
     meta = paths.panorama_semantics(folder)
-    if not (aligned.exists() and semantics.exists() and meta.exists()):
+    missing: list[str] = []
+    if not aligned.exists():
+        missing.append("missing pose artifact: alignment/pose_aligned.json")
+    if not semantics.exists():
+        missing.append("missing dense semantic artifact: semantics/panorama_semantics.npz")
+    if not meta.exists():
+        missing.append("missing semantic metadata artifact: semantics/semantics.json")
+    if missing:
         return False, {
             "station": folder.name,
             "admitted": False,
-            "refused_because": ["no registration or no semantics"],
+            "refused_because": missing,
+            "admission_gate_version": AdmissionGate().version,
         }
     pose = json.loads(aligned.read_text())
     verdict = station_verdict(
@@ -538,6 +556,7 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
     import trimesh
 
     mesh_path = site_mesh(site, options.crop_m)
+    gate = options.admission_gate
     admitted, refused = stations(
         site,
         max_residual_deg=options.max_residual_deg,
@@ -552,14 +571,12 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
         "mesh": mesh_path.name,
         "grid_height": options.grid_height,
         "admission": {
-            "max_residual_deg": options.max_residual_deg,
-            "max_sky_conflict": options.max_sky_conflict,
-            "min_conflict_range_m": options.min_conflict_range_m,
+            **gate.as_dict(),
             "rule": (
-                "a station is admitted when its skyline residual is inside the gate AND its sky "
-                "conflict does not say the camera is inside the geometry. The second test is not "
-                "implied by the first: a pose driven inside a wall matches the inside of that wall "
-                "and scores well."
+                "A station needs a complete diagnostic record, a skyline residual at or below the "
+                "gate, an interior vertical optimum, and no paired inside-geometry signature. The "
+                "inside signature is a sky-hit fraction above the threshold AND a median conflict "
+                "range below the range threshold."
             ),
         },
         "stations_admitted": admitted,
