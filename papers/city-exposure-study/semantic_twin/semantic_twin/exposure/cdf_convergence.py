@@ -1100,8 +1100,11 @@ def _prepare_campaign_plan(
     *,
     dry_run: bool,
 ) -> pathlib.Path:
-    """Preserve a same-identity plan and verify its seal before a dry run."""
+    """Verify any final seal before preserving or creating a campaign plan."""
     path = output_dir / "plan.json"
+    manifest_path = output_dir / "manifest.json"
+    if manifest_path.is_file():
+        _verify_sealed_generation(output_dir, identity)
     if path.is_file():
         try:
             saved_identity = json.loads(path.read_text())["identity_sha256"]
@@ -1109,9 +1112,6 @@ def _prepare_campaign_plan(
             raise RuntimeError("campaign plan is unreadable after generation quarantine") from error
         if saved_identity != identity:
             raise RuntimeError("campaign plan has a different identity after generation quarantine")
-        manifest_path = output_dir / "manifest.json"
-        if dry_run and manifest_path.is_file():
-            _verify_sealed_generation(output_dir, identity)
         return path
     _write_json_atomic(path, plan)
     return path
@@ -1125,6 +1125,8 @@ def _verify_sealed_generation(output_dir: pathlib.Path, identity: str) -> None:
         if manifest["identity_sha256"] != identity:
             raise RuntimeError("sealed manifest belongs to a different campaign identity")
         artifacts = manifest["artifacts"]
+        if not isinstance(artifacts, dict) or "plan" not in artifacts:
+            raise RuntimeError("sealed campaign manifest does not include the campaign plan")
     except (KeyError, OSError, TypeError, ValueError) as error:
         raise RuntimeError("sealed campaign manifest is unreadable") from error
     for name, metadata in artifacts.items():

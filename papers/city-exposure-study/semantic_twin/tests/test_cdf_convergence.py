@@ -586,6 +586,41 @@ def test_same_identity_dry_run_preserves_a_sealed_plan(tmp_path: pathlib.Path) -
         )
 
 
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_missing_sealed_plan_is_never_recreated(tmp_path: pathlib.Path, dry_run: bool) -> None:
+    output = tmp_path / "output"
+    output.mkdir()
+    identity = "campaign"
+    plan_path = output / "plan.json"
+    payload = json.dumps({"identity_sha256": identity, "created_utc": "sealed"}) + "\n"
+    plan_path.write_text(payload)
+    (output / "manifest.json").write_text(
+        json.dumps(
+            {
+                "identity_sha256": identity,
+                "artifacts": {
+                    "plan": {
+                        "path": plan_path.name,
+                        "bytes": len(payload.encode()),
+                        "sha256": hashlib.sha256(payload.encode()).hexdigest(),
+                    }
+                },
+            }
+        )
+    )
+    plan_path.unlink()
+
+    with pytest.raises(RuntimeError, match="sealed artifact plan is missing"):
+        _prepare_campaign_plan(
+            output,
+            identity,
+            {"identity_sha256": identity, "created_utc": "replacement"},
+            dry_run=dry_run,
+        )
+
+    assert not plan_path.exists()
+
+
 def test_production_tissue_database_hash_is_pinned() -> None:
     config = SimpleNamespace(contract="korenmarkt_cdf_stopping_4096_v1")
     expected = {
