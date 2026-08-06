@@ -19,20 +19,18 @@ from semantic_twin.vision.provenance import AdmissionGate
 from semantic_twin.vision.surface_atlas import (
     CameraSurfaceObservations,
     REQUIRED_SEMANTIC_RASTERS,
-    SEMANTIC_DENSE_RASTERS,
-    SEMANTIC_SAM_RASTERS,
     ReducedCameraSurfaceEvidence,
     fuse_surface_observations,
     reduce_camera_observations,
     save_surface_atlas,
+    semantic_artifact_reasons,
+    semantic_evidence_directory,
     sha256_file,
 )
 from semantic_twin.vision.vocabulary import ConceptCatalog
 
 DEFAULT_OUT = paths.outputs_dir() / "site_semantics"
 REQUIRED_RASTERS = REQUIRED_SEMANTIC_RASTERS
-DENSE_RASTERS = SEMANTIC_DENSE_RASTERS
-SAM_RASTERS = SEMANTIC_SAM_RASTERS
 VEGETATION_RASTERS = (
     "vegetation_form",
     "vegetation_subtype",
@@ -85,10 +83,10 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _semantics_directory(folder: pathlib.Path, dirname: str) -> pathlib.Path:
-    relative = pathlib.PurePath(dirname)
-    if relative.is_absolute() or not relative.parts or ".." in relative.parts:
-        raise ValueError("--semantics-dirname must be a relative path beneath each panorama folder")
-    return folder.joinpath(*relative.parts)
+    try:
+        return semantic_evidence_directory(folder, dirname)
+    except ValueError as error:
+        raise ValueError("--semantics-dirname must be a relative path beneath each panorama folder") from error
 
 
 def build(site: str, options: SurfaceAtlasBuildOptions) -> dict[str, Any]:
@@ -104,8 +102,15 @@ def build(site: str, options: SurfaceAtlasBuildOptions) -> dict[str, Any]:
         max_residual_deg=options.max_residual_deg,
         max_sky_conflict=options.max_sky_conflict,
         min_conflict_range_m=options.min_conflict_range_m,
+        semantics_dirname=None if options.semantics_dirname == "semantics" else options.semantics_dirname,
     )
     if not admitted:
+        if options.semantics_dirname != "semantics" and refused:
+            details = "; ".join(f"{record['station']}: {', '.join(record['refused_because'])}" for record in refused)
+            raise ValueError(
+                f"{site} has no admitted panorama in selected semantic evidence directory "
+                f"{options.semantics_dirname}: {details}"
+            )
         raise ValueError(f"{site} has no admitted panorama")
 
     catalog = ConceptCatalog.load(options.concepts)
@@ -430,35 +435,12 @@ def _ordered_names(mapping: dict[str, str]) -> tuple[str, ...]:
     return tuple(str(mapping[str(index)]) for index in range(len(mapping)))
 
 
-def _missing_rasters(path: pathlib.Path) -> list[str]:
-    with np.load(path, allow_pickle=False) as document:
-        return sorted(set(REQUIRED_RASTERS) - set(document.files))
-
-
 def _semantic_artifact_reasons(
     metadata_path: pathlib.Path,
     semantics_path: pathlib.Path,
 ) -> list[str]:
-    """Name each absent dense or SAM input without collapsing the causes."""
-    reasons: list[str] = []
-    if not metadata_path.exists():
-        reasons.append(f"missing semantic metadata artifact: {metadata_path.name}")
-    if not semantics_path.exists():
-        reasons.append(f"missing dense semantic artifact: {semantics_path.name}")
-        reasons.append(f"missing SAM material artifact: {semantics_path.name}")
-        return reasons
-    missing = _missing_rasters(semantics_path)
-    missing_dense = sorted(set(missing) & set(DENSE_RASTERS))
-    missing_sam = sorted(set(missing) & set(SAM_RASTERS))
-    if missing_dense:
-        reasons.append(f"incomplete dense semantic artifact: {', '.join(missing_dense)}")
-    if missing_sam:
-        reasons.append(f"incomplete SAM material artifact: {', '.join(missing_sam)}")
-    if metadata_path.exists():
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        if metadata.get("backend") != "hybrid":
-            reasons.append("missing SAM material artifact: semantic backend is not hybrid")
-    return reasons
+    """Compatibility name for the canonical hybrid artifact validator."""
+    return semantic_artifact_reasons(metadata_path, semantics_path)
 
 
 def _barycentric(triangles: np.ndarray, points: np.ndarray) -> np.ndarray:

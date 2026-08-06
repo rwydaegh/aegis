@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import pathlib
+import types
+import zipfile
 from dataclasses import replace
 
 import numpy as np
@@ -341,6 +343,51 @@ def test_versioned_semantic_evidence_is_selected_without_a_symlink(tmp_path: pat
         build_surface_atlas._semantics_directory(capture, "../elsewhere")
 
 
+@pytest.mark.parametrize(
+    ("directory_name", "admission_selection", "error_match"),
+    (
+        ("semantics", None, r"^prague_staromestske has no admitted panorama$"),
+        (
+            "semantics_sam3_revision",
+            "semantics_sam3_revision",
+            "selected semantic evidence directory semantics_sam3_revision: pano_00: missing SAM material artifact",
+        ),
+    ),
+)
+def test_atlas_passes_only_an_explicit_alternate_directory_to_station_admission(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    directory_name: str,
+    admission_selection: str | None,
+    error_match: str,
+) -> None:
+    import trimesh
+
+    mesh_path = tmp_path / "mesh.ply"
+    mesh_path.write_bytes(b"fixture")
+    captured: dict[str, object] = {}
+
+    def fake_stations(_site: str, **options: object):
+        captured.update(options)
+        return [], [{"station": "pano_00", "refused_because": ["missing SAM material artifact"]}]
+
+    monkeypatch.setattr(build_surface_atlas, "site_mesh", lambda *_args: mesh_path)
+    monkeypatch.setattr(build_surface_atlas, "sha256_file", lambda _path: MESH_SHA)
+    monkeypatch.setattr(trimesh, "load", lambda *_args, **_kwargs: types.SimpleNamespace(faces=[]))
+    monkeypatch.setattr(build_surface_atlas, "stations", fake_stations)
+
+    with pytest.raises(ValueError, match=error_match):
+        build_surface_atlas.build(
+            "prague_staromestske",
+            build_surface_atlas.SurfaceAtlasBuildOptions(
+                out_root=tmp_path,
+                semantics_dirname=directory_name,
+            ),
+        )
+
+    assert captured["semantics_dirname"] == admission_selection  # nosec B101 - pytest assertion
+
+
 def test_atlas_reports_missing_dense_metadata_and_sam_artifacts_separately(tmp_path: pathlib.Path) -> None:
     metadata = tmp_path / "semantics.json"
     semantics = tmp_path / "panorama_semantics.npz"
@@ -363,6 +410,59 @@ def test_atlas_names_an_incomplete_sam_axis(tmp_path: pathlib.Path) -> None:
     assert "missing SAM material artifact: semantic backend is not hybrid" in reasons
     assert any(reason.startswith("incomplete SAM material artifact:") for reason in reasons)
     assert not any("dense semantic" in reason for reason in reasons)
+
+
+def test_atlas_forces_lazy_npz_members_and_refuses_a_bad_crc(tmp_path: pathlib.Path) -> None:
+    metadata = tmp_path / "semantics.json"
+    semantics = tmp_path / "panorama_semantics.npz"
+    metadata.write_text('{"backend": "hybrid"}')
+    arrays = {name: np.zeros((2, 4), dtype=np.float32) for name in build_surface_atlas.REQUIRED_RASTERS}
+    np.savez(semantics, **arrays)
+    with zipfile.ZipFile(semantics) as archive:
+        member = archive.getinfo("entity.npy")
+        data_offset = member.header_offset + 30 + len(member.filename.encode()) + len(member.extra)
+    with semantics.open("r+b") as stream:
+        stream.seek(data_offset + member.compress_size - 1)
+        final_byte = stream.read(1)
+        stream.seek(-1, 1)
+        stream.write(bytes((final_byte[0] ^ 0xFF,)))
+
+    reasons = build_surface_atlas._semantic_artifact_reasons(metadata, semantics)
+
+    assert len(reasons) == 1  # nosec B101 - pytest assertion
+    assert reasons[0].startswith(  # nosec B101 - pytest assertion
+        "invalid dense semantic artifact: panorama_semantics.npz (entity: Bad CRC-32"
+    )
+
+
+def test_atlas_reports_a_truncated_npz_instead_of_leaking_bad_zip(tmp_path: pathlib.Path) -> None:
+    metadata = tmp_path / "semantics.json"
+    semantics = tmp_path / "panorama_semantics.npz"
+    metadata.write_text('{"backend": "hybrid"}')
+    np.savez_compressed(semantics, entity=np.zeros((2, 4)))
+    semantics.write_bytes(semantics.read_bytes()[:-12])
+
+    reasons = build_surface_atlas._semantic_artifact_reasons(metadata, semantics)
+
+    assert len(reasons) == 2  # nosec B101 - pytest assertion
+    assert reasons[0].startswith("invalid dense semantic artifact:")  # nosec B101 - pytest assertion
+    assert reasons[1].startswith("invalid SAM material artifact:")  # nosec B101 - pytest assertion
+
+
+def test_atlas_refuses_mismatched_dense_and_sam_raster_grids(tmp_path: pathlib.Path) -> None:
+    metadata = tmp_path / "semantics.json"
+    semantics = tmp_path / "panorama_semantics.npz"
+    metadata.write_text('{"backend": "hybrid"}')
+    arrays = {name: np.zeros((2, 4), dtype=np.float32) for name in build_surface_atlas.REQUIRED_RASTERS}
+    for name in build_surface_atlas.REQUIRED_RASTERS[2:]:
+        arrays[name] = np.zeros((1, 4), dtype=np.float32)
+    np.savez_compressed(semantics, **arrays)
+
+    reasons = build_surface_atlas._semantic_artifact_reasons(metadata, semantics)
+
+    assert reasons == [  # nosec B101 - pytest assertion
+        "incompatible dense and SAM semantic raster shapes: dense=(2, 4), SAM=(1, 4)",
+    ]
 
 
 def test_camera_provenance_hashes_every_present_input_and_names_models(tmp_path: pathlib.Path) -> None:

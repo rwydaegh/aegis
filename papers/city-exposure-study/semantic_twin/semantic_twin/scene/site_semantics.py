@@ -73,6 +73,7 @@ import numpy as np
 from semantic_twin import paths
 from semantic_twin.sites import ImagerySet, Site
 from semantic_twin.vision.provenance import AdmissionGate, Registration
+from semantic_twin.vision.surface_atlas import semantic_artifact_reasons, semantic_evidence_directory
 
 #: Copied rather than imported from ``build_walk_twin.py``, which is under
 #: concurrent edit. The list is the Mapillary Vistas classes that describe
@@ -223,35 +224,50 @@ def stations(
     max_sky_conflict: float,
     min_conflict_range_m: float,
     root: pathlib.Path | None = None,
+    semantics_dirname: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Every panorama directory of a site, split into admitted and refused."""
+    """Every panorama directory of a site, split into admitted and refused.
+
+    The default keeps the legacy entity-only station contract. An explicit
+    directory selects one exact hybrid product and validates it before pose
+    admission. No artifact is borrowed from the legacy ``semantics`` folder.
+    """
     admitted, refused = [], []
-    for folder in _station_directories(site, root):
+    for folder in _station_directories(site, root, semantics_dirname):
         accepted, record = _station_record(
             folder,
             max_residual_deg=max_residual_deg,
             max_sky_conflict=max_sky_conflict,
             min_conflict_range_m=min_conflict_range_m,
+            semantics_dirname=semantics_dirname,
         )
         (admitted if accepted else refused).append(record)
     return admitted, refused
 
 
-def _station_directories(site: str, root: pathlib.Path | None) -> list[pathlib.Path]:
+def _station_directories(
+    site: str,
+    root: pathlib.Path | None,
+    semantics_dirname: str | None,
+) -> list[pathlib.Path]:
     """Camera directories for the site and its walk campaigns."""
     found: list[pathlib.Path] = []
     selected = Site.get(site)
     for role in ("stations", "walk"):
         for entry in selected.imagery_by_role(role):
-            found.extend(_imagery_stations(entry, root))
+            found.extend(_imagery_stations(entry, root, semantics_dirname))
     return found
 
 
-def _imagery_stations(entry: ImagerySet, root: pathlib.Path | None) -> list[pathlib.Path]:
+def _imagery_stations(
+    entry: ImagerySet,
+    root: pathlib.Path | None,
+    semantics_dirname: str | None,
+) -> list[pathlib.Path]:
     """Resolve one declared imagery set, with a fixture-root override for tests."""
-    if root is None:
+    if root is None and semantics_dirname is None:
         return list(paths.panorama_stations(entry.directory, entry.station_prefix))
-    directory = root / "data" / "panoramas" / entry.directory
+    directory = paths.panorama_set(entry.directory) if root is None else root / "data" / "panoramas" / entry.directory
     if not directory.is_dir():
         return []
     if entry.station_prefix:
@@ -259,7 +275,10 @@ def _imagery_stations(entry: ImagerySet, root: pathlib.Path | None) -> list[path
     numbered = sorted(path for prefix in STATION_PREFIXES for path in directory.glob(f"{prefix}*") if path.is_dir())
     if numbered:
         return numbered
-    return [directory] if (directory / "semantics").is_dir() else []
+    if semantics_dirname is not None:
+        return [directory]
+    selected = semantics_dirname or "semantics"
+    return [directory] if semantic_evidence_directory(directory, selected).is_dir() else []
 
 
 def _station_record(
@@ -268,25 +287,34 @@ def _station_record(
     max_residual_deg: float,
     max_sky_conflict: float,
     min_conflict_range_m: float,
+    semantics_dirname: str | None,
 ) -> tuple[bool, dict[str, Any]]:
     """Read and score one station, returning its admission and report row."""
     aligned = paths.panorama_pose(folder)
-    semantics = folder / "semantics" / "panorama_semantics.npz"
-    meta = paths.panorama_semantics(folder)
+    selected_name = semantics_dirname or "semantics"
+    selected_directory = semantic_evidence_directory(folder, selected_name)
+    semantics = selected_directory / "panorama_semantics.npz"
+    meta = selected_directory / "semantics.json"
     missing: list[str] = []
     if not aligned.exists():
         missing.append("missing pose artifact: alignment/pose_aligned.json")
-    if not semantics.exists():
-        missing.append("missing dense semantic artifact: semantics/panorama_semantics.npz")
-    if not meta.exists():
-        missing.append("missing semantic metadata artifact: semantics/semantics.json")
+    if semantics_dirname is None:
+        if not semantics.exists():
+            missing.append("missing dense semantic artifact: semantics/panorama_semantics.npz")
+        if not meta.exists():
+            missing.append("missing semantic metadata artifact: semantics/semantics.json")
+    else:
+        missing.extend(semantic_artifact_reasons(meta, semantics))
     if missing:
-        return False, {
+        record: dict[str, Any] = {
             "station": folder.name,
             "admitted": False,
             "refused_because": missing,
             "admission_gate_version": AdmissionGate().version,
         }
+        if semantics_dirname is not None:
+            record["semantic_evidence_directory"] = str(selected_directory)
+        return False, record
     pose = json.loads(aligned.read_text())
     verdict = station_verdict(
         pose,
@@ -297,6 +325,8 @@ def _station_record(
     verdict["station"] = folder.name
     verdict["folder"] = str(folder)
     verdict["position_enu_m"] = pose["position_enu_m"]
+    if semantics_dirname is not None:
+        verdict["semantic_evidence_directory"] = str(selected_directory)
     return bool(verdict["admitted"]), verdict
 
 
