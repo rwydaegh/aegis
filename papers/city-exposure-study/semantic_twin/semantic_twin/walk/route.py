@@ -16,6 +16,7 @@ consume, so a script can choose between the two by which builder it asks for.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 from collections.abc import Mapping, Sequence
@@ -25,6 +26,8 @@ from typing import Any
 import numpy as np
 
 from .. import paths
+from ..acquire.source import source_for
+from ..sites import Site
 from .ground import SKY_PROBE, clearance, ground_height, ground_under_camera, sky_visibility
 from .links import (
     LinkGraph,
@@ -390,16 +393,192 @@ def panorama_walk(geometry: Any, stations: Sequence[Mapping[str, Any]], graph: L
 # --- reading the study's own files -------------------------------------------
 
 
+def _registered_station_location(selected: Site, station: str, base: pathlib.Path) -> tuple[pathlib.Path, str, bool]:
+    """Find one station in a known site's declared imagery sets."""
+    matches: list[tuple[pathlib.Path, str, bool]] = []
+    for imagery in selected.imagery:
+        directory = base / "data" / "panoramas" / imagery.directory
+        if imagery.station_prefix and station.startswith(imagery.station_prefix):
+            matches.append((directory / station, imagery.provider, True))
+        elif not imagery.station_prefix and station == directory.name:
+            matches.append((directory, imagery.provider, False))
+    if len(matches) != 1:
+        raise ValueError(
+            f"station {station!r} does not identify exactly one imagery set for {selected.name}: "
+            f"found {len(matches)} matches"
+        )
+    return matches[0]
+
+
+def _recorded_station_location(station: str, recorded_folder: str, base: pathlib.Path) -> pathlib.Path:
+    """Relocate an unregistered fixture path below the active study root."""
+    parts = pathlib.PurePath(recorded_folder).parts
+    markers = [index for index in range(len(parts) - 1) if parts[index : index + 2] == ("data", "panoramas")]
+    if len(markers) != 1:
+        raise ValueError(
+            f"station {station!r} has no registered imagery set and its recorded folder is not under data/panoramas"
+        )
+    relative = pathlib.Path(*parts[markers[0] :])
+    if len(relative.parts) < 4 or relative.parts[:2] != ("data", "panoramas"):
+        raise ValueError(
+            f"station {station!r} has no registered imagery set and its recorded folder is not under data/panoramas"
+        )
+    candidate = base / relative
+    if candidate.name != station:
+        raise ValueError(f"station {station!r} does not match the recorded capture directory {candidate.name!r}")
+    return candidate
+
+
+def _station_location(
+    site: str,
+    station: str,
+    recorded_folder: str,
+    base: pathlib.Path,
+) -> tuple[pathlib.Path, str | None, bool]:
+    """Resolve a report row through this checkout's imagery registry.
+
+    A semantic report records where it was built. That absolute path is useful
+    provenance, but it is not a runtime location. Production reports move from
+    a GPU checkout to the development checkout. For a known site, the imagery
+    registry supplies both the local directory and its provider. The fallback
+    exists only for fixture sites outside the eleven-site registry and still
+    requires a path below ``data/panoramas``.
+    """
+    try:
+        selected = Site.get(site)
+    except KeyError:
+        candidate = _recorded_station_location(station, recorded_folder, base)
+        return candidate, None, True
+    return _registered_station_location(selected, station, base)
+
+
+def _expected_metadata_sha256(entry: Mapping[str, Any]) -> str | None:
+    direct = entry.get("metadata_sha256")
+    metadata = entry.get("metadata")
+    nested = metadata.get("sha256") if isinstance(metadata, Mapping) else None
+    if direct is not None and nested is not None and str(direct).lower() != str(nested).lower():
+        raise ValueError(f"station {entry.get('station')!r} records two different metadata SHA-256 values")
+    value = direct if direct is not None else nested
+    if value is None:
+        return None
+    digest = str(value).lower()
+    if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        raise ValueError(f"station {entry.get('station')!r} records a malformed metadata SHA-256")
+    return digest
+
+
+def _has_frozen_capture_identity(entry: Mapping[str, Any]) -> bool:
+    exact_id = any(entry.get(key) is not None for key in ("node", "capture_id", "image_id", "pano_id"))
+    return exact_id or _expected_metadata_sha256(entry) is not None
+
+
+def _legacy_capture_id(entry: Mapping[str, Any], graph: LinkGraph, *, identity_in_directory: bool) -> str:
+    """Recover the full ID that an older report shortened to a folder suffix."""
+    station = str(entry["station"])
+    if identity_in_directory:
+        matches = [node for node in graph.position if station.endswith(str(node)[:16])]
+        if len(matches) != 1:
+            raise ValueError(
+                f"legacy station {station!r} does not identify exactly one full capture ID in the provider link graph"
+            )
+        return str(matches[0])
+
+    camera = np.asarray(entry["position_enu_m"], dtype=float)
+    if camera.shape != (3,) or not np.isfinite(camera).all() or not graph.position:
+        raise ValueError(f"legacy station {station!r} cannot be matched to a full capture ID")
+    distance = sorted(
+        (float(np.linalg.norm(np.asarray(position) - camera[:2])), str(node))
+        for node, position in graph.position.items()
+    )
+    if len(distance) > 1 and np.isclose(distance[0][0], distance[1][0], atol=1.0e-9, rtol=0.0):
+        raise ValueError(f"legacy station {station!r} is tied between two provider capture IDs")
+    return distance[0][1]
+
+
+def _station_metadata(
+    entry: Mapping[str, Any],
+    metadata_path: pathlib.Path,
+    provider: str | None,
+    *,
+    identity_in_directory: bool,
+    expected_legacy_id: str | None,
+) -> tuple[dict[str, Any], str, str, str]:
+    """Read one capture identity and refuse a relocated lookalike."""
+    if not metadata_path.is_file():
+        raise FileNotFoundError(
+            f"{metadata_path} does not exist for admitted station {entry['station']!r}; "
+            "the recorded folder is provenance and cannot replace the local capture"
+        )
+    payload = metadata_path.read_bytes()
+    digest = hashlib.sha256(payload).hexdigest()
+    expected_digest = _expected_metadata_sha256(entry)
+    if expected_digest is not None and digest != expected_digest:
+        raise ValueError(
+            f"metadata SHA-256 mismatch for station {entry['station']!r}: expected {expected_digest}, got {digest}"
+        )
+    metadata = json.loads(payload)
+    if not isinstance(metadata, dict):
+        raise TypeError(f"{metadata_path} must contain a metadata object")
+
+    detected_provider = _metadata_provider(metadata, metadata_path)
+    expected_provider = provider or detected_provider
+    if expected_provider != detected_provider:
+        raise ValueError(
+            f"provider mismatch for station {entry['station']!r}: "
+            f"the site registry says {expected_provider}, metadata says {detected_provider}"
+        )
+    if entry.get("provider") is not None and str(entry["provider"]) != expected_provider:
+        raise ValueError(
+            f"provider mismatch for station {entry['station']!r}: "
+            f"the report says {entry['provider']}, the site registry says {expected_provider}"
+        )
+
+    image_id = str(source_for(expected_provider).image_id(metadata))
+    if not image_id:
+        raise ValueError(f"{metadata_path} carries an empty panorama identifier")
+    _verify_recorded_capture(entry, image_id)
+    if expected_legacy_id is not None and image_id != expected_legacy_id:
+        raise ValueError(
+            f"capture identity mismatch for legacy station {entry['station']!r}: "
+            f"provider link graph says {expected_legacy_id}, metadata says {image_id}"
+        )
+    if identity_in_directory and not str(entry["station"]).endswith(image_id[:16]):
+        raise ValueError(f"capture identity mismatch for station {entry['station']!r}: metadata names {image_id!r}")
+    return metadata, image_id, expected_provider, digest
+
+
+def _metadata_provider(metadata: Mapping[str, Any], metadata_path: pathlib.Path) -> str:
+    has_mapillary_id = "id" in metadata
+    has_streetview_id = "panoId" in metadata
+    if has_mapillary_id == has_streetview_id:
+        raise ValueError(f"{metadata_path} does not identify exactly one supported panorama provider")
+    return "mapillary" if has_mapillary_id else "google_streetview"
+
+
+def _verify_recorded_capture(entry: Mapping[str, Any], image_id: str) -> None:
+    for key in ("node", "capture_id", "image_id", "pano_id"):
+        expected_id = entry.get(key)
+        if expected_id is not None and str(expected_id) != image_id:
+            raise ValueError(
+                f"capture identity mismatch for station {entry['station']!r}: "
+                f"report field {key} says {expected_id}, metadata says {image_id}"
+            )
+
+
 def load_admitted_stations(site: str, *, root: pathlib.Path | None = None, report: str | None = None) -> list[dict]:
-    """The stations one site admitted, with their registered position and pano id.
+    """The stations one site admitted, with registered positions and identities.
 
     Read from ``outputs/site_semantics/<site>/walk_semantic_250m.json`` rather
     than re-derived, because that file is where the admission rule lives and a
-    second copy of the rule here would be a second rule. The pano id is not in
-    that report and is read from each station's own ``metadata.json``, which is
-    ``panoId`` on a Street View capture and ``id`` on a Mapillary one.
+    second copy of the rule here would be a second rule.
+
+    The report's folder is build provenance, not a runtime path. Captures are
+    resolved through the site's imagery registry under the active root, then
+    checked against their provider, panorama identifier, and any metadata hash
+    frozen in the report. The returned record keeps both paths. ``folder`` is
+    the usable local directory and ``folder_provenance`` is the report value.
     """
-    base = root if root is not None else paths.root()
+    base = (root if root is not None else paths.root()).resolve()
     name = report or "walk_semantic_250m.json"
     path = base / "outputs" / "site_semantics" / site / name
     if not path.exists():
@@ -407,25 +586,52 @@ def load_admitted_stations(site: str, *, root: pathlib.Path | None = None, repor
             f"{path} does not exist, so {site} has no admitted station set. Build it with build_site_semantics.py."
         )
     document = json.loads(path.read_text())
+    entries = list(document.get("stations_admitted", ()))
+    legacy_graph = None
+    if any(not _has_frozen_capture_identity(entry) for entry in entries):
+        try:
+            legacy_graph = load_link_graph(site, root=base)
+        except FileNotFoundError as error:
+            raise FileNotFoundError(
+                f"{path} has legacy station rows without full capture identities, "
+                f"and no provider link graph can recover them"
+            ) from error
     out = []
-    for entry in document.get("stations_admitted", ()):
-        folder = pathlib.Path(entry["folder"])
-        if not folder.is_absolute():
-            folder = base / folder
+    for entry in entries:
+        station = str(entry["station"])
+        recorded_folder = str(entry["folder"])
+        folder, registered_provider, identity_in_directory = _station_location(site, station, recorded_folder, base)
+        expected_legacy_id = None
+        if not _has_frozen_capture_identity(entry):
+            if legacy_graph is None:
+                raise RuntimeError("legacy capture graph was not loaded")
+            expected_legacy_id = _legacy_capture_id(
+                entry,
+                legacy_graph,
+                identity_in_directory=identity_in_directory,
+            )
+        metadata_path = folder / "metadata.json"
+        document_meta, node, provider, metadata_sha256 = _station_metadata(
+            entry,
+            metadata_path,
+            registered_provider,
+            identity_in_directory=identity_in_directory,
+            expected_legacy_id=expected_legacy_id,
+        )
         record: dict[str, Any] = {
-            "name": entry["station"],
-            "node": None,
+            "name": station,
+            "node": node,
             "camera_enu_m": np.asarray(entry["position_enu_m"], dtype=float),
             "residual_deg": entry.get("residual_deg"),
             "position_sigma_m": entry.get("position_sigma_m"),
             "folder": str(folder),
+            "folder_provenance": recorded_folder,
+            "provider": provider,
+            "metadata_path": str(metadata_path),
+            "metadata_sha256": metadata_sha256,
+            "sequence_id": document_meta.get("sequence"),
+            "date": document_meta.get("date"),
         }
-        metadata = folder / "metadata.json"
-        if metadata.exists():
-            document_meta = json.loads(metadata.read_text())
-            record["node"] = str(document_meta.get("panoId") or document_meta.get("id") or "")
-            record["sequence_id"] = document_meta.get("sequence")
-            record["date"] = document_meta.get("date")
         out.append(record)
     return out
 
