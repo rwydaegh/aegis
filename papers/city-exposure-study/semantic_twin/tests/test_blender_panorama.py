@@ -11,6 +11,7 @@ import pytest
 from PIL import Image
 
 from semantic_twin.pano_geometry import panorama_to_world_matrix
+from semantic_twin.viz.blender import panorama as panorama_module
 from semantic_twin.viz.blender.panorama import (
     PANORAMA_PREVIEW_RESOLUTION_PERCENT,
     PANORAMA_PREVIEW_SAMPLES,
@@ -18,6 +19,7 @@ from semantic_twin.viz.blender.panorama import (
     PANORAMA_PUBLICATION_SAMPLES,
     PanoramaAsset,
     camera_matrix,
+    default_panorama_capture,
     select_panorama_asset,
 )
 
@@ -90,6 +92,39 @@ def test_select_panorama_asset_uses_manifest_pose_and_keeps_image_external(tmp_p
     assert asset.captured_at == "2025-04-28T16:12:23+00:00"
     assert asset.semantic_evidence_origin_distance_m == pytest.approx(10.0)
     assert asset.hero_trace_origin_distance_m == pytest.approx(10.0)
+
+
+def test_recorded_panorama_paths_relocate_with_the_checkout(tmp_path: pathlib.Path) -> None:
+    local = tmp_path / "data" / "panoramas" / "prague" / "capture" / "panorama_z5.jpg"
+    local.parent.mkdir(parents=True)
+    local.write_bytes(b"image")
+
+    resolved = panorama_module._path_from_record(
+        {
+            "panorama": "/home/worker/aegis/papers/city-exposure-study/semantic_twin/data/panoramas/"
+            "prague/capture/panorama_z5.jpg"
+        },
+        tmp_path,
+        "panorama",
+    )
+
+    assert resolved == local
+
+
+def test_default_panorama_capture_is_the_admitted_camera_nearest_the_hero(tmp_path: pathlib.Path) -> None:
+    manifest = {
+        "site": "prague_staromestske",
+        "hero": {"point_enu_m": [10.0, 0.0, 2.0]},
+        "surface_atlas": {
+            "camera_ids": ["far", "near"],
+            "cameras": [
+                {"camera_id": "far", "position_enu_m": [-20.0, 0.0, 2.0]},
+                {"camera_id": "near", "position_enu_m": [9.0, 0.0, 2.0]},
+            ],
+        },
+    }
+
+    assert default_panorama_capture(manifest, tmp_path) == "near"
 
 
 def test_select_panorama_asset_includes_explicitly_admitted_companions_and_records_missing(

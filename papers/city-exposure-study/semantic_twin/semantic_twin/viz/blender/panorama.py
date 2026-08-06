@@ -136,7 +136,17 @@ def _path_from_record(record: Mapping[str, Any], root: pathlib.Path, *names: str
         value = record.get(name)
         if isinstance(value, str) and value:
             path = pathlib.Path(value)
-            return path if path.is_absolute() else root / path
+            if not path.is_absolute():
+                return root / path
+            if path.exists():
+                return path
+            for marker in ("data", "outputs"):
+                if marker not in path.parts:
+                    continue
+                relocated = root.joinpath(*path.parts[path.parts.index(marker) :])
+                if relocated.exists():
+                    return relocated
+            return path
     return None
 
 
@@ -435,6 +445,30 @@ def select_panorama_asset(
         unavailable_admitted_captures=tuple(unavailable),
         omitted_admitted_captures_json=json.dumps(omissions, sort_keys=True, separators=(",", ":")),
     )
+
+
+def default_panorama_capture(manifest: Mapping[str, Any], root: pathlib.Path) -> str | None:
+    """Choose the admitted capture closest to the production hero standpoint."""
+    records = _atlas_camera_records(manifest, root) or _registration_records(manifest)
+    named = tuple(record for record in records if _capture_name(record))
+    if not named:
+        return None
+    names = {_capture_name(record) for record in named}
+    if manifest.get("site") == "korenmarkt" and KORENMARKT_HERO_CAPTURE in names:
+        return KORENMARKT_HERO_CAPTURE
+
+    hero = manifest.get("hero")
+    point = hero.get("point_enu_m") if isinstance(hero, Mapping) else None
+    hero_position = np.asarray(point, dtype=np.float64)
+    if hero_position.shape == (3,) and np.isfinite(hero_position).all():
+        positioned = []
+        for record in named:
+            position = np.asarray(record.get("position_enu_m"), dtype=np.float64)
+            if position.shape == (3,) and np.isfinite(position).all():
+                positioned.append((float(np.linalg.norm(position - hero_position)), _capture_name(record)))
+        if positioned:
+            return min(positioned)[1]
+    return _capture_name(named[0])
 
 
 def select_panorama_assets(
@@ -1253,6 +1287,7 @@ __all__ = [
     "PanoramaAsset",
     "camera_matrix",
     "configure_panorama_scene",
+    "default_panorama_capture",
     "finalize_panorama_render_cameras",
     "prepared_capture_scene_hooks",
     "select_panorama_asset",

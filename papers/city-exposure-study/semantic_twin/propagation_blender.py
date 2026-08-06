@@ -309,8 +309,9 @@ def main() -> int:
     panorama_asset = None
     panorama_hook = None
     panorama_scene_hooks = ()
-    if manifest["site"] == "korenmarkt":
-        panorama_asset = panorama.select_panorama_asset(manifest, ROOT)
+    panorama_capture = panorama.default_panorama_capture(manifest, ROOT)
+    if panorama_capture is not None:
+        panorama_asset = panorama.select_panorama_asset(manifest, ROOT, capture=panorama_capture)
         panorama_hook = functools.partial(
             panorama.configure_panorama_scene,
             asset=panorama_asset,
