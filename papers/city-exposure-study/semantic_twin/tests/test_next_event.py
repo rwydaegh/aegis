@@ -15,7 +15,8 @@ from semantic_twin.illumination import ISOTROPIC
 from semantic_twin.propagation.geometry import PlaneGeometry
 from semantic_twin.illumination.sources import SourceSet
 from semantic_twin.transport.tracer import SbrTracer, TraceConfig
-from semantic_twin.transport.next_event import NextEventEstimator, NextEventGather, _direct_field_masses
+from semantic_twin.transport.next_event import NextEventEstimator, NextEventField, NextEventGather, _direct_field_masses
+from semantic_twin.transport.directional import DirectionalMeasure
 from semantic_twin.transport.observers import MultiGather
 
 
@@ -40,6 +41,15 @@ class OpenSky:
             np.zeros((count, 3)),
             np.zeros(count, dtype=np.int64),
         )
+
+
+class CountingSky(OpenSky):
+    def __init__(self) -> None:
+        self.counts: list[int] = []
+
+    def intersect(self, origins: np.ndarray, directions: np.ndarray) -> tuple[np.ndarray, ...]:
+        self.counts.append(int(np.asarray(origins).shape[0]))
+        return super().intersect(origins, directions)
 
 
 def bounce_over_plane(
@@ -271,6 +281,22 @@ def test_field_direction_sign_matches_body_coupler_reciprocity():
     assert field.normalized_density("direct", field.direct)[0] == pytest.approx(1.0 / field.solid_angle)
 
 
+@pytest.mark.parametrize(
+    "grid",
+    [np.array([[0.0, 0.0, 0.0]]), np.array([[2.0, 0.0, 0.0]])],
+)
+def test_next_event_field_rejects_zero_or_nonunit_grid_directions(grid: np.ndarray) -> None:
+    with pytest.raises(ValueError, match="(positive|unit)"):
+        NextEventField(grid, 4.0 * np.pi, np.zeros(1), np.zeros(1))
+    with pytest.raises(ValueError, match="(positive|unit)"):
+        NextEventGather(
+            geometry=OpenSky(),
+            sources=one_site(10.0),
+            rng=np.random.default_rng(0),
+            field_grid=grid,
+        )
+
+
 def test_multi_gather_forwards_launch_cells_only_to_field_observers():
     field_gather = NextEventGather(
         geometry=OpenSky(),
@@ -311,11 +337,112 @@ def test_estimate_field_conserves_direct_and_bounced_scalars_across_batches():
     with_field, field = estimator.estimate_field(np.array([0.0, 0.0, 10.0]), seed=11)
     assert with_field == scalar
     assert field.direct == pytest.approx(scalar.direct, rel=1.0e-14, abs=1.0e-15)
+    expected_atoms = np.array([1.0 / (3.0 * 10.0**2), (2.0 / 3.0) / (8.0**2 + 8.0**2)])
+    expected_directions = np.array([[0.0, 0.0, -1.0], [-8.0, 0.0, -8.0]])
+    expected_directions[1] /= np.linalg.norm(expected_directions[1])
+    np.testing.assert_allclose(field.direct_atom_mass, expected_atoms, rtol=1.0e-14, atol=1.0e-15)
+    np.testing.assert_allclose(field.direct_k_hat, expected_directions, rtol=1.0e-14, atol=1.0e-15)
+    assert field.direct_atoms == pytest.approx(scalar.direct, rel=1.0e-14, abs=1.0e-15)
+    assert field.direct_mass.sum() == pytest.approx(scalar.direct, rel=1.0e-14, abs=1.0e-15)
     assert field.bounced == pytest.approx(scalar.bounced, rel=1.0e-14, abs=1.0e-15)
     assert field.total == pytest.approx(scalar.total, rel=1.0e-14, abs=1.0e-15)
     assert np.sum(field.direct_density) * field.solid_angle == pytest.approx(scalar.direct)
     assert np.sum(field.bounced_density) * field.solid_angle == pytest.approx(scalar.bounced)
     assert field.diagnostic and field.missing_specular and not field.includes_specular
+    measure = field.directional_measure(1.0)
+    assert measure.atomic_total == pytest.approx(scalar.direct, rel=1.0e-14, abs=1.0e-15)
+    assert measure.diffuse_total == pytest.approx(scalar.bounced, rel=1.0e-14, abs=1.0e-15)
+    assert measure.diffuse_k_hat == pytest.approx(-field.local_grid)
+
+
+def test_directional_measure_keeps_direct_atoms_out_of_diffuse_grid():
+    field = NextEventGather(
+        geometry=OpenSky(),
+        sources=one_site(10.0),
+        rng=np.random.default_rng(0),
+        field_grid=np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+    ).field(
+        np.array([0.25, 0.0]),
+        direct_k_hat=np.array([[0.0, 0.0, -1.0]]),
+        direct_atom_mass=np.array([0.25]),
+    )
+    measure = field.directional_measure(0.5, reference_id="fixture")
+    assert isinstance(measure, DirectionalMeasure)
+    assert measure.reference_id == "fixture"
+    np.testing.assert_allclose(measure.atom_k_hat, [[0.0, 0.0, -1.0]])
+    assert measure.atom_mass == pytest.approx([0.5])
+    assert measure.diffuse_mass == pytest.approx([0.0, 0.0])
+    assert measure.total_transfer == pytest.approx(field.total / 0.5)
+    with pytest.raises(ValueError, match="reference_transfer"):
+        field.directional_measure(0.0)
+
+
+def test_directional_measure_validates_components():
+    valid = dict(
+        atom_k_hat=np.empty((0, 3)),
+        atom_mass=np.empty(0),
+        diffuse_k_hat=np.empty((0, 3)),
+        diffuse_mass=np.empty(0),
+    )
+    DirectionalMeasure(**valid)
+    with pytest.raises(ValueError, match="unit"):
+        DirectionalMeasure(
+            atom_k_hat=np.array([[2.0, 0.0, 0.0]]),
+            atom_mass=np.array([1.0]),
+            diffuse_k_hat=np.empty((0, 3)),
+            diffuse_mass=np.empty(0),
+        )
+    with pytest.raises(ValueError, match="nonnegative"):
+        DirectionalMeasure(
+            atom_k_hat=np.array([[1.0, 0.0, 0.0]]),
+            atom_mass=np.array([-1.0]),
+            diffuse_k_hat=np.empty((0, 3)),
+            diffuse_mass=np.empty(0),
+        )
+    with pytest.raises(ValueError, match="shape"):
+        DirectionalMeasure(
+            atom_k_hat=np.array([1.0, 0.0, 0.0]),
+            atom_mass=np.array([1.0]),
+            diffuse_k_hat=np.empty((0, 3)),
+            diffuse_mass=np.empty(0),
+        )
+    with pytest.raises(ValueError, match="finite"):
+        DirectionalMeasure(
+            atom_k_hat=np.array([[np.nan, 0.0, 0.0]]),
+            atom_mass=np.array([1.0]),
+            diffuse_k_hat=np.empty((0, 3)),
+            diffuse_mass=np.empty(0),
+        )
+    with pytest.raises(ValueError, match="positive"):
+        DirectionalMeasure(
+            atom_k_hat=np.array([[0.0, 0.0, 0.0]]),
+            atom_mass=np.array([1.0]),
+            diffuse_k_hat=np.empty((0, 3)),
+            diffuse_mass=np.empty(0),
+        )
+    with pytest.raises(ValueError, match="finite"):
+        DirectionalMeasure(
+            atom_k_hat=np.array([[1.0, 0.0, 0.0]]),
+            atom_mass=np.array([np.nan]),
+            diffuse_k_hat=np.empty((0, 3)),
+            diffuse_mass=np.empty(0),
+        )
+
+
+def test_field_direct_atoms_use_one_source_visibility_pass():
+    geometry = CountingSky()
+    sources = SourceSet(
+        positions=np.column_stack((np.arange(5, dtype=np.float64), np.zeros(5), np.full(5, 10.0))),
+        cell_m=1.0,
+        dims=3,
+        azimuths=0,
+        builders=0,
+    )
+    config = TraceConfig(rays=32, batch=32, max_bounces=1, seed=2, local_cells=16)
+    tracer = SbrTracer(geometry, None, np.array([PEC_PERMITTIVITY]), np.array([1.0]), config)
+    estimator = NextEventEstimator(tracer, geometry, sources)
+    estimator.estimate_field(np.array([0.0, 0.0, 5.0]), seed=3)
+    assert geometry.counts.count(len(sources)) == 1
 
 
 def test_source_weights_are_validated_and_equal_defaults_remain_legacy():

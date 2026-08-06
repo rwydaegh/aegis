@@ -181,9 +181,9 @@ receiver ray's original launch direction. Prove that their directional masses
 sum to the existing scalar direct and bounced terms. Preserve the old scalar API
 when field output is disabled.
 
-Current status: the first binned prototype is implemented on the feature branch
-and is under independent review. It is a conservation and direction test. It is
-not the final atom-plus-density body representation.
+Current status: complete. The diagnostic binned field is merged and independently
+verified. It remains a conservation and direction test. The direct bins are not
+used for body coupling.
 
 Gate: controlled tests cover unequal source ranges and weights, multiple trace
 batches, direction signs, empty sets, scalar regression, and explicit missing
@@ -195,6 +195,11 @@ Introduce a `DirectionalMeasure` interface with exact atoms plus diffuse cells.
 Extend body coupling so exact atoms are passed to AEGIS at their exact arrival
 directions. Add an explicit body heading rule. Options are a fixed walking
 heading, a heading inferred from route direction, or an orientation average.
+
+Current status: the exact atom plus diffuse-cell interface and chunked level-2
+body coupling are implemented and independently verified. Direct results are
+independent of the diagnostic angular-grid resolution. The body heading rule is
+still open, so this stage is not yet complete.
 
 Gate: free-space point sources reproduce analytic level-2 body incidence. Grid
 refinement does not move the direct body result because direct atoms are not
