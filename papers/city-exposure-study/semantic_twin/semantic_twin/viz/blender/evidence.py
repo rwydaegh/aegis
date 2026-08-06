@@ -74,7 +74,16 @@ REFUSAL_TINT: dict[str, tuple[float, float, float]] = {
 }
 
 #: Verdict colours for a registered pose, in the order of the exporter's codes.
-VERDICT_TINT = np.array([[0.10, 0.80, 0.40], [0.98, 0.72, 0.15], [0.95, 0.18, 0.18]])
+VERDICT_TINT = np.array(
+    [
+        [0.10, 0.80, 0.40],
+        [0.98, 0.72, 0.15],
+        [0.95, 0.18, 0.18],
+        [0.80, 0.40, 0.95],
+        [0.95, 0.35, 0.12],
+        [0.55, 0.55, 0.55],
+    ]
+)
 
 #: Manifest evidence records represented by each Blender collection. The
 #: collection names stay stable across sites, including sites where a source

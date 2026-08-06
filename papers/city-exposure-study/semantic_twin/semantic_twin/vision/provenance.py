@@ -88,27 +88,84 @@ PROJECTIONS: tuple[str, ...] = (
 )
 
 
+LEGACY_ADMISSION_GATE_VERSION = "registration-admission-v1"
+ADMISSION_GATE_VERSION = "registration-admission-v2"
+
+SKY_CONFLICT_CLEAR = "clear"
+SKY_CONFLICT_LARGE_MISMATCH = "large sky-mesh mismatch"
+SKY_CONFLICT_INSIDE_GEOMETRY = "inside the geometry"
+SKY_CONFLICT_UNKNOWN = "unknown"
+
+
 @dataclass(frozen=True)
 class AdmissionGate:
-    """The two tests a pose has to pass, and the thresholds they use.
+    """The production tests a pose has to pass, and their versioned policy.
 
-    The defaults are the ones ``build_site_semantics.py`` shipped. They are
+    The defaults are the version-2 production contract. They are
     carried as an object rather than as three loose keyword arguments because a
     coverage number is only comparable between sites when the gate was the same,
     and a gate spread over three call sites is one nobody can quote.
     """
 
+    version: str = ADMISSION_GATE_VERSION
     max_residual_deg: float = 4.0
     max_sky_conflict: float = 0.5
     min_conflict_range_m: float = 2.0
+    require_complete_sky_diagnostics: bool = True
+    require_interior_optimum: bool = True
 
     def __post_init__(self) -> None:
+        if self.version not in (LEGACY_ADMISSION_GATE_VERSION, ADMISSION_GATE_VERSION):
+            raise ValueError(f"unsupported admission gate version: {self.version!r}")
+        expected_policy = {
+            LEGACY_ADMISSION_GATE_VERSION: (False, False),
+            ADMISSION_GATE_VERSION: (True, True),
+        }[self.version]
+        actual_policy = (self.require_complete_sky_diagnostics, self.require_interior_optimum)
+        if actual_policy != expected_policy:
+            raise ValueError(f"{self.version} requires diagnostic/boundary policy {expected_policy}")
         if self.max_residual_deg <= 0.0:
             raise ValueError("max_residual_deg must be positive")
         if not 0.0 < self.max_sky_conflict <= 1.0:
             raise ValueError("max_sky_conflict must lie in (0, 1]")
         if self.min_conflict_range_m <= 0.0:
             raise ValueError("min_conflict_range_m must be positive")
+
+    @classmethod
+    def legacy_v1(
+        cls,
+        *,
+        max_residual_deg: float = 4.0,
+        max_sky_conflict: float = 0.5,
+        min_conflict_range_m: float = 2.0,
+    ) -> AdmissionGate:
+        """The named policy used by sealed artifacts built before the boundary gate.
+
+        New builds use :class:`AdmissionGate` directly. This constructor exists
+        only so an old manifest can be checked under the policy it records.
+        """
+        return cls(
+            version=LEGACY_ADMISSION_GATE_VERSION,
+            max_residual_deg=max_residual_deg,
+            max_sky_conflict=max_sky_conflict,
+            min_conflict_range_m=min_conflict_range_m,
+            require_complete_sky_diagnostics=False,
+            require_interior_optimum=False,
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        """A complete policy stamp for reports and production manifests."""
+        return {
+            "version": self.version,
+            "max_residual_deg": self.max_residual_deg,
+            "max_sky_conflict": self.max_sky_conflict,
+            "min_conflict_range_m": self.min_conflict_range_m,
+            "require_complete_sky_diagnostics": self.require_complete_sky_diagnostics,
+            "require_interior_optimum": self.require_interior_optimum,
+            "inside_geometry_rule": (
+                "sky_with_mesh_hit_fraction > max_sky_conflict AND conflict_median_range_m < min_conflict_range_m"
+            ),
+        }
 
 
 @dataclass(frozen=True)
@@ -121,7 +178,7 @@ class Verdict:
 
     @property
     def inside_geometry(self) -> bool:
-        return self.sky_conflict_state == "inside the geometry"
+        return self.sky_conflict_state == SKY_CONFLICT_INSIDE_GEOMETRY
 
 
 @dataclass(frozen=True)
@@ -145,7 +202,7 @@ class Registration:
     position_sigma_m: float | None = None
     sky_conflict: float | None = None
     conflict_median_range_m: float | None = None
-    dz_at_bound: bool = False
+    dz_at_bound: bool | None = None
 
     def __post_init__(self) -> None:
         if self.sky_conflict is not None and not 0.0 <= self.sky_conflict <= 1.0:
@@ -178,7 +235,7 @@ class Registration:
             position_sigma_m=_position_sigma(pose),
             sky_conflict=_optional(conflict.get("sky_with_mesh_hit_fraction")),
             conflict_median_range_m=_optional(conflict.get("conflict_median_range_m")),
-            dz_at_bound=bool(pose.get("skyline_dz_at_bound", False)),
+            dz_at_bound=(bool(pose["skyline_dz_at_bound"]) if "skyline_dz_at_bound" in pose else None),
         )
 
     @classmethod
@@ -193,24 +250,36 @@ class Registration:
         the sky it should be seeing is full of mesh.
         """
         reasons: list[str] = []
-        residual = 99.0 if self.residual_deg is None else self.residual_deg
-        if residual > gate.max_residual_deg:
-            reasons.append(f"skyline residual {residual:.2f} deg above {gate.max_residual_deg:.2f}")
+        if self.residual_deg is None:
+            reasons.append("missing skyline residual diagnostic")
+        elif self.residual_deg > gate.max_residual_deg:
+            reasons.append(f"skyline residual {self.residual_deg:.2f} deg above {gate.max_residual_deg:.2f}")
         state = self._conflict_state(gate)
-        if state == "inside the geometry":
+        if gate.require_complete_sky_diagnostics:
+            if self.sky_conflict is None:
+                reasons.append("missing sky_with_mesh_hit_fraction diagnostic")
+            if self.conflict_median_range_m is None:
+                reasons.append("missing conflict_median_range_m diagnostic")
+        if state == SKY_CONFLICT_INSIDE_GEOMETRY:
             reasons.append(
                 f"sky conflict {float(self.sky_conflict):.3f} of sky directions hit the mesh at a median "
                 f"range of {float(self.conflict_median_range_m):.2f} m, so the camera is inside a building"
             )
+        if gate.require_interior_optimum:
+            if self.dz_at_bound is None:
+                reasons.append("missing skyline_dz_at_bound diagnostic")
+            elif self.dz_at_bound:
+                reasons.append("vertical registration optimum is at the altitude search bound")
         return Verdict(admitted=not reasons, sky_conflict_state=state, reasons=tuple(reasons))
 
     def _conflict_state(self, gate: AdmissionGate) -> str:
-        if self.sky_conflict is None:
-            return "unknown"
-        near = 1e9 if self.conflict_median_range_m is None else self.conflict_median_range_m
-        if self.sky_conflict > gate.max_sky_conflict and near < gate.min_conflict_range_m:
-            return "inside the geometry"
-        return "clear"
+        if self.sky_conflict is None or self.conflict_median_range_m is None:
+            return SKY_CONFLICT_UNKNOWN
+        if self.sky_conflict > gate.max_sky_conflict:
+            if self.conflict_median_range_m < gate.min_conflict_range_m:
+                return SKY_CONFLICT_INSIDE_GEOMETRY
+            return SKY_CONFLICT_LARGE_MISMATCH
+        return SKY_CONFLICT_CLEAR
 
     def quality(self, gate: AdmissionGate = AdmissionGate()) -> float:
         """Reliability of this pose in [0, 1], for the evidence accumulator.
@@ -223,16 +292,18 @@ class Registration:
         wall is not weak evidence about the wall, it is evidence about nothing.
         Everything else falls off linearly in the residual over the gate and
         again in the sky conflict, so a pose that only just passes is worth less
-        than one that passes easily. An unknown conflict is treated as the
-        threshold rather than as clean, which is the conservative reading and
-        the one that stops a pose predating the diagnostic scoring full marks.
+        than one that passes easily. Version 2 refuses an unknown diagnostic.
+        A large distant mismatch remains admitted but receives little weight.
         """
         if not self.verdict(gate).admitted:
             return 0.0
         residual = 0.0 if self.residual_deg is None else self.residual_deg
         from_residual = max(0.0, 1.0 - residual / gate.max_residual_deg)
-        conflict = gate.max_sky_conflict if self.sky_conflict is None else self.sky_conflict
-        from_conflict = max(0.0, 1.0 - conflict / gate.max_sky_conflict)
+        # A large distant mismatch is not the paired signature of a camera
+        # inside geometry. Keep it as low-weight evidence rather than assigning
+        # the same zero score as a refused inside-geometry pose.
+        conflict = 1.0 if self.sky_conflict is None else self.sky_conflict
+        from_conflict = max(0.0, 1.0 - conflict)
         return float(from_residual * from_conflict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -393,7 +464,7 @@ class SiteRegistrationSurvey:
             "stations_admitted": self.admitted,
             "stations_inside_the_geometry": self.inside_geometry,
             "stations_with_an_unknown_sky_conflict": self.unknown_conflict,
-            "stations_refused_on_residual_alone": self.refused_on_residual,
+            "stations_refused_outside_inside_geometry": self.refused_on_residual,
             "usable_fraction_of_cameras_on_disk": round(self.usable_fraction, 4),
         }
 

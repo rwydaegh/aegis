@@ -15,6 +15,7 @@ import numpy as np
 from semantic_twin import paths
 from semantic_twin.scene.site_semantics import TRANSIENT_CLASSES, site_mesh, stations
 from semantic_twin.vision.prompted import semantic_catalogue_identity
+from semantic_twin.vision.provenance import AdmissionGate
 from semantic_twin.vision.surface_atlas import (
     CameraSurfaceObservations,
     ReducedCameraSurfaceEvidence,
@@ -35,6 +36,8 @@ REQUIRED_RASTERS = (
     "material_confidence",
     "material_source",
 )
+DENSE_RASTERS = ("entity", "confidence")
+SAM_RASTERS = tuple(name for name in REQUIRED_RASTERS if name not in DENSE_RASTERS)
 VEGETATION_RASTERS = (
     "vegetation_form",
     "vegetation_subtype",
@@ -56,6 +59,14 @@ class SurfaceAtlasBuildOptions:
     concepts: pathlib.Path = paths.config_dir() / "semantic_concepts.json"
     out_root: pathlib.Path = DEFAULT_OUT
     semantics_dirname: str = "semantics"
+
+    @property
+    def admission_gate(self) -> AdmissionGate:
+        return AdmissionGate(
+            max_residual_deg=self.max_residual_deg,
+            max_sky_conflict=self.max_sky_conflict,
+            min_conflict_range_m=self.min_conflict_range_m,
+        )
 
 
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
@@ -92,6 +103,7 @@ def build(site: str, options: SurfaceAtlasBuildOptions) -> dict[str, Any]:
     mesh_path = site_mesh(site, options.crop_m)
     mesh = trimesh.load(mesh_path, process=False, force="mesh")
     mesh_sha256 = sha256_file(mesh_path)
+    gate = options.admission_gate
     admitted, refused = stations(
         site,
         max_residual_deg=options.max_residual_deg,
@@ -106,23 +118,17 @@ def build(site: str, options: SurfaceAtlasBuildOptions) -> dict[str, Any]:
     vocabulary: dict[str, Any] | None = None
     reduced: list[ReducedCameraSurfaceEvidence] = []
     camera_records: list[dict[str, Any]] = []
-    skipped: list[dict[str, str]] = []
+    skipped: list[dict[str, Any]] = []
     for record in sorted(admitted, key=lambda value: value["station"]):
         folder = pathlib.Path(record["folder"])
         semantic_dir = _semantics_directory(folder, options.semantics_dirname)
         meta_path = semantic_dir / "semantics.json"
         semantics_path = semantic_dir / "panorama_semantics.npz"
-        metadata = json.loads(meta_path.read_text(encoding="utf-8"))
-        missing = _missing_rasters(semantics_path)
-        if metadata.get("backend") != "hybrid" or missing:
-            skipped.append(
-                {
-                    "camera_id": record["station"],
-                    "reason": "not a complete hybrid semantic product",
-                    "missing": ", ".join(missing),
-                }
-            )
+        artifact_reasons = _semantic_artifact_reasons(meta_path, semantics_path)
+        if artifact_reasons:
+            skipped.append({"camera_id": record["station"], "reasons": artifact_reasons})
             continue
+        metadata = json.loads(meta_path.read_text(encoding="utf-8"))
         _validate_catalogue_identity(
             metadata,
             selected=catalogue_record,
@@ -218,11 +224,7 @@ def build(site: str, options: SurfaceAtlasBuildOptions) -> dict[str, Any]:
             "width": 2 * options.grid_height,
             "block_rows": options.block_rows,
         },
-        "admission": {
-            "max_residual_deg": options.max_residual_deg,
-            "max_sky_conflict": options.max_sky_conflict,
-            "min_conflict_range_m": options.min_conflict_range_m,
-        },
+        "admission": gate.as_dict(),
         "semantic_evidence_selection": {
             "directory_name": options.semantics_dirname,
             "rule": "read this relative directory directly beneath every admitted panorama folder",
@@ -436,6 +438,32 @@ def _ordered_names(mapping: dict[str, str]) -> tuple[str, ...]:
 def _missing_rasters(path: pathlib.Path) -> list[str]:
     with np.load(path, allow_pickle=False) as document:
         return sorted(set(REQUIRED_RASTERS) - set(document.files))
+
+
+def _semantic_artifact_reasons(
+    metadata_path: pathlib.Path,
+    semantics_path: pathlib.Path,
+) -> list[str]:
+    """Name each absent dense or SAM input without collapsing the causes."""
+    reasons: list[str] = []
+    if not metadata_path.exists():
+        reasons.append(f"missing semantic metadata artifact: {metadata_path.name}")
+    if not semantics_path.exists():
+        reasons.append(f"missing dense semantic artifact: {semantics_path.name}")
+        reasons.append(f"missing SAM material artifact: {semantics_path.name}")
+        return reasons
+    missing = _missing_rasters(semantics_path)
+    missing_dense = sorted(set(missing) & set(DENSE_RASTERS))
+    missing_sam = sorted(set(missing) & set(SAM_RASTERS))
+    if missing_dense:
+        reasons.append(f"incomplete dense semantic artifact: {', '.join(missing_dense)}")
+    if missing_sam:
+        reasons.append(f"incomplete SAM material artifact: {', '.join(missing_sam)}")
+    if metadata_path.exists():
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if metadata.get("backend") != "hybrid":
+            reasons.append("missing SAM material artifact: semantic backend is not hybrid")
+    return reasons
 
 
 def _barycentric(triangles: np.ndarray, points: np.ndarray) -> np.ndarray:

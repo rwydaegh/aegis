@@ -36,6 +36,7 @@ import numpy as np
 
 from semantic_twin import paths
 from semantic_twin.scene.site_semantics import COMPANION_DIRECTORIES, SITES, STATION_PREFIXES, station_verdict
+from semantic_twin.vision.provenance import AdmissionGate
 
 SCRIPT_DIR = paths.root()
 
@@ -187,16 +188,34 @@ def binding(site: str, crop_m: int) -> dict[str, Any] | None:
 
 def row(site: str, crops: tuple[int, ...], **gate: float) -> dict[str, Any]:
     folders = panorama_dirs(site)
-    poses, backends, material_axis = [], set(), 0
+    poses, backends, material_axis, artifact_failures, sam_artifact_failures = [], set(), 0, [], []
     for folder in folders:
         aligned = folder / "alignment" / "pose_aligned.json"
         meta = folder / "semantics" / "semantics.json"
+        dense = folder / "semantics" / "panorama_semantics.npz"
+        missing: list[str] = []
+        if not aligned.exists():
+            missing.append("missing pose artifact: alignment/pose_aligned.json")
+        if not dense.exists():
+            missing.append("missing dense semantic artifact: semantics/panorama_semantics.npz")
+        if not meta.exists():
+            missing.append("missing semantic metadata artifact: semantics/semantics.json")
+        if missing:
+            artifact_failures.append({"station": folder.name, "reasons": missing})
+        if not dense.exists():
+            sam_artifact_failures.append(
+                {"station": folder.name, "reason": "missing SAM material artifact: panorama_semantics.npz"}
+            )
         if meta.exists():
             document = json.loads(meta.read_text())
             backends.add(str(document.get("backend")))
             # Only the hybrid backend writes the SAM 3 `rf_material` axis. The
             # entity axis is present either way, so the backend is the test.
             material_axis += int(document.get("backend") == "hybrid")
+            if document.get("backend") != "hybrid" and dense.exists():
+                sam_artifact_failures.append(
+                    {"station": folder.name, "reason": "missing SAM material artifact: backend is not hybrid"}
+                )
         if not aligned.exists():
             continue
         pose = json.loads(aligned.read_text())
@@ -230,6 +249,8 @@ def row(site: str, crops: tuple[int, ...], **gate: float) -> dict[str, Any]:
         "semantics_backend": sorted(backends),
         "sam3_material_axis": "hybrid" in backends,
         "panoramas_with_sam3_material_axis": material_axis,
+        "panorama_artifact_failures": artifact_failures,
+        "panorama_sam_artifact_failures": sam_artifact_failures,
         "fishnet": fishnet(site),
         "semantic_coverage": semantic_coverage(site),
         "fishnet_panoramas": sources,
@@ -346,6 +367,14 @@ class EvidenceCoverageConfig:
     write: bool = True
     measure_semantic: bool = False
 
+    @property
+    def admission_gate(self) -> AdmissionGate:
+        return AdmissionGate(
+            max_residual_deg=self.max_residual_deg,
+            max_sky_conflict=self.max_sky_conflict,
+            min_conflict_range_m=self.min_conflict_range_m,
+        )
+
 
 def splice(document: str, table: str) -> str:
     """Replace whatever sits between the two markers, or insert after the first."""
@@ -381,10 +410,8 @@ def execute(config: EvidenceCoverageConfig) -> int:
     if config.write:
         config.out.parent.mkdir(parents=True, exist_ok=True)
         gate = {
+            **config.admission_gate.as_dict(),
             "crop_m": list(config.crops_m),
-            "max_residual_deg": config.max_residual_deg,
-            "max_sky_conflict": config.max_sky_conflict,
-            "min_conflict_range_m": config.min_conflict_range_m,
             "out": str(config.out),
             "into": config.into,
             "no_write": not config.write,

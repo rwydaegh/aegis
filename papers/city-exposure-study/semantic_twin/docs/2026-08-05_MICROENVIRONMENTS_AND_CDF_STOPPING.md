@@ -16,9 +16,9 @@ city name or an image.
 
 | Site | Stored built-form evidence | Runnable evidence | Scientific role | Main limit |
 | --- | --- | --- | --- | --- |
-| Korenmarkt | Medieval brick square and car-track capture | 250 m f64 mesh with 617,091 triangles. The legacy walk binding admits 9 stations. Four matched runs use 80 locations, 200,000 rays, 512 cells, and seeds 7 to 10. The final atlas run uses 13 frozen route points, 1.6 million rays, and 4,096 cells. | Current high-fidelity anchor | The final atlas admits 5 registered camera stations and adds 8 interpolated points. It is not binding-matched to the legacy city runs. |
-| Prague Staromestske | Irregular medieval square with gothic towers and a plaster and stone mix | 250 m f64 mesh with 664,619 triangles. The semantic binding admits 12 of 14 stations. Four matched walk runs use the same 80-location, 200,000-ray, 512-cell design. | Irregular historic enclosure | Two stations are refused. The panorama set is from 2014. |
-| Tokyo Hachiko | Dense glass canyon with a scramble crossing and heavy signage | 250 m f64 mesh with 797,615 triangles. Three registered stations are admitted. Four matched walk runs use the common design. | Dense canyon stress case | The semantic evidence is thin. Most seen faces are supported by one station. The four-seed street-law walk median spans 0.853 dB. |
+| Korenmarkt | Medieval brick square and car-track capture | 250 m f64 mesh with 617,091 triangles. The v1 atlas uses 9 cameras. Four matched runs use 80 locations, 200,000 rays, 512 cells, and seeds 7 to 10. The final route uses 5 cameras, 8 interpolated points, 1.6 million rays, and 4,096 cells. | Current high-fidelity anchor | This is the sealed v1 baseline. It is not binding-matched to the legacy city runs. |
+| Prague Staromestske | Irregular medieval square with gothic towers and a plaster and stone mix | 250 m f64 mesh with 664,619 triangles. The strict v2 gate admits 12 of 14 stations. Four matched walk runs use the same 80-location, 200,000-ray, 512-cell design. | Irregular historic enclosure | The current pose diagnostics name the 130 m support mesh. A 250 m registration pass is still required. |
+| Tokyo Hachiko | Dense glass canyon with a scramble crossing and heavy signage | 250 m f64 mesh with 797,615 triangles. The old binding used three stations. Strict v2 admission retains two. | Dense canyon diagnostic | Two cameras cover 2.72 percent of faces and 7.19 percent of area. This is too thin for a production material claim. |
 | Mexico Zocalo | Very large open plaza with volcanic stone and low surrounding blocks | 250 m f64 mesh with 707,812 triangles. The semantic binding admits 12 of 14 stations. Four matched walk runs use the common design. | Open reference endpoint | This is an open plaza, not a non-plaza street type. |
 
 The screening inventory also records useful acquisition context. The total
@@ -29,7 +29,8 @@ subset, so the larger screening counts do not imply matching semantic coverage.
 
 ## Strict non-plaza reading
 
-Hachiko is the only semantic-ready true canyon in the matched set. Times Square
+Hachiko is the only true canyon in the matched set, but it is not production
+ready under strict admission. Times Square
 is the strongest second canyon candidate. Its stored label is "deep glass and LED
 canyon, tallest aspect ratio in the set." It also has a 250 m mesh with 1,064,389
 triangles. The geometry inventory gives a median sky fraction of 0.121 and a
@@ -59,46 +60,58 @@ There are two valid comparisons, and they answer different questions.
 The final Korenmarkt result uses an `atlas` binding. Its absolute difference from
 a legacy `walk` or `geometric` city run cannot be assigned to built form alone.
 
-## Exact next-site input audit
+## Strict production status
 
-Tokyo Hachiko is the first non-plaza production candidate. Prague Staromestske
-is second. Both have valid format-version-3 meshes at 250 m. Old configuration
-notes about single-precision defects are stale. The unsuffixed and `_f64` 250 m
-files are byte-identical at both sites.
+Both candidate sites have valid format-version-3 meshes at 250 m. Old notes
+about single-precision defects are stale. The unsuffixed and `_f64` 250 m files
+are byte-identical at both sites.
 
 | Site | Exact 250 m exposure mesh | SHA-256 | Current route preview |
 | --- | --- | --- | --- |
-| Tokyo Hachiko | `data/geometry/tokyo_hachiko/inhouse_leaf_250m_f64.ply` | `1bccad9bedd7c1764e15d06042b0340530e795396f15f6d3fc40a759f3249e71` | 23 points over 120.199 m, with 3 registered cameras and 20 stride points. Point-array SHA-256: `1034b4f23f688a69e293a1df689477307c414a22eb83f698104e7ff52463ea92`. |
-| Prague Staromestske | `data/geometry/prague_staromestske/inhouse_leaf_250m_f64.ply` | `a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4` | 68 points over 339.557 m, with 12 registered cameras and 56 stride points. Point-array SHA-256: `16c615490e53814d55d99ae859b28afb61f5782eb5338f303282046b6b8a1ed4`. |
+| Tokyo Hachiko | `data/geometry/tokyo_hachiko/inhouse_leaf_250m_f64.ply` | `1bccad9bedd7c1764e15d06042b0340530e795396f15f6d3fc40a759f3249e71` | Strict v2 retains 2 cameras, 44.126 m apart in plan. The old 23-point route and its hash belong to the three-camera v1 input and are not a v2 route. |
+| Prague Staromestske | `data/geometry/prague_staromestske/inhouse_leaf_250m_f64.ply` | `a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4` | Strict v2 admits 12 cameras. The current 68-point preview remains preproduction until the poses are fitted and diagnosed against the 250 m mesh. |
 
-Hachiko has three crop-matched admitted poses. Their residuals are 1.420, 3.700,
-and 3.082 degrees. The second pose reached the vertical registration search
-bound, so route review must keep that warning visible. The accepted walk binding
-is `outputs/site_semantics/tokyo_hachiko/walk_semantic_250m.npz`, SHA-256
-`0c5541dbcee2d94eb0e24b82946ca429cdece2e059dc8b255e726905a2637d81`.
-Its JSON SHA-256 is
-`bb9672208d05728f75934febb61c8c48b899ff0e8076f97a65049e9fa58cbdb6`.
+### Completed evidence
 
-Prague admits 12 of 14 panoramas, but its pose records still name the 130 m
-support mesh. It needs a 250 m registration pass and binding rebuild before its
-route or hashes can be frozen. Hachiko therefore comes first.
+Hachiko's residuals are 1.420, 3.700, and 3.082 degrees. The middle pose reached
+the vertical search bound. Admission v2 rejects it even though its residual is
+below 4 degrees. The two retained cameras cover 21,673 faces, or 2.72 percent of
+the mesh, and 7.19 percent of its area. The median support remains one camera per
+seen face. This two-camera route is a no-go for production. The existing binding
+hashes, `0c5541dbcee2d94eb0e24b82946ca429cdece2e059dc8b255e726905a2637d81`
+for NPZ and `bb9672208d05728f75934febb61c8c48b899ff0e8076f97a65049e9fa58cbdb6`
+for JSON, describe the three-camera v1 artifact.
 
-Neither site has the hybrid SAM3 RF-material rasters required by the joint atlas
-builder. All admitted source images exist. Production still needs a complete
-hybrid product for every admitted Hachiko camera, followed by
-`joint_atlas_250m_r8.npz` and its manifest. The atlas must name the accepted mesh,
-the reviewed camera set, and the frozen concept and model hashes.
+Prague passes strict v2 with 12 cameras. `pano_03` fails the residual gate and
+`pano_05` has the paired inside-geometry signature: a sky-hit fraction of 1.0 at
+a median range of 0.559 m. None of the 12 admitted cameras is at the altitude
+bound. The current 250 m binding covers 6.71 percent of faces and 9.93 percent of
+area. Its NPZ SHA-256 is
+`fc01fdb06f51a900c3edb92f138d96abf36747b67915979ccade1166b4dd5147` and
+its JSON SHA-256 is
+`906a79e8246bd98239957c1289d36edd9ad263bea979744df6b75930e07d6bcf`.
+The pose diagnostics still name the 130 m support mesh, so these are audited
+preproduction hashes rather than a sealed 250 m contract.
 
-After route review, generate one sealed Hachiko CUDA reference at 1.6 million
-rays and 4,096 angular cells. Keep the 6 m route rule and `--locations 0`, rather
-than forcing the Korenmarkt count of 13. The reference must freeze the route
-arrays, point kinds, model order, Duke body, 250 m mesh, joint atlas, run settings,
-and the exact manifest, location, and spectrum file hashes. Only then can a named
-Hachiko production contract be added to the registry.
+Times Square is a no-go. All 14 residuals exceed 4 degrees, five fits end at the
+altitude bound, and three cameras have the paired inside-geometry signature.
+Widening the vertical search does not produce a useful interior optimum.
 
-The old eight-point Hachiko geometric result cannot be promoted. It uses generic
-facade material, a route subset, 200,000 rays, and 512 cells. It has no joint
-hybrid atlas and is not the sealed 1.6-million-ray, 4,096-cell CUDA reference.
+Korenmarkt remains the sealed admission-v1 baseline. Its atlas contains nine
+admitted cameras and its final route uses five. Applying v2 would retain four
+atlas cameras and two route cameras. Every removal is caused by the new
+altitude-bound rule. The existing contract and results remain readable under v1
+while the five bound fits are audited and, if needed, rebuilt.
+
+### Pending GPU work
+
+Prague still needs a 250 m registration and diagnostic pass. Hachiko needs a
+wider outdoor acquisition before another production attempt. Neither site has
+the complete hybrid SAM3 RF-material product or a joint atlas. The SAM3 model
+download also needs an authorized credential on the GPU host. Until that access
+and the missing artifacts are present, both sites remain preproduction. No CUDA
+reference or named production contract should be generated from the current
+inputs.
 
 ## Sequential stopping rule for a fixed walk
 

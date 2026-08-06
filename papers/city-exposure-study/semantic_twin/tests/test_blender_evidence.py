@@ -31,6 +31,53 @@ def _support_mesh(directory, tmp_path, monkeypatch):
     (directory / "fishnet_manifest.json").write_text(json.dumps({"mesh": str(path)}))
 
 
+def test_exporter_labels_a_large_distant_sky_mismatch_without_calling_it_inside(tmp_path, monkeypatch) -> None:
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    pose_path = tmp_path / "pose.json"
+    pose_path.write_text(
+        json.dumps(
+            {
+                "position_enu_m": [1.0, 2.0, 3.0],
+                "heading_deg": 0.0,
+                "pitch_correction_deg": 0.0,
+                "roll_correction_deg": 0.0,
+                "skyline_score_mean_deg": 0.2,
+                "skyline_dz_at_bound": False,
+                "sky_conflict": {
+                    "sky_with_mesh_hit_fraction": 0.9997,
+                    "conflict_median_range_m": 4.95,
+                },
+            }
+        )
+    )
+    (outputs / "registration_sky_conflict.json").write_text(
+        json.dumps(
+            {
+                "reading": "paired sky rule",
+                "poses": [
+                    {
+                        "mesh": "data/geometry/square/inhouse_leaf_250m.ply",
+                        "pose_file": "pose.json",
+                        "capture": "pano_00",
+                        "skyline_residual_deg": 0.2,
+                        "sky_with_mesh_hit_fraction": 0.9997,
+                        "conflict_median_range_m": 4.95,
+                    }
+                ],
+            }
+        )
+    )
+    monkeypatch.setattr(exporter, "SCRIPT_DIR", tmp_path)
+    monkeypatch.setattr(exporter, "OUTPUTS", outputs)
+
+    layer = exporter.registration_layer("square")
+
+    assert layer is not None
+    assert layer["records"][0]["verdict"] == "large sky-mesh mismatch"
+    assert layer["records"][0]["admitted"] is True
+
+
 def test_found_sam3_fishnet_records_a_missing_taxonomy_sidecar(tmp_path, monkeypatch) -> None:
     outputs = tmp_path / "outputs"
     fishnet = outputs / "square_fishnet_sam3"

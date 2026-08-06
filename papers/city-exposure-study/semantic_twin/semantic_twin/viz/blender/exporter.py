@@ -76,6 +76,13 @@ from semantic_twin.propagation import (
 )
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.vision.surface_atlas import load_surface_atlas, sha256_file, to_surface_mesh
+from semantic_twin.vision.provenance import (
+    SKY_CONFLICT_INSIDE_GEOMETRY,
+    SKY_CONFLICT_LARGE_MISMATCH,
+    SKY_CONFLICT_UNKNOWN,
+    AdmissionGate,
+    Registration,
+)
 from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.model import stratified_subset
 from semantic_twin.walk.site import site_walk
@@ -1332,13 +1339,6 @@ def body_field_from_spectrum(
 
 OUTPUTS = SCRIPT_DIR / "outputs"
 
-#: Sky conflict verdict thresholds, taken from the reading note the audit writes
-#: into ``outputs/registration_sky_conflict.json`` rather than invented here: a
-#: healthy pose sits below a few percent, and a pose above half has the camera
-#: inside the geometry, in which case its skyline residual is not an error bar.
-POSE_SUSPECT_SKY_CONFLICT = 0.05
-POSE_UNUSABLE_SKY_CONFLICT = 0.5
-
 #: How a rejection reason is grouped when it is aggregated back onto the support
 #: triangle it came from. The split that matters is the one the pipeline itself
 #: keeps: a transient object is geometry that belongs to the body layer and is
@@ -2162,12 +2162,19 @@ def registration_layer(site: str) -> dict[str, Any] | None:
             block = covariance[np.ix_(take, take)]
         values, vectors = np.linalg.eigh(block)
         sigmas.append(vectors * np.sqrt(np.clip(values, 0.0, None)))
-        conflict = float(row["sky_with_mesh_hit_fraction"])
-        verdict = "usable"
-        if conflict > POSE_UNUSABLE_SKY_CONFLICT:
+        registration = Registration.from_pose(pose)
+        admission = registration.verdict(AdmissionGate())
+        conflict = registration.sky_conflict
+        if admission.sky_conflict_state == SKY_CONFLICT_INSIDE_GEOMETRY:
             verdict = "camera inside the geometry"
-        elif conflict > POSE_SUSPECT_SKY_CONFLICT:
-            verdict = "suspect"
+        elif admission.sky_conflict_state == SKY_CONFLICT_LARGE_MISMATCH:
+            verdict = SKY_CONFLICT_LARGE_MISMATCH
+        elif admission.sky_conflict_state == SKY_CONFLICT_UNKNOWN:
+            verdict = "unknown diagnostics"
+        elif not admission.admitted:
+            verdict = "registration refused"
+        else:
+            verdict = "usable"
         records.append(
             {
                 "capture": row["capture"],
@@ -2175,7 +2182,12 @@ def registration_layer(site: str) -> dict[str, Any] | None:
                 "position_enu_m": positions[-1].tolist(),
                 "skyline_residual_deg": row["skyline_residual_deg"],
                 "sky_with_mesh_hit_fraction": conflict,
-                "conflict_median_range_m": row.get("conflict_median_range_m"),
+                "conflict_median_range_m": registration.conflict_median_range_m,
+                "sky_conflict_state": admission.sky_conflict_state,
+                "dz_at_bound": registration.dz_at_bound,
+                "admitted": admission.admitted,
+                "refused_because": list(admission.reasons),
+                "admission_gate_version": AdmissionGate().version,
                 "position_sigma_m": float(np.sqrt(np.trace(block) / 3.0)),
                 "verdict": verdict,
             }
@@ -2188,7 +2200,13 @@ def registration_layer(site: str) -> dict[str, Any] | None:
         "sigma_vectors": np.stack(sigmas).astype(np.float32),
         "verdict": np.array([VERDICT_CODES[record["verdict"]] for record in records], dtype=np.int8),
         "residual_deg": np.array([record["skyline_residual_deg"] for record in records], dtype=np.float32),
-        "sky_conflict": np.array([record["sky_with_mesh_hit_fraction"] for record in records], dtype=np.float32),
+        "sky_conflict": np.array(
+            [
+                np.nan if record["sky_with_mesh_hit_fraction"] is None else record["sky_with_mesh_hit_fraction"]
+                for record in records
+            ],
+            dtype=np.float32,
+        ),
         "records": records,
         "reading": document["reading"],
     }
@@ -2208,7 +2226,14 @@ EVIDENCE_PREFIXES = (
     "evidence_camera",
 )
 
-VERDICT_CODES = {"usable": 0, "suspect": 1, "camera inside the geometry": 2}
+VERDICT_CODES = {
+    "usable": 0,
+    "suspect": 1,
+    "camera inside the geometry": 2,
+    "large sky-mesh mismatch": 3,
+    "registration refused": 4,
+    "unknown diagnostics": 5,
+}
 
 
 def body_layer(directory: pathlib.Path) -> dict[str, Any] | None:

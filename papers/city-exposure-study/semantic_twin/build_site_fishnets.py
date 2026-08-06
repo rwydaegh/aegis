@@ -23,6 +23,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--size", type=int, default=1536)
     parser.add_argument("--workers", type=int, default=2)
+    parser.add_argument("--max-residual-deg", type=float, default=4.0)
     parser.add_argument("--max-sky-hit-fraction", type=float, default=0.5)
     parser.add_argument("--min-conflict-range-m", type=float, default=2.0)
     parser.add_argument("--keep-intermediates", action="store_true")
@@ -46,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
             out_suffix=args.out_suffix,
             size=args.size,
             workers=args.workers,
+            max_residual_deg=args.max_residual_deg,
             max_sky_hit_fraction=args.max_sky_hit_fraction,
             min_conflict_range_m=args.min_conflict_range_m,
             keep_intermediates=args.keep_intermediates,

@@ -30,6 +30,7 @@ from semantic_twin.vision.provenance import (
     EvidenceOrigin,
     Registration,
     ViewProvenance,
+    station_registrations,
     survey,
     survey_site,
 )
@@ -43,12 +44,15 @@ def pose(
     sky_hit: float | None = 0.0,
     conflict_range: float | None = 40.0,
     sigma: float = 0.2,
+    dz_at_bound: bool | None = False,
 ) -> dict:
     """A ``pose_aligned.json`` document with the four fields that decide a verdict."""
     document: dict = {
         "skyline_score_mean_deg": residual,
         "pose_uncertainty": {"covariance": np.diag([sigma**2 / 2, sigma**2 / 2, 0.1, 0.1, 0.1, 0.1]).tolist()},
     }
+    if dz_at_bound is not None:
+        document["skyline_dz_at_bound"] = dz_at_bound
     if sky_hit is not None:
         document["sky_conflict"] = {
             "sky_with_mesh_hit_fraction": sky_hit,
@@ -140,18 +144,76 @@ def test_the_sky_test_refuses_a_pose_the_residual_admits() -> None:
 def test_a_distant_sky_conflict_is_not_a_camera_inside_a_building() -> None:
     """Sky seen through an arcade hits the mesh far away and is not a fault."""
     far = Registration.from_pose(pose(1.0, sky_hit=0.9, conflict_range=60.0))
-    assert far.verdict(GATE).sky_conflict_state == "clear"
+    assert far.verdict(GATE).sky_conflict_state == "large sky-mesh mismatch"
     assert far.verdict(GATE).admitted
+    assert far.quality(GATE) > 0.0
 
 
-def test_an_unrecorded_sky_conflict_reads_unknown_rather_than_clean() -> None:
-    """Poses registered before the diagnostic existed must not score full marks."""
+def test_an_unrecorded_sky_conflict_fails_closed() -> None:
     silent = Registration.from_pose(pose(0.0, sky_hit=None))
     clean = Registration.from_pose(pose(0.0, sky_hit=0.0))
     assert silent.sky_conflict is None
     assert silent.verdict(GATE).sky_conflict_state == "unknown"
     assert clean.verdict(GATE).sky_conflict_state == "clear"
+    assert not silent.verdict(GATE).admitted
     assert silent.quality(GATE) < clean.quality(GATE)
+
+
+@pytest.mark.parametrize(
+    ("fraction", "distance", "state", "admitted"),
+    [
+        (0.5, 1.999, "clear", True),
+        (0.500001, 1.999, "inside the geometry", False),
+        (0.500001, 2.0, "large sky-mesh mismatch", True),
+        (0.9, 60.0, "large sky-mesh mismatch", True),
+        (0.9997, 4.95, "large sky-mesh mismatch", True),
+    ],
+)
+def test_paired_sky_rule_truth_table(
+    fraction: float,
+    distance: float,
+    state: str,
+    admitted: bool,
+) -> None:
+    verdict = Registration.from_pose(pose(sky_hit=fraction, conflict_range=distance)).verdict(GATE)
+    assert verdict.sky_conflict_state == state
+    assert verdict.admitted is admitted
+
+
+def test_a_good_residual_at_the_vertical_bound_is_refused() -> None:
+    registration = Registration.from_pose(pose(0.2, dz_at_bound=True))
+    verdict = registration.verdict(GATE)
+    assert not verdict.admitted
+    assert "altitude search bound" in " ".join(verdict.reasons)
+
+
+def test_missing_boundary_status_fails_closed() -> None:
+    verdict = Registration.from_pose(pose(dz_at_bound=None)).verdict(GATE)
+    assert not verdict.admitted
+    assert "missing skyline_dz_at_bound" in " ".join(verdict.reasons)
+
+
+def test_gate_policy_is_versioned_in_full() -> None:
+    assert GATE.as_dict() == {
+        "version": "registration-admission-v2",
+        "max_residual_deg": 4.0,
+        "max_sky_conflict": 0.5,
+        "min_conflict_range_m": 2.0,
+        "require_complete_sky_diagnostics": True,
+        "require_interior_optimum": True,
+        "inside_geometry_rule": (
+            "sky_with_mesh_hit_fraction > max_sky_conflict AND conflict_median_range_m < min_conflict_range_m"
+        ),
+    }
+
+
+def test_legacy_gate_is_named_and_keeps_sealed_v1_boundary_policy() -> None:
+    registration = Registration.from_pose(pose(0.2, dz_at_bound=True))
+    gate = AdmissionGate.legacy_v1()
+    assert gate.version == "registration-admission-v1"
+    assert registration.verdict(gate).admitted
+    assert not gate.require_complete_sky_diagnostics
+    assert not gate.require_interior_optimum
 
 
 def test_quality_falls_off_with_the_residual_inside_the_gate() -> None:
@@ -252,7 +314,7 @@ def test_the_survey_counts_the_cameras_that_are_actually_usable() -> None:
     on_disk = sum(report.stations for report in reports)
     posed = sum(report.registered for report in reports)
     admitted = sum(report.admitted for report in reports)
-    assert (on_disk, posed, admitted) == (112, 83, 51)
+    assert (on_disk, posed, admitted) == (112, 83, 39)
     assert admitted < posed < on_disk
 
 
@@ -284,3 +346,32 @@ def test_a_stricter_gate_never_admits_more_cameras() -> None:
 def test_no_pose_on_disk_carries_an_unrecorded_sky_conflict() -> None:
     """Every registered pose has been backfilled, so unknown is a live state with no live case."""
     assert sum(report.unknown_conflict for report in survey(gate=GATE).values()) == 0
+
+
+@pytest.mark.local_data
+def test_korenmarkt_v1_to_v2_camera_delta_is_only_the_boundary_gate() -> None:
+    registrations = station_registrations(sites.Site.get("korenmarkt"), roles=("stations", "walk"))
+    v1 = {
+        name for name, registration in registrations.items() if registration.verdict(AdmissionGate.legacy_v1()).admitted
+    }
+    v2 = {name for name, registration in registrations.items() if registration.verdict(GATE).admitted}
+
+    assert v1 == {
+        "korenmarkt",
+        "walk_00_986493819697753",
+        "walk_01_1304023184185511",
+        "walk_02_582445657694750",
+        "walk_03_706535575184668",
+        "walk_05_1084407470281938",
+        "walk_06_1419513849204492",
+        "walk_08_1019442960256615",
+        "walk_10_3367014310197013",
+    }
+    assert v2 == {
+        "walk_00_986493819697753",
+        "walk_01_1304023184185511",
+        "walk_02_582445657694750",
+        "walk_05_1084407470281938",
+    }
+    removed = v1 - v2
+    assert all(registrations[name].dz_at_bound for name in removed)

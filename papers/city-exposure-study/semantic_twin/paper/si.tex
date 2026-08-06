@@ -138,8 +138,12 @@ leaves the residual unchanged and the surfaces the camera is pointed at wrong.
 
 \subsection{Admission, and the second test}
 
-A pose is admitted when its residual is at most $4.0^\circ$, its sky conflict is
-at most 0.5, and the median range of any conflict is at least 2.0\,m.
+A production pose is admitted when its diagnostics are complete, its residual
+is at most $4.0^\circ$, and the vertical optimum lies inside the altitude search
+interval. It is rejected as inside the geometry only when the sky conflict is
+greater than 0.5 \emph{and} the median conflict range is less than 2.0\,m.
+Thus a conflict greater than 0.5 at a range of at least 2.0\,m is recorded as a
+large sky--mesh mismatch, not as a camera inside the geometry.
 
 The sky conflict is the second test and it shares no code with the objective. A
 $512 \times 256$ equirectangular grid of directions is cast from the fitted
@@ -184,9 +188,11 @@ and 33.9\,m. Zero usable stations become three. The two changes do different
 work: the wider crop moves the residual, from a median of $6.19^\circ$ to
 $3.08^\circ$, and the clamp moves the sky conflict at a cost of $0.34^\circ$ of
 residual at one station and nothing at the other. Across the study the
-re-registrations take the count of poses inside the geometry from 26 to 14 and
-the admitted count to 51, and 6 of the 14 still pass the residual gate, so the
-disagreement between the two tests survives the fix.
+re-registrations take the count of poses inside the geometry from 26 to 14. The
+residual and paired sky rule admit 51 poses. Requiring an interior altitude
+optimum, the version-2 production rule, admits 39. Six of the 14 inside poses
+still pass the residual gate, so the disagreement between the tests survives
+the fix.
 
 Times Square keeps a residual near $9^\circ$ on the wider crop and the crop is
 not its problem. Scanning yaw over the entire circle at the initial pose moves
@@ -304,8 +310,10 @@ result and why the eleven-square comparison runs on geometric classes.
 \begin{table*}[!t]
   \caption{Registration, per square. Residuals are the robust skyline residual
   in degrees. Pose sigma is the horizontal one-sigma of the eight-seed
-  ensemble covariance. Admission requires a residual of at most $4.0^\circ$, a
-  sky conflict of at most 0.5, and a conflict range of at least 2.0\,m}
+  ensemble covariance. Version-2 admission requires complete diagnostics, a
+  residual of at most $4.0^\circ$, an interior altitude optimum, and rejects the
+  paired condition sky conflict greater than 0.5 \emph{and} conflict range less
+  than 2.0\,m}
   \label{tab:si-registration}
   \centering
   \begin{tabular}{lcccccccc}
@@ -314,18 +322,18 @@ result and why the eleven-square comparison runs on geometric classes.
      & & & residual & residual & sigma (m) & bound & geometry & \\
     \midrule
     Brussels, Grand-Place        & 14 & 14 & 2.87 & 11.16 & 0.47 & 6 & 6 & 8 \\
-    Ghent, Korenmarkt            & 13 & 13 & 3.06 & 8.10  & 0.18 & 7 & 0 & 9 \\
+    Ghent, Korenmarkt            & 13 & 13 & 3.06 & 8.10  & 0.18 & 7 & 0 & 4 \\
     Krakow, Rynek Glowny         & 0  & 0  & --   & --    & --   & 0 & 0 & 0 \\
     London, Trafalgar Square     & 0  & 0  & --   & --    & --   & 0 & 0 & 0 \\
-    Madrid, Plaza Mayor          & 10 & 10 & 0.40 & 2.92  & 0.26 & 5 & 4 & 6 \\
-    Mexico City, Zocalo          & 14 & 14 & 2.76 & 4.60  & 1.86 & 4 & 0 & 12 \\
-    Milan, Piazza del Duomo      & 1  & 1  & 0.75 & 0.75  & 0.26 & 1 & 0 & 1 \\
+    Madrid, Plaza Mayor          & 10 & 10 & 0.40 & 2.92  & 0.26 & 5 & 4 & 4 \\
+    Mexico City, Zocalo          & 14 & 14 & 2.76 & 4.60  & 1.86 & 4 & 0 & 9 \\
+    Milan, Piazza del Duomo      & 1  & 1  & 0.75 & 0.75  & 0.26 & 1 & 0 & 0 \\
     New York, Times Square       & 14 & 14 & 9.13 & 11.25 & 1.44 & 5 & 3 & 0 \\
     Prague, Old Town Square      & 14 & 14 & 0.82 & 9.33  & 0.25 & 2 & 1 & 12 \\
-    Tokyo, Hachiko crossing      & 3  & 3  & 3.08 & 3.70  & 0.48 & 1 & 0 & 3 \\
+    Tokyo, Hachiko crossing      & 3  & 3  & 3.08 & 3.70  & 0.48 & 1 & 0 & 2 \\
     Toulouse, Place du Capitole  & 0  & 0  & --   & --    & --   & 0 & 0 & 0 \\
     \midrule
-    Total                        & 83 & 83 &      &       &      & 31 & 14 & 51 \\
+    Total                        & 83 & 83 &      &       &      & 31 & 14 & 39 \\
     \bottomrule
   \end{tabular}
 \end{table*}
