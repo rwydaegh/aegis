@@ -6,8 +6,8 @@ contains 13 exposure standpoints, a 4,096-cell angular grid, and a 1.6 million-r
 production trace at each standpoint. The blend uses a separate bounded 1,200-ray
 trace only for visible path lines. That small trace supplies no exposure values.
 
-The final blend is 93,811,902 bytes. Its SHA-256 is
-`c364620f62f8befa91caca7e6bd478741c6b86306b568c9292e935ba1388871a`.
+The final blend is 93,842,831 bytes. Its SHA-256 is
+`de9d90de6f92416fad4588c3a59b3db1294e68fb68e62d402fd50277c5967459`.
 
 ## Start here
 
