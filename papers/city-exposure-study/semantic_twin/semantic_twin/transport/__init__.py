@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .escape import EscapeEstimator
 from .model import Estimator, Gather, Surplus, require_credit
-from .next_event import MIN_CONNECT_M, NextEventEstimator, NextEventGather
+from .next_event import MIN_CONNECT_M, NextEventEstimator, NextEventField, NextEventGather
 from .observers import TERMINATIONS, BounceEvidenceTally, MultiGather, PathRecord, PathRecorder
 from .tracer import (
     DEFAULT_MAX_BOUNCES,
@@ -26,6 +26,7 @@ __all__ = [
     "Gather",
     "MultiGather",
     "NextEventEstimator",
+    "NextEventField",
     "NextEventGather",
     "PathRecord",
     "PathRecorder",

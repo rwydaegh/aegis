@@ -28,12 +28,18 @@ that consumes it.
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import Any, Callable, ClassVar
 
 import numpy as np
 
 from .roofline import FACADE_TIP_FAMILY, FACADE_TIP_LAW
+
+# The digest is intentionally text based. A direct float64 byte hash can change
+# when equivalent ratios take different summation paths or when host endianness
+# changes, so values are quantized before hashing.
+WEIGHT_CANONICALIZATION = "normalized_weights_quantized_15_significant_digits_ascii_v1"
 
 #: How far a site stands clear of the surface it was found on.
 #:
@@ -205,6 +211,7 @@ def direct_from_sites(
     origins: np.ndarray,
     sites: np.ndarray,
     *,
+    weights: np.ndarray | None = None,
     epsilon_m: float = 1.0e-3,
     chunk: int = 400_000,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -227,9 +234,24 @@ def direct_from_sites(
     if sites.shape[0] == 0:
         return direct, seen
 
+    if weights is None:
+        normalized = None
+    else:
+        raw = np.asarray(weights, dtype=np.float64)
+        if raw.shape != (sites.shape[0],):
+            raise ValueError(f"weights must have shape ({sites.shape[0]},), got {raw.shape}")
+        if np.any(~np.isfinite(raw)) or np.any(raw < 0.0):
+            raise ValueError("weights must be finite and nonnegative")
+        total_weight = float(raw.sum())
+        if total_weight <= 0.0:
+            raise ValueError("weights must contain a positive value for a non-empty source set")
+        # Keep the historical arithmetic when an explicit array merely spells
+        # out the equal-weight default.
+        normalized = None if np.all(raw == raw[0]) else raw / total_weight
+
     for i, origin in enumerate(origins):
         total = 0.0
-        visible_count = 0
+        visible_count = 0.0
         for start in range(0, sites.shape[0], chunk):
             target = sites[start : start + chunk]
             clear, distance = visible(
@@ -238,10 +260,15 @@ def direct_from_sites(
                 target,
                 epsilon_m=epsilon_m,
             )
-            total += float(np.sum(1.0 / distance[clear] ** 2))
-            visible_count += int(clear.sum())
-        direct[i] = total / sites.shape[0]
-        seen[i] = visible_count / sites.shape[0]
+            contribution = 1.0 / distance[clear] ** 2
+            if normalized is not None:
+                contribution *= normalized[start : start + chunk][clear]
+            total += float(np.sum(contribution))
+            visible_count += (
+                float(np.sum(normalized[start : start + chunk][clear])) if normalized is not None else int(clear.sum())
+            )
+        direct[i] = total if normalized is not None else total / sites.shape[0]
+        seen[i] = visible_count if normalized is not None else visible_count / sites.shape[0]
     return direct, seen
 
 
@@ -262,15 +289,57 @@ class SourceSet:
     floor_m: float = 0.0
     site_lift_m: float = 0.0
     name: str = "facade_tips"
+    #: Optional relative power for each site. ``None`` keeps the historical
+    #: equal-weight population. Values are normalised before either direct or
+    #: next-event scoring, so the absolute scale is intentionally irrelevant.
+    source_weights: np.ndarray | None = None
 
     law: ClassVar[str] = FACADE_TIP_LAW
     family: ClassVar[str] = FACADE_TIP_FAMILY
+
+    def __post_init__(self) -> None:
+        positions = np.asarray(self.positions)
+        if positions.ndim != 2 or positions.shape[1] != 3:
+            raise ValueError(f"positions must have shape (sites, 3), got {positions.shape}")
+        if not np.all(np.isfinite(positions)):
+            raise ValueError("positions must be finite")
+        object.__setattr__(self, "positions", positions)
+        if self.source_weights is None:
+            return
+        weights = np.asarray(self.source_weights, dtype=np.float64)
+        if weights.shape != (positions.shape[0],):
+            raise ValueError(f"source_weights must have shape ({positions.shape[0]},), got {weights.shape}")
+        if np.any(~np.isfinite(weights)) or np.any(weights < 0.0):
+            raise ValueError("source_weights must be finite and nonnegative")
+        if positions.shape[0] and float(weights.sum()) <= 0.0:
+            raise ValueError("source_weights must contain a positive value for a non-empty source set")
+        object.__setattr__(self, "source_weights", weights)
 
     def __len__(self) -> int:
         return int(self.positions.shape[0])
 
     def sites(self) -> np.ndarray:
         return self.positions
+
+    def normalized_source_weights(self) -> np.ndarray:
+        """Relative source probabilities, with equal weighting by default."""
+        return normalized_source_weights(self)
+
+    def weight_provenance(self) -> dict[str, Any]:
+        """Summarize the source-weight measure without dumping its values.
+
+        The digest uses :data:`WEIGHT_CANONICALIZATION`, so equivalent relative
+        weights remain identical despite reduction or platform representation.
+        """
+        normalized = np.asarray(self.normalized_source_weights(), dtype=np.float64)
+        digest = _normalized_weights_sha256(normalized)
+        return {
+            "mode": "explicit" if self.source_weights is not None else "equal",
+            "count": int(normalized.size),
+            "nonzero": int(np.count_nonzero(normalized)),
+            "normalized_weights_sha256": digest,
+            "canonicalization": WEIGHT_CANONICALIZATION,
+        }
 
     def as_dict(self) -> dict[str, Any]:
         """The build resolutions, exactly as every shipped payload records them.
@@ -294,7 +363,7 @@ class SourceSet:
         The build resolutions were already recorded. The law was not, which is why
         a next event payload on disk cannot say what illuminated it.
         """
-        return {
+        description = {
             "name": self.name,
             "law": self.law,
             "family": self.family,
@@ -302,10 +371,52 @@ class SourceSet:
             "construction": "silhouette fan from the walk, thinned to one site per cell",
             **self.as_dict(),
         }
+        if self.source_weights is not None:
+            description["weight_provenance"] = self.weight_provenance()
+        return description
 
     def direct(self, geometry: Any, origins: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """The line of sight term, exact over the whole set."""
-        return direct_from_sites(geometry, np.atleast_2d(origins), self.positions)
+        return direct_from_sites(
+            geometry,
+            np.atleast_2d(origins),
+            self.positions,
+            weights=self.source_weights,
+        )
+
+
+def normalized_source_weights(sources: Any) -> np.ndarray:
+    """Return one normalized probability per explicit source site.
+
+    Third-party ``PlacedIllumination`` implementations predate weighted sites,
+    so the absence of ``source_weights`` means exactly the old uniform law.
+    """
+    sites = np.asarray(sources.sites(), dtype=np.float64)
+    count = int(sites.shape[0])
+    if count == 0:
+        return np.empty(0, dtype=np.float64)
+    raw = getattr(sources, "source_weights", None)
+    if raw is None:
+        return np.full(count, 1.0 / count, dtype=np.float64)
+    weights = np.asarray(raw, dtype=np.float64)
+    if weights.shape != (count,):
+        raise ValueError(f"source_weights must have shape ({count},), got {weights.shape}")
+    if np.any(~np.isfinite(weights)) or np.any(weights < 0.0):
+        raise ValueError("source_weights must be finite and nonnegative")
+    total = float(weights.sum())
+    if total <= 0.0:
+        raise ValueError("source_weights must contain a positive value for a non-empty source set")
+    return weights / total
+
+
+def _normalized_weights_sha256(normalized: np.ndarray) -> str:
+    """Hash normalized weights through a stable 15-significant-digit encoding."""
+    values = np.asarray(normalized, dtype=np.float64)
+    if np.any(~np.isfinite(values)):
+        raise ValueError("normalized source weights must be finite")
+    tokens = [format(float(value), ".15g") for value in values]
+    payload = (f"{WEIGHT_CANONICALIZATION}\ncount={len(tokens)}\n" + "\n".join(tokens) + "\n").encode("ascii")
+    return hashlib.sha256(payload).hexdigest()
 
 
 def build_source_set(
