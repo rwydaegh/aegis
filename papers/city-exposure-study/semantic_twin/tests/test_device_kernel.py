@@ -478,6 +478,52 @@ def test_layered_canopy_pass_through_preserves_ray_state(tmp_path: Path, variant
     np.testing.assert_array_equal(result.throughput[direct], np.ones(np.count_nonzero(direct), dtype=np.float32))
 
 
+def test_blocking_atlas_hit_reuses_search_lookup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """One atlas lookup is enough for search and blocking material response."""
+    _set_variant("llvm_ad_rgb")
+    geometry = MitsubaGeometry(_write_plane(tmp_path / "lookup_count.ply"), variant="llvm_ad_rgb")
+    valid = np.array([[True, True], [True, False]])
+    binding = AtlasMaterialBinding(
+        face_to_atlas_row=np.array([0, 1], dtype=np.int32),
+        material_probability=np.broadcast_to(valid[None, ..., None], (2, 2, 2, 1)).astype(np.float32),
+        supported=np.broadcast_to(valid, (2, 2, 2)).copy(),
+        valid_texels=valid,
+        material_names=("material",),
+        material_class=np.array([1], dtype=np.int32),
+        provenance={"rule": "blocking lookup count"},
+        nonblocking=np.zeros((2, 2, 2), dtype=bool),
+    )
+    kernel = DeviceSbrKernel(
+        geometry,
+        np.ones(2, dtype=np.int64),
+        np.array([1.0 + 0.0j, 4.2 - 0.15j]),
+        np.zeros(2),
+        TraceConfig(rays=64, max_bounces=1, roulette_start=2, seed=73),
+        atlas_material=binding,
+    )
+    lookup = kernel._atlas_lookup
+    calls: list[tuple[object, object, object]] = []
+
+    def counted_lookup(face: object, barycentric_uv: object, hit: object) -> tuple[object, object, object]:
+        calls.append((face, barycentric_uv, hit))
+        return lookup(face, barycentric_uv, hit)
+
+    monkeypatch.setattr(kernel, "_atlas_lookup", counted_lookup)
+    result = kernel.trace_escape_records(np.array([0.0, 0.0, 1.0]))
+
+    assert result.escaped == result.rays == 64
+    # max_bounces=1 performs one search at each physical bounce. Before the
+    # cache was carried, each blocking search performed a second lookup while
+    # evaluating the material mixture.
+    assert len(calls) == 2
+    bounced = result.bounces == 1
+    expected = fresnel_power_reflectance(
+        -result.launch_direction[bounced, 2],
+        np.full(np.count_nonzero(bounced), 4.2 - 0.15j),
+    )
+    np.testing.assert_allclose(result.throughput[bounced], expected, rtol=3.0e-5, atol=2.0e-6)
+
+
 def test_canopy_search_is_a_structured_loop_without_material_work() -> None:
     source = inspect.getsource(DeviceSbrKernel.trace_escape_records)
     loop_body = source[source.index("def search_step") : source.index(") = dr.while_loop")]

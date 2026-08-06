@@ -278,7 +278,6 @@ def main() -> int:
     scene.build_evidence_cameras(twin, payload, hero, cameras)
     scene.build_full_support_camera(hero, float(manifest["traced_crop_radius_m"]), cameras)
     scene.build_lighting(hero)
-    scene.hide_heavy_collections()
     animation_summary = animation.build_path_animation(
         payload,
         manifest["terminations"],
@@ -292,6 +291,10 @@ def main() -> int:
         radius_m=1.45 * args.ray_radius_m,
         escaped_proxy_m=args.animation_escape_leg_m,
     )
+    # Stamp collection status only after the late-built animation collections
+    # contain their objects. Otherwise the file says they are empty even while
+    # their frames render correctly.
+    scene.hide_heavy_collections()
     scene.frame_the_viewport(twin, hero)
 
     scene.stamp_scene(

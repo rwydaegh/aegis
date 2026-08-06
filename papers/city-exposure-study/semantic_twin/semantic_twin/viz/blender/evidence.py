@@ -97,6 +97,29 @@ COLLECTION_LAYERS: dict[str, tuple[str, ...]] = {
     "bodies": ("bodies",),
 }
 
+# The receiver phantom is a separate object in ``14 body exposure``. Keeping
+# this distinction on the bystander collection prevents an absent dynamic-body
+# artifact from being read as "there are no people in the scene" or as the
+# Duke receiver itself.
+BODY_COLLECTION_ROLE = "image-reconstructed transient bystander bodies"
+BODY_TRANSPORT_ROLE = (
+    "optional geometry for an explicit bystander study; not part of the static atlas, and inclusion in a sealed "
+    "trace must be verified from that run's manifest"
+)
+BODY_RECEIVER_DISTINCTION = (
+    "not the receiver phantom; the Duke exposure body is a separate transport receiver in 14 body exposure"
+)
+
+
+def _body_artifact_status(record: dict[str, Any], populated: bool) -> str:
+    """Return the explicit dynamic-body artifact state for one Blender group."""
+    value = record.get("artifact_status")
+    if value:
+        return str(value)
+    if populated or record.get("status") in {"built", "built_partial"}:
+        return "built"
+    return "unavailable"
+
 
 def annotate_collection_status(groups: dict[str, Any], manifest: dict) -> None:
     """Put an explicit build result on every optional evidence collection."""
@@ -105,6 +128,17 @@ def annotate_collection_status(groups: dict[str, Any], manifest: dict) -> None:
         group = groups[key]
         records = {name: statuses[name] for name in layer_names if name in statuses}
         populated = len(group.objects) > 0
+        if key == "bodies":
+            body_record = records.get("bodies", {})
+            group["role"] = BODY_COLLECTION_ROLE
+            group["transport_role"] = BODY_TRANSPORT_ROLE
+            group["receiver_distinction"] = BODY_RECEIVER_DISTINCTION
+            group["artifact_status"] = _body_artifact_status(body_record, populated)
+            for field in ("expected_artifact_path", "artifact_path", "reason"):
+                if body_record.get(field):
+                    group[field] = str(body_record[field])
+            if body_record.get("count") is not None:
+                group["body_count"] = int(body_record["count"])
         locally_incomplete = bool(group.get("incomplete_evidence", False))
         represented = populated or int(group.get("evidence_records", 0)) > 0 or locally_incomplete
         incomplete = locally_incomplete or any(record.get("status") != "built" for record in records.values())
@@ -591,6 +625,10 @@ def build_bodies(payload: Any, manifest: dict, into: Any) -> int | None:
         if record.get("uncertainty"):
             obj["uncertainty"] = json.dumps(record["uncertainty"])
         obj["layer"] = "transient, never baked into the static semantic atlas"
+        obj["role"] = BODY_COLLECTION_ROLE
+        obj["transport_role"] = BODY_TRANSPORT_ROLE
+        obj["receiver_distinction"] = BODY_RECEIVER_DISTINCTION
+    into["body_count"] = int(vertices.shape[0])
     return int(vertices.shape[0])
 
 
