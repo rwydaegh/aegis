@@ -123,14 +123,22 @@ sync_excludes=(
   --exclude '.blgpu_jobs/'
 )
 
-cmd_sync() {
+cmd_sync() (
   local all_meshes=0
   [[ "${1:-}" == "--all-meshes" ]] && all_meshes=1
+  local sync_tmp inventory cdf_helper local_python
+  sync_tmp="$(mktemp -d)"
+  trap 'rm -r "$sync_tmp"' EXIT
+  inventory="$sync_tmp/cdf-contracts.tsv"
+  cdf_helper="${BLGPU_CDF_CONTRACT_HELPER:-$LOCAL_STUDY/tools/cdf_contract_references.py}"
+  local_python="${BLGPU_PYTHON:-$LOCAL_REPO/.venv/bin/python}"
+  PYTHONPATH="$LOCAL_STUDY" "$local_python" "$cdf_helper" --sync-inventory > "$inventory"
 
   ensure_remote_layout
 
-  # 1. the AEGIS package itself plus the three data files its tissue and mesh
-  #    code opens. The rest of aegis/data is 77 GB of unrelated study output.
+  # 1. the AEGIS package, tissue database, phantom registry, and every body
+  #    selected by a named CDF contract. The rest of aegis/data is 77 GB of
+  #    unrelated study output.
   echo "blgpu: sync aegis package"
   rs --delete \
     --exclude '__pycache__/' --exclude '_version.py' \
@@ -138,8 +146,16 @@ cmd_sync() {
   rs \
     "$LOCAL_REPO/pyproject.toml" "$LOCAL_REPO/README.md" "$HOST:$REMOTE_REPO/"
   rs \
-    "$LOCAL_REPO/data/duke.stl" "$LOCAL_REPO/data/itis_v5.db" "$LOCAL_REPO/data/phantoms.yaml" \
+    "$LOCAL_REPO/data/itis_v5.db" "$LOCAL_REPO/data/phantoms.yaml" \
     "$HOST:$REMOTE_REPO/data/"
+  local record body_file body_sha actual_body_sha _unused1 _unused2
+  while IFS=$'\t' read -r record body_file body_sha _unused1 _unused2; do
+    [[ "$record" == "body" ]] || continue
+    actual_body_sha="$(sha256sum "$LOCAL_REPO/data/$body_file" | awk '{print $1}')"
+    [[ "$actual_body_sha" == "$body_sha" ]] || \
+      die "production body hash changed for $body_file: $actual_body_sha != $body_sha"
+    rs "$LOCAL_REPO/data/$body_file" "$HOST:$REMOTE_REPO/data/"
+  done < "$inventory"
   # theory/scripts carries the shared matplotlib style the figure scripts import
   rs --exclude '__pycache__/' \
     "$LOCAL_REPO/theory/scripts/" "$HOST:$REMOTE_REPO/theory/scripts/"
@@ -162,8 +178,8 @@ cmd_sync() {
     rs \
       "$LOCAL_STUDY/data/geometry/" "$HOST:$REMOTE_STUDY/data/geometry/"
   else
-    local list; list="$(mktemp)"
-    "$LOCAL_REPO/.venv/bin/python" - "$LOCAL_STUDY/data/geometry" > "$list" <<'PY'
+    local list="$sync_tmp/geometry-files.txt"
+    "$local_python" - "$LOCAL_STUDY/data/geometry" > "$list" <<'PY'
 import json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 for path in sorted(root.rglob("*")):
@@ -182,7 +198,6 @@ for path in sorted(root.rglob("*")):
 PY
     rs --files-from="$list" \
       "$LOCAL_STUDY/data/geometry/" "$HOST:$REMOTE_STUDY/data/geometry/"
-    rm -f "$list"
   fi
   # 4. the fused panorama semantics. data/panoramas is 3.0 GB, but the part the
   #    propagation stage reads is the fused semantics.json plus
@@ -208,18 +223,22 @@ PY
       --exclude '*' \
       "$LOCAL_STUDY/outputs/$sub" "$HOST:$REMOTE_STUDY/outputs/"
   done
-  # The sequential CDF campaign freezes this sealed production generation as
-  # an input. Copy only its three numerical files. The rest of
-  # exposure_korenmarkt is 182 MB of older results that the GPU does not read.
-  local cdf_reference="final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz"
-  rsh "mkdir -p $(printf '%q' "$REMOTE_STUDY/outputs/exposure_korenmarkt")"
-  rs \
-    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_manifest.json" \
-    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_locations.jsonl" \
-    "$LOCAL_STUDY/outputs/exposure_korenmarkt/${cdf_reference}_spectra.npz" \
-    "$HOST:$REMOTE_STUDY/outputs/exposure_korenmarkt/"
+  # Each named CDF contract freezes one sealed reference triple. The registry
+  # supplies the config and exact files, so adding a production contract also
+  # adds its inputs and remote hash check to the default sync.
+  local cdf_config manifest locations spectra reference parent
+  while IFS=$'\t' read -r record cdf_config manifest locations spectra; do
+    [[ "$record" == "reference" ]] || continue
+    for reference in "$manifest" "$locations" "$spectra"; do
+      parent="$(dirname "$reference")"
+      rsh "mkdir -p $(printf '%q' "$REMOTE_STUDY/$parent")"
+      rs "$LOCAL_STUDY/$reference" "$HOST:$REMOTE_STUDY/$parent/"
+    done
+    echo "blgpu: validate CDF inputs for $cdf_config"
+    cmd_sh "python run_cdf_convergence.py --config $cdf_config --dry-run" >/dev/null
+  done < "$inventory"
   echo "blgpu: sync done"
-}
+)
 
 # Push any local path under the study to the box, for the heavier inputs the
 # default sync leaves behind, such as outputs/bystander_study.

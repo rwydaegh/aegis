@@ -1,6 +1,6 @@
-"""Sequential Monte Carlo stopping for the frozen Korenmarkt walk CDF.
+"""Sequential Monte Carlo stopping for a frozen production walk CDF.
 
-One complete 13-point walk is one Monte Carlo replica.  The points within a
+One complete frozen walk is one Monte Carlo replica.  The points within a
 walk remain together when replicas are resampled.  This preserves their shared
 base seed and avoids treating nearby route points as independent observations.
 
@@ -18,10 +18,16 @@ import os
 import pathlib
 import platform
 import time
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+
+from semantic_twin.exposure.cdf_contracts import (
+    CdfProductionContract,
+    production_contract as resolve_production_contract,
+)
 
 MODEL_NAMES = ("isotropic", "rooftop", "street_small_cell")
 CDF_STATISTICS = ("minimum", "q10", "q50", "q90", "maximum")
@@ -73,8 +79,13 @@ class CdfConvergenceConfig:
     bootstrap_replicates: int
     bootstrap_seed: int
     confidence: float
+    bootstrap_alpha_allocation: str
     body_chunk_cells: int
     body_peak_selection_min_fraction: float
+    body_model: str
+    body_source: str
+    body_mass_kg: float
+    seed_stream_stride: int
     thresholds: StoppingThresholds
     contract: str
     config_path: pathlib.Path
@@ -96,6 +107,7 @@ class CdfConvergenceConfig:
         reference = document["reference"]
         bootstrap = document["bootstrap"]
         body = document.get("body_peak", {})
+        body_source = document["body_source"]
         config = cls(
             root=root,
             output_dir=resolve(document["output_dir"]),
@@ -108,8 +120,13 @@ class CdfConvergenceConfig:
             bootstrap_replicates=int(bootstrap["replicates"]),
             bootstrap_seed=int(bootstrap["seed"]),
             confidence=float(bootstrap.get("confidence", 0.95)),
+            bootstrap_alpha_allocation=str(bootstrap.get("alpha_allocation", "custom allocation")),
             body_chunk_cells=int(body.get("chunk_cells", 512)),
             body_peak_selection_min_fraction=float(body.get("selection_stability_min_fraction", 0.95)),
+            body_model=str(document["body_model"]),
+            body_source=str(body_source["phantom"]),
+            body_mass_kg=float(body_source["mass_kg"]),
+            seed_stream_stride=int(document["seed_stream_stride"]),
             thresholds=StoppingThresholds.from_dict(document.get("thresholds")),
             contract=str(document.get("contract", "custom")),
             config_path=config_path,
@@ -140,20 +157,79 @@ class CdfConvergenceConfig:
             raise ValueError("body chunk count must be positive")
         if not 0.0 < self.body_peak_selection_min_fraction <= 1.0:
             raise ValueError("body peak selection stability fraction must lie in (0, 1]")
+        if self.body_model not in MODEL_NAMES:
+            raise ValueError(f"body_model must be one of {', '.join(MODEL_NAMES)}")
+        if not self.body_source:
+            raise ValueError("body_source.phantom must be nonempty")
+        if self.body_mass_kg <= 0.0:
+            raise ValueError("body_source.mass_kg must be positive")
+        if self.seed_stream_stride < 1:
+            raise ValueError("seed_stream_stride must be positive")
         self.thresholds.validate()
-        if self.contract == "korenmarkt_cdf_stopping_4096_v1":
-            expected = {
-                "diagnostic_look": 8,
-                "looks": (16, 24, 32),
-                "base_seeds": tuple(range(7, 39)),
-                "bootstrap_replicates": 20_000,
-                "bootstrap_seed": 20260805,
-                "confidence": 0.95,
-                "body_peak_selection_min_fraction": 0.95,
-            }
-            actual = {name: getattr(self, name) for name in expected}
-            if actual != expected:
-                raise ValueError(f"production CDF stopping contract changed: {actual} != {expected}")
+        contract = self.production_contract
+        if contract is not None:
+            self._validate_production_config(contract)
+
+    @property
+    def production_contract(self) -> CdfProductionContract | None:
+        return resolve_production_contract(self.contract)
+
+    @property
+    def body_path(self) -> pathlib.Path:
+        data_dir = pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data"))
+        return data_dir / f"{self.body_source}.stl"
+
+    def _validate_production_config(self, contract: CdfProductionContract) -> None:
+        def relative(path: pathlib.Path) -> str:
+            try:
+                return path.relative_to(self.root).as_posix()
+            except ValueError:
+                return str(path)
+
+        expected = {
+            "output_dir": contract.output_dir,
+            "reference_manifest": contract.reference.manifest,
+            "reference_locations": contract.reference.locations,
+            "reference_spectra": contract.reference.spectra,
+            "diagnostic_look": contract.diagnostic_look,
+            "looks": contract.looks,
+            "base_seeds": contract.base_seeds,
+            "bootstrap_replicates": contract.bootstrap_replicates,
+            "bootstrap_seed": contract.bootstrap_seed,
+            "confidence": contract.confidence,
+            "bootstrap_alpha_allocation": contract.bootstrap_alpha_allocation,
+            "body_chunk_cells": contract.body_chunk_cells,
+            "body_peak_selection_min_fraction": contract.body_peak_selection_min_fraction,
+            "body_model": contract.body.model,
+            "body_source": contract.body.phantom,
+            "body_mass_kg": contract.body.mass_kg,
+            "seed_stream_stride": contract.seed_stream_stride,
+            "thresholds": contract.threshold_values(),
+            "model_names": contract.model_names,
+        }
+        actual = {
+            "output_dir": relative(self.output_dir),
+            "reference_manifest": relative(self.reference_manifest),
+            "reference_locations": relative(self.reference_locations),
+            "reference_spectra": relative(self.reference_spectra),
+            "diagnostic_look": self.diagnostic_look,
+            "looks": self.looks,
+            "base_seeds": self.base_seeds,
+            "bootstrap_replicates": self.bootstrap_replicates,
+            "bootstrap_seed": self.bootstrap_seed,
+            "confidence": self.confidence,
+            "bootstrap_alpha_allocation": self.bootstrap_alpha_allocation,
+            "body_chunk_cells": self.body_chunk_cells,
+            "body_peak_selection_min_fraction": self.body_peak_selection_min_fraction,
+            "body_model": self.body_model,
+            "body_source": self.body_source,
+            "body_mass_kg": self.body_mass_kg,
+            "seed_stream_stride": self.seed_stream_stride,
+            "thresholds": dataclasses.asdict(self.thresholds),
+            "model_names": MODEL_NAMES,
+        }
+        if actual != expected:
+            raise ValueError(f"production CDF stopping contract changed: {actual} != {expected}")
 
     @property
     def all_looks(self) -> tuple[int, ...]:
@@ -179,14 +255,27 @@ class CdfConvergenceConfig:
                 "planned_familywise_confidence": self.confidence,
                 "formal_look_alpha": (1.0 - self.confidence) / len(self.looks),
                 "formal_look_confidence": 1.0 - (1.0 - self.confidence) / len(self.looks),
-                "alpha_allocation": "equal Bonferroni allocation over every planned formal look",
+                "alpha_allocation": self.bootstrap_alpha_allocation,
                 "unit": "one complete base-seed walk replica",
             },
             "body_peak": {
+                "model": self.body_model,
                 "chunk_cells": self.body_chunk_cells,
                 "bootstrap_target": "peak absorbed density of the ensemble-mean angular spectrum",
-                "retained_replica_field": "complete rooftop level-2 surface absorbed density",
+                "retained_replica_field": f"complete {self.body_model} level-2 surface absorbed density",
                 "selection_stability_min_fraction": self.body_peak_selection_min_fraction,
+            },
+            "body_source": {
+                "phantom": self.body_source,
+                "mass_kg": self.body_mass_kg,
+                "path": str(self.body_path),
+            },
+            "seed_stream_stride": self.seed_stream_stride,
+            "contract_pinning": {
+                "production": self.production_contract is not None,
+                "status": "pinned production contract"
+                if self.production_contract is not None
+                else "unpinned custom campaign",
             },
             "thresholds": dataclasses.asdict(self.thresholds),
         }
@@ -348,6 +437,7 @@ def analyse_joint_replicas(
     looks: tuple[int, ...],
     planned_formal_looks: tuple[int, ...],
     model_names: tuple[str, ...] = MODEL_NAMES,
+    body_model: str = "rooftop",
     bootstrap_replicates: int = 10_000,
     bootstrap_seed: int = 20260805,
     familywise_confidence: float = 0.95,
@@ -372,6 +462,8 @@ def analyse_joint_replicas(
     mean = np.asarray(body_mean, dtype=np.float64)
     if total.ndim != 3 or total.shape[2] != len(model_names):
         raise ValueError("chi must have shape (replicas, standpoints, models)")
+    if body_model not in model_names:
+        raise ValueError("body_model must name one of the source laws")
     if direct.shape != total.shape:
         raise ValueError("direct susceptibility must match total susceptibility")
     if sab.ndim != 3 or sab.shape[:2] != total.shape[:2] or sab.shape[2] < 2:
@@ -489,8 +581,8 @@ def analyse_joint_replicas(
             "endpoint_values_db": _endpoint_values(total_estimate_db, model_names),
             "point_uncertainty": point_report,
             "fixed_route_cdf": cdf_report,
-            "body_peak_rooftop": peak_report,
-            "body_mean_rooftop": mean_report,
+            f"body_peak_{body_model}": peak_report,
+            f"body_mean_{body_model}": mean_report,
             "direct_susceptibility": _direct_zero_report(direct[:look], model_names),
             "stability_from_previous_look": stability,
             "uncertainty_pass": uncertainty_pass,
@@ -542,12 +634,12 @@ def analyse_joint_replicas(
             "included": [
                 "total susceptibility at every standpoint and source law",
                 "total susceptibility fixed-route CDF ranks and minimum, q10, q50, q90, maximum",
-                "every rooftop surface Sab mean, whose band is projected to the peak of the ensemble-mean spectrum and CDF",
-                "linear mean of per-replica rooftop mean absorbed density at every standpoint and its fixed-route CDF",
+                f"every {body_model} surface Sab mean, whose band is projected to the peak of the ensemble-mean spectrum and CDF",
+                f"linear mean of per-replica {body_model} mean absorbed density at every standpoint and its fixed-route CDF",
             ],
             "excluded": [
                 "direct susceptibility, whose physical zero is reported as an atom at zero without a dB confidence interval",
-                "linear mean of per-replica rooftop peaks, which is retained only as a Jensen-gap diagnostic",
+                f"linear mean of per-replica {body_model} peaks, which is retained only as a Jensen-gap diagnostic",
             ],
         },
         "route_sample": {
@@ -920,7 +1012,7 @@ def run_campaign(
     )
 
     config.output_dir.mkdir(parents=True, exist_ok=True)
-    reference = load_reference(config)
+    reference = load_reference(config, body_path=config.body_path)
     _validate_production_reference(config, reference)
     tissue_database = _tissue_database_identity()
     _validate_production_tissue_database(config, tissue_database)
@@ -958,9 +1050,14 @@ def run_campaign(
         "code": code,
         "identity_code_fields": numerical_code,
         "models": list(MODEL_NAMES),
-        "seed_rule": "base seed + 1000 * frozen production standpoint index",
+        "seed_rule": (
+            config.production_contract.seed_stream_rule
+            if config.production_contract is not None
+            else f"base seed + {config.seed_stream_stride} * frozen standpoint index"
+        ),
         "retention": (
-            "per-replica scalar rows, complete rooftop level-2 surface Sab fields, and one running linear-power "
+            f"per-replica scalar rows, complete {config.body_model} level-2 surface Sab fields, and one running "
+            "linear-power "
             "rho sum. Individual replica spectra and paths are not retained"
         ),
     }
@@ -991,9 +1088,9 @@ def run_campaign(
         )
         _scene, _material, tracer, _run = _prepare_trace(spec, shared)
         coupler = study.BodyCoupler(
-            study.PHANTOM,
+            str(config.body_path),
             float(manifest_run["frequency_hz"]),
-            body_mass_kg=study.PHANTOM_MASS_KG,
+            body_mass_kg=config.body_mass_kg,
         )
         checkpoint = _empty_checkpoint(tracer, coupler, reference) if checkpoint is None else checkpoint
         checkpoint, trace_analysis = _trace_until_stop(
@@ -1141,13 +1238,15 @@ def _verify_sealed_generation(output_dir: pathlib.Path, identity: str) -> None:
 
 def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
     """Validate the analysis with the archived eight-seed rooftop campaign."""
-    from semantic_twin.exposure import study
     from semantic_twin.exposure.angular_convergence import file_sha256, load_reference
     from semantic_twin.exposure.coupler import BodyCoupler
 
-    reference = load_reference(config)
+    contract = config.production_contract
+    if contract is None or contract.archived_rooftop_run_dir is None:
+        raise ValueError("the archived rooftop diagnostic is available only for the Korenmarkt production contract")
+    reference = load_reference(config, body_path=config.body_path)
     _validate_production_reference(config, reference)
-    run_root = config.root / "outputs" / "angular_convergence_4096_atlas_v2" / "runs"
+    run_root = config.root / contract.archived_rooftop_run_dir
     seeds = tuple(range(7, 15))
     chi_rows: list[list[float]] = []
     direct_rows: list[list[float]] = []
@@ -1209,9 +1308,9 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
         raise AssertionError("archived rooftop angular grid was not loaded")
     rho = np.asarray(rho_rows, dtype=np.float64)
     coupler = BodyCoupler(
-        study.PHANTOM,
+        str(config.body_path),
         float(reference.manifest["run"]["frequency_hz"]),
-        body_mass_kg=study.PHANTOM_MASS_KG,
+        body_mass_kg=config.body_mass_kg,
     )
     exposures, flat_sab = coupler.couple_many_with_sab(
         common_grid,
@@ -1268,59 +1367,42 @@ def archived_rooftop_diagnostic(config: CdfConvergenceConfig) -> pathlib.Path:
 
 def _validate_production_reference(config: CdfConvergenceConfig, reference: Any) -> None:
     """Pin the named production contract to the accepted final generation."""
-    if config.contract != "korenmarkt_cdf_stopping_4096_v1":
+    streams = {
+        int(base + config.seed_stream_stride * index)
+        for base in config.base_seeds
+        for index in reference.standpoints.index
+    }
+    expected_streams = len(config.base_seeds) * reference.standpoints.index.size
+    if len(streams) != expected_streams:
+        raise ValueError("CDF base-seed mapping contains a random-stream collision")
+    contract = config.production_contract
+    if contract is None:
         return
     identity = reference.as_dict()
     expected_hashes = {
-        "mesh_sha256": "bfbdba0657a1dd4b8b819e7e611dbfd4eea919e5c08538078ff1948599957264",
-        "body_sha256": "781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b",
-        "material_evidence_sha256": "c452c34e1d9422022d55fc758d228c22a39b80d9a770042e89e13f9110f43a76",
-        "standpoint_array_sha256": "d373e65c769017c5309db17c2035adf2178641d421fc5fbbdf92356e424b6f5c",
+        **contract.identity_hash_values(),
+        "body_sha256": contract.body.sha256,
     }
     actual_hashes = {name: identity[name] for name in expected_hashes}
     if actual_hashes != expected_hashes:
         raise ValueError(f"production CDF reference hashes changed: {actual_hashes} != {expected_hashes}")
-    expected_files = {
-        "manifest": "e87bd8e5db0308cfa9ad445c179a8464b19a7aaa8eaf2242fb1492c0eee75a9d",
-        "locations": "66b4e5c70494dc653a8d99ab33d4551fac99d70029114995ef9523d831e34534",
-        "spectra": "1186e952d4edc65046e69940a54c1024cb29c1fee6e6ae72acbe95b76f59b90b",
-    }
+    expected_files = contract.reference.hashes()
     actual_files = {name: identity["reference_files"][name]["sha256"] for name in expected_files}
     if actual_files != expected_files:
         raise ValueError(f"production CDF output generation changed: {actual_files} != {expected_files}")
     run = reference.manifest["run"]
-    expected_run = {
-        "site": "korenmarkt",
-        "crop_m": 250,
-        "law": "band",
-        "models": list(MODEL_NAMES),
-        "estimator": "escape",
-        "walk": "route",
-        "walk_path": "links",
-        "walk_stride_m": 6.0,
-        "locations": 0,
-        "frequency_hz": 15.0e9,
-        "max_bounces": 3,
-        "roulette_start": 4,
-        "materials": "atlas",
-        "rays": 1_600_000,
-        "batch": 400_000,
-        "local_cells": 4096,
-        "exit_bands": 18,
-        "seed": 7,
-        "variant": "cuda_ad_rgb",
-        "transport_kernel": "drjit",
-    }
+    expected_run = contract.run_setting_values()
     actual_run = {name: run[name] for name in expected_run}
     if actual_run != expected_run:
         raise ValueError(f"production CDF run settings changed: {actual_run} != {expected_run}")
-    point_kind = reference.standpoints.point_kind
-    if point_kind.count("camera_registered") != 5 or point_kind.count("stride_interpolated") != 8:
-        raise ValueError("production CDF route must contain 5 registered and 8 interpolated standpoints")
-    streams = {int(base + 1000 * index) for base in config.base_seeds for index in reference.standpoints.index}
-    expected_streams = len(config.base_seeds) * reference.standpoints.index.size
-    if len(streams) != expected_streams:
-        raise ValueError("production CDF base-seed mapping contains a random-stream collision")
+    expected_body = contract.body.manifest_fields()
+    actual_body = {name: reference.manifest["body"][name] for name in expected_body}
+    if actual_body != expected_body:
+        raise ValueError(f"production CDF body source changed: {actual_body} != {expected_body}")
+    expected_point_kinds = contract.point_kind_count_values()
+    actual_point_kinds = dict(Counter(reference.standpoints.point_kind))
+    if actual_point_kinds != expected_point_kinds:
+        raise ValueError(f"production CDF point kinds changed: {actual_point_kinds} != {expected_point_kinds}")
 
 
 def _tissue_database_identity() -> dict[str, Any]:
@@ -1339,12 +1421,10 @@ def _validate_production_tissue_database(
     config: CdfConvergenceConfig,
     tissue_database: dict[str, Any],
 ) -> None:
-    if config.contract != "korenmarkt_cdf_stopping_4096_v1":
+    contract = config.production_contract
+    if contract is None:
         return
-    expected = {
-        "sha256": "51dc983da2fa4e40bde9ca4e9830ecd6b41739c2b92b28b5efbdc5d5e556aa8f",
-        "bytes": 7_094_272,
-    }
+    expected = dataclasses.asdict(contract.tissue_database)
     actual = {name: tissue_database[name] for name in expected}
     if actual != expected:
         raise ValueError(f"production IT'IS tissue database changed: {actual} != {expected}")
@@ -1428,12 +1508,13 @@ def _trace_replica(
     seconds = np.empty(points, dtype=np.float64)
     rho = np.empty((points, len(MODEL_NAMES), cells), dtype=np.float64)
     models = {name: _illumination_models()[name] for name in MODEL_NAMES}
+    body_model_index = MODEL_NAMES.index(config.body_model)
     for row, index in enumerate(reference.standpoints.index):
         result = tracer.trace(
             reference.standpoints.points[row],
             models,
             ground_z_m=float(reference.standpoints.ground_z_m[row]),
-            seed=base_seed + 1000 * int(index),
+            seed=base_seed + config.seed_stream_stride * int(index),
         )
         if not np.array_equal(np.asarray(result.local_grid), checkpoint.local_grid):
             raise RuntimeError("angular grid changed within the CDF campaign")
@@ -1446,7 +1527,7 @@ def _trace_replica(
             rho[row, model] = np.asarray(result.rho[name], dtype=np.float64)
         exposures, surface_sab = coupler.couple_many_with_sab(
             checkpoint.local_grid,
-            rho[row, 1:2],
+            rho[row, body_model_index : body_model_index + 1],
             checkpoint.solid_angle,
             float(reference.manifest["reference_s0_w_m2"]),
             chunk_cells=config.body_chunk_cells,
@@ -1458,7 +1539,7 @@ def _trace_replica(
         seconds[row] = float(result.seconds)
         print(
             f"  [{row + 1}/{points}] seed={base_seed} index={int(index)} "
-            f"chi_rooftop={chi[row, 1]:.6g} ({seconds[row]:.1f} s trace)",
+            f"chi_{config.body_model}={chi[row, body_model_index]:.6g} ({seconds[row]:.1f} s trace)",
             flush=True,
         )
     return CampaignCheckpoint(
@@ -1496,6 +1577,7 @@ def _analyse_checkpoint(
         checkpoint.body_mean_rooftop,
         looks=available_looks,
         planned_formal_looks=config.looks,
+        body_model=config.body_model,
         bootstrap_replicates=config.bootstrap_replicates,
         bootstrap_seed=config.bootstrap_seed,
         familywise_confidence=config.confidence,
@@ -1544,9 +1626,9 @@ def _final_ensemble(
         raise RuntimeError("the compact checkpoint cannot remove replicas after the sequential stop")
     mean_rho = checkpoint.rho_sum / count
     coupler = study.BodyCoupler(
-        study.PHANTOM,
+        str(config.body_path),
         float(reference.manifest["run"]["frequency_hz"]),
-        body_mass_kg=study.PHANTOM_MASS_KG,
+        body_mass_kg=config.body_mass_kg,
     )
     flat = mean_rho.reshape(-1, mean_rho.shape[-1])
     exposures = coupler.couple_many(
@@ -1579,11 +1661,11 @@ def _final_ensemble(
             row[f"chi_{name}_direct"] = float(direct[point, model])
             for key, value in exposure.as_dict().items():
                 row[f"{name}_{key}"] = value
-            if name == "rooftop":
-                row["rooftop_seed_mean_peak_sab_w_m2"] = float(seed_mean_peak[point])
+            if name == config.body_model:
+                row[f"{config.body_model}_seed_mean_peak_sab_w_m2"] = float(seed_mean_peak[point])
         rows.append(row)
-    physical_peak = np.asarray([row["rooftop_peak_sab_w_m2"] for row in rows])
-    plugin_mean = np.asarray([row["rooftop_mean_sab_w_m2"] for row in rows])
+    physical_peak = np.asarray([row[f"{config.body_model}_peak_sab_w_m2"] for row in rows])
+    plugin_mean = np.asarray([row[f"{config.body_model}_mean_sab_w_m2"] for row in rows])
     return {
         "replicas": count,
         "base_seeds": [int(value) for value in checkpoint.base_seeds],
@@ -1591,7 +1673,7 @@ def _final_ensemble(
         "rho_sum_sha256": _array_sha256(checkpoint.rho_sum),
         "local_grid_sha256": _array_sha256(checkpoint.local_grid),
         "published_body_peak": {
-            "field": "rooftop_peak_sab_w_m2",
+            "field": f"{config.body_model}_peak_sab_w_m2",
             "estimator": "maximum absorbed density of the ensemble-mean angular spectrum",
             "confidence_family": "joint planned-look max-t family",
         },
@@ -1603,7 +1685,7 @@ def _final_ensemble(
             ),
         },
         "body_peak_jensen_diagnostic": {
-            "field": "rooftop_seed_mean_peak_sab_w_m2",
+            "field": f"{config.body_model}_seed_mean_peak_sab_w_m2",
             "estimator": "linear mean of per-replica peak absorbed density",
             "confidence_bounded": False,
             "seed_mean_peak_minus_physical_peak_db": [

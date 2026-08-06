@@ -59,6 +59,47 @@ There are two valid comparisons, and they answer different questions.
 The final Korenmarkt result uses an `atlas` binding. Its absolute difference from
 a legacy `walk` or `geometric` city run cannot be assigned to built form alone.
 
+## Exact next-site input audit
+
+Tokyo Hachiko is the first non-plaza production candidate. Prague Staromestske
+is second. Both have valid format-version-3 meshes at 250 m. Old configuration
+notes about single-precision defects are stale. The unsuffixed and `_f64` 250 m
+files are byte-identical at both sites.
+
+| Site | Exact 250 m exposure mesh | SHA-256 | Current route preview |
+| --- | --- | --- | --- |
+| Tokyo Hachiko | `data/geometry/tokyo_hachiko/inhouse_leaf_250m_f64.ply` | `1bccad9bedd7c1764e15d06042b0340530e795396f15f6d3fc40a759f3249e71` | 23 points over 120.199 m, with 3 registered cameras and 20 stride points. Point-array SHA-256: `1034b4f23f688a69e293a1df689477307c414a22eb83f698104e7ff52463ea92`. |
+| Prague Staromestske | `data/geometry/prague_staromestske/inhouse_leaf_250m_f64.ply` | `a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4` | 68 points over 339.557 m, with 12 registered cameras and 56 stride points. Point-array SHA-256: `16c615490e53814d55d99ae859b28afb61f5782eb5338f303282046b6b8a1ed4`. |
+
+Hachiko has three crop-matched admitted poses. Their residuals are 1.420, 3.700,
+and 3.082 degrees. The second pose reached the vertical registration search
+bound, so route review must keep that warning visible. The accepted walk binding
+is `outputs/site_semantics/tokyo_hachiko/walk_semantic_250m.npz`, SHA-256
+`0c5541dbcee2d94eb0e24b82946ca429cdece2e059dc8b255e726905a2637d81`.
+Its JSON SHA-256 is
+`bb9672208d05728f75934febb61c8c48b899ff0e8076f97a65049e9fa58cbdb6`.
+
+Prague admits 12 of 14 panoramas, but its pose records still name the 130 m
+support mesh. It needs a 250 m registration pass and binding rebuild before its
+route or hashes can be frozen. Hachiko therefore comes first.
+
+Neither site has the hybrid SAM3 RF-material rasters required by the joint atlas
+builder. All admitted source images exist. Production still needs a complete
+hybrid product for every admitted Hachiko camera, followed by
+`joint_atlas_250m_r8.npz` and its manifest. The atlas must name the accepted mesh,
+the reviewed camera set, and the frozen concept and model hashes.
+
+After route review, generate one sealed Hachiko CUDA reference at 1.6 million
+rays and 4,096 angular cells. Keep the 6 m route rule and `--locations 0`, rather
+than forcing the Korenmarkt count of 13. The reference must freeze the route
+arrays, point kinds, model order, Duke body, 250 m mesh, joint atlas, run settings,
+and the exact manifest, location, and spectrum file hashes. Only then can a named
+Hachiko production contract be added to the registry.
+
+The old eight-point Hachiko geometric result cannot be promoted. It uses generic
+facade material, a route subset, 200,000 rays, and 512 cells. It has no joint
+hybrid atlas and is not the sealed 1.6-million-ray, 4,096-cell CUDA reference.
+
 ## Sequential stopping rule for a fixed walk
 
 The independent Monte Carlo unit should be one complete walk replica with a new

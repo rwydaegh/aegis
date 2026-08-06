@@ -235,7 +235,11 @@ class ReferenceIdentity:
         }
 
 
-def load_reference(config: AngularConvergenceConfig) -> ReferenceIdentity:
+def load_reference(
+    config: AngularConvergenceConfig,
+    *,
+    body_path: str | pathlib.Path | None = None,
+) -> ReferenceIdentity:
     """Load and hash the accepted manifest, rows, spectra, scene, and body."""
     reference_paths = {
         "manifest": config.reference_manifest,
@@ -284,7 +288,11 @@ def load_reference(config: AngularConvergenceConfig) -> ReferenceIdentity:
     mesh_sha = file_sha256(mesh)
     if mesh_sha != manifest["mesh_sha256"]:
         raise ValueError("production mesh bytes no longer match the accepted v2 manifest")
-    body = pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data")) / "duke.stl"
+    body = (
+        pathlib.Path(body_path)
+        if body_path is not None
+        else pathlib.Path(os.environ.get("AEGIS_DATA_DIR", "/home/user/aegis/data")) / "duke.stl"
+    )
     evidence_role, material_evidence = _material_evidence_path(config.root, manifest)
     files = {
         name: {"path": str(path), "sha256": hashlib.sha256(content[name]).hexdigest()}
