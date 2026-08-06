@@ -632,6 +632,15 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
                 acquisition["panorama_overlay_collection"] = True
                 acquisition["panorama_overlay_role"] = "registered acquisition cameras and projection planes"
                 prepared_scene.collection.children.link(acquisition)
+                camera = bpy.data.objects.new(
+                    f"{{prefix}} active render camera",
+                    bpy.data.cameras.new(f"{{prefix}} active render camera"),
+                )
+                camera["active_render_camera"] = True
+                camera["capture"] = prefix
+                prepared_scene.collection.objects.link(camera)
+                prepared_scene.camera = camera
+                prepared_scene["panorama_capture"] = prefix
 
             def panorama_hook(prepared_scene):
                 add_panorama_groups(prepared_scene, "panorama hook")
@@ -713,7 +722,32 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
                     for layer in made["panorama_registration_probe"].view_layers
                 }},
                 "panorama_sibling_key": made["panorama_registration_probe"]["prepared_view_key"],
+                "panorama_preload": {{}},
                 "views": {{}},
+            }}
+            preload_name = made["panorama_registration"]["panorama_render_camera_collection"]
+            preload = bpy.data.collections[preload_name]
+            result["panorama_preload"] = {{
+                "camera_count": preload["camera_count"],
+                "object_types": sorted(obj.type for obj in preload.objects),
+                "linked_scenes": sorted(
+                    scene.name for scene in bpy.data.scenes if preload.name in scene.collection.children
+                ),
+                "camera_collections": {{
+                    scene.camera.name: sorted(collection.name for collection in scene.camera.users_collection)
+                    for scene in (
+                        made["panorama_registration"],
+                        made["panorama_registration_probe"],
+                    )
+                }},
+                "target_layer_visible": all(
+                    not scene.view_layers[0].layer_collection.children[preload.name].exclude
+                    for scene in (
+                        made["exposure_overview"],
+                        made["panorama_registration"],
+                        made["panorama_registration_probe"],
+                    )
+                ),
             }}
             for key, scene in made.items():
                 layers = {{}}
@@ -790,6 +824,18 @@ def test_prepared_scenes_share_collections_and_exclude_per_view_layer(tmp_path: 
         "Exposure standpoints": True,
     }
     assert measured["panorama_sibling_key"] == "panorama_registration_probe"
+    assert measured["panorama_preload"]["camera_count"] == 2
+    assert measured["panorama_preload"]["object_types"] == ["CAMERA", "CAMERA"]
+    assert measured["panorama_preload"]["linked_scenes"] == [
+        "01 VIEW - exposure overview",
+        "07 PANO 02 - probe",
+        "07 VIEW - panorama registration",
+    ]
+    assert all(
+        collections == ["Panorama active render cameras"]
+        for collections in measured["panorama_preload"]["camera_collections"].values()
+    )
+    assert measured["panorama_preload"]["target_layer_visible"]
     assert "07 PANO 02 - probe: second saved panorama capture" in measured["readme"]
     assert len(measured["views"]) == 10
     for view in measured["views"].values():

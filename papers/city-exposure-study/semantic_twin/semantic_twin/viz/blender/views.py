@@ -457,6 +457,15 @@ def build_prepared_scenes(
                 built[extra_spec.key] = extra
                 written_specs.append(extra_spec)
 
+    if panorama_hook is not None or panorama_scene_hooks:
+        from .panorama import finalize_panorama_render_cameras
+
+        panorama_scenes = tuple(scene for scene in built.values() if scene.get("panorama_capture"))
+        finalize_panorama_render_cameras(
+            panorama_scenes,
+            cold_open_anchor=built["exposure_overview"],
+        )
+
     _write_start_here(raw_scene, written_specs)
     return built
 

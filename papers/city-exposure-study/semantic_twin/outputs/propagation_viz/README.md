@@ -69,7 +69,7 @@ scenes named `07 PANO 02` through `07 PANO 09` open the other captures directly.
 Each scene has all of the data needed to render that capture after reopening the
 blend:
 
-- An equirectangular PANO camera at the registered pose.
+- A dedicated equirectangular PANO render camera at the registered pose.
 - The matching 2:1 source panorama in the compositor.
 - The source image's own pixel resolution.
 - A translucent support copy scaled about that capture's camera centre.
@@ -78,8 +78,17 @@ blend:
 
 The hero scene still contains all nine PANO cameras and all nine normal perspective
 cameras for quick comparison. The eight sibling scenes keep only their active
-PANO and perspective camera. Their support objects share the same display mesh
-data, so the per-capture scenes do not copy the full support mesh eight more times.
+audit PANO and perspective camera. The nine dedicated render cameras live in the
+camera-only `Panorama active render cameras` collection. That collection is linked
+only to the opening scene and the nine panorama scenes. Blender then restores every
+raw camera transform on a cold open. The camera outlines are 0.15 m and cannot be
+selected, so they do not crowd the opening view. Their support objects share the
+same display mesh data, so the per-capture scenes do not copy the full support mesh
+eight more times.
+
+Only the `Registered photograph` view layer is enabled for a normal F12 render.
+`Panorama capture poses` and `Exposure standpoints` remain saved audit layers and
+start disabled. Turn either one on when you want that comparison.
 
 The image path and SHA-256 are stored on each scene and camera. No handler, driver,
 or saved Python script changes the active photograph. The scene camera, compositor

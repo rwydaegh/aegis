@@ -44,6 +44,8 @@ PANORAMA_DISPLAY_CLIP_RULE = (
     "is composited independently. Companion markers and scene geometry beyond 2 m remain visible."
 )
 PANORAMA_CAPTURE_SCENE_PREFIX = "07 PANO"
+PANORAMA_RENDER_CAMERA_COLLECTION_NAME = "Panorama active render cameras"
+EQUIRECTANGULAR_PROJECTION = "equirectangular, full longitude and latitude"
 
 
 @dataclass(frozen=True)
@@ -693,7 +695,7 @@ def _new_panorama_camera(collection: Any, asset: PanoramaAsset, blend_path: path
     properties.update(
         {
             "view_role": "true equirectangular 360 acquisition camera",
-            "projection": "equirectangular, full longitude and latitude",
+            "projection": EQUIRECTANGULAR_PROJECTION,
             "panorama_display_clip_start_m": PANORAMA_DISPLAY_CLIP_START_M,
             "panorama_display_clip_rule": PANORAMA_DISPLAY_CLIP_RULE,
             "camera_background_role": "linked 2:1 source panorama shown when this acquisition camera is active",
@@ -704,6 +706,109 @@ def _new_panorama_camera(collection: Any, asset: PanoramaAsset, blend_path: path
     )
     _stamp_properties(camera, properties)
     return camera
+
+
+def _new_active_render_camera(prepared_scene: Any, acquisition_camera: Any, asset: PanoramaAsset) -> Any:
+    """Copy one audit camera for use as a saved scene's render camera."""
+    import bpy
+    from mathutils import Matrix
+
+    camera_data = acquisition_camera.data.copy()
+    camera_data.name = f"Active panorama render | {asset.capture}"
+    camera = bpy.data.objects.new(camera_data.name, camera_data)
+    prepared_scene.collection.objects.link(camera)
+    camera.hide_select = True
+    camera_data.display_size = 0.15
+    transform = Matrix(camera_matrix(asset).tolist())
+    camera.matrix_world = transform
+    camera.matrix_basis = transform
+    _stamp_properties(camera, _asset_pose_properties(asset))
+    _stamp_properties(
+        camera,
+        {
+            "view_role": "active render camera for saved panorama scene",
+            "audit_camera": acquisition_camera.name,
+            "active_render_camera": True,
+            "active_render_camera_scene": prepared_scene.name,
+            "projection": EQUIRECTANGULAR_PROJECTION,
+            "saved_transform_initialisation": (
+                "This camera is moved into one shared collection linked to the cold-open anchor and panorama scenes "
+                "before the blend is saved."
+            ),
+        },
+    )
+    return camera
+
+
+def _validated_render_cameras(panorama_scenes: tuple[Any, ...]) -> tuple[Any, ...]:
+    cameras = []
+    for scene in panorama_scenes:
+        camera = scene.camera
+        if not scene.get("panorama_capture") or camera is None or not camera.get("active_render_camera", False):
+            raise RuntimeError("every saved panorama scene must have one active render camera")
+        cameras.append(camera)
+    if len({camera.name for camera in cameras}) != len(cameras):
+        raise RuntimeError("each saved panorama scene must own a distinct active render camera")
+    return tuple(cameras)
+
+
+def _replace_preload_cameras(collection: Any, cameras: tuple[Any, ...]) -> None:
+    for existing in tuple(collection.objects):
+        if existing not in cameras:
+            collection.objects.unlink(existing)
+    for camera in cameras:
+        if camera.name not in collection.objects:
+            collection.objects.link(camera)
+        for owner in tuple(camera.users_collection):
+            if owner != collection:
+                owner.objects.unlink(camera)
+
+
+def _link_preload_to_targets(collection: Any, targets: tuple[Any, ...]) -> None:
+    import bpy
+
+    for scene in bpy.data.scenes:
+        if scene not in targets and collection.name in scene.collection.children:
+            scene.collection.children.unlink(collection)
+    for scene in targets:
+        if collection.name not in scene.collection.children:
+            scene.collection.children.link(collection)
+
+
+def finalize_panorama_render_cameras(panorama_scenes: tuple[Any, ...], *, cold_open_anchor: Any) -> Any | None:
+    """Keep every saved panorama camera evaluated when the saved anchor opens first."""
+    import bpy
+
+    if not panorama_scenes:
+        return None
+    cameras = _validated_render_cameras(panorama_scenes)
+
+    collection = bpy.data.collections.get(PANORAMA_RENDER_CAMERA_COLLECTION_NAME)
+    if collection is None:
+        collection = bpy.data.collections.new(PANORAMA_RENDER_CAMERA_COLLECTION_NAME)
+    _replace_preload_cameras(collection, cameras)
+    targets = (cold_open_anchor, *panorama_scenes)
+    _link_preload_to_targets(collection, targets)
+
+    captures = [str(camera.get("capture", "")) for camera in cameras]
+    collection["role"] = "shared camera-only preload for saved panorama render cameras"
+    collection["reason"] = (
+        "Blender otherwise leaves a camera outside the scene that opens first with a stale raw matrix_world until its "
+        "dependency graph is evaluated. Linking this camera-only collection to the cold-open anchor and panorama "
+        "scenes makes the saved transforms available immediately after a cold open."
+    )
+    collection["camera_count"] = len(cameras)
+    collection["captures_json"] = json.dumps(captures)
+    collection["linked_scene_names_json"] = json.dumps([scene.name for scene in targets])
+    collection["cold_open_anchor_scene"] = cold_open_anchor.name
+    collection["ordinary_scene_policy"] = "linked only to the cold-open anchor and panorama scenes"
+    collection["camera_display_size_m"] = 0.15
+    collection["camera_selectable"] = False
+    collection["uses_handler_or_driver"] = False
+    for scene in panorama_scenes:
+        scene["panorama_render_camera_collection"] = collection.name
+        scene["panorama_render_camera_collection_shared"] = True
+    return collection
 
 
 def _safe_capture_name(capture: str) -> str:
@@ -922,20 +1027,14 @@ def configure_panorama_scene(
     """
     import bpy
 
-    camera, _acquisition_collection, acquisition_properties = _build_acquisition_views(
+    acquisition_camera, _acquisition_collection, acquisition_properties = _build_acquisition_views(
         prepared_scene,
         asset,
         blend_path,
         include_companion_views=include_companion_views,
     )
+    camera = _new_active_render_camera(prepared_scene, acquisition_camera, asset)
     prepared_scene.camera = camera
-    if camera.name not in prepared_scene.collection.objects:
-        prepared_scene.collection.objects.link(camera)
-    camera["active_camera_scene_root_link"] = True
-    camera["active_camera_scene_root_link_reason"] = (
-        "The Registered photograph layer excludes the acquisition collection. The scene-root link keeps the active "
-        "camera transform in that view layer's dependency graph."
-    )
 
     prepared_scene.render.engine = "CYCLES"
     prepared_scene.render.resolution_x = asset.width
@@ -998,6 +1097,13 @@ def configure_panorama_scene(
             support = layer_support
     if support is None:
         raise RuntimeError("panorama scene has no view layers")
+    matching_layers = [view_layer for view_layer in prepared_scene.view_layers if view_layer.name == compositor_layer]
+    if len(matching_layers) != 1:
+        raise RuntimeError(f"panorama scene must have exactly one compositor view layer named {compositor_layer!r}")
+    for view_layer in prepared_scene.view_layers:
+        view_layer.use = view_layer.name == compositor_layer
+    if sum(view_layer.use for view_layer in prepared_scene.view_layers) != 1:
+        raise RuntimeError("panorama scene must enable exactly one default render view layer")
     support_overlay, support_overlay_objects = _support_overlay(prepared_scene, support, asset)
 
     marker_properties = _add_nearby_capture_marker(prepared_scene, asset)
@@ -1012,8 +1118,11 @@ def configure_panorama_scene(
         "panorama_surface_atlas_image_verification": asset.atlas_panorama_verification,
         "panorama_linked_path": linked_path,
         "panorama_image_packed": False,
-        "panorama_projection": "equirectangular, full longitude and latitude",
-        "panorama_active_camera_scene_root_link": True,
+        "panorama_projection": EQUIRECTANGULAR_PROJECTION,
+        "panorama_active_render_camera": camera.name,
+        "panorama_active_render_camera_audit_source": acquisition_camera.name,
+        "panorama_default_render_view_layer": compositor_layer,
+        "panorama_default_render_view_layer_count": 1,
         "panorama_display_clip_start_m": PANORAMA_DISPLAY_CLIP_START_M,
         "panorama_display_clip_rule": PANORAMA_DISPLAY_CLIP_RULE,
         "panorama_pose_file": str(asset.pose_path),
@@ -1119,6 +1228,7 @@ __all__ = [
     "PanoramaAsset",
     "camera_matrix",
     "configure_panorama_scene",
+    "finalize_panorama_render_cameras",
     "prepared_capture_scene_hooks",
     "select_panorama_asset",
     "select_panorama_assets",
