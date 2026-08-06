@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 
 from semantic_twin.materials import HOST_SURFACE_CLASS_RULE, Provenance
+from semantic_twin.exposure.output_policy import OutputProfile, coerce_profile, profile as profile_spec
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.device_tracer import DeviceEscapeTracer
 
@@ -36,6 +37,17 @@ class ExecutionConfig:
     workers: int | None = None
     coupler: Any = field(default=None, compare=False, repr=False)
     replay: LegacyReplay = field(default_factory=LegacyReplay)
+    output_profile: OutputProfile = OutputProfile.STANDARD
+
+    def __post_init__(self) -> None:
+        """Normalize the profile at the execution boundary.
+
+        Output retention is a runtime choice, not part of the physical run
+        identity.  Accepting the string form keeps JSON/CLI adapters simple,
+        while storing the enum makes accidental profile typos fail before any
+        scene work begins.
+        """
+        object.__setattr__(self, "output_profile", coerce_profile(self.output_profile))
 
 
 @dataclass(frozen=True)
@@ -139,12 +151,20 @@ def execute(run: RunConfig, execution: ExecutionConfig, environment: StudyEnviro
     )
 
     started = time.perf_counter()
+    stage_seconds: dict[str, float] = {}
+    stage_started = started
     scene = _prepare_scene(run, execution.replay, environment)
+    stage_seconds["scene_preparation_seconds"] = time.perf_counter() - stage_started
+    stage_started = time.perf_counter()
     material = _bind_materials(run, scene, environment)
+    stage_seconds["material_binding_seconds"] = time.perf_counter() - stage_started
+    stage_started = time.perf_counter()
     walk = _build_walk(run, execution.replay, scene, environment)
     picks = environment.stratified_subset(walk, run.locations)
+    stage_seconds["walk_and_pick_seconds"] = time.perf_counter() - stage_started
     print(f"walk: {len(walk)} candidates, tracing {picks.size}", flush=True)
 
+    stage_started = time.perf_counter()
     trace_config = _trace_config(run, environment)
     tracer_type = DeviceEscapeTracer if run.transport_kernel == "drjit" else environment.tracer_type
     tracer_options = {} if material.atlas_material is None else {"atlas_material": material.atlas_material}
@@ -165,16 +185,30 @@ def execute(run: RunConfig, execution: ExecutionConfig, environment: StudyEnviro
         )
 
     prepared = PreparedRun(run, environment, scene, material, walk, picks, trace_config, tracer, coupler)
+    stage_seconds["tracer_coupler_setup_seconds"] = time.perf_counter() - stage_started
     generation_id = uuid.uuid4().hex
     staged = _staging_files(files, generation_id)
-    manifest = _manifest(prepared)
+    manifest = _manifest(prepared, execution.output_profile)
     try:
-        _trace_rows(prepared, execution, staged)
+        trace_metrics = _trace_rows(prepared, execution, staged)
+        stage_seconds.update(trace_metrics)
         manifest["wall_seconds"] = time.perf_counter() - started
-        manifest["output_generation"] = _output_generation(generation_id, staged, files)
+        validation_started = time.perf_counter()
+        manifest["output_generation"] = _output_generation(
+            generation_id,
+            staged,
+            files,
+            profile=execution.output_profile,
+        )
         _write_json(staged.manifest, manifest)
-        _validate_generation(manifest, run, staged)
-        _publish_generation(staged, files)
+        _validate_generation(manifest, run, staged, profile=execution.output_profile)
+        stage_seconds["output_validation_publication_seconds"] = time.perf_counter() - validation_started
+        # Rewrite the staged commit record once with the measured validation
+        # phase before the final atomic publication.  The numerical artifact
+        # seals are independent of this diagnostic ledger.
+        manifest["stage_seconds"] = _stage_seconds(stage_seconds, started)
+        _write_json(staged.manifest, manifest)
+        _publish_generation(staged, files, profile=execution.output_profile)
     finally:
         _remove_staging_files(staged)
     print(f"wrote {files.rows}")
@@ -183,7 +217,20 @@ def execute(run: RunConfig, execution: ExecutionConfig, environment: StudyEnviro
 
 
 def _validate_run(run: RunConfig, available_models: Mapping[str, Any]) -> None:
-    """Refuse states this escape executor cannot implement faithfully."""
+    """Refuse states this executor cannot implement faithfully.
+
+    The roofline/next-event method has a separate driver and result shape.  Keep
+    accepting it as a valid :class:`RunConfig`, but fail before any output
+    directory is created when it is handed to this escape-only executor.
+    Likewise, reject mixed law/estimator pairs instead of letting a later
+    attribute error decide which scientific path happened to run.
+    """
+    if run.law == "roofline" and run.estimator == "next_event" and run.next_event is not None:
+        raise ValueError(
+            "exposure executor requires band/escape configuration; got roofline/next_event. "
+            "Use run_next_event.py for the next_event_roofline profile"
+        )
+
     required = {
         "law": (run.law, "band"),
         "estimator": (run.estimator, "escape"),
@@ -474,11 +521,12 @@ def _trace_config(run: RunConfig, environment: StudyEnvironment) -> Any:
     )
 
 
-def _manifest(prepared: PreparedRun) -> dict[str, Any]:
+def _manifest(prepared: PreparedRun, output_profile: OutputProfile | str = OutputProfile.STANDARD) -> dict[str, Any]:
     run = prepared.run
     scene = prepared.scene
     material = prepared.material
     environment = prepared.environment
+    selected_profile = coerce_profile(output_profile)
     document = {
         "generator": "run_exposure.py",
         "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -532,11 +580,55 @@ def _manifest(prepared: PreparedRun) -> dict[str, Any]:
         "variant": run.variant,
         "transport": _transport_provenance(run),
         "python": platform.python_version(),
-        "storage_policy": "paths are never written, only per location scalars and rho",
+        "storage_policy": _storage_policy(selected_profile),
         "run_digest": run.digest(),
         "run": run.as_dict(),
     }
     return document
+
+
+def _storage_policy(output_profile: OutputProfile | str) -> dict[str, Any]:
+    """Describe retained artifacts without implying that audit data is automatic."""
+    selected = coerce_profile(output_profile)
+    requested = profile_spec(selected)
+    # The profile catalogue also describes the CDF checkpoint and audit tracks.
+    # This generic one-walk executor emits only its manifest, scalar rows, and
+    # (for standard/full) the per-model angular spectra.  Keeping the actual
+    # emitted set here prevents a manifest from claiming a restart index,
+    # stopping record, or Blender payload that another command owns.
+    retained = ["sealed_provenance", "standpoint_scalars"]
+    if selected in (OutputProfile.STANDARD, OutputProfile.FULL):
+        retained.extend(("angular_spectra", "source_law_facts", "body_coupling_inputs"))
+    deferred = [name for name in requested.artifact_names if name not in retained]
+    spectra = profile_spec(selected).includes("angular_spectra")
+    emitted = {
+        "sealed_provenance": "<stem>_manifest.json",
+        "standpoint_scalars": "<stem>_locations.jsonl",
+    }
+    if spectra:
+        emitted.update(
+            {
+                "angular_spectra": "<stem>_spectra.npz",
+                "source_law_facts": "<stem>_manifest.json:trace_config,illumination_models",
+                "body_coupling_inputs": "<stem>_manifest.json + <stem>_spectra.npz",
+            }
+        )
+    return {
+        "schema": "aegis.exposure.storage-policy",
+        "version": 1,
+        "profile": selected.value,
+        "retained_artifacts": retained,
+        "deferred_artifacts": deferred,
+        "emitted_artifacts": emitted,
+        "spectra": {
+            "retained": spectra,
+            "artifact": "angular_spectra" if spectra else None,
+            "publication": "<stem>_spectra.npz" if spectra else None,
+        },
+        "paths": "separate explicit path/evidence exporters; no paths are written by this executor",
+        "blender": "separate explicit Blender exporter; this executor never invokes Blender",
+        "restart": "single-walk execution restarts from the beginning; CDF checkpointing is a separate command",
+    }
 
 
 def _walk_provenance(run: RunConfig, walk: Any) -> dict[str, Any]:
@@ -604,31 +696,85 @@ def _distribution_version(name: str) -> str:
         return "unavailable"
 
 
-def _trace_rows(prepared: PreparedRun, execution: ExecutionConfig, files: OutputFiles) -> None:
+def _trace_rows(prepared: PreparedRun, execution: ExecutionConfig, files: OutputFiles) -> dict[str, float]:
     run = prepared.run
     environment = prepared.environment
     walk = prepared.walk
     picks = prepared.picks
     models = {name: environment.models[name] for name in run.models}
-    spectra = np.zeros((picks.size, run.local_cells))
+    retain_spectra = profile_spec(execution.output_profile).includes("angular_spectra")
+    spectra = {name: np.zeros((picks.size, run.local_cells)) for name in run.models} if retain_spectra else None
+    trace_reported_seconds = 0.0
+    row_body_serialization_seconds = 0.0
+    spectra_write_seconds = 0.0
     standpoints = [(walk.points[i], float(walk.ground_z_m[i]), run.seed + 1000 * int(i)) for i in picks]
     workers = 1 if run.transport_kernel == "drjit" else execution.workers
     with files.rows.open("w") as handle:
         results = environment.trace_standpoints(prepared.tracer, standpoints, models, workers=workers)
         for row_index, result in results:
+            row_started = time.perf_counter()
             index = picks[row_index]
             row = _result_row(environment, prepared.coupler, walk, index, result, models)
-            spectra[row_index] = result.rho["rooftop"]
+            if spectra is not None:
+                for name in run.models:
+                    spectra[name][row_index] = result.rho[name]
             handle.write(json.dumps(row) + "\n")
             handle.flush()
             _print_progress(row_index, picks.size, row, result.seconds)
+            row_body_serialization_seconds += time.perf_counter() - row_started
+            trace_reported_seconds += float(result.seconds)
+        if retain_spectra:
+            # The rows are staged and discarded on interruption, so there is
+            # no benefit in repeatedly recompressing a growing NPZ.  Keep the
+            # exact in-memory order and publish one final archive after all
+            # standpoints have completed.
+            if picks.size == 0:
+                raise RuntimeError("cannot write spectra for an empty standpoint selection")
+            if spectra is None:
+                raise RuntimeError("spectra retention is enabled but no spectrum buffers were allocated")
+            spectra_started = time.perf_counter()
+            spectrum_arrays: dict[str, Any] = {
+                "index": picks,
+                "local_grid": result.local_grid,
+                "solid_angle": result.local_solid_angle,
+            }
+            spectrum_arrays.update({f"rho_{name}": values for name, values in spectra.items()})
             np.savez_compressed(
                 files.spectra,
-                rho_rooftop=spectra[: row_index + 1],
-                local_grid=result.local_grid,
-                solid_angle=result.local_solid_angle,
-                index=picks[: row_index + 1],
+                **spectrum_arrays,
             )
+            spectra_write_seconds = time.perf_counter() - spectra_started
+    return {
+        "trace_reported_seconds": trace_reported_seconds,
+        "row_body_serialization_seconds": row_body_serialization_seconds,
+        "spectra_write_seconds": spectra_write_seconds,
+    }
+
+
+def _stage_seconds(measured: Mapping[str, float], started: float) -> dict[str, Any]:
+    """Return a stable, machine-readable runtime ledger.
+
+    The output-validation/publication phase is filled immediately before the
+    manifest is sealed.  ``total_wall_seconds`` covers execution through the
+    validation phase.  The final filesystem replace is deliberately kept as
+    the manifest commit point, so its tiny syscall interval is not counted in
+    the sealed ledger.  These values are diagnostics only and never enter
+    :class:`RunConfig` identity or reuse matching.
+    """
+    names = (
+        "scene_preparation_seconds",
+        "material_binding_seconds",
+        "walk_and_pick_seconds",
+        "tracer_coupler_setup_seconds",
+        "trace_reported_seconds",
+        "row_body_serialization_seconds",
+        "spectra_write_seconds",
+        "output_validation_publication_seconds",
+    )
+    ledger = {"schema": "aegis.exposure.stage-seconds", "version": 1}
+    ledger.update({name: float(measured.get(name, 0.0)) for name in names})
+    ledger["total_wall_seconds"] = float(time.perf_counter() - started)
+    return ledger
 
 
 def _staging_files(files: OutputFiles, generation_id: str) -> OutputFiles:
@@ -644,17 +790,21 @@ def _output_generation(
     generation_id: str,
     staged: OutputFiles,
     published: OutputFiles,
+    *,
+    profile: OutputProfile | str = OutputProfile.STANDARD,
 ) -> dict[str, Any]:
-    """Seal the two numerical artifacts that one manifest commits."""
+    """Seal the numerical artifacts retained by one manifest commit."""
+    selected = coerce_profile(profile)
+    artifacts = {"locations": _artifact_record(staged.rows, published.rows)}
+    if profile_spec(selected).includes("angular_spectra"):
+        artifacts["spectra"] = _artifact_record(staged.spectra, published.spectra)
+    retained_names = "locations and spectra" if "spectra" in artifacts else "locations"
     return {
         "format_version": 1,
         "id": generation_id,
-        "artifacts": {
-            "locations": _artifact_record(staged.rows, published.rows),
-            "spectra": _artifact_record(staged.spectra, published.spectra),
-        },
+        "artifacts": artifacts,
         "publication_rule": (
-            "locations and spectra are written under private names, validated, and replaced before this "
+            f"{retained_names} are written under private names, validated, and replaced before this "
             "manifest is replaced as the generation commit record"
         ),
     }
@@ -678,20 +828,45 @@ def _write_json(path: pathlib.Path, document: Mapping[str, Any]) -> None:
         os.fsync(stream.fileno())
 
 
-def _validate_generation(manifest: dict[str, Any], run: RunConfig, staged: OutputFiles) -> None:
-    """Refuse to publish a generation whose three staged files disagree."""
+def _validate_generation(
+    manifest: dict[str, Any],
+    run: RunConfig,
+    staged: OutputFiles,
+    *,
+    profile: OutputProfile | str = OutputProfile.STANDARD,
+) -> None:
+    """Refuse to publish a generation whose staged files disagree."""
     from semantic_twin.exposure.reuse import complete_output, same_output_generation
 
-    if not complete_output(manifest, run, staged.rows, staged.spectra):
+    if not complete_output(manifest, run, staged.rows, staged.spectra, profile=profile):
         raise RuntimeError("staged exposure generation is incomplete or internally inconsistent")
-    if not same_output_generation(manifest, staged.rows, staged.spectra, require_published_names=False):
+    if not same_output_generation(
+        manifest,
+        staged.rows,
+        staged.spectra,
+        require_published_names=False,
+        profile=profile,
+    ):
         raise RuntimeError("staged exposure generation differs from its artifact seal")
 
 
-def _publish_generation(staged: OutputFiles, published: OutputFiles) -> None:
+def _publish_generation(
+    staged: OutputFiles,
+    published: OutputFiles,
+    *,
+    profile: OutputProfile | str = OutputProfile.STANDARD,
+) -> None:
     """Publish data first and the manifest commit record last."""
+    selected = coerce_profile(profile)
     os.replace(staged.rows, published.rows)
-    os.replace(staged.spectra, published.spectra)
+    if profile_spec(selected).includes("angular_spectra"):
+        os.replace(staged.spectra, published.spectra)
+    else:
+        # A minimal rerun must not leave a spectrum from a previous standard
+        # generation under the same stem.  The new manifest also omits the
+        # artifact, so a stale file would be misleading to users inspecting
+        # the output directory.
+        published.spectra.unlink(missing_ok=True)
     os.replace(staged.manifest, published.manifest)
     try:
         directory = os.open(published.manifest.parent, os.O_RDONLY)

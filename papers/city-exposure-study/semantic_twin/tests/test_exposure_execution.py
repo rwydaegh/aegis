@@ -154,6 +154,38 @@ def test_the_legacy_driver_builds_the_live_run_config_without_changing_its_defau
     assert config.transport_kernel == "numpy"
     assert config.head_height_m == 1.5
     assert execution == ExecutionConfig()
+    assert (
+        config.as_dict()
+        == RunConfig.escape_grid(
+            site="korenmarkt",
+            crop_m=250,
+            models=tuple(run_exposure.MODELS),
+            locations=0,
+            frequency_hz=15.0e9,
+            max_bounces=6,
+            roulette_start=4,
+            materials="geometric",
+            rays=200_000,
+            local_cells=512,
+            seed=7,
+            variant="llvm_ad_rgb",
+            tag="korenmarkt",
+        ).as_dict()
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("law", "roofline"),
+        ("models", ("rooftop",)),
+        ("estimator", "next_event"),
+        ("next_event", RunConfig.next_event_roofline().next_event),
+    ],
+)
+def test_escape_adapter_rejects_non_escape_method_overrides(field, value):
+    with pytest.raises(ValueError, match=f"escape_grid adapter fixes {field}"):
+        run_exposure._escape_config(1, 100, 15.0e9, **{field: value})
 
 
 def test_route_flags_reach_the_single_run(monkeypatch):
@@ -244,6 +276,19 @@ def test_executor_rejects_unsupported_configs_before_it_creates_output(tmp_path,
 
     with pytest.raises(ValueError, match=message):
         execute(config, ExecutionConfig(), environment)
+
+    assert not output.exists()
+
+
+def test_executor_points_production_next_event_runs_to_the_named_driver(tmp_path):
+    output = tmp_path / "output"
+    environment = SimpleNamespace(
+        output=output,
+        models={"rooftop": object()},
+    )
+
+    with pytest.raises(ValueError, match="run_next_event.py"):
+        execute(RunConfig.next_event_roofline(site="korenmarkt"), ExecutionConfig(), environment)
 
     assert not output.exists()
 

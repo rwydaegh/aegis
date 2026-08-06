@@ -45,6 +45,67 @@ def test_script_compatibility_exports_remain_available() -> None:
     assert build_dynamic_bodies.USABLE_DEPTH_DECISIONS == (1, 2, 5)
 
 
+def test_compare_depth_wrapper_reexports_package_objects() -> None:
+    wrapper = _runner("compare_mesh_depth")
+    package = importlib.import_module("semantic_twin.vision.depth_comparison")
+    cli = importlib.import_module("semantic_twin.cli.depth_comparison")
+    names = (
+        "AGREEMENT_Z",
+        "BLOCKER_Z",
+        "COLOURS",
+        "DECISIONS",
+        "DEFAULT_REFERENCE_LOG_SIGMA",
+        "DYNAMIC_OBJECT_LABELS",
+        "MAX_CROSS_VIEW_SCALE_SPREAD",
+        "MIN_DISAGREEMENT_LOG_SIGMA",
+        "OBJECT_IDS",
+        "PLAUSIBLE_SCALE_BAND",
+        "SECOND_OPINION_LOG_SIGMA",
+        "STATIC_CALIBRATION_IDS",
+        "STATIC_CALIBRATION_LABELS",
+        "classify",
+        "compare_mesh_depth",
+        "depth_log_sigma",
+        "fit_log_scale",
+        "scale_plausibility",
+    )
+    assert all(getattr(wrapper, name) is getattr(package, name) for name in names)
+    assert wrapper.arguments is cli.arguments
+
+
+def test_compare_depth_package_parser_preserves_cli_values(monkeypatch) -> None:
+    package = importlib.import_module("semantic_twin.cli.depth_comparison")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "compare_mesh_depth.py",
+            "--views",
+            "views",
+            "--mesh-depth",
+            "mesh-depth",
+            "--unidepth",
+            "unidepth",
+            "--sam-labels",
+            "labels",
+            "--out",
+            "out",
+            "--yaws",
+            "15",
+            "195",
+            "--on-implausible-scale",
+            "classify",
+        ],
+    )
+
+    config = package.arguments()
+
+    assert config.views == pathlib.Path("views")
+    assert config.mesh_depth == pathlib.Path("mesh-depth")
+    assert config.yaws == [15, 195]
+    assert config.on_implausible_scale == "classify"
+
+
 def test_compare_depth_runner_builds_package_config(monkeypatch) -> None:
     compare_mesh_depth = _runner("compare_mesh_depth")
     captured = []

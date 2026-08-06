@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -39,7 +40,7 @@ class SweepEnvironment:
     site_mesh: Callable[[str, int], pathlib.Path]
     ladder_sites: Callable[[tuple[str, ...], int], tuple[list[str], dict[str, str]]]
     coverage_ladder: Callable[[str, int, int], tuple[tuple[str, str, str], ...]]
-    reusable: Callable[[RunConfig], bool]
+    reusable: Callable[..., bool]
     execute: Callable[[RunConfig, ExecutionConfig], pathlib.Path]
     coverage_report: Callable[..., pathlib.Path]
     coverage_ladder_report: Callable[..., pathlib.Path | None]
@@ -99,7 +100,7 @@ def _run_site_ladder(task: LadderTask, seed: int, site: str) -> None:
         tagged = f"{tag}{task.sweep.tag_suffix}"
         rung = task.run.replace(site=site, seed=seed, tag=tagged, materials=materials)
         stem = f"{tagged}_{task.run.frequency_ghz:g}ghz"
-        if task.environment.reusable(rung):
+        if _reusable(task.environment, rung, task.execution.output_profile):
             print(f"[have] {stem}", flush=True)
             continue
         if (task.environment.output / f"{stem}_manifest.json").exists():
@@ -108,7 +109,14 @@ def _run_site_ladder(task: LadderTask, seed: int, site: str) -> None:
                 "destroy a run something else may quote. Pass --tag-suffix to write beside it."
             )
         try:
-            task.environment.execute(rung, ExecutionConfig(workers=task.execution.workers, coupler=task.coupler))
+            task.environment.execute(
+                rung,
+                ExecutionConfig(
+                    workers=task.execution.workers,
+                    coupler=task.coupler,
+                    output_profile=task.execution.output_profile,
+                ),
+            )
         except Exception as error:  # noqa: BLE001
             task.failures[stem] = repr(error)
             print(f"RUNG FAILED {stem}: {error!r}", flush=True)
@@ -140,7 +148,14 @@ def run_all_sites(
             walk_npz=None,
         )
         try:
-            environment.execute(site_run, ExecutionConfig(workers=execution.workers, coupler=coupler))
+            environment.execute(
+                site_run,
+                ExecutionConfig(
+                    workers=execution.workers,
+                    coupler=coupler,
+                    output_profile=execution.output_profile,
+                ),
+            )
             done.append(site)
         except Exception as error:  # noqa: BLE001
             print(f"SITE FAILED {site}: {error!r}", flush=True)
@@ -160,3 +175,17 @@ def _has_comparable_mesh(site: str, crop_m: int, environment: SweepEnvironment) 
         print(f"[skip] {site}: no {crop_m} m mesh, not comparable at this radius", flush=True)
         return False
     return True
+
+
+def _reusable(environment: SweepEnvironment, run: RunConfig, profile: Any) -> bool:
+    """Call old one-argument and new profile-aware reuse adapters safely."""
+    callback = environment.reusable
+    try:
+        signature = inspect.signature(callback)
+    except (TypeError, ValueError):
+        return callback(run, profile)
+    try:
+        signature.bind(run, profile)
+    except TypeError:
+        return callback(run)
+    return callback(run, profile)

@@ -332,6 +332,64 @@ def test_a_next_event_run_gets_a_source_set_whether_it_asked_or_not():
     assert isinstance(config.next_event, NextEventConfig)
 
 
+def test_named_factories_make_the_two_scientific_paths_explicit():
+    escape_run = RunConfig.escape_grid(site="korenmarkt")
+    production_run = RunConfig.next_event_roofline(site="korenmarkt")
+
+    assert escape_run.method_profile == "escape_band"
+    assert (escape_run.law, escape_run.estimator, escape_run.walk) == ("band", "escape", "grid")
+    assert escape_run.next_event is None
+    assert production_run.method_profile == "next_event_roofline"
+    assert (production_run.law, production_run.estimator, production_run.walk) == (
+        "roofline",
+        "next_event",
+        "route",
+    )
+    assert production_run.models == ("isotropic", "rooftop")
+    assert isinstance(production_run.next_event, NextEventConfig)
+
+
+def test_named_escape_factory_retains_the_legacy_adapter_identity():
+    """The explicit name must not rename the sealed band/grid run."""
+    legacy = RunConfig.escape_grid(
+        site="korenmarkt",
+        crop_m=250,
+        locations=80,
+        rays=200_000,
+        max_bounces=3,
+        roulette_start=None,
+        tag="city250_L3_korenmarkt",
+    )
+    assert legacy.digest() == escape().digest()
+    assert legacy.as_dict() == escape().as_dict()
+
+
+@pytest.mark.parametrize(
+    ("factory", "field", "value", "message"),
+    [
+        (RunConfig.next_event_roofline, "law", "band", "next_event_roofline fixes law"),
+        (RunConfig.next_event_roofline, "estimator", "escape", "next_event_roofline fixes estimator"),
+        (RunConfig.escape_grid, "law", "roofline", "escape_grid fixes law"),
+        (RunConfig.escape_grid, "estimator", "next_event", "escape_grid fixes estimator"),
+        (RunConfig.escape_grid, "next_event", NextEventConfig(), "escape_grid fixes next_event"),
+    ],
+)
+def test_named_factory_rejects_a_contradictory_method_field(factory, field, value, message):
+    with pytest.raises(ValueError, match=message):
+        factory(site="korenmarkt", **{field: value})
+
+
+def test_roofline_factory_keeps_valid_source_and_diagnostic_overrides():
+    source = NextEventConfig(builders=4, held_out=2)
+    config = RunConfig.next_event_roofline(
+        site="korenmarkt",
+        next_event=source,
+        models=("rooftop",),
+    )
+    assert config.next_event == source
+    assert config.models == ("rooftop",)
+
+
 def test_the_source_set_refuses_a_thinning_that_is_neither_plan_nor_space():
     with pytest.raises(ValueError, match="dims"):
         NextEventConfig(dims=4)
@@ -357,7 +415,7 @@ def test_a_config_nobody_touched_is_the_next_event_driver_as_it_ships():
     and if someone moves a flag there this fails instead of leaving two versions
     of the truth in two files.
     """
-    driver = argparse_defaults("run_next_event.py")
+    driver = argparse_defaults("semantic_twin/cli/next_event.py")
     config = RunConfig(site="korenmarkt")
 
     for field, flag in (
@@ -394,7 +452,7 @@ def test_a_config_nobody_touched_is_the_next_event_driver_as_it_ships():
 
 def test_the_escape_driver_defaults_match_the_run_config():
     """Both drivers now use the current crop, material control and full walk."""
-    driver = argparse_defaults("run_exposure.py")
+    driver = argparse_defaults("semantic_twin/cli/exposure.py")
     driver["frequency_hz"] = driver.pop("frequency_ghz") * 1e9
     config = RunConfig(site="korenmarkt")
 
@@ -437,10 +495,10 @@ def test_every_name_this_class_allows_is_one_a_driver_actually_accepts():
     describe. Both have happened to string fields in this study, which is why the
     sets exist at all.
     """
-    assert set(MATERIALS) == argparse_choices("run_exposure.py", "--materials")
-    assert set(WALKS) == argparse_choices("run_next_event.py", "--walk")
-    assert set(WALK_PATHS) == argparse_choices("run_next_event.py", "--walk-path")
-    assert set(TRANSPORT_KERNELS) == argparse_choices("run_exposure.py", "--transport-kernel")
+    assert set(MATERIALS) == argparse_choices("semantic_twin/cli/exposure.py", "--materials")
+    assert set(WALKS) == argparse_choices("semantic_twin/cli/next_event.py", "--walk")
+    assert set(WALK_PATHS) == argparse_choices("semantic_twin/cli/next_event.py", "--walk-path")
+    assert set(TRANSPORT_KERNELS) == argparse_choices("semantic_twin/cli/exposure.py", "--transport-kernel")
 
 
 def test_the_two_law_families_are_the_two_the_illumination_package_declares():
@@ -495,6 +553,7 @@ def test_provenance_puts_the_law_and_the_git_sha_where_a_reader_will_find_them()
     document = record.as_dict()
     assert document["law"] == "band"
     assert document["estimator"] == "escape"
+    assert document["method_profile"] == "escape_band"
     assert document["transport_kernel"] == "numpy"
     assert document["git_sha"]
     assert document["run_digest"] == escape().digest()

@@ -14,6 +14,7 @@ from typing import Any
 import numpy as np
 
 from semantic_twin import paths
+from semantic_twin.exposure.output_policy import OutputProfile, coerce_profile, profile as profile_spec
 from semantic_twin.runconfig import MATERIALS, RunConfig
 from semantic_twin.walk.model import CAMERA_REGISTERED, REGISTERED_ROAD_V1, STRIDE_INTERPOLATED
 
@@ -44,22 +45,40 @@ _BODY_RESULT_SUFFIXES = (
 )
 
 
-def reusable(config: RunConfig, output: pathlib.Path, models: Mapping[str, Any]) -> bool:
-    """Whether a complete run on disk has the requested numerical identity."""
+def reusable(
+    config: RunConfig,
+    output: pathlib.Path,
+    models: Mapping[str, Any],
+    profile: OutputProfile | str = OutputProfile.STANDARD,
+) -> bool:
+    """Whether a complete run has the identity and retention tier requested.
+
+    A run kept at a higher tier can answer a lower-tier request. The reverse is
+    unsafe: a minimal manifest has no angular spectra or audit inputs for a
+    standard or full rerun to consume. Manifests written before retention
+    profiles existed are treated as standard.
+    """
+    try:
+        requested_profile = coerce_profile(profile)
+    except (TypeError, ValueError):
+        return False
     stem = f"{config.tag}_{config.frequency_ghz:g}ghz"
     manifest_path = output / f"{stem}_manifest.json"
     rows_path = output / f"{stem}_locations.jsonl"
     spectra_path = output / f"{stem}_spectra.npz"
-    if not manifest_path.exists() or not rows_path.exists() or not spectra_path.exists():
+    if not manifest_path.exists() or not rows_path.exists():
         return False
     try:
         manifest = json.loads(manifest_path.read_text())
         mesh_path = paths.site_mesh(config.site, config.crop_m)
+        output_profile = _manifest_profile(manifest)
     except (OSError, TypeError, ValueError):
         return False
+    if not output_profile.includes(requested_profile):
+        return False
     return (
-        complete_output(manifest, config, rows_path, spectra_path)
-        and same_output_generation(manifest, rows_path, spectra_path)
+        complete_output(manifest, config, rows_path, spectra_path, profile=output_profile)
+        and same_output_generation(manifest, rows_path, spectra_path, profile=output_profile)
         and same_run_identity(manifest, config, models)
         and same_models(manifest, config, models)
         and same_support_mesh(manifest, mesh_path)
@@ -125,11 +144,16 @@ def same_atlas_artifact(
 def same_output_generation(
     manifest: dict[str, Any],
     rows_path: pathlib.Path,
-    spectra_path: pathlib.Path,
+    spectra_path: pathlib.Path | None = None,
     *,
     require_published_names: bool = True,
+    profile: OutputProfile | str | None = None,
 ) -> bool:
-    """Verify that rows and spectra are the one generation committed by the manifest."""
+    """Verify that retained files are the generation committed by the manifest.
+
+    Manifests written before retention profiles existed are treated as
+    ``standard`` and therefore still require their spectrum archive.
+    """
     generation = manifest.get("output_generation")
     if not isinstance(generation, dict) or generation.get("format_version") != 1:
         return False
@@ -141,12 +165,23 @@ def same_output_generation(
     ):
         return False
     artifacts = generation.get("artifacts")
-    if not isinstance(artifacts, dict) or set(artifacts) != {"locations", "spectra"}:
+    if not isinstance(artifacts, dict):
         return False
     try:
-        return _same_artifact(artifacts["locations"], rows_path, require_published_names) and _same_artifact(
-            artifacts["spectra"], spectra_path, require_published_names
-        )
+        selected = _manifest_profile(manifest) if profile is None else coerce_profile(profile)
+    except (TypeError, ValueError):
+        return False
+    expected_names = {"locations"} | ({"spectra"} if profile_spec(selected).includes("angular_spectra") else set())
+    if set(artifacts) != expected_names:
+        return False
+    try:
+        if not _same_artifact(artifacts["locations"], rows_path, require_published_names):
+            return False
+        if profile_spec(selected).includes("angular_spectra"):
+            return spectra_path is not None and _same_artifact(
+                artifacts["spectra"], spectra_path, require_published_names
+            )
+        return spectra_path is None or not spectra_path.exists()
     except OSError:
         return False
 
@@ -185,10 +220,13 @@ def complete_output(
     manifest: dict[str, Any],
     config: RunConfig,
     rows_path: pathlib.Path,
-    spectra_path: pathlib.Path,
+    spectra_path: pathlib.Path | None = None,
+    *,
+    profile: OutputProfile | str | None = None,
 ) -> bool:
-    """Prove that every requested result and spectrum reached disk together."""
+    """Prove that every requested retained result reached disk together."""
     try:
+        selected = _manifest_profile(manifest) if profile is None else coerce_profile(profile)
         expected = manifest["locations_traced"]
         if type(expected) is not int or expected < 0:
             raise ValueError("locations_traced must be a nonnegative integer")
@@ -197,23 +235,58 @@ def complete_output(
         required_keys = _required_row_keys(config.models)
         rows = _read_rows(rows_path, required_keys)
         row_indices = [row["index"] for row in rows]
-        spectrum_indices, rho, local_grid, solid_angle = _read_spectra(spectra_path)
+        spectrum_indices = rho = local_grid = solid_angle = None
+        if profile_spec(selected).includes("angular_spectra"):
+            if spectra_path is None:
+                return False
+            spectrum_indices, rho, local_grid, solid_angle = _read_spectra(
+                spectra_path,
+                config.models if _structured_profile(manifest) else ("rooftop",),
+            )
     except (EOFError, KeyError, OSError, TypeError, ValueError, zipfile.BadZipFile):
         return False
-    checks = (
+    checks = [
         len(row_indices) == expected,
         len(set(row_indices)) == expected,
         all(left < right for left, right in zip(row_indices, row_indices[1:], strict=False)),
         _indices_fit_walk(manifest, row_indices),
         _valid_route_rows(manifest, config, rows),
-        spectrum_indices.ndim == 1,
-        np.issubdtype(spectrum_indices.dtype, np.integer),
-        spectrum_indices.tolist() == row_indices,
-        _valid_rho(rho, (expected, config.local_cells)),
-        _valid_grid(local_grid, config.local_cells),
-        _valid_solid_angle(solid_angle, config.local_cells),
-    )
+    ]
+    if profile_spec(selected).includes("angular_spectra"):
+        if spectrum_indices is None or rho is None or local_grid is None or solid_angle is None:
+            return False
+        checks.extend(
+            (
+                spectrum_indices.ndim == 1,
+                np.issubdtype(spectrum_indices.dtype, np.integer),
+                spectrum_indices.tolist() == row_indices,
+                all(_valid_rho(values, (expected, config.local_cells)) for values in rho.values()),
+                _valid_grid(local_grid, config.local_cells),
+                _valid_solid_angle(solid_angle, config.local_cells),
+            )
+        )
     return all(checks)
+
+
+def _manifest_profile(manifest: Mapping[str, Any]) -> OutputProfile:
+    """Read a retention profile, treating pre-profile manifests as standard."""
+    policy = manifest.get("storage_policy")
+    if policy is None or isinstance(policy, str):
+        return OutputProfile.STANDARD
+    if not isinstance(policy, Mapping):
+        raise ValueError("storage_policy must be a profile record")
+    return coerce_profile(policy.get("profile", OutputProfile.STANDARD.value))
+
+
+def _structured_profile(manifest: Mapping[str, Any]) -> bool:
+    """Return whether the manifest records the current retention schema.
+
+    Before profiles were introduced, the spectrum archive contained only the
+    rooftop model.  Keep those manifests reusable even when a caller's model
+    mapping now contains more source models.  A structured policy opts into
+    validating every model named by the run.
+    """
+    return isinstance(manifest.get("storage_policy"), Mapping)
 
 
 def _intended_locations(manifest: dict[str, Any], config: RunConfig) -> int:
@@ -284,9 +357,16 @@ def _valid_route_rows(manifest: dict[str, Any], config: RunConfig, rows: list[di
 
 def _read_spectra(
     spectra_path: pathlib.Path,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    model_names: tuple[str, ...] = ("rooftop",),
+) -> tuple[np.ndarray, dict[str, np.ndarray], np.ndarray, np.ndarray]:
     with np.load(spectra_path) as spectra:
-        return tuple(np.asarray(spectra[name]) for name in ("index", "rho_rooftop", "local_grid", "solid_angle"))
+        rho = {name: np.asarray(spectra[f"rho_{name}"]) for name in model_names}
+        return (
+            np.asarray(spectra["index"]),
+            rho,
+            np.asarray(spectra["local_grid"]),
+            np.asarray(spectra["solid_angle"]),
+        )
 
 
 def _valid_rho(rho: np.ndarray, shape: tuple[int, int]) -> bool:
