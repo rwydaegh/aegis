@@ -9,8 +9,8 @@ the supporting performance and retention records.
 The refactor is 100% complete when every root command has an owner and status,
 the intended command boundaries are in the package, profile and checkpoint
 contracts are explicit, and the normal production path is separate from the
-optional audit path. It does not mean that publication physics are settled or
-that new multi-city results have been regenerated.
+optional audit path. It does not mean that all publication physics are settled
+or that new multi-city results have been regenerated.
 
 ## Completed boundaries
 
@@ -85,11 +85,12 @@ clean worktree. No paid GPU is active. No multi-city run was launched.
 
 ## Publication work that remains
 
-Publication physics decisions remain outside this refactor. The paper still
-needs decisions on the next-event specular contribution, the roughness rule,
-and area-weighted body averaging. The refactor is complete as architecture,
-performance, and output work. It is not a claim that final paper physics or
-regenerated multi-city results are complete.
+The area-weighted body mean is fixed and documented. Next-event estimation is
+bounded to diagnostic-only use, with its absolute totals and escape-gap claims
+excluded. Facade roughness still needs an explicit surrogate choice before any
+retrace. The refactor is complete as architecture, performance, and output
+work. It is not a claim that final paper physics or regenerated multi-city
+results are complete.
 
 ## Production and audit tracks
 
@@ -111,12 +112,15 @@ normal numerical production.
 - [x] Record the final test and static-check results.
 - [x] Keep local-data tests separate because their ignored artifacts are not
       present in the intended checkout.
-- [ ] Before publication, settle the three physics decisions above.
-- [ ] Plan any future city campaign only after those decisions. Do not infer a
-      GPU or RAM gain from the refactor.
+- [x] Fix the area-weighted body mean and record the retained-data correction.
+- [x] Bound next-event estimation to diagnostic-only use.
+- [ ] Choose an explicit roughness surrogate before retracing.
+- [ ] Plan any future city campaign only after the roughness choice. Do not
+      infer a GPU or RAM gain from the refactor.
 
 ## Safe next action
 
 Finalize the feature branch through review and squash merge. Then review the
-publication physics decisions. A new city or multi-city campaign should start
-only after that review and an explicit run plan.
+publication record and choose the roughness surrogate before any retrace. A new
+city or multi-city campaign should start only after that review and an explicit
+run plan.

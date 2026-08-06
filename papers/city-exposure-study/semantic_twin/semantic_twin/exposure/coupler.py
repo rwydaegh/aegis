@@ -85,13 +85,15 @@ class BodyCoupler:
         result = self.engine.compute(self.body, paths, level=self.level, body_mass=self.body_mass_kg)
         sab = np.asarray(result.sab, dtype=np.float64)
         arriving = float(power.sum())
+        p_abs = float(result.p_abs)
+        total_area = float(self.body.total_area)
         return BodyExposure(
             reference_s0_w_m2=float(reference_s0_w_m2),
             arriving_power_density_w_m2=arriving,
             susceptibility=arriving / reference_s0_w_m2 if reference_s0_w_m2 > 0.0 else 0.0,
             peak_sab_w_m2=float(np.max(sab)),
-            mean_sab_w_m2=float(np.mean(sab)),
-            absorbed_power_w=float(result.p_abs),
+            mean_sab_w_m2=p_abs / total_area if total_area > 0.0 else 0.0,
+            absorbed_power_w=p_abs,
             sar_wb_w_kg=float(result.sar_wb) if result.sar_wb is not None else float("nan"),
         )
 
@@ -189,6 +191,7 @@ class BodyCoupler:
 
         arriving = np.sum(powers, axis=1, dtype=np.float64)
         areas = np.asarray(self.body.areas, dtype=np.float64)
+        total_area = float(self.body.total_area)
         out: list[BodyExposure] = []
         for index, spectrum_sab in enumerate(sab):
             p_abs = float(np.sum(spectrum_sab * areas, dtype=np.float64))
@@ -198,7 +201,7 @@ class BodyCoupler:
                     arriving_power_density_w_m2=float(arriving[index]),
                     susceptibility=(float(arriving[index] / reference_s0_w_m2) if reference_s0_w_m2 > 0.0 else 0.0),
                     peak_sab_w_m2=float(np.max(spectrum_sab)),
-                    mean_sab_w_m2=float(np.mean(spectrum_sab)),
+                    mean_sab_w_m2=p_abs / total_area if total_area > 0.0 else 0.0,
                     absorbed_power_w=p_abs,
                     sar_wb_w_kg=(p_abs / self.body_mass_kg if self.body_mass_kg is not None else float("nan")),
                 )

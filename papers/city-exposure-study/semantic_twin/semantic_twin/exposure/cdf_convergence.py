@@ -20,7 +20,7 @@ import platform
 import struct
 import time
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
@@ -524,10 +524,29 @@ class CampaignCheckpoint:
     rho_sum: np.ndarray
     local_grid: np.ndarray
     solid_angle: float
+    body_surface_areas: np.ndarray | None = None
 
     @property
     def replicas(self) -> int:
         return int(self.base_seeds.size)
+
+
+def _checkpoint_surface_areas(checkpoint: CampaignCheckpoint) -> np.ndarray:
+    """Return the checkpoint's float64 body measure, with legacy unit fallback."""
+    surface_elements = int(checkpoint.body_sab_rooftop.shape[2])
+    if checkpoint.body_surface_areas is None:
+        return np.ones(surface_elements, dtype=np.float64)
+    areas = np.asarray(checkpoint.body_surface_areas)
+    if (
+        areas.dtype != np.dtype(np.float64)
+        or areas.ndim != 1
+        or areas.shape != (surface_elements,)
+        or not np.all(np.isfinite(areas))
+        or np.any(areas < 0.0)
+        or not np.any(areas > 0.0)
+    ):
+        raise ValueError("checkpoint body_surface_areas must be finite float64, nonnegative, and match Sab")
+    return np.array(areas, dtype=np.float64, copy=True)
 
 
 def analyse_joint_replicas(
@@ -1118,6 +1137,7 @@ def run_campaign(
     )
 
     body_path = config.validate_body_file()
+    body_surface_areas = _load_body_surface_areas(body_path)
     reference = load_reference(config, body_path=body_path)
     _validate_production_reference(config, reference)
     tissue_database = _tissue_database_identity()
@@ -1182,13 +1202,20 @@ def run_campaign(
         reference,
         config,
         tissue_database["sha256"],
+        body_surface_areas=body_surface_areas,
     )
     checkpoint_store: CheckpointStore | None = None
     checkpoint = legacy_checkpoint
     if legacy_checkpoint is None:
         checkpoint_store = CheckpointStore(
             config.output_dir / "checkpoint_shards",
-            _checkpoint_store_spec(config, reference, identity, tissue_database["sha256"]),
+            _checkpoint_store_spec(
+                config,
+                reference,
+                identity,
+                tissue_database["sha256"],
+                body_surface_areas=body_surface_areas,
+            ),
         )
         if checkpoint_store.replicas:
             checkpoint = _campaign_checkpoint_from_prefix(checkpoint_store.load_prefix())
@@ -1651,7 +1678,39 @@ def _empty_checkpoint(tracer: Any, coupler: Any, reference: Any) -> CampaignChec
         rho_sum=np.zeros((points, len(MODEL_NAMES), cells), dtype=np.float64),
         local_grid=local_grid,
         solid_angle=float(4.0 * np.pi / cells),
+        body_surface_areas=np.asarray(coupler.body.areas, dtype=np.float64),
     )
+
+
+def _load_body_surface_areas(path: pathlib.Path) -> np.ndarray:
+    """Load the exact float64 triangle areas used by the body coupler."""
+    with path.open("rb") as stream:
+        stream.seek(80)
+        count_data = stream.read(4)
+        if len(count_data) != 4:
+            raise RuntimeError(f"body surface is not a complete binary STL: {path}")
+        triangles = struct.unpack("<I", count_data)[0]
+        records = np.frombuffer(
+            stream.read(50 * triangles),
+            dtype=np.dtype(
+                [
+                    ("normal", "<f4", (3,)),
+                    ("v0", "<f4", (3,)),
+                    ("v1", "<f4", (3,)),
+                    ("v2", "<f4", (3,)),
+                    ("attr", "<u2"),
+                ]
+            ),
+        )
+    if records.shape != (triangles,):
+        raise RuntimeError(f"body surface is truncated: {path}")
+    vertices = np.stack([records["v0"], records["v1"], records["v2"]], axis=1).astype(np.float64)
+    edge_a = vertices[:, 1] - vertices[:, 0]
+    edge_b = vertices[:, 2] - vertices[:, 0]
+    areas = 0.5 * np.linalg.norm(np.cross(edge_a, edge_b), axis=1)
+    if areas.ndim != 1 or not np.all(np.isfinite(areas)) or np.any(areas < 0.0) or not np.any(areas > 0.0):
+        raise RuntimeError(f"body surface areas are invalid: {path}")
+    return areas
 
 
 def _checkpoint_store_spec(
@@ -1659,12 +1718,16 @@ def _checkpoint_store_spec(
     reference: Any,
     identity: str,
     tissue_database_sha256: str,
+    *,
+    body_surface_areas: np.ndarray | None = None,
 ) -> CheckpointSpec:
     """Build the immutable identity and shape contract for replica shards."""
     from semantic_twin.illumination import fibonacci_sphere
 
     cells = int(reference.manifest["run"]["local_cells"])
     local_grid = np.asarray(fibonacci_sphere(cells), dtype=np.float64)
+    if body_surface_areas is None:
+        body_surface_areas = np.ones(int(reference.manifest["body"]["triangles"]), dtype=np.float64)
     return CheckpointSpec(
         identity_sha256=identity,
         standpoint_array_sha256=reference.standpoints.sha256,
@@ -1672,6 +1735,7 @@ def _checkpoint_store_spec(
         model_names=MODEL_NAMES,
         planned_seeds=tuple(int(seed) for seed in config.base_seeds),
         surface_elements=int(reference.manifest["body"]["triangles"]),
+        body_surface_areas=np.asarray(body_surface_areas, dtype=np.float64),
         local_grid=local_grid,
         solid_angle=float(4.0 * np.pi / cells),
     )
@@ -1701,6 +1765,7 @@ def _campaign_checkpoint_from_prefix(prefix: CheckpointPrefix) -> CampaignCheckp
         body_sab_rooftop=np.asarray(prefix.body_sab_rooftop, dtype=np.float64),
         trace_seconds=np.asarray(prefix.trace_seconds, dtype=np.float64),
         rho_sum=np.asarray(prefix.rho_sum, dtype=np.float64),
+        body_surface_areas=np.asarray(prefix.body_surface_areas, dtype=np.float64),
         local_grid=np.asarray(prefix.local_grid, dtype=np.float64),
         solid_angle=float(prefix.solid_angle),
     )
@@ -1727,6 +1792,7 @@ class _CampaignAccumulator:
     _solid_angle: float
     _points: int
     _surface_elements: int
+    _body_surface_areas: np.ndarray
 
     @classmethod
     def from_checkpoint(cls, checkpoint: CampaignCheckpoint) -> _CampaignAccumulator:
@@ -1748,6 +1814,7 @@ class _CampaignAccumulator:
             _solid_angle=float(checkpoint.solid_angle),
             _points=int(checkpoint.chi.shape[1]),
             _surface_elements=int(checkpoint.body_sab_rooftop.shape[2]),
+            _body_surface_areas=_checkpoint_surface_areas(checkpoint),
         )
 
     @property
@@ -1783,6 +1850,7 @@ class _CampaignAccumulator:
             rho_sum=self._rho_sum.copy(),
             local_grid=self._local_grid,
             solid_angle=self._solid_angle,
+            body_surface_areas=self._body_surface_areas.copy(),
         )
 
 
@@ -2095,6 +2163,7 @@ def _write_campaign_checkpoint(
     reference: Any,
     tissue_database_sha256: str,
 ) -> None:
+    body_surface_areas = _checkpoint_surface_areas(checkpoint)
     temporary = path.with_suffix(path.suffix + ".tmp")
     with temporary.open("wb") as stream:
         np.savez_compressed(
@@ -2110,6 +2179,8 @@ def _write_campaign_checkpoint(
             body_mean_rooftop=checkpoint.body_mean_rooftop,
             body_sab_rooftop=checkpoint.body_sab_rooftop,
             body_sab_sha256=np.asarray(_array_sha256(checkpoint.body_sab_rooftop)),
+            body_surface_areas=body_surface_areas,
+            body_surface_areas_sha256=np.asarray(_array_sha256(body_surface_areas)),
             trace_seconds=checkpoint.trace_seconds,
             rho_sum=checkpoint.rho_sum,
             local_grid=checkpoint.local_grid,
@@ -2128,9 +2199,24 @@ def _load_campaign_checkpoint(
     reference: Any,
     config: CdfConvergenceConfig,
     tissue_database_sha256: str,
+    *,
+    body_surface_areas: np.ndarray | None = None,
 ) -> CampaignCheckpoint | None:
     if not path.is_file():
         return None
+    if body_surface_areas is None:
+        configured_areas = getattr(config, "body_surface_areas", None)
+        if configured_areas is not None:
+            body_surface_areas = np.asarray(configured_areas, dtype=np.float64)
+        else:
+            validate_body_file = getattr(config, "validate_body_file", None)
+            if callable(validate_body_file):
+                try:
+                    candidate = _load_body_surface_areas(validate_body_file())
+                except (OSError, RuntimeError, ValueError):
+                    candidate = None
+                if candidate is not None and candidate.size == int(reference.manifest["body"]["triangles"]):
+                    body_surface_areas = candidate
     try:
         with np.load(path) as artifact:
             schema = str(artifact["schema"])
@@ -2139,6 +2225,14 @@ def _load_campaign_checkpoint(
             saved_tissue_hash = str(artifact["tissue_database_sha256"])
             saved_grid_hash = str(artifact["local_grid_sha256"])
             saved_body_sab_hash = str(artifact["body_sab_sha256"])
+            saved_body_surface_areas = (
+                np.asarray(artifact["body_surface_areas"]) if "body_surface_areas" in artifact.files else None
+            )
+            saved_body_surface_areas_present = "body_surface_areas" in artifact.files
+            saved_body_surface_areas_hash = (
+                str(artifact["body_surface_areas_sha256"]) if "body_surface_areas_sha256" in artifact.files else None
+            )
+            saved_body_surface_areas_hash_present = "body_surface_areas_sha256" in artifact.files
             model_names = tuple(str(value) for value in artifact["model_names"])
             checkpoint = CampaignCheckpoint(
                 base_seeds=np.asarray(artifact["base_seeds"], dtype=np.int64),
@@ -2151,6 +2245,7 @@ def _load_campaign_checkpoint(
                 rho_sum=np.asarray(artifact["rho_sum"], dtype=np.float64),
                 local_grid=np.asarray(artifact["local_grid"], dtype=np.float64),
                 solid_angle=float(artifact["solid_angle"]),
+                body_surface_areas=saved_body_surface_areas,
             )
     except (KeyError, OSError, TypeError, ValueError):
         return None
@@ -2160,6 +2255,29 @@ def _load_campaign_checkpoint(
     from semantic_twin.illumination import fibonacci_sphere
 
     expected_grid = fibonacci_sphere(cells)
+    surface_elements = int(reference.manifest["body"]["triangles"])
+    runtime_areas = (
+        np.asarray(body_surface_areas, dtype=np.float64) if body_surface_areas is not None else saved_body_surface_areas
+    )
+    if runtime_areas is None:
+        # Old checkpoints predate area metadata.  Unit weights preserve their
+        # legacy interpretation until a caller supplies the runtime mesh.
+        runtime_areas = np.ones(surface_elements, dtype=np.float64)
+    try:
+        runtime_areas = _checkpoint_surface_areas(
+            replace(checkpoint, body_surface_areas=np.asarray(runtime_areas, dtype=np.float64))
+        )
+    except (TypeError, ValueError):
+        return None
+    weighted_mean = np.sum(
+        checkpoint.body_sab_rooftop * runtime_areas[None, None, :],
+        axis=2,
+        dtype=np.float64,
+    )
+    weighted_mean /= float(np.sum(runtime_areas, dtype=np.float64))
+    legacy_mean = np.mean(checkpoint.body_sab_rooftop, axis=2, dtype=np.float64)
+    legacy_area_metadata = saved_body_surface_areas is not None or saved_body_surface_areas_hash is not None
+    stored_mean = weighted_mean if legacy_area_metadata else legacy_mean
     valid = all(
         (
             schema == "fixed-walk-cdf-checkpoint-v3",
@@ -2172,8 +2290,24 @@ def _load_campaign_checkpoint(
             checkpoint.chi_direct.shape == checkpoint.chi.shape,
             checkpoint.body_peak_rooftop.shape == (replicas, points),
             checkpoint.body_mean_rooftop.shape == (replicas, points),
-            checkpoint.body_sab_rooftop.shape == (replicas, points, int(reference.manifest["body"]["triangles"])),
+            checkpoint.body_sab_rooftop.shape == (replicas, points, surface_elements),
             saved_body_sab_hash == _array_sha256(checkpoint.body_sab_rooftop),
+            saved_body_surface_areas_present == saved_body_surface_areas_hash_present,
+            saved_body_surface_areas is None
+            or (
+                body_surface_areas is None
+                or np.array_equal(saved_body_surface_areas, np.asarray(body_surface_areas, dtype=np.float64))
+            ),
+            (
+                saved_body_surface_areas is None
+                or (
+                    saved_body_surface_areas.dtype == np.dtype(np.float64)
+                    and saved_body_surface_areas.shape == (surface_elements,)
+                    and saved_body_surface_areas_hash == _array_sha256(saved_body_surface_areas)
+                )
+            ),
+            body_surface_areas is None
+            or np.array_equal(runtime_areas, np.asarray(body_surface_areas, dtype=np.float64)),
             checkpoint.trace_seconds.shape == (replicas, points),
             checkpoint.rho_sum.shape == (points, len(MODEL_NAMES), cells),
             checkpoint.local_grid.shape == (cells, 3),
@@ -2200,11 +2334,15 @@ def _load_campaign_checkpoint(
             np.all(checkpoint.body_mean_rooftop > 0.0),
             np.all(checkpoint.body_sab_rooftop >= 0.0),
             np.array_equal(np.max(checkpoint.body_sab_rooftop, axis=2), checkpoint.body_peak_rooftop),
-            np.array_equal(np.mean(checkpoint.body_sab_rooftop, axis=2), checkpoint.body_mean_rooftop),
+            np.array_equal(stored_mean, checkpoint.body_mean_rooftop),
             np.all(checkpoint.rho_sum >= 0.0),
         )
     )
-    return checkpoint if valid else None
+    if not valid:
+        return None
+    if not legacy_area_metadata:
+        checkpoint = replace(checkpoint, body_mean_rooftop=weighted_mean)
+    return replace(checkpoint, body_surface_areas=runtime_areas)
 
 
 def _campaign_manifest(

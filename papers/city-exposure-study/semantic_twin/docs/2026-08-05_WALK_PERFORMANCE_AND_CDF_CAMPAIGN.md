@@ -56,6 +56,15 @@ An end-to-end one-point run with the exact atlas, 200,000 rays, and 4,096 cells
 completed in 7.37 seconds on the local CPU. The trace itself took 0.5 seconds.
 Peak resident memory was 1.295 GiB, including scene, atlas, and body setup.
 
+## Post-processing cost
+
+The corrected retained-data analysis is now a material budget item. A 4-core
+CPU run averaged about 1.7 cores and about 3.1 GiB RSS. An exact 20,000-draw
+joint max-t over 24 replicas, 68 points, and 56,024 surface elements per `Sab`
+field took 30.58 minutes with experimental bootstrap batch 64. This is analysis, not ray
+tracing. It is a candidate budget opportunity for the CDF versus angular audit
+and Blender two-track, but that split has not been adopted.
+
 ## Sequential campaign
 
 The campaign follows the [microenvironment audit and stopping
@@ -224,6 +233,22 @@ These values are below the planned limits. They support the expected campaign
 cost and the analysis implementation. They remain a one-law diagnostic.
 The [archived rooftop diagnostic](../outputs/cdf_convergence_4096_atlas_v1/existing_rooftop_diagnostic.json)
 records every source run identity and file hash.
+
+### One-axis Korenmarkt convergence
+
+Against the 4,096-cell, 1.6-million-ray reference, the existing one-axis study
+measured these maximum absolute deviations:
+
+| Case | Rays | Cells | Absorbed power | Body peak |
+| --- | ---: | ---: | ---: | ---: |
+| Ray sweep at 4,096 cells | 200,000 | 4,096 | 0.01363 dB | 0.01095 dB |
+| Ray sweep at 4,096 cells | 800,000 | 4,096 | 0.00425 dB | 0.00534 dB |
+| Cell sweep at 1.6M rays | 1,600,000 | 512 | 0.00712 dB | 0.01247 dB |
+| Cell sweep at 1.6M rays | 1,600,000 | 1,024 | 0.00702 dB | 0.00922 dB |
+
+Test the combined 400,000-ray by 1,024-cell setting before changing the
+production contract. Scrambled low-discrepancy and stratified launches remain
+future variance-reduction experiments. They are not implemented.
 
 ## Production command
 
