@@ -8,7 +8,15 @@ import numpy as np
 import pytest
 
 from semantic_twin.vision import registration_repair
-from semantic_twin.vision.registration_repair import BACKUP_SUFFIX, panorama_image, register, stations, summarise
+from semantic_twin.vision.registration_repair import (
+    BACKUP_SUFFIX,
+    RepairOptions,
+    panorama_image,
+    register,
+    reregister_site,
+    stations,
+    summarise,
+)
 
 
 def station(root, site, name, *, semantics=True, pose=True, image="panorama_z5.jpg"):
@@ -46,6 +54,27 @@ def test_a_single_panorama_site_is_read_from_the_top_of_its_directory(tmp_path, 
     np.savez(root / "semantics" / "panorama_semantics.npz", entity=np.zeros((2, 2)))
     monkeypatch.setattr(registration_repair.paths, "root", lambda: tmp_path)
     assert [f.name for f in stations("milan_duomo")] == ["milan_duomo"]
+
+
+def test_an_explicit_cohort_directory_is_used_without_mixing_the_site_cache(tmp_path):
+    default = station(tmp_path, "toulouse_capitole", "pano_old")
+    cohort = tmp_path / "data" / "panorama_cohorts" / "toulouse_capitole_2018-05"
+    selected = cohort / "pano_new"
+    selected.mkdir(parents=True)
+    (selected / "pose_initial.json").write_text("{}")
+    (selected / "semantics").mkdir()
+    np.savez(selected / "semantics" / "panorama_semantics.npz", entity=np.zeros((2, 2)))
+
+    found = stations("toulouse_capitole", root_dir=tmp_path, cohort_dir=cohort)
+
+    assert found == [selected]
+    assert default not in found
+
+
+def test_missing_explicit_cohort_directory_is_reported(tmp_path):
+    missing = tmp_path / "data" / "panorama_cohorts" / "does-not-exist"
+    with pytest.raises(SystemExit, match="no cohort directory"):
+        stations("toulouse_capitole", root_dir=tmp_path, cohort_dir=missing)
 
 
 def test_an_unknown_site_is_refused_rather_than_returning_nothing(tmp_path, monkeypatch):
@@ -119,3 +148,40 @@ def test_the_summary_does_not_invent_a_sky_conflict_it_was_not_given():
 
 def test_an_unregistered_station_summarises_as_such():
     assert summarise({}) == "not registered"
+
+
+def test_reregister_resolves_the_canonical_f64_mesh_for_a_selected_cohort(tmp_path, monkeypatch):
+    site = "toulouse_capitole"
+    cohort = tmp_path / "data" / "panorama_cohorts" / "toulouse_capitole_2018-05"
+    folder = cohort / "pano_00_new"
+    (folder / "semantics").mkdir(parents=True)
+    (folder / "alignment").mkdir()
+    (folder / "pose_initial.json").write_text(json.dumps({"position_enu_m": [0.0, 0.0, 2.5]}))
+    np.savez(folder / "semantics" / "panorama_semantics.npz", entity=np.zeros((2, 2)))
+    (folder / "semantics" / "semantics.json").write_text("{}")
+
+    geometry = tmp_path / "data" / "geometry" / site
+    geometry.mkdir(parents=True)
+    plain = geometry / "inhouse_leaf_250m.ply"
+    f64 = geometry / "inhouse_leaf_250m_f64.ply"
+    for mesh in (plain, f64):
+        mesh.write_bytes(b"ply\n")
+        mesh.with_suffix(".json").write_text(json.dumps({"format_version": 3}))
+
+    calls = []
+
+    def fake_register(station_dir, support_mesh, **kwargs):
+        calls.append((station_dir, support_mesh, kwargs))
+        (station_dir / "alignment" / "pose_aligned.json").write_text(
+            json.dumps({"position_enu_m": [0.0, 0.0, 2.5]})
+        )
+        return ["align"]
+
+    monkeypatch.setattr(registration_repair, "register", fake_register)
+    changed = reregister_site(
+        RepairOptions(site=site, root_dir=tmp_path, cohort_dir=cohort, dry_run=False)
+    )
+
+    assert changed == ["pano_00_new"]
+    assert calls[0][1] == f64
+    assert calls[0][2]["root_dir"] == tmp_path

@@ -58,17 +58,40 @@ class RepairOptions:
     site: str
     crop_m: int = 250
     station_names: tuple[str, ...] | None = None
+    cohort_dir: pathlib.Path | None = None
     dz_bounds: tuple[float, float] | None = None
     dry_run: bool = False
     no_backup: bool = False
     root_dir: pathlib.Path | None = None
 
 
-def stations(site: str, *, root_dir: pathlib.Path | None = None) -> list[pathlib.Path]:
-    """Panorama directories of a site that carry the inputs registration needs."""
-    root = paths.panorama_set(site) if root_dir is None else root_dir / "data" / "panoramas" / site
+def stations(
+    site: str,
+    *,
+    root_dir: pathlib.Path | None = None,
+    cohort_dir: pathlib.Path | None = None,
+) -> list[pathlib.Path]:
+    """Panorama directories carrying the inputs registration needs.
+
+    By default, station discovery is scoped to the site's canonical panorama
+    set.  ``cohort_dir`` is an explicit escape hatch for a deliberately
+    selected capture cohort, such as a dated Google Street View pull.  It is
+    resolved relative to ``root_dir`` (the study root) when given as a relative
+    path, so a registration run cannot silently mix an old set with a newly
+    acquired one merely because both happen to be under ``data/panoramas``.
+    """
+    study_root = paths.root() if root_dir is None else root_dir
+    if cohort_dir is None:
+        root = paths.panorama_set(site) if root_dir is None else study_root / "data" / "panoramas" / site
+    else:
+        root = pathlib.Path(cohort_dir).expanduser()
+        if not root.is_absolute():
+            root = study_root / root
+        root = root.resolve()
     if not root.is_dir():
-        raise SystemExit(f"no panorama directory for {site}")
+        if cohort_dir is None:
+            raise SystemExit(f"no panorama directory for {site}")
+        raise SystemExit(f"no cohort directory at {root}")
     found = sorted(f for f in root.glob("pano_*") if f.is_dir())
     if not found and (root / INITIAL_POSE_NAME).exists():
         found = [root]
@@ -148,11 +171,12 @@ def register(
 def reregister_site(options: RepairOptions) -> list[str]:
     """Repair all selected registrations for one site and return changed stations."""
     study_root = options.root_dir or paths.root()
-    mesh = paths.geometry_dir(options.site, study_root) / f"inhouse_leaf_{options.crop_m}m.ply"
-    if not mesh.exists():
-        raise SystemExit(f"no {options.crop_m} m mesh for {options.site} at {mesh}")
+    try:
+        mesh = paths.site_mesh(options.site, options.crop_m, root_dir=study_root)
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc)) from exc
 
-    folders = stations(options.site, root_dir=study_root)
+    folders = stations(options.site, root_dir=study_root, cohort_dir=options.cohort_dir)
     if options.station_names:
         wanted = set(options.station_names)
         folders = [f for f in folders if f.name in wanted]

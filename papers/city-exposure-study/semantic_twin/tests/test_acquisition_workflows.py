@@ -134,6 +134,7 @@ def test_registration_repair_backs_up_and_records_support_provenance(tmp_path, m
     mesh = tmp_path / "data" / "geometry" / "test-site" / "inhouse_leaf_250m.ply"
     mesh.parent.mkdir(parents=True)
     mesh.write_bytes(b"mesh")
+    mesh.with_suffix(".json").write_text(json.dumps({"format_version": 3}))
     station = make_registration_station(tmp_path)
     old_pose = {
         "crop_m": 130,
@@ -180,6 +181,7 @@ def test_registration_dry_run_changes_no_pose_and_makes_no_backup(tmp_path, monk
     mesh = tmp_path / "data" / "geometry" / "test-site" / "inhouse_leaf_250m.ply"
     mesh.parent.mkdir(parents=True)
     mesh.write_bytes(b"mesh")
+    mesh.with_suffix(".json").write_text(json.dumps({"format_version": 3}))
     station = make_registration_station(tmp_path)
     old_pose = {"crop_m": 130, "position_enu_m": [0.0, 0.0, 2.5]}
     aligned = station / "alignment" / "pose_aligned.json"
