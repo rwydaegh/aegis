@@ -156,6 +156,7 @@ def test_registration_runner_maps_every_option(monkeypatch):
         "crop_m": 300,
         "station_names": ("pano_01_a", "pano_02_b"),
         "cohort_dir": pathlib.Path("data/panorama_cohorts/tokyo_2024"),
+        "semantics_dirname": "semantics",
         "dz_bounds": (-1.5, 2.0),
         "dry_run": True,
         "no_backup": True,

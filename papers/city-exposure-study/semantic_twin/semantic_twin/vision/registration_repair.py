@@ -43,6 +43,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from semantic_twin import paths
+from semantic_twin.vision.surface_atlas import semantic_evidence_directory
 
 #: Written beside the pose it replaces, so a re-registration is always reversible
 #: and the crop that produced each pose stays legible on disk.
@@ -59,6 +60,7 @@ class RepairOptions:
     crop_m: int = 250
     station_names: tuple[str, ...] | None = None
     cohort_dir: pathlib.Path | None = None
+    semantics_dirname: str = "semantics"
     dz_bounds: tuple[float, float] | None = None
     dry_run: bool = False
     no_backup: bool = False
@@ -70,6 +72,7 @@ def stations(
     *,
     root_dir: pathlib.Path | None = None,
     cohort_dir: pathlib.Path | None = None,
+    semantics_dirname: str = "semantics",
 ) -> list[pathlib.Path]:
     """Panorama directories carrying the inputs registration needs.
 
@@ -99,7 +102,14 @@ def stations(
     for folder in found:
         if not (folder / INITIAL_POSE_NAME).exists():
             continue
-        if not (folder / "semantics" / "panorama_semantics.npz").exists():
+        try:
+            semantics = semantic_evidence_directory(folder, semantics_dirname)
+        except ValueError as exc:
+            raise SystemExit(
+                "--semantics-dirname must be a relative path that is non-symlinked and physically beneath each "
+                "panorama folder"
+            ) from exc
+        if not (semantics / "panorama_semantics.npz").exists():
             continue
         ready.append(folder)
     return ready
@@ -137,8 +147,10 @@ def register(
     dry_run: bool,
     dz_bounds: tuple[float, float] | None = None,
     root_dir: pathlib.Path | None = None,
+    semantics_dirname: str = "semantics",
 ) -> list[str]:
     image = panorama_image(folder)
+    semantics = semantic_evidence_directory(folder, semantics_dirname)
     command = [
         sys.executable,
         "-m",
@@ -146,9 +158,9 @@ def register(
         "--mesh",
         str(mesh),
         "--semantics",
-        str(folder / "semantics" / "panorama_semantics.npz"),
+        str(semantics / "panorama_semantics.npz"),
         "--semantics-json",
-        str(folder / "semantics" / "semantics.json"),
+        str(semantics / "semantics.json"),
         "--pose",
         str(folder / INITIAL_POSE_NAME),
         "--out",
@@ -176,7 +188,12 @@ def reregister_site(options: RepairOptions) -> list[str]:
     except FileNotFoundError as exc:
         raise SystemExit(str(exc)) from exc
 
-    folders = stations(options.site, root_dir=study_root, cohort_dir=options.cohort_dir)
+    folders = stations(
+        options.site,
+        root_dir=study_root,
+        cohort_dir=options.cohort_dir,
+        semantics_dirname=options.semantics_dirname,
+    )
     if options.station_names:
         wanted = set(options.station_names)
         folders = [f for f in folders if f.name in wanted]
@@ -194,6 +211,7 @@ def reregister_site(options: RepairOptions) -> list[str]:
             dry_run=options.dry_run,
             dz_bounds=options.dz_bounds,
             root_dir=study_root,
+            semantics_dirname=options.semantics_dirname,
         )
         if options.dry_run:
             print(" ".join(command))

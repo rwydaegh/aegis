@@ -123,6 +123,22 @@ def test_a_dry_run_names_the_mesh_it_would_fit_against(tmp_path, monkeypatch):
     assert command[command.index("--out") + 1].endswith("alignment")
 
 
+def test_a_dry_run_uses_the_selected_semantic_evidence_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr(registration_repair.paths, "root", lambda: tmp_path)
+    folder = station(tmp_path, "tokyo_hachiko", "pano_00_a")
+    selected = "semantics_sam3_revision_61id"
+    (folder / selected).mkdir()
+    command = register(
+        folder,
+        tmp_path / "mesh.ply",
+        dry_run=True,
+        semantics_dirname=selected,
+    )
+
+    assert command[command.index("--semantics") + 1] == str(folder / selected / "panorama_semantics.npz")
+    assert command[command.index("--semantics-json") + 1] == str(folder / selected / "semantics.json")
+
+
 def test_the_backup_name_records_the_crop_the_old_pose_came_from():
     # A pose file carries no crop until this driver writes one, so the first
     # backup at a site is explicitly "unknown" rather than silently "130".
@@ -181,3 +197,42 @@ def test_reregister_resolves_the_canonical_f64_mesh_for_a_selected_cohort(tmp_pa
     assert changed == ["pano_00_new"]
     assert calls[0][1] == f64
     assert calls[0][2]["root_dir"] == tmp_path
+
+
+def test_registration_uses_an_explicit_versioned_semantic_directory(tmp_path, monkeypatch):
+    site = "toulouse_capitole"
+    selected = "semantics_sam3_revision_61id"
+    cohort = tmp_path / "data" / "panorama_cohorts" / "toulouse_capitole_2018-05"
+    folder = cohort / "pano_00_new"
+    semantic_dir = folder / selected
+    semantic_dir.mkdir(parents=True)
+    (folder / "pose_initial.json").write_text(json.dumps({"position_enu_m": [0.0, 0.0, 2.5]}))
+    np.savez(semantic_dir / "panorama_semantics.npz", entity=np.zeros((2, 2)))
+    (semantic_dir / "semantics.json").write_text("{}")
+
+    geometry = tmp_path / "data" / "geometry" / site
+    geometry.mkdir(parents=True)
+    mesh = geometry / "inhouse_leaf_250m_f64.ply"
+    mesh.write_bytes(b"ply\n")
+    mesh.with_suffix(".json").write_text(json.dumps({"format_version": 3}))
+
+    calls = []
+
+    def fake_register(station_dir, support_mesh, **kwargs):
+        calls.append((station_dir, support_mesh, kwargs))
+        (station_dir / "alignment").mkdir()
+        (station_dir / "alignment" / "pose_aligned.json").write_text(json.dumps({"position_enu_m": [0.0, 0.0, 2.5]}))
+        return ["align"]
+
+    monkeypatch.setattr(registration_repair, "register", fake_register)
+    changed = reregister_site(
+        RepairOptions(
+            site=site,
+            root_dir=tmp_path,
+            cohort_dir=cohort,
+            semantics_dirname=selected,
+        )
+    )
+
+    assert changed == ["pano_00_new"]
+    assert calls[0][2]["semantics_dirname"] == selected

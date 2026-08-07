@@ -22,6 +22,11 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--semantics-dirname",
+        default="semantics",
+        help="Semantic evidence directory beneath each selected panorama station",
+    )
+    parser.add_argument(
         "--dz-bounds",
         type=float,
         nargs=2,
@@ -47,6 +52,7 @@ def main() -> None:
             crop_m=args.crop_m,
             station_names=tuple(args.station) if args.station else None,
             cohort_dir=args.cohort_dir,
+            semantics_dirname=args.semantics_dirname,
             dz_bounds=tuple(args.dz_bounds) if args.dz_bounds else None,
             dry_run=args.dry_run,
             no_backup=args.no_backup,
