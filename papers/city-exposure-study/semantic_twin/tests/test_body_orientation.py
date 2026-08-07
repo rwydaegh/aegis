@@ -234,6 +234,20 @@ def test_fixed_yaw_matches_coupling_to_a_physically_rotated_asymmetric_body() ->
     np.testing.assert_allclose(actual_sab, expected_sab, rtol=1.0e-14, atol=1.0e-15)
 
 
+def test_fixed_yaw_does_not_mutate_read_only_anterior_provenance() -> None:
+    coupler = _asymmetric_coupler()
+    axis = np.array([0.0, -1.0, 0.0], dtype=np.float64)
+    axis.setflags(write=False)
+    coupler.body_anterior_axis = axis
+    before = axis.copy()
+
+    exposure, _sab = coupler.couple_measure_with_sab(_mixed_measure(), 0.83, body_yaw_deg=90.0)
+
+    assert exposure.absorbed_power_w > 0.0
+    assert not axis.flags.writeable
+    np.testing.assert_array_equal(axis, before)
+
+
 def test_route_reversal_changes_asymmetric_exposure_with_the_declared_180_degree_yaw_shift() -> None:
     from semantic_twin.walk import route_body_yaw_deg
 

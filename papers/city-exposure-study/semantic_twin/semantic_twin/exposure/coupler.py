@@ -50,7 +50,9 @@ def _body_yaw_angle(body_anterior: np.ndarray, yaw_deg: float | None) -> float:
     native_norm = float(np.linalg.norm(native))
     if native_norm <= 0.0:
         raise ValueError("body_anterior_axis must be a finite nonzero horizontal vector")
-    native /= native_norm
+    # ``BodyCoupler`` seals detected provenance read-only. Normalize into a
+    # fresh array rather than mutating that shared axis in place.
+    native = native / native_norm
     return float(np.arctan2(native[0] * target[1] - native[1] * target[0], native @ target))
 
 
