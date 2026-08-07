@@ -22,9 +22,11 @@ normal track does not need Blender.
 > measured 46x faster on Duke and 81x faster on the real-point benchmark. These
 > are stage measurements, not whole-city promises. Earlier anchors remain
 > below as historical records.
-> The integrated optimized Korenmarkt provider-corridor campaign completed 16
-> replicas over 10 standpoints in 83.37 s wall time on one A6000. This is the
-> current end-to-end anchor.
+> The integrated optimized provider-corridor campaigns currently cover five
+> cities. Korenmarkt completed 16 replicas over 10 standpoints in 83.37 s wall
+> time on one A6000. The other current city timings are listed below. These are
+> measured campaign anchors, not a claim of full estimator convergence or
+> publication finality.
 > The first comparable-city v2 Korenmarkt street-route seed took 2:13.75 for
 > 14 points. Nested-face reuse avoided 68,383,253 of 120,750,721 logical
 > adaptive-specular candidate evaluations, a 56.63% reduction.
@@ -65,12 +67,16 @@ corridor route.
 
 ## Measured and estimated timing
 
-The values below are from the Prague run with ready city inputs. They are not a
-promise for a new city.
+The values below are measured with ready city inputs. They are not a promise
+for a new city.
 
 | Work | Value | Status |
 | --- | ---: | --- |
 | Optimized Korenmarkt provider corridor | 83.37 s for 16 complete replicas over 10 standpoints, 5.21 s per walk replica | current integrated measurement |
+| Optimized Prague provider corridor | 185.68 s for 16 replicas over 22 standpoints | current integrated measurement |
+| Optimized Madrid provider corridor | 115.75 s for 16 replicas over 14 standpoints | current integrated measurement |
+| Optimized Mexico City provider corridor | 219.52 s for 64 replicas over 11 standpoints | current cached-deterministic measurement |
+| Optimized Tokyo Hachiko provider corridor | 325.76 s for 64 replicas over 16 standpoints | current cached-deterministic measurement |
 | Integrated accumulated estimator work | 61.584 s total over 160 standpoint-replica observations | current measured stage ledger |
 | Integrated stochastic, specular, body work | 42.119 s, 13.317 s, 2.041 s | current measured stage ledger |
 | 68-point standard run | 185.0 s total | measured |
@@ -85,6 +91,12 @@ promise for a new city.
 | Old final checkpoint load | 6.35 s | measured |
 | Old compressed checkpoint write | 34.42 s | measured |
 | Old growing checkpoint rewrite at 24 replicas | about 7.2 min extra | historical extrapolation, pending an integrated GPU rerun |
+
+The authenticated five-city comparison is sealed in the gitignored worktree
+artifacts `outputs/roofline_campaign/current_five_city/current_five_city.json`,
+`current_five_city.csv`, `current_five_city.pdf`, and `current_five_city.png`,
+with `current_five_city_manifest.json`. The manifest is the companion
+integrity record for those figures and tables.
 
 The 185 second standard run and the 100.37 second trace-only replica have not
 yet been split into identical stage categories. New manifests record
@@ -237,6 +249,29 @@ estimator time from 39.22 to 4.35 s. The scientific arrays were byte-identical.
 These values must not be combined with the historical Prague timing or the
 seed-compilation timing without a common stage ledger.
 
+### Current transport performance audit
+
+The certified CUDA Float64 specular broad phase leaves the existing host exact
+final kernel unchanged. It uses about 96 MiB of resident memory and produced
+byte-identical path arrays with zero lost candidates. On the real full solve,
+Mexico fell from 16.596 s to 0.694 s, or 23.9x, and Tokyo fell from 35.862 s to
+1.084 s, or 33.1x. An independent Mexico subset measured 6.8x with exact
+parity. The earlier CPU broad-phase audit filtered 97.3% of Mexico candidate
+work and 98.9% of Tokyo candidate work.
+
+The certified resident minimal CUDA reductions retain the rich and audit path
+while reducing ordinary per-ray host transfer from about 11.5 MB to reduced
+fields plus about 216 bytes of scalar metadata. Real Korenmarkt point 0 fell
+from 0.0925 s to 0.0756 s, or 1.22x. A plane microbenchmark measured 4.2x, but
+that microbenchmark result is not a city-level speedup claim. Independent rich
+parity checks were exact or within measured roundoff.
+
+The source-conditioned conservative-screen mixed-suffix estimator remains
+proposed. Its oracle promotion gates are at least 4x variance-time improvement,
+at least 10x lower zero-score frequency, no more than 2x point cost, and no
+detectable bias. It must not replace the current estimator before those gates
+pass.
+
 ## Many-city operating recipe
 
 1. Build and seal one city input package. Record all hashes and stage times.
@@ -252,10 +287,9 @@ seed-compilation timing without a common stage ledger.
 
 Multi-city readiness is tracked in [MULTICITY_CAMPAIGN_READINESS.md](MULTICITY_CAMPAIGN_READINESS.md).
 The ten-site cohort remains an intended cohort, not a completed run set. The
-provider-corridor report covers five sites, while the checked-in comparable
-route remains `registered_span_street_v1`. Tokyo's current atlas snapshot has
-10 admitted panoramas, 34,700 observed faces, 602,721 sparse texels, and
-351,154 supported texels. Do not describe the cohort as ten-city ready.
+current provider-corridor report covers five completed sites, while the
+checked-in comparable route remains `registered_span_street_v1`. Do not
+describe the intended cohort as ten-city ready.
 
 ## Benchmark protocol
 
@@ -272,17 +306,23 @@ walk-only run.
 Cold end-to-end time for a new city is unknown because acquisition,
 registration, SAM3, Vistas, depth, and fusion have not been split into stage
 measurements. The next integrated GPU run should capture those stages and the
-checkpoint ledger. The seed-independent device kernels and CUDA body coupling
-are now landed exact changes. The specular broad phase, ray and cell budgets,
-mixed-suffix estimator, and semantic-stage reductions remain validation work.
+checkpoint ledger. The seed-independent device kernels, CUDA body coupling,
+CUDA Float64 specular broad phase, and resident minimal CUDA reductions are now
+landed exact or roundoff-bounded changes. Ray and cell budgets, the
+source-conditioned mixed-suffix estimator, and semantic-stage reductions remain
+validation work.
 
 The current production path fixes the one-reflection specular limit,
 finish-only roughness, and area-weighted body mean. Prague paired outputs passed
-their final independent audit. Recovery timing remains excluded from scientific
-timing claims. See
+their historical paired-campaign audit. Recovery timing remains excluded from
+scientific timing claims. See
 [the ranked redesign](PRODUCTION_PERFORMANCE_REDESIGN.md) before treating a
 proposed performance change as a production setting.
 
 Do not describe the current performance package as proof that final physics
 are publication-ready. It is a reproducible and measured execution path that
-separates fast scientific results from optional audit evidence.
+separates fast scientific results from optional audit evidence. Median and p90
+route summaries are stable in the five-city snapshot, but rare no-direct
+points retain sampled mixed diffuse-to-specular suffix heavy tails. More brute
+replicas alone are not the remedy. Estimator redesign and paired tail
+validation remain open.

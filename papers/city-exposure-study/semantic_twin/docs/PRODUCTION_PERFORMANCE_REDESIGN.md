@@ -58,6 +58,23 @@ and all seven compared arrays were exact. Logical candidate accounting remains
 unchanged, so the reduction is a computation reduction rather than a change to
 the estimator.
 
+The current cold exact-specular audit measured the CPU broad phase filtering
+97.3% of candidate work for Mexico City and 98.9% for Tokyo. The certified CUDA
+Float64 broad phase leaves the existing host exact final kernel unchanged and
+uses about 96 MiB of resident memory. It produced byte-identical path arrays
+with zero lost candidates. On the real full solve, Mexico fell from 16.596 s to
+0.694 s, or 23.9x, and Tokyo fell from 35.862 s to 1.084 s, or 33.1x. An
+independent Mexico subset measured 6.8x with exact parity.
+
+### Resident minimal CUDA reductions
+
+The resident minimal CUDA reduction path is also landed. It retains the rich
+and audit path while reducing ordinary per-ray host transfer from about 11.5 MB
+to reduced fields plus about 216 bytes of scalar metadata. Real Korenmarkt point
+0 fell from 0.0925 s to 0.0756 s, or 1.22x. A plane microbenchmark measured
+4.2x, but that microbenchmark result is not a city-level speedup claim.
+Independent rich parity checks were exact or within measured roundoff.
+
 Tokyo exposes a useful zero-path boundary case. Standpoint 13 produced no
 accepted order-1 path at every adaptive level, but relative error around zero is
 undefined. The campaign therefore retains the 2% rule and raises only Tokyo's
@@ -84,8 +101,9 @@ The 2026-08-07 evidence snapshot reported these selections:
 | Mexico City | 52.395 | 59.367 | 15.140 |
 | Tokyo Hachiko | 72.160 | 88.313 | 12.334 |
 
-The corridor is evidence-complete for this snapshot, but it is not yet the
-comparable-city production route. The full ten-city cohort is not ready.
+The corridor is evidence-complete for this snapshot. Five provider-corridor
+campaigns have now run, but the full ten-city cohort is not ready and the
+current campaign statistics are not a claim of full estimator convergence.
 
 ## Ranked next work
 
@@ -120,18 +138,21 @@ Do not promote 30,000 rays or 512 cells merely because an early scalar check is
 close. The paired convergence evidence must be attached to the final city and
 frequency contract.
 
-### 3. Use structured sampling only after the estimator is specified
+### 3. Source-condition the mixed-suffix estimator
 
-An ambitious next estimator can use nested equal-area launch strata and
-Rao-Blackwell branch splitting at mixed material hits. It must preserve the
-exact direct and specular atoms and sample only terms that contain a diffuse
-event. The output-direction grid remains separate from launch strata.
+The next estimator proposal is a source-conditioned conservative screen for the
+mixed diffuse-to-specular suffix. It must preserve the exact direct and
+specular atoms and sample only terms that contain a diffuse event. Nested
+equal-area launch strata and Rao-Blackwell branch splitting remain possible
+implementation choices. The output-direction grid remains separate from launch
+strata.
 
-The branch-split design can increase work per accepted diffuse vertex, and the
-rare suffix currently has too few accepted events at low budgets. Build a small
-analytic and synthetic oracle first. Compare variance at equal wall time, not
-only equal ray count. Keep the current estimator as the publication baseline
-until the new estimator wins without a material or tail regression.
+Build an analytic and synthetic oracle first. Promote the proposal only if it
+achieves at least 4x variance-time improvement, at least 10x lower zero-score
+frequency, no more than 2x point cost, and no detectable bias. Compare variance
+at equal wall time, not only equal ray count. Keep the current estimator as the
+publication baseline until these gates pass without a material or tail
+regression.
 
 ### 4. Reduce semantic preparation after transport is stable
 
@@ -158,9 +179,11 @@ The pending rows are planning estimates. Landed rows report measured anchors:
 | Seed-independent kernels | landed, exact | removes roughly 14 to 20x of the affected stochastic stage in the observed Korenmarkt case, with a smaller whole-run gain |
 | CUDA body coupling | landed, exact | removes the measured body-stage bottleneck, 46x Duke and 81x real-point coupling speedups |
 | Persistent deterministic cache | landed, exact | 47.49% wall reduction in the comparable Korenmarkt benchmark |
-| Exact specular broad phase | landed, exact | 8.90x final-level survivor reduction, 1.837x full Korenmarkt deterministic-stage reduction, and 3.665x Prague point-zero reduction |
+| CUDA Float64 specular broad phase | landed, exact | Mexico real full solve 16.596 to 0.694 s, Tokyo 35.862 to 1.084 s, byte-identical arrays, zero lost candidates, and about 96 MiB resident memory |
+| Resident minimal CUDA reductions | landed, exact or roundoff-bounded | Korenmarkt point 0 0.0925 to 0.0756 s, 1.22x, with rich and audit paths retained |
 | Static transport cache split | pending | potentially large for sweeps, frequency, and source-law changes, subject to invalidation proofs |
 | Ray or cell reduction | pending science | only claim after paired convergence and equal-output checks |
+| Source-conditioned mixed-suffix screen | proposed science | requires at least 4x variance-time, at least 10x lower zero-score frequency, no more than 2x point cost, and no detectable bias |
 | Semantic view reduction | pending | likely multi-x for cold city preparation, but not a transport-speed claim |
 
 The measured stage wins should be combined with a stage ledger before making a
@@ -211,12 +234,19 @@ manifest or hashes that make a removed render reproducible.
 
 ## Current boundary
 
-Korenmarkt now has a complete optimized provider-corridor convergence campaign:
-16 replicas over 10 standpoints in 83.37 s wall time, with a 12-to-16 change of
-0.00795 dB maximum for area-mean absorbed power and 0.00663 dB maximum for
-total transfer. Its 42 sealed hashes and 93 numeric arrays passed the final
-audit. Prague has audited paired historical campaigns. The provider corridor
-report covers five sites, and
-Tokyo currently has 10 admitted panoramas with 34,700 observed atlas faces,
-602,721 sparse texels, and 351,154 supported texels. These facts do not imply
-that all ten intended cities are ready for a production run.
+The current provider-corridor campaign snapshot is:
+
+| City | Standpoints | Replicas | Wall time | Last reported total-transfer change |
+| --- | ---: | ---: | ---: | ---: |
+| Korenmarkt | 10 | 16 | 83.37 s | 12 to 16: 0.00663 dB |
+| Prague | 22 | 16 | 185.68 s | 12 to 16: 0.00640 dB |
+| Madrid | 14 | 16 | 115.75 s | 12 to 16: 0.00628 dB |
+| Mexico City | 11 | 64 | 219.52 s | 48 to 64: 0.20077 dB |
+| Tokyo Hachiko | 16 | 64 | 325.76 s | 48 to 64: 0.29756 dB |
+
+Mexico and Tokyo use cached deterministic transport work. Tokyo also has a
+separate exact 16-replica proof run of approximately 753 s wall time. Median
+and p90 route summaries are stable, but no-direct route points retain rare
+sampled mixed diffuse-to-specular suffix heavy tails. Running 256 brute-force
+replicas would not repair that estimator support. Estimator redesign and
+paired tail validation are the next scientific step.

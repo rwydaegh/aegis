@@ -2,8 +2,8 @@
 
 ## Current optimized campaign
 
-The fresh Korenmarkt `provider_corridor_v1` campaign is the current integrated
-performance and convergence anchor. It used 10 registered route standpoints,
+The fresh Korenmarkt `provider_corridor_v1` campaign is the first integrated
+current-production anchor. It used 10 registered route standpoints,
 16 IID replicas with seeds 7 through 22, 200,000 primary rays, 4,096 passive
 output cells, 457 roofline quadrature sources over 157.545 m of support, the
 atlas material binding, and CUDA level-2 body coupling.
@@ -27,6 +27,52 @@ The sealed local result is
 The output profile is `minimal_results_plus_resumable_seed_shards`, so it does
 not generate Blender artifacts.
 
+## Current five-city provider-corridor campaign
+
+The current production snapshot contains five completed provider-corridor
+campaigns. These are separate single-IID city campaigns with the same sealed
+transport contract, not a claim that the intended ten-city cohort is complete.
+
+| City | Standpoints | Replicas | Wall time | Last reported change |
+| --- | ---: | ---: | ---: | ---: |
+| Korenmarkt | 10 | 16 | 83.37 s | 12 to 16 total transfer: 0.00663 dB |
+| Prague | 22 | 16 | 185.68 s | 12 to 16 total transfer: 0.00640 dB |
+| Madrid | 14 | 16 | 115.75 s | 12 to 16 total transfer: 0.00628 dB |
+| Mexico City | 11 | 64 | 219.52 s | 48 to 64 total transfer: 0.20077 dB, mean `Sab`: 0.17070 |
+| Tokyo Hachiko | 16 | 64 | 325.76 s | 48 to 64 total transfer: 0.29756 dB, mean `Sab`: 0.28785 |
+
+Mexico and Tokyo use cached deterministic transport work. Tokyo also has a
+separate exact 16-replica proof run that took approximately 753 s wall time.
+The route median and p90 summaries are already very stable across the current
+looks. The no-direct route points retain rare sampled mixed diffuse-to-specular
+suffix heavy tails, so the campaigns are convergence evidence, not a blanket
+claim of full estimator convergence or publication finality.
+
+The certified CUDA Float64 specular broad phase leaves the host exact final
+kernel unchanged, uses about 96 MiB resident memory, and produced byte-identical
+path arrays with zero lost candidates. The real full-solve times fell from
+16.596 s to 0.694 s for Mexico City and from 35.862 s to 1.084 s for Tokyo.
+The resident minimal CUDA reduction path also passed independent rich parity.
+It reduces ordinary per-ray host transfer from about 11.5 MB to reduced fields
+plus about 216 bytes of scalar metadata. These are landed implementation
+changes, separate from the still-proposed mixed-suffix estimator redesign.
+
+Increasing every city to 256 brute-force replicas would not repair the lower
+support of that rare suffix estimator. The next methodological step is to
+redesign and validate that estimator, with paired output and tail checks, rather
+than treating a larger replica count as a substitute for a better estimator.
+
+The authenticated multicity report tool accepts only completed single-IID
+campaigns with matching identity, manifest, replica, route, and numeric-array
+checks before producing a comparison. Its sealed current five-city export is
+available in the gitignored worktree artifacts:
+
+- [JSON](../outputs/roofline_campaign/current_five_city/current_five_city.json)
+- [CSV](../outputs/roofline_campaign/current_five_city/current_five_city.csv)
+- [PDF](../outputs/roofline_campaign/current_five_city/current_five_city.pdf)
+- [PNG](../outputs/roofline_campaign/current_five_city/current_five_city.png)
+- [Manifest](../outputs/roofline_campaign/current_five_city/current_five_city_manifest.json)
+
 ## Historical paired campaign status
 
 The final code is `f5f394da`. It includes the immutable full-geometry device
@@ -35,9 +81,10 @@ moved to the command layer in `37b4498d`. Scientific paired campaign configs
 are sealed at `b985ab58`.
 
 Korenmarkt and Prague one-seed CUDA pilots passed independent audits. The
-Korenmarkt and Prague paired outputs passed their full audits. Prague has both
-modes, seeds 7 through 22, and 68 route points. Its results are final for the
-paired campaign. Recovery timing is excluded from scientific timing claims.
+Korenmarkt and Prague paired outputs remain historical sampler-comparison
+artifacts. Their results are final only for those paired campaigns, not for the
+current five-city provider-corridor campaign. Recovery timing is excluded from
+scientific timing claims.
 
 The normal result track is scalar and checkpoint based. Blender is optional and
 is not part of the numerical result contract.
@@ -148,8 +195,7 @@ The two-city paper files are:
 The hashed recovery files are [RECOVERY_PROVENANCE.json](/home/user/aegis-roofline-results-20260807T015530Z/recovery_provenance/RECOVERY_PROVENANCE.json)
 and [RECOVERY_PACKAGE_MANIFEST.sha256](/home/user/aegis-roofline-results-20260807T015530Z/recovery_provenance/RECOVERY_PACKAGE_MANIFEST.sha256).
 
-Multi-city readiness remains separate from these results. Only Korenmarkt and
-Prague are runnable, and both paired audits passed. Four sites
-require semantic rebuilds, four require route or geometry repairs, and Times
-Square is invalid under the current geometry contract. See
+Multi-city readiness remains separate from these results. Five provider-
+corridor campaigns are now complete, while the intended ten-site cohort still
+requires independent readiness checks for its remaining sites. See
 [MULTICITY_CAMPAIGN_READINESS.md](MULTICITY_CAMPAIGN_READINESS.md).

@@ -29,9 +29,14 @@ Those pages retain historical evidence and are not rewritten as archives.
   mixed-specular suffix. `max_bounces=3` is the transport budget, but it does
   not imply higher specular orders.
 - Deterministic specular candidates use the conservative mirrored-receiver
-  triangle-cone broad phase when the candidate set reaches 20,000. It uses
-  source chunks of 16 and leaves the exact Float64 solve unchanged. The
-  threshold and chunk are computational controls, not scientific parameters.
+  triangle-cone broad phase when the candidate set reaches 20,000. The
+  certified CUDA Float64 broad phase leaves the existing host exact final
+  kernel unchanged, uses about 96 MiB resident memory, and produced
+  byte-identical path arrays with zero lost candidates. On the real full solve,
+  Mexico fell from 16.596 s to 0.694 s, or 23.9x, and Tokyo fell from 35.862 s
+  to 1.084 s, or 33.1x. An independent Mexico subset measured 6.8x with exact
+  parity. The threshold and chunk are computational controls, not scientific
+  parameters.
 - The adaptive candidate budget is normally 120 million. Tokyo uses a recorded
   320 million computational cap because one standpoint has zero accepted
   order-1 paths and therefore cannot satisfy a relative convergence test around
@@ -119,6 +124,36 @@ The persistent deterministic transport cache benchmark reduced Korenmarkt wall
 time from 74.09 to 38.90 s, with scientific arrays byte-identical. Estimator
 time fell from 39.22 to 4.35 s. This benchmark is separate from the device
 kernel compilation timing above.
+
+The current provider-corridor campaign snapshot is:
+
+| City | Standpoints | Replicas | Wall time |
+| --- | ---: | ---: | ---: |
+| Korenmarkt | 10 | 16 | 83.37 s |
+| Prague | 22 | 16 | 185.68 s |
+| Madrid | 14 | 16 | 115.75 s |
+| Mexico City | 11 | 64 | 219.52 s |
+| Tokyo Hachiko | 16 | 64 | 325.76 s |
+
+Mexico and Tokyo use cached deterministic transport work. Tokyo additionally
+has a separate exact 16-replica proof run of approximately 753 s wall time.
+The current route medians and p90 summaries are stable, but no-direct points
+retain rare sampled mixed diffuse-to-specular suffix heavy tails. These runs do
+not establish full estimator convergence or publication finality. Running 256
+brute-force replicas would not repair that lower estimator support. Estimator
+redesign and paired tail validation are required next.
+
+The minimal CUDA reduction path is now certified. It retains the rich and audit
+path, but reduces the ordinary per-ray host transfer from about 11.5 MB to the
+reduced fields plus about 216 bytes of scalar metadata. Real Korenmarkt point 0
+fell from 0.0925 s to 0.0756 s, or 1.22x. A plane microbenchmark measured 4.2x,
+which must not be interpreted as a 4.2x city speedup. The reduction is exact or
+within measured roundoff in the independent rich parity checks.
+
+The source-conditioned conservative-screen mixed-suffix estimator remains a
+proposal. It must first pass an oracle promotion gate of at least 4x
+variance-time improvement, at least 10x lower zero-score frequency, no more
+than 2x point cost, and no detectable bias. It is not part of this contract.
 
 ## Linked historical records
 
