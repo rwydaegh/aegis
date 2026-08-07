@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import pathlib
 import types
 
 import numpy as np
@@ -152,6 +153,10 @@ def test_the_command_builds_package_options(tmp_path, monkeypatch):
             "1.5",
             "--out",
             str(tmp_path),
+            "--cohort-dir",
+            "data/panorama_cohorts/toulouse_capitole_2018-05",
+            "--semantics-dirname",
+            "semantics_sam3_revision",
         ]
     )
 
@@ -165,6 +170,65 @@ def test_the_command_builds_package_options(tmp_path, monkeypatch):
     assert captured["options"].max_sky_conflict == 0.4
     assert captured["options"].min_conflict_range_m == 1.5
     assert captured["options"].out_root == tmp_path
+    assert captured["options"].cohort_dir == pathlib.Path("data/panorama_cohorts/toulouse_capitole_2018-05")
+    assert captured["options"].semantics_dirname == "semantics_sam3_revision"
+
+
+def test_build_uses_selected_cohort_and_semantic_directory_for_the_binding(tmp_path, monkeypatch):
+    import trimesh
+
+    site = "toulouse_capitole"
+    cohort = tmp_path / "data" / "panorama_cohorts" / "toulouse_capitole_2018-05"
+    folder = cohort / "pano_00_new"
+    semantic_dir = folder / "semantics_sam3_revision"
+    (folder / "alignment").mkdir(parents=True)
+    semantic_dir.mkdir(parents=True)
+    (folder / "alignment" / "pose_aligned.json").write_text(json.dumps({"position_enu_m": [0.0, 0.0, 2.0]}))
+    metadata = semantic_dir / "semantics.json"
+    metadata.write_text(json.dumps({"entity_id2label": {"0": "Road"}}))
+    np.savez(semantic_dir / "panorama_semantics.npz", entity=np.zeros((2, 2), dtype=np.int16))
+
+    prior = tmp_path / "prior.json"
+    prior.write_text(json.dumps({"entity_id2label": {"0": "Road"}}))
+    mesh = tmp_path / "mesh.ply"
+    mesh.write_bytes(b"ply")
+    captured: dict[str, object] = {}
+
+    def fake_stations(_site: str, **options: object):
+        captured.update(options)
+        return ([{"station": "pano_00_new", "folder": str(folder)}], [])
+
+    def fake_cast(job: tuple):
+        captured["semantics_path"] = job[2]
+        return {
+            "station": job[5],
+            "rays": np.array([2], dtype=np.int32),
+            "transient_rays": np.array([0], dtype=np.int32),
+            "modal_class": np.array([0], dtype=np.int16),
+            "clean_rays": np.array([2], dtype=np.int32),
+            "view_transient_fraction": 0.0,
+        }
+
+    monkeypatch.setattr(site_semantics, "site_mesh", lambda *_args: mesh)
+    monkeypatch.setattr(site_semantics, "_prior_semantics", lambda: prior)
+    monkeypatch.setattr(site_semantics, "stations", fake_stations)
+    monkeypatch.setattr(site_semantics, "_cast", fake_cast)
+    monkeypatch.setattr(trimesh, "load", lambda *_args, **_kwargs: types.SimpleNamespace(area_faces=np.ones(1)))
+
+    report = site_semantics.build(
+        site,
+        site_semantics.SemanticBuildOptions(
+            out_root=tmp_path / "outputs",
+            cohort_dir=pathlib.Path("data/panorama_cohorts/toulouse_capitole_2018-05"),
+            semantics_dirname="semantics_sam3_revision",
+            workers=1,
+        ),
+    )
+
+    assert report["result"] == "written"
+    assert captured["cohort_dir"] == pathlib.Path("data/panorama_cohorts/toulouse_capitole_2018-05")
+    assert captured["semantics_dirname"] == "semantics_sam3_revision"
+    assert captured["semantics_path"] == str(semantic_dir / "panorama_semantics.npz")
 
 
 def build(root, name, *, residual=1.0):
@@ -205,6 +269,59 @@ def test_a_companion_campaign_is_read_as_the_same_site(tmp_path):
     admitted, refused = stations("korenmarkt", root=tmp_path, **GATE)
     assert refused == []
     assert [entry["station"] for entry in admitted] == ["pano_00_a", "walk_00_b", "walk_01_b", "walk_02_b"]
+
+
+def test_an_explicit_cohort_directory_replaces_the_site_cache_without_flat_fallback(tmp_path):
+    panoramas = tmp_path / "data" / "panoramas"
+    build(panoramas / "toulouse_capitole", "pano_old")
+    cohort = tmp_path / "data" / "panorama_cohorts" / "toulouse_capitole_2018-05"
+    selected = cohort / "pano_new"
+    selected.mkdir(parents=True)
+    (selected / "alignment").mkdir()
+    (selected / "alignment" / "pose_aligned.json").write_text(
+        json.dumps(pose(1.0) | {"position_enu_m": [0.0, 0.0, 2.0]})
+    )
+    write_hybrid(selected)
+    (cohort / "walk_manifest.json").write_text("{}")
+    (cohort / "pose_initial.json").write_text("{}")
+
+    admitted, refused = stations(
+        "toulouse_capitole",
+        root=tmp_path,
+        cohort_dir=pathlib.Path("data/panorama_cohorts/toulouse_capitole_2018-05"),
+        semantics_dirname="semantics_sam3_revision",
+        **GATE,
+    )
+
+    assert refused == []
+    assert [entry["station"] for entry in admitted] == ["pano_new"]
+    assert pathlib.Path(admitted[0]["folder"]) == selected
+
+
+def test_an_explicit_cohort_cannot_escape_the_study_root(tmp_path):
+    outside = tmp_path.parent / f"{tmp_path.name}_outside_cohort"
+    outside.mkdir()
+    try:
+        with pytest.raises(ValueError, match="beneath study root"):
+            stations(
+                "toulouse_capitole",
+                root=tmp_path,
+                cohort_dir=outside,
+                **GATE,
+            )
+    finally:
+        outside.rmdir()
+
+
+def test_a_missing_explicit_cohort_is_not_silently_replaced_by_the_site_cache(tmp_path):
+    build(tmp_path / "data" / "panoramas" / "toulouse_capitole", "pano_old")
+    with pytest.raises(FileNotFoundError, match="cohort directory"):
+        stations(
+            "toulouse_capitole",
+            root=tmp_path,
+            cohort_dir=pathlib.Path("data/panorama_cohorts/missing"),
+            **GATE,
+        )
 
 
 def test_a_site_without_a_companion_reads_only_its_own_directory(tmp_path):

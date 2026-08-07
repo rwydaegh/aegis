@@ -36,6 +36,8 @@ _PRIMARY_SITES = frozenset(INCLUDED_SITES[:6])
 _GEOMETRIC_SITES = frozenset(INCLUDED_SITES[6:])
 _COHORTS = frozenset({"primary_semantic_route", "geometric_extension"})
 _ROUTE_KINDS = frozenset({"panorama_links", "street_route"})
+_COORDINATE_POLICIES = frozenset({"registered_capture_positions", "cached_google_routes_only"})
+_SITE_PLACEHOLDER = "{site}"
 
 
 class CohortManifestError(ValueError):
@@ -127,44 +129,69 @@ def _site_name(entry: Any, field: str) -> str:
 
 def _validate_included_entry(entry: dict[str, Any]) -> None:
     site = entry["site"]
+    _validate_entry_identity(entry, site)
+    _validate_entry_geometry(entry, site)
+    route = _validate_entry_route(entry, site)
+    _validate_route_contract(entry, route, site)
+    if route["kind"] == "panorama_links":
+        _validate_panorama_route(route, site)
+    else:
+        _validate_street_route(route, site)
+
+
+def _validate_entry_identity(entry: dict[str, Any], site: str) -> None:
     if not isinstance(entry.get("display_name"), str) or not entry["display_name"]:
         raise CohortManifestError(f"{site} needs a display_name")
     if entry.get("cohort") not in _COHORTS:
         raise CohortManifestError(f"{site} has an unknown cohort")
+
+
+def _validate_entry_geometry(entry: dict[str, Any], site: str) -> None:
     geometry = entry.get("geometry")
     if not isinstance(geometry, dict) or not isinstance(geometry.get("config"), str):
         raise CohortManifestError(f"{site} needs a config path")
-    if not isinstance(geometry.get("mesh_glob"), str) or "{site}" in geometry["mesh_glob"]:
+    if not isinstance(geometry.get("mesh_glob"), str) or _SITE_PLACEHOLDER in geometry["mesh_glob"]:
         raise CohortManifestError(f"{site} needs a concrete mesh_glob")
+
+
+def _validate_entry_route(entry: dict[str, Any], site: str) -> dict[str, Any]:
     route = entry.get("route")
     if not isinstance(route, dict) or route.get("kind") not in _ROUTE_KINDS:
         raise CohortManifestError(f"{site} has an unknown route kind")
-    if route.get("coordinate_policy") not in {"registered_capture_positions", "cached_google_routes_only"}:
+    if route.get("coordinate_policy") not in _COORDINATE_POLICIES:
         raise CohortManifestError(f"{site} has an unsafe coordinate policy")
+    return route
+
+
+def _validate_route_contract(entry: dict[str, Any], route: dict[str, Any], site: str) -> None:
     expected_cohort = "primary_semantic_route" if site in _PRIMARY_SITES else "geometric_extension"
     expected_kind = "panorama_links" if site in _PRIMARY_SITES else "street_route"
     if entry["cohort"] != expected_cohort or route["kind"] != expected_kind:
         raise CohortManifestError(f"{site} has the wrong cohort/route contract")
-    if route["kind"] == "panorama_links":
-        required = route.get("required_inputs")
-        if not isinstance(required, list) or not required or not all(isinstance(path, str) for path in required):
-            raise CohortManifestError(f"{site} panorama route needs required_inputs")
-        if any(_unsafe_relative_path(path) for path in required):
-            raise CohortManifestError(f"{site} panorama route has an unsafe input path")
-        if route.get("coordinate_policy") != "registered_capture_positions":
-            raise CohortManifestError(f"{site} panorama route must use registered positions")
-        if "cache_glob" in route:
-            raise CohortManifestError(f"{site} panorama route must not declare a route cache")
-    else:
-        cache_glob = route.get("cache_glob")
-        if not isinstance(cache_glob, str) or "{site}" not in cache_glob or not cache_glob.endswith(".json"):
-            raise CohortManifestError(f"{site} street route needs a site-scoped JSON cache glob")
-        if _unsafe_relative_path(cache_glob):
-            raise CohortManifestError(f"{site} street route has an unsafe cache path")
-        if route.get("coordinate_policy") != "cached_google_routes_only":
-            raise CohortManifestError(f"{site} street route must use cached coordinates")
-        if "required_inputs" in route:
-            raise CohortManifestError(f"{site} street route must not invent required inputs")
+
+
+def _validate_panorama_route(route: dict[str, Any], site: str) -> None:
+    required = route.get("required_inputs")
+    if not isinstance(required, list) or not required or not all(isinstance(path, str) for path in required):
+        raise CohortManifestError(f"{site} panorama route needs required_inputs")
+    if any(_unsafe_relative_path(path) for path in required):
+        raise CohortManifestError(f"{site} panorama route has an unsafe input path")
+    if route.get("coordinate_policy") != "registered_capture_positions":
+        raise CohortManifestError(f"{site} panorama route must use registered positions")
+    if "cache_glob" in route:
+        raise CohortManifestError(f"{site} panorama route must not declare a route cache")
+
+
+def _validate_street_route(route: dict[str, Any], site: str) -> None:
+    cache_glob = route.get("cache_glob")
+    if not isinstance(cache_glob, str) or _SITE_PLACEHOLDER not in cache_glob or not cache_glob.endswith(".json"):
+        raise CohortManifestError(f"{site} street route needs a site-scoped JSON cache glob")
+    if _unsafe_relative_path(cache_glob):
+        raise CohortManifestError(f"{site} street route has an unsafe cache path")
+    if route.get("coordinate_policy") != "cached_google_routes_only":
+        raise CohortManifestError(f"{site} street route must use cached coordinates")
+    if "required_inputs" in route:
+        raise CohortManifestError(f"{site} street route must not invent required inputs")
 
 
 def _unsafe_relative_path(value: str) -> bool:
@@ -218,39 +245,55 @@ def route_readiness(
     # An explicit root wins over the manifest's inferred checkout. This is
     # useful when validating a frozen manifest against a separately staged
     # input tree, while the manifest-only form still infers its own root.
+    base = _readiness_root(manifest_path=manifest_path, root=root)
+    return tuple(_route_status(entry, base) for entry in document["included_sites"])
+
+
+def _readiness_root(*, manifest_path: Path | str | None, root: Path | str | None) -> Path:
+    # An explicit root wins over the manifest's inferred checkout. This is
+    # useful when validating a frozen manifest against a separately staged
+    # input tree, while the manifest-only form still infers its own root.
     if root is not None:
         base = Path(root)
     elif manifest_path is not None:
         base = _manifest_root(Path(manifest_path))
     else:
         base = paths.root()
-    base = base.resolve()
-    statuses: list[RouteReadiness] = []
-    for entry in document["included_sites"]:
-        site = entry["site"]
-        route = entry["route"]
-        evidence: list[str] = []
-        missing: list[str] = []
-        invalid: list[str] = []
-        if route["kind"] == "panorama_links":
-            for relative in route["required_inputs"]:
-                path = base / relative
-                if path.is_file():
-                    evidence.append(relative)
-                else:
-                    missing.append(relative)
+    return base.resolve()
+
+
+def _route_status(entry: dict[str, Any], base: Path) -> RouteReadiness:
+    site = entry["site"]
+    route = entry["route"]
+    if route["kind"] == "panorama_links":
+        evidence, missing, invalid = _panorama_evidence(route, base)
+    else:
+        evidence, missing, invalid = _street_evidence(route, site, base)
+    # A stale or malformed cache beside a valid one is an audit warning,
+    # not a reason to refuse the valid response. The caller still receives
+    # ``invalid`` so it can clean the cache before sealing a run.
+    return RouteReadiness(site, route["kind"], not missing, evidence, missing, invalid)
+
+
+def _panorama_evidence(route: dict[str, Any], base: Path) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    evidence: list[str] = []
+    missing: list[str] = []
+    for relative in route["required_inputs"]:
+        path = base / relative
+        if path.is_file():
+            evidence.append(relative)
         else:
-            pattern = route["cache_glob"].replace("{site}", site)
-            candidates = sorted(base.glob(pattern))
-            valid = [path for path in candidates if _is_valid_route_cache(path, site)]
-            evidence.extend(str(path.relative_to(base)) for path in valid)
-            invalid.extend(str(path.relative_to(base)) for path in candidates if path not in valid)
-            if not valid:
-                missing.append(pattern)
-        # A stale or malformed cache beside a valid one is an audit warning,
-        # not a reason to refuse the valid response. The caller still receives
-        # ``invalid`` so it can clean the cache before sealing a run.
-        statuses.append(
-            RouteReadiness(site, route["kind"], not missing, tuple(evidence), tuple(missing), tuple(invalid))
-        )
-    return tuple(statuses)
+            missing.append(relative)
+    return tuple(evidence), tuple(missing), ()
+
+
+def _street_evidence(
+    route: dict[str, Any], site: str, base: Path
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    pattern = route["cache_glob"].replace(_SITE_PLACEHOLDER, site)
+    candidates = sorted(base.glob(pattern))
+    valid = [path for path in candidates if _is_valid_route_cache(path, site)]
+    evidence = tuple(str(path.relative_to(base)) for path in valid)
+    invalid = tuple(str(path.relative_to(base)) for path in candidates if path not in valid)
+    missing = () if valid else (pattern,)
+    return evidence, missing, invalid

@@ -22,6 +22,11 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--concepts", type=pathlib.Path, default=paths.config_dir() / "semantic_concepts.json")
     parser.add_argument("--out", type=pathlib.Path, default=DEFAULT_OUT)
     parser.add_argument(
+        "--cohort-dir",
+        type=pathlib.Path,
+        help="explicit dated panorama cohort beneath the study root; never mixed with canonical cameras",
+    )
+    parser.add_argument(
         "--semantics-dirname",
         default="semantics",
         help="relative evidence directory selected beneath every admitted panorama folder",
@@ -42,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
         concepts=args.concepts,
         out_root=args.out,
         semantics_dirname=args.semantics_dirname,
+        cohort_dir=args.cohort_dir,
     )
     manifest = build(args.site, options)
     print(

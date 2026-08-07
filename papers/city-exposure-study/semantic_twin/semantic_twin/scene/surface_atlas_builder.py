@@ -34,6 +34,7 @@ VEGETATION_RASTERS = (
     "vegetation_subtype",
     "vegetation_confidence",
 )
+_ROW_DOT = "ij,ij->i"
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,7 @@ class SurfaceAtlasBuildOptions:
     concepts: pathlib.Path = paths.config_dir() / "semantic_concepts.json"
     out_root: pathlib.Path = DEFAULT_OUT
     semantics_dirname: str = "semantics"
+    cohort_dir: pathlib.Path | None = None
 
     @property
     def admission_gate(self) -> AdmissionGate:
@@ -89,21 +91,7 @@ def build(
     mesh = trimesh.load(mesh_path, process=False, force="mesh")
     mesh_sha256 = sha256_file_fn(mesh_path)
     gate = options.admission_gate
-    admitted, refused = stations_fn(
-        site,
-        max_residual_deg=options.max_residual_deg,
-        max_sky_conflict=options.max_sky_conflict,
-        min_conflict_range_m=options.min_conflict_range_m,
-        semantics_dirname=None if options.semantics_dirname == "semantics" else options.semantics_dirname,
-    )
-    if not admitted:
-        if options.semantics_dirname != "semantics" and refused:
-            details = "; ".join(f"{record['station']}: {', '.join(record['refused_because'])}" for record in refused)
-            raise ValueError(
-                f"{site} has no admitted panorama in selected semantic evidence directory "
-                f"{options.semantics_dirname}: {details}"
-            )
-        raise ValueError(f"{site} has no admitted panorama")
+    admitted, refused = _admitted_stations(site, options, stations_fn)
 
     catalog = ConceptCatalog.load(options.concepts)
     catalogue_record = _concept_catalogue_record(options.concepts)
@@ -112,79 +100,19 @@ def build(
     camera_records: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     for record in sorted(admitted, key=lambda value: value["station"]):
-        folder = pathlib.Path(record["folder"])
-        semantic_dir = _semantics_directory(folder, options.semantics_dirname)
-        meta_path = semantic_dir / "semantics.json"
-        semantics_path = semantic_dir / "panorama_semantics.npz"
-        artifact_reasons = _semantic_artifact_reasons(meta_path, semantics_path)
-        if artifact_reasons:
-            skipped.append({"camera_id": record["station"], "reasons": artifact_reasons})
-            continue
-        metadata = json.loads(meta_path.read_text(encoding="utf-8"))
-        _validate_catalogue_identity(
-            metadata,
-            selected=catalogue_record,
-            camera_id=record["station"],
-        )
-        current = _vocabulary(metadata, catalog)
-        if vocabulary is None:
-            vocabulary = current
-        elif not _same_vocabulary(vocabulary, current):
-            raise ValueError(f"{record['station']} carries a different semantic or material vocabulary")
-
-        pose_path = folder / "alignment" / "pose_aligned.json"
-        pose = json.loads(pose_path.read_text(encoding="utf-8"))
-        panorama_path = _panorama_path(folder)
-        camera_provenance = _camera_provenance(
-            pose_path=pose_path,
-            semantics_path=semantics_path,
-            metadata_path=meta_path,
-            panorama_path=panorama_path,
-            metadata=metadata,
-        )
-        observation, counts = _cast_camera(
+        vocabulary, camera, camera_record, skip = _process_camera(
             mesh,
-            pose,
-            semantics_path,
-            record["station"],
-            vocabulary["transient_ids"],
-            options.grid_height,
-            options.block_rows,
+            record,
+            options,
+            catalogue_record,
+            catalog,
+            vocabulary,
         )
-        reduced.append(
-            reduce_camera_observations(
-                observation,
-                triangle_count=len(mesh.faces),
-                atlas_resolution=options.atlas_resolution,
-                entity_names=vocabulary["entity_names"],
-                material_names=vocabulary["material_names"],
-                concept_names=vocabulary["concept_names"],
-                material_prior=vocabulary["material_prior"],
-                concept_material=vocabulary["concept_material"],
-                vegetation_form_names=vocabulary["vegetation_form_names"],
-                vegetation_subtype_names=vocabulary["vegetation_subtype_names"],
-            )
-        )
-        del observation
-        camera_records.append(
-            {
-                "camera_id": record["station"],
-                "folder": str(folder),
-                "semantic_evidence_directory": {
-                    "name": options.semantics_dirname,
-                    "path": str(semantic_dir),
-                },
-                "position_enu_m": pose["position_enu_m"],
-                "heading_deg": float(pose["heading_deg"]),
-                "pitch_correction_deg": float(pose.get("pitch_correction_deg", 0.0)),
-                "roll_correction_deg": float(pose.get("roll_correction_deg", 0.0)),
-                "panorama": str(panorama_path) if panorama_path is not None else None,
-                "semantics": str(semantics_path),
-                "pose": str(pose_path),
-                **camera_provenance,
-                **counts,
-            }
-        )
+        if skip is not None:
+            skipped.append(skip)
+            continue
+        reduced.append(camera)
+        camera_records.append(camera_record)
 
     if vocabulary is None or not reduced:
         raise ValueError(f"{site} has no admitted panorama with the complete hybrid material axis")
@@ -219,6 +147,7 @@ def build(
         "admission": gate.as_dict(),
         "semantic_evidence_selection": {
             "directory_name": options.semantics_dirname,
+            "cohort_directory": None if options.cohort_dir is None else str(options.cohort_dir),
             "rule": "read this relative directory directly beneath every admitted panorama folder",
             "camera_directories": [record["semantic_evidence_directory"]["path"] for record in camera_records],
         },
@@ -231,6 +160,101 @@ def build(
     }
     save_surface_atlas(atlas, npz_path, metadata=manifest_metadata, manifest_path=manifest_path)
     return json.loads(manifest_path.read_text(encoding="utf-8"))
+
+
+def _admitted_stations(site: str, options: SurfaceAtlasBuildOptions, stations_fn) -> tuple[list, list]:
+    admitted, refused = stations_fn(
+        site,
+        max_residual_deg=options.max_residual_deg,
+        max_sky_conflict=options.max_sky_conflict,
+        min_conflict_range_m=options.min_conflict_range_m,
+        cohort_dir=options.cohort_dir,
+        semantics_dirname=None if options.semantics_dirname == "semantics" else options.semantics_dirname,
+    )
+    if admitted:
+        return admitted, refused
+    if options.semantics_dirname != "semantics" and refused:
+        details = "; ".join(f"{record['station']}: {', '.join(record['refused_because'])}" for record in refused)
+        raise ValueError(
+            f"{site} has no admitted panorama in selected semantic evidence directory "
+            f"{options.semantics_dirname}: {details}"
+        )
+    raise ValueError(f"{site} has no admitted panorama")
+
+
+def _process_camera(
+    mesh: Any,
+    record: dict[str, Any],
+    options: SurfaceAtlasBuildOptions,
+    catalogue_record: dict[str, Any],
+    catalog: ConceptCatalog,
+    vocabulary: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, ReducedCameraSurfaceEvidence | None, dict[str, Any] | None, dict[str, Any] | None]:
+    folder = pathlib.Path(record["folder"])
+    semantic_dir = _semantics_directory(folder, options.semantics_dirname)
+    meta_path = semantic_dir / "semantics.json"
+    semantics_path = semantic_dir / "panorama_semantics.npz"
+    artifact_reasons = _semantic_artifact_reasons(meta_path, semantics_path)
+    if artifact_reasons:
+        return vocabulary, None, None, {"camera_id": record["station"], "reasons": artifact_reasons}
+
+    metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+    _validate_catalogue_identity(metadata, selected=catalogue_record, camera_id=record["station"])
+    current = _vocabulary(metadata, catalog)
+    if vocabulary is not None and not _same_vocabulary(vocabulary, current):
+        raise ValueError(f"{record['station']} carries a different semantic or material vocabulary")
+    vocabulary = current if vocabulary is None else vocabulary
+
+    pose_path = folder / "alignment" / "pose_aligned.json"
+    pose = json.loads(pose_path.read_text(encoding="utf-8"))
+    panorama_path = _panorama_path(folder)
+    camera_provenance = _camera_provenance(
+        pose_path=pose_path,
+        semantics_path=semantics_path,
+        metadata_path=meta_path,
+        panorama_path=panorama_path,
+        metadata=metadata,
+    )
+    observation, counts = _cast_camera(
+        mesh,
+        pose,
+        semantics_path,
+        record["station"],
+        vocabulary["transient_ids"],
+        options.grid_height,
+        options.block_rows,
+    )
+    camera = reduce_camera_observations(
+        observation,
+        triangle_count=len(mesh.faces),
+        atlas_resolution=options.atlas_resolution,
+        entity_names=vocabulary["entity_names"],
+        material_names=vocabulary["material_names"],
+        concept_names=vocabulary["concept_names"],
+        material_prior=vocabulary["material_prior"],
+        concept_material=vocabulary["concept_material"],
+        vegetation_form_names=vocabulary["vegetation_form_names"],
+        vegetation_subtype_names=vocabulary["vegetation_subtype_names"],
+    )
+    del observation
+    camera_record = {
+        "camera_id": record["station"],
+        "folder": str(folder),
+        "semantic_evidence_directory": {
+            "name": options.semantics_dirname,
+            "path": str(semantic_dir),
+        },
+        "position_enu_m": pose["position_enu_m"],
+        "heading_deg": float(pose["heading_deg"]),
+        "pitch_correction_deg": float(pose.get("pitch_correction_deg", 0.0)),
+        "roll_correction_deg": float(pose.get("roll_correction_deg", 0.0)),
+        "panorama": str(panorama_path) if panorama_path is not None else None,
+        "semantics": str(semantics_path),
+        "pose": str(pose_path),
+        **camera_provenance,
+        **counts,
+    }
+    return vocabulary, camera, camera_record, None
 
 
 def _cast_camera(
@@ -439,11 +463,11 @@ def _barycentric(triangles: np.ndarray, points: np.ndarray) -> np.ndarray:
     edge_a = triangles[:, 1] - triangles[:, 0]
     edge_b = triangles[:, 2] - triangles[:, 0]
     offset = points - triangles[:, 0]
-    aa = np.einsum("ij,ij->i", edge_a, edge_a)
-    ab = np.einsum("ij,ij->i", edge_a, edge_b)
-    bb = np.einsum("ij,ij->i", edge_b, edge_b)
-    pa = np.einsum("ij,ij->i", offset, edge_a)
-    pb = np.einsum("ij,ij->i", offset, edge_b)
+    aa = np.einsum(_ROW_DOT, edge_a, edge_a)
+    ab = np.einsum(_ROW_DOT, edge_a, edge_b)
+    bb = np.einsum(_ROW_DOT, edge_b, edge_b)
+    pa = np.einsum(_ROW_DOT, offset, edge_a)
+    pb = np.einsum(_ROW_DOT, offset, edge_b)
     denominator = aa * bb - ab * ab
     w1 = (bb * pa - ab * pb) / denominator
     w2 = (aa * pb - ab * pa) / denominator

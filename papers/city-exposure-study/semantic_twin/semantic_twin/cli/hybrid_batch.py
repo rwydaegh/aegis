@@ -29,11 +29,13 @@ import pathlib
 import tempfile
 import time
 import zipfile
-from typing import Any, Iterable
+from collections.abc import Callable, Iterable
+from typing import Any
 
 import numpy as np
 
 from .. import paths
+from ..pano_geometry import inference_views
 from ..vision.dense import MODEL as DENSE_MODEL
 from ..vision.dense import PRODUCTION_REVISION as DENSE_REVISION
 from ..vision.dense import file_digest
@@ -42,8 +44,6 @@ from ..vision.prompted import MODEL as SAM3_MODEL
 from ..vision.prompted import PRODUCTION_CONCEPT_ID_COUNT
 from ..vision.prompted import PRODUCTION_REPOSITORY_COMMIT as SAM3_REPOSITORY_COMMIT
 from ..vision.prompted import PRODUCTION_REVISION as SAM3_REVISION
-from ..pano_geometry import inference_views
-
 
 SCHEMA = "hybrid-panorama-batch-v1"
 CONTRACT_FILENAME = "hybrid_batch_contract.json"
@@ -58,6 +58,7 @@ DEFAULT_CONCEPT_THRESHOLD = 0.35
 DEFAULT_PROMPT_BATCH = 32
 DEFAULT_OUTPUT_WIDTH = 4096
 DEFAULT_GATE_MIN_PIXELS = 256
+DEFAULT_CONCEPTS_FILENAME = "semantic_concepts.json"
 
 # These values are intentionally duplicated as a small, inspectable operations
 # contract.  The runner passes the same values to PanoramaRunConfig and records
@@ -232,7 +233,7 @@ def panorama_image(station: pathlib.Path) -> pathlib.Path:
             value = path.stem.partition("_z")[2]
             return int(value) if value.isdigit() else -1
 
-        return sorted(zoomed, key=lambda path: (-zoom(path), path.name))[0]
+        return min(zoomed, key=lambda path: (-zoom(path), path.name))
 
     fallback: set[pathlib.Path] = set()
     for pattern in ("panorama*.jpg", "panorama*.jpeg", "panorama*.png"):
@@ -251,7 +252,7 @@ def pipeline_config(station: pathlib.Path, *, concepts: pathlib.Path | None = No
         model=DENSE_MODEL,
         device="cuda",
         backend="hybrid",
-        concepts=concepts or paths.config_dir() / "semantic_concepts.json",
+        concepts=concepts or paths.config_dir() / DEFAULT_CONCEPTS_FILENAME,
         view_size=DEFAULT_VIEW_SIZE,
         inference_size=DEFAULT_INFERENCE_SIZE,
         concept_resolution=DEFAULT_CONCEPT_RESOLUTION,
@@ -273,33 +274,37 @@ def _contract_for(*, concepts: pathlib.Path) -> dict[str, Any]:
     return contract
 
 
-def _metadata_contract_valid(
-    output: pathlib.Path, *, panorama: pathlib.Path, contract: dict[str, Any]
-) -> tuple[bool, str]:
+_REQUIRED_ARRAYS = frozenset({"entity", "rf_material", "material_concept", "material_source", "confidence"})
+
+
+def _load_semantic_artifacts(
+    output: pathlib.Path, *, contract: dict[str, Any]
+) -> tuple[tuple[dict[str, Any], dict[str, Any]] | None, str | None]:
     metadata_path = output / "semantics.json"
     arrays_path = output / "panorama_semantics.npz"
     views_stamp = output / "views" / "cache_settings.json"
     if not metadata_path.is_file() or not arrays_path.is_file() or not views_stamp.is_file():
-        return False, "required semantic output is missing"
+        return None, "required semantic output is missing"
     try:
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         cache = json.loads(views_stamp.read_text(encoding="utf-8"))
         with np.load(arrays_path, allow_pickle=False) as arrays:
-            required = {"entity", "rf_material", "material_concept", "material_source", "confidence"}
-            missing = sorted(required - set(arrays.files))
+            missing = sorted(_REQUIRED_ARRAYS - set(arrays.files))
             if missing:
-                return False, f"semantic array keys are missing: {', '.join(missing)}"
+                return None, f"semantic array keys are missing: {', '.join(missing)}"
             expected_shape = (contract["output_width"] // 2, contract["output_width"])
             if tuple(arrays["entity"].shape) != expected_shape:
-                return False, f"entity raster shape is {arrays['entity'].shape}, expected {expected_shape}"
-            if any(tuple(arrays[name].shape) != expected_shape for name in required):
-                return False, "semantic arrays do not share the production raster shape"
-    except (OSError, ValueError, TypeError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
-        return False, f"invalid semantic artifact: {exc}"
-
+                return None, f"entity raster shape is {arrays['entity'].shape}, expected {expected_shape}"
+            if any(tuple(arrays[name].shape) != expected_shape for name in _REQUIRED_ARRAYS):
+                return None, "semantic arrays do not share the production raster shape"
+    except (OSError, ValueError, TypeError, zipfile.BadZipFile) as exc:
+        return None, f"invalid semantic artifact: {exc}"
     if not isinstance(metadata, dict) or not isinstance(cache, dict):
-        return False, "semantic metadata or cache settings is not a JSON object"
+        return None, "semantic metadata or cache settings is not a JSON object"
+    return (metadata, cache), None
 
+
+def _validate_pipeline_metadata(metadata: dict[str, Any], *, contract: dict[str, Any]) -> tuple[bool, str]:
     if metadata.get("backend") != "hybrid" or metadata.get("model") != contract["model"]:
         return False, "semantic backend/model does not match the production contract"
     if (
@@ -309,10 +314,18 @@ def _metadata_contract_valid(
         return False, "semantic view/inference size does not match the production contract"
     if metadata.get("output_width") != contract["output_width"]:
         return False, "semantic output width does not match the production contract"
+    return True, "complete"
+
+
+def _validate_dense_revision(metadata: dict[str, Any], *, contract: dict[str, Any]) -> tuple[bool, str]:
     dense_identity = metadata.get("model_revision")
     dense_revision = dense_identity.get("resolved_revision") if isinstance(dense_identity, dict) else None
     if dense_revision != contract["dense_revision"]:
         return False, "semantic dense checkpoint revision is not the pinned production revision"
+    return True, "complete"
+
+
+def _validate_concept_metadata(metadata: dict[str, Any], *, contract: dict[str, Any]) -> tuple[bool, str]:
     concept_backend = metadata.get("concept_backend", {})
     if not isinstance(concept_backend, dict):
         return False, "semantic SAM 3 metadata is not an object"
@@ -327,6 +340,12 @@ def _metadata_contract_valid(
         return False, "semantic concept vocabulary is not an object"
     if vocabulary.get("id_count") != contract["concept_id_count"]:
         return False, "semantic concept vocabulary is not the reviewed production catalogue"
+    return True, "complete"
+
+
+def _validate_view_cache_stamp(
+    cache: dict[str, Any], *, panorama: pathlib.Path, contract: dict[str, Any]
+) -> tuple[bool, str]:
     if cache.get("model") != contract["model"] or cache.get("inference_size") != contract["inference_size"]:
         return False, "dense view cache settings do not match the production contract"
     expected_panorama_digest = file_digest(panorama)
@@ -336,7 +355,25 @@ def _metadata_contract_valid(
     cache_revision = cache_identity.get("resolved_revision") if isinstance(cache_identity, dict) else None
     if cache_revision != contract["dense_revision"]:
         return False, "dense view cache checkpoint revision is not pinned"
-    expected_view_names = tuple(view.name for view in inference_views())
+    return True, "complete"
+
+
+def _validate_concept_cache(output: pathlib.Path, *, metadata: dict[str, Any], view_name: str) -> tuple[bool, str]:
+    concept_file = output / "concepts" / f"{view_name}.npz"
+    if not concept_file.is_file():
+        return False, f"SAM 3 concept cache is incomplete: {view_name}.npz"
+    try:
+        with np.load(concept_file, allow_pickle=False) as concept:
+            if "cache_key" not in concept or str(concept["cache_key"]) != str(metadata.get("concept_cache_key")):
+                return False, f"SAM 3 concept cache key mismatch: {view_name}.npz"
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        return False, f"invalid SAM 3 concept cache {view_name}.npz: {exc}"
+    return True, "complete"
+
+
+def _validate_view_artifacts(
+    output: pathlib.Path, *, metadata: dict[str, Any], expected_view_names: tuple[str, ...]
+) -> tuple[bool, str]:
     view_records = metadata.get("views", ())
     if not isinstance(view_records, list) or len(view_records) != len(expected_view_names):
         return (
@@ -347,15 +384,34 @@ def _metadata_contract_valid(
         for suffix in (".jpg", "_labels.npy", "_confidence.npy"):
             if not (output / "views" / f"{view_name}{suffix}").is_file():
                 return False, f"view cache is incomplete: {view_name}{suffix}"
-        concept_file = output / "concepts" / f"{view_name}.npz"
-        if not concept_file.is_file():
-            return False, f"SAM 3 concept cache is incomplete: {view_name}.npz"
-        try:
-            with np.load(concept_file, allow_pickle=False) as concept:
-                if "cache_key" not in concept or str(concept["cache_key"]) != str(metadata.get("concept_cache_key")):
-                    return False, f"SAM 3 concept cache key mismatch: {view_name}.npz"
-        except (OSError, ValueError, zipfile.BadZipFile) as exc:
-            return False, f"invalid SAM 3 concept cache {view_name}.npz: {exc}"
+        valid, reason = _validate_concept_cache(output, metadata=metadata, view_name=view_name)
+        if not valid:
+            return False, reason
+    return True, "complete"
+
+
+def _metadata_contract_valid(
+    output: pathlib.Path, *, panorama: pathlib.Path, contract: dict[str, Any]
+) -> tuple[bool, str]:
+    artifacts, reason = _load_semantic_artifacts(output, contract=contract)
+    if reason is not None:
+        return False, reason
+    if artifacts is None:
+        return False, "semantic artifact loader returned no artifacts"
+    metadata, cache = artifacts
+    checks: tuple[Callable[[], tuple[bool, str]], ...] = (
+        lambda: _validate_pipeline_metadata(metadata, contract=contract),
+        lambda: _validate_dense_revision(metadata, contract=contract),
+        lambda: _validate_concept_metadata(metadata, contract=contract),
+        lambda: _validate_view_cache_stamp(cache, panorama=panorama, contract=contract),
+        lambda: _validate_view_artifacts(
+            output, metadata=metadata, expected_view_names=tuple(view.name for view in inference_views())
+        ),
+    )
+    for check in checks:
+        valid, reason = check()
+        if not valid:
+            return False, reason
     return True, "complete"
 
 
@@ -441,6 +497,84 @@ def _sidecar(
     }
 
 
+def _new_station_row(station: pathlib.Path, *, previous: dict[str, Any] | None = None) -> dict[str, Any]:
+    output = station / SEMANTICS_DIRNAME
+    row = dict(previous or {})
+    row.update({"station": str(station), "output": str(output), "updated_at": _utc_now()})
+    return row
+
+
+def _persist_job(
+    path: pathlib.Path,
+    document: dict[str, Any],
+    ordered_rows: list[dict[str, Any]],
+    original_rows: list[dict[str, Any]],
+    *,
+    current: dict[str, Any] | None = None,
+) -> None:
+    """Persist completed rows plus an optional in-flight row atomically."""
+    processed = ordered_rows + ([current] if current is not None else [])
+    seen = {row.get("station") for row in processed}
+    document["stations"] = processed + [row for row in original_rows if row.get("station") not in seen]
+    document["updated_at"] = _utc_now()
+    _write_json_atomic(path, document)
+
+
+def _prepare_station(
+    station: pathlib.Path,
+    *,
+    row: dict[str, Any],
+    concepts: pathlib.Path,
+    contract: dict[str, Any],
+) -> tuple[dict[str, Any], PanoramaRunConfig | None]:
+    """Validate a station and return either a skip row or a runnable config."""
+    if not station.is_dir():
+        raise FileNotFoundError(f"station directory does not exist: {station}")
+    complete, reason = complete_output(station, concepts=concepts, expected_contract=contract)
+    if complete:
+        row.update({"status": "skipped_complete", "reason": reason, "elapsed_seconds": 0.0})
+        return row, None
+    config = pipeline_config(station, concepts=concepts)
+    row["input_panorama"] = str(config.panorama)
+    row["status"] = "running"
+    return row, config
+
+
+def _run_and_finalize(
+    station: pathlib.Path,
+    *,
+    row: dict[str, Any],
+    config: PanoramaRunConfig,
+    concepts: pathlib.Path,
+    contract: dict[str, Any],
+    started: float,
+) -> dict[str, Any]:
+    """Run one station and write its versioned sidecar after validation."""
+    run(config)
+    output = station / SEMANTICS_DIRNAME
+    output.mkdir(parents=True, exist_ok=True)
+    valid, reason = _metadata_contract_valid(output, panorama=config.panorama, contract=contract)
+    if not valid:
+        raise RuntimeError(f"pipeline returned without a complete production output: {reason}")
+    sidecar = output / CONTRACT_FILENAME
+    _write_json_atomic(sidecar, _sidecar(station, panorama=config.panorama, output=output, contract=contract))
+    valid, reason = complete_output(station, concepts=concepts, expected_contract=contract)
+    if not valid:
+        raise RuntimeError(f"output sidecar failed self-validation: {reason}")
+    row.update({"status": "completed", "reason": reason})
+    row["elapsed_seconds"] = round(time.perf_counter() - started, 3)
+    return row
+
+
+def _summary(station_dirs: list[pathlib.Path], rows: list[dict[str, Any]]) -> dict[str, int]:
+    return {
+        "total": len(station_dirs),
+        "completed": sum(row.get("status") == "completed" for row in rows),
+        "skipped_complete": sum(row.get("status") == "skipped_complete" for row in rows),
+        "failed": sum(row.get("status") == "failed" for row in rows),
+    }
+
+
 def execute(
     *,
     walk_manifest: pathlib.Path | None = None,
@@ -450,73 +584,57 @@ def execute(
     fail_fast: bool = False,
 ) -> dict[str, Any]:
     """Run or resume a batch and return its JSON-serialisable job document."""
-    concept_path = (concepts or paths.config_dir() / "semantic_concepts.json").expanduser().resolve()
+    concept_path = (concepts or paths.config_dir() / DEFAULT_CONCEPTS_FILENAME).expanduser().resolve()
     if not concept_path.is_file():
         raise FileNotFoundError(f"semantic concept catalogue is missing: {concept_path}")
     contract = _contract_for(concepts=concept_path)
     source = (walk_manifest or stations_file).expanduser().resolve()  # type: ignore[union-attr]
     station_dirs = read_station_sources(walk_manifest=walk_manifest, stations_file=stations_file)
-    document = _load_job(job_manifest.expanduser().resolve(), contract=contract, source=source)
+    job_path = job_manifest.expanduser().resolve()
+    document = _load_job(job_path, contract=contract, source=source)
     original_rows = [row for row in document.get("stations", []) if isinstance(row, dict)]
     rows = {row.get("station"): row for row in original_rows}
     ordered_rows: list[dict[str, Any]] = []
 
-    def persist_rows(current: dict[str, Any], *, append: bool = False) -> None:
-        processed = ordered_rows + ([current] if append else [])
-        seen = {row.get("station") for row in processed}
-        document["stations"] = processed + [row for row in original_rows if row.get("station") not in seen]
-        document["updated_at"] = _utc_now()
-        _write_json_atomic(job_manifest.expanduser().resolve(), document)
-
     for station in station_dirs:
-        output = station / SEMANTICS_DIRNAME
-        row = dict(rows.get(str(station), {}))
-        row.update({"station": str(station), "output": str(output), "updated_at": _utc_now()})
+        row = _new_station_row(station, previous=rows.get(str(station)))
         started = time.perf_counter()
         try:
-            if not station.is_dir():
-                raise FileNotFoundError(f"station directory does not exist: {station}")
-            complete, reason = complete_output(station, concepts=concept_path, expected_contract=contract)
-            if complete:
-                row.update({"status": "skipped_complete", "reason": reason, "elapsed_seconds": 0.0})
+            row, config = _prepare_station(
+                station,
+                row=row,
+                concepts=concept_path,
+                contract=contract,
+            )
+            if config is None:
                 ordered_rows.append(row)
-                persist_rows(row)
+                _persist_job(job_path, document, ordered_rows, original_rows)
                 continue
-            config = pipeline_config(station, concepts=concept_path)
-            row["input_panorama"] = str(config.panorama)
-            row["status"] = "running"
-            persist_rows(row)
-            run(config)
-            output.mkdir(parents=True, exist_ok=True)
-            valid, validation_reason = _metadata_contract_valid(output, panorama=config.panorama, contract=contract)
-            if not valid:
-                raise RuntimeError(f"pipeline returned without a complete production output: {validation_reason}")
-            sidecar = output / CONTRACT_FILENAME
-            _write_json_atomic(sidecar, _sidecar(station, panorama=config.panorama, output=output, contract=contract))
-            valid, validation_reason = complete_output(station, concepts=concept_path, expected_contract=contract)
-            if not valid:
-                raise RuntimeError(f"output sidecar failed self-validation: {validation_reason}")
-            row.update({"status": "completed", "reason": validation_reason})
-        except Exception as exc:  # noqa: BLE001 - one failed station must be recorded and resumable
+            _persist_job(job_path, document, ordered_rows, original_rows, current=row)
+            row = _run_and_finalize(
+                station,
+                row=row,
+                config=config,
+                concepts=concept_path,
+                contract=contract,
+                started=started,
+            )
+        except Exception as exc:
             row.update({"status": "failed", "error": f"{type(exc).__name__}: {exc}"})
             row["elapsed_seconds"] = round(time.perf_counter() - started, 3)
             ordered_rows.append(row)
-            persist_rows(row)
+            _persist_job(job_path, document, ordered_rows, original_rows)
             if fail_fast:
                 raise
             continue
-        row["elapsed_seconds"] = round(time.perf_counter() - started, 3)
+        if "elapsed_seconds" not in row:
+            row["elapsed_seconds"] = round(time.perf_counter() - started, 3)
         ordered_rows.append(row)
-        persist_rows(row)
+        _persist_job(job_path, document, ordered_rows, original_rows)
     document["finished_at"] = _utc_now()
-    document["summary"] = {
-        "total": len(station_dirs),
-        "completed": sum(row.get("status") == "completed" for row in ordered_rows),
-        "skipped_complete": sum(row.get("status") == "skipped_complete" for row in ordered_rows),
-        "failed": sum(row.get("status") == "failed" for row in ordered_rows),
-    }
+    document["summary"] = _summary(station_dirs, ordered_rows)
     document["updated_at"] = _utc_now()
-    _write_json_atomic(job_manifest.expanduser().resolve(), document)
+    _write_json_atomic(job_path, document)
     return document
 
 
@@ -531,7 +649,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--concepts",
         type=pathlib.Path,
-        default=paths.config_dir() / "semantic_concepts.json",
+        default=paths.config_dir() / DEFAULT_CONCEPTS_FILENAME,
         help="reviewed semantic concept catalogue (the production default is pinned)",
     )
     parser.add_argument("--fail-fast", action="store_true", help="stop after the first station failure")

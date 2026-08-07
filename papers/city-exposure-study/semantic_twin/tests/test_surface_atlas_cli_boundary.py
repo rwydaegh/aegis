@@ -53,3 +53,33 @@ def test_legacy_main_keeps_the_historical_summary(monkeypatch, capsys) -> None:
     assert captured["site"] == "korenmarkt"
     assert isinstance(captured["options"], build_surface_atlas.SurfaceAtlasBuildOptions)
     assert capsys.readouterr().out == "wrote 12 observed triangles from 2 cameras to /tmp/atlas.npz\n"
+
+
+def test_surface_atlas_cli_threads_cohort_and_semantics_selection(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_build(site: str, options: build_surface_atlas.SurfaceAtlasBuildOptions) -> dict[str, object]:
+        captured["site"] = site
+        captured["options"] = options
+        return {"atlas": {"observed_triangle_count": 1}, "camera_ids": [], "artifact": {"path": "atlas.npz"}}
+
+    monkeypatch.setattr(build_surface_atlas, "build", fake_build)
+
+    assert (
+        build_surface_atlas.main(
+            [
+                "--site",
+                "toulouse_capitole",
+                "--cohort-dir",
+                "data/panorama_cohorts/toulouse_capitole_2018-05",
+                "--semantics-dirname",
+                "semantics_sam3_revision",
+            ]
+        )
+        == 0
+    )
+
+    options = captured["options"]
+    assert isinstance(options, build_surface_atlas.SurfaceAtlasBuildOptions)
+    assert options.cohort_dir == pathlib.Path("data/panorama_cohorts/toulouse_capitole_2018-05")
+    assert options.semantics_dirname == "semantics_sam3_revision"

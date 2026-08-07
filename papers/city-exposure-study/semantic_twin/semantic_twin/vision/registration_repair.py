@@ -83,36 +83,81 @@ def stations(
     path, so a registration run cannot silently mix an old set with a newly
     acquired one merely because both happen to be under ``data/panoramas``.
     """
-    study_root = paths.root() if root_dir is None else root_dir
+    study_root = _study_root(root_dir)
+    panorama_root = _station_root(site, study_root, root_dir=root_dir, cohort_dir=cohort_dir)
+    return [
+        folder
+        for folder in _candidate_station_directories(panorama_root)
+        if _has_registration_evidence(folder, semantics_dirname)
+    ]
+
+
+def _study_root(root_dir: pathlib.Path | None) -> pathlib.Path:
+    """Return the root used for resolving an explicit cohort and subprocesses."""
+    return paths.root() if root_dir is None else root_dir
+
+
+def _station_root(
+    site: str,
+    study_root: pathlib.Path,
+    *,
+    root_dir: pathlib.Path | None,
+    cohort_dir: pathlib.Path | None,
+) -> pathlib.Path:
+    """Resolve one canonical site set or one explicitly selected cohort."""
     if cohort_dir is None:
-        root = paths.panorama_set(site) if root_dir is None else study_root / "data" / "panoramas" / site
+        root = _canonical_station_root(site, study_root, root_dir=root_dir)
+        error = f"no panorama directory for {site}"
     else:
-        root = pathlib.Path(cohort_dir).expanduser()
-        if not root.is_absolute():
-            root = study_root / root
-        root = root.resolve()
+        root = _explicit_cohort_root(cohort_dir, study_root)
+        error = f"no cohort directory at {root}"
     if not root.is_dir():
-        if cohort_dir is None:
-            raise SystemExit(f"no panorama directory for {site}")
-        raise SystemExit(f"no cohort directory at {root}")
-    found = sorted(f for f in root.glob("pano_*") if f.is_dir())
-    if not found and (root / INITIAL_POSE_NAME).exists():
-        found = [root]
-    ready = []
-    for folder in found:
-        if not (folder / INITIAL_POSE_NAME).exists():
-            continue
-        try:
-            semantics = semantic_evidence_directory(folder, semantics_dirname)
-        except ValueError as exc:
-            raise SystemExit(
-                "--semantics-dirname must be a relative path that is non-symlinked and physically beneath each "
-                "panorama folder"
-            ) from exc
-        if not (semantics / "panorama_semantics.npz").exists():
-            continue
-        ready.append(folder)
-    return ready
+        raise SystemExit(error)
+    return root
+
+
+def _canonical_station_root(
+    site: str,
+    study_root: pathlib.Path,
+    *,
+    root_dir: pathlib.Path | None,
+) -> pathlib.Path:
+    if root_dir is None:
+        return paths.panorama_set(site)
+    return study_root / "data" / "panoramas" / site
+
+
+def _explicit_cohort_root(cohort_dir: pathlib.Path, study_root: pathlib.Path) -> pathlib.Path:
+    root = pathlib.Path(cohort_dir).expanduser()
+    if not root.is_absolute():
+        root = study_root / root
+    return root.resolve()
+
+
+def _candidate_station_directories(root: pathlib.Path) -> list[pathlib.Path]:
+    """List named panorama folders, accepting a single top-level station."""
+    found = sorted(folder for folder in root.glob("pano_*") if folder.is_dir())
+    if found or not (root / INITIAL_POSE_NAME).exists():
+        return found
+    return [root]
+
+
+def _has_registration_evidence(folder: pathlib.Path, semantics_dirname: str) -> bool:
+    """Whether a station has both the initial pose and selected segmentation."""
+    if not (folder / INITIAL_POSE_NAME).exists():
+        return False
+    semantics = _semantic_directory(folder, semantics_dirname)
+    return (semantics / "panorama_semantics.npz").exists()
+
+
+def _semantic_directory(folder: pathlib.Path, semantics_dirname: str) -> pathlib.Path:
+    try:
+        return semantic_evidence_directory(folder, semantics_dirname)
+    except ValueError as exc:
+        raise SystemExit(
+            "--semantics-dirname must be a relative path that is non-symlinked and physically beneath each "
+            "panorama folder"
+        ) from exc
 
 
 def panorama_image(folder: pathlib.Path) -> pathlib.Path | None:
