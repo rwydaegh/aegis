@@ -129,7 +129,7 @@ def test_execute_writes_ledger_and_skips_only_after_sidecar(monkeypatch, tmp_pat
     def fake_config(path: pathlib.Path, *, concepts: pathlib.Path | None = None):
         return SimpleNamespace(panorama=path / "panorama_z5.jpg", out=path / hybrid_batch.SEMANTICS_DIRNAME)
 
-    def fake_run(config):
+    def fake_run(config, *, session):
         calls.append(config.panorama)
         config.out.mkdir(parents=True, exist_ok=True)
         (config.out / "semantics.json").write_text("{}")
@@ -137,6 +137,7 @@ def test_execute_writes_ledger_and_skips_only_after_sidecar(monkeypatch, tmp_pat
         valid_sidecar["value"] = True
 
     monkeypatch.setattr(hybrid_batch, "pipeline_config", fake_config)
+    monkeypatch.setattr(hybrid_batch, "PanoramaModelSession", lambda config: object())
     monkeypatch.setattr(hybrid_batch, "run", fake_run)
     monkeypatch.setattr(hybrid_batch, "_metadata_contract_valid", lambda *args, **kwargs: (True, "complete"))
 
@@ -155,3 +156,71 @@ def test_execute_writes_ledger_and_skips_only_after_sidecar(monkeypatch, tmp_pat
     assert calls == [station / "panorama_z5.jpg"]
     assert second["summary"]["skipped_complete"] == 1
     assert second["stations"][0]["status"] == "skipped_complete"
+
+
+def test_skip_only_batch_never_constructs_a_model_session(monkeypatch, tmp_path):
+    station = _station(tmp_path, "pano_00_a")
+    source = tmp_path / "stations.txt"
+    source.write_text(f"{station.name}\n")
+    concepts = tmp_path / "concepts.json"
+    concepts.write_text("{}")
+
+    monkeypatch.setattr(hybrid_batch, "complete_output", lambda *args, **kwargs: (True, "complete"))
+
+    def forbidden_session(config):
+        raise AssertionError("a skip-only batch must not load semantic models")
+
+    monkeypatch.setattr(hybrid_batch, "PanoramaModelSession", forbidden_session)
+    result = hybrid_batch.execute(
+        stations_file=source,
+        walk_manifest=None,
+        job_manifest=tmp_path / "job.json",
+        concepts=concepts,
+    )
+
+    assert result["summary"] == {"total": 1, "completed": 0, "skipped_complete": 1, "failed": 0}
+
+
+def test_batch_reuses_one_session_for_every_runnable_station(monkeypatch, tmp_path):
+    stations = [_station(tmp_path, name) for name in ("pano_00_a", "pano_01_b")]
+    source = tmp_path / "stations.txt"
+    source.write_text("\n".join(station.name for station in stations))
+    concepts = tmp_path / "concepts.json"
+    concepts.write_text("{}")
+    completed: set[pathlib.Path] = set()
+    constructed: list[object] = []
+    received: list[object] = []
+
+    def fake_config(path: pathlib.Path, *, concepts: pathlib.Path | None = None):
+        return SimpleNamespace(panorama=path / "panorama_z5.jpg", out=path / hybrid_batch.SEMANTICS_DIRNAME)
+
+    def fake_session(config):
+        session = object()
+        constructed.append(session)
+        return session
+
+    def fake_run(config, *, session):
+        received.append(session)
+        config.out.mkdir(parents=True, exist_ok=True)
+        completed.add(config.out.parent)
+
+    monkeypatch.setattr(hybrid_batch, "pipeline_config", fake_config)
+    monkeypatch.setattr(hybrid_batch, "PanoramaModelSession", fake_session)
+    monkeypatch.setattr(hybrid_batch, "run", fake_run)
+    monkeypatch.setattr(hybrid_batch, "_metadata_contract_valid", lambda *args, **kwargs: (True, "complete"))
+    monkeypatch.setattr(
+        hybrid_batch,
+        "complete_output",
+        lambda station, **kwargs: (station in completed, "complete" if station in completed else "missing"),
+    )
+
+    result = hybrid_batch.execute(
+        stations_file=source,
+        walk_manifest=None,
+        job_manifest=tmp_path / "job.json",
+        concepts=concepts,
+    )
+
+    assert len(constructed) == 1
+    assert received == [constructed[0], constructed[0]]
+    assert result["summary"] == {"total": 2, "completed": 2, "skipped_complete": 0, "failed": 0}

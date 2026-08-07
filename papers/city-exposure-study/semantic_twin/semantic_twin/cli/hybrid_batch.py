@@ -39,7 +39,7 @@ from ..pano_geometry import inference_views
 from ..vision.dense import MODEL as DENSE_MODEL
 from ..vision.dense import PRODUCTION_REVISION as DENSE_REVISION
 from ..vision.dense import file_digest
-from ..vision.panorama import PanoramaRunConfig, run
+from ..vision.panorama import PanoramaModelSession, PanoramaRunConfig, run
 from ..vision.prompted import MODEL as SAM3_MODEL
 from ..vision.prompted import PRODUCTION_CONCEPT_ID_COUNT
 from ..vision.prompted import PRODUCTION_REPOSITORY_COMMIT as SAM3_REPOSITORY_COMMIT
@@ -548,9 +548,10 @@ def _run_and_finalize(
     concepts: pathlib.Path,
     contract: dict[str, Any],
     started: float,
+    session: PanoramaModelSession,
 ) -> dict[str, Any]:
     """Run one station and write its versioned sidecar after validation."""
-    run(config)
+    run(config, session=session)
     output = station / SEMANTICS_DIRNAME
     output.mkdir(parents=True, exist_ok=True)
     valid, reason = _metadata_contract_valid(output, panorama=config.panorama, contract=contract)
@@ -595,6 +596,7 @@ def execute(
     original_rows = [row for row in document.get("stations", []) if isinstance(row, dict)]
     rows = {row.get("station"): row for row in original_rows}
     ordered_rows: list[dict[str, Any]] = []
+    session: PanoramaModelSession | None = None
 
     for station in station_dirs:
         row = _new_station_row(station, previous=rows.get(str(station)))
@@ -611,6 +613,8 @@ def execute(
                 _persist_job(job_path, document, ordered_rows, original_rows)
                 continue
             _persist_job(job_path, document, ordered_rows, original_rows, current=row)
+            if session is None:
+                session = PanoramaModelSession(config)
             row = _run_and_finalize(
                 station,
                 row=row,
@@ -618,6 +622,7 @@ def execute(
                 concepts=concept_path,
                 contract=contract,
                 started=started,
+                session=session,
             )
         except Exception as exc:
             row.update({"status": "failed", "error": f"{type(exc).__name__}: {exc}"})
