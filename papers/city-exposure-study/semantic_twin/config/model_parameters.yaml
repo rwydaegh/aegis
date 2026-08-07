@@ -40,6 +40,52 @@ parameters:
       status: canonical
       affects_published_results: true
       conflicts: none
+    comparable_city_v2_production:
+      value:
+        crop_m: 250
+        frequency_hz: 15000000000.0
+        rays: 200000
+        launch_sampling: iid
+        passive_output_cells: 4096
+        passive_cells_are_launch_bins: false
+        max_bounces: 3
+        direct_transport: exact
+        diffuse_transport: stochastic_next_event
+        mixed_transport: stochastic_next_event
+        all_specular: {method: adaptive, order: 1}
+        mixed_specular_suffix: {method: sampled, samples_per_eligible_diffuse_vertex: 1, seed_offset: 2000}
+        logical_specular_candidate_budget: 120000000
+        specular_candidate_chunk: 262144
+        specular_refinement_relative_tolerance: 0.02
+        source_edge_length: {baseline: physical_3d_edge_length, sensitivity: horizontal_projected_edge_length}
+        roughness: {production: finish_only, quadrature: historical_sensitivity, masonry_two_level: research_only, rcwa: research_only}
+        body_coupling_level: 2
+      units: "m, Hz, rays, output cells, interactions, candidates, tolerance, and policy names"
+      source: "docs/CURRENT_PRODUCTION_CONTRACT.md:9-35; config/roofline_campaign_korenmarkt_comparable_pilot_cuda.json:21-71"
+      scope: comparable_city v2 production transport and body contract
+      status: canonical
+      affects_published_results: true
+      conflicts: "4096 is a passive output-direction count, not a launch-bin stratification; rotated Fibonacci launch remains a diagnostic"
+    comparable_city_v2_contract:
+      value:
+        schema: city-cohort-manifest-v2
+        cohort: comparable_city
+        intended_sites: 10
+        panorama_acquisitions: 9
+        quota_pending_sites: [krakow_rynek]
+        primary_material_mode: atlas
+        production_material_mode: atlas
+        route_contract: registered_span_street_v1
+        route_radius_m: 90.0
+        route_stride_m: 6.0
+        times_square_policy: excluded
+        excluded_site: newyork_timessquare
+      units: "counts, m, and contract policy names"
+      source: "config/city_cohort_manifest.json:2-16; config/roofline_campaign_korenmarkt_comparable_pilot_cuda.json:21-24; docs/CURRENT_PRODUCTION_CONTRACT.md:37-46"
+      scope: comparable_city v2 membership, route, and material contract
+      status: canonical
+      affects_published_results: true
+      conflicts: "Krakow is an intended member but remains quota-pending; Times Square is retained only as an explicit invalid-geometry exclusion"
     maximum_bounces:
       value: 3
       units: interactions
@@ -388,6 +434,14 @@ parameters:
       status: canonical
       affects_published_results: true
       conflicts: "production rejects any other immutable SAM 3 weights/source pair and any semantic catalogue mutation even when it keeps 61 IDs; Mask2Former also accepts only its reviewed repository and exact commit"
+    semantic_session_parity:
+      value: {device: A6000, independent_p00_s: 116.981, shared_p00_p01_total_s: 199.228, scientific_arrays_exact: true, exact_fields: [scientific_panorama_arrays, concept_cache_arrays, prompt_gate, normalised_metadata]}
+      units: "device identity, seconds, and parity policy"
+      source: docs/CURRENT_PRODUCTION_CONTRACT.md:48-53
+      scope: live Mask2Former and SAM 3 session-reuse validation
+      status: diagnostic
+      affects_published_results: false
+      conflicts: "measured live validation anchors, not a universal per-panorama timing or a production free parameter"
     skyline_registration:
       value: {seeds: [714261, 1, 2, 3, 5, 8, 13, 21], bins: 1024, minimum_distance_m: 8.0, smoothing_size: 11, smoothing_percentile: 90.0, robust_quantile: 0.8, orientation_prior_weight: 0.001}
       units: "m, bins, fraction, dimensionless"
@@ -687,6 +741,17 @@ parameters:
       conflicts: "max_bounces=3 is a transport interaction cap, not three specular reflections. Exactly one specular order is configured and higher specular orders are absent. The sampled suffix uses one sample per eligible diffuse vertex. Pilot and paired campaign artifacts have separate acceptance and timing records. Prague paired timing is excluded because recovery mixes timing rules."
 
   runtime_and_visualisation:
+    comparable_runtime_anchors:
+      value:
+        timing_kind: measured_stage_anchors
+        korenmarkt: {cold_one_seed_s: 155.73, warm_two_seed_total_s: 147.79, points: 13}
+        prague: {dry_run_s: 47.96, dry_run_points: 68, full_cold_seed_s: 2063.05, points: 68, deterministic_all_specular_s: 1584.75, stochastic_transport_s: 308.66, body_coupling_s: 119.95}
+      units: "seconds, points, and timing provenance"
+      source: docs/CURRENT_PRODUCTION_CONTRACT.md:55-62
+      scope: comparable_city v2 implementation timing observations
+      status: diagnostic
+      affects_published_results: false
+      conflicts: "measured hardware and stage anchors, not free runtime parameters or universal city timing promises"
     sealed_exposure_generation:
       value: {format_version: 1, generation_id_hex_chars: 32, sealed_artifacts: [locations, spectra], manifest_commit_record: true, same_generation_required: true, required_by: [reuse, angular_convergence, blender_export]}
       units: "format version, digest characters, and policy"

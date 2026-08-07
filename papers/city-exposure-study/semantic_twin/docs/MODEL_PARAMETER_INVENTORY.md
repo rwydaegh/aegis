@@ -27,7 +27,7 @@ reported 214 Python files and 19 JSON configuration files, but this document
 does not claim that every current source file has been manually reviewed. The
 latest pass directly reviewed the two Sionna transport modules, four Sionna CLI
 modules, five Sionna figure scripts, and the final sealed exposure manifest. The
-YAML currently contains 76 parameter entries.
+YAML currently contains 80 parameter entries.
 Generated manifests are evidence of a run. They do not become executable
 defaults.
 
@@ -117,6 +117,7 @@ means it changes results only when that mode or study is selected.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Transport crop | 250 m | `RunConfig.crop_m` | production trace | canonical | yes | 130, 140, 200, 250 m roles | Trace crop, not acquisition radius. |
 | Transport frequency | 15e9 Hz | `RunConfig.frequency_hz` | propagation | canonical | yes | none | Main study band. |
+| Comparable-city v2 transport | 250 m, 15 GHz, 200000 IID rays, 4096 passive output cells, exact direct, stochastic diffuse/mixed next-event, adaptive order-1 all-specular plus sampled mixed suffix, 120000000 logical candidates, 262144 chunk, 0.02 tolerance, one suffix sample with offset 2000, finish-only roughness, physical 3D edge-length baseline, level-2 body | `parameters.study_transport.comparable_city_v2_production` | comparable production transport and coupling | canonical | yes | horizontal projected edge length is a sensitivity; 4096 cells are not launch bins | Current contract aggregate. |
 | Bounce budget | 3 interactions | `RunConfig.max_bounces`, `DEFAULT_MAX_BOUNCES` | propagation | canonical | yes | studies use 4 and order 8 | Evidence-led hard cap. |
 | Roulette and ray lift | 0.05 probability, 0.001 m | `RunConfig.roulette_floor`, `.ray_epsilon_m` | transport | canonical | conditional/yes | tracer defaults match | Roulette is inactive at shipped cap. |
 | Sampling | 200000 rays, 400000 batch, 512 cells, 18 bands, seed 7 | `RunConfig.{rays,batch,local_cells,exit_bands,seed}` | production Monte Carlo | canonical/default | yes | generic 512-cell grid is a default. The roofline pilot uses 4096 cells. Direct tracer uses 400000 and seed 0 | Batch changes seeded draws above one batch. |
@@ -141,6 +142,7 @@ means it changes results only when that mode or study is selected.
 | Camera, fishnet, facade, texture | 90 deg, 1536 px, confidence 0.35, 384 px crops, 140 m texture | named CLI/module settings | evidence | default | yes | 0.35 has two meanings | Separate image stages. |
 | Registration and depth | seeds, 1024 bins, 4 deg gate, depth sigma/gates | `register.py`, depth modules, CLI | evidence QA | default | yes | 4 deg repeated | Determines which evidence is accepted. |
 | Production semantic identity | 60 prompts, 61 raster IDs including ID 0, exact SAM 3 weights, source, and catalogue digests above, Mask2Former commit `4772b6bf101d91f2534c106dc524d906aeb3c68a` | `semantic_concepts.json`, `vocabulary.py`, `prompted.py`, `dense.py`, `build_surface_atlas.py` | semantic evidence | canonical | yes | another immutable SAM pair or same-count catalogue edit is refused | Mask2Former verifies the reviewed snapshot, then loads processor and weights from that local snapshot only. Production uses an explicitly selected versioned panorama directory. |
+| Semantic session parity | A6000 live parity, independent p00 116.981 s, shared p00+p01 199.228 s, scientific arrays exact | `parameters.registration_and_depth_qa.semantic_session_parity` | semantic session reuse validation | diagnostic | no | measured validation anchor, not a universal timing claim | Exact fields include scientific panorama arrays, concept-cache arrays, prompt gate, and normalized metadata. |
 | Main and next-event CLIs | 250 m, 200000 rays, 15 GHz, seed 7 and source inputs | `run_exposure.py`, `run_next_event.py` | study launch | default | yes | mirrors RunConfig | CLI front doors. |
 | Roofline sampled-specular pilots and paired campaign | Pilot code `0844eadde0308ff8dfeda7142ec3903165f5a053`. Korenmarkt and Prague, 250 m crop, atlas, full panorama-link route, route-tangent yaw, 200000 rays, 400000 batch, 4096 cells, 15 GHz, seed 7, curve 1e-4 m, top-edge tolerance 0.25 m, specular order exactly 1, candidate budget 120000000, chunk 262144, relative tolerance 0.02, sampled suffix one sample per eligible diffuse vertex with offset 2000. Paired config commit `b985ab58` uses IID and Fibonacci modes, seeds 7-22, and looks 4, 8, 12, and 16 | `config/roofline_campaign_*_pilot_cuda_sampled_specular.json`, `config/roofline_campaign_*_convergence_cuda_{iid,rotated_fibonacci}.json`, `semantic_twin/exposure/roofline_setup.py`, `semantic_twin/walk/orientation.py` | committed roofline body-exposure pilots and paired sampling campaign | diagnostic | yes | max_bounces=3 is a transport interaction cap, not three specular reflections. Higher specular orders are absent | Korenmarkt and Prague one-seed CUDA pilots passed independent audits. Korenmarkt and Prague paired campaigns passed full audit. Prague has 49 hash-valid manifest entries per mode, seeds 7-22, 68x56024 body arrays, and no orphan files. Fibonacci is not adopted. See [roofline campaign results](ROOFLINE_CAMPAIGN_RESULTS.md). |
 | Diagnostic CLIs | crop, bounce, monostatic, substreet, foliage profiles | named scripts | diagnostics | diagnostic | conditional | ray and seed variants | Must not replace production profile. |
@@ -154,10 +156,12 @@ means it changes results only when that mode or study is selected.
 | Sionna figure selection | 50k/100k controlled budgets, depths 1-3, 200k city budget, 1 mm-10 cm lift sweep, 3k/6k full-city budgets, 0.1 dB rules | five `make_sionna_*.py` scripts | figure input and runtime reduction | diagnostic | no | values select generated experiments, they are not solver defaults | Runtime plots drop one seed and use warmed time times median variance. |
 | Blender input exposure | sealed generation `2a77cecc897f4177b1c5938866a26264`, 4096 cells, 1600000 rays, 400000 batch, seed 7, CUDA DrJit | high-resolution exposure manifest and Blender input validator | high-resolution exposure and available Blender input | canonical | yes | convergence reference remains 512 cells and 200000 rays | The exposure triple is verified. A rebuilt Blender bundle is not asserted here. |
 | Sealed exposure output | format 1, 32-character generation ID, hashed locations and spectra, manifest committed last | `execution.py`, `reuse.py`, `angular_convergence.py`, Blender `exporter.py` | output publication | canonical | no | old or mixed triples have no valid seal | Reuse, angular convergence, and Blender export require the same sealed locations, spectra, and manifest generation. |
+| Comparable runtime anchors | Korenmarkt cold one-seed 155.73 s, warm two-seed total 147.79 s for 13 points; Prague dry 47.96 s for 68 points, full cold 2063.05 s with 1584.75 s deterministic all-specular, 308.66 s stochastic transport, and 119.95 s body coupling | `parameters.runtime_and_visualisation.comparable_runtime_anchors` | measured implementation timing | diagnostic | no | measured stage anchors, not free runtime parameters | Values are hardware-specific observations. |
 | GPU and runtime | parity 200000 rays, fixed seed, tolerances, network and solver budgets | `gpu_parity.py`, acquisition and masonry CLIs | QA/runtime | diagnostic/default | no/conditional | local cells 256 in parity | Parity checks implementation. |
 | Visualisation | Blender radii, 64/96 samples, image dimensions | render CLIs | presentation | default | no | display radii differ | No physical result change. |
 | Blender bundle identity | bundle schema v1, 64-character shared identity, payload plus manifest | `viz/blender/payload.py`, `exporter.py` | artifact publication | canonical | no | old unstamped pairs are historical | Crossed or partially replaced pairs are rejected. |
 | Blender evidence family | check 250 m v2, fused, then unversioned, require one mesh, pose, view set, and image shape | `viz/blender/exporter.py` | evidence display | canonical | no | an incomplete first existing family stops selection | The selected fishnet names its matching mesh-depth directory. Incompatible optional layers are excluded. |
+| Comparable-city v2 contract | Ten intended sites, nine panorama acquisitions, Krakow quota-pending, all primary materials atlas, registered-span street v1 route, 90 m radius and 6 m stride, Times Square excluded | `parameters.study_transport.comparable_city_v2_contract` | cohort membership and route contract | canonical | yes | does not duplicate per-site scenario JSON | Readiness remains an independent gate before execution. |
 | Site scenarios | all location, crop, frequency, geometry, screening leaves | 11 site JSON files | site provenance | canonical | yes | several radius meanings | Keep per-site records distinct. |
 | Semantic catalogue | material priors and attributes | `semantic_concepts.json` | material binding | canonical | yes | priors are not confidence scores | Image labels map to RF materials. |
 | Historical atlas production provenance | 250 m, 15 GHz, 200000 rays, 512 cells, seed 7, 13 traced locations, 8x8 atlas | old `joint_atlas_250m_r8` and `pilot_korenmarkt_walk_drjit_atlas_v1_15ghz` files | pre-repair record | legacy | conditional | atlas lacks pinned versioned semantics, exposure lacks `output_generation` | Kept for provenance. Rebuild before current convergence or Blender work. |
@@ -166,7 +170,7 @@ means it changes results only when that mode or study is selected.
 ## Coverage check
 
 Run the following from this directory. It parses the YAML and checks that every
-machine-readable parameter entry has all required fields. The final `76` is the
+machine-readable parameter entry has all required fields. The final `80` is the
 current entry count.
 
 ```bash
@@ -200,7 +204,7 @@ def walk(value):
 walk(data["parameters"])
 assert entries and all(required <= entry.keys() for entry in entries)
 assert {entry["status"] for entry in entries} <= allowed
-assert len(entries) == 76
+assert len(entries) == 80
 print(f"YAML parsed, {len(entries)} parameter entries covered")
 PY
 ```
