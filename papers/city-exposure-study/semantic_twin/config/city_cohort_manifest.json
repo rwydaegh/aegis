@@ -1,0 +1,183 @@
+{
+  "schema": "city-cohort-manifest-v1",
+  "study": "city-exposure-study",
+  "version": 1,
+  "contract": {
+    "included_site_count": 10,
+    "crop_m": 250,
+    "minimum_mesh_format_version": 3,
+    "route_policy": "A route is an input contract. Read coordinates from the registered panorama/link graph or a cached Google Routes response; never synthesize them in this manifest.",
+    "times_square_policy": "excluded"
+  },
+  "included_sites": [
+    {
+      "site": "korenmarkt",
+      "display_name": "Korenmarkt, Ghent",
+      "cohort": "primary_semantic_route",
+      "geometry": {
+        "config": "config/korenmarkt.json",
+        "mesh_glob": "data/geometry/korenmarkt/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "panorama_links",
+        "coordinate_policy": "registered_capture_positions",
+        "required_inputs": [
+          "outputs/site_semantics/korenmarkt/walk_semantic_250m.json",
+          "outputs/city_screening/screening.json",
+          "outputs/walk_korenmarkt_saturation/walk_selection.json"
+        ]
+      }
+    },
+    {
+      "site": "prague_staromestske",
+      "display_name": "Staromestske namesti, Prague",
+      "cohort": "primary_semantic_route",
+      "geometry": {
+        "config": "config/prague_staromestske.json",
+        "mesh_glob": "data/geometry/prague_staromestske/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "panorama_links",
+        "coordinate_policy": "registered_capture_positions",
+        "required_inputs": [
+          "outputs/site_semantics/prague_staromestske/walk_semantic_250m.json",
+          "outputs/city_screening/screening.json"
+        ]
+      }
+    },
+    {
+      "site": "brussels_grandplace",
+      "display_name": "Grand-Place, Brussels",
+      "cohort": "primary_semantic_route",
+      "geometry": {
+        "config": "config/brussels_grandplace.json",
+        "mesh_glob": "data/geometry/brussels_grandplace/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "panorama_links",
+        "coordinate_policy": "registered_capture_positions",
+        "required_inputs": [
+          "outputs/site_semantics/brussels_grandplace/walk_semantic_250m.json",
+          "outputs/city_screening/screening.json"
+        ]
+      }
+    },
+    {
+      "site": "madrid_plazamayor",
+      "display_name": "Plaza Mayor, Madrid",
+      "cohort": "primary_semantic_route",
+      "geometry": {
+        "config": "config/madrid_plazamayor.json",
+        "mesh_glob": "data/geometry/madrid_plazamayor/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "panorama_links",
+        "coordinate_policy": "registered_capture_positions",
+        "required_inputs": [
+          "outputs/site_semantics/madrid_plazamayor/walk_semantic_250m.json",
+          "outputs/city_screening/screening.json"
+        ]
+      }
+    },
+    {
+      "site": "mexico_zocalo",
+      "display_name": "Zocalo, Mexico City",
+      "cohort": "primary_semantic_route",
+      "geometry": {
+        "config": "config/mexico_zocalo.json",
+        "mesh_glob": "data/geometry/mexico_zocalo/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "panorama_links",
+        "coordinate_policy": "registered_capture_positions",
+        "required_inputs": [
+          "outputs/site_semantics/mexico_zocalo/walk_semantic_250m.json",
+          "outputs/city_screening/screening.json"
+        ]
+      }
+    },
+    {
+      "site": "tokyo_hachiko",
+      "display_name": "Hachiko square, Tokyo",
+      "cohort": "primary_semantic_route",
+      "geometry": {
+        "config": "config/tokyo_hachiko.json",
+        "mesh_glob": "data/geometry/tokyo_hachiko/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "panorama_links",
+        "coordinate_policy": "registered_capture_positions",
+        "required_inputs": [
+          "outputs/site_semantics/tokyo_hachiko/walk_semantic_250m.json",
+          "outputs/city_screening/screening.json"
+        ]
+      }
+    },
+    {
+      "site": "london_trafalgar",
+      "display_name": "Trafalgar Square, London",
+      "cohort": "geometric_extension",
+      "geometry": {
+        "config": "config/london_trafalgar.json",
+        "mesh_glob": "data/geometry/london_trafalgar/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "street_route",
+        "coordinate_policy": "cached_google_routes_only",
+        "cache_glob": "data/street_routes/{site}_*.json"
+      }
+    },
+    {
+      "site": "milan_duomo",
+      "display_name": "Piazza del Duomo, Milan",
+      "cohort": "geometric_extension",
+      "geometry": {
+        "config": "config/milan_duomo.json",
+        "mesh_glob": "data/geometry/milan_duomo/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "street_route",
+        "coordinate_policy": "cached_google_routes_only",
+        "cache_glob": "data/street_routes/{site}_*.json"
+      }
+    },
+    {
+      "site": "krakow_rynek",
+      "display_name": "Rynek Glowny, Krakow",
+      "cohort": "geometric_extension",
+      "geometry": {
+        "config": "config/krakow_rynek.json",
+        "mesh_glob": "data/geometry/krakow_rynek/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "street_route",
+        "coordinate_policy": "cached_google_routes_only",
+        "cache_glob": "data/street_routes/{site}_*.json"
+      }
+    },
+    {
+      "site": "toulouse_capitole",
+      "display_name": "Place du Capitole, Toulouse",
+      "cohort": "geometric_extension",
+      "geometry": {
+        "config": "config/toulouse_capitole.json",
+        "mesh_glob": "data/geometry/toulouse_capitole/inhouse_leaf_250m*.ply"
+      },
+      "route": {
+        "kind": "street_route",
+        "coordinate_policy": "cached_google_routes_only",
+        "cache_glob": "data/street_routes/{site}_*.json"
+      }
+    }
+  ],
+  "excluded_sites": [
+    {
+      "site": "newyork_timessquare",
+      "display_name": "Times Square, New York",
+      "config": "config/newyork_timessquare.json",
+      "status": "excluded",
+      "reason_code": "invalid_geometry",
+      "reason": "The current support mesh contains mirror-glass reconstruction artefacts and substantial sub-street geometry. Do not run this site until a replacement mesh passes scientific geometry review."
+    }
+  ]
+}
