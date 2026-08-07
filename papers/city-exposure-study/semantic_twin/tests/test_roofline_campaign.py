@@ -224,6 +224,32 @@ def test_reference_normalization_cancels_d_ref_and_keeps_exact_four_pi():
     assert incident.sum() == pytest.approx(100.0 * 0.25 / (4.0 * np.pi))
 
 
+def test_comparable_campaign_opt_in_separates_route_and_material_mode(tmp_path):
+    with pytest.raises(ValueError, match="requires route_contract"):
+        RooflineCampaignConfig(
+            site="korenmarkt",
+            cohort="comparable_city",
+            material_mode="atlas",
+            output_dir=tmp_path / "missing-route",
+            planned_seeds=(1,),
+        )
+
+    primary = RooflineCampaignConfig(
+        site="korenmarkt",
+        cohort="comparable_city",
+        route_contract="registered_span_street_v1",
+        material_mode="atlas",
+        output_dir=tmp_path / "primary",
+        planned_seeds=(1,),
+    )
+    control = dataclasses.replace(primary, output_dir=tmp_path / "control", material_mode="geometric")
+    assert primary.identity_dict()["route_contract"] == "registered_span_street_v1"
+    assert control.material_mode == "geometric"
+
+    with pytest.raises(ValueError, match="supports atlas primary runs"):
+        dataclasses.replace(primary, material_mode="semantic")
+
+
 @pytest.mark.parametrize(
     ("attribute", "value"),
     (

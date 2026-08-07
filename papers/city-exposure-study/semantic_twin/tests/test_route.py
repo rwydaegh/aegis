@@ -9,11 +9,15 @@ would otherwise inherit from the walk.
 
 from __future__ import annotations
 
+import hashlib
 import itertools
+import json
 
 import numpy as np
 import pytest
 
+from semantic_twin.acquire.cache import route_key
+from semantic_twin.walk import site as walk_site
 from semantic_twin.walk.ground import ground_under_camera
 from semantic_twin.walk.links import (
     LinkGraph,
@@ -26,11 +30,13 @@ from semantic_twin.walk.ordering import EXACT_ORDER_LIMIT, _held_karp, _nearest_
 from semantic_twin.walk.route import (
     HEAD_HEIGHT_M,
     PanoramaRoute,
+    admitted_route_positions,
     build_panorama_route,
+    load_admitted_stations,
     panorama_walk,
     register_road_leg,
 )
-from semantic_twin.walk.site import densify
+from semantic_twin.walk.site import densify, street_route_request
 from semantic_twin.walk.grid import build_walk
 from semantic_twin.walk.ground import ground_height
 from semantic_twin.walk.model import Walk
@@ -202,6 +208,77 @@ def test_the_route_direction_does_not_depend_on_the_input_order():
     backward = order_along_links(names, graph)
     assert [names[i] for i in backward["order"]] == ["n0", "n1", "n2", "n3"]
     assert forward["road_length_m"] == pytest.approx(backward["road_length_m"])
+
+
+def test_street_request_is_read_only_and_keyed_by_registered_span(monkeypatch, tmp_path):
+    monkeypatch.setattr(walk_site, "site_anchor", lambda *_args, **_kwargs: (51.0, 3.0))
+    cameras = np.array([[-10.0, 0.0, 2.5], [0.0, 3.0, 2.5], [20.0, 0.0, 2.5]])
+
+    chosen, waypoints, cache, optimise = street_route_request("square", cameras, root=tmp_path)
+
+    assert chosen == [0, 2]
+    assert optimise is False
+    assert cache == tmp_path / "data" / "street_routes" / f"square_{route_key(waypoints, False)}.json"
+    assert not cache.exists()
+
+
+def test_toulouse_isolated_cohort_relocates_and_keeps_capture_identity_gates(tmp_path):
+    capture_id = "4CxfyuveHLZwX5MG_full_capture"
+    station = f"pano_00_{capture_id[:16]}"
+    cohort = tmp_path / "data" / "panorama_cohorts" / "toulouse_capitole_2018-05" / station
+    cohort.mkdir(parents=True)
+    metadata = json.dumps({"panoId": capture_id, "date": "2018-05"}, separators=(",", ":")).encode()
+    (cohort / "metadata.json").write_bytes(metadata)
+    report = tmp_path / "outputs" / "site_semantics" / "toulouse_capitole" / "walk_semantic_250m.json"
+    report.parent.mkdir(parents=True)
+    report.write_text(
+        json.dumps(
+            {
+                "stations_admitted": [
+                    {
+                        "station": station,
+                        "folder": f"/remote/gpu/checkout/data/panorama_cohorts/toulouse_capitole_2018-05/{station}",
+                        "provider": "google_streetview",
+                        "pano_id": capture_id,
+                        "metadata_sha256": hashlib.sha256(metadata).hexdigest(),
+                        "position_enu_m": [1.0, 2.0, 2.5],
+                    }
+                ]
+            }
+        )
+    )
+
+    stations = load_admitted_stations("toulouse_capitole", root=tmp_path)
+
+    assert len(stations) == 1
+    assert stations[0]["folder"] == str(cohort)
+    assert stations[0]["node"] == capture_id
+    assert stations[0]["provider"] == "google_streetview"
+    assert stations[0]["folder_provenance"].startswith("/remote/gpu/checkout/")
+
+    (cohort / "metadata.json").write_text(json.dumps({"panoId": "lookalike"}))
+    with pytest.raises(ValueError, match="metadata SHA-256 mismatch"):
+        load_admitted_stations("toulouse_capitole", root=tmp_path)
+
+
+def test_exact_route_positions_apply_live_radius_and_fragment_gates(monkeypatch, tmp_path):
+    records = [
+        station("near_a", "a", (0.0, 0.0)),
+        station("near_b", "b", (20.0, 0.0)),
+        station("far", "far", (120.0, 0.0)),
+        station("orphan", "orphan", (10.0, 5.0)),
+    ]
+    graph = LinkGraph(
+        position={record["node"]: record["camera_enu_m"][:2] for record in records},
+        neighbours={"a": ("b",), "b": ("a", "far"), "far": ("b",), "orphan": ()},
+        provenance={},
+    )
+    monkeypatch.setattr("semantic_twin.walk.route.load_admitted_stations", lambda *_args, **_kwargs: records)
+    monkeypatch.setattr("semantic_twin.walk.route.load_link_graph", lambda *_args, **_kwargs: graph)
+
+    positions = admitted_route_positions("square", root=tmp_path, radius_m=90.0)
+
+    assert positions == pytest.approx(np.array([[0.0, 0.0, 2.5], [20.0, 0.0, 2.5]]))
 
 
 def test_the_order_does_not_cut_the_corner_the_road_goes_round():

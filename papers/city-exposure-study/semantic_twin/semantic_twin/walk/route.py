@@ -192,6 +192,27 @@ def _one_fragment(
     return [r for r in kept if r["node"] in chosen], groups
 
 
+def _probe_route_ground(
+    geometry: Any,
+    kept: list[dict[str, Any]],
+    xy: np.ndarray,
+    camera_z: np.ndarray,
+    *,
+    probe_from: str,
+    probe_z_m: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    if probe_from not in ("camera", "sky"):
+        raise ValueError("probe_from is 'camera' or 'sky'")
+    if probe_from == "camera":
+        ground, up = ground_under_camera(geometry, xy, camera_z)
+    else:
+        ground, up = ground_height(geometry, xy, probe_z_m)
+    if not np.isfinite(ground).all():
+        missing = [kept[index]["name"] for index in np.flatnonzero(~np.isfinite(ground))]
+        raise RuntimeError(f"no ground under {missing}, so the camera stands outside this crop")
+    return ground, up
+
+
 def build_panorama_route(
     geometry: Any,
     stations: Sequence[Mapping[str, Any]],
@@ -249,17 +270,16 @@ def build_panorama_route(
     ordering = order_along_links([r["node"] for r in kept], graph)
     kept = [kept[i] for i in ordering["order"]]
 
-    if probe_from not in ("camera", "sky"):
-        raise ValueError("probe_from is 'camera' or 'sky'")
     xy = np.array([r["camera_enu_m"][:2] for r in kept])
     camera_z = np.array([r["camera_enu_m"][2] for r in kept])
-    if probe_from == "camera":
-        ground, up = ground_under_camera(geometry, xy, camera_z)
-    else:
-        ground, up = ground_height(geometry, xy, probe_z_m)
-    if not np.isfinite(ground).all():
-        missing = [kept[i]["name"] for i in np.flatnonzero(~np.isfinite(ground))]
-        raise RuntimeError(f"no ground under {missing}, so the camera stands outside this crop")
+    ground, up = _probe_route_ground(
+        geometry,
+        kept,
+        xy,
+        camera_z,
+        probe_from=probe_from,
+        probe_z_m=probe_z_m,
+    )
 
     heads = np.column_stack([xy, ground + head_height_m])
     free = clearance(geometry, heads, clearance_samples, rng)
@@ -415,19 +435,24 @@ def _registered_station_location(selected: Site, station: str, base: pathlib.Pat
 
 
 def _recorded_station_location(station: str, recorded_folder: str, base: pathlib.Path) -> pathlib.Path:
-    """Relocate an unregistered fixture path below the active study root."""
+    """Relocate an isolated capture below one of the two admitted data roots."""
     parts = pathlib.PurePath(recorded_folder).parts
-    markers = [index for index in range(len(parts) - 1) if parts[index : index + 2] == ("data", "panoramas")]
+    roots = (("data", "panoramas"), ("data", "panorama_cohorts"))
+    markers = [index for index in range(len(parts) - 1) if any(parts[index : index + 2] == marker for marker in roots)]
     if len(markers) != 1:
         raise ValueError(
-            f"station {station!r} has no registered imagery set and its recorded folder is not under data/panoramas"
+            f"station {station!r} has no registered imagery set and its recorded folder is not under "
+            "data/panoramas or data/panorama_cohorts"
         )
     relative = pathlib.Path(*parts[markers[0] :])
-    if len(relative.parts) < 4 or relative.parts[:2] != ("data", "panoramas"):
+    if len(relative.parts) < 4 or relative.parts[:2] not in roots:
         raise ValueError(
-            f"station {station!r} has no registered imagery set and its recorded folder is not under data/panoramas"
+            f"station {station!r} has no registered imagery set and its recorded folder is not under "
+            "data/panoramas or data/panorama_cohorts"
         )
     candidate = base / relative
+    if not candidate.resolve().is_relative_to(base.resolve()):
+        raise ValueError(f"station {station!r} recorded capture directory escapes the active study root")
     if candidate.name != station:
         raise ValueError(f"station {station!r} does not match the recorded capture directory {candidate.name!r}")
     return candidate
@@ -451,6 +476,9 @@ def _station_location(
     try:
         selected = Site.get(site)
     except KeyError:
+        candidate = _recorded_station_location(station, recorded_folder, base)
+        return candidate, None, True
+    if not selected.imagery:
         candidate = _recorded_station_location(station, recorded_folder, base)
         return candidate, None, True
     return _registered_station_location(selected, station, base)
@@ -603,7 +631,7 @@ def load_admitted_stations(site: str, *, root: pathlib.Path | None = None, repor
     out = []
     for entry in entries:
         station = str(entry["station"])
-        recorded_folder = str(entry["folder"])
+        recorded_folder = str(entry.get("folder_relative", entry["folder"]))
         folder, registered_provider, identity_in_directory = _station_location(site, station, recorded_folder, base)
         expected_legacy_id = None
         if not _has_frozen_capture_identity(entry):
@@ -677,3 +705,21 @@ def load_link_graph(
     for other in parts[1:]:
         graph = graph.merge(other)
     return bridge_components(graph, bridge_m)
+
+
+def admitted_route_positions(
+    site: str,
+    *,
+    root: pathlib.Path,
+    report: str = "walk_semantic_250m.json",
+    radius_m: float = 90.0,
+    fragment: int = 0,
+    bridge_m: float = 0.0,
+) -> np.ndarray:
+    """Registered cameras surviving the live route's read-only admission steps."""
+    stations = load_admitted_stations(site, root=root, report=report)
+    graph = load_link_graph(site, root=root, bridge_m=bridge_m)
+    dropped: list[dict[str, Any]] = []
+    kept = _admit(stations, graph, centre_xy=(0.0, 0.0), radius_m=radius_m, dropped=dropped)
+    kept, _ = _one_fragment(kept, graph, fragment=fragment, dropped=dropped)
+    return np.asarray([record["camera_enu_m"] for record in kept], dtype=np.float64)

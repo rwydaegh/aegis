@@ -13,6 +13,13 @@ from typing import Any, Callable, Literal
 
 import numpy as np
 
+from ..cohort import (
+    COMPARABLE_COHORT,
+    campaign_readiness,
+    default_manifest_path,
+    load_manifest,
+    validate_study_membership,
+)
 from ..illumination import build_source_set, silhouette
 from ..runconfig import NextEventConfig, RunConfig
 from ..transport.device_tracer import DeviceEscapeTracer
@@ -32,18 +39,8 @@ from .roofline_campaign import (
     seal_transport_provenance,
 )
 
-PRIMARY_SEMANTIC_SITES = frozenset(
-    {
-        "brussels_grandplace",
-        "korenmarkt",
-        "madrid_plazamayor",
-        "mexico_zocalo",
-        "prague_staromestske",
-        "tokyo_hachiko",
-    }
-)
-GEOMETRIC_EXTENSION_SITES = frozenset({"krakow_rynek", "london_trafalgar", "milan_duomo", "newyork_timessquare"})
 JSON_SUFFIX = ".json"
+COHORT_MANIFEST_FILENAME = "city_cohort_manifest.json"
 
 
 def _validate_positive_finite(value: float, message: str) -> None:
@@ -187,12 +184,49 @@ def _validate_setup_specular_contract(setup: RooflineSetupConfig) -> None:
         raise ValueError("resident device order-one transport requires specular_suffix_mode=sampled")
 
 
+def _setup_manifest(setup: RooflineSetupConfig) -> dict[str, Any]:
+    manifest_path = setup.study_root / "config" / COHORT_MANIFEST_FILENAME
+    if not manifest_path.is_file():
+        if setup.campaign.cohort == COMPARABLE_COHORT:
+            raise FileNotFoundError(f"comparable campaign manifest is missing: {manifest_path}")
+        manifest_path = default_manifest_path()
+    return load_manifest(manifest_path)
+
+
+def _validate_comparable_setup(setup: RooflineSetupConfig, manifest: dict[str, Any], entry: dict[str, Any]) -> None:
+    contract_crop_m = int(manifest["contract"]["crop_m"])
+    if setup.run.crop_m != contract_crop_m:
+        raise ValueError(f"comparable cohort requires the manifest crop_m={contract_crop_m}")
+    route_radius_m = float(manifest["contract"]["route_radius_m"])
+    if setup.run.walk_radius_m != route_radius_m:
+        raise ValueError(f"comparable cohort requires the manifest walk_radius_m={route_radius_m}")
+    if setup.run.materials == "atlas":
+        declared_atlas = (setup.study_root / entry["materials"]["atlas_npz"]).resolve()
+        selected_atlas = declared_atlas if setup.run.atlas_npz is None else Path(setup.run.atlas_npz).resolve()
+        if selected_atlas != declared_atlas:
+            raise ValueError("comparable primary run must use the atlas declared by its cohort manifest")
+    readiness = campaign_readiness(
+        setup.run.site,
+        setup.campaign.cohort,
+        setup.campaign.route_contract or "",
+        setup.campaign.material_mode,
+        document=manifest,
+        root=setup.study_root,
+    )
+    if not readiness.ready:
+        raise ValueError(f"comparable campaign inputs are not ready: {readiness.as_dict()}")
+
+
 def _validate_setup_cohort_contract(setup: RooflineSetupConfig) -> None:
+    manifest = _setup_manifest(setup)
+    entry = validate_study_membership(setup.run.site, setup.campaign.cohort, manifest)
     if setup.campaign.cohort == "primary_semantic_route":
-        if setup.run.site not in PRIMARY_SEMANTIC_SITES or setup.run.walk_path != "links":
-            raise ValueError("primary cohort requires one of six admitted panorama-link routes")
-    elif setup.run.site not in GEOMETRIC_EXTENSION_SITES or setup.run.walk_path != "street":
-        raise ValueError("geometric extension requires one of four declared street-route sites")
+        if setup.run.walk_path != "links":
+            raise ValueError("legacy primary cohort requires a panorama-link route")
+    elif setup.run.walk_path != "street":
+        raise ValueError(f"cohort {setup.campaign.cohort!r} requires a declared street route")
+    if setup.campaign.cohort == COMPARABLE_COHORT:
+        _validate_comparable_setup(setup, manifest, entry)
     if setup.run.next_event.drop_clutter:
         raise ValueError(
             "drop_clutter is not silently approximated here; provide a sealed support-face clutter mask first"
@@ -364,7 +398,20 @@ def _automatic_input_paths(
         if path.is_file()
     )
     _add_route_input_paths(root, run, candidates)
-    if run.walk_path == "street":
+    if setup.campaign.cohort == COMPARABLE_COHORT:
+        manifest_path = root / "config" / COHORT_MANIFEST_FILENAME
+        readiness = campaign_readiness(
+            run.site,
+            setup.campaign.cohort,
+            setup.campaign.route_contract or "",
+            setup.campaign.material_mode,
+            manifest_path=manifest_path,
+            root=root,
+        )
+        candidates.add(manifest_path)
+        candidates.update(root / relative for relative in readiness.route.evidence)
+        candidates.update(root / relative for relative in readiness.materials.evidence)
+    elif run.walk_path == "street":
         candidates.update((root / "data" / "street_routes").glob(f"{run.site}_*{JSON_SUFFIX}"))
     _add_material_input_paths(setup, environment, candidates)
     _add_declared_input_paths(setup, root, candidates)
@@ -405,6 +452,18 @@ def prepare_roofline_campaign(
     expected_kind = PANORAMA_LINKS if setup.campaign.cohort == "primary_semantic_route" else STREET_ROUTE
     if walk.kind != expected_kind:
         raise ValueError(f"prepared walk kind {walk.kind!r} does not match cohort route {expected_kind!r}")
+    if setup.campaign.cohort == COMPARABLE_COHORT:
+        readiness = campaign_readiness(
+            setup.run.site,
+            setup.campaign.cohort,
+            setup.campaign.route_contract or "",
+            setup.campaign.material_mode,
+            manifest_path=setup.study_root / "config" / COHORT_MANIFEST_FILENAME,
+            root=setup.study_root,
+        )
+        actual_cache = walk.provenance.get("street_route", {}).get("cache_file")
+        if actual_cache != readiness.route.expected_cache:
+            raise ValueError("prepared street route does not use the manifest's exact registered endpoint cache")
     if len(walk) == 0:
         raise ValueError("prepared route is empty")
     next_event = setup.run.next_event

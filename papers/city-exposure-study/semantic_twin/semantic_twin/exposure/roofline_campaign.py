@@ -20,6 +20,7 @@ from typing import Any, Literal, Protocol
 import numpy as np
 
 from ..illumination.sources import normalized_source_weights
+from ..cohort import COMPARABLE_COHORT, REGISTERED_SPAN_STREET
 from ..transport.directional import DirectionalMeasure
 from ..transport.next_event import NextEventField
 from ..transport.specular_sampling import SampledOneBounceSpecularEstimator
@@ -91,7 +92,7 @@ class SurfaceBodyCoupler(Protocol):
 
 
 def _validate_campaign_names(config: RooflineCampaignConfig) -> None:
-    if config.cohort not in ("primary_semantic_route", "geometric_transfer_extension"):
+    if config.cohort not in ("primary_semantic_route", "geometric_transfer_extension", COMPARABLE_COHORT):
         raise ValueError(f"unknown cohort {config.cohort!r}")
     if config.material_mode not in ("walk", "semantic", "atlas", "geometric"):
         raise ValueError(f"unknown material mode {config.material_mode!r}")
@@ -99,6 +100,11 @@ def _validate_campaign_names(config: RooflineCampaignConfig) -> None:
         raise ValueError(f"unknown reference mode {config.reference_mode!r}")
     if not config.site:
         raise ValueError("site must be non-empty")
+    if config.cohort == COMPARABLE_COHORT:
+        if config.route_contract != REGISTERED_SPAN_STREET:
+            raise ValueError(f"{COMPARABLE_COHORT} requires route_contract={REGISTERED_SPAN_STREET!r}")
+    elif config.route_contract is not None:
+        raise ValueError("route_contract is an opt-in field reserved for manifest-backed comparable campaigns")
 
 
 def _validate_campaign_seeds(config: RooflineCampaignConfig) -> None:
@@ -146,6 +152,8 @@ def _validate_campaign_looks_and_cohort(config: RooflineCampaignConfig) -> None:
         raise ValueError("the primary semantic-route cohort cannot use geometric materials")
     if config.cohort == "geometric_transfer_extension" and config.material_mode != "geometric":
         raise ValueError("the geometric transfer extension must be explicitly geometric")
+    if config.cohort == COMPARABLE_COHORT and config.material_mode not in ("atlas", "geometric"):
+        raise ValueError("the comparable cohort supports atlas primary runs and explicit geometric controls")
 
 
 @dataclass(frozen=True)
@@ -153,7 +161,7 @@ class RooflineCampaignConfig:
     """Decisions that define one resumable production campaign."""
 
     site: str
-    cohort: Literal["primary_semantic_route", "geometric_transfer_extension"]
+    cohort: Literal["primary_semantic_route", "geometric_transfer_extension", "comparable_city"]
     material_mode: Literal["walk", "semantic", "atlas", "geometric"]
     output_dir: Path
     planned_seeds: tuple[int, ...]
@@ -168,6 +176,7 @@ class RooflineCampaignConfig:
         "adaptive_all_specular_sampled_mixed_order_1",
         "omitted_diagnostic",
     ] = "exact_complete"
+    route_contract: Literal["registered_span_street_v1"] | None = None
 
     def __post_init__(self) -> None:
         _validate_campaign_names(self)
@@ -177,7 +186,7 @@ class RooflineCampaignConfig:
         object.__setattr__(self, "output_dir", Path(self.output_dir))
 
     def identity_dict(self) -> dict[str, Any]:
-        return {
+        identity = {
             "schema_version": SCHEMA_VERSION,
             "site": self.site,
             "cohort": self.cohort,
@@ -191,6 +200,9 @@ class RooflineCampaignConfig:
             "minimum_completed_specular_order": self.minimum_completed_specular_order,
             "specular_acceptance": self.specular_acceptance,
         }
+        if self.route_contract is not None:
+            identity["route_contract"] = self.route_contract
+        return identity
 
 
 def _validate_walk_arrays(prepared: PreparedRooflineCampaign) -> np.ndarray:
@@ -269,11 +281,25 @@ def _validate_prepared_seeds_and_cohort(prepared: PreparedRooflineCampaign) -> N
         raise ValueError("derived 64-bit point seeds collide within the planned campaign")
     if prepared.material_provenance.get("material_mode") != prepared.config.material_mode:
         raise ValueError("material provenance mode does not match campaign material_mode")
-    if prepared.config.cohort == "primary_semantic_route":
-        if prepared.walk.kind != PANORAMA_LINKS:
-            raise ValueError("primary semantic cohort requires a panorama-link route")
-    elif prepared.walk.kind != STREET_ROUTE:
-        raise ValueError("geometric transfer extension requires a declared street route")
+    expected_kind = PANORAMA_LINKS if prepared.config.cohort == "primary_semantic_route" else STREET_ROUTE
+    if prepared.walk.kind != expected_kind:
+        raise ValueError(f"cohort {prepared.config.cohort!r} requires walk kind {expected_kind!r}")
+    if prepared.config.cohort == COMPARABLE_COHORT:
+        _validate_comparable_route_provenance(prepared.walk)
+
+
+def _validate_comparable_route_provenance(walk: Walk) -> None:
+    street = walk.provenance.get("street_route")
+    if walk.provenance.get("path") != "street" or not isinstance(street, dict):
+        raise ValueError("comparable campaign walk must carry explicit street-route provenance")
+    if street.get("endpoints") != "span":
+        raise ValueError("comparable campaign route must use the registered span endpoints")
+    cache_key = street.get("cache_key")
+    cache_file = street.get("cache_file")
+    if not isinstance(cache_key, str) or len(cache_key) != 16:
+        raise ValueError("comparable campaign route must record its exact endpoint cache key")
+    if not isinstance(cache_file, str) or not cache_file.endswith(f"_{cache_key}.json"):
+        raise ValueError("comparable campaign route cache file and endpoint key disagree")
 
 
 @dataclass(frozen=True)

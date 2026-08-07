@@ -34,6 +34,7 @@ from typing import Any
 import numpy as np
 
 from .. import paths
+from ..acquire.cache import route_key
 from ..acquire.routes import cached_walking_route, polyline_enu, site_anchor
 from ..scene.enu import EnuFrame
 from .ground import ground_under_camera
@@ -86,6 +87,29 @@ def span_endpoints(cameras: np.ndarray) -> tuple[int, int]:
     return tuple(int(v) for v in np.unravel_index(int(np.argmax(gap)), gap.shape))  # type: ignore[return-value]
 
 
+def street_route_request(
+    site: str,
+    cameras: np.ndarray,
+    *,
+    root: pathlib.Path,
+    crop_m: int = 250,
+    endpoints: str = "span",
+) -> tuple[list[int], list[tuple[float, float]], pathlib.Path, bool]:
+    """Resolve one walking request and its exact cache path without I/O."""
+    anchor = site_anchor(site, root, crop_m=crop_m)
+    frame = EnuFrame(anchor[0], anchor[1])
+    if endpoints == "span":
+        chosen = list(span_endpoints(cameras))
+    elif endpoints == "all":
+        chosen = list(range(len(cameras)))
+    else:
+        raise ValueError(f"endpoints is 'span' or 'all', not {endpoints!r}")
+    waypoints = [tuple(map(float, frame.to_llh(cameras[index])[:2])) for index in chosen]
+    optimise = len(waypoints) > 2
+    cache = root / "data" / "street_routes" / f"{site}_{route_key(waypoints, optimise)}.json"
+    return chosen, waypoints, cache, optimise
+
+
 def gap_to_path(points: np.ndarray, line: np.ndarray) -> np.ndarray:
     """Shortest plan distance from each point to a polyline."""
     start, end = line[:-1, :2], line[1:, :2]
@@ -131,17 +155,15 @@ def street_path(
     """
     base = root or paths.root()
     anchor = site_anchor(site, base, crop_m=crop_m)
-    frame = EnuFrame(anchor[0], anchor[1])
     cameras = np.array([station.camera_enu_m for station in route.stations], dtype=float)
-    if endpoints == "span":
-        chosen = list(span_endpoints(cameras))
-    elif endpoints == "all":
-        chosen = list(range(len(cameras)))
-    else:
-        raise ValueError(f"endpoints is 'span' or 'all', not {endpoints!r}")
-
-    waypoints = [tuple(frame.to_llh(cameras[k])[:2]) for k in chosen]
-    answer = cached_walking_route(site, waypoints, root=base, optimise=len(waypoints) > 2)
+    chosen, waypoints, cache, optimise = street_route_request(
+        site,
+        cameras,
+        root=base,
+        crop_m=crop_m,
+        endpoints=endpoints,
+    )
+    answer = cached_walking_route(site, waypoints, root=base, optimise=optimise)
     line = polyline_enu(answer, anchor)
     step = np.linalg.norm(np.diff(line, axis=0), axis=1) if line.shape[0] > 1 else np.zeros(0)
     off = gap_to_path(cameras, line) if line.shape[0] > 1 else np.full(len(cameras), np.inf)
@@ -154,6 +176,8 @@ def street_path(
         "distance_m": answer["distance_m"],
         "points": int(line.shape[0]),
         "waypoint_order": answer.get("waypoint_order"),
+        "cache_key": cache.stem.rsplit("_", maxsplit=1)[-1],
+        "cache_file": str(cache.relative_to(base)),
         "longest_segment_m": float(step.max()) if step.size else 0.0,
         "measured_length_m": float(step.sum()),
         "link_graph_length_m": float(np.sum(route.road_length_m)),
@@ -403,13 +427,13 @@ def site_walk(
     provenance["point_kind"] = list(walk.provenance.get("point_kind", [CAMERA_REGISTERED] * len(walk)))
     walk = dataclasses.replace(walk, provenance=provenance)
     if stride_m <= 0.0:
-        provenance["standpoints"] = len(walk)
+        provenance["standpoints"] = int(walk.points.shape[0])
         walk = orient_route_walk(walk)
         return walk, walk.provenance
 
     strode = _stride_along(geometry, walk, heights, legs, stride_m=stride_m, head_height_m=head_height_m)
     if strode is None:
-        provenance["standpoints"] = len(walk)
+        provenance["standpoints"] = int(walk.points.shape[0])
         provenance["note"] = "no road between stations, so the stride added nothing"
         walk = orient_route_walk(walk)
         return walk, walk.provenance
@@ -417,7 +441,7 @@ def site_walk(
     points, ground, point_kind = strode
     step = np.concatenate([[0.0], np.linalg.norm(np.diff(points[:, :2], axis=0), axis=1)])
     provenance["standpoints"] = int(points.shape[0])
-    provenance["added_along_the_road"] = int(points.shape[0] - len(walk))
+    provenance["added_along_the_road"] = int(points.shape[0] - walk.points.shape[0])
     provenance["standpoint_ordering"] = "increasing distance travelled along the selected path"
     provenance["point_kind"] = point_kind
     provenance = {key: value for key, value in provenance.items() if not key.startswith("body_yaw_")}

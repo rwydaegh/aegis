@@ -7,8 +7,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from semantic_twin import cohort as cohort_contract
 from semantic_twin import paths
 from semantic_twin.cli import roofline_campaign as command
+from semantic_twin.cohort import expected_route_cache, load_manifest
 from semantic_twin.exposure import roofline_setup
 from semantic_twin.exposure.roofline_setup import (
     PreparationBackend,
@@ -70,6 +72,77 @@ def test_load_setup_freezes_full_route_and_resolves_paths(tmp_path):
     assert setup.campaign.planned_seeds == (7, 8)
     assert setup.run.atlas_npz == str(tmp_path / "outputs/site_semantics/korenmarkt/joint_atlas_250m_r8.npz")
     assert setup.setup_file == config.resolve()
+
+
+def test_comparable_setup_requires_exact_route_and_declared_atlas(monkeypatch, tmp_path):
+    manifest = load_manifest()
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "city_cohort_manifest.json").write_text(json.dumps(manifest))
+    entry = manifest["included_sites"][0]
+    report = tmp_path / entry["route"]["admitted_station_report"]
+    report.parent.mkdir(parents=True)
+    report.write_text(
+        json.dumps(
+            {
+                "stations_admitted": [
+                    {"station": "a", "position_enu_m": [-10.0, 0.0, 2.5]},
+                    {"station": "b", "position_enu_m": [10.0, 0.0, 2.5]},
+                ]
+            }
+        )
+    )
+    geometry = tmp_path / "data" / "geometry" / "korenmarkt"
+    geometry.mkdir(parents=True)
+    mesh = geometry / "inhouse_leaf_250m_f64.ply"
+    mesh.write_text("ply\n")
+    mesh.with_suffix(".json").write_text(json.dumps({"format_version": 3, "anchor": {"lat_deg": 51.0, "lon_deg": 3.0}}))
+    paths.forget_disk_reads()
+    monkeypatch.setattr(
+        cohort_contract,
+        "admitted_route_positions",
+        lambda *_args, **_kwargs: np.array([[-10.0, 0.0, 2.5], [10.0, 0.0, 2.5]], dtype=np.float64),
+    )
+    route_cache, waypoints = expected_route_cache(entry, tmp_path)
+    route_cache.parent.mkdir(parents=True)
+    route_cache.write_text(
+        json.dumps(
+            {
+                "site": "korenmarkt",
+                "polyline_llh": waypoints,
+                "waypoints_llh": waypoints,
+                "optimised": False,
+            }
+        )
+    )
+    for key in ("atlas_npz", "atlas_json"):
+        atlas_path = tmp_path / entry["materials"][key]
+        atlas_path.parent.mkdir(parents=True, exist_ok=True)
+        atlas_path.write_bytes(b"atlas")
+
+    document = setup_document(tmp_path)
+    document["run"].update(
+        {
+            "walk_path": "street",
+            "atlas_npz": entry["materials"]["atlas_npz"],
+        }
+    )
+    document["campaign"].update(
+        {
+            "cohort": "comparable_city",
+            "route_contract": "registered_span_street_v1",
+        }
+    )
+    config = tmp_path / "campaign.json"
+    config.write_text(json.dumps(document))
+
+    setup = load_roofline_setup(config)
+    assert setup.campaign.route_contract == "registered_span_street_v1"
+
+    document["run"]["atlas_npz"] = "outputs/site_semantics/korenmarkt/other_atlas.npz"
+    config.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="atlas declared"):
+        load_roofline_setup(config)
 
 
 def test_combined_sampled_setup_requires_room_for_the_mixed_suffix(tmp_path):
@@ -185,6 +258,35 @@ def test_shipped_cuda_convergence_configs_load():
         assert setup.source.specular_suffix_mode == "sampled"
         assert setup.source.sampled_specular_samples == 1
         assert setup.source.sampled_specular_seed_offset == 2000
+
+
+@pytest.mark.parametrize(
+    ("name", "site"),
+    (
+        ("roofline_campaign_korenmarkt_pilot_llvm.json", "korenmarkt"),
+        ("roofline_campaign_prague_pilot_llvm.json", "prague_staromestske"),
+    ),
+)
+def test_legacy_campaign_identity_bytes_do_not_gain_a_route_field(name, site):
+    setup = load_roofline_setup(paths.root() / "config" / name)
+    expected = {
+        "body_chunk_cells": 512,
+        "cohort": "primary_semantic_route",
+        "convergence_looks": [1],
+        "material_mode": "atlas",
+        "minimum_completed_specular_order": 0,
+        "planned_seeds": [7],
+        "point_seed_derivation": "blake2b_64_person_AEGIS_NEE_v1(seed_u64,standpoint_u64)",
+        "reference_mode": "per_density_eirp",
+        "sampling_claim": "full_declared_walk",
+        "schema_version": "roofline_body_campaign_v1",
+        "site": site,
+        "specular_acceptance": "adaptive_converged",
+    }
+    actual_bytes = json.dumps(setup.campaign.identity_dict(), sort_keys=True, separators=(",", ":")).encode()
+    expected_bytes = json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()
+    assert actual_bytes == expected_bytes
+    assert b"route_contract" not in actual_bytes
 
 
 def test_preparation_builds_sources_from_every_declared_standpoint(monkeypatch, tmp_path):
