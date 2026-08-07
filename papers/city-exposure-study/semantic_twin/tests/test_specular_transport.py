@@ -12,6 +12,7 @@ import pytest
 from semantic_twin.illumination import ISOTROPIC
 from semantic_twin.illumination.curve import FacadeTipCurve
 from semantic_twin.illumination.sources import SourceSet, normalized_source_weights
+from semantic_twin.materials import AtlasMaterialBinding
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
 from semantic_twin.propagation.geometry import PlaneGeometry
 from semantic_twin.transport.next_event import NextEventEstimator, NextEventField, NextEventGather
@@ -22,10 +23,11 @@ from semantic_twin.transport.specular import (
     SpecularComplexityError,
     SpecularSurfaces,
     StratifiedSourceQuadrature,
+    _inside_triangles,
 )
+from semantic_twin.transport.specular_broadphase import conservative_order_one_candidates
 from semantic_twin.transport.specular_sampling import SampledOneBounceSpecularEstimator
 from semantic_twin.transport.tracer import SbrTracer, TraceConfig, fresnel_power_reflectance, specular_share
-from semantic_twin.materials import AtlasMaterialBinding
 
 
 class TriangleGeometry:
@@ -370,6 +372,157 @@ def test_candidate_chunk_size_does_not_change_paths_or_transfer() -> None:
     np.testing.assert_allclose(small.transfer, large.transfer, rtol=0.0, atol=1.0e-14)
     np.testing.assert_allclose(small.reflection_point, large.reflection_point, rtol=0.0, atol=1.0e-14)
     assert small.total == pytest.approx(large.total, rel=2.0e-13)
+
+
+def _oracle_geometric_candidates(
+    sources: np.ndarray,
+    receiver: np.ndarray,
+    triangles: np.ndarray,
+    normals: np.ndarray,
+    epsilon_m: float,
+) -> np.ndarray:
+    source_count = sources.shape[0]
+    face_count = triangles.shape[0]
+    flat = np.arange(source_count * face_count, dtype=np.int64)
+    pair = flat // face_count
+    face = flat - pair * face_count
+    triangle = triangles[face]
+    normal = normals[face]
+    plane_point = triangle[:, 0]
+    source = sources[pair]
+    repeated_receiver = np.broadcast_to(receiver, source.shape)
+    source_side = np.einsum("ij,ij->i", source - plane_point, normal)
+    receiver_side = np.einsum("ij,ij->i", repeated_receiver - plane_point, normal)
+    image = source - 2.0 * source_side[:, None] * normal
+    image_line = image - repeated_receiver
+    denominator = np.einsum("ij,ij->i", image_line, normal)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        fraction = -receiver_side / denominator
+    finite = np.isfinite(fraction)
+    reflection = repeated_receiver + np.where(finite, fraction, 0.0)[:, None] * image_line
+    geometric = (
+        (np.linalg.norm(source - repeated_receiver, axis=1) > 1.0e-12)
+        & (source_side * receiver_side > epsilon_m * epsilon_m)
+        & finite
+        & (fraction > 0.0)
+        & (fraction < 1.0)
+        & _inside_triangles(reflection, triangle)
+    )
+    return flat[geometric]
+
+
+def test_conservative_broad_phase_has_no_false_negatives_in_adversarial_scenes() -> None:
+    rng = np.random.default_rng(294_817)
+    epsilon_m = 1.0e-3
+    for scale in (1.0e-3, 1.0, 1.0e3):
+        face_count = 47
+        source_count = 19
+        center = scale * rng.normal(size=(face_count, 3))
+        edge1 = scale * rng.normal(size=(face_count, 3))
+        edge2 = scale * rng.normal(size=(face_count, 3))
+        cross = np.cross(edge1, edge2)
+        weak = np.linalg.norm(cross, axis=1) < scale * scale * 1.0e-7
+        edge2[weak] += scale * np.array([0.0, 1.0, 0.0])
+        cross = np.cross(edge1, edge2)
+        triangles = np.stack((center, center + edge1, center + edge2), axis=1)
+        normals = cross / np.linalg.norm(cross, axis=1)[:, None]
+        sources = scale * rng.normal(size=(source_count, 3))
+        receiver = scale * rng.normal(size=3)
+
+        broad = conservative_order_one_candidates(
+            sources,
+            receiver,
+            triangles,
+            normals,
+            epsilon_m=epsilon_m,
+            source_chunk=7,
+        )
+        oracle = _oracle_geometric_candidates(sources, receiver, triangles, normals, epsilon_m)
+
+        assert np.setdiff1d(oracle, broad.flat_index).size == 0
+        assert broad.logical_candidates == source_count * face_count
+        assert broad.survivors == broad.flat_index.size
+
+    triangle = np.array([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]])
+    normals = np.array([[0.0, 0.0, 1.0]])
+    receiver = np.array([0.25, 0.25, 2.0])
+    reflection = np.array([-1.9e-8, 0.5, 0.0])
+    mirrored_receiver = np.array([0.25, 0.25, -2.0])
+    boundary_source = mirrored_receiver + 3.5 * (reflection - mirrored_receiver)
+    broad = conservative_order_one_candidates(
+        boundary_source[None, :],
+        receiver,
+        triangle,
+        normals,
+        epsilon_m=epsilon_m,
+    )
+    np.testing.assert_array_equal(
+        _oracle_geometric_candidates(boundary_source[None, :], receiver, triangle, normals, epsilon_m),
+        [0],
+    )
+    np.testing.assert_array_equal(broad.flat_index, [0])
+
+    translation = np.array([1.0e9, -2.0e9, 3.0e9])
+    skinny = translation + np.array([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0e-7, 1.0e-5, 0.0]]])
+    skinny_normal = np.array([[0.0, 0.0, 1.0]])
+    translated_receiver = translation + np.array([0.2, 2.0e-6, 2.0])
+    translated_reflection = skinny[0, 0] + 0.3 * (skinny[0, 1] - skinny[0, 0])
+    translated_reflection += 0.2 * (skinny[0, 2] - skinny[0, 0])
+    translated_mirror = translated_receiver.copy()
+    translated_mirror[2] -= 4.0
+    translated_source = translated_mirror + 3.5 * (translated_reflection - translated_mirror)
+    translated = conservative_order_one_candidates(
+        translated_source[None, :],
+        translated_receiver,
+        skinny,
+        skinny_normal,
+        epsilon_m=epsilon_m,
+    )
+    np.testing.assert_array_equal(
+        _oracle_geometric_candidates(
+            translated_source[None, :],
+            translated_receiver,
+            skinny,
+            skinny_normal,
+            epsilon_m,
+        ),
+        [0],
+    )
+    np.testing.assert_array_equal(translated.flat_index, [0])
+
+
+def test_broad_phase_preserves_exact_paths_and_original_cartesian_order() -> None:
+    remote = np.concatenate([PLANE + np.array([0.0, 40.0 * index, 0.0]) for index in range(12)])
+    tracer = _tracer(remote)
+    sources = np.array(
+        [
+            [-3.0, 0.0, 5.0],
+            [4.0, 1.0, 6.0],
+            [-3.0, 40.0, 5.0],
+            [4.0, 41.0, 6.0],
+        ]
+    )
+    receiver = np.array([2.0, 0.0, 2.0])
+    receivers = np.broadcast_to(receiver, sources.shape)
+    oracle = OneBounceSpecularTransport(tracer, broad_phase_threshold=10**9).solve_paired(sources, receivers)
+    filtered = OneBounceSpecularTransport(tracer, broad_phase_threshold=0, broad_phase_source_chunk=2).solve_paired(
+        sources,
+        receivers,
+    )
+
+    np.testing.assert_array_equal(filtered.k_hat, oracle.k_hat)
+    np.testing.assert_array_equal(filtered.transfer, oracle.transfer)
+    np.testing.assert_array_equal(filtered.reflection_point, oracle.reflection_point)
+    np.testing.assert_array_equal(filtered.source_index, oracle.source_index)
+    np.testing.assert_array_equal(filtered.endpoint_index, oracle.endpoint_index)
+    np.testing.assert_array_equal(filtered.surface_sequence, oracle.surface_sequence)
+    np.testing.assert_array_equal(filtered.unfolded_length_m, oracle.unfolded_length_m)
+    assert filtered.diagnostics.geometric == oracle.diagnostics.geometric
+    assert filtered.diagnostics.visible == oracle.diagnostics.visible
+    assert filtered.diagnostics.accepted == oracle.diagnostics.accepted
+    broad = filtered.diagnostics.candidate_diagnostics["broad_phase"]
+    assert broad["logical_candidates"] == sources.shape[0] * remote.shape[0]
+    assert broad["survivors"] < broad["logical_candidates"]
 
 
 def test_paired_surface_kernel_matches_individual_exact_solves() -> None:

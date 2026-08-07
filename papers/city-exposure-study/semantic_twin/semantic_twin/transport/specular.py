@@ -9,11 +9,13 @@ from typing import Any
 import numpy as np
 
 from ..illumination.sphere import fibonacci_sphere
+from .specular_broadphase import conservative_order_one_candidates
 
 DEFAULT_SPECULAR_CANDIDATE_BUDGET = 120_000_000
 MEASURED_CANDIDATES_PER_SECOND = 1_000_000.0
 _ROW_DOT = "ij,ij->i"
 _ORDER_ONE_ONLY = "maximum completed specular order is one"
+_INSIDE_TRIANGLE_TOLERANCE = 2.0e-8
 
 
 class SpecularComplexityError(RuntimeError):
@@ -558,7 +560,7 @@ def _inside_triangles(point: np.ndarray, triangle: np.ndarray) -> np.ndarray:
     determinant = d11 * d22 - d12 * d12
     u = (d22 * q1 - d12 * q2) / np.maximum(determinant, 1.0e-300)
     v = (d11 * q2 - d12 * q1) / np.maximum(determinant, 1.0e-300)
-    tolerance = 2.0e-8
+    tolerance = _INSIDE_TRIANGLE_TOLERANCE
     return (determinant > 1.0e-24) & (u >= -tolerance) & (v >= -tolerance) & (u + v <= 1.0 + tolerance)
 
 
@@ -573,17 +575,25 @@ class OneBounceSpecularTransport:
         candidate_chunk: int = 262_144,
         candidate_budget: int = DEFAULT_SPECULAR_CANDIDATE_BUDGET,
         epsilon_m: float | None = None,
+        broad_phase_threshold: int = 20_000,
+        broad_phase_source_chunk: int = 16,
     ) -> None:
         if candidate_chunk < 1:
             raise ValueError("candidate_chunk must be positive")
         if candidate_budget < 1:
             raise ValueError("candidate_budget must be positive")
+        if broad_phase_threshold < 0:
+            raise ValueError("broad_phase_threshold must be nonnegative")
+        if broad_phase_source_chunk < 1:
+            raise ValueError("broad_phase_source_chunk must be positive")
         self.tracer = tracer
         self.geometry = tracer.geometry
         self.surfaces = SpecularSurfaces.from_tracer(tracer) if surfaces is None else surfaces
         self.candidate_chunk = int(candidate_chunk)
         self.candidate_budget = int(candidate_budget)
         self.epsilon_m = float(tracer.config.ray_epsilon_m if epsilon_m is None else epsilon_m)
+        self.broad_phase_threshold = int(broad_phase_threshold)
+        self.broad_phase_source_chunk = int(broad_phase_source_chunk)
 
     def work_estimate(self, *, sources: int, rays: int, samples: int, max_bounces: int) -> SpecularWorkEstimate:
         """Bound exact all-face work before any candidate arrays are allocated."""
@@ -676,6 +686,18 @@ class OneBounceSpecularTransport:
             raise SpecularComplexityError(
                 f"specular solve requires {candidate_count} candidates, exceeding budget {self.candidate_budget}"
             )
+        broad_phase = None
+        if candidate_count >= self.broad_phase_threshold and pair_count and np.all(receivers == receivers[0]):
+            surface = candidate_sequences[:, 0]
+            broad_phase = conservative_order_one_candidates(
+                sources,
+                receivers[0],
+                self.surfaces.triangles[surface],
+                self.surfaces.normals[surface],
+                epsilon_m=self.epsilon_m,
+                source_chunk=self.broad_phase_source_chunk,
+                inside_tolerance=_INSIDE_TRIANGLE_TOLERANCE,
+            )
         return self._solve_candidate_kernel(
             sources,
             receivers,
@@ -685,6 +707,8 @@ class OneBounceSpecularTransport:
             selection=selection,
             paired_surfaces=None,
             started=started,
+            candidate_flat=None if broad_phase is None else broad_phase.flat_index,
+            broad_phase_diagnostics=None if broad_phase is None else broad_phase.as_dict(),
         )
 
     def solve_paired_surfaces(
@@ -757,6 +781,8 @@ class OneBounceSpecularTransport:
         selection: SpecularCandidateSet | None,
         paired_surfaces: np.ndarray | None,
         started: float,
+        candidate_flat: np.ndarray | None = None,
+        broad_phase_diagnostics: dict[str, Any] | None = None,
     ) -> SpecularPaths:
         """Shared exact image, visibility, material, and acceptance kernel."""
         pair_count = sources.shape[0]
@@ -777,9 +803,11 @@ class OneBounceSpecularTransport:
         chunks = 0
         eps = self.epsilon_m
 
-        for start in range(0, candidate_count, self.candidate_chunk):
+        executed_candidates = candidate_count if candidate_flat is None else candidate_flat.size
+        for start in range(0, executed_candidates, self.candidate_chunk):
             chunks += 1
-            flat = np.arange(start, min(start + self.candidate_chunk, candidate_count), dtype=np.int64)
+            stop = min(start + self.candidate_chunk, executed_candidates)
+            flat = np.arange(start, stop, dtype=np.int64) if candidate_flat is None else candidate_flat[start:stop]
             pair, surface = self._candidate_chunk_indices(flat, selection, paired_surfaces)
             triangle = self.surfaces.triangles[surface]
             normal = self.surfaces.normals[surface]
@@ -879,6 +907,7 @@ class OneBounceSpecularTransport:
             accepted_count,
             chunks,
             seconds,
+            broad_phase_diagnostics,
         )
         if accepted_count == 0:
             return SpecularPaths.empty(diagnostics)
@@ -940,6 +969,7 @@ class OneBounceSpecularTransport:
         accepted: int,
         chunks: int,
         seconds: float,
+        broad_phase_diagnostics: dict[str, Any] | None = None,
     ) -> SpecularDiagnostics:
         if selection is not None:
             return self._diagnostics(
@@ -951,6 +981,7 @@ class OneBounceSpecularTransport:
                 accepted,
                 chunks,
                 seconds,
+                broad_phase_diagnostics,
             )
         return self._paired_diagnostics(
             paired_surfaces,
@@ -1042,9 +1073,13 @@ class OneBounceSpecularTransport:
         accepted: int,
         chunks: int,
         seconds: float,
+        broad_phase_diagnostics: dict[str, Any] | None = None,
     ) -> SpecularDiagnostics:
         selected = int(np.unique(selection.sequences[:, 0]).size)
         support = int(self.surfaces.scene_face_count or self.surfaces.triangles.shape[0])
+        candidate_diagnostics = dict(selection.diagnostics or {})
+        if broad_phase_diagnostics is not None:
+            candidate_diagnostics["broad_phase"] = dict(broad_phase_diagnostics)
         return SpecularDiagnostics(
             endpoint_pairs,
             selection.sequences.shape[0],
@@ -1059,5 +1094,5 @@ class OneBounceSpecularTransport:
             selected,
             support,
             selection.missed_support_faces,
-            dict(selection.diagnostics or {}),
+            candidate_diagnostics,
         )
