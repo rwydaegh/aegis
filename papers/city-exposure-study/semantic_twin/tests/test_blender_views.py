@@ -10,10 +10,36 @@ import pytest
 from semantic_twin.viz.blender.views import (
     PANORAMA_VIEW_KEY,
     RAW_SCENE_NAME,
+    _route_panorama_hook_collections,
     available_view_specs,
     excluded_collection_keys,
     prepared_view_specs,
 )
+
+
+def test_pipeline_support_overlay_is_confined_to_the_support_layer() -> None:
+    class Group(dict):
+        def __init__(self, name: str, role: str) -> None:
+            super().__init__(panorama_overlay_collection=True, panorama_overlay_role=role)
+            self.name = name
+
+    class Made(dict):
+        def __init__(self, groups: list[Group]) -> None:
+            super().__init__(panorama_pipeline_scene=True)
+            self.collection = type("Collection", (), {"children": groups})()
+
+    support = Group("support", "support registration overlay")
+    marker = Group("marker", "nearby acquisition marker")
+    groups = [support, marker]
+    layers = []
+    for _index in range(4):
+        linked = {group.name: type("Linked", (), {"exclude": False})() for group in groups}
+        layers.append(type("Layer", (), {"layer_collection": type("Root", (), {"children": linked})()})())
+
+    _route_panorama_hook_collections(Made(groups), layers, set())
+
+    assert [layer.layer_collection.children["support"].exclude for layer in layers] == [True, False, True, True]
+    assert [layer.layer_collection.children["marker"].exclude for layer in layers] == [True, False, True, True]
 
 
 def test_prepared_views_keep_each_question_small_and_separate() -> None:

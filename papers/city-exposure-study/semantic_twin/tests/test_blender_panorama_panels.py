@@ -4,17 +4,23 @@ import hashlib
 import json
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 from semantic_twin.viz.blender.panorama_panels import (
     PRIMARY_PANEL_KEYS,
+    PUBLICATION_PANEL_KEYS,
     audit_panel_specs,
     compose_aligned_comparison,
     compose_vertical_curtain,
     panel_availability,
+    pipeline_layer_specs,
     pipeline_panel_specs,
     primary_panel_specs,
+    publication_panel_specs,
     records_from_paths,
+    render_sam3_concept_panel,
+    render_sam3_raw_instance_panel,
     write_composition_manifest,
 )
 
@@ -122,3 +128,78 @@ def test_pipeline_spec_order_has_primary_then_audit() -> None:
     specs = pipeline_panel_specs()
     assert tuple(spec.key for spec in specs[:5]) == PRIMARY_PANEL_KEYS
     assert tuple(spec.key for spec in specs[5:]) == tuple(spec.key for spec in audit_panel_specs())
+
+
+def test_pipeline_layers_do_not_depth_fight_the_coplanar_support_holdout() -> None:
+    layers = dict(pipeline_layer_specs())
+    assert layers["Registered photograph"] == ("twin",)
+    assert layers["Full traced support"] == ("twin", "outer_support", "support_extent")
+    assert layers["Fused entity semantics (all-camera projection-aligned fusion)"] == ("entity_semantics",)
+    assert all(
+        "twin" not in shown
+        for title, shown in layers.items()
+        if title not in {"Registered photograph", "Full traced support"}
+    )
+
+
+def test_publication_panels_put_image_space_sam3_before_surface_fusion() -> None:
+    specs = publication_panel_specs()
+    assert tuple(spec.key for spec in specs) == PUBLICATION_PANEL_KEYS
+    assert "spherical reprojection" in specs[1].role
+    assert "raw overlapping instance masks" in specs[1].role
+
+
+def test_render_sam3_concept_panel_uses_pinned_image_space_evidence(tmp_path: Path) -> None:
+    panorama = tmp_path / "panorama.png"
+    Image.new("RGB", (4, 2), (100, 100, 100)).save(panorama)
+    semantics = tmp_path / "panorama_semantics.npz"
+    np.savez_compressed(semantics, support_concept=np.array([[0, 1, 1, 0], [2, 2, 0, 0]]))
+    metadata = tmp_path / "semantics.json"
+    metadata.write_text(
+        json.dumps(
+            {
+                "concept_backend": {"model": "facebook/sam3", "revision": "pinned"},
+                "concept_id2label": {"0": "unlabelled", "1": "stone", "2": "glass"},
+            }
+        )
+    )
+
+    record = render_sam3_concept_panel(panorama, semantics, metadata, tmp_path / "sam3.png", opacity=1.0)
+
+    assert record.status == "available"
+    assert record.dimensions == (4, 2)
+    rendered = np.asarray(Image.open(record.path))
+    assert tuple(rendered[0, 0]) == (100, 100, 100)
+    assert tuple(rendered[0, 1]) != (100, 100, 100)
+    provenance = json.loads((tmp_path / "sam3.provenance.json").read_text())
+    assert provenance["concept_backend"]["revision"] == "pinned"
+    assert provenance["labelled_fraction"] == 0.5
+
+
+def test_render_sam3_raw_instance_panel_preserves_all_overlaps(tmp_path: Path) -> None:
+    view = tmp_path / "view.png"
+    Image.new("RGB", (2, 2), (100, 100, 100)).save(view)
+    masks = np.array(
+        [
+            [[True, True], [False, False]],
+            [[False, True], [False, True]],
+        ]
+    )
+    packed = np.packbits(masks.reshape(2, -1), axis=1)
+    cache = tmp_path / "concepts.npz"
+    np.savez_compressed(
+        cache,
+        packed_masks=packed,
+        mask_shape=np.array([2, 2]),
+        scores=np.array([0.4, 0.9]),
+        labels=np.array(["stone", "glass"]),
+        kinds=np.array(["surface", "surface"]),
+        cache_key=np.array("cache-a"),
+    )
+
+    output = render_sam3_raw_instance_panel(view, cache, tmp_path / "raw.png", opacity=0.5)
+
+    assert Image.open(output).size == (2, 2)
+    provenance = json.loads((tmp_path / "raw.provenance.json").read_text())
+    assert provenance["instance_count"] == 2
+    assert provenance["labels"] == ["stone", "glass"]
