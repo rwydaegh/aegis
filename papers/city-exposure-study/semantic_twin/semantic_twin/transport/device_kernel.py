@@ -99,12 +99,18 @@ def _rotated_fibonacci_sphere(
     total: int,
     seed: int,
 ) -> Any:
-    """Device form of the globally indexed rotated Fibonacci lattice."""
-    index = mi.Float(ray_index)
-    z = 1.0 - (2.0 * index + 1.0) / float(total)
+    """Device form of the globally indexed rotated Fibonacci lattice.
+
+    The radius uses ``sqrt((2i+1)(2N-2i-1))/N``, algebraically equal to
+    ``sqrt(1-z**2)`` without its float32 cancellation at the two polar samples.
+    The global phase remains a wrapped uint32 Weyl sequence, so range splitting
+    cannot move a lattice point.
+    """
+    odd = 2.0 * mi.Float(ray_index) + 1.0
+    z = (float(total) - odd) / float(total)
     phase = ray_index * mi.UInt32(0x61C88647)
     theta = mi.Float(phase) * (2.0 * np.pi / float(1 << 32))
-    radius = dr.sqrt(dr.maximum(0.0, 1.0 - z * z))
+    radius = dr.sqrt(dr.maximum(0.0, odd * (2.0 * float(total) - odd))) / float(total)
     sin_theta, cos_theta = dr.sincos(theta)
     x = radius * cos_theta
     y = radius * sin_theta

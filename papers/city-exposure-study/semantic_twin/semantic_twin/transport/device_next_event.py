@@ -544,8 +544,9 @@ class DeviceNextEventGather:
             "chi_specular_suffix": self.chi_specular_suffix(),
             "chi_specular_suffix_by_order": self.chi_specular_suffix_by_order().tolist(),
             "uncertainty_scope": (
-                "campaign seed replicas control primary-ray and sampled-face uncertainty; "
-                "the device gather does not claim a within-run standard error"
+                "sampled suffix diagnostics are conditional_on_traced_diffuse_vertices and do not claim a "
+                "within-run or total-estimator standard error. Campaign seed replicas control primary-ray, "
+                "sampled-face, body, and CDF uncertainty"
             ),
             "sampling_identity": {
                 "status": "experimental_opt_in",

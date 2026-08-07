@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from semantic_twin.materials.atlas_binding import AtlasMaterialBinding
+from semantic_twin.exposure.roofline_campaign import _sampled_suffix_accepted
 from semantic_twin.illumination.curve import FacadeTipCurve
 from semantic_twin.illumination.sources import SourceSet
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
@@ -275,6 +276,7 @@ def test_sampled_specular_is_batch_invariant_and_uses_original_launch_bins(tmp_p
     assert whole.specular_accepted == split.specular_accepted
     assert whole.chi_specular_suffix() > 0.0
     assert np.count_nonzero(whole.specular_bounced_mass()) > 1
+    assert _sampled_suffix_accepted(whole.sampled_specular_diagnostics())
 
 
 def test_sampled_specular_seed_is_repeatable_but_not_constant(tmp_path: Path) -> None:

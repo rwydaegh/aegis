@@ -395,7 +395,7 @@ def test_combined_sampled_policy_uses_inclusion_not_formal_completion(tmp_path):
     )
     assert combined.specular_order_one_complete is False
     assert combined.specular_complete_through_bounce_cap is False
-    with pytest.raises(RuntimeError, match="failed its declared acceptance"):
+    with pytest.raises(RuntimeError, match="field.specular_numerically_converged=False") as error:
         _validate_specular_acceptance(
             dataclasses.replace(combined, specular_numerically_converged=False),
             {
@@ -408,6 +408,8 @@ def test_combined_sampled_policy_uses_inclusion_not_formal_completion(tmp_path):
             },
             config,
         )
+    assert "work.numerically_converged=False" in str(error.value)
+    assert "work.stop_reason='candidate_budget_exhausted'" in str(error.value)
 
 
 def test_combined_sampled_policy_requires_zero_formal_minimum(tmp_path):

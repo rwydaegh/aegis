@@ -1379,10 +1379,15 @@ def _sampled_field_accepted(field: NextEventField) -> bool:
 
 
 def _sampled_suffix_accepted(sampled: Any) -> bool:
+    if not isinstance(sampled, dict):
+        return False
+    try:
+        samples_per_vertex = int(sampled.get("samples_per_vertex", 0))
+    except (TypeError, ValueError):
+        return False
     return (
-        isinstance(sampled, dict)
-        and bool(sampled.get("enabled", False))
-        and int(sampled.get("samples_per_vertex", 0)) >= 1
+        bool(sampled.get("enabled", False))
+        and samples_per_vertex >= 1
         and "conditional_on_traced_diffuse_vertices" in str(sampled.get("uncertainty_scope", ""))
     )
 
@@ -1396,6 +1401,94 @@ def _sampled_identity_accepted(sampled: dict[str, Any]) -> bool:
     )
 
 
+def _sampled_mixed_failed_clauses(
+    field: NextEventField,
+    work: Any,
+    sampled: Any,
+) -> list[str]:
+    """Describe every failed acceptance invariant with its observed value."""
+    work_dict = work if isinstance(work, dict) else {}
+    sampled_dict = sampled if isinstance(sampled, dict) else {}
+    identity_value = sampled_dict.get("sampling_identity", {})
+    identity = identity_value if isinstance(identity_value, dict) else {}
+    sample_value = sampled_dict.get("samples_per_vertex", None)
+    try:
+        positive_sample_count = int(sample_value) >= 1
+    except (TypeError, ValueError):
+        positive_sample_count = False
+    scope = str(sampled_dict.get("uncertainty_scope", ""))
+    checks: dict[str, tuple[Any, bool]] = {
+        "field.includes_specular": (field.includes_specular, field.includes_specular),
+        "field.specular_estimate_kind": (
+            field.specular_estimate_kind,
+            field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1",
+        ),
+        "field.finite_resolution_specular_estimate": (
+            field.finite_resolution_specular_estimate,
+            field.finite_resolution_specular_estimate,
+        ),
+        "field.specular_numerically_converged": (
+            field.specular_numerically_converged,
+            field.specular_numerically_converged,
+        ),
+        "field.maximum_completed_all_specular_order": (
+            field.maximum_completed_all_specular_order,
+            field.maximum_completed_all_specular_order == 0,
+        ),
+        "field.maximum_completed_specular_suffix_order": (
+            field.maximum_completed_specular_suffix_order,
+            field.maximum_completed_specular_suffix_order == 0,
+        ),
+        "field.specular_order_one_complete": (field.specular_order_one_complete, not field.specular_order_one_complete),
+        "field.specular_complete_through_bounce_cap": (
+            field.specular_complete_through_bounce_cap,
+            not field.specular_complete_through_bounce_cap,
+        ),
+        "field.sampled_specular_suffix_full_support": (
+            field.sampled_specular_suffix_full_support,
+            field.sampled_specular_suffix_full_support,
+        ),
+        "field.specular_components_separable": (
+            field.specular_components_separable,
+            field.specular_components_separable,
+        ),
+        "work.is_mapping": (type(work).__name__, isinstance(work, dict)),
+        "work.enabled": (work_dict.get("enabled"), bool(work_dict.get("enabled", False))),
+        "work.numerically_converged": (
+            work_dict.get("numerically_converged"),
+            bool(work_dict.get("numerically_converged", False)),
+        ),
+        "work.stop_reason": (
+            work_dict.get("stop_reason"),
+            work_dict.get("stop_reason") == "relative_tolerance_reached",
+        ),
+        "sampled.is_mapping": (type(sampled).__name__, isinstance(sampled, dict)),
+        "sampled.enabled": (sampled_dict.get("enabled"), bool(sampled_dict.get("enabled", False))),
+        "sampled.samples_per_vertex>=1": (sample_value, positive_sample_count),
+        "sampled.uncertainty_scope_contains_conditional_on_traced_diffuse_vertices": (
+            scope,
+            "conditional_on_traced_diffuse_vertices" in scope,
+        ),
+        "sampled.sampling_identity.is_mapping": (
+            type(identity_value).__name__,
+            isinstance(identity_value, dict),
+        ),
+        "sampled.sampling_identity.status": (
+            identity.get("status"),
+            identity.get("status") == "experimental_opt_in",
+        ),
+        "sampled.sampling_identity.surface_support_complete": (
+            identity.get("surface_support_complete"),
+            bool(identity.get("surface_support_complete", False)),
+        ),
+        "sampled.sampling_identity.source_support==source_count": (
+            (identity.get("source_support"), identity.get("source_count")),
+            identity.get("source_support") == identity.get("source_count"),
+        ),
+    }
+    return [f"{name}={observed!r}" for name, (observed, passed) in checks.items() if not passed]
+
+
 def _validate_sampled_mixed_specular(field: NextEventField, detail: dict[str, Any]) -> None:
     work = detail.get("finite_resolution_specular_work")
     sampled = detail.get("sampled_specular_suffix")
@@ -1406,8 +1499,10 @@ def _validate_sampled_mixed_specular(field: NextEventField, detail: dict[str, An
         and _sampled_identity_accepted(sampled)
     )
     if not accepted:
+        failures = ", ".join(_sampled_mixed_failed_clauses(field, work, sampled))
         raise RuntimeError(
-            "combined adaptive all-specular and sampled mixed-suffix field failed its declared acceptance"
+            "combined adaptive all-specular and sampled mixed-suffix field failed its declared acceptance. "
+            f"Failed clauses: {failures}"
         )
 
 
