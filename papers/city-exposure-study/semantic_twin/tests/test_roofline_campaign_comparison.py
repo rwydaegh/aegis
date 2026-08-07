@@ -434,6 +434,38 @@ def test_launch_normalization_removes_only_the_selected_run_config_input() -> No
     assert left["inputs"]["file_count"] == 1
 
 
+def test_launch_normalization_accepts_prague_site_alias_in_run_config_name() -> None:
+    shared = {"path": "config/prague.json", "bytes": 10, "sha256": "a" * 64}
+    iid = {
+        "configuration": {"site": "prague_staromestske"},
+        "transport": {"tracer": {"configuration": {"launch_sampling": "iid"}}},
+        "inputs": {
+            "bytes": 13,
+            "file_count": 2,
+            "files": [
+                shared,
+                {
+                    "path": "config/roofline_campaign_prague_convergence_cuda_iid.json",
+                    "bytes": 3,
+                    "sha256": "b" * 64,
+                },
+            ],
+        },
+    }
+    fibonacci = copy.deepcopy(iid)
+    fibonacci["transport"]["tracer"]["configuration"]["launch_sampling"] = "rotated_fibonacci"
+    fibonacci["inputs"]["files"][1] = {
+        "path": "config/roofline_campaign_prague_convergence_cuda_rotated_fibonacci.json",
+        "bytes": 4,
+        "sha256": "c" * 64,
+    }
+
+    left, _ = _normalise_launch_sampling(iid)
+    right, _ = _normalise_launch_sampling(fibonacci)
+
+    assert left == right
+
+
 def test_chi_suffix_diagnostic_is_not_treated_as_sampled_suffix_transfer(tmp_path: Path) -> None:
     iid = tmp_path / "iid"
     fibonacci = tmp_path / "fibonacci"

@@ -117,9 +117,9 @@ def _validate_input_record(record: Any) -> str:
     return path
 
 
-def _is_selected_run_config(path: str, site: str, mode: str) -> bool:
+def _is_selected_run_config(path: str, mode: str) -> bool:
     filename = Path(path).name
-    return filename.startswith(f"roofline_campaign_{site}_") and filename.endswith(f"_{mode}.json")
+    return filename.startswith("roofline_campaign_") and filename.endswith(f"_{mode}.json")
 
 
 def _normalise_run_config_input(data: dict[str, Any], mode: str) -> None:
@@ -136,7 +136,7 @@ def _normalise_run_config_input(data: dict[str, Any], mode: str) -> None:
     selected: list[dict[str, Any]] = []
     for record in records:
         path = _validate_input_record(record)
-        if _is_selected_run_config(path, site, mode):
+        if _is_selected_run_config(path, mode):
             selected.append(record)
     if len(selected) != 1:
         raise CampaignComparisonError(
