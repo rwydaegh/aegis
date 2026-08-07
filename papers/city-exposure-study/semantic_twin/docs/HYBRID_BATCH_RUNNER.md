@@ -4,12 +4,18 @@
 the existing single-panorama runner. It does not alter segmentation or fusion.
 It supplies the reviewed, immutable contract for every station:
 
-* Mapillary Vistas Mask2Former at `1536` inference pixels;
+* Mapillary Vistas Mask2Former at `1536` inference pixels
 * SAM 3 at its native `1008` square resolution, with the reviewed concept
-  catalogue and prompt batch `32`;
-* `4096 x 2048` equirectangular output;
+  catalogue and prompt batch `32`
+* `4096 x 2048` equirectangular output
 * CUDA and `--production`, with both model revisions and the SAM 3 source
-  commit pinned in the job and station sidecars.
+  commit pinned in the job and station sidecars
+
+Each result is written to the versioned directory
+`semantics_sam3_3c879f39826c281e_61id` below its panorama station. The name
+pins the SAM 3 revision prefix and the reviewed 61-ID vocabulary. It prevents
+the hybrid campaign from mutating or being confused with an older dense-only
+`semantics/` result.
 
 ## Invocation
 
@@ -47,9 +53,9 @@ marked `skipped_complete` only when all of the following agree:
    catalogue hash, model pins, and SHA-256 hashes of every output artifact;
 4. every recorded artifact still exists and has its recorded hash.
 
-An existing `semantics/` directory without the sidecar is therefore not
-treated as complete. It is rerun once, then becomes resumable. Failed stations
-are recorded with their exception and elapsed time while the remaining stations
-continue; `--fail-fast` is available for debugging. Rerunning the same command
+An existing versioned directory without the sidecar is therefore not treated
+as complete. It is rerun once, then becomes resumable. Failed stations are
+recorded with their exception and elapsed time while the remaining stations
+continue. `--fail-fast` is available for debugging. Rerunning the same command
 reuses valid per-view caches through the underlying runner, while a changed
 source panorama or contract forces recomputation.

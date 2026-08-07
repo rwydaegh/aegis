@@ -42,9 +42,20 @@ def test_json_station_list_is_supported(tmp_path):
     assert hybrid_batch.read_station_sources(walk_manifest=manifest, stations_file=None) == [first]
 
 
+def test_panorama_image_prefers_highest_zoom_over_legacy_fallback(tmp_path):
+    station = tmp_path / "pano_00_a"
+    station.mkdir()
+    (station / "panorama.jpg").write_bytes(b"legacy")
+    (station / "panorama_z4.jpg").write_bytes(b"zoom-four")
+    expected = station / "panorama_z5.jpg"
+    expected.write_bytes(b"zoom-five")
+
+    assert hybrid_batch.panorama_image(station) == expected
+
+
 def test_metadata_contract_rejects_wrong_source_and_accepts_complete_output(tmp_path, monkeypatch):
     station = _station(tmp_path, "pano_00_a")
-    output = station / "semantics"
+    output = station / hybrid_batch.SEMANTICS_DIRNAME
     (output / "views").mkdir(parents=True)
     (output / "concepts").mkdir()
     concepts = tmp_path / "semantic_concepts.json"
@@ -116,7 +127,7 @@ def test_execute_writes_ledger_and_skips_only_after_sidecar(monkeypatch, tmp_pat
     calls: list[pathlib.Path] = []
 
     def fake_config(path: pathlib.Path, *, concepts: pathlib.Path | None = None):
-        return SimpleNamespace(panorama=path / "panorama_z5.jpg", out=path / "semantics")
+        return SimpleNamespace(panorama=path / "panorama_z5.jpg", out=path / hybrid_batch.SEMANTICS_DIRNAME)
 
     def fake_run(config):
         calls.append(config.panorama)

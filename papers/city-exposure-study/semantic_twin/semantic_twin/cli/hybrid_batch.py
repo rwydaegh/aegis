@@ -47,7 +47,10 @@ from ..pano_geometry import inference_views
 
 SCHEMA = "hybrid-panorama-batch-v1"
 CONTRACT_FILENAME = "hybrid_batch_contract.json"
-SEMANTICS_DIRNAME = "semantics"
+# Keep the model revision and reviewed vocabulary size in the directory name.
+# This prevents a production hybrid rebuild from mutating or being mistaken for
+# an older dense-only ``semantics`` directory beside the same panorama.
+SEMANTICS_DIRNAME = f"semantics_sam3_{SAM3_REVISION[:16]}_{PRODUCTION_CONCEPT_ID_COUNT}id"
 DEFAULT_VIEW_SIZE = 1536
 DEFAULT_INFERENCE_SIZE = 1536
 DEFAULT_CONCEPT_RESOLUTION = 1008
@@ -75,6 +78,7 @@ PRODUCTION_CONTRACT: dict[str, Any] = {
     "sam_revision": SAM3_REVISION,
     "sam_repository_commit": SAM3_REPOSITORY_COMMIT,
     "concept_id_count": PRODUCTION_CONCEPT_ID_COUNT,
+    "semantics_dirname": SEMANTICS_DIRNAME,
     "production": True,
 }
 
@@ -219,12 +223,23 @@ def read_station_sources(
 
 def panorama_image(station: pathlib.Path) -> pathlib.Path:
     """Find one deterministic stitched panorama image in a station directory."""
-    candidates: list[pathlib.Path] = []
-    for pattern in ("panorama_z*.jpg", "panorama_z*.jpeg", "panorama_z*.png", "panorama*.jpg", "panorama*.png"):
-        candidates.extend(station.glob(pattern))
-    if not candidates:
+    zoomed: set[pathlib.Path] = set()
+    for pattern in ("panorama_z*.jpg", "panorama_z*.jpeg", "panorama_z*.png"):
+        zoomed.update(station.glob(pattern))
+    if zoomed:
+
+        def zoom(path: pathlib.Path) -> int:
+            value = path.stem.partition("_z")[2]
+            return int(value) if value.isdigit() else -1
+
+        return sorted(zoomed, key=lambda path: (-zoom(path), path.name))[0]
+
+    fallback: set[pathlib.Path] = set()
+    for pattern in ("panorama*.jpg", "panorama*.jpeg", "panorama*.png"):
+        fallback.update(station.glob(pattern))
+    if not fallback:
         raise FileNotFoundError(f"{station}: no stitched panorama image (panorama_z*.jpg/png)")
-    return sorted(set(candidates))[0]
+    return min(fallback)
 
 
 def pipeline_config(station: pathlib.Path, *, concepts: pathlib.Path | None = None) -> PanoramaRunConfig:
