@@ -200,7 +200,33 @@ def test_next_event_estimator_is_exactly_the_former_study_loop() -> None:
         **{name: value for name, value in result.detail.items() if name != "bounced"},
     }
 
-    assert actual == expected
+    # The historical transport values remain an exact subset of the result
+    # schema.  Concurrent CPU/specular work intentionally adds timing and
+    # cache diagnostics, so an exact whole-dict comparison would reject those
+    # additive fields rather than protect the old observable contract.
+    assert {key: actual[key] for key in expected} == expected
+    additive = {
+        "deterministic_specular_seconds",
+        "direct_seconds",
+        "stochastic_trace_seconds",
+        "deterministic_specular_cache_hit",
+        "direct_cache_hit",
+        "specular_suffix_seconds_in_stochastic_trace",
+        "specular_diagnostic_seconds_reused",
+        "timing_note",
+        "timing_components_non_overlapping",
+        "estimator_wall_seconds",
+        "estimator_overhead_seconds",
+        "specular_order_one_complete",
+        "specular_complete_through_bounce_cap",
+        "specular_bounce_cap",
+        "specular_result_complete",
+    }
+    assert set(actual) == set(expected) | additive
+    assert all(actual[key] >= 0.0 for key in additive if key.endswith("seconds"))
+    assert isinstance(actual["deterministic_specular_cache_hit"], bool)
+    assert isinstance(actual["direct_cache_hit"], bool)
+    assert actual["timing_components_non_overlapping"][-1] == "estimator_overhead_seconds"
     assert tracer.calls[0]["models"] == ("isotropic", "rooftop")
     assert tracer.calls[0]["seed"] == 12
 
@@ -232,7 +258,7 @@ def test_next_event_study_keeps_its_per_point_schema_and_seed_order() -> None:
 
     rows = _trace_points(study)
 
-    assert tuple(rows[0]) == (
+    historical = (
         "origin",
         "direct",
         "bounced",
@@ -247,6 +273,25 @@ def test_next_event_study_keeps_its_per_point_schema_and_seed_order() -> None:
         "connections",
         "clear_fraction",
     )
+    assert tuple(rows[0])[: len(historical)] == historical
+    additive = {
+        "deterministic_specular_seconds",
+        "direct_seconds",
+        "stochastic_trace_seconds",
+        "deterministic_specular_cache_hit",
+        "direct_cache_hit",
+        "specular_suffix_seconds_in_stochastic_trace",
+        "specular_diagnostic_seconds_reused",
+        "timing_note",
+        "timing_components_non_overlapping",
+        "estimator_wall_seconds",
+        "estimator_overhead_seconds",
+        "specular_order_one_complete",
+        "specular_complete_through_bounce_cap",
+        "specular_bounce_cap",
+        "specular_result_complete",
+    }
+    assert set(rows[0]) == set(historical) | additive
     assert [call["seed"] for call in tracer.calls] == [7, 8]
     assert [call["ground_z_m"] for call in tracer.calls] == [-3.0, -3.0]
 

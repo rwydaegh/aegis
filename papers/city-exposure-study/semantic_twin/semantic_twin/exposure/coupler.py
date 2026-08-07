@@ -26,6 +26,57 @@ def _validated_chunk_size(value: int, name: str) -> int:
     return int(value)
 
 
+def _sealed_anterior_axis(axis: np.ndarray) -> np.ndarray:
+    """Copy and freeze the detected native anatomical anterior vector."""
+    value = np.asarray(axis, dtype=np.float64)
+    if value.ndim != 1 or value.shape[0] != 3 or not np.all(np.isfinite(value)):
+        raise ValueError("body_anterior_axis must be a finite 3-vector")
+    answer = np.array(value, copy=True)
+    answer.setflags(write=False)
+    return answer
+
+
+def _body_yaw_angle(body_anterior: np.ndarray, yaw_deg: float | None) -> float:
+    """Return the Z rotation from the phantom's native anterior to route yaw."""
+    if yaw_deg is None:
+        return 0.0
+    if not np.isscalar(yaw_deg) or not np.isfinite(yaw_deg):
+        raise ValueError(f"body_yaw_deg must be finite, got {yaw_deg!r}")
+    target = np.array([np.sin(np.radians(float(yaw_deg))), np.cos(np.radians(float(yaw_deg)))])
+    raw_native = np.asarray(body_anterior, dtype=np.float64)
+    if raw_native.ndim != 1 or raw_native.shape[0] != 3 or not np.all(np.isfinite(raw_native)):
+        raise ValueError("body_anterior_axis must be a finite 3-vector")
+    native = raw_native[:2]
+    native_norm = float(np.linalg.norm(native))
+    if native_norm <= 0.0:
+        raise ValueError("body_anterior_axis must be a finite nonzero horizontal vector")
+    # ``BodyCoupler`` seals detected provenance read-only. Normalize into a
+    # fresh array rather than mutating that shared axis in place.
+    native = native / native_norm
+    return float(np.arctan2(native[0] * target[1] - native[1] * target[0], native @ target))
+
+
+def world_to_body_directions(
+    directions: np.ndarray,
+    body_yaw_deg: float | None,
+    body_anterior_axis: np.ndarray,
+) -> np.ndarray:
+    """Rotate world directions into the phantom's native body frame."""
+    values = np.asarray(directions, dtype=np.float64)
+    if values.ndim != 2 or values.shape[1] != 3:
+        raise ValueError(f"directions must have shape (N, 3), got {values.shape}")
+    if not np.all(np.isfinite(values)):
+        raise ValueError("directions must be finite")
+    angle = _body_yaw_angle(body_anterior_axis, body_yaw_deg)
+    if angle == 0.0:
+        return np.array(values, copy=True)
+    cosine, sine = np.cos(angle), np.sin(angle)
+    rotated = np.array(values, copy=True)
+    rotated[:, 0] = cosine * values[:, 0] + sine * values[:, 1]
+    rotated[:, 1] = -sine * values[:, 0] + cosine * values[:, 1]
+    return rotated
+
+
 @dataclass(frozen=True)
 class BodyExposure:
     """Per location dosimetry, reduced to scalars."""
@@ -84,9 +135,22 @@ class BodyCoupler:
     ) -> None:
         from aegis.engine import DosimetryEngine
         from aegis.geometry.mesh import BodyMesh
+        from aegis.nearfield.scenarios import detect_body_frame
         from aegis.tissue import TissueModel
 
         self.body = BodyMesh.load(phantom_path)
+        try:
+            self.body_anterior_axis = _sealed_anterior_axis(detect_body_frame(self.body).anterior)
+        except ValueError as error:
+            # Synthetic meshes used for remesh and kernel invariance checks do
+            # not necessarily have a standing anatomical frame. They remain
+            # valid for the historical native-frame coupling path. A route
+            # yaw or sealed body provenance requests the frame explicitly and
+            # receives the original detection failure then.
+            self.body_anterior_axis = None
+            self._body_frame_error = error
+        else:
+            self._body_frame_error = None
         self.tissue = TissueModel.from_database("Skin", frequency_hz)
         self.engine = DosimetryEngine(self.tissue)
         self.level = int(level)
@@ -99,6 +163,8 @@ class BodyCoupler:
         rho: np.ndarray,
         solid_angle: float,
         reference_s0_w_m2: float,
+        *,
+        body_yaw_deg: float | None = None,
     ) -> BodyExposure:
         """Compose the traced angular spectrum with the body's absorption.
 
@@ -110,12 +176,14 @@ class BodyCoupler:
         """
         from aegis.paths import PropagationPaths
 
+        self._require_body_frame_for_yaw(body_yaw_deg)
         power = rho * solid_angle * reference_s0_w_m2
         keep = power > 0.0
         if not np.any(keep):
             return BodyExposure(reference_s0_w_m2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         # Reciprocity dictionary of section 2.3: k_hat = -u_0.
-        paths = PropagationPaths.from_powers(-local_grid[keep], power[keep])
+        grid = self._world_to_body_directions(local_grid, body_yaw_deg)
+        paths = PropagationPaths.from_powers(-grid[keep], power[keep])
         result = self.engine.compute(self.body, paths, level=self.level, body_mass=self.body_mass_kg)
         sab = np.asarray(result.sab, dtype=np.float64)
         arriving = float(power.sum())
@@ -135,6 +203,8 @@ class BodyCoupler:
         self,
         measure: DirectionalMeasure,
         reference_s0_w_m2: float,
+        *,
+        body_yaw_deg: float | None = None,
     ) -> BodyExposure:
         """Couple exact direct atoms and bounced diffuse cells to the body.
 
@@ -147,8 +217,13 @@ class BodyCoupler:
         """
         if not isinstance(measure, DirectionalMeasure):
             raise TypeError("measure must be a DirectionalMeasure")
+        self._require_body_frame_for_yaw(body_yaw_deg)
         if self.level == 2:
-            exposure, _sab = self.couple_measure_with_sab(measure, reference_s0_w_m2)
+            exposure, _sab = self.couple_measure_with_sab(
+                measure,
+                reference_s0_w_m2,
+                body_yaw_deg=body_yaw_deg,
+            )
             return exposure
         from aegis.paths import PropagationPaths
 
@@ -168,6 +243,7 @@ class BodyCoupler:
                 sar_wb_w_kg=0.0,
             )
 
+        directions = self._world_to_body_directions(directions, body_yaw_deg)
         paths = PropagationPaths.from_powers(directions[keep], powers[keep])
         result = self.engine.compute(self.body, paths, level=self.level, body_mass=self.body_mass_kg)
         sab = np.asarray(result.sab, dtype=np.float64)
@@ -190,6 +266,7 @@ class BodyCoupler:
         reference_s0_w_m2: float,
         *,
         chunk_cells: int = 512,
+        body_yaw_deg: float | None = None,
     ) -> tuple[BodyExposure, np.ndarray]:
         """Couple a measure and retain its per-triangle ``Sab`` field.
 
@@ -206,6 +283,7 @@ class BodyCoupler:
             raise ValueError("chunk_cells must be positive")
         if self.level != 2:
             raise ValueError("surface-field body coupling currently implements AEGIS level 2 only")
+        self._require_body_frame_for_yaw(body_yaw_deg)
         directions, powers = measure.scaled_paths_data(reference_s0_w_m2)
         keep = powers > 0.0
         if not np.any(keep):
@@ -225,6 +303,7 @@ class BodyCoupler:
 
         normals = np.asarray(self.body.normals, dtype=np.float64)
         sab = np.zeros(normals.shape[0], dtype=np.float64)
+        directions = self._world_to_body_directions(directions, body_yaw_deg)
         kept_directions = directions[keep]
         kept_powers = powers[keep]
         for start in range(0, kept_directions.shape[0], chunk_cells):
@@ -349,6 +428,7 @@ class BodyCoupler:
         reference_s0_w_m2: float,
         *,
         chunk_cells: int = 512,
+        body_yaw_deg: float | None = None,
     ) -> tuple[BodyExposure, ...]:
         """Couple several level-2 spectra without a body-by-grid allocation.
 
@@ -377,14 +457,25 @@ class BodyCoupler:
             raise ValueError("solid_angle must be positive and finite")
         if not np.isfinite(reference_s0_w_m2) or reference_s0_w_m2 < 0.0:
             raise ValueError("reference_s0_w_m2 must be nonnegative and finite")
+        self._require_body_frame_for_yaw(body_yaw_deg)
         if grid.shape[0] <= chunk_cells:
-            return tuple(self.couple(grid, spectrum, solid_angle, reference_s0_w_m2) for spectrum in spectra)
+            return tuple(
+                self.couple(
+                    grid,
+                    spectrum,
+                    solid_angle,
+                    reference_s0_w_m2,
+                    body_yaw_deg=body_yaw_deg,
+                )
+                for spectrum in spectra
+            )
         exposures, _sab = self.couple_many_with_sab(
             grid,
             spectra,
             solid_angle,
             reference_s0_w_m2,
             chunk_cells=chunk_cells,
+            body_yaw_deg=body_yaw_deg,
         )
         return exposures
 
@@ -396,6 +487,7 @@ class BodyCoupler:
         reference_s0_w_m2: float,
         *,
         chunk_cells: int = 512,
+        body_yaw_deg: float | None = None,
     ) -> tuple[tuple[BodyExposure, ...], np.ndarray]:
         """Return level-2 exposures and their complete surface fields.
 
@@ -419,11 +511,13 @@ class BodyCoupler:
             raise ValueError("reference_s0_w_m2 must be nonnegative and finite")
         if self.level != 2:
             raise ValueError("surface-field body coupling currently implements AEGIS level 2 only")
+        self._require_body_frame_for_yaw(body_yaw_deg)
 
         norms = np.linalg.norm(grid, axis=1)
         if np.any(norms <= 0.0):
             raise ValueError("local_grid rows must be nonzero directions")
         directions = grid / norms[:, None]
+        directions = self._world_to_body_directions(directions, body_yaw_deg)
         powers = np.maximum(spectra * solid_angle * reference_s0_w_m2, 0.0)
         normals = np.asarray(self.body.normals, dtype=np.float64)
         sab = np.zeros((spectra.shape[0], normals.shape[0]), dtype=np.float64)
@@ -452,12 +546,52 @@ class BodyCoupler:
             )
         return tuple(out), sab
 
+    def _world_to_body_directions(
+        self,
+        directions: np.ndarray,
+        body_yaw_deg: float | None,
+    ) -> np.ndarray:
+        """Rotate world directions when a route body yaw is available.
+
+        Omitting ``body_yaw_deg`` is the legacy native-frame coupling path.
+        It deliberately avoids frame detection so existing synthetic couplers
+        and callers without route orientation metadata remain unchanged.
+        """
+        if body_yaw_deg is None:
+            return np.array(directions, dtype=np.float64, copy=True)
+        return world_to_body_directions(directions, body_yaw_deg, self._body_anterior_axis())
+
+    def _require_body_frame_for_yaw(self, body_yaw_deg: float | None) -> None:
+        """Validate the anatomical frame whenever route yaw is requested."""
+        if body_yaw_deg is not None:
+            _body_yaw_angle(self._body_anterior_axis(), body_yaw_deg)
+
+    def _body_anterior_axis(self) -> np.ndarray:
+        """Return the cached native anatomical anterior axis for this phantom."""
+        axis = getattr(self, "body_anterior_axis", None)
+        if axis is None:
+            frame_error = getattr(self, "_body_frame_error", None)
+            if frame_error is not None:
+                raise ValueError(f"body yaw requires a valid anatomical frame: {frame_error}") from frame_error
+            from aegis.nearfield.scenarios import detect_body_frame
+
+            try:
+                axis = _sealed_anterior_axis(detect_body_frame(self.body).anterior)
+            except ValueError as error:
+                self._body_frame_error = error
+                raise ValueError(f"body yaw requires a valid anatomical frame: {error}") from error
+            self.body_anterior_axis = axis
+        return np.asarray(axis, dtype=np.float64)
+
 
 def describe(coupler: BodyCoupler) -> dict[str, Any]:
+    anterior = coupler._body_anterior_axis()
     return {
         "phantom": coupler.body.name,
         "triangles": int(coupler.body.n_triangles),
         "frequency_hz": coupler.frequency_hz,
         "level": coupler.level,
         "T0": float(coupler.engine.T0),
+        "body_anterior_axis": [float(value) for value in anterior],
+        "body_orientation_convention": "route yaw is ENU azimuth of anatomical anterior; world directions are inverse-rotated into native phantom coordinates",
     }

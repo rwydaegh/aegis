@@ -34,10 +34,12 @@ import numpy as np
 
 from .itu import MaterialLibrary
 from .roughness import (
+    FINISH_ONLY_RULE,
     MASONRY_RULE,
     QUADRATURE_RULE,
     SurfaceRoughnessLibrary,
     effective_rms_height,
+    finish_only_rms_height,
     masonry_equivalent_rms_height,
 )
 
@@ -235,15 +237,15 @@ def load_table(
     class_names: tuple[str, ...] = CLASS_NAMES,
     class_binding: Mapping[str, MaterialSpec] | None = None,
     class_rule: str | None = None,
-    roughness_rule: str = QUADRATURE_RULE,
+    roughness_rule: str = FINISH_ONLY_RULE,
 ) -> MaterialTable:
     """Evaluate the ITU rows and roughness priors bound to each class.
 
     ``roughness_rule`` picks how a two scale surface is collapsed to the one
-    RMS height the Rayleigh closure takes. ``QUADRATURE_RULE`` is what every
-    published number ran through and stays the default. ``MASONRY_RULE`` routes
-    coursed classes through the construction document model instead, which is
-    the masonry stack's only contact with the tracer's inputs.
+    RMS height the Rayleigh closure takes. ``FINISH_ONLY_RULE`` is the
+    production default and uses the measured monolithic finish. The historical
+    ``QUADRATURE_RULE`` and research-only ``MASONRY_RULE`` are available only
+    through an explicit argument. Neither changes a Gaussian class.
     """
     class_binding = dict(SURFACE_CLASSES) if class_binding is None else dict(class_binding)
     materials = MaterialLibrary.load(config_dir / "itu_p2040_4.json")
@@ -265,7 +267,14 @@ def load_table(
             "uncertainty_multiplier": evaluation.uncertainty_multiplier,
             "roughness_structure": prior.structure,
             "roughness_evidence_grade": prior.evidence_grade,
+            "periodic_relief_excluded": bool(prior.periodic_component) and roughness_rule == FINISH_ONLY_RULE,
         }
+    periodic_relief_excluded = roughness_rule == FINISH_ONLY_RULE
+    rule_status = {
+        FINISH_ONLY_RULE: "production",
+        QUADRATURE_RULE: "historical_sensitivity",
+        MASONRY_RULE: "research_only",
+    }[roughness_rule]
     return MaterialTable(
         frequency_hz=float(frequency_hz),
         class_names=tuple(class_names),
@@ -277,12 +286,19 @@ def load_table(
             "roughness_source": roughness.source["title"],
             "class_rule": class_rule or GEOMETRIC_CLASS_RULE,
             "roughness_rule": roughness_rule,
+            "periodic_relief_excluded": periodic_relief_excluded,
+            "roughness_rule_provenance": {
+                "rule": roughness_rule,
+                "status": rule_status,
+                "periodic_relief_excluded": periodic_relief_excluded,
+            },
             "rows": rows,
         },
     )
 
 
 _ROUGHNESS_RULES = {
+    FINISH_ONLY_RULE: finish_only_rms_height,
     QUADRATURE_RULE: effective_rms_height,
     MASONRY_RULE: masonry_equivalent_rms_height,
 }

@@ -41,6 +41,7 @@ from .observers import (
     PathRecorder,
 )
 from .trace_kernel import (
+    LAUNCH_SAMPLING_MODES,
     BatchObservers,
     EscapeDeposit,
     TraceAccumulators,
@@ -102,13 +103,27 @@ class TraceConfig:
     range_weighted_escape: bool = False
     seed: int = 0
     batch: int = 400_000
+    #: IID is the historical default. ``rotated_fibonacci`` launches one
+    #: complete equal-area lattice under a seed-derived random 3D rotation.
+    launch_sampling: str = "iid"
 
     def __post_init__(self) -> None:
         if self.rays <= 0:
             raise ValueError("rays must be positive")
+        if self.batch <= 0:
+            raise ValueError("batch must be positive")
+        if self.launch_sampling not in LAUNCH_SAMPLING_MODES:
+            raise ValueError(
+                f"launch_sampling must be one of {', '.join(LAUNCH_SAMPLING_MODES)}, got {self.launch_sampling!r}"
+            )
 
     def as_dict(self) -> dict[str, Any]:
-        return dict(self.__dict__)
+        document = dict(self.__dict__)
+        # Missing means the sole historical rule, IID. Preserve existing
+        # manifests while recording every opt-in launch design explicitly.
+        if document["launch_sampling"] == "iid":
+            document.pop("launch_sampling")
+        return document
 
 
 @dataclass
@@ -392,10 +407,12 @@ class SbrTracer:
         """
         cfg = self.config
         started = time.perf_counter()
-        rng = np.random.default_rng(cfg.seed if seed is None else seed)
+        used_seed = cfg.seed if seed is None else seed
+        rng = np.random.default_rng(used_seed)
 
         accumulators = TraceAccumulators.create(models, cfg.local_cells, cfg.exit_bands)
         remaining = cfg.rays
+        ray_start = 0
         while remaining > 0:
             count = min(cfg.batch, remaining)
             remaining -= count
@@ -413,7 +430,10 @@ class SbrTracer:
                 recorder,
                 tally,
                 gather,
+                ray_start=ray_start,
+                seed=used_seed,
             )
+            ray_start += count
 
         return finalize_point_result(
             origin,
@@ -433,6 +453,8 @@ class SbrTracer:
         rng: np.random.Generator,
         models: dict[str, IlluminationModel],
         *batch_parts: Any,
+        ray_start: int = 0,
+        seed: int | None = None,
     ) -> None:
         normalisations, rho, rho_direct, cell_counts, exit_power, totals, recorder, tally, gather = batch_parts
         accumulators = TraceAccumulators(
@@ -451,6 +473,8 @@ class SbrTracer:
             models,
             accumulators,
             BatchObservers(recorder, tally, gather),
+            ray_start=ray_start,
+            seed=seed,
         )
 
     def _range_to_the_source_shell(

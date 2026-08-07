@@ -695,6 +695,7 @@ def _validate_production_mode(data: ProductionData, run: RunConfig) -> None:
         range_weighted_escape=run.range_weighted_escape,
         seed=run.seed,
         batch=run.batch,
+        launch_sampling=run.launch_sampling,
     ).as_dict()
     if data.manifest.get("trace_config") != expected_trace:
         raise ValueError("production trace_config does not match its RunConfig")

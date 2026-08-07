@@ -1,10 +1,31 @@
 # Grand plan for the roofline exposure study
 
-Status: working scientific plan, 2026-08-06.
+Status: committed production plan, 2026-08-07. Final code commit: `f5f394da`.
+Performance proposal reuse: `9111c591`. Report commits: `8db6bef0` and
+`37b4498d`. Scientific paired campaign config: `b985ab58`.
 
-This document defines the path from the current diagnostic estimator to a paper
-result. It separates settled facts, proposed choices, and gates that must pass
-before a large run. It also records what the paper should leave out.
+This document defines the path from the committed estimator to a paper result.
+It separates settled facts, proposed choices, and gates that must pass before a
+large run. It also records what the paper should leave out.
+
+## Current implementation status
+
+The production contract uses a full route arc-length source curve, fixed
+route-tangent yaw, and finish-only roughness. Specular transport permits at
+most one reflection. Adaptive all-specular order 1 and a sampled mixed
+one-reflection suffix are implemented. Higher specular orders are absent even
+when `max_bounces=3`.
+
+The local broad gate passed 2,872 tests, skipped 40, marked 18 as expected
+failures, and deselected 46. The focused gate passed 202 tests with only local
+CUDA-only skips. The real A6000 expanded campaign gate passed 163 tests with no
+skips in 9.97 seconds. Korenmarkt and Prague preflight checks passed. Their
+one-seed CUDA pilots passed independent audits. Korenmarkt IID and Fibonacci
+paired 16-seed campaigns passed full audit with seeds 7 through 22 and looks 4,
+8, 12, and 16. Prague paired outputs cover both modes, seeds 7 through 22, and
+68 points. Both paired audits passed. Each Prague mode has 49 hash-valid
+manifest entries, a 68x56024 body array, and no orphan files. Fibonacci is not
+adopted. The final CUDA gate passed 166 tests in 12.53 seconds.
 
 ## The paper in one sentence
 
@@ -45,7 +66,7 @@ The route CDF is formed only after `pi` has been declared. A CDF over panorama
 positions is therefore a fixed-route distribution. It is not a city population
 distribution.
 
-The final directional representation should contain two parts:
+The committed directional representation contains two parts:
 
 1. Exact directional atoms for direct and deterministic specular point-source
    paths. Each atom retains its direction and transfer mass.
@@ -53,9 +74,7 @@ The final directional representation should contain two parts:
 
 This matters because a direct point source is a delta in direction. Putting it
 in one of 4,096 cells conserves total power but makes body incidence depend on
-the grid. The current prototype bins direct paths for conservation and visual
-inspection. The paper path should retain their exact directions for body
-coupling.
+the grid. The production path retains exact directions for body coupling.
 
 All units must be explicit. With normalized source probabilities, the present
 placed-source scalar has a transfer scale proportional to `1/r^2`. It is not a
@@ -64,35 +83,21 @@ incident power carries a factor `P / (4 pi)`. A dimensionless body spectrum may
 be formed only by dividing by a declared reference transfer and pairing it with
 the corresponding physical reference power density.
 
-## The source model must be fixed before the transport model
+## The committed source model
 
-The present `SourceSet` is a reproducible discrete candidate distribution. Its
-default estimator averages over candidate sites. This means it answers the
-response to a source drawn from that set. It does not yet implement a homogeneous
-source density per metre of roof edge or per square kilometre of ground.
+The committed production source is a full route arc-length source curve. Its
+support and weights are frozen for the route evaluation. It is a declared
+source measure for this study, not a city population distribution.
 
-The current three-dimensional thinning also does not prove a line measure. It
-selects samples from surfaces that appeared on a skyline across a set of camera
-positions. The result depends on the camera route, mesh, ray-fan resolution,
-cell size, and crop.
+Source validation can still measure sensitivity to curve resolution, crop,
+lift, and builder provenance. That work checks the committed source contract.
+It does not reopen the production choice as a discrete candidate process.
 
-Before a paper run, compare two clean definitions on a small data set:
-
-1. A length-weighted facade-tip curve. Reconstruct connected visible edge
-   segments and give every quadrature point the arc length it represents.
-2. An explicitly synthetic discrete candidate process. Freeze the extraction
-   algorithm and interpret its normalized weights as a declared hypothetical
-   deployment distribution.
-
-The first is the preferred physical model if its curve and weights converge.
-The second is acceptable if it is named honestly and its sensitivity is small.
-It should not be described as a source density per unit roofline length.
-
-One fixed source set must be used for every evaluation point in a route. A
-different leave-one-out set at every point would change the network along the
-walk. Source construction validation should instead hold out whole capture
-sequences. The final production source set is then frozen once and evaluated at
-all admitted receiver panoramas.
+One fixed source set is used for every evaluation point in a route. A different
+leave-one-out set at every point would change the network along the walk.
+Source construction validation should instead hold out whole capture
+sequences. The production source set is frozen once and evaluated at all
+admitted receiver panoramas.
 
 The source contract must include:
 
@@ -104,55 +109,32 @@ The source contract must include:
 - frequency
 - source-set hash and panorama sequence provenance
 
-The direct and bounced branches must use the same near-source rule. The known
-case where the direct branch accepts a source closer than 0.5 m while the
-connection branch refuses it must be resolved before a city result.
+The direct and bounced branches use one shared near-source rule. Record that
+rule with the source contract and its provenance.
 
-## Complete transport without double counting
+## Bounded transport without double counting
 
-The intended path partition is:
+The committed production estimator has an explicit one-reflection limit. Its
+path handling is:
 
 1. Direct source-to-receiver paths.
-2. All-specular paths.
-3. Paths with at least one diffuse event.
+2. Adaptive all-specular order 1.
+3. A sampled mixed suffix with one specular reflection after a diffuse event.
 
-The diffuse class should be assigned by its source-nearest diffuse vertex. From
-that vertex, a source connection may contain zero or more deterministic specular
-segments. This makes the classes mutually exclusive and covers mixed paths.
-The partition needs a written proof and controlled tests before implementation
-is called complete.
-
-The current next-event gather covers only a zero-specular source connection from
-a diffuse vertex. It omits all-specular paths and diffuse paths with a specular
-suffix toward the source. Its new angular output is therefore a diagnostic
-direct-plus-diffuse field. It is useful, but it is not total exposure.
-
-A paper that reports total roofline exposure should complete and validate the
-specular connection before its main CDF campaign. If that solver cannot be made
-robust on controlled scenes and a small city mesh, the honest fallback is a
-paper about direct and diffuse components with specular transport stated as a
-limit. The fallback must not rename the partial result as total exposure.
+This is the production next-event behavior. It is not diagnostic-only. Higher
+specular orders are absent even when `max_bounces=3`, so that setting must not
+be read as a three-reflection specular allowance. Results must state this
+bound when they describe reflected transport.
 
 The old elevation-band escape estimator remains a historical control. It uses a
 different source law and cannot validate the explicit finite-source result.
 
-## Roughness decision
+## Roughness rule
 
-Roughness controls how reflected power is split between coherent specular and
-diffuse components. The current production quadrature and the alternative
-unit-scatter interpretation give very different coherent shares at 15 GHz. The
-choice is large enough to change which transport branch matters.
-
-Before city tracing:
-
-1. Define one primary roughness surrogate from a cited physical model and the
-   material evidence actually available.
-2. Freeze it for the main result.
-3. Carry one credible alternative as a sensitivity result.
-4. Keep the masonry model separate unless it passes the same controlled tests.
-
-No roughness choice should be justified only because the final scalar changes
-little. The directional field and body endpoints must also be checked.
+Finish-only roughness is implemented in the committed production path. The
+rule is applied at the finish stage rather than as an unresolved alternative
+quadrature. Any sensitivity comparison must name its alternate rule and check
+directional fields and body endpoints, not only final scalars.
 
 Use one primary frequency for the main method and validation. The existing
 15 GHz work makes it the practical starting point. A 28 GHz sensitivity can be
@@ -163,27 +145,27 @@ unless they are nearly free to evaluate.
 
 ### Stage 0: freeze the scientific contract
 
-Write down the source measure, output units, body orientation rule, route
-measure, path partition, near-source rule, frequency, roughness rule, and
-reported endpoints.
+The committed contract records the full route arc-length source curve, output
+units, fixed route-tangent yaw, route measure, one-reflection path limit,
+near-source rule, frequency, finish-only roughness, and reported endpoints.
 
 Gate: a dimensional ledger closes from source power to incident power and body
 absorption. Every model choice and numerical control has a provenance field.
 
-Stop condition: if the source result has no stable interpretation under source
-resolution, crop, and builder-sequence changes, revise the source model before
-transport work continues.
+Stop condition: if the source result fails its resolution, crop, or
+builder-sequence sensitivity review, record the limitation and do not broaden
+the production campaign.
 
-### Stage 1: diagnostic angular field
+### Stage 1: production angular field
 
 Retain exact direct contributions and diffuse next-event contributions by the
 receiver ray's original launch direction. Prove that their directional masses
 sum to the existing scalar direct and bounced terms. Preserve the old scalar API
 when field output is disabled.
 
-Current status: complete. The diagnostic binned field is merged and independently
-verified. It remains a conservation and direction test. The direct bins are not
-used for body coupling.
+Current status: complete. The angular field and its conservation tests are part
+of the production estimator. Production reflected transport remains bounded by
+the one-reflection rule above.
 
 Gate: controlled tests cover unequal source ranges and weights, multiple trace
 batches, direction signs, empty sets, scalar regression, and explicit missing
@@ -191,53 +173,48 @@ specular labels.
 
 ### Stage 2: exact direct atoms and body coupling
 
-Introduce a `DirectionalMeasure` interface with exact atoms plus diffuse cells.
-Extend body coupling so exact atoms are passed to AEGIS at their exact arrival
-directions. Add an explicit body heading rule. Options are a fixed walking
-heading, a heading inferred from route direction, or an orientation average.
+Use a `DirectionalMeasure` interface with exact atoms plus diffuse cells.
+Pass exact atoms to AEGIS at their exact arrival directions. Production body
+orientation is the fixed route-tangent yaw.
 
 Current status: the exact atom plus diffuse-cell interface and chunked level-2
 body coupling are implemented and independently verified. Direct results are
-independent of the diagnostic angular-grid resolution. The body heading rule is
-still open, so this stage is not yet complete.
+independent of angular-grid resolution. The fixed route-tangent yaw is the
+production heading rule.
 
 An optional exact uniform-yaw level-2 endpoint is also implemented and verified.
 It averages the body surface field analytically over all horizontal headings.
 It needs no heading samples and no additional ray tracing. Its area-weighted
 mean, absorbed power, and whole-body SAR are exact yaw averages. Its reported
 peak is named the peak of the yaw-averaged surface field. It is not the mean of
-the peak over individual headings. Existing production results still use the
-body mesh's native yaw. The final paper rule remains open until the endpoint and
-population meaning are frozen together.
+the peak over individual headings. The production route uses fixed
+route-tangent yaw.
 
 Gate: free-space point sources reproduce analytic level-2 body incidence. Grid
 refinement does not move the direct body result because direct atoms are not
 binned.
 
-### Stage 3: choose the source measure
+### Stage 3: validate the source curve
 
-Run the small length-weighted versus discrete-process study. Use independent
-capture sequences for validation. Measure source mass, visible direct transfer,
-route ranking, and body endpoints as source resolution, crop, lift, and builder
-density change.
+The full route arc-length source curve is implemented for production. Validate
+its resolution, crop, lift, and builder provenance on held-out capture
+sequences. Keep one source curve and its weights for every evaluation point in
+the route.
 
-Gate: choose one interpretation before looking at multi-city exposure results.
-Freeze the chosen source builder and weights.
+Gate: report source sensitivity without reopening the production choice as a
+discrete candidate process.
 
-### Stage 4: complete the specular path classes
+### Stage 4: bounded specular path classes
 
-Start with an analytic image-source plane. Then test a partially rough plane and
-a two-surface scene whose important path is diffuse followed by specular. Only
-after those pass should candidate generation be tried on a city mesh.
+The production estimator implements at most one specular reflection. Adaptive
+all-specular order 1 and the sampled mixed one-reflection suffix are the two
+reflected branches. Higher specular orders are absent even when
+`max_bounces=3`.
 
-Gate: direct, all-specular, and mixed paths form a mutually exclusive accounting
-through the bounce cap. Results agree with an independent finite-source forward
-reference in controlled scenes. Candidate generation has a measured miss rate
-and bounded runtime.
-
-Stop condition: if enumeration grows without a reliable bound, do not hide it
-behind a small test scene. Either use a validated manifold or bidirectional
-method, or narrow the paper to direct plus diffuse transport.
+Gate: direct, order-1 all-specular, and mixed one-reflection paths remain
+mutually exclusive under the declared bound. Controlled tests must report the
+bound and must not describe the estimator as arbitrary-bounce specular
+transport.
 
 ### Stage 5: freeze sampling and performance
 
@@ -252,8 +229,9 @@ Profile before optimizing. The first candidates are:
 - reuse fixed geometry and material lookups across replicas
 - cache body response for a fixed grid and body orientation
 - avoid tracing receiver directions proven by geometry to have no first hit
-- merge coplanar semantic fragments only within the same original support
-  triangle and material class, with exact intersection-equivalence tests
+- keep the original collision support mesh. Blender Atlas LOD merging is
+  display-only. Exact transport-mesh decimation is not low-risk without
+  convergence evidence.
 - keep Blender construction outside the numerical production loop
 
 The semantic Atlas mesh simplification is promising because subdivision within
@@ -267,13 +245,18 @@ runtime or memory gain.
 
 ### Stage 6: one frozen Korenmarkt run
 
-Use admitted panorama positions only. Freeze source set, material atlas, body
-orientation, transport version, output profile, and seeds before running. This
-run validates the complete chain and produces the panorama-aligned audit figure.
+Use admitted panorama positions only. The source curve, material atlas, fixed
+route-tangent yaw, one-reflection transport limit, finish-only roughness,
+transport version, output profile, and seeds are committed before the run.
+Korenmarkt and Prague preflight checks passed. The one-seed pilots passed their
+independent audits. Korenmarkt and Prague paired campaigns passed full audit.
+Prague outputs cover both modes, seeds 7 through 22, and 68 points. See
+[ROOFLINE_CAMPAIGN_RESULTS.md](ROOFLINE_CAMPAIGN_RESULTS.md) for the current
+result record.
 
 Gate: all controlled tests pass, numerical convergence is adequate, evidence
 coverage is reported by interaction depth, and no method definition changes
-after seeing the city output.
+after seeing the pilot output.
 
 ### Stage 7: matched microenvironments
 
@@ -311,7 +294,8 @@ The numerical production track should keep:
 - code, geometry, semantic, source-set, body, and configuration hashes
 - panorama IDs, positions, route order, and body orientation
 - source positions, weights, and construction provenance
-- direct, specular, diffuse, and total transfer per standpoint and replica
+- direct, one-reflection specular, diffuse, and total transfer per standpoint
+  and replica. The total uses the one-reflection production limit.
 - area-weighted body mean, peak absorbed density, absorbed power, and whole-body
   SAR for the endpoints selected for the paper
 - directional or body-field data required to reproduce ensemble statistics
@@ -339,7 +323,8 @@ The main paper should contain:
 2. The declared facade-tip source measure and path estimator.
 3. One controlled validation figure.
 4. Evidence coverage as a function of interaction depth and distance.
-5. Direct, reflected, and total fixed-route CDFs for the matched settings.
+5. Direct, reflected, and total fixed-route CDFs for the matched settings, with
+   the one-reflection limit stated.
 6. Body mean and peak results.
 7. One paired semantic-material ablation.
 8. A short uncertainty and limitations section.
@@ -368,8 +353,8 @@ Split the parameter record into four groups.
 
 1. Physical inputs, such as frequency and measured material properties.
 2. Observed inputs, such as camera poses, mesh geometry, and semantic evidence.
-3. Model assumptions, such as source measure, roughness surrogate, and body
-   orientation. These need argument and sensitivity tests.
+3. Model assumptions, such as the source curve, finish-only roughness, and
+   fixed route-tangent yaw. These need argument and sensitivity tests.
 4. Numerical controls, such as ray count, angular cells, source quadrature, and
    bounce cap. These need convergence evidence.
 
@@ -379,19 +364,21 @@ table makes the method look more arbitrary than it is.
 
 ## The decisive gates
 
-Do not launch the main campaign until all of these are true:
+The committed gates are:
 
-- the source measure and units are fixed
+- the full route arc-length source curve and units are fixed
 - direct paths remain exact directional atoms for body coupling
 - the common near-source rule is fixed
-- the roughness surrogate is fixed
-- the intended specular path classes pass controlled tests, or the paper scope
-  is explicitly narrowed to direct plus diffuse
-- body orientation and route measure are fixed
+- finish-only roughness is implemented
+- the one-reflection specular classes pass their controlled tests
+- fixed route-tangent yaw and route measure are fixed
 - finite-source directional transport has an independent validation
-- Korenmarkt passes the frozen end-to-end audit
-- performance is measured and the retained outputs are sufficient for every
+- performance is measured and retained outputs are sufficient for every
   reported statistic
 
-This order prevents a fast GPU campaign from producing precise answers to a
-moving scientific question.
+Korenmarkt and Prague preflight checks passed. Korenmarkt paired campaigns have
+passed their convergence and retention review. Prague paired outputs passed
+their final independent audit. Only Korenmarkt and Prague are runnable now. Four sites require
+semantic rebuilds, four require route or geometry repairs, and Times Square is
+invalid under the current geometry contract. See
+[MULTICITY_CAMPAIGN_READINESS.md](MULTICITY_CAMPAIGN_READINESS.md).

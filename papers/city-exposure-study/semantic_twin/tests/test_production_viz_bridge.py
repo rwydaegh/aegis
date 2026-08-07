@@ -125,20 +125,21 @@ def _files(tmp_path: pathlib.Path, run: RunConfig | None = None) -> ProductionFi
         "mesh": "/tmp/mesh.ply",
         "mesh_sha256": "b" * 64,
         "reference_s0_w_m2": 1.0,
-        "trace_config": {
-            "frequency_hz": run.frequency_hz,
-            "rays": run.rays,
-            "local_cells": run.local_cells,
-            "exit_bands": run.exit_bands,
-            "max_bounces": run.max_bounces,
-            "roulette_start": run.effective_roulette_start,
-            "roulette_floor": run.roulette_floor,
-            "ray_epsilon_m": run.ray_epsilon_m,
-            "range_weighted_escape": run.range_weighted_escape,
-            "seed": run.seed,
-            "batch": run.batch,
-        },
-        "surface_binding": {},
+        "trace_config": TraceConfig(
+            frequency_hz=run.frequency_hz,
+            rays=run.rays,
+            local_cells=run.local_cells,
+            exit_bands=run.exit_bands,
+            max_bounces=run.max_bounces,
+            roulette_start=run.effective_roulette_start,
+            roulette_floor=run.roulette_floor,
+            ray_epsilon_m=run.ray_epsilon_m,
+            range_weighted_escape=run.range_weighted_escape,
+            seed=run.seed,
+            batch=run.batch,
+            launch_sampling=run.launch_sampling,
+        ).as_dict(),
+        "surface_binding": {"provenance": {"roughness_rule": "finish_only"}},
         "semantic_binding": {"materials": "geometric", "face_class_sha256": "a" * 64},
         "walk": {"candidates_after_clearance": 2},
         "locations_requested": 2,
@@ -249,6 +250,31 @@ def test_production_run_loads_exact_arrays_and_hashes_all_inputs(tmp_path: pathl
         "kernel": "drjit",
         "variant": "cuda_ad_rgb",
     }
+
+
+def test_production_bridge_restores_a_legacy_missing_iid_launch_field(tmp_path: pathlib.Path) -> None:
+    files = _files(tmp_path)
+    manifest = json.loads(files.manifest.read_text())
+    manifest["run"].pop("launch_sampling")
+    files.manifest.write_text(json.dumps(manifest))
+
+    _data, run = load_production_run(files)
+
+    assert run.launch_sampling == "iid"
+
+
+def test_production_bridge_seals_and_refuses_rotated_launch_mismatches(tmp_path: pathlib.Path) -> None:
+    rotated = _run(launch_sampling="rotated_fibonacci")
+    files = _files(tmp_path, rotated)
+
+    _data, loaded = load_production_run(files)
+    assert loaded.launch_sampling == "rotated_fibonacci"
+
+    manifest = json.loads(files.manifest.read_text())
+    manifest["trace_config"].pop("launch_sampling")
+    files.manifest.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="trace_config"):
+        load_production_run(files)
 
 
 def test_production_run_refuses_unsealed_and_mixed_output_generations(tmp_path: pathlib.Path) -> None:

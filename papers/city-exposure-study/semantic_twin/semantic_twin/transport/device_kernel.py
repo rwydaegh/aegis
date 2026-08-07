@@ -5,9 +5,9 @@ the NumPy reference. Rays stay at fixed width and use an active mask through
 launch, intersection, material response, scattering, and roulette. The only
 host transfer is one packed record array after the last bounce.
 
-The prototype returns the launch population and escaped paths. It does not
-score illumination models or support observers and next-event estimation yet,
-so production execution does not call it.
+The kernel returns the launch population and escaped paths. It can also run the
+resident diffuse and sampled mixed-specular next-event gather. Host observers
+and illumination-law scoring remain outside the device loop.
 """
 
 from __future__ import annotations
@@ -15,10 +15,12 @@ from __future__ import annotations
 import math
 import time
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
+
+from .trace_kernel import launch_rotation
 
 
 _STATUS_ESCAPED = 1
@@ -55,6 +57,7 @@ class DeviceEscapeRecords:
     truncated_throughput_terms: np.ndarray
     roulette_killed: int
     seconds: float
+    next_event: Any = None
 
     @property
     def escaped(self) -> int:
@@ -87,6 +90,36 @@ def _unit_sphere(mi: Any, dr: Any, ray_index: Any, seed: tuple[Any, Any]) -> Any
     radius = dr.sqrt(dr.maximum(0.0, 1.0 - z * z))
     sin_phi, cos_phi = dr.sincos(phi)
     return mi.Vector3f(radius * cos_phi, radius * sin_phi, z)
+
+
+def _rotated_fibonacci_sphere(
+    mi: Any,
+    dr: Any,
+    ray_index: Any,
+    total: int,
+    seed: int,
+) -> Any:
+    """Device form of the globally indexed rotated Fibonacci lattice.
+
+    The radius uses ``sqrt((2i+1)(2N-2i-1))/N``, algebraically equal to
+    ``sqrt(1-z**2)`` without its float32 cancellation at the two polar samples.
+    The global phase remains a wrapped uint32 Weyl sequence, so range splitting
+    cannot move a lattice point.
+    """
+    odd = 2.0 * mi.Float(ray_index) + 1.0
+    z = (float(total) - odd) / float(total)
+    phase = ray_index * mi.UInt32(0x61C88647)
+    theta = mi.Float(phase) * (2.0 * np.pi / float(1 << 32))
+    radius = dr.sqrt(dr.maximum(0.0, odd * (2.0 * float(total) - odd))) / float(total)
+    sin_theta, cos_theta = dr.sincos(theta)
+    x = radius * cos_theta
+    y = radius * sin_theta
+    rotation = launch_rotation(seed)
+    return mi.Vector3f(
+        float(rotation[0, 0]) * x + float(rotation[0, 1]) * y + float(rotation[0, 2]) * z,
+        float(rotation[1, 0]) * x + float(rotation[1, 1]) * y + float(rotation[1, 2]) * z,
+        float(rotation[2, 0]) * x + float(rotation[2, 1]) * y + float(rotation[2, 2]) * z,
+    )
 
 
 def _cosine_hemisphere(
@@ -230,16 +263,18 @@ class DeviceSbrKernel:
         ``ray_start`` is the global counter offset. Splitting one run into any
         set of ranges therefore gives the same path for every ray.
         """
-        attached = [name for name, value in (("observers", observers), ("next_event", next_event)) if value is not None]
+        attached = [name for name, value in (("observers", observers),) if value is not None]
         if attached:
-            raise NotImplementedError(
-                "device SBR does not yet support observers or next-event estimation: " + ", ".join(attached)
-            )
+            raise NotImplementedError("device SBR does not yet support host observers: " + ", ".join(attached))
+        if next_event is not None and not hasattr(next_event, "_device_state"):
+            raise NotImplementedError("device next_event requires the resident DeviceNextEventGather contract")
         count = int(self.config.rays if rays is None else rays)
         if count < 1:
             raise ValueError("rays must be positive")
         if ray_start < 0 or ray_start + count > 0x100000000:
             raise ValueError("ray indices must fit in uint32")
+        if self.config.launch_sampling == "rotated_fibonacci" and ray_start + count > int(self.config.rays):
+            raise ValueError("device ray range must lie inside the complete Fibonacci lattice")
 
         mi, dr = self.mi, self.dr
         used_seed_value = int(self.config.seed if seed is None else seed) & 0xFFFFFFFFFFFFFFFF
@@ -249,7 +284,22 @@ class DeviceSbrKernel:
         )
         started = time.perf_counter()
         ray_index = dr.arange(mi.UInt32, count) + dr.opaque(mi.UInt32, ray_start)
-        direction = _unit_sphere(mi, dr, ray_index, used_seed)
+        next_event_state = (
+            None if next_event is None else next_event._device_state(self, ray_index, count, used_seed_value)
+        )
+        next_event_seed = None
+        if next_event is not None:
+            gather_seed_value = (used_seed_value + int(next_event.seed_offset)) & 0xFFFFFFFFFFFFFFFF
+            next_event_seed = (
+                dr.opaque(mi.UInt32, gather_seed_value & 0xFFFFFFFF),
+                dr.opaque(mi.UInt32, gather_seed_value >> 32),
+            )
+        if self.config.launch_sampling == "iid":
+            direction = _unit_sphere(mi, dr, ray_index, used_seed)
+        elif self.config.launch_sampling == "rotated_fibonacci":
+            direction = _rotated_fibonacci_sphere(mi, dr, ray_index, int(self.config.rays), used_seed_value)
+        else:  # TraceConfig validates this. Keep the kernel safe for compatible config objects.
+            raise ValueError(f"unsupported launch_sampling {self.config.launch_sampling!r}")
         # Materialise the counter draw before Mitsuba fuses it into an
         # intersection kernel. CUDA otherwise preserves the same rounded
         # launch vector but changes a few later low bits when the launch
@@ -468,6 +518,24 @@ class DeviceSbrKernel:
                 )
                 bounces = dr.select(blocking, bounces + 1, bounces)
                 throughput = dr.select(blocking, throughput * reflectance, throughput)
+                if next_event_state is not None:
+                    if next_event_seed is None:
+                        raise AssertionError("device next-event seed was not initialised")
+                    next_event_state.vertex(
+                        depth,
+                        position,
+                        normal,
+                        throughput,
+                        share,
+                        blocking,
+                        lambda sample: _counter_random(
+                            mi,
+                            ray_index,
+                            next_event_seed,
+                            depth,
+                            sample,
+                        ),
+                    )
 
                 take_specular = _counter_random(mi, ray_index, used_seed, depth, 0) < share
                 mirror = direction - 2.0 * dr.dot(direction, normal) * normal
@@ -489,7 +557,7 @@ class DeviceSbrKernel:
             # materialised inputs.
             dr.eval(position, direction, throughput, path_length, last_vertex, bounces, status, alive)
 
-        return self._transfer_records(
+        records = self._transfer_records(
             ray_index,
             launch_direction,
             direction,
@@ -502,6 +570,9 @@ class DeviceSbrKernel:
             count,
             started,
         )
+        if next_event_state is not None:
+            records = replace(records, next_event=next_event_state.transfer(ray_start))
+        return records
 
     def _surface_response(
         self,

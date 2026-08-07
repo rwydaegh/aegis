@@ -2,7 +2,7 @@
 # Sources use repository-relative paths and 1-based line numbers.
 inventory:
   status: proposed_authoritative_inventory
-  generated_from: manual read-only audit, 2026-08-05
+  generated_from: manual read-only audit, 2026-08-07
   scope: configuration-like scientific and pipeline numbers, excluding generated measurement payloads
   source_coverage:
     basis: "targeted inventory assembled from earlier audits, not a claim that every current source file was manually reviewed"
@@ -85,9 +85,9 @@ parameters:
       units: angular cells
       source: semantic_twin/runconfig.py:223 RunConfig.local_cells
       scope: local transfer estimator
-      status: canonical
+      status: default
       affects_published_results: true
-      conflicts: "GPU parity configuration uses 256"
+      conflicts: "the roofline sampled-specular pilot uses 4096. GPU parity configuration uses 256"
     exit_bands:
       value: 18
       units: elevation bands
@@ -143,9 +143,9 @@ parameters:
       units: "m for cell_m/site_lift_m; otherwise counts"
       source: semantic_twin/runconfig.py:111-129 NextEventConfig
       scope: source construction
-      status: canonical
+      status: default
       affects_published_results: true
-      conflicts: "skyline uses 720x400; diffraction uses 720x600; silhouette study sweeps 360/720/1440x600"
+      conflicts: "the roofline sampled-specular pilot locks builders and held_out to 1 and uses every declared route point. Skyline uses 720x400. Diffraction uses 720x600. The silhouette study sweeps 360/720/1440x600"
     skyline_measurement:
       value: {crop_m: 250, standpoints: 24, azimuths: 720, elevations: 400, walk_radius_m: 90.0, head_height_m: 1.5, seed: 7}
       units: "m where named; otherwise counts"
@@ -502,7 +502,7 @@ parameters:
       scope: atlas-bound angular convergence study
       status: diagnostic
       affects_published_results: conditional
-      conflicts: "the sealed atlas_v2 reference is the 512-cell, 200000-ray input to the convergence study, not the separately sealed 4096-cell, 1600000-ray final production run; old root-level schema-v1 outputs are historical, while v2 writes separate initial_seeds and extended_seeds analyses over one shared raw run directory"
+      conflicts: "the sealed atlas_v2 reference is the 512-cell, 200000-ray input to the convergence study, not the separately sealed 4096-cell, 1600000-ray high-resolution exposure. Old root-level schema-v1 outputs are historical. Version 2 writes separate initial_seeds and extended_seeds analyses over one shared raw run directory"
     sionna_matched_transport:
       value:
         material: {permittivity: [1.0, -1000000000000.0], rms_height_m: 1.0, scattering_coefficient: 1.0}
@@ -587,7 +587,7 @@ parameters:
       status: diagnostic
       affects_published_results: false
       conflicts: "these values select and reduce generated experiments for figures; they are not solver defaults or generated measurements"
-    final_blender_production_source:
+    blender_input_exposure:
       value:
         stem: final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz
         state: sealed_generation_present_and_hash_verified
@@ -615,10 +615,76 @@ parameters:
         blender_input_state: "sealed high-resolution spectrum available; exporter selection requires this production stem or the three exact paths"
       units: "Hz, bytes, angular cells, rays, PRNG seed, hashes, and generation identifiers"
       source: outputs/exposure_korenmarkt/final_korenmarkt_walk_drjit_atlas_4096_v2_15ghz_manifest.json; semantic_twin/viz/blender/payload.py:207-249; semantic_twin/viz/blender/exporter.py:608-610
-      scope: final production walk and available Blender input
+      scope: high-resolution exposure and available Blender input
       status: canonical
       affects_published_results: true
       conflicts: "the separate convergence reference generation uses 512 cells and 200000 rays; historical Blender inputs also use the older low-resolution walk"
+
+  roofline_campaigns:
+    sampled_specular_pilots_and_paired_campaign:
+      value:
+        immutable_code_commit: 0844eadde0308ff8dfeda7142ec3903165f5a053
+        sites: [korenmarkt, prague_staromestske]
+        crop_m: 250
+        materials: atlas
+        walk: route
+        walk_path: links
+        walk_kind: panorama_links
+        sampling_claim: full_declared_walk
+        body_yaw: route_tangent
+        builders: 1
+        held_out: 1
+        rays: 200000
+        batch: 400000
+        local_cells: 4096
+        frequency_hz: 15000000000.0
+        seed: 7
+        curve_resolution_m: 0.0001
+        top_edge_tolerance_m: 0.25
+        max_bounces: 3
+        specular_order: 1
+        specular_candidate_budget: 120000000
+        specular_candidate_chunk: 262144
+        specular_refinement_relative_tolerance: 0.02
+        specular_suffix_mode: sampled
+        sampled_specular_samples: 1
+        sampled_specular_samples_per_eligible_diffuse_vertex: 1
+        sampled_specular_seed_offset: 2000
+        specular_acceptance: adaptive_all_specular_sampled_mixed_order_1
+        planned_seeds: [7]
+        convergence_looks: [1]
+        body_chunk_cells: 512
+        pilot_audit_status: "Korenmarkt and Prague one-seed CUDA pilots passed independent audits"
+        paired_config_commit: b985ab58
+        paired_sampling_modes: [iid, rotated_fibonacci]
+        paired_seeds: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+        paired_convergence_looks: [4, 8, 12, 16]
+        paired_campaign_status: "Korenmarkt and Prague passed full audit"
+        prague_standpoints: 68
+        prague_route_median_surplus_db: {iid: 1.10519, rotated_fibonacci: 1.10465}
+        prague_route_median_wbsar_m2_per_kg: {iid: 0.0121379, rotated_fibonacci: 0.0121384}
+        prague_total_transfer_p90_se_db: {iid: 0.004442, rotated_fibonacci: 0.005237}
+        prague_variance_ratio_q50: {total_transfer: 1.26669, body: 1.21171}
+        prague_fibonacci_adoption: false
+        prague_final_audit: passed
+        prague_manifest_entries: 49
+        prague_body_shape: [68, 56024]
+        prague_orphan_files: 0
+        prague_total_paired_delta_db: {maximum: 0.17949, p90: 0.00756}
+        prague_body_all_paired_delta_db: {maximum: 2.07801, p90: 0.08054}
+        prague_variance_ratio_q50_q90: {total: [1.267, 51.19], diffuse: [1.153, 3.437]}
+        prague_suffix_acceptance: {iid: {accepted: 1664, proposals: 210918849}, rotated_fibonacci: {accepted: 1750, proposals: 210901371}}
+        prague_timing_included: false
+        recovery_validation: "prefix and b985ab58 to 9111c591 continuation validate"
+        paired_artifact_root: /home/user/aegis-roofline-results-20260807T015530Z
+        paired_result_files: [korenmarkt_publication_results.json, prague_sampling_comparison_final.json, two_city_publication_results.json]
+        recovery_provenance_path: recovery_provenance/RECOVERY_PROVENANCE.json
+      units: "m, Hz, rays, cells, interactions, candidates, PRNG seeds, and policy names"
+      source: "config/roofline_campaign_{korenmarkt,prague}_pilot_cuda_sampled_specular.json, config/roofline_campaign_{korenmarkt,prague}_convergence_cuda_{iid,rotated_fibonacci}.json, semantic_twin/exposure/roofline_setup.py:100-121,159-213,420-470, semantic_twin/walk/orientation.py:104-132"
+      scope: committed roofline pilots and paired sampling campaign
+      status: diagnostic
+      affects_published_results: true
+      conflicts: "max_bounces=3 is a transport interaction cap, not three specular reflections. Exactly one specular order is configured and higher specular orders are absent. The sampled suffix uses one sample per eligible diffuse vertex. Pilot and paired campaign artifacts have separate acceptance and timing records. Prague paired timing is excluded because recovery mixes timing rules."
 
   runtime_and_visualisation:
     sealed_exposure_generation:

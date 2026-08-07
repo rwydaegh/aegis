@@ -38,6 +38,7 @@ from .links import (
 )
 from .model import CAMERA_REGISTERED, PANORAMA_LINKS, REGISTERED_ROAD_V1, Walk
 from .ordering import order_along_links
+from .orientation import orient_route_walk
 
 #: Pedestrian head height above the ground under the camera. The camera itself
 #: rides at ``camera_height_m`` in the scene config, 2.5 m at every site, which
@@ -375,6 +376,9 @@ def build_panorama_route(
         },
         kind=PANORAMA_LINKS,
     )
+    # Freeze body orientation only after admission and route ordering. The
+    # orientation is derived from ENU route points, never panorama headings.
+    walk = orient_route_walk(walk)
     return PanoramaRoute(
         walk=walk,
         stations=route_stations,

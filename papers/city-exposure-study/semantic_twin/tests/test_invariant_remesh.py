@@ -164,3 +164,22 @@ def test_the_mean_absorbed_density_survives_the_remesh(pair):
     """
     (_, coarse), (_, fine) = pair
     assert fine.mean_sab_w_m2 == pytest.approx(coarse.mean_sab_w_m2, rel=1e-6)
+
+
+def test_synthetic_frame_is_optional_without_route_yaw_but_required_with_it(tmp_path):
+    """Native-frame remesh checks must not need an anatomical orientation."""
+    vertices, normals = patchwork(count=32, seed=17)
+    # Force the synthetic extent's dominant axis away from the standing z axis
+    # so AEGIS cannot infer a valid anatomical frame for this mesh.
+    vertices[:, :, 1] *= 2.0
+    path = tmp_path / "non_anatomical.stl"
+    write_binary_stl(path, vertices, normals)
+
+    from semantic_twin.exposure import BodyCoupler
+
+    coupler = BodyCoupler(str(path), FREQUENCY_HZ, level=2, body_mass_kg=BODY_MASS_KG)
+    assert coupler.body_anterior_axis is None
+    exposure = coupler.couple(GRID, RHO, SOLID_ANGLE, 1.0)
+    assert exposure.absorbed_power_w > 0.0
+    with pytest.raises(ValueError, match="valid anatomical frame"):
+        coupler.couple(GRID, RHO, SOLID_ANGLE, 1.0, body_yaw_deg=0.0)

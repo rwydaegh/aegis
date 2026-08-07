@@ -79,6 +79,7 @@ from .itu import (
 )
 from .posterior import POSTERIOR_PREFIX, bind_posterior, realised_composition, sample_face_materials
 from .roughness import (
+    FINISH_ONLY_RULE,
     GAUSSIAN_STRUCTURE,
     MASONRY_RULE,
     PERIODIC_STRUCTURES,
@@ -86,6 +87,7 @@ from .roughness import (
     SurfaceRoughnessLibrary,
     SurfaceRoughnessPrior,
     effective_rms_height,
+    finish_only_rms_height,
     masonry_equivalent_rms_height,
     rayleigh_roughness_parameter,
     rayleigh_smooth_threshold_m,
@@ -126,6 +128,7 @@ __all__ = [
     "CLUTTER_ENTITIES",
     "GAUSSIAN_STRUCTURE",
     "EMBEDDED_SUBFACE_ENTITIES",
+    "FINISH_ONLY_RULE",
     "GEOMETRIC_CLASS_RULE",
     "GROUND_HOST_ENTITIES",
     "GROUND_SURFACE_POLICY",
@@ -172,6 +175,7 @@ __all__ = [
     "classify_faces",
     "clutter_triangles",
     "effective_rms_height",
+    "finish_only_rms_height",
     "entity_support_kind",
     "entity_supports_geometric_class",
     "extend_classes",

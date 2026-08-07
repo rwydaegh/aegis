@@ -32,6 +32,11 @@ The city and tracer are prepared once for all replicas of a walk. The current
 CDF campaign keeps the same registered standpoints and changes the independent
 ray seed. Atlas lookup data are reused when their input hash matches.
 
+The final code is `f5f394da`. It includes immutable full-geometry device face
+proposal reuse from `9111c591`. The report command changes are recorded in
+`8db6bef0` and `37b4498d`. Scientific paired campaigns use the sealed config
+commit `b985ab58`.
+
 ## Measured and estimated timing
 
 The values below are from the Prague run with ready city inputs. They are not a
@@ -41,7 +46,7 @@ promise for a new city.
 | --- | ---: | --- |
 | 68-point standard run | 185.0 s total | measured |
 | Standard run output | 2.17 MB total for the historical Prague rooftop-only standard archive: 2.01 MB spectra, 126 KB rows, 31 KB manifest | measured |
-| New standard/full spectrum storage | Roughly 2 MB per selected source model, based on the historical rooftop-only measurement. Three selected models are estimated at about 6 MB; the new all-model size is not yet measured | estimated |
+| New standard/full spectrum storage | Roughly 2 MB per selected source model, based on the historical rooftop-only measurement. Three selected models are estimated at about 6 MB. The new all-model size is not yet measured | estimated |
 | Warm A6000 trace | 1.346 s per point at 1.6 million rays, 4096 cells, 3 bounces | measured |
 | Warm A6000 trace rate | about 1.19 Mray/s | measured |
 | One 68-point replica, trace only | 100.37 s | measured |
@@ -59,7 +64,13 @@ time, body and row work, serialization, spectra writing, validation, and total
 time. The CDF ledger records shard append, formal analysis, consolidation, byte
 counts, replica count, and shard retirement.
 
-No GPU is currently active.
+The A6000 hardware gate is reported in the roofline campaign operations guide.
+That gate result is not an integrated production timing.
+
+Old paired campaign artifacts have a timing attribution defect. Cache hits repeat
+cold deterministic all-specular seconds in their timing rows. Scientific outputs
+are unaffected. The final code fixes the attribution, but paired campaign timing
+must not be presented as corrected measurements.
 
 ## Output profiles
 
@@ -81,6 +92,21 @@ A single generic walk is published atomically after it finishes. If interrupted,
 it restarts from the beginning and has no incremental restart claim. A CDF
 campaign separately adds shard checkpoint/restart and analysis products. It does
 not lose completed replicas.
+
+### Roofline scalar output and checkpoint
+
+The roofline campaign uses the `minimal_results_plus_resumable_seed_shards`
+profile. It writes `campaign_identity.json`, `locations.jsonl`, `summary.json`,
+`manifest.json`, and `checkpoint/`. Each committed seed has a compact scalar
+`.npz` shard and a diagnostics `.json` sidecar. Shards carry per-standpoint
+transfer, body metrics, timing, field metadata, and reference arrays. The
+checkpoint index records hashes and advances with a cumulative total-body `Sab`
+field for the committed prefix and requested convergence looks. Directional
+samples, panorama audit assets, and Blender objects are not generated.
+
+Production roofline transport includes at most one specular reflection.
+`max_bounces=3` does not add higher specular orders. Higher specular orders are
+absent from production output.
 
 ## What to retain, remove, and regenerate
 
@@ -148,11 +174,18 @@ campaign is rerun with the new store.
    about 4.3 s each and Blender peaked at about 2.55 GB. This work is optional
    for normal results.
 
-The collision mesh has 664,619 faces. The dense Atlas display is presentation
-and audit geometry, not the BVH collision mesh used by transport. Reducing or
-merging the display Atlas may make Blender lighter. Reducing the 8x8 transport
-Atlas without a convergence study changes semantic and material sampling and
-is not a safe speed optimisation.
+The performance proposal reuse builds and uploads one immutable full-geometry
+device face proposal per estimator. It avoids rebuilding the 600,000-face
+proposal for every replica. The old host preparation was 0.856 s per gather for
+Korenmarkt and 1.001 s per gather for Prague. The estimated 16-replica savings
+are about 178 s for Korenmarkt and 1089 s for Prague. These are proposal-reuse
+estimates, not paired campaign timings.
+
+The collision BVH retains the original 617,091 Korenmarkt faces and 664,619
+Prague faces. Blender Atlas LOD merging is display-only. Exact transport-mesh
+decimation is not low-risk without convergence evidence. Reducing the 8x8
+transport Atlas without a convergence study changes semantic and material
+sampling and is not a safe speed optimisation.
 
 Atlas lookup reuse has been measured: the median all-trace saving was 0.55%,
 and the process-level saving was 2.02%. All 96 compared output hashes were
@@ -172,6 +205,11 @@ main ray-tracing cost.
 6. Delete duplicate renders and temporary exports after review. Keep the
    canonical audit products needed to regenerate the selected figures.
 
+Multi-city readiness is tracked in [MULTICITY_CAMPAIGN_READINESS.md](MULTICITY_CAMPAIGN_READINESS.md).
+Only Korenmarkt and Prague are runnable now. Four sites require semantic
+rebuilds. Four sites require route or geometry repairs. Times Square is invalid
+for the current geometry contract.
+
 ## Benchmark protocol
 
 For any performance claim, record the city hash, input hash, frequency, ray
@@ -189,12 +227,11 @@ registration, SAM3, Vistas, depth, and fusion have not been split into stage
 measurements. The next integrated GPU run should capture those stages and the
 new checkpoint ledger.
 
-The output and performance plan does not settle the remaining physics choices.
-Before publication, decide and document:
-
-- how specular contributions are handled in next-event estimation,
-- which roughness closure represents the surfaces,
-- whether body averaging is area weighted.
+The current production path fixes the one-reflection specular limit,
+finish-only roughness, and area-weighted body mean. The sampled suffix impact
+remains unresolved because separate suffix transfer was not persisted. Prague
+paired outputs passed their final independent audit. Recovery timing remains
+excluded from scientific timing claims.
 
 Do not describe the current performance package as proof that final physics
 are publication-ready. It is a reproducible and measured execution path that

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import os
 import pathlib
@@ -16,10 +17,11 @@ from typing import Any
 
 import numpy as np
 
-from semantic_twin.materials import HOST_SURFACE_CLASS_RULE, Provenance
+from semantic_twin.materials import FINISH_ONLY_RULE, HOST_SURFACE_CLASS_RULE, Provenance
 from semantic_twin.exposure.output_policy import OutputProfile, coerce_profile, profile as profile_spec
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.device_tracer import DeviceEscapeTracer
+from semantic_twin.walk.orientation import validate_body_yaw_alignment
 
 
 @dataclass(frozen=True)
@@ -343,7 +345,11 @@ def _bind_materials(run: RunConfig, scene: PreparedScene, environment: StudyEnvi
             environment,
         )
     if run.materials == "geometric":
-        table = environment.load_table(environment.material_config, run.frequency_hz)
+        table = environment.load_table(
+            environment.material_config,
+            run.frequency_hz,
+            roughness_rule=FINISH_ONLY_RULE,
+        )
         provenance.update({"covered_fraction_by_face": 0.0, "covered_fraction_by_area": 0.0})
         face_source = np.full(scene.face_class.shape, int(Provenance.GEOMETRIC), dtype=np.int8)
         return MaterialBinding(scene.face_class, face_source, table, provenance)
@@ -464,6 +470,7 @@ def _bound_material(
         class_names=semantic.class_names,
         class_binding=semantic.class_binding,
         class_rule=rule,
+        roughness_rule=FINISH_ONLY_RULE,
     )
     provenance.update(
         {
@@ -518,6 +525,7 @@ def _trace_config(run: RunConfig, environment: StudyEnvironment) -> Any:
         range_weighted_escape=run.range_weighted_escape,
         seed=run.seed,
         batch=run.batch,
+        launch_sampling=run.launch_sampling,
     )
 
 
@@ -906,23 +914,36 @@ def _result_row(
     point_kind = getattr(walk, "provenance", {}).get("point_kind")
     if point_kind is not None:
         row["point_kind"] = point_kind[index]
+    body_yaw = getattr(walk, "body_yaw_deg", None)
+    if body_yaw is None:
+        body_yaw = getattr(walk, "provenance", {}).get("body_yaw_deg")
+    body_yaw_value: float | None = None
+    if body_yaw is not None:
+        aligned = validate_body_yaw_alignment(walk.points, body_yaw)
+        body_yaw_value = float(aligned[index])
+        row["body_yaw_deg"] = body_yaw_value
     row.update(result.scalars())
     names = tuple(models)
     couple_many = getattr(coupler, "couple_many", None)
+    coupling_kwargs = {} if body_yaw_value is None else {"body_yaw_deg": body_yaw_value}
     if callable(couple_many):
+        coupling_kwargs = _body_yaw_kwargs(couple_many, coupling_kwargs)
         exposures = couple_many(
             result.local_grid,
             np.stack([result.rho[name] for name in names]),
             result.local_solid_angle,
             environment.reference_s0_w_m2,
+            **coupling_kwargs,
         )
     else:
+        coupling_kwargs = _body_yaw_kwargs(coupler.couple, coupling_kwargs)
         exposures = tuple(
             coupler.couple(
                 result.local_grid,
                 result.rho[name],
                 result.local_solid_angle,
                 environment.reference_s0_w_m2,
+                **coupling_kwargs,
             )
             for name in names
         )
@@ -932,6 +953,27 @@ def _result_row(
         for key, value in exposure.as_dict().items():
             row[f"{name}_{key}"] = value
     return row
+
+
+def _body_yaw_kwargs(method: Any, kwargs: dict[str, float]) -> dict[str, float]:
+    """Pass route yaw only to couplers that expose the optional parameter.
+
+    The production ``BodyCoupler`` accepts ``body_yaw_deg``. Keeping older
+    lightweight coupler doubles usable makes execution-level tests and custom
+    integrations backwards compatible while the row still records the route
+    orientation provenance.
+    """
+    if not kwargs:
+        return kwargs
+    try:
+        parameters = inspect.signature(method).parameters.values()
+    except (TypeError, ValueError):
+        return kwargs
+    if any(parameter.name == "body_yaw_deg" for parameter in parameters) or any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters
+    ):
+        return kwargs
+    return {}
 
 
 def _print_progress(row_index: int, total: int, row: Mapping[str, Any], seconds: float) -> None:

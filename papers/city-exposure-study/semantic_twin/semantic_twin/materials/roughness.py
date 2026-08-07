@@ -15,8 +15,11 @@ coherent fraction that decays smoothly does not describe that. Those classes
 refuse :meth:`SurfaceRoughnessPrior.specular_power_fraction` unless the caller
 asks for the indicative value on purpose.
 
-:func:`effective_rms_height` is the reduction the tracer runs on, and it is the
-weakest link in this file. See its docstring.
+:func:`finish_only_rms_height` is the reduction used by production. It returns
+the measured RMS height of the prepared material finish and deliberately leaves
+periodic relief to a future geometric or grating model. The historical
+:func:`effective_rms_height` reduction remains available as an explicitly named
+quadrature sensitivity.
 """
 
 from __future__ import annotations
@@ -234,15 +237,31 @@ class SurfaceRoughnessLibrary:
         return cls(source, classes)
 
 
-#: Tag written into the material table's provenance by :func:`effective_rms_height`.
+#: Production reduction: the measured RMS height of the monolithic finish only.
+FINISH_ONLY_RULE = "finish_only"
+
+#: Historical reduction that folds tabulated periodic relief into a Gaussian.
+#: Keep this value stable so persisted manifests remain identifiable.
 QUADRATURE_RULE = "quadrature"
 
-#: Tag written by :func:`masonry_equivalent_rms_height`.
+#: Explicit research sensitivity written by :func:`masonry_equivalent_rms_height`.
 MASONRY_RULE = "masonry_two_level"
 
 
+def finish_only_rms_height(prior: SurfaceRoughnessPrior) -> float:
+    """Return the measured RMS height of a material's monolithic finish.
+
+    The ``rms_height_m`` value in the roughness prior describes a prepared patch
+    between joints or other repeating relief. Production applies the Gaussian
+    Rayleigh closure to that finish value for every material class. Periodic
+    relief is intentionally excluded here because it is deterministic structure,
+    not random roughness, and belongs in geometric or grating transport.
+    """
+    return float(prior.rms_height_m)
+
+
 def effective_rms_height(prior: SurfaceRoughnessPrior) -> float:
-    """Wall scale RMS height, folding in the periodic component when present.
+    """Historical quadrature RMS reduction, folding periodic relief into a Gaussian.
 
     ``config/surface_roughness.json`` is emphatic that the monolithic finish and
     the metre scale facade structure are different quantities. A metre scale
@@ -254,13 +273,11 @@ def effective_rms_height(prior: SurfaceRoughnessPrior) -> float:
     redirects rather than destroys power, so the resulting specular fractions
     are a lower bound and the diffuse share an upper bound.
 
-    This is the reduction every published number ran through, and it is finding
-    2 in ``docs/BUGS.md``: ``unit_scatter_mm`` never enters, so the term the
-    Rayleigh closure is wrong for is kept and the term it is right for is
-    dropped. The behaviour is preserved here on purpose. Fixing it is a physics
-    commit with its own before and after number, not a side effect of a move.
-    :func:`masonry_equivalent_rms_height` is the alternative that does read a
-    declared unit scatter, and it is not the default.
+    This is the historical reduction every published number ran through. It is
+    retained only as the explicit :data:`QUADRATURE_RULE` sensitivity. The
+    :func:`finish_only_rms_height` reduction is now production, while
+    :func:`masonry_equivalent_rms_height` remains a separate research route that
+    reads declared unit scatter.
     """
     finish = float(prior.rms_height_m)
     periodic = prior.periodic_component

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import fields
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from semantic_twin.exposure import (
     BodyCoupler,
+    BodyExposure,
     DirectionalMeasure,
     UniformYawBodyExposure,
+    describe,
     uniform_z_yaw_mean_incidence,
 )
 
@@ -151,6 +154,10 @@ def _asymmetric_coupler() -> BodyCoupler:
     coupler.level = 2
     coupler.body_mass_kg = 70.0
     coupler.frequency_hz = 15.0e9
+    # This synthetic mesh is intentionally asymmetric but not anatomically
+    # shaped, so provide the same native anterior sign that the real Virtual
+    # Family phantoms receive from ``detect_body_frame``.
+    coupler.body_anterior_axis = np.array([0.0, -1.0, 0.0])
     return coupler
 
 
@@ -175,6 +182,162 @@ def _mixed_measure() -> DirectionalMeasure:
         diffuse_k_hat=diffuse_k_hat,
         diffuse_mass=np.array([0.22, 0.11]),
     )
+
+
+def _rotate_measure_xy(measure: DirectionalMeasure, angle: float) -> DirectionalMeasure:
+    """Rotate arrival directions by a known inverse body-frame yaw."""
+    cosine, sine = np.cos(angle), np.sin(angle)
+
+    def rotate(values: np.ndarray) -> np.ndarray:
+        answer = np.array(values, copy=True)
+        answer[:, 0] = cosine * values[:, 0] - sine * values[:, 1]
+        answer[:, 1] = sine * values[:, 0] + cosine * values[:, 1]
+        return answer
+
+    return DirectionalMeasure(
+        atom_k_hat=rotate(measure.atom_k_hat),
+        atom_mass=measure.atom_mass,
+        diffuse_k_hat=rotate(measure.diffuse_k_hat),
+        diffuse_mass=measure.diffuse_mass,
+    )
+
+
+def test_fixed_yaw_uses_detected_minus_y_anterior_and_matches_manual_inverse_rotation() -> None:
+    coupler = _asymmetric_coupler()
+    measure = _mixed_measure()
+    # The shipped phantoms' native anterior is -Y. At ENU yaw zero (north),
+    # the body therefore has a 180-degree world-to-native rotation.
+    actual, actual_sab = coupler.couple_measure_with_sab(measure, 0.83, body_yaw_deg=0.0)
+    manually_rotated = _rotate_measure_xy(measure, np.pi)
+    expected, expected_sab = coupler.couple_measure_with_sab(manually_rotated, 0.83)
+    for field in fields(BodyExposure):
+        assert getattr(actual, field.name) == pytest.approx(getattr(expected, field.name), rel=1.0e-14, abs=1.0e-15)
+    np.testing.assert_allclose(actual_sab, expected_sab, rtol=1.0e-14, atol=1.0e-15)
+
+    native_facing, _ = coupler.couple_measure_with_sab(measure, 0.83, body_yaw_deg=180.0)
+    direct, _ = coupler.couple_measure_with_sab(measure, 0.83)
+    for field in fields(BodyExposure):
+        assert getattr(native_facing, field.name) == pytest.approx(getattr(direct, field.name))
+    assert actual.absorbed_power_w != pytest.approx(native_facing.absorbed_power_w)
+
+
+def test_fixed_yaw_matches_coupling_to_a_physically_rotated_asymmetric_body() -> None:
+    measure = _mixed_measure()
+    coupler = _asymmetric_coupler()
+    actual, actual_sab = coupler.couple_measure_with_sab(measure, 0.83, body_yaw_deg=90.0)
+
+    physically_rotated = _asymmetric_coupler()
+    _rotate_body(physically_rotated, np.pi / 2.0)
+    expected, expected_sab = physically_rotated.couple_measure_with_sab(measure, 0.83)
+    for field in fields(BodyExposure):
+        assert getattr(actual, field.name) == pytest.approx(getattr(expected, field.name), rel=1.0e-14, abs=1.0e-15)
+    np.testing.assert_allclose(actual_sab, expected_sab, rtol=1.0e-14, atol=1.0e-15)
+
+
+def test_fixed_yaw_does_not_mutate_read_only_anterior_provenance() -> None:
+    coupler = _asymmetric_coupler()
+    axis = np.array([0.0, -1.0, 0.0], dtype=np.float64)
+    axis.setflags(write=False)
+    coupler.body_anterior_axis = axis
+    before = axis.copy()
+
+    exposure, _sab = coupler.couple_measure_with_sab(_mixed_measure(), 0.83, body_yaw_deg=90.0)
+
+    assert exposure.absorbed_power_w > 0.0
+    assert not axis.flags.writeable
+    np.testing.assert_array_equal(axis, before)
+
+
+def test_route_reversal_changes_asymmetric_exposure_with_the_declared_180_degree_yaw_shift() -> None:
+    from semantic_twin.walk import route_body_yaw_deg
+
+    points = np.array([[0.0, 0.0, 1.5], [5.0, 0.0, 1.5], [10.0, 0.0, 1.5]])
+    forward, _ = route_body_yaw_deg(points)
+    reverse, _ = route_body_yaw_deg(points[::-1])
+    np.testing.assert_array_equal(forward, np.full(3, 90.0))
+    np.testing.assert_array_equal(reverse, np.full(3, 270.0))
+
+    coupler = _asymmetric_coupler()
+    measure = _mixed_measure()
+    forward_exposure = coupler.couple_measure(measure, 0.83, body_yaw_deg=float(forward[1]))
+    reverse_exposure = coupler.couple_measure(measure, 0.83, body_yaw_deg=float(reverse[1]))
+    assert reverse_exposure.absorbed_power_w != pytest.approx(forward_exposure.absorbed_power_w)
+
+
+def test_couple_many_fixed_yaw_matches_each_spectrum_loop() -> None:
+    coupler = _asymmetric_coupler()
+    grid = np.array(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]],
+        dtype=np.float64,
+    )
+    spectra = np.array([[0.2, 0.4, 0.1], [0.7, 0.1, 0.3]], dtype=np.float64)
+    expected = tuple(coupler.couple(grid, spectrum, 0.5, 0.83, body_yaw_deg=270.0) for spectrum in spectra)
+    actual = coupler.couple_many(grid, spectra, 0.5, 0.83, chunk_cells=1, body_yaw_deg=270.0)
+    for batched, single in zip(actual, expected, strict=True):
+        for field in fields(BodyExposure):
+            assert getattr(batched, field.name) == pytest.approx(getattr(single, field.name))
+
+
+def test_fixed_yaw_grid_and_directional_measure_paths_have_the_same_incidence() -> None:
+    coupler = _asymmetric_coupler()
+    grid = np.array(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]],
+        dtype=np.float64,
+    )
+    rho = np.array([0.2, 0.4, 0.1], dtype=np.float64)
+    solid_angle = 0.5
+    reference = 0.83
+    grid_exposure = coupler.couple(grid, rho, solid_angle, reference, body_yaw_deg=270.0)
+    measure = DirectionalMeasure(
+        atom_k_hat=-grid,
+        atom_mass=rho * solid_angle,
+        diffuse_k_hat=np.empty((0, 3)),
+        diffuse_mass=np.empty(0),
+    )
+    measure_exposure = coupler.couple_measure(measure, reference, body_yaw_deg=270.0)
+    for field in fields(BodyExposure):
+        assert getattr(grid_exposure, field.name) == pytest.approx(getattr(measure_exposure, field.name))
+
+
+def test_body_description_seals_the_frame_sign_and_route_yaw_convention() -> None:
+    metadata = describe(_asymmetric_coupler())
+    assert metadata["body_anterior_axis"] == [0.0, -1.0, 0.0]
+    assert "route yaw is ENU azimuth" in metadata["body_orientation_convention"]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("phantom", ["duke", "eartha", "ella", "thelonious"])
+def test_virtual_family_phantoms_all_detect_minus_y_anterior(phantom: str) -> None:
+    pytest.importorskip("aegis")
+    from aegis.geometry.mesh import BodyMesh
+    from aegis.nearfield.scenarios import detect_body_frame
+
+    path = Path("/home/user/aegis/data") / f"{phantom}.stl"
+    if not path.exists():
+        pytest.skip("phantom mesh not available")
+    frame = detect_body_frame(BodyMesh.load(str(path)))
+    np.testing.assert_array_equal(frame.anterior, np.array([0.0, -1.0, 0.0]))
+
+
+@pytest.mark.slow
+def test_real_virtual_family_coupler_fixed_yaw_matches_writable_axis() -> None:
+    pytest.importorskip("aegis")
+
+    path = Path("/home/user/aegis/data/duke.stl")
+    if not path.exists():
+        pytest.skip("phantom mesh not available")
+    coupler = BodyCoupler(str(path), 15.0e9, body_mass_kg=72.4)
+    assert coupler.body_anterior_axis.shape == (3,)
+    assert not coupler.body_anterior_axis.flags.writeable
+    np.testing.assert_array_equal(coupler.body_anterior_axis, np.array([0.0, -1.0, 0.0]))
+
+    grid = np.array([[0.0, 0.0, 1.0]], dtype=np.float64)
+    rho = np.array([1.0], dtype=np.float64)
+    sealed = coupler.couple(grid, rho, 4.0 * np.pi, 0.5, body_yaw_deg=37.0)
+    coupler.body_anterior_axis = np.array(coupler.body_anterior_axis, copy=True)
+    writable = coupler.couple(grid, rho, 4.0 * np.pi, 0.5, body_yaw_deg=37.0)
+    for field in fields(BodyExposure):
+        assert getattr(sealed, field.name) == pytest.approx(getattr(writable, field.name), rel=1.0e-14, abs=1.0e-15)
 
 
 def test_mixed_measure_matches_dense_rigid_yaw_level_two_average() -> None:
