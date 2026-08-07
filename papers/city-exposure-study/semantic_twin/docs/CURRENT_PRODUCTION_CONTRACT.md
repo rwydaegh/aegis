@@ -61,6 +61,13 @@ were the deterministic all-specular stage, 308.66 seconds were stochastic
 transport, and 119.95 seconds were body coupling. These values are
 stage-specific anchors, not a promise for every city or hardware configuration.
 
+The first comparable-city v2 Korenmarkt run used 14 street-route points and
+took 2:13.75. Nested-face reuse preserved the logical adaptive refinement while
+executing 52,367,468 of 120,750,721 candidate evaluations, avoiding 56.63%.
+Exact synthetic full-solve oracles preserve every accepted path array and
+transfer; the live run records the work reduction, not an old-versus-new timing
+pair.
+
 ## Linked historical records
 
 - [Publication physics decisions](PUBLICATION_PHYSICS_DECISIONS.md)

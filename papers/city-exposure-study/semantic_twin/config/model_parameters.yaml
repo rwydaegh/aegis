@@ -744,14 +744,14 @@ parameters:
     comparable_runtime_anchors:
       value:
         timing_kind: measured_stage_anchors
-        korenmarkt: {cold_one_seed_s: 155.73, warm_two_seed_total_s: 147.79, points: 13}
+        korenmarkt: {legacy_link_cold_one_seed_s: 155.73, legacy_link_warm_two_seed_total_s: 147.79, legacy_link_points: 13, comparable_street_one_seed_s: 133.75, comparable_street_points: 14, adaptive_specular_logical_candidates: 120750721, adaptive_specular_executed_candidates: 52367468, adaptive_specular_avoided_fraction: 0.566318}
         prague: {dry_run_s: 47.96, dry_run_points: 68, full_cold_seed_s: 2063.05, points: 68, deterministic_all_specular_s: 1584.75, stochastic_transport_s: 308.66, body_coupling_s: 119.95}
       units: "seconds, points, and timing provenance"
       source: docs/CURRENT_PRODUCTION_CONTRACT.md:55-62
       scope: comparable_city v2 implementation timing observations
       status: diagnostic
       affects_published_results: false
-      conflicts: "measured hardware and stage anchors, not free runtime parameters or universal city timing promises"
+      conflicts: "measured hardware and stage anchors, not free runtime parameters or universal city timing promises; legacy link-route and comparable street-route timings are different estimands"
     sealed_exposure_generation:
       value: {format_version: 1, generation_id_hex_chars: 32, sealed_artifacts: [locations, spectra], manifest_commit_record: true, same_generation_required: true, required_by: [reuse, angular_convergence, blender_export]}
       units: "format version, digest characters, and policy"

@@ -21,6 +21,9 @@ normal track does not need Blender.
 > 34:23.05; deterministic all-specular refinement accounted for 1,584.75
 > seconds, stochastic transport for 308.66 seconds, and body coupling for
 > 119.95 seconds.
+> The first comparable-city v2 Korenmarkt street-route seed took 2:13.75 for
+> 14 points. Nested-face reuse avoided 68,383,253 of 120,750,721 logical
+> adaptive-specular candidate evaluations, a 56.63% reduction.
 
 ## End-to-end stages
 
