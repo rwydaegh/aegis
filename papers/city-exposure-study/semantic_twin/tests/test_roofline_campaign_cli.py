@@ -287,6 +287,7 @@ def test_legacy_campaign_identity_bytes_do_not_gain_a_route_field(name, site):
     expected_bytes = json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()
     assert actual_bytes == expected_bytes
     assert b"route_contract" not in actual_bytes
+    assert b"source_measure_rule" not in actual_bytes
 
 
 def test_preparation_builds_sources_from_every_declared_standpoint(monkeypatch, tmp_path):
@@ -410,6 +411,7 @@ def test_preparation_builds_sources_from_every_declared_standpoint(monkeypatch, 
     prepared = prepare_roofline_campaign(setup, environment, backend=backend)
     np.testing.assert_array_equal(captured["standpoints"], points)
     assert captured["source_options"]["azimuths"] == 32
+    assert captured["source_options"]["source_measure_rule"] is None
     assert prepared.walk is walk
     assert prepared.estimator.sources.source_provenance() == {"law": "fixture curve"}
     assert prepared.estimator.deterministic_cache_size == 12
@@ -510,6 +512,8 @@ def test_cli_dry_run_writes_manifests_without_tracing(monkeypatch, tmp_path):
     staging = json.loads((output / "staged_inputs.json").read_text())
     assert staging["campaign_identity"] == "identity"
     assert staging["staging_contract"] == "fixture"
+    assert not (output / "source_curve_audit.json").exists()
+    assert not (output / "source_curve_audit.npz").exists()
 
 
 @pytest.mark.parametrize(

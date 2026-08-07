@@ -487,6 +487,7 @@ def prepare_roofline_campaign(
         expected_count=setup.source.expected_count,
         curve_resolution_m=setup.source.curve_resolution_m,
         top_edge_tolerance_m=setup.source.top_edge_tolerance_m,
+        source_measure_rule=setup.campaign.source_measure_rule,
     )
     trace_config = selected.trace_config(setup.run, environment)
     tracer_options = {} if material.atlas_material is None else {"atlas_material": material.atlas_material}

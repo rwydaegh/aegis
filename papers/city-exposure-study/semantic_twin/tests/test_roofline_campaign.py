@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -20,6 +21,12 @@ from semantic_twin.exposure.roofline_campaign import (
     seal_transport_provenance,
     _validate_specular_acceptance,
 )
+from semantic_twin.illumination.curve import (
+    HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    PHYSICAL_3D_EDGE_LENGTH,
+    curve_from_polylines,
+)
+from semantic_twin.illumination.sources import SourceSet
 from semantic_twin.transport.model import Surplus
 from semantic_twin.transport.next_event import NextEventField
 from semantic_twin.transport.specular import OneBounceSpecularTransport
@@ -171,7 +178,15 @@ class FakeCoupler:
         return exposure, sab
 
 
-def prepared(tmp_path, estimator=None, *, seeds=(1, 2), material=None, looks=None):
+def prepared(
+    tmp_path,
+    estimator=None,
+    *,
+    seeds=(1, 2),
+    material=None,
+    looks=None,
+    source_measure_rule=None,
+):
     walk = Walk(
         points=np.array([[0.0, 0.0, 1.5], [0.0, 0.0, 1.5]], dtype=np.float64),
         ground_z_m=np.zeros(2, dtype=np.float64),
@@ -188,6 +203,7 @@ def prepared(tmp_path, estimator=None, *, seeds=(1, 2), material=None, looks=Non
         output_dir=tmp_path / "campaign",
         planned_seeds=seeds,
         convergence_looks=((1, 2) if len(seeds) == 2 else ()) if looks is None else looks,
+        source_measure_rule=source_measure_rule,
     )
     selected_estimator = FakeEstimator() if estimator is None else estimator
     coupler = FakeCoupler()
@@ -204,6 +220,116 @@ def prepared(tmp_path, estimator=None, *, seeds=(1, 2), material=None, looks=Non
         transport_provenance=seal_transport_provenance(selected_estimator),
         coupler_provenance=seal_coupler_provenance(coupler),
     )
+
+
+def _sha256(path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_default_campaign_identity_dict_is_legacy_byte_compatible(tmp_path):
+    config = RooflineCampaignConfig(
+        site="test_square",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path,
+        planned_seeds=(1, 2),
+        convergence_looks=(1, 2),
+    )
+    assert config.identity_dict() == {
+        "schema_version": "roofline_body_campaign_v1",
+        "site": "test_square",
+        "cohort": "primary_semantic_route",
+        "material_mode": "atlas",
+        "planned_seeds": [1, 2],
+        "reference_mode": "per_density_eirp",
+        "sampling_claim": "full_declared_walk",
+        "point_seed_derivation": "blake2b_64_person_AEGIS_NEE_v1(seed_u64,standpoint_u64)",
+        "body_chunk_cells": 512,
+        "convergence_looks": [1, 2],
+        "minimum_completed_specular_order": 1,
+        "specular_acceptance": "exact_complete",
+    }
+
+
+def test_explicit_source_measure_rule_changes_sealed_identity(tmp_path):
+    default = RooflineCampaignConfig(
+        site="test_square",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "default",
+        planned_seeds=(1,),
+    )
+    physical = dataclasses.replace(
+        default,
+        output_dir=tmp_path / "physical",
+        source_measure_rule=PHYSICAL_3D_EDGE_LENGTH,
+    )
+    projected = dataclasses.replace(
+        default,
+        output_dir=tmp_path / "projected",
+        source_measure_rule=HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    )
+
+    assert "source_measure_rule" not in default.identity_dict()
+    assert physical.identity_dict()["source_measure_rule"] == PHYSICAL_3D_EDGE_LENGTH
+    assert projected.identity_dict()["source_measure_rule"] == HORIZONTAL_PROJECTED_EDGE_LENGTH
+    assert physical.identity_dict() != projected.identity_dict()
+
+
+def test_completed_endpoint_curve_writes_hashed_atomic_source_audit(tmp_path):
+    curve = curve_from_polylines(
+        [
+            np.array([[1.0, 0.0, 2.0], [4.0, 0.0, 6.0]], dtype=np.float64),
+            np.array([[10.0, 0.0, 2.0], [15.0, 0.0, 2.0]], dtype=np.float64),
+        ]
+    )
+    estimator = FakeEstimator()
+    estimator.sources = SourceSet.from_curve(
+        curve,
+        crop_area_m2=100.0,
+        density_per_m2=0.02,
+        eirp_w=5.0,
+        source_measure_rule=HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    )
+    campaign = prepared(
+        tmp_path,
+        estimator,
+        seeds=(1,),
+        looks=(),
+        source_measure_rule=HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    )
+    outputs = run_roofline_campaign(campaign)
+    audit_json = campaign.config.output_dir / "source_curve_audit.json"
+    audit_npz = campaign.config.output_dir / "source_curve_audit.npz"
+
+    audit = json.loads(audit_json.read_text())
+    manifest = json.loads(outputs["manifest"].read_text())
+    assert audit["selected_source_measure_rule"] == HORIZONTAL_PROJECTED_EDGE_LENGTH
+    assert audit["source_measure_rule_was_explicit"] is True
+    assert audit["physical_3d_total_m"] == pytest.approx(10.0)
+    assert audit["horizontal_projected_total_m"] == pytest.approx(8.0)
+    assert audit["npz"]["sha256"] == _sha256(audit_npz)
+    assert audit["npz"]["bytes"] == audit_npz.stat().st_size
+    assert manifest["files"]["source_curve_audit.json"] == _sha256(audit_json)
+    assert manifest["files"]["source_curve_audit.npz"] == _sha256(audit_npz)
+    with np.load(audit_npz, allow_pickle=False) as payload:
+        np.testing.assert_allclose(payload["segment_starts_m"], curve.segment_starts)
+        np.testing.assert_allclose(payload["segment_ends_m"], curve.segment_ends)
+        np.testing.assert_allclose(payload["midpoints_m"], curve.points)
+        np.testing.assert_allclose(payload["physical_3d_lengths_m"], [5.0, 5.0])
+        np.testing.assert_allclose(payload["horizontal_projected_lengths_m"], [3.0, 5.0])
+        assert payload["selected_measure_rule"].item() == HORIZONTAL_PROJECTED_EDGE_LENGTH
+    assert audit_npz.stat().st_size < 10_000
+
+
+def test_legacy_curve_campaign_skips_source_audit_safely(tmp_path):
+    campaign = prepared(tmp_path, seeds=(1,), looks=())
+    outputs = run_roofline_campaign(campaign)
+    manifest = json.loads(outputs["manifest"].read_text())
+
+    assert not (campaign.config.output_dir / "source_curve_audit.json").exists()
+    assert not (campaign.config.output_dir / "source_curve_audit.npz").exists()
+    assert not any(name.startswith("source_curve_audit") for name in manifest["files"])
 
 
 def test_reference_normalization_cancels_d_ref_and_keeps_exact_four_pi():

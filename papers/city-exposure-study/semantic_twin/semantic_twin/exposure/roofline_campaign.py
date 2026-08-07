@@ -19,6 +19,12 @@ from typing import Any, Literal, Protocol
 
 import numpy as np
 
+from ..illumination.curve import (
+    HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    PHYSICAL_3D_EDGE_LENGTH,
+    SOURCE_MEASURE_RULES,
+    FacadeTipCurve,
+)
 from ..illumination.sources import normalized_source_weights
 from ..cohort import COMPARABLE_COHORT, REGISTERED_SPAN_STREET
 from ..transport.directional import DirectionalMeasure
@@ -60,6 +66,9 @@ IDENTITY_FILENAME = "campaign_identity.json"
 LOCATIONS_FILENAME = "locations.jsonl"
 SUMMARY_FILENAME = "summary.json"
 MANIFEST_FILENAME = "manifest.json"
+SOURCE_CURVE_AUDIT_JSON = "source_curve_audit.json"
+SOURCE_CURVE_AUDIT_NPZ = "source_curve_audit.npz"
+SOURCE_CURVE_AUDIT_SCHEMA = "source_curve_audit_v1"
 
 
 class FieldEstimator(Protocol):
@@ -105,6 +114,8 @@ def _validate_campaign_names(config: RooflineCampaignConfig) -> None:
             raise ValueError(f"{COMPARABLE_COHORT} requires route_contract={REGISTERED_SPAN_STREET!r}")
     elif config.route_contract is not None:
         raise ValueError("route_contract is an opt-in field reserved for manifest-backed comparable campaigns")
+    if config.source_measure_rule is not None and config.source_measure_rule not in SOURCE_MEASURE_RULES:
+        raise ValueError(f"unknown source measure rule {config.source_measure_rule!r}")
 
 
 def _validate_campaign_seeds(config: RooflineCampaignConfig) -> None:
@@ -177,6 +188,7 @@ class RooflineCampaignConfig:
         "omitted_diagnostic",
     ] = "exact_complete"
     route_contract: Literal["registered_span_street_v1"] | None = None
+    source_measure_rule: Literal["physical_3d_edge_length", "horizontal_projected_edge_length"] | None = None
 
     def __post_init__(self) -> None:
         _validate_campaign_names(self)
@@ -202,6 +214,8 @@ class RooflineCampaignConfig:
         }
         if self.route_contract is not None:
             identity["route_contract"] = self.route_contract
+        if self.source_measure_rule is not None:
+            identity["source_measure_rule"] = self.source_measure_rule
         return identity
 
 
@@ -235,6 +249,9 @@ def _validate_prepared_contract(prepared: PreparedRooflineCampaign, points: int)
         raise ValueError(f"walk site {prepared.walk.site!r} does not match campaign site {prepared.config.site!r}")
     if prepared.config.sampling_claim != "full_declared_walk":
         raise ValueError("this runner only supports the full declared walk")
+    live_rule = getattr(prepared.estimator.sources, "source_measure_rule", None)
+    if live_rule != prepared.config.source_measure_rule:
+        raise ValueError("prepared source measure rule does not match campaign configuration")
 
 
 def _validate_prepared_provenance_shape(prepared: PreparedRooflineCampaign) -> None:
@@ -595,6 +612,68 @@ def _file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _atomic_npz(path: Path, arrays: dict[str, np.ndarray]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp-{os.getpid()}")
+    with temporary.open("wb") as handle:
+        np.savez_compressed(handle, **arrays)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)
+
+
+def _write_source_curve_audit(prepared: PreparedRooflineCampaign) -> dict[str, str]:
+    """Write exact curve geometry only for endpoint-aware production curves."""
+    sources = prepared.estimator.sources
+    curve = getattr(sources, "curve", None)
+    if not isinstance(curve, FacadeTipCurve) or not curve.has_exact_endpoints:
+        return {}
+    if curve.segment_starts is None or curve.segment_ends is None:
+        raise RuntimeError("endpoint-aware curve lost one of its endpoint arrays")
+    physical_lengths = np.asarray(curve.measure_lengths(PHYSICAL_3D_EDGE_LENGTH), dtype=np.float64)
+    projected_lengths = np.asarray(curve.measure_lengths(HORIZONTAL_PROJECTED_EDGE_LENGTH), dtype=np.float64)
+    selected_rule = prepared.config.source_measure_rule or PHYSICAL_3D_EDGE_LENGTH
+    arrays = {
+        "segment_starts_m": np.asarray(curve.segment_starts, dtype=np.float64),
+        "segment_ends_m": np.asarray(curve.segment_ends, dtype=np.float64),
+        "midpoints_m": np.asarray(curve.points, dtype=np.float64),
+        "physical_3d_lengths_m": physical_lengths,
+        "horizontal_projected_lengths_m": projected_lengths,
+        "physical_3d_total_m": np.asarray(float(np.sum(physical_lengths, dtype=np.float64))),
+        "horizontal_projected_total_m": np.asarray(float(np.sum(projected_lengths, dtype=np.float64))),
+        "measure_rule_labels": np.asarray(SOURCE_MEASURE_RULES),
+        "selected_measure_rule": np.asarray(selected_rule),
+    }
+    output = prepared.config.output_dir
+    npz_path = output / SOURCE_CURVE_AUDIT_NPZ
+    json_path = output / SOURCE_CURVE_AUDIT_JSON
+    _atomic_npz(npz_path, arrays)
+    array_hashes = {name: _array_digest(value) for name, value in arrays.items()}
+    weights = np.asarray(normalized_source_weights(sources), dtype=np.float64)
+    document = {
+        "schema_version": SOURCE_CURVE_AUDIT_SCHEMA,
+        "selected_source_measure_rule": selected_rule,
+        "source_measure_rule_was_explicit": prepared.config.source_measure_rule is not None,
+        "available_source_measure_rules": list(SOURCE_MEASURE_RULES),
+        "segments": int(physical_lengths.size),
+        "physical_3d_total_m": float(np.sum(physical_lengths, dtype=np.float64)),
+        "horizontal_projected_total_m": float(np.sum(projected_lengths, dtype=np.float64)),
+        "curve_source_hash_sha256": curve.source_hash,
+        "normalized_weights_sha256": _array_digest(weights),
+        "array_sha256": array_hashes,
+        "npz": {
+            "path": SOURCE_CURVE_AUDIT_NPZ,
+            "sha256": _file_sha256(npz_path),
+            "bytes": npz_path.stat().st_size,
+        },
+    }
+    _atomic_json(json_path, document)
+    return {
+        SOURCE_CURVE_AUDIT_JSON: _file_sha256(json_path),
+        SOURCE_CURVE_AUDIT_NPZ: _file_sha256(npz_path),
+    }
 
 
 def campaign_identity(prepared: PreparedRooflineCampaign) -> dict[str, Any]:
@@ -1837,7 +1916,14 @@ def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]
     identity = campaign_identity(prepared)
     output = prepared.config.output_dir
     output.mkdir(parents=True, exist_ok=True)
-    for name in (IDENTITY_FILENAME, LOCATIONS_FILENAME, SUMMARY_FILENAME, MANIFEST_FILENAME):
+    for name in (
+        IDENTITY_FILENAME,
+        LOCATIONS_FILENAME,
+        SUMMARY_FILENAME,
+        MANIFEST_FILENAME,
+        SOURCE_CURVE_AUDIT_JSON,
+        SOURCE_CURVE_AUDIT_NPZ,
+    ):
         for temporary in output.glob(f".{name}.tmp-*"):
             temporary.unlink(missing_ok=True)
     identity_path = output / IDENTITY_FILENAME
@@ -1867,6 +1953,7 @@ def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]
     manifest_path = output / MANIFEST_FILENAME
     _write_jsonl(locations_path, result["rows"])
     _atomic_json(summary_path, result["summary"])
+    source_curve_audit_files = _write_source_curve_audit(prepared)
     surface_files: dict[str, str] = {}
     for entry in [checkpoint.index["cumulative_sab"], *checkpoint.index["look_sab"]]:
         if entry is not None:
@@ -1880,6 +1967,7 @@ def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]
             IDENTITY_FILENAME: _file_sha256(identity_path),
             LOCATIONS_FILENAME: _file_sha256(locations_path),
             SUMMARY_FILENAME: _file_sha256(summary_path),
+            **source_curve_audit_files,
             "checkpoint/index.json": _file_sha256(checkpoint.index_path),
             **{f"checkpoint/{entry['path']}": entry["sha256"] for entry in checkpoint.index["committed"]},
             **{
