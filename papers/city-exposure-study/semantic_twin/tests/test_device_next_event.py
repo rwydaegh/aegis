@@ -523,6 +523,50 @@ def test_max_order_collapses_later_device_bounces_without_losing_mass(tmp_path: 
     assert collapsed.cleared == full.cleared
 
 
+def test_first_material_interaction_device_gather_keeps_only_depth_zero_and_is_batch_invariant(tmp_path: Path) -> None:
+    _set_variant("llvm_ad_rgb")
+    geometry = MitsubaGeometry(_write_cube(tmp_path / "cube.ply"), variant="llvm_ad_rgb")
+    sources = _sources(np.array([[0.0, 0.0, 5.0]]))
+
+    def trace(batch: int, *, first_only: bool) -> DeviceNextEventGather:
+        config = TraceConfig(
+            rays=4096,
+            local_cells=128,
+            max_bounces=3,
+            roulette_start=4,
+            batch=batch,
+            seed=137,
+        )
+        tracer = DeviceEscapeTracer(
+            geometry,
+            np.zeros(geometry.face_count, dtype=np.int64),
+            np.array([4.2 - 0.15j]),
+            np.array([1.0]),
+            config,
+        )
+        gather = DeviceNextEventGather(
+            sources,
+            max_order=1 if first_only else 3,
+            first_material_interaction_only=first_only,
+        )
+        tracer.trace(np.zeros(3), {}, next_event=gather)
+        return gather
+
+    all_depths = trace(4096, first_only=False)
+    first_whole = trace(4096, first_only=True)
+    first_split = trace(1003, first_only=True)
+
+    assert first_whole.chi_by_order().shape == (2,)
+    assert first_whole.chi_by_order()[0] == 0.0
+    assert first_whole.chi_by_order()[1] > 0.0
+    assert first_whole.chi_by_order()[1] == pytest.approx(all_depths.chi_by_order()[1], rel=2.0e-15)
+    assert first_whole.connections < all_depths.connections
+    assert first_whole.cleared < all_depths.cleared
+    assert np.array_equal(first_whole.chi_by_order(), first_split.chi_by_order())
+    assert first_whole.connections == first_split.connections
+    assert first_whole.cleared == first_split.cleared
+
+
 def test_production_estimator_keeps_direct_atoms_exact_and_device_diffuse_consistent(tmp_path: Path) -> None:
     _set_variant("llvm_ad_rgb")
     geometry = MitsubaGeometry(_write_plane(tmp_path / "plane.ply"), variant="llvm_ad_rgb")

@@ -34,7 +34,12 @@ from ..walk.model import PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE, Walk
 from ..walk.provider_corridor import PROVIDER_CORRIDOR_V1
 from .coupler import BodyExposure
 
+# This alias is the durable shard schema for historical hybrid campaigns.
+# New first-material-interaction campaigns record their distinct component names
+# in the campaign identity and checkpoint header rather than silently changing
+# the meaning of a legacy ``specular`` column.
 COMPONENTS = ("direct", "specular", "diffuse", "total")
+FIRST_MATERIAL_INTERACTION_COMPONENTS = ("direct", "all_specular", "first_diffuse", "total")
 BODY_METRICS = (
     "arriving_power_density_w_m2",
     "susceptibility",
@@ -61,6 +66,7 @@ TIMING_FIELDS = (
     "body_coupling_seconds",
 )
 SCHEMA_VERSION = "roofline_body_campaign_v1"
+FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION = "roofline_body_campaign_first_material_interaction_v1"
 POINT_SEED_ALGORITHM = "blake2b_64_person_AEGIS_NEE_v1(seed_u64,standpoint_u64)"
 TEMPORARY_GLOB = ".*.tmp-*"
 IDENTITY_FILENAME = "campaign_identity.json"
@@ -150,10 +156,19 @@ def _validate_campaign_specular_policy(config: RooflineCampaignConfig) -> None:
         "exact_complete",
         "adaptive_converged",
         "adaptive_all_specular_sampled_mixed_order_1",
+        "first_material_interaction_exact_order_1",
         "omitted_diagnostic",
     ):
         raise ValueError(f"unknown specular acceptance policy {config.specular_acceptance!r}")
-    expected_order = 1 if config.specular_acceptance == "exact_complete" else 0
+    expected_order = (
+        1
+        if config.specular_acceptance
+        in (
+            "exact_complete",
+            "first_material_interaction_exact_order_1",
+        )
+        else 0
+    )
     if config.minimum_completed_specular_order != expected_order:
         raise ValueError(f"{config.specular_acceptance} requires minimum_completed_specular_order={expected_order}")
 
@@ -189,8 +204,10 @@ class RooflineCampaignConfig:
         "exact_complete",
         "adaptive_converged",
         "adaptive_all_specular_sampled_mixed_order_1",
+        "first_material_interaction_exact_order_1",
         "omitted_diagnostic",
     ] = "exact_complete"
+    transport_topology: Literal["hybrid_max_bounces_v1", "first_material_interaction_v1"] = "hybrid_max_bounces_v1"
     route_contract: Literal["registered_span_street_v1", "provider_corridor_v1"] | None = None
     source_measure_rule: Literal["physical_3d_edge_length", "horizontal_projected_edge_length"] | None = None
 
@@ -199,11 +216,34 @@ class RooflineCampaignConfig:
         _validate_campaign_seeds(self)
         _validate_campaign_specular_policy(self)
         _validate_campaign_looks_and_cohort(self)
+        if self.transport_topology not in ("hybrid_max_bounces_v1", "first_material_interaction_v1"):
+            raise ValueError(f"unknown transport topology {self.transport_topology!r}")
+        first = self.transport_topology == "first_material_interaction_v1"
+        if first != (self.specular_acceptance == "first_material_interaction_exact_order_1"):
+            raise ValueError(
+                "first-material-interaction topology requires first_material_interaction_exact_order_1 acceptance"
+            )
         object.__setattr__(self, "output_dir", Path(self.output_dir))
+
+    @property
+    def components(self) -> tuple[str, str, str, str]:
+        return (
+            FIRST_MATERIAL_INTERACTION_COMPONENTS
+            if self.transport_topology == "first_material_interaction_v1"
+            else COMPONENTS
+        )
+
+    @property
+    def schema_version(self) -> str:
+        return (
+            FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION
+            if self.transport_topology == "first_material_interaction_v1"
+            else SCHEMA_VERSION
+        )
 
     def identity_dict(self) -> dict[str, Any]:
         identity = {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": self.schema_version,
             "site": self.site,
             "cohort": self.cohort,
             "material_mode": self.material_mode,
@@ -216,6 +256,9 @@ class RooflineCampaignConfig:
             "minimum_completed_specular_order": self.minimum_completed_specular_order,
             "specular_acceptance": self.specular_acceptance,
         }
+        if self.transport_topology != "hybrid_max_bounces_v1":
+            identity["transport_topology"] = self.transport_topology
+            identity["components"] = list(self.components)
         if self.route_contract is not None:
             identity["route_contract"] = self.route_contract
         if self.source_measure_rule is not None:
@@ -501,6 +544,8 @@ def _estimator_configuration(estimator: FieldEstimator) -> dict[str, Any]:
         )
         if hasattr(estimator, name)
     }
+    if getattr(estimator, "transport_topology", "hybrid_max_bounces_v1") != "hybrid_max_bounces_v1":
+        configuration["transport_topology"] = _json_value(estimator.transport_topology)
     if not configuration:
         raise ValueError("estimator exposes no sealed numerical configuration")
     visible_candidates = getattr(estimator, "visible_face_candidates", None)
@@ -780,7 +825,7 @@ def campaign_identity(prepared: PreparedRooflineCampaign) -> dict[str, Any]:
         "materials": prepared.material_provenance,
         "inputs": prepared.input_provenance,
         "transport": live_transport,
-        "components": list(COMPONENTS),
+        "components": list(prepared.config.components),
         "body_metrics": list(BODY_METRICS),
         "reference_fields": list(REFERENCE_FIELDS),
         "timing_fields": list(TIMING_FIELDS),
@@ -857,6 +902,58 @@ def component_measures(
     return measures
 
 
+def first_material_interaction_measures(
+    field: NextEventField,
+    scale: ReferenceScale,
+    reference_id: str,
+) -> dict[str, DirectionalMeasure]:
+    """Return the closed direct, one-mirror, and first-diffuse partition."""
+    if field.mixed_specular_mass != 0.0 or field.mixed_specular_atom_mass.size:
+        raise RuntimeError("first-material-interaction field unexpectedly contains a mixed specular suffix")
+    if not np.array_equal(field.specular_k_hat, field.all_specular_k_hat) or not np.array_equal(
+        field.specular_atom_mass, field.all_specular_atom_mass
+    ):
+        raise RuntimeError("first-material-interaction field combines all-specular and another atom class")
+    reference = scale.transfer_m_inv2
+    empty_directions = np.empty((0, 3), dtype=np.float64)
+    empty_mass = np.empty(0, dtype=np.float64)
+    direct = DirectionalMeasure(
+        field.direct_k_hat,
+        field.direct_atom_mass / reference,
+        empty_directions,
+        empty_mass,
+        reference_id=f"{reference_id}:direct",
+    )
+    all_specular = DirectionalMeasure(
+        field.all_specular_k_hat,
+        field.all_specular_atom_mass / reference,
+        empty_directions,
+        empty_mass,
+        reference_id=f"{reference_id}:all-specular",
+    )
+    first_diffuse = DirectionalMeasure(
+        empty_directions,
+        empty_mass,
+        -field.local_grid,
+        field.bounced_mass / reference,
+        reference_id=f"{reference_id}:first-diffuse",
+    )
+    total = field.directional_measure(reference, reference_id=f"{reference_id}:total")
+    if not np.isclose(
+        total.total,
+        direct.total + all_specular.total + first_diffuse.total,
+        rtol=2.0e-12,
+        atol=1.0e-15,
+    ):
+        raise RuntimeError("first-material-interaction components do not conserve transfer")
+    return {
+        "direct": direct,
+        "all_specular": all_specular,
+        "first_diffuse": first_diffuse,
+        "total": total,
+    }
+
+
 def _body_metric_array(exposure: BodyExposure) -> np.ndarray:
     return np.asarray([getattr(exposure, name) for name in BODY_METRICS], dtype=np.float64)
 
@@ -925,6 +1022,13 @@ class RooflineCheckpoint:
         self.points = int(points)
         self.surfaces = int(surfaces)
         self.convergence_looks = convergence_looks
+        configuration = identity.get("data", {}).get("configuration", {})
+        self.components = tuple(configuration.get("components", COMPONENTS))
+        self.schema_version = str(configuration.get("schema_version", SCHEMA_VERSION))
+        if len(self.components) != 4 or len(set(self.components)) != len(self.components):
+            raise ValueError("campaign checkpoint requires four uniquely named components")
+        if self.components[0] != "direct" or self.components[-1] != "total":
+            raise ValueError("campaign checkpoint component order must start with direct and end with total")
         self.root.mkdir(parents=True, exist_ok=True)
         self.shard_dir.mkdir(parents=True, exist_ok=True)
         self.cumulative_dir.mkdir(parents=True, exist_ok=True)
@@ -933,11 +1037,11 @@ class RooflineCheckpoint:
             self._validate_index()
         else:
             self.index = {
-                "schema_version": SCHEMA_VERSION,
+                "schema_version": self.schema_version,
                 "identity_sha256": identity["sha256"],
                 "points": self.points,
                 "surfaces": self.surfaces,
-                "components": list(COMPONENTS),
+                "components": list(self.components),
                 "body_metrics": list(BODY_METRICS),
                 "reference_fields": list(REFERENCE_FIELDS),
                 "timing_fields": list(TIMING_FIELDS),
@@ -980,11 +1084,11 @@ class RooflineCheckpoint:
 
     def _expected_index_header(self) -> dict[str, Any]:
         return {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": self.schema_version,
             "identity_sha256": self.identity["sha256"],
             "points": self.points,
             "surfaces": self.surfaces,
-            "components": list(COMPONENTS),
+            "components": list(self.components),
             "body_metrics": list(BODY_METRICS),
             "reference_fields": list(REFERENCE_FIELDS),
             "timing_fields": list(TIMING_FIELDS),
@@ -1066,8 +1170,8 @@ class RooflineCheckpoint:
 
     def _validate_arrays(self, arrays: dict[str, np.ndarray]) -> None:
         expected_shapes = {
-            "raw_transfer": (self.points, len(COMPONENTS)),
-            "body_metrics": (self.points, len(COMPONENTS), len(BODY_METRICS)),
+            "raw_transfer": (self.points, len(self.components)),
+            "body_metrics": (self.points, len(self.components), len(BODY_METRICS)),
             "timings": (self.points, len(TIMING_FIELDS)),
             "field_meta": (self.points, len(FIELD_META)),
             "reference": (self.points, len(REFERENCE_FIELDS)),
@@ -1166,10 +1270,10 @@ class _ReplicaBuffers:
     diagnostics: list[dict[str, Any]]
 
     @classmethod
-    def empty(cls, points: int, surfaces: int) -> _ReplicaBuffers:
+    def empty(cls, points: int, surfaces: int, components: tuple[str, str, str, str]) -> _ReplicaBuffers:
         return cls(
-            raw_transfer=np.zeros((points, len(COMPONENTS)), dtype=np.float64),
-            body_metrics=np.zeros((points, len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64),
+            raw_transfer=np.zeros((points, len(components)), dtype=np.float64),
+            body_metrics=np.zeros((points, len(components), len(BODY_METRICS)), dtype=np.float64),
             total_sab=np.zeros((points, surfaces), dtype=np.float64),
             timings=np.full((points, len(TIMING_FIELDS)), np.nan, dtype=np.float64),
             field_meta=np.zeros((points, len(FIELD_META)), dtype=np.float64),
@@ -1208,7 +1312,12 @@ def _estimate_point_transport(
     if not np.isclose(float(surplus.total), field.total, rtol=2.0e-10, atol=1.0e-14):
         raise RuntimeError("scalar and directional estimates disagree on total transfer")
     _validate_specular_acceptance(field, surplus.detail, prepared.config)
-    measures = component_measures(field, scale, f"{prepared.config.site}:{point_index}:seed:{seed}")
+    reference_id = f"{prepared.config.site}:{point_index}:seed:{seed}"
+    measures = (
+        first_material_interaction_measures(field, scale, reference_id)
+        if prepared.config.transport_topology == "first_material_interaction_v1"
+        else component_measures(field, scale, reference_id)
+    )
     return point_seed, surplus, field, scale, measures, estimator_seconds
 
 
@@ -1294,7 +1403,7 @@ def _couple_body_component(
     if cached is not None:
         body_cache_hits[component] = True
         return cached
-    if component == "specular" and field.specular_components_separable:
+    if component in ("specular", "all_specular") and field.specular_components_separable:
         result = _couple_separable_specular(
             prepared,
             field,
@@ -1335,10 +1444,11 @@ def _couple_body_components(
     body_areas: np.ndarray,
     body_mass: float,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, bool]]:
-    metrics = np.zeros((len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64)
+    components = prepared.config.components
+    metrics = np.zeros((len(components), len(BODY_METRICS)), dtype=np.float64)
     component_sab: list[np.ndarray] = []
     body_cache_hits: dict[str, bool] = {}
-    for component_index, component in enumerate(COMPONENTS[:3]):
+    for component_index, component in enumerate(components[:3]):
         component_metric, component_field = _couple_body_component(
             prepared,
             component,
@@ -1395,7 +1505,7 @@ def _point_diagnostic(
     detail: dict[str, Any],
     body_cache_hits: dict[str, bool],
 ) -> dict[str, Any]:
-    return {
+    diagnostic = {
         "point_seed": point_seed,
         "specular_estimate_kind": field.specular_estimate_kind,
         "finite_resolution_specular_estimate": field.finite_resolution_specular_estimate,
@@ -1416,6 +1526,12 @@ def _point_diagnostic(
             "stochastic_trace_seconds": "stochastic_trace_seconds" in detail,
         },
     }
+    if detail.get("transport_topology") == "first_material_interaction_v1":
+        diagnostic["transport_topology"] = "first_material_interaction_v1"
+        diagnostic["first_material_interaction_nee_only"] = bool(
+            detail.get("first_material_interaction_nee_only", False)
+        )
+    return diagnostic
 
 
 def _run_replica(
@@ -1425,7 +1541,7 @@ def _run_replica(
 ) -> ReplicaData:
     points = len(prepared.walk)
     surfaces = int(np.asarray(prepared.coupler.body.areas).size)
-    buffers = _ReplicaBuffers.empty(points, surfaces)
+    buffers = _ReplicaBuffers.empty(points, surfaces, prepared.config.components)
     body_areas = np.asarray(prepared.coupler.body.areas, dtype=np.float64)
     body_mass = float(prepared.coupler.body_mass_kg)
     for point_index, (origin, ground_z, yaw) in enumerate(
@@ -1434,12 +1550,20 @@ def _run_replica(
         point_seed, surplus, field, scale, measures, estimator_seconds = _estimate_point_transport(
             prepared, seed, point_index, origin, ground_z
         )
-        buffers.raw_transfer[point_index] = (
-            field.direct_atoms,
-            field.specular,
-            float(np.sum(field.bounced_mass, dtype=np.float64)),
-            field.total,
-        )
+        if prepared.config.transport_topology == "first_material_interaction_v1":
+            buffers.raw_transfer[point_index] = (
+                field.direct_atoms,
+                field.all_specular_mass,
+                float(np.sum(field.bounced_mass, dtype=np.float64)),
+                field.total,
+            )
+        else:
+            buffers.raw_transfer[point_index] = (
+                field.direct_atoms,
+                field.specular,
+                float(np.sum(field.bounced_mass, dtype=np.float64)),
+                field.total,
+            )
         buffers.reference[point_index] = (scale.transfer_m_inv2, scale.reference_s0_w_m2)
         body_started = time.perf_counter()
         point_metrics, point_sab, body_cache_hits = _couple_body_components(
@@ -1477,6 +1601,9 @@ def _validate_specular_acceptance(
         return
     if policy == "adaptive_all_specular_sampled_mixed_order_1":
         _validate_sampled_mixed_specular(field, detail)
+        return
+    if policy == "first_material_interaction_exact_order_1":
+        _validate_first_material_interaction(field, detail)
         return
     if policy == "omitted_diagnostic":
         _validate_omitted_specular(field)
@@ -1692,6 +1819,43 @@ def _validate_sampled_mixed_specular(field: NextEventField, detail: dict[str, An
         )
 
 
+def _validate_first_material_interaction(field: NextEventField, detail: dict[str, Any]) -> None:
+    """Enforce the closed one-material-interaction transport partition."""
+    work = field.specular_work
+    all_diagnostics = field.all_specular_diagnostics
+    sampled = detail.get("sampled_specular_suffix", {})
+    checks = {
+        "transport_topology": detail.get("transport_topology") == "first_material_interaction_v1",
+        "first_material_interaction_nee_only": detail.get("first_material_interaction_nee_only") is True,
+        "exact_direct_atoms": np.isclose(field.direct, field.direct_atoms, rtol=2.0e-12, atol=1.0e-15),
+        "exact_order_1_all_specular": (
+            field.includes_specular
+            and field.specular_estimate_kind == "exact_order_1"
+            and not field.finite_resolution_specular_estimate
+            and field.maximum_completed_all_specular_order == 1
+            and field.specular_bounce_cap == 1
+            and bool(all_diagnostics.get("candidate_support_complete", False))
+            and bool(work.get("support_complete", False))
+        ),
+        "no_mixed_suffix_mass": field.mixed_specular_mass == 0.0 and field.mixed_specular_atom_mass.size == 0,
+        "all_specular_atoms_only": (
+            np.array_equal(field.specular_k_hat, field.all_specular_k_hat)
+            and np.array_equal(field.specular_atom_mass, field.all_specular_atom_mass)
+            and np.isclose(field.specular, field.all_specular_mass, rtol=2.0e-12, atol=1.0e-15)
+        ),
+        "no_sampled_suffix": (
+            detail.get("mixed_specular_suffix_order_1", 0.0) == 0.0
+            and not bool(detail.get("mixed_specular_suffix_order_1_included", False))
+            and not bool(sampled.get("enabled", False))
+        ),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise RuntimeError(
+            "first-material-interaction field violated its closed transport contract: " + ", ".join(failed)
+        )
+
+
 def _validate_omitted_specular(field: NextEventField) -> None:
     if (
         field.includes_specular
@@ -1726,15 +1890,16 @@ def _convergence(
     previous_raw = None
     previous_mean_sab = None
     previous_peak = None
+    total_index = checkpoint.components.index("total")
     for look in reached:
-        raw_sum = np.zeros((checkpoint.points, len(COMPONENTS)), dtype=np.float64)
-        metric_sum = np.zeros((checkpoint.points, len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64)
+        raw_sum = np.zeros((checkpoint.points, len(checkpoint.components)), dtype=np.float64)
+        metric_sum = np.zeros((checkpoint.points, len(checkpoint.components), len(BODY_METRICS)), dtype=np.float64)
         for seed in seeds[:look]:
             data = checkpoint.load(seed)
             raw_sum += data["raw_transfer"]
             metric_sum += data["body_metrics"]
-        raw_mean = raw_sum[:, 3] / look
-        mean_sab = metric_sum[:, 3, BODY_METRICS.index("mean_sab_w_m2")] / look
+        raw_mean = raw_sum[:, total_index] / look
+        mean_sab = metric_sum[:, total_index, BODY_METRICS.index("mean_sab_w_m2")] / look
         peak = np.max(checkpoint.load_sab_sum(look) / look, axis=1)
         record: dict[str, Any] = {"seeds": look}
         if previous_raw is not None:
@@ -1785,9 +1950,9 @@ class _SummaryMoments:
 
 
 def _accumulate_summary(checkpoint: RooflineCheckpoint, seeds: tuple[int, ...]) -> _SummaryAccumulation:
-    raw_sum = np.zeros((checkpoint.points, len(COMPONENTS)), dtype=np.float64)
+    raw_sum = np.zeros((checkpoint.points, len(checkpoint.components)), dtype=np.float64)
     raw_sq = np.zeros_like(raw_sum)
-    metric_sum = np.zeros((checkpoint.points, len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64)
+    metric_sum = np.zeros((checkpoint.points, len(checkpoint.components), len(BODY_METRICS)), dtype=np.float64)
     metric_sq = np.zeros_like(metric_sum)
     timing_sum = np.zeros((checkpoint.points, len(TIMING_FIELDS)), dtype=np.float64)
     timing_count = np.zeros_like(timing_sum)
@@ -1829,9 +1994,10 @@ def _location_components(
     metric_mean: np.ndarray,
     metric_se: np.ndarray,
     ensemble_peak: np.ndarray,
+    components: tuple[str, str, str, str],
 ) -> dict[str, Any]:
-    components: dict[str, Any] = {}
-    for component_index, component in enumerate(COMPONENTS):
+    output: dict[str, Any] = {}
+    for component_index, component in enumerate(components):
         body = {}
         for metric_index, name in enumerate(BODY_METRICS):
             output_name = "mean_per_replica_peak_sab_w_m2" if name == "peak_sab_w_m2" else name
@@ -1841,14 +2007,14 @@ def _location_components(
             }
         if component == "total":
             body["ensemble_field_peak_sab_w_m2"] = float(ensemble_peak[point_index])
-        components[component] = {
+        output[component] = {
             "raw_transfer_m_inv2": {
                 "mean": float(raw_mean[point_index, component_index]),
                 "se": float(raw_se[point_index, component_index]),
             },
             "body": body,
         }
-    return components
+    return output
 
 
 def _location_row(
@@ -1863,8 +2029,8 @@ def _location_row(
     accumulation: _SummaryAccumulation,
     diagnostic_variants: list[list[dict[str, Any]]],
 ) -> dict[str, Any]:
-    direct = moments.raw_mean[point_index, 0]
-    total = moments.raw_mean[point_index, 3]
+    direct = moments.raw_mean[point_index, prepared.config.components.index("direct")]
+    total = moments.raw_mean[point_index, prepared.config.components.index("total")]
     return {
         "site": prepared.config.site,
         "cohort": prepared.config.cohort,
@@ -1892,6 +2058,7 @@ def _location_row(
             moments.metric_mean,
             moments.metric_se,
             moments.ensemble_peak,
+            prepared.config.components,
         ),
         "timing_seconds_per_replica_mean": {
             name: (
@@ -1918,8 +2085,8 @@ def _summary_payload(
     seeds: tuple[int, ...],
     accumulation: _SummaryAccumulation,
 ) -> dict[str, Any]:
-    return {
-        "schema_version": SCHEMA_VERSION,
+    payload = {
+        "schema_version": prepared.config.schema_version,
         "site": prepared.config.site,
         "cohort": prepared.config.cohort,
         "standpoints": checkpoint.points,
@@ -1936,6 +2103,9 @@ def _summary_payload(
         },
         "convergence": _convergence(checkpoint, seeds, prepared.config.convergence_looks),
     }
+    if prepared.config.transport_topology == "first_material_interaction_v1":
+        payload["components"] = list(prepared.config.components)
+    return payload
 
 
 def _summarize(prepared: PreparedRooflineCampaign, checkpoint: RooflineCheckpoint) -> dict[str, Any]:
@@ -2036,7 +2206,7 @@ def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]
         if entry is not None:
             surface_files[f"checkpoint/{entry['path']}"] = entry["sha256"]
     manifest = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": prepared.config.schema_version,
         "identity_sha256": identity["sha256"],
         "output_profile": "minimal_results_plus_resumable_seed_shards",
         "optional_audit_and_blender_artifacts": "not_generated",

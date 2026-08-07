@@ -256,6 +256,39 @@ def _common_identity(estimator: Any) -> dict[str, Any] | None:
     sites = np.asarray(estimator.sources.sites(), dtype=np.float64)
     weights = normalized_source_weights(estimator.sources)
     atlas = _atlas_identity(getattr(tracer, "atlas_material", None))
+    deterministic_settings = {
+        "samples": int(estimator.samples),
+        "max_order": None if estimator.max_order is None else int(estimator.max_order),
+        "connection_lift_m": float(estimator.connection_lift_m),
+        "direct_epsilon_m": 1.0e-3,
+        "minimum_connect_m": 0.5,
+        "specular_order": int(estimator.specular_order),
+        "specular_candidate_budget": int(estimator.specular_candidate_budget),
+        "specular_suffix_mode": str(estimator.specular_suffix_mode),
+        "visible_face_candidates": {
+            "class": (
+                f"{type(estimator.visible_face_candidates).__module__}."
+                f"{type(estimator.visible_face_candidates).__qualname__}"
+            ),
+            "sample_levels": list(estimator.visible_face_candidates.sample_levels),
+            "growth_factor": int(estimator.visible_face_candidates.growth_factor),
+            "epsilon_m": float(estimator.visible_face_candidates.epsilon_m),
+        },
+        "source_quadrature": {
+            "class": (
+                f"{type(estimator.source_quadrature).__module__}.{type(estimator.source_quadrature).__qualname__}"
+            ),
+            "strata_levels": list(estimator.source_quadrature.strata_levels),
+            "growth_factor": int(estimator.source_quadrature.growth_factor),
+        },
+        "specular_refinement_relative_tolerance": float(estimator.specular_refinement_relative_tolerance),
+        "trace_rays": int(tracer.config.rays),
+        "trace_max_bounces": int(tracer.config.max_bounces),
+        "trace_frequency_hz": float(tracer.config.frequency_hz),
+        "trace_ray_epsilon_m": float(tracer.config.ray_epsilon_m),
+    }
+    if getattr(estimator, "transport_topology", "hybrid_max_bounces_v1") != "hybrid_max_bounces_v1":
+        deterministic_settings["transport_topology"] = str(estimator.transport_topology)
     return {
         "schema": CACHE_SCHEMA,
         "algorithm": CACHE_ALGORITHM,
@@ -272,37 +305,7 @@ def _common_identity(estimator: Any) -> dict[str, Any] | None:
             "rms_height_m": _array_identity(tracer.rms_height_m, np.float64),
             "atlas": atlas,
         },
-        "deterministic_settings": {
-            "samples": int(estimator.samples),
-            "max_order": None if estimator.max_order is None else int(estimator.max_order),
-            "connection_lift_m": float(estimator.connection_lift_m),
-            "direct_epsilon_m": 1.0e-3,
-            "minimum_connect_m": 0.5,
-            "specular_order": int(estimator.specular_order),
-            "specular_candidate_budget": int(estimator.specular_candidate_budget),
-            "specular_suffix_mode": str(estimator.specular_suffix_mode),
-            "visible_face_candidates": {
-                "class": (
-                    f"{type(estimator.visible_face_candidates).__module__}."
-                    f"{type(estimator.visible_face_candidates).__qualname__}"
-                ),
-                "sample_levels": list(estimator.visible_face_candidates.sample_levels),
-                "growth_factor": int(estimator.visible_face_candidates.growth_factor),
-                "epsilon_m": float(estimator.visible_face_candidates.epsilon_m),
-            },
-            "source_quadrature": {
-                "class": (
-                    f"{type(estimator.source_quadrature).__module__}.{type(estimator.source_quadrature).__qualname__}"
-                ),
-                "strata_levels": list(estimator.source_quadrature.strata_levels),
-                "growth_factor": int(estimator.source_quadrature.growth_factor),
-            },
-            "specular_refinement_relative_tolerance": float(estimator.specular_refinement_relative_tolerance),
-            "trace_rays": int(tracer.config.rays),
-            "trace_max_bounces": int(tracer.config.max_bounces),
-            "trace_frequency_hz": float(tracer.config.frequency_hz),
-            "trace_ray_epsilon_m": float(tracer.config.ray_epsilon_m),
-        },
+        "deterministic_settings": deterministic_settings,
     }
 
 

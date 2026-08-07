@@ -180,13 +180,26 @@ def _validate_setup_specular_contract(setup: RooflineSetupConfig) -> None:
     if source.specular_order == 1 and campaign.specular_acceptance == "omitted_diagnostic":
         raise ValueError("omitted-specular diagnostics require specular_order=0")
     combined_policy = "adaptive_all_specular_sampled_mixed_order_1"
+    first_interaction_policy = "first_material_interaction_exact_order_1"
     if campaign.specular_acceptance == combined_policy and source.specular_suffix_mode != "sampled":
         raise ValueError("combined sampled-specular acceptance requires specular_suffix_mode=sampled")
     if campaign.specular_acceptance == combined_policy and run.max_bounces < 2:
         raise ValueError("combined sampled-specular acceptance requires max_bounces>=2")
     if campaign.specular_acceptance == "exact_complete" and source.specular_suffix_mode != "exact":
         raise ValueError("exact-complete acceptance requires specular_suffix_mode=exact")
-    if run.transport_kernel == "drjit" and source.specular_order == 1 and source.specular_suffix_mode != "sampled":
+    if campaign.specular_acceptance == first_interaction_policy:
+        if run.max_bounces != 1:
+            raise ValueError("first-material-interaction acceptance requires max_bounces=1")
+        if source.specular_order != 1:
+            raise ValueError("first-material-interaction acceptance requires specular_order=1")
+        if source.specular_suffix_mode != "disabled":
+            raise ValueError("first-material-interaction acceptance requires specular_suffix_mode=disabled")
+    if (
+        run.transport_kernel == "drjit"
+        and source.specular_order == 1
+        and source.specular_suffix_mode != "sampled"
+        and campaign.specular_acceptance != first_interaction_policy
+    ):
         raise ValueError("resident device order-one transport requires specular_suffix_mode=sampled")
 
 
@@ -544,6 +557,7 @@ def prepare_roofline_campaign(
         specular_suffix_mode=setup.source.specular_suffix_mode,
         sampled_specular_samples=setup.source.sampled_specular_samples,
         sampled_specular_seed_offset=setup.source.sampled_specular_seed_offset,
+        transport_topology=setup.campaign.transport_topology,
         deterministic_cache_size=max(8, 2 * len(walk) + 4),
         diagnostic_models={},
         **({} if persistent_cache_dir is None else {"persistent_cache_dir": persistent_cache_dir}),
@@ -686,6 +700,9 @@ def _preflight_readiness(
     if policy == "adaptive_all_specular_sampled_mixed_order_1":
         ready = bool(adaptive["enabled"] and sampled["enabled"])
         return ready, adaptive.get("reason") or sampled.get("reason")
+    if policy == "first_material_interaction_exact_order_1":
+        ready = bool(exact_work["enabled"] and exact_work.get("support_complete", False))
+        return ready, exact_work.get("reason")
     ready = estimator.specular_order == 0
     return ready, None if ready else "omitted diagnostic requires specular_order=0"
 

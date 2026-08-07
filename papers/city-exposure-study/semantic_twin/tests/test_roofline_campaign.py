@@ -15,6 +15,7 @@ from semantic_twin.exposure.roofline_campaign import (
     campaign_identity,
     component_measures,
     derive_point_seed,
+    first_material_interaction_measures,
     reference_scale,
     run_roofline_campaign,
     seal_coupler_provenance,
@@ -129,6 +130,33 @@ class FakeEstimator:
         return Surplus("next_event", "facade_tip", field.direct, field.total, detail), field
 
 
+class FirstMaterialInteractionFakeEstimator(FakeEstimator):
+    """A sealed exact direct/all-specular/first-diffuse field for campaign tests."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.transport_topology = "first_material_interaction_v1"
+        self.specular_suffix_mode = "disabled"
+
+    def estimate_field(self, origin, *, ground_z_m=0.0, seed=None):
+        surplus, field = super().estimate_field(origin, ground_z_m=ground_z_m, seed=seed)
+        field = dataclasses.replace(
+            field,
+            maximum_completed_specular_suffix_order=0,
+            all_specular_diagnostics={"seconds": 0.02, "candidates": 4, "candidate_support_complete": True},
+            specular_work={"enabled": True, "support_complete": True},
+        )
+        detail = {
+            **surplus.detail,
+            "transport_topology": "first_material_interaction_v1",
+            "first_material_interaction_nee_only": True,
+            "mixed_specular_suffix_order_1": 0.0,
+            "mixed_specular_suffix_order_1_included": False,
+            "sampled_specular_suffix": {"enabled": False},
+        }
+        return dataclasses.replace(surplus, detail=detail), field
+
+
 class FakeCoupler:
     def __init__(self) -> None:
         self.body = SimpleNamespace(
@@ -187,6 +215,7 @@ def prepared(
     material=None,
     looks=None,
     source_measure_rule=None,
+    config=None,
 ):
     walk = Walk(
         points=np.array([[0.0, 0.0, 1.5], [0.0, 0.0, 1.5]], dtype=np.float64),
@@ -197,15 +226,16 @@ def prepared(
         site="test_square",
         body_yaw_deg=np.array([10.0, 20.0], dtype=np.float64),
     )
-    config = RooflineCampaignConfig(
-        site="test_square",
-        cohort="primary_semantic_route",
-        material_mode="atlas",
-        output_dir=tmp_path / "campaign",
-        planned_seeds=seeds,
-        convergence_looks=((1, 2) if len(seeds) == 2 else ()) if looks is None else looks,
-        source_measure_rule=source_measure_rule,
-    )
+    if config is None:
+        config = RooflineCampaignConfig(
+            site="test_square",
+            cohort="primary_semantic_route",
+            material_mode="atlas",
+            output_dir=tmp_path / "campaign",
+            planned_seeds=seeds,
+            convergence_looks=((1, 2) if len(seeds) == 2 else ()) if looks is None else looks,
+            source_measure_rule=source_measure_rule,
+        )
     selected_estimator = FakeEstimator() if estimator is None else estimator
     coupler = FakeCoupler()
     return PreparedRooflineCampaign(
@@ -270,6 +300,106 @@ def test_default_campaign_identity_dict_is_legacy_byte_compatible(tmp_path):
         "minimum_completed_specular_order": 1,
         "specular_acceptance": "exact_complete",
     }
+
+
+def test_first_material_interaction_campaign_persists_closed_named_components(tmp_path):
+    config = RooflineCampaignConfig(
+        site="test_square",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "first-material",
+        planned_seeds=(1,),
+        minimum_completed_specular_order=1,
+        specular_acceptance="first_material_interaction_exact_order_1",
+        transport_topology="first_material_interaction_v1",
+    )
+    campaign = prepared(
+        tmp_path,
+        estimator=FirstMaterialInteractionFakeEstimator(),
+        seeds=(1,),
+        config=config,
+    )
+    result = run_roofline_campaign(campaign)
+
+    identity = json.loads((config.output_dir / "campaign_identity.json").read_text())
+    assert identity["data"]["configuration"]["transport_topology"] == "first_material_interaction_v1"
+    assert identity["data"]["components"] == ["direct", "all_specular", "first_diffuse", "total"]
+    assert identity["data"]["transport"]["estimator"]["configuration"]["transport_topology"] == (
+        "first_material_interaction_v1"
+    )
+
+    checkpoint = json.loads(result["checkpoint"].read_text())
+    assert checkpoint["schema_version"] == "roofline_body_campaign_first_material_interaction_v1"
+    assert checkpoint["components"] == ["direct", "all_specular", "first_diffuse", "total"]
+    with np.load(config.output_dir / "checkpoint" / checkpoint["committed"][0]["path"], allow_pickle=False) as shard:
+        raw_transfer = np.asarray(shard["raw_transfer"])
+        body_metrics = np.asarray(shard["body_metrics"])
+    np.testing.assert_allclose(raw_transfer[:, 1], 0.125, rtol=0.0, atol=0.0)
+    np.testing.assert_allclose(raw_transfer[:, 3], np.sum(raw_transfer[:, :3], axis=1), rtol=2.0e-12, atol=1.0e-15)
+    np.testing.assert_allclose(
+        body_metrics[:, 3, 4], np.sum(body_metrics[:, :3, 4], axis=1), rtol=2.0e-12, atol=1.0e-15
+    )
+
+    row = json.loads(result["locations"].read_text().splitlines()[0])
+    assert set(row["components"]) == {"direct", "all_specular", "first_diffuse", "total"}
+    assert row["specular_diagnostic_variants"][0]["data"]["first_material_interaction_nee_only"] is True
+    assert json.loads(result["summary"].read_text())["components"] == [
+        "direct",
+        "all_specular",
+        "first_diffuse",
+        "total",
+    ]
+
+
+def test_first_material_interaction_measure_rejects_mixed_suffix(tmp_path):
+    _, exact = FirstMaterialInteractionFakeEstimator().estimate_field(np.zeros(3), seed=1)
+    scale = reference_scale(FirstMaterialInteractionFakeEstimator().sources, np.zeros(3), "per_density_eirp")
+    measures = first_material_interaction_measures(exact, scale, "test")
+    assert tuple(measures) == ("direct", "all_specular", "first_diffuse", "total")
+    assert measures["total"].total == pytest.approx(
+        measures["direct"].total + measures["all_specular"].total + measures["first_diffuse"].total
+    )
+    mixed = dataclasses.replace(
+        exact,
+        specular_k_hat=np.concatenate((exact.specular_k_hat, exact.specular_k_hat)),
+        specular_atom_mass=np.concatenate((exact.specular_atom_mass, np.array([0.001]))),
+        mixed_specular_k_hat=exact.specular_k_hat,
+        mixed_specular_atom_mass=np.array([0.001]),
+        mixed_specular_mass=0.001,
+    )
+    with pytest.raises(RuntimeError, match="mixed specular suffix"):
+        first_material_interaction_measures(mixed, scale, "test")
+
+
+def test_first_material_interaction_acceptance_refuses_mixed_suffix(tmp_path):
+    _surplus, exact = FirstMaterialInteractionFakeEstimator().estimate_field(np.zeros(3), seed=1)
+    config = RooflineCampaignConfig(
+        site="test",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "first",
+        planned_seeds=(1,),
+        specular_acceptance="first_material_interaction_exact_order_1",
+        transport_topology="first_material_interaction_v1",
+    )
+    detail = {
+        "transport_topology": "first_material_interaction_v1",
+        "first_material_interaction_nee_only": True,
+        "mixed_specular_suffix_order_1": 0.0,
+        "mixed_specular_suffix_order_1_included": False,
+        "sampled_specular_suffix": {"enabled": False},
+    }
+    _validate_specular_acceptance(exact, detail, config)
+    mixed = dataclasses.replace(
+        exact,
+        specular_k_hat=np.concatenate((exact.specular_k_hat, exact.specular_k_hat)),
+        specular_atom_mass=np.concatenate((exact.specular_atom_mass, np.array([0.001]))),
+        mixed_specular_k_hat=exact.specular_k_hat,
+        mixed_specular_atom_mass=np.array([0.001]),
+        mixed_specular_mass=0.001,
+    )
+    with pytest.raises(RuntimeError, match="no_mixed_suffix_mass"):
+        _validate_specular_acceptance(mixed, detail, config)
 
 
 def test_explicit_source_measure_rule_changes_sealed_identity(tmp_path):
@@ -351,6 +481,25 @@ def test_legacy_curve_campaign_skips_source_audit_safely(tmp_path):
     assert not (campaign.config.output_dir / "source_curve_audit.json").exists()
     assert not (campaign.config.output_dir / "source_curve_audit.npz").exists()
     assert not any(name.startswith("source_curve_audit") for name in manifest["files"])
+
+
+def test_legacy_summary_keys_remain_exactly_stable(tmp_path):
+    outputs = run_roofline_campaign(prepared(tmp_path, seeds=(1,), looks=()))
+    summary = json.loads(outputs["summary"].read_text())
+
+    assert set(summary) == {
+        "schema_version",
+        "site",
+        "cohort",
+        "standpoints",
+        "replicas",
+        "seeds",
+        "reference_mode",
+        "timing_seconds_observed_total",
+        "timing_observation_counts",
+        "convergence",
+    }
+    assert "components" not in summary
 
 
 def test_reference_normalization_cancels_d_ref_and_keeps_exact_four_pi():

@@ -158,6 +158,37 @@ def test_combined_sampled_setup_requires_room_for_the_mixed_suffix(tmp_path):
         load_roofline_setup(config)
 
 
+def test_first_material_interaction_setup_locks_one_bounce_and_disables_mixed_suffix(tmp_path):
+    document = setup_document(tmp_path)
+    document["run"]["max_bounces"] = 1
+    document["campaign"].update(
+        {
+            "specular_acceptance": "first_material_interaction_exact_order_1",
+            "transport_topology": "first_material_interaction_v1",
+        }
+    )
+    document["source"]["specular_suffix_mode"] = "disabled"
+    config = tmp_path / "first-material.json"
+    config.write_text(json.dumps(document))
+
+    setup = load_roofline_setup(config)
+    assert setup.run.max_bounces == 1
+    assert setup.campaign.transport_topology == "first_material_interaction_v1"
+    assert setup.source.specular_order == 1
+    assert setup.source.specular_suffix_mode == "disabled"
+
+    document["source"]["specular_suffix_mode"] = "sampled"
+    config.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="specular_suffix_mode=disabled"):
+        load_roofline_setup(config)
+
+    document["source"]["specular_suffix_mode"] = "disabled"
+    document["run"]["max_bounces"] = 2
+    config.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="max_bounces=1"):
+        load_roofline_setup(config)
+
+
 @pytest.mark.parametrize(
     ("name", "site", "variant", "kernel", "acceptance"),
     (

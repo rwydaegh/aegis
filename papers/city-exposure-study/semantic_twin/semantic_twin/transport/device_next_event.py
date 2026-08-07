@@ -408,6 +408,10 @@ class DeviceNextEventGather:
     sampled_specular_seed_offset: int = 2000
     collect_field: bool = True
     specular_face_proposal: BoundDeviceSpecularFaceProposal | None = None
+    #: A closed first-surface transport contract.  The tracer may still perform
+    #: its terminal collision query, but no next-event contribution is allowed
+    #: after depth zero.
+    first_material_interaction_only: bool = False
 
     _sites: np.ndarray = field(init=False, repr=False)
     _probabilities: np.ndarray = field(init=False, repr=False)
@@ -463,6 +467,8 @@ class DeviceNextEventGather:
             raise ValueError("sampled_specular_samples must be positive")
         if self.sampled_specular_seed_offset < 0:
             raise ValueError("sampled_specular_seed_offset must be nonnegative")
+        if not isinstance(self.first_material_interaction_only, bool):
+            raise TypeError("first_material_interaction_only must be boolean")
         sites = np.asarray(self.sources.sites(), dtype=np.float64)
         if sites.ndim != 2 or sites.shape[1] != 3 or not np.all(np.isfinite(sites)):
             raise ValueError("source sites must have shape (sources, 3) and be finite")
@@ -998,6 +1004,8 @@ class _DeviceNextEventState:
         random_draw: Any,
     ) -> None:
         """Add one fixed-width order row after material response."""
+        if self.gather.first_material_interaction_only and depth != 0:
+            return
         mi, dr = self.mi, self.dr
         total_weight = dr.zeros(mi.Float, self.ray_count)
         total_connections = dr.zeros(mi.UInt32, 1)

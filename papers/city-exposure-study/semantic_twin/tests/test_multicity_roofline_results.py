@@ -14,6 +14,8 @@ from semantic_twin.exposure.roofline_campaign import (
     BODY_METRICS,
     COMPONENTS,
     FIELD_META,
+    FIRST_MATERIAL_INTERACTION_COMPONENTS,
+    FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION,
     REFERENCE_FIELDS,
     SCHEMA_VERSION,
     TIMING_FIELDS,
@@ -31,9 +33,17 @@ def _canonical_sha256(value: object) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def _write_campaign(root: Path, *, reference_mode: str = "per_density_eirp", zero_direct: bool = False) -> None:
+def _write_campaign(
+    root: Path,
+    *,
+    reference_mode: str = "per_density_eirp",
+    zero_direct: bool = False,
+    first_interaction: bool = False,
+) -> None:
     seeds = (7, 8)
     points = 2
+    components = FIRST_MATERIAL_INTERACTION_COMPONENTS if first_interaction else COMPONENTS
+    schema_version = FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION if first_interaction else SCHEMA_VERSION
     identity_data = {
         "configuration": {
             "site": "fixture",
@@ -50,6 +60,15 @@ def _write_campaign(root: Path, *, reference_mode: str = "per_density_eirp", zer
             "tracer": {"configuration": {"launch_sampling": "iid", "rays": 8}},
         },
     }
+    if first_interaction:
+        identity_data["configuration"].update(
+            {
+                "schema_version": schema_version,
+                "transport_topology": "first_material_interaction_v1",
+                "components": list(components),
+            }
+        )
+        identity_data["components"] = list(components)
     root.mkdir(parents=True)
     identity = {"sha256": _canonical_sha256(identity_data), "data": identity_data}
     (root / "campaign_identity.json").write_text(json.dumps(identity), encoding="utf-8")
@@ -86,11 +105,11 @@ def _write_campaign(root: Path, *, reference_mode: str = "per_density_eirp", zer
         )
 
     checkpoint = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": schema_version,
         "identity_sha256": identity["sha256"],
         "points": points,
         "surfaces": 1,
-        "components": list(COMPONENTS),
+        "components": list(components),
         "body_metrics": list(BODY_METRICS),
         "reference_fields": list(REFERENCE_FIELDS),
         "timing_fields": list(TIMING_FIELDS),
@@ -111,7 +130,10 @@ def _write_campaign(root: Path, *, reference_mode: str = "per_density_eirp", zer
         },
     ]
     (root / "locations.jsonl").write_text("".join(json.dumps(row) + "\n" for row in locations), encoding="utf-8")
-    (root / "summary.json").write_text(json.dumps({"replicas": len(seeds), "seeds": list(seeds)}), encoding="utf-8")
+    summary = {"replicas": len(seeds), "seeds": list(seeds)}
+    if first_interaction:
+        summary.update({"schema_version": schema_version, "components": list(components)})
+    (root / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
     files = {
         "campaign_identity.json": _sha256(root / "campaign_identity.json"),
         "checkpoint/index.json": _sha256(root / "checkpoint" / "index.json"),
@@ -122,7 +144,7 @@ def _write_campaign(root: Path, *, reference_mode: str = "per_density_eirp", zer
         files[f"checkpoint/{entry['path']}"] = entry["sha256"]
         files[f"checkpoint/{entry['diagnostics_path']}"] = entry["diagnostics_sha256"]
     (root / "manifest.json").write_text(
-        json.dumps({"schema_version": SCHEMA_VERSION, "identity_sha256": identity["sha256"], "files": files}),
+        json.dumps({"schema_version": schema_version, "identity_sha256": identity["sha256"], "files": files}),
         encoding="utf-8",
     )
 
@@ -138,6 +160,8 @@ def test_multicity_writer_validates_and_exports_route_results(tmp_path: Path) ->
         assert path.stat().st_size > 0
     data = json.loads(artifacts.json.read_text(encoding="utf-8"))
     city = data["cities"]["fixture"]
+    assert "transport_topology" not in city
+    assert "components" not in city
     assert city["replicas"] == 2
     assert city["route"][1]["route_distance_m"] == pytest.approx(5.0)
     assert city["route"][0]["wbsar"] == pytest.approx(1.35)
@@ -153,6 +177,30 @@ def test_multicity_writer_validates_and_exports_route_results(tmp_path: Path) ->
     manifest = json.loads(artifacts.manifest.read_text(encoding="utf-8"))
     assert manifest["sources"]["fixture"]["campaign_identity_sha256"] == city["provenance"]["campaign_identity_sha256"]
     assert manifest["artifacts"][artifacts.json.name]["sha256"] == _sha256(artifacts.json)
+    assert "transport_topology" not in artifacts.csv.read_text(encoding="utf-8").splitlines()[0]
+
+
+def test_multicity_writer_exports_first_material_interaction_topology(tmp_path: Path) -> None:
+    campaign = tmp_path / "campaign"
+    _write_campaign(campaign, first_interaction=True)
+
+    artifacts = write_multicity_results([CampaignInput("fixture", campaign)], tmp_path / "first_interaction")
+    data = json.loads(artifacts.json.read_text(encoding="utf-8"))
+    city = data["cities"]["fixture"]
+
+    assert city["provenance"]["campaign_schema_version"] == FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION
+    assert city["transport_topology"] == "first_material_interaction_v1"
+    assert city["components"] == list(FIRST_MATERIAL_INTERACTION_COMPONENTS)
+    component_raw = city["route"][0]["component_raw_transfer_m_inv2"]
+    assert set(component_raw) == set(FIRST_MATERIAL_INTERACTION_COMPONENTS)
+    assert component_raw["all_specular"] == pytest.approx(0.2)
+    assert component_raw["first_diffuse"] == pytest.approx(0.15)
+    assert set(city["route"][0]["component_body"]) == set(FIRST_MATERIAL_INTERACTION_COMPONENTS)
+    csv_header = artifacts.csv.read_text(encoding="utf-8").splitlines()[0]
+    assert "transport_topology" in csv_header
+    assert "raw_all_specular_transfer_m_inv2" in csv_header
+    artifact_manifest = json.loads(artifacts.manifest.read_text(encoding="utf-8"))
+    assert artifact_manifest["sources"]["fixture"]["components"] == list(FIRST_MATERIAL_INTERACTION_COMPONENTS)
 
 
 def test_bootstrap_is_byte_deterministic_for_same_campaign(tmp_path: Path) -> None:

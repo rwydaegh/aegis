@@ -484,6 +484,11 @@ class NextEventGather:
     sampled_specular_estimator: SampledOneBounceSpecularEstimator | None = None
     sampled_specular_samples: int = 1
     sampled_specular_seed: int = 0
+    #: Restrict the reciprocal next-event gather to its first material vertex.
+    #: This is deliberately a transport-topology choice, not a roulette or
+    #: ray-budget optimisation: direct and deterministic one-reflection atoms
+    #: are added by :class:`NextEventEstimator` outside this gather.
+    first_material_interaction_only: bool = False
 
     total: float = 0.0
     by_order: np.ndarray = field(init=False)
@@ -516,6 +521,8 @@ class NextEventGather:
             raise ValueError("exact and sampled specular suffix estimators are mutually exclusive")
         if self.sampled_specular_samples < 1:
             raise ValueError("sampled_specular_samples must be positive")
+        if not isinstance(self.first_material_interaction_only, bool):
+            raise TypeError("first_material_interaction_only must be boolean")
         if self.field_grid is not None:
             grid = np.asarray(self.field_grid, dtype=np.float64)
             if grid.ndim != 2 or grid.shape[1] != 3 or grid.shape[0] == 0:
@@ -551,6 +558,17 @@ class NextEventGather:
         face: np.ndarray | None = None,
     ) -> None:
         del path_length, face
+        if self.first_material_interaction_only and not np.all(np.asarray(order) == 1):
+            keep = np.asarray(order) == 1
+            index = index[keep]
+            position = position[keep]
+            incoming = incoming[keep]
+            normal = normal[keep]
+            throughput = throughput[keep]
+            share = share[keep]
+            order = np.asarray(order)[keep]
+            if position.shape[0] == 0:
+                return
         sites = self.sources.sites()
         if sites.shape[0] == 0 or position.shape[0] == 0:
             return
@@ -948,6 +966,11 @@ class NextEventEstimator:
     diagnostic_models: Mapping[str, AngularIllumination] = field(default_factory=dict)
     deterministic_cache_size: int = 8
     persistent_cache_dir: Path | None = None
+    #: ``hybrid_max_bounces_v1`` preserves the historical bounded hybrid
+    #: transport. ``first_material_interaction_v1`` is the closed first-surface
+    #: contract: exact direct and order-one all-specular atoms plus diffuse NEE
+    #: at the first material vertex only.
+    transport_topology: str = "hybrid_max_bounces_v1"
     _deterministic_cache: OrderedDict[tuple[Any, ...], Any] = field(
         default_factory=OrderedDict,
         init=False,
@@ -978,6 +1001,8 @@ class NextEventEstimator:
             raise ValueError("specular_candidate_budget must be positive")
         if self.specular_suffix_mode not in ("exact", "sampled", "disabled"):
             raise ValueError("specular_suffix_mode must be 'exact', 'sampled', or 'disabled'")
+        if self.transport_topology not in ("hybrid_max_bounces_v1", "first_material_interaction_v1"):
+            raise ValueError("transport_topology must be hybrid_max_bounces_v1 or first_material_interaction_v1")
         if (
             not isinstance(self.sampled_specular_samples, int)
             or isinstance(self.sampled_specular_samples, bool)
@@ -992,6 +1017,14 @@ class NextEventEstimator:
             raise ValueError("sampled_specular_seed_offset must be a nonnegative integer")
         if self.specular_suffix_mode == "sampled" and self.specular_order != 1:
             raise ValueError("sampled specular suffixes require specular_order=1")
+        if self.transport_topology == "first_material_interaction_v1":
+            maximum_order = self.tracer.config.max_bounces if self.max_order is None else self.max_order
+            if maximum_order != 1:
+                raise ValueError("first-material-interaction transport requires max_order=1")
+            if self.specular_order != 1:
+                raise ValueError("first-material-interaction transport requires exact order-one all-specular support")
+            if self.specular_suffix_mode != "disabled":
+                raise ValueError("first-material-interaction transport requires specular_suffix_mode='disabled'")
         if self.deterministic_cache_size < 1:
             raise ValueError("deterministic_cache_size must be positive")
         if self.persistent_cache_dir is not None:
@@ -1003,7 +1036,12 @@ class NextEventEstimator:
         ):
             raise ValueError("specular_refinement_relative_tolerance must lie strictly between zero and one")
         device_sampled = self.specular_order == 1 and self.specular_suffix_mode == "sampled"
-        if isinstance(self.tracer, DeviceEscapeTracer) and self.specular_order != 0 and not device_sampled:
+        device_first_interaction = self.transport_topology == "first_material_interaction_v1"
+        if (
+            isinstance(self.tracer, DeviceEscapeTracer)
+            and self.specular_order != 0
+            and not (device_sampled or device_first_interaction)
+        ):
             raise NotImplementedError(
                 "resident device next-event estimation supports omitted specular transport or the "
                 "full-support sampled order-one suffix; select specular_suffix_mode='sampled' or use SbrTracer"
@@ -1037,6 +1075,7 @@ class NextEventEstimator:
             maximum_order,
             self.specular_order,
             self.specular_suffix_mode,
+            self.transport_topology,
             self.sampled_specular_samples,
             self.sampled_specular_seed_offset,
             self.specular_candidate_budget,
@@ -1872,7 +1911,8 @@ class NextEventEstimator:
     ]:
         """Run resident diffuse and sampled mixed connections with exact direct paths."""
         sampled_mode = self.specular_order == 1 and self.specular_suffix_mode == "sampled"
-        if self.specular_order != 0 and not sampled_mode:
+        first_interaction = self.transport_topology == "first_material_interaction_v1"
+        if self.specular_order != 0 and not (sampled_mode or first_interaction):
             raise NotImplementedError(
                 "resident device next-event estimation supports specular_order=0 or the "
                 "full-support sampled order-one suffix"
@@ -1907,6 +1947,7 @@ class NextEventEstimator:
             sampled_specular_seed_offset=self.sampled_specular_seed_offset,
             collect_field=field_grid is not None,
             specular_face_proposal=self._device_specular_face_proposal,
+            first_material_interaction_only=first_interaction,
         )
         trace_started = time.perf_counter()
         point = self.tracer.trace(
@@ -2008,6 +2049,9 @@ class NextEventEstimator:
                 "estimator_overhead_seconds",
             ],
         }
+        if first_interaction:
+            detail["transport_topology"] = self.transport_topology
+            detail["first_material_interaction_nee_only"] = True
         if self._persistent_cache is not None:
             detail["deterministic_specular_persistent_cache_hit"] = deterministic_specular_persistent_cache_hit
             detail["direct_persistent_cache_hit"] = direct_persistent_cache_hit
@@ -2096,6 +2140,7 @@ class NextEventEstimator:
             sampled_specular_estimator=sampled_suffix,
             sampled_specular_samples=self.sampled_specular_samples,
             sampled_specular_seed=(trace_seed + self.sampled_specular_seed_offset) & ((1 << 64) - 1),
+            first_material_interaction_only=self.transport_topology == "first_material_interaction_v1",
         )
         trace_started = time.perf_counter()
         point = self.tracer.trace(
@@ -2148,6 +2193,9 @@ class NextEventEstimator:
             "specular_complete_through_bounce_cap": False,
             "specular_result_complete": False,
         }
+        if self.transport_topology == "first_material_interaction_v1":
+            detail["transport_topology"] = self.transport_topology
+            detail["first_material_interaction_nee_only"] = True
         if self._persistent_cache is not None:
             detail["deterministic_specular_persistent_cache_hit"] = deterministic_specular_persistent_cache_hit
             detail["direct_persistent_cache_hit"] = direct_persistent_cache_hit

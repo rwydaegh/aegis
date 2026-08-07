@@ -13,6 +13,8 @@ import pytest
 from semantic_twin.exposure.roofline_campaign import (
     BODY_METRICS,
     COMPONENTS,
+    FIRST_MATERIAL_INTERACTION_COMPONENTS,
+    FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION,
     REFERENCE_FIELDS,
     SCHEMA_VERSION,
     TIMING_FIELDS,
@@ -41,10 +43,14 @@ def _write_campaign(
     incompatible: bool = False,
     suffix_mode: str = "sampled",
     chi_suffix_diagnostic: bool = False,
+    first_interaction: bool = False,
 ) -> None:
     points = 3
+    components = FIRST_MATERIAL_INTERACTION_COMPONENTS if first_interaction else COMPONENTS
+    schema_version = FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION if first_interaction else SCHEMA_VERSION
+    effective_suffix_mode = "disabled" if first_interaction else suffix_mode
     identity_data = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": schema_version,
         "configuration": {
             "site": "fixture",
             "cohort": "primary_semantic_route",
@@ -53,11 +59,20 @@ def _write_campaign(
             "convergence_looks": [4, 8, 12, 16],
         },
         "transport": {
-            "estimator": {"configuration": {"specular_suffix_mode": suffix_mode}},
+            "estimator": {"configuration": {"specular_suffix_mode": effective_suffix_mode}},
             "tracer": {"configuration": {"rays": 32, "launch_sampling": mode}},
         },
         "walk": {"points": [[0.0, 0.0, 1.5], [1.0, 0.0, 1.5], [2.0, 0.0, 1.5]]},
     }
+    if first_interaction:
+        identity_data["configuration"].update(
+            {
+                "schema_version": schema_version,
+                "transport_topology": "first_material_interaction_v1",
+                "components": list(components),
+            }
+        )
+        identity_data["components"] = list(components)
     if incompatible:
         identity_data["configuration"]["material_mode"] = "walk"
     identity_hash = hashlib.sha256(
@@ -71,12 +86,12 @@ def _write_campaign(
     replicas.mkdir(parents=True)
     committed = []
     for seed_index, seed in enumerate(seeds):
-        raw = np.zeros((points, len(COMPONENTS)), dtype=np.float64)
+        raw = np.zeros((points, len(components)), dtype=np.float64)
         raw[:, 0] = [1.0, 2.0, 3.0]
-        raw[:, 1] = 0.25 + seed_index * (0.01 if mode == "iid" else 0.02)
+        raw[:, 1] = 0.25 if first_interaction else 0.25 + seed_index * (0.01 if mode == "iid" else 0.02)
         raw[:, 2] = [0.10 + seed_index * (0.02 if mode == "iid" else 0.03), 0.2, 0.3]
         raw[:, 3] = np.sum(raw[:, :3], axis=1)
-        body = np.zeros((points, len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64)
+        body = np.zeros((points, len(components), len(BODY_METRICS)), dtype=np.float64)
         body[:, :, 0] = raw
         body[:, :, 1] = raw
         body[:, :, 2] = raw
@@ -94,15 +109,15 @@ def _write_campaign(
         for _ in range(points):
             diagnostic = {
                 "sampled_specular_suffix": {
-                    "enabled": suffix_mode == "sampled",
-                    "trials": 100 if suffix_mode == "sampled" else 0,
-                    "accepted": 2 + seed_index if suffix_mode == "sampled" else 0,
-                    "candidates": 100 if suffix_mode == "sampled" else 0,
+                    "enabled": effective_suffix_mode == "sampled",
+                    "trials": 100 if effective_suffix_mode == "sampled" else 0,
+                    "accepted": 2 + seed_index if effective_suffix_mode == "sampled" else 0,
+                    "candidates": 100 if effective_suffix_mode == "sampled" else 0,
                 }
             }
             if chi_suffix_diagnostic:
                 diagnostic["sampled_specular_suffix"]["chi_specular_suffix"] = 0.123
-            if suffix_mode == "sampled":
+            if effective_suffix_mode == "sampled":
                 diagnostic["all_specular_transfer"] = 0.25
             diagnostics.append(diagnostic)
         diagnostics_path = replicas / f"seed_{seed:010d}.json"
@@ -117,11 +132,11 @@ def _write_campaign(
             }
         )
     checkpoint_document = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": schema_version,
         "identity_sha256": identity["sha256"],
         "points": points,
         "surfaces": 1,
-        "components": list(COMPONENTS),
+        "components": list(components),
         "body_metrics": list(BODY_METRICS),
         "reference_fields": list(REFERENCE_FIELDS),
         "timing_fields": list(TIMING_FIELDS),
@@ -131,7 +146,10 @@ def _write_campaign(
     (checkpoint / "index.json").write_text(json.dumps(checkpoint_document), encoding="utf-8")
     locations = [{"standpoint": index, "position_m": [float(index), 0.0, 1.5]} for index in range(points)]
     (root / "locations.jsonl").write_text("\n".join(json.dumps(row) for row in locations) + "\n", encoding="utf-8")
-    (root / "summary.json").write_text(json.dumps({"replicas": len(seeds), "seeds": list(seeds)}), encoding="utf-8")
+    summary = {"replicas": len(seeds), "seeds": list(seeds)}
+    if first_interaction:
+        summary.update({"schema_version": schema_version, "components": list(components)})
+    (root / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
     files = {
         "campaign_identity.json": _sha256(root / "campaign_identity.json"),
         "locations.jsonl": _sha256(root / "locations.jsonl"),
@@ -141,7 +159,7 @@ def _write_campaign(
     files.update({f"checkpoint/{entry['path']}": entry["sha256"] for entry in committed})
     files.update({f"checkpoint/{entry['diagnostics_path']}": entry["diagnostics_sha256"] for entry in committed})
     (root / "manifest.json").write_text(
-        json.dumps({"schema_version": SCHEMA_VERSION, "identity_sha256": identity["sha256"], "files": files}),
+        json.dumps({"schema_version": schema_version, "identity_sha256": identity["sha256"], "files": files}),
         encoding="utf-8",
     )
 
@@ -170,6 +188,57 @@ def test_paired_report_contains_differences_cdf_variances_timings_and_suffix(tmp
     assert "4_to_8" in convergence["look_to_look"]
     assert "maximum_abs_db" in convergence["look_to_look"]["4_to_8"]["total_transfer"]["pointwise"]
     assert "p90_db_delta_approximation" in convergence["standard_error"]["16"]["total_transfer"]
+
+
+def test_legacy_paired_report_remains_canonical_byte_identical(tmp_path: Path) -> None:
+    iid = tmp_path / "iid"
+    fibonacci = tmp_path / "fibonacci"
+    _write_campaign(iid, "iid")
+    _write_campaign(fibonacci, "rotated_fibonacci")
+
+    report = compare_campaigns(iid, fibonacci)
+    report["iid_directory"] = "<iid>"
+    report["rotated_fibonacci_directory"] = "<fib>"
+    canonical = json.dumps(report, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+    assert hashlib.sha256(canonical.encode()).hexdigest() == (
+        "96a78e26705723e0a776b21b0caa6182b7caf9e19c08ff9f158400db5d42bb99"
+    )
+
+
+def test_first_material_interaction_pair_preserves_closed_component_names(tmp_path: Path) -> None:
+    iid = tmp_path / "iid"
+    fibonacci = tmp_path / "fibonacci"
+    _write_campaign(iid, "iid", first_interaction=True)
+    _write_campaign(fibonacci, "rotated_fibonacci", first_interaction=True)
+
+    report = compare_campaigns(iid, fibonacci)
+
+    assert report["campaign_schema_version"] == FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION
+    assert report["transport_topology"] == "first_material_interaction_v1"
+    assert report["components"] == list(FIRST_MATERIAL_INTERACTION_COMPONENTS)
+    look = report["looks"]["16"]
+    assert set(look["linear_db_differences"]["raw_transfer"]) == set(FIRST_MATERIAL_INTERACTION_COMPONENTS)
+    assert set(look["route_cdf"]["body_metrics"]) == set(FIRST_MATERIAL_INTERACTION_COMPONENTS)
+    assert set(look["across_seed_variance_ratios"]["stochastic_raw_transfer"]) == {"first_diffuse"}
+    assert look["deterministic_invariants"]["all_specular"]["status"] == "pass"
+    assert look["sampled_suffix"]["impact"]["status"] == "disabled"
+
+
+def test_first_material_interaction_summary_contract_is_authenticated(tmp_path: Path) -> None:
+    campaign = tmp_path / "campaign"
+    _write_campaign(campaign, "iid", first_interaction=True)
+    summary_path = campaign / "summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["components"] = list(COMPONENTS)
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    manifest_path = campaign / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["files"]["summary.json"] = _sha256(summary_path)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(CampaignComparisonError, match="summary components"):
+        compare_campaigns(campaign, campaign)
 
 
 def test_incompatible_campaigns_are_rejected(tmp_path: Path) -> None:

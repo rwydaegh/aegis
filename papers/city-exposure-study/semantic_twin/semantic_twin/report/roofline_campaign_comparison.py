@@ -27,6 +27,8 @@ from semantic_twin.exposure.roofline_campaign import (
     BODY_METRICS,
     COMPONENTS,
     FIELD_META,
+    FIRST_MATERIAL_INTERACTION_COMPONENTS,
+    FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION,
     REFERENCE_FIELDS,
     SCHEMA_VERSION,
     TIMING_FIELDS,
@@ -34,6 +36,14 @@ from semantic_twin.exposure.roofline_campaign import (
 
 REPORT_SCHEMA_VERSION = "roofline_campaign_pair_comparison_v1"
 _SAMPLING_MODES = ("iid", "rotated_fibonacci")
+_SCHEMA_COMPONENTS = {
+    SCHEMA_VERSION: COMPONENTS,
+    FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION: FIRST_MATERIAL_INTERACTION_COMPONENTS,
+}
+_SCHEMA_TOPOLOGY = {
+    SCHEMA_VERSION: "hybrid_max_bounces_v1",
+    FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION: "first_material_interaction_v1",
+}
 _OPTIONAL_ALL_SPECULAR_KEYS = (
     "all_specular_transfer",
     "deterministic_all_specular_transfer",
@@ -238,6 +248,18 @@ class _Campaign:
         configuration = self.identity_data.get("configuration", {})
         return tuple(int(look) for look in configuration.get("convergence_looks", ()))
 
+    @property
+    def schema_version(self) -> str:
+        return str(self.checkpoint["schema_version"])
+
+    @property
+    def components(self) -> tuple[str, ...]:
+        return tuple(str(component) for component in self.checkpoint["components"])
+
+    @property
+    def transport_topology(self) -> str:
+        return _SCHEMA_TOPOLOGY[self.schema_version]
+
 
 @dataclass(frozen=True)
 class _Shard:
@@ -338,7 +360,7 @@ def _checkpoint_artifact(root: Path, relative: Any) -> Path:
     return _safe_relative_path(root, str(Path("checkpoint") / relative), context="checkpoint artifact path")
 
 
-def _load_shard(root: Path, entry: dict[str, Any], points: int) -> _Shard:
+def _load_shard(root: Path, entry: dict[str, Any], points: int, component_count: int) -> _Shard:
     shard_path = _checkpoint_artifact(root, entry.get("path"))
     diagnostics_path = _checkpoint_artifact(root, entry.get("diagnostics_path"))
     if not shard_path.is_file() or not diagnostics_path.is_file():
@@ -352,7 +374,7 @@ def _load_shard(root: Path, entry: dict[str, Any], points: int) -> _Shard:
     if _sha256(diagnostics_path) != diagnostics_hash:
         raise CampaignComparisonError(f"checkpoint diagnostics hash validation failed: {diagnostics_path}")
     with np.load(shard_path, allow_pickle=False) as payload:
-        raw, body, timing, all_specular, suffix = _load_shard_payload(payload, shard_path, points)
+        raw, body, timing, all_specular, suffix = _load_shard_payload(payload, shard_path, points, component_count)
     try:
         diagnostic_value = json.loads(diagnostics_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -365,13 +387,17 @@ def _load_shard(root: Path, entry: dict[str, Any], points: int) -> _Shard:
 
 
 def _load_shard_payload(
-    payload: Any, path: Path, points: int
+    payload: Any, path: Path, points: int, component_count: int
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None, np.ndarray | None]:
     required = {"raw_transfer", "body_metrics", "timings", "field_meta", "reference"}
     if not required.issubset(payload.files):
         raise CampaignComparisonError(f"checkpoint shard is missing required arrays: {path}")
-    raw = _as_float_array(payload["raw_transfer"], name=f"{path}:raw_transfer", shape=(points, 4))
-    body = _as_float_array(payload["body_metrics"], name=f"{path}:body_metrics", shape=(points, 4, len(BODY_METRICS)))
+    raw = _as_float_array(payload["raw_transfer"], name=f"{path}:raw_transfer", shape=(points, component_count))
+    body = _as_float_array(
+        payload["body_metrics"],
+        name=f"{path}:body_metrics",
+        shape=(points, component_count, len(BODY_METRICS)),
+    )
     timing = np.asarray(payload["timings"])
     if timing.dtype != np.float64 or timing.shape != (points, len(TIMING_FIELDS)):
         raise CampaignComparisonError(f"{path}:timings has the wrong dtype or shape")
@@ -395,9 +421,79 @@ def _first_optional_array(payload: Any, keys: Iterable[str], points: int, path: 
     return None
 
 
+def _document_components(
+    root: Path,
+    identity_data: dict[str, Any],
+    manifest: dict[str, Any],
+    summary: dict[str, Any],
+    checkpoint: dict[str, Any],
+) -> tuple[str, ...]:
+    schema_version = manifest.get("schema_version")
+    expected = _SCHEMA_COMPONENTS.get(schema_version)
+    if expected is None:
+        raise CampaignComparisonError(f"unsupported roofline campaign schema in {root}: {schema_version!r}")
+    expected_list = list(expected)
+    if checkpoint.get("schema_version") != schema_version:
+        raise CampaignComparisonError(f"manifest and checkpoint schema versions disagree in {root}")
+    if checkpoint.get("components") != expected_list:
+        raise CampaignComparisonError(f"checkpoint components do not match {schema_version} in {root}")
+
+    configuration = identity_data.get("configuration")
+    if not isinstance(configuration, dict):
+        raise CampaignComparisonError(f"campaign identity has no configuration object: {root}")
+    identity_schema = configuration.get("schema_version", identity_data.get("schema_version"))
+    identity_components = identity_data.get("components")
+    configuration_components = configuration.get("components")
+    summary_schema = summary.get("schema_version")
+    summary_components = summary.get("components")
+    first_interaction = schema_version == FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION
+    if first_interaction:
+        required = {
+            "identity configuration schema_version": identity_schema,
+            "identity configuration transport_topology": configuration.get("transport_topology"),
+            "identity configuration components": configuration_components,
+            "identity components": identity_components,
+            "summary schema_version": summary_schema,
+            "summary components": summary_components,
+        }
+        expected_values = {
+            "identity configuration schema_version": schema_version,
+            "identity configuration transport_topology": _SCHEMA_TOPOLOGY[schema_version],
+            "identity configuration components": expected_list,
+            "identity components": expected_list,
+            "summary schema_version": schema_version,
+            "summary components": expected_list,
+        }
+        mismatches = [name for name, value in required.items() if value != expected_values[name]]
+        if mismatches:
+            raise CampaignComparisonError(
+                f"first-material-interaction schema contract mismatch in {root}: {', '.join(mismatches)}"
+            )
+    else:
+        optional_contract = (
+            ("identity schema_version", identity_schema, schema_version),
+            ("identity components", identity_components, expected_list),
+            ("identity configuration components", configuration_components, expected_list),
+            ("summary schema_version", summary_schema, schema_version),
+            ("summary components", summary_components, expected_list),
+        )
+        for name, value, required_value in optional_contract:
+            if value is not None and value != required_value:
+                raise CampaignComparisonError(f"{name} does not match the legacy campaign schema in {root}")
+    return tuple(expected)
+
+
 def _load_campaign_documents(
     root: Path,
-) -> tuple[dict[str, Any], dict[str, Any], str, dict[str, Any], dict[str, Any], dict[str, Any]]:
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    str,
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    tuple[str, ...],
+]:
     identity = _json_read(_required_path(root, "campaign_identity.json"))
     identity_data = identity.get("data")
     if not isinstance(identity_data, dict):
@@ -408,26 +504,25 @@ def _load_campaign_documents(
         raise CampaignComparisonError(f"campaign identity SHA-256 wrapper is invalid: {root}")
     _, sampling = _normalise_launch_sampling(identity_data)
     manifest = _json_read(_required_path(root, "manifest.json"))
-    if manifest.get("schema_version") != SCHEMA_VERSION:
-        raise CampaignComparisonError(f"unsupported roofline campaign schema in {root}")
     if manifest.get("identity_sha256") != identity.get("sha256"):
         raise CampaignComparisonError(f"manifest and campaign identity disagree in {root}")
     _check_manifest_files(root, manifest)
     summary = _json_read(_required_path(root, "summary.json"))
     checkpoint = _json_read(_required_path(root / "checkpoint", "index.json"))
-    if checkpoint.get("schema_version") != SCHEMA_VERSION:
-        raise CampaignComparisonError(f"unsupported checkpoint schema in {root}")
     if checkpoint.get("identity_sha256") != identity.get("sha256"):
         raise CampaignComparisonError(f"checkpoint and campaign identity disagree in {root}")
+    components = _document_components(root, identity_data, manifest, summary, checkpoint)
     _check_manifest_completeness(root, manifest, checkpoint)
-    return identity, identity_data, sampling, manifest, summary, checkpoint
+    return identity, identity_data, sampling, manifest, summary, checkpoint, components
 
 
-def _validate_checkpoint_schema(root: Path, checkpoint: dict[str, Any]) -> tuple[int, list[dict[str, Any]]]:
+def _validate_checkpoint_schema(
+    root: Path, checkpoint: dict[str, Any], components: tuple[str, ...]
+) -> tuple[int, list[dict[str, Any]]]:
     points = int(checkpoint.get("points", 0))
     if points < 1:
         raise CampaignComparisonError(f"campaign has no standpoints: {root}")
-    if checkpoint.get("components") != list(COMPONENTS):
+    if checkpoint.get("components") != list(components):
         raise CampaignComparisonError(f"campaign component schema differs in {root}")
     if checkpoint.get("body_metrics") != list(BODY_METRICS):
         raise CampaignComparisonError(f"campaign body metric schema differs in {root}")
@@ -505,8 +600,9 @@ def _validate_campaign_metadata(
     identity_data: dict[str, Any],
     checkpoint: dict[str, Any],
     summary: dict[str, Any],
+    components: tuple[str, ...],
 ) -> tuple[tuple[int, ...], int, list[dict[str, Any]], list[dict[str, Any]]]:
-    points, committed = _validate_checkpoint_schema(root, checkpoint)
+    points, committed = _validate_checkpoint_schema(root, checkpoint, components)
     seeds = _validate_seed_metadata(root, identity_data, committed, summary)
     locations = _load_jsonl(_required_path(root, "locations.jsonl"))
     _validate_location_rows(root, locations, points)
@@ -517,10 +613,12 @@ def _load_campaign(path: str | Path) -> _Campaign:
     root = Path(path).resolve()
     if not root.is_dir():
         raise CampaignComparisonError(f"campaign output directory does not exist: {root}")
-    identity, identity_data, sampling, manifest, summary, checkpoint = _load_campaign_documents(root)
-    seeds, points, locations, committed = _validate_campaign_metadata(root, identity_data, checkpoint, summary)
+    identity, identity_data, sampling, manifest, summary, checkpoint, components = _load_campaign_documents(root)
+    seeds, points, locations, committed = _validate_campaign_metadata(
+        root, identity_data, checkpoint, summary, components
+    )
 
-    shards = [_load_shard(root, entry, points) for entry in committed]
+    shards = [_load_shard(root, entry, points, len(components)) for entry in committed]
     raw_parts = [shard.raw for shard in shards]
     body_parts = [shard.body for shard in shards]
     timing_parts = [shard.timing for shard in shards]
@@ -529,7 +627,9 @@ def _load_campaign(path: str | Path) -> _Campaign:
     suffix_optional = [shard.suffix for shard in shards]
     all_specular = None if any(item is None for item in all_optional) else np.stack(all_optional)
     suffix_transfer = None if any(item is None for item in suffix_optional) else np.stack(suffix_optional)
-    if all_specular is None:
+    if all_specular is None and "all_specular" in components:
+        all_specular = np.asarray(raw_parts, dtype=np.float64)[:, :, components.index("all_specular")]
+    elif all_specular is None:
         suffix_enabled = any(
             bool(item.get("sampled_specular_suffix", {}).get("enabled", False))
             for replica in diagnostic_parts
@@ -538,7 +638,7 @@ def _load_campaign(path: str | Path) -> _Campaign:
         )
         estimator_config = identity_data.get("transport", {}).get("estimator", {}).get("configuration", {})
         if not suffix_enabled and estimator_config.get("specular_suffix_mode", "exact") == "disabled":
-            all_specular = np.asarray(raw_parts, dtype=np.float64)[:, :, COMPONENTS.index("specular")]
+            all_specular = np.asarray(raw_parts, dtype=np.float64)[:, :, components.index("specular")]
         else:
             all_specular = _load_optional_from_diagnostics(
                 [list(replica) for replica in diagnostic_parts], _OPTIONAL_ALL_SPECULAR_KEYS, points
@@ -791,10 +891,11 @@ def _invariant(left: np.ndarray | None, right: np.ndarray | None, look: int, *, 
 
 
 def _metric_reports(left: _Campaign, right: _Campaign, look: int) -> tuple[dict[str, Any], dict[str, Any]]:
+    components = left.components
     left_raw = np.mean(left.raw_transfer[:look], axis=0)
     right_raw = np.mean(right.raw_transfer[:look], axis=0)
     raw = {
-        component: _difference(left_raw[:, index], right_raw[:, index]) for index, component in enumerate(COMPONENTS)
+        component: _difference(left_raw[:, index], right_raw[:, index]) for index, component in enumerate(components)
     }
     left_body = np.mean(left.body_metrics[:look], axis=0)
     right_body = np.mean(right.body_metrics[:look], axis=0)
@@ -805,7 +906,7 @@ def _metric_reports(left: _Campaign, right: _Campaign, look: int) -> tuple[dict[
             )
             for metric_index, metric in enumerate(BODY_METRICS)
         }
-        for component_index, component in enumerate(COMPONENTS)
+        for component_index, component in enumerate(components)
     }
     return {"raw_transfer": raw, "body_metrics": body}, {
         "raw_transfer": left_raw,
@@ -816,9 +917,13 @@ def _metric_reports(left: _Campaign, right: _Campaign, look: int) -> tuple[dict[
 
 
 def _route_reports(
-    left_raw: np.ndarray, right_raw: np.ndarray, left_body: np.ndarray, right_body: np.ndarray
+    left_raw: np.ndarray,
+    right_raw: np.ndarray,
+    left_body: np.ndarray,
+    right_body: np.ndarray,
+    components: tuple[str, ...],
 ) -> dict[str, Any]:
-    raw = {component: _route_cdf(left_raw[:, index], right_raw[:, index]) for index, component in enumerate(COMPONENTS)}
+    raw = {component: _route_cdf(left_raw[:, index], right_raw[:, index]) for index, component in enumerate(components)}
     body = {
         component: {
             metric: _route_cdf(
@@ -826,15 +931,16 @@ def _route_reports(
             )
             for metric_index, metric in enumerate(BODY_METRICS)
         }
-        for component_index, component in enumerate(COMPONENTS)
+        for component_index, component in enumerate(components)
     }
     return {"raw_transfer": raw, "body_metrics": body}
 
 
 def _variance_reports(left: _Campaign, right: _Campaign, look: int) -> dict[str, Any]:
+    components = left.components
     raw = {
         component: _variance_ratio(left.raw_transfer[:look, :, index], right.raw_transfer[:look, :, index])
-        for index, component in enumerate(COMPONENTS)
+        for index, component in enumerate(components)
     }
     body = {
         component: {
@@ -844,10 +950,15 @@ def _variance_reports(left: _Campaign, right: _Campaign, look: int) -> dict[str,
             )
             for metric_index, metric in enumerate(BODY_METRICS)
         }
-        for component_index, component in enumerate(COMPONENTS)
+        for component_index, component in enumerate(components)
     }
+    stochastic = (
+        {name: raw[name] for name in ("specular", "diffuse")}
+        if components == COMPONENTS
+        else {"first_diffuse": raw["first_diffuse"]}
+    )
     return {
-        "stochastic_raw_transfer": {name: raw[name] for name in ("specular", "diffuse")},
+        "stochastic_raw_transfer": stochastic,
         "total_raw_transfer": {"total": raw["total"]},
         "body_metrics": body,
         "all_raw_transfer": raw,
@@ -922,15 +1033,14 @@ def _standard_error(values: np.ndarray) -> dict[str, Any]:
 
 
 def _convergence_evidence(campaign: _Campaign, looks: tuple[int, ...]) -> dict[str, Any]:
-    scalar_means = {look: np.mean(campaign.raw_transfer[:look, :, COMPONENTS.index("total")], axis=0) for look in looks}
-    body_means = {
-        look: np.mean(campaign.body_metrics[:look, :, COMPONENTS.index("total"), :], axis=0) for look in looks
-    }
+    total_index = campaign.components.index("total")
+    scalar_means = {look: np.mean(campaign.raw_transfer[:look, :, total_index], axis=0) for look in looks}
+    body_means = {look: np.mean(campaign.body_metrics[:look, :, total_index, :], axis=0) for look in looks}
     standard_error = {
         str(look): {
-            "total_transfer": _standard_error(campaign.raw_transfer[:look, :, COMPONENTS.index("total")]),
+            "total_transfer": _standard_error(campaign.raw_transfer[:look, :, total_index]),
             "body_metrics": {
-                metric: _standard_error(campaign.body_metrics[:look, :, COMPONENTS.index("total"), index])
+                metric: _standard_error(campaign.body_metrics[:look, :, total_index, index])
                 for index, metric in enumerate(BODY_METRICS)
             },
         }
@@ -977,6 +1087,8 @@ def _validate_pair(left: _Campaign, right: _Campaign, looks: tuple[int, ...]) ->
         raise CampaignComparisonError(
             f"campaigns are not paired by seed: IID={left.seeds!r}, rotated_fibonacci={right.seeds!r}"
         )
+    if left.schema_version != right.schema_version or left.components != right.components:
+        raise CampaignComparisonError("campaigns have different campaign schemas or component topologies")
     normal_left, _ = _normalise_launch_sampling(left.identity_data)
     normal_right, _ = _normalise_launch_sampling(right.identity_data)
     if _canonical(normal_left) != _canonical(normal_right):
@@ -1018,7 +1130,7 @@ def compare_campaigns(
             "replicas": look,
             "seeds": list(left.seeds[:look]),
             "linear_db_differences": differences,
-            "route_cdf": _route_reports(left_raw, right_raw, left_body, right_body),
+            "route_cdf": _route_reports(left_raw, right_raw, left_body, right_body, left.components),
             "across_seed_variance_ratios": _variance_reports(left, right, look),
             "component_work_timings": {
                 name: _timing_report(left.timings[:look, :, index], right.timings[:look, :, index])
@@ -1026,14 +1138,14 @@ def compare_campaigns(
             },
             "deterministic_invariants": {
                 "direct": _invariant(
-                    left.raw_transfer[:, :, COMPONENTS.index("direct")],
-                    right.raw_transfer[:, :, COMPONENTS.index("direct")],
+                    left.raw_transfer[:, :, left.components.index("direct")],
+                    right.raw_transfer[:, :, left.components.index("direct")],
                     look,
                     name="direct transfer",
                 ),
                 "direct_body_metrics": _invariant(
-                    left.body_metrics[:, :, COMPONENTS.index("direct"), :],
-                    right.body_metrics[:, :, COMPONENTS.index("direct"), :],
+                    left.body_metrics[:, :, left.components.index("direct"), :],
+                    right.body_metrics[:, :, left.components.index("direct"), :],
                     look,
                     name="direct body metrics",
                 ),
@@ -1046,9 +1158,15 @@ def compare_campaigns(
             },
             "sampled_suffix": _suffix_report(left, right, look),
         }
+    topology = (
+        {}
+        if left.schema_version == SCHEMA_VERSION
+        else {"transport_topology": left.transport_topology, "components": list(left.components)}
+    )
     return {
         "schema_version": REPORT_SCHEMA_VERSION,
-        "campaign_schema_version": SCHEMA_VERSION,
+        "campaign_schema_version": left.schema_version,
+        **topology,
         "iid_directory": str(left.root),
         "rotated_fibonacci_directory": str(right.root),
         "sampling_modes": {"iid": left.sampling, "rotated_fibonacci": right.sampling},

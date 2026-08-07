@@ -18,7 +18,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
 
-from semantic_twin.exposure.roofline_campaign import BODY_METRICS, COMPONENTS, SCHEMA_VERSION, TIMING_FIELDS
+from semantic_twin.exposure.roofline_campaign import BODY_METRICS, SCHEMA_VERSION, TIMING_FIELDS
 
 from .roofline_campaign_comparison import (
     CampaignComparisonError,
@@ -123,8 +123,8 @@ def _bootstrap_route_uncertainty(campaign: _Campaign) -> dict[str, Any]:
     count = len(campaign.seeds)
     indices = generator.integers(0, count, size=(BOOTSTRAP_REPLICATES, count))
 
-    component_total = COMPONENTS.index("total")
-    component_direct = COMPONENTS.index("direct")
+    component_total = campaign.components.index("total")
+    component_direct = campaign.components.index("direct")
     body = {name: campaign.body_metrics[:, :, component_total, index] for index, name in enumerate(BODY_METRICS)}
     raw_total = campaign.raw_transfer[:, :, component_total]
     raw_direct = campaign.raw_transfer[:, :, component_direct]
@@ -216,14 +216,14 @@ def _require_current_iid(campaign: _Campaign) -> None:
 def _point_rows(campaign: _Campaign) -> list[dict[str, Any]]:
     raw = np.mean(campaign.raw_transfer, axis=0)
     body = np.mean(campaign.body_metrics, axis=0)
-    direct = raw[:, COMPONENTS.index("direct")]
-    total = raw[:, COMPONENTS.index("total")]
+    direct = raw[:, campaign.components.index("direct")]
+    total = raw[:, campaign.components.index("total")]
     surplus = np.full(campaign.points, np.nan, dtype=np.float64)
     positive = (direct > 0.0) & (total > 0.0)
     surplus[positive] = 10.0 * np.log10(total[positive] / direct[positive])
     distance = _route_distances(campaign)
 
-    total_body = body[:, COMPONENTS.index("total"), :]
+    total_body = body[:, campaign.components.index("total"), :]
     metric = {name: total_body[:, index] for index, name in enumerate(BODY_METRICS)}
     rows: list[dict[str, Any]] = []
     for index, location in enumerate(campaign.locations):
@@ -237,21 +237,32 @@ def _point_rows(campaign: _Campaign) -> list[dict[str, Any]]:
             raise CampaignComparisonError(
                 f"locations.jsonl has an invalid ensemble-field peak Sab at standpoint {index}: {campaign.root}"
             )
-        rows.append(
-            {
-                "standpoint": index,
-                "position_m": [float(value) for value in location["position_m"]],
-                "route_distance_m": float(distance[index]),
-                "raw_total_transfer_m_inv2": float(total[index]),
-                "raw_direct_transfer_m_inv2": float(direct[index]),
-                "multipath_surplus_db": None if not np.isfinite(surplus[index]) else float(surplus[index]),
-                "peak_sab_ensemble_field": ensemble_peak,
-                "peak_sab_mean_per_replica": float(metric["peak_sab_w_m2"][index]),
-                "mean_sab": float(metric["mean_sab_w_m2"][index]),
-                "absorbed_power": float(metric["absorbed_power_w"][index]),
-                "wbsar": float(metric["sar_wb_w_kg"][index]),
+        row = {
+            "standpoint": index,
+            "position_m": [float(value) for value in location["position_m"]],
+            "route_distance_m": float(distance[index]),
+            "raw_total_transfer_m_inv2": float(total[index]),
+            "raw_direct_transfer_m_inv2": float(direct[index]),
+            "multipath_surplus_db": None if not np.isfinite(surplus[index]) else float(surplus[index]),
+            "peak_sab_ensemble_field": ensemble_peak,
+            "peak_sab_mean_per_replica": float(metric["peak_sab_w_m2"][index]),
+            "mean_sab": float(metric["mean_sab_w_m2"][index]),
+            "absorbed_power": float(metric["absorbed_power_w"][index]),
+            "wbsar": float(metric["sar_wb_w_kg"][index]),
+        }
+        if campaign.schema_version != SCHEMA_VERSION:
+            row["component_raw_transfer_m_inv2"] = {
+                component: float(raw[index, component_index])
+                for component_index, component in enumerate(campaign.components)
             }
-        )
+            row["component_body"] = {
+                component: {
+                    metric_name: float(body[index, component_index, metric_index])
+                    for metric_index, metric_name in enumerate(BODY_METRICS)
+                }
+                for component_index, component in enumerate(campaign.components)
+            }
+        rows.append(row)
     return rows
 
 
@@ -307,8 +318,8 @@ def _pointwise_db_change(previous: np.ndarray, current: np.ndarray, indices: np.
 
 
 def _tail_instability(campaign: _Campaign, looks: tuple[int, ...]) -> dict[str, Any]:
-    total_index = COMPONENTS.index("total")
-    direct_index = COMPONENTS.index("direct")
+    total_index = campaign.components.index("total")
+    direct_index = campaign.components.index("direct")
     wbsar_index = BODY_METRICS.index("sar_wb_w_kg")
     direct_final = np.mean(campaign.raw_transfer[:, :, direct_index], axis=0)
     wbsar_by_look = {look: np.mean(campaign.body_metrics[:look, :, total_index, wbsar_index], axis=0) for look in looks}
@@ -370,11 +381,17 @@ def _city_data(city: str, campaign: _Campaign, looks: Sequence[int] | None) -> d
         for key, _label, _unit in _ROUTE_METRICS
     }
     configuration = campaign.identity_data.get("configuration", {})
+    topology = (
+        {}
+        if campaign.schema_version == SCHEMA_VERSION
+        else {"transport_topology": campaign.transport_topology, "components": list(campaign.components)}
+    )
     return {
         "city": city,
+        **topology,
         "provenance": {
             "directory": str(campaign.root),
-            "campaign_schema_version": SCHEMA_VERSION,
+            "campaign_schema_version": campaign.schema_version,
             "campaign_identity_sha256": campaign.identity["sha256"],
             "campaign_manifest_sha256": _sha256(campaign.root / "manifest.json"),
             "launch_sampling": campaign.sampling,
@@ -405,6 +422,19 @@ def build_multicity_results(
     if not campaigns:
         raise ValueError("at least one campaign is required")
     cities = {city: _city_data(city, campaign, looks) for city, campaign in campaigns.items()}
+    topology_metadata = (
+        {}
+        if all(campaign.schema_version == SCHEMA_VERSION for campaign in campaigns.values())
+        else {
+            "transport_topologies": {
+                city: {
+                    "transport_topology": campaign.transport_topology,
+                    "components": list(campaign.components),
+                }
+                for city, campaign in campaigns.items()
+            }
+        }
+    )
     return {
         "schema_version": RESULT_SCHEMA_VERSION,
         "metadata": {
@@ -424,16 +454,29 @@ def build_multicity_results(
                 "bootstrap intervals quantify finite-replica uncertainty conditional on the fixed registered route; "
                 "they do not quantify route-selection or city-sampling uncertainty"
             ),
+            **topology_metadata,
         },
         "cities": cities,
     }
 
 
 def _write_csv(path: Path, data: Mapping[str, Any]) -> None:
+    first_interaction = any("components" in campaign for campaign in data["cities"].values())
+    topology_fields = (
+        (
+            "transport_topology",
+            "campaign_components",
+            "raw_all_specular_transfer_m_inv2",
+            "raw_first_diffuse_transfer_m_inv2",
+        )
+        if first_interaction
+        else ()
+    )
     fieldnames = (
         "city",
         "campaign_identity_sha256",
         "replicas",
+        *topology_fields,
         "standpoint",
         "x_m",
         "y_m",
@@ -447,11 +490,24 @@ def _write_csv(path: Path, data: Mapping[str, Any]) -> None:
         for city, campaign in data["cities"].items():
             for row in campaign["route"]:
                 x_m, y_m, z_m = row["position_m"]
+                component_raw = row.get("component_raw_transfer_m_inv2", {})
                 writer.writerow(
                     {
                         "city": city,
                         "campaign_identity_sha256": campaign["provenance"]["campaign_identity_sha256"],
                         "replicas": campaign["replicas"],
+                        **(
+                            {
+                                "transport_topology": campaign.get("transport_topology", "hybrid_max_bounces_v1"),
+                                "campaign_components": ",".join(
+                                    campaign.get("components", ["direct", "specular", "diffuse", "total"])
+                                ),
+                                "raw_all_specular_transfer_m_inv2": component_raw.get("all_specular"),
+                                "raw_first_diffuse_transfer_m_inv2": component_raw.get("first_diffuse"),
+                            }
+                            if first_interaction
+                            else {}
+                        ),
                         "standpoint": row["standpoint"],
                         "x_m": x_m,
                         "y_m": y_m,
@@ -553,6 +609,14 @@ def _write_artifact_manifest(path: Path, artifacts: Iterable[Path], data: Mappin
         city: {
             "campaign_identity_sha256": campaign["provenance"]["campaign_identity_sha256"],
             "campaign_manifest_sha256": campaign["provenance"]["campaign_manifest_sha256"],
+            **(
+                {
+                    "transport_topology": campaign["transport_topology"],
+                    "components": campaign["components"],
+                }
+                if "transport_topology" in campaign
+                else {}
+            ),
         }
         for city, campaign in data["cities"].items()
     }
