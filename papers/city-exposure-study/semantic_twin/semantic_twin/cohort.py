@@ -17,7 +17,12 @@ from typing import Any
 import numpy as np
 
 from . import paths
-from .walk.route import admitted_route_positions
+from .walk.provider_corridor import (
+    PROVIDER_CORRIDOR_V1,
+    provider_graph_input_paths,
+    select_provider_corridor,
+)
+from .walk.route import admitted_route_positions, load_admitted_stations, load_link_graph
 from .walk.site import street_route_request
 
 SCHEMA = "city-cohort-manifest-v2"
@@ -55,9 +60,11 @@ class RouteReadiness:
     missing: tuple[str, ...]
     invalid: tuple[str, ...]
     expected_cache: str | None = None
+    selection_sha256: str | None = None
+    selection_audit: tuple[dict[str, Any], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        document = {
             "site": self.site,
             "kind": self.kind,
             "ready": self.ready,
@@ -66,6 +73,10 @@ class RouteReadiness:
             "invalid": list(self.invalid),
             "expected_cache": self.expected_cache,
         }
+        if self.selection_sha256 is not None:
+            document["selection_sha256"] = self.selection_sha256
+            document["selection_audit"] = [dict(row) for row in self.selection_audit]
+        return document
 
 
 @dataclass(frozen=True)
@@ -392,11 +403,45 @@ def _route_status(entry: dict[str, Any], base: Path, contract: dict[str, Any]) -
     return RouteReadiness(site, "street_route", True, (report_name, cache_name), (), (), cache_name)
 
 
+def _provider_corridor_status(entry: dict[str, Any], base: Path, contract: dict[str, Any]) -> RouteReadiness:
+    site = entry["site"]
+    report = base / entry["route"]["admitted_station_report"]
+    report_name = str(report.relative_to(base))
+    if not report.is_file():
+        return RouteReadiness(site, "provider_corridor", False, (), (report_name,), ())
+    inputs = provider_graph_input_paths(site, base)
+    try:
+        stations = load_admitted_stations(site, root=base, report=report.name)
+        graph = load_link_graph(site, root=base, bridge_m=float(contract["route_bridge_m"]))
+        corridor = select_provider_corridor(
+            stations,
+            graph,
+            radius_m=float(contract["route_radius_m"]),
+            admitted_report=report,
+            provider_inputs=inputs,
+            root=base,
+        )
+    except (OSError, ValueError, RuntimeError) as error:
+        return RouteReadiness(site, "provider_corridor", False, (report_name,), (), (f"{report_name}: {error}",))
+    evidence = (report_name, *(str(path.relative_to(base)) for path in inputs))
+    return RouteReadiness(
+        site,
+        "provider_corridor",
+        True,
+        evidence,
+        (),
+        (),
+        selection_sha256=str(corridor.seal["selection_sha256"]),
+        selection_audit=corridor.audit,
+    )
+
+
 def route_readiness(
     document: dict[str, Any] | None = None,
     *,
     manifest_path: Path | str | None = None,
     root: Path | str | None = None,
+    route_contract: str | None = None,
 ) -> tuple[RouteReadiness, ...]:
     """Return exact registered-endpoint route readiness for every member."""
     if document is None:
@@ -404,7 +449,14 @@ def route_readiness(
     else:
         validate_manifest(document)
     base = _readiness_root(manifest_path=manifest_path, root=root)
-    return tuple(_route_status(entry, base, document["contract"]) for entry in document["included_sites"])
+    selected_contract = document["contract"]["route_contract"] if route_contract is None else route_contract
+    if selected_contract == REGISTERED_SPAN_STREET:
+        status = _route_status
+    elif selected_contract == PROVIDER_CORRIDOR_V1:
+        status = _provider_corridor_status
+    else:
+        raise CohortManifestError(f"unknown route contract {selected_contract!r}")
+    return tuple(status(entry, base, document["contract"]) for entry in document["included_sites"])
 
 
 def material_readiness(
@@ -449,9 +501,13 @@ def campaign_readiness(
     else:
         validate_manifest(document)
     entry = validate_study_membership(site, cohort, document)
-    if route_contract != entry["route"]["contract"]:
+    if route_contract not in (entry["route"]["contract"], PROVIDER_CORRIDOR_V1):
         raise CohortManifestError(f"{site} does not declare route contract {route_contract!r}")
     base = _readiness_root(manifest_path=manifest_path, root=root)
-    route = _route_status(entry, base, document["contract"])
+    route = (
+        _provider_corridor_status(entry, base, document["contract"])
+        if route_contract == PROVIDER_CORRIDOR_V1
+        else _route_status(entry, base, document["contract"])
+    )
     materials = material_readiness(site, material_mode, document, root=base)
     return CampaignReadiness(site, cohort, True, route, materials)

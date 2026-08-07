@@ -34,7 +34,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--elevations", type=int, default=600)
     parser.add_argument("--cell-m", type=float, default=1.0)
     parser.add_argument("--site-lift-m", type=float, default=0.5)
-    parser.add_argument("--walk-path", choices=("links", "street", "closest"), default="links")
+    parser.add_argument("--walk-path", choices=("links", "street", "closest", "provider_corridor"), default="links")
     parser.add_argument("--walk-stride-m", type=float, default=6.0)
     parser.add_argument("--walk", choices=("route", "grid"), default="route")
     parser.add_argument("--walk-radius-m", type=float, default=90.0)

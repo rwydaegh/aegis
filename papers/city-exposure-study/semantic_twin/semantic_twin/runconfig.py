@@ -76,7 +76,7 @@ WALKS = ("grid", "route")
 #: provider's own panorama link graph, ``street`` asks a routing service for a
 #: walking path, ``closest`` measures both and keeps whichever stands nearer a
 #: camera.
-WALK_PATHS = ("links", "street", "closest")
+WALK_PATHS = ("links", "street", "closest", "provider_corridor")
 
 #: How each triangle gets its electromagnetic properties. ``geometric`` reads
 #: material off triangle orientation alone and is the no-photographs control.

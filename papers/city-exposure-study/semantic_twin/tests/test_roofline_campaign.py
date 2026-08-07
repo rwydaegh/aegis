@@ -31,6 +31,7 @@ from semantic_twin.transport.model import Surplus
 from semantic_twin.transport.next_event import NextEventField
 from semantic_twin.transport.specular import OneBounceSpecularTransport
 from semantic_twin.walk.model import PANORAMA_LINKS, Walk
+from semantic_twin.walk.provider_corridor import PROVIDER_CORRIDOR_V1
 
 
 class FakeSources:
@@ -226,6 +227,26 @@ def _sha256(path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def test_coupler_seal_distinguishes_level_two_backend_and_reduction_algorithm() -> None:
+    numpy_coupler = FakeCoupler()
+    numpy_coupler.level2_backend = "numpy"
+    numpy_coupler.level2_algorithm = "numpy_float64_matmul_relu_direction_chunks_v1"
+    numpy_coupler.level2_direction_block_size = None
+    cuda_coupler = FakeCoupler()
+    cuda_coupler.level2_backend = "cuda"
+    cuda_coupler.level2_algorithm = "drjit_float64_dot_relu_power_block_reduce_fixed512_v1"
+    cuda_coupler.level2_direction_block_size = 512
+
+    numpy_seal = seal_coupler_provenance(numpy_coupler)
+    cuda_seal = seal_coupler_provenance(cuda_coupler)
+
+    assert "level2_backend" not in numpy_seal
+    assert cuda_seal["level2_backend"] == "cuda"
+    assert cuda_seal["level2_direction_block_size"] == 512
+    assert cuda_seal["level2_algorithm"] == "drjit_float64_dot_relu_power_block_reduce_fixed512_v1"
+    assert cuda_seal != numpy_seal
+
+
 def test_default_campaign_identity_dict_is_legacy_byte_compatible(tmp_path):
     config = RooflineCampaignConfig(
         site="test_square",
@@ -374,6 +395,13 @@ def test_comparable_campaign_opt_in_separates_route_and_material_mode(tmp_path):
 
     with pytest.raises(ValueError, match="supports atlas primary runs"):
         dataclasses.replace(primary, material_mode="semantic")
+
+    corridor = dataclasses.replace(
+        primary,
+        output_dir=tmp_path / "provider-corridor",
+        route_contract=PROVIDER_CORRIDOR_V1,
+    )
+    assert corridor.identity_dict()["route_contract"] == PROVIDER_CORRIDOR_V1
 
 
 @pytest.mark.parametrize(

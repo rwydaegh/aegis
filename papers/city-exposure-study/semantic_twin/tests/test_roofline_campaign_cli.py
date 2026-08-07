@@ -415,11 +415,20 @@ def test_preparation_builds_sources_from_every_declared_standpoint(monkeypatch, 
     assert prepared.walk is walk
     assert prepared.estimator.sources.source_provenance() == {"law": "fixture curve"}
     assert prepared.estimator.deterministic_cache_size == 12
+    assert captured["coupler_options"]["level2_backend"] == "numpy"
     staged = {record["path"] for record in prepared.input_provenance["files"]}
     assert "atlas.npz" in staged
     assert "atlas.json" in staged
     assert "campaign.json" in staged
     assert prepared.input_provenance["source_standpoint_contract"]["random_builder_evaluation_split"] is False
+
+
+@pytest.mark.parametrize(
+    ("variant", "expected"),
+    (("llvm_ad_rgb", "numpy"), ("cuda_ad_rgb", "cuda"), ("scalar_rgb", "numpy")),
+)
+def test_roofline_body_backend_is_selected_explicitly_from_run_variant(variant, expected) -> None:
+    assert roofline_setup._level2_body_backend(variant) == expected
 
 
 def test_preflight_reports_work_and_checkpoint_bound(monkeypatch):

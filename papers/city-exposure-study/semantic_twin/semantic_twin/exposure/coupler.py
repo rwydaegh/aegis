@@ -18,6 +18,29 @@ from ..transport.directional import DirectionalMeasure
 from .orientation import uniform_z_yaw_mean_incidence
 
 
+LEVEL2_DEVICE_CHUNK_CELLS = 512
+LEVEL2_NUMPY_ALGORITHM = "numpy_float64_matmul_relu_direction_chunks_v1"
+LEVEL2_DEVICE_ALGORITHM = "drjit_float64_dot_relu_power_block_reduce_fixed512_v1"
+LEVEL2_BACKENDS = ("numpy", "llvm", "cuda")
+
+
+def _validated_level2_backend(value: str) -> str:
+    if value not in LEVEL2_BACKENDS:
+        raise ValueError(f"level2_backend must be one of {LEVEL2_BACKENDS}, got {value!r}")
+    return value
+
+
+def _drjit_level2_types(backend: str) -> tuple[Any, Any, Any]:
+    """Return Dr.Jit and the exact Float64/UInt32 device array types."""
+    import drjit as dr
+
+    jit_backend = dr.JitBackend.LLVM if backend == "llvm" else dr.JitBackend.CUDA
+    if not dr.has_backend(jit_backend):
+        raise RuntimeError(f"{backend.upper()} body coupling was requested but its Dr.Jit backend is unavailable")
+    module = dr.llvm if backend == "llvm" else dr.cuda
+    return dr, module.Float64, module.UInt32
+
+
 def _validated_chunk_size(value: int, name: str) -> int:
     if not isinstance(value, (int, np.integer)) or isinstance(value, (bool, np.bool_)):
         raise ValueError(f"{name} must be a positive integer")
@@ -132,6 +155,7 @@ class BodyCoupler:
         *,
         level: int = 2,
         body_mass_kg: float | None = None,
+        level2_backend: str = "numpy",
     ) -> None:
         from aegis.engine import DosimetryEngine
         from aegis.geometry.mesh import BodyMesh
@@ -156,6 +180,14 @@ class BodyCoupler:
         self.level = int(level)
         self.body_mass_kg = body_mass_kg
         self.frequency_hz = float(frequency_hz)
+        self.level2_backend = _validated_level2_backend(level2_backend)
+        self.level2_algorithm = LEVEL2_NUMPY_ALGORITHM if self.level2_backend == "numpy" else LEVEL2_DEVICE_ALGORITHM
+        self.level2_direction_block_size = None if self.level2_backend == "numpy" else LEVEL2_DEVICE_CHUNK_CELLS
+        self._level2_device_normals: tuple[Any, Any, Any] | None = None
+        if self.level2_backend != "numpy":
+            if self.level != 2:
+                raise ValueError("Dr.Jit body coupling implements AEGIS level 2 only")
+            self._prepare_level2_device()
 
     def couple(
         self,
@@ -279,10 +311,12 @@ class BodyCoupler:
             raise TypeError("measure must be a DirectionalMeasure")
         if not np.isfinite(reference_s0_w_m2) or reference_s0_w_m2 < 0.0:
             raise ValueError("reference_s0_w_m2 must be nonnegative and finite")
-        if chunk_cells < 1:
-            raise ValueError("chunk_cells must be positive")
+        chunk_cells = _validated_chunk_size(chunk_cells, "chunk_cells")
         if self.level != 2:
             raise ValueError("surface-field body coupling currently implements AEGIS level 2 only")
+        backend = getattr(self, "level2_backend", "numpy")
+        if backend != "numpy" and chunk_cells != LEVEL2_DEVICE_CHUNK_CELLS:
+            raise ValueError(f"{backend} level-2 body coupling requires chunk_cells={LEVEL2_DEVICE_CHUNK_CELLS}")
         self._require_body_frame_for_yaw(body_yaw_deg)
         directions, powers = measure.scaled_paths_data(reference_s0_w_m2)
         keep = powers > 0.0
@@ -301,19 +335,22 @@ class BodyCoupler:
                 sab,
             )
 
-        normals = np.asarray(self.body.normals, dtype=np.float64)
-        sab = np.zeros(normals.shape[0], dtype=np.float64)
         directions = self._world_to_body_directions(directions, body_yaw_deg)
         kept_directions = directions[keep]
         kept_powers = powers[keep]
-        for start in range(0, kept_directions.shape[0], chunk_cells):
-            stop = min(start + chunk_cells, kept_directions.shape[0])
-            # AEGIS defines k_hat as the direction of arrival. Its geometric
-            # factor is ReLU[n_hat dot (-k_hat)], so the body-facing side is
-            # opposite the physical propagation vector.
-            incidence = np.maximum(normals @ (-kept_directions[start:stop]).T, 0.0)
-            sab += incidence @ kept_powers[start:stop]
-        sab *= float(self.engine.T0)
+        if backend == "numpy":
+            normals = np.asarray(self.body.normals, dtype=np.float64)
+            sab = np.zeros(normals.shape[0], dtype=np.float64)
+            for start in range(0, kept_directions.shape[0], chunk_cells):
+                stop = min(start + chunk_cells, kept_directions.shape[0])
+                # AEGIS defines k_hat as the direction of arrival. Its geometric
+                # factor is ReLU[n_hat dot (-k_hat)], so the body-facing side is
+                # opposite the physical propagation vector.
+                incidence = np.maximum(normals @ (-kept_directions[start:stop]).T, 0.0)
+                sab += incidence @ kept_powers[start:stop]
+            sab *= float(self.engine.T0)
+        else:
+            sab = self._level2_device_sab(kept_directions, kept_powers)
         p_abs = float(np.sum(sab * np.asarray(self.body.areas, dtype=np.float64), dtype=np.float64))
         total_area = float(self.body.total_area)
         exposure = BodyExposure(
@@ -326,6 +363,69 @@ class BodyCoupler:
             sar_wb_w_kg=(p_abs / self.body_mass_kg if self.body_mass_kg is not None else float("nan")),
         )
         return exposure, sab
+
+    def _prepare_level2_device(self) -> None:
+        """Upload body normals once as three resident Dr.Jit Float64 arrays."""
+        backend = getattr(self, "level2_backend", "numpy")
+        if backend == "numpy":
+            return
+        dr, Float64, _UInt32 = _drjit_level2_types(backend)
+        normals = np.asarray(self.body.normals, dtype=np.float64)
+        self._level2_device_normals = tuple(
+            Float64(np.ascontiguousarray(normals[:, component])) for component in range(3)
+        )
+        dr.eval(self._level2_device_normals)
+
+    def _level2_device_sab(self, directions: np.ndarray, powers: np.ndarray) -> np.ndarray:
+        """Evaluate fixed-width level-2 incidence blocks without a host round trip."""
+        backend = getattr(self, "level2_backend", "numpy")
+        dr, Float64, UInt32 = _drjit_level2_types(backend)
+        if self._level2_device_normals is None:
+            self._prepare_level2_device()
+        device_normals = self._level2_device_normals
+        if device_normals is None:  # pragma: no cover - guarded by the selected backend
+            raise RuntimeError("device body normals were not initialized")
+
+        normal_count = int(np.asarray(self.body.normals).shape[0])
+        sab_device = dr.zeros(Float64, normal_count)
+
+        for start in range(0, directions.shape[0], LEVEL2_DEVICE_CHUNK_CELLS):
+            stop = min(start + LEVEL2_DEVICE_CHUNK_CELLS, directions.shape[0])
+            count = stop - start
+            # Each upload owns a fresh host buffer. Dr.Jit's host-to-device
+            # transfer may still be asynchronous when the next block is
+            # staged, so reusing and zeroing one NumPy buffer can race it.
+            padded_directions = np.zeros((LEVEL2_DEVICE_CHUNK_CELLS, 3), dtype=np.float64)
+            padded_powers = np.zeros(LEVEL2_DEVICE_CHUNK_CELLS, dtype=np.float64)
+            padded_directions[:count] = directions[start:stop]
+            padded_powers[:count] = powers[start:stop]
+            dx, dy, dz = (Float64(np.ascontiguousarray(padded_directions[:, component])) for component in range(3))
+            power = Float64(np.ascontiguousarray(padded_powers))
+            lane = dr.arange(UInt32, normal_count * LEVEL2_DEVICE_CHUNK_CELLS)
+            normal_index = lane // LEVEL2_DEVICE_CHUNK_CELLS
+            direction_index = lane % LEVEL2_DEVICE_CHUNK_CELLS
+            incidence = -(
+                dr.gather(Float64, device_normals[0], normal_index) * dr.gather(Float64, dx, direction_index)
+                + dr.gather(Float64, device_normals[1], normal_index) * dr.gather(Float64, dy, direction_index)
+                + dr.gather(Float64, device_normals[2], normal_index) * dr.gather(Float64, dz, direction_index)
+            )
+            contribution = dr.maximum(incidence, 0.0) * dr.gather(
+                Float64,
+                power,
+                direction_index,
+            )
+            block_sab = dr.block_reduce(
+                dr.ReduceOp.Add,
+                contribution,
+                LEVEL2_DEVICE_CHUNK_CELLS,
+                mode="evaluated",
+            )
+            sab_device += block_sab
+            dr.eval(sab_device)
+
+        sab_device *= float(self.engine.T0)
+        dr.eval(sab_device)
+        return np.asarray(sab_device, dtype=np.float64)
 
     def couple_measure_uniform_yaw(
         self,
@@ -586,7 +686,7 @@ class BodyCoupler:
 
 def describe(coupler: BodyCoupler) -> dict[str, Any]:
     anterior = coupler._body_anterior_axis()
-    return {
+    description = {
         "phantom": coupler.body.name,
         "triangles": int(coupler.body.n_triangles),
         "frequency_hz": coupler.frequency_hz,
@@ -595,3 +695,12 @@ def describe(coupler: BodyCoupler) -> dict[str, Any]:
         "body_anterior_axis": [float(value) for value in anterior],
         "body_orientation_convention": "route yaw is ENU azimuth of anatomical anterior; world directions are inverse-rotated into native phantom coordinates",
     }
+    if getattr(coupler, "level2_backend", "numpy") != "numpy":
+        description.update(
+            {
+                "level2_backend": coupler.level2_backend,
+                "level2_algorithm": coupler.level2_algorithm,
+                "level2_direction_block_size": coupler.level2_direction_block_size,
+            }
+        )
+    return description

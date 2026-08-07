@@ -30,7 +30,8 @@ from ..cohort import COMPARABLE_COHORT, REGISTERED_SPAN_STREET
 from ..transport.directional import DirectionalMeasure
 from ..transport.next_event import NextEventField
 from ..transport.specular_sampling import SampledOneBounceSpecularEstimator
-from ..walk.model import PANORAMA_LINKS, STREET_ROUTE, Walk
+from ..walk.model import PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE, Walk
+from ..walk.provider_corridor import PROVIDER_CORRIDOR_V1
 from .coupler import BodyExposure
 
 COMPONENTS = ("direct", "specular", "diffuse", "total")
@@ -110,8 +111,11 @@ def _validate_campaign_names(config: RooflineCampaignConfig) -> None:
     if not config.site:
         raise ValueError("site must be non-empty")
     if config.cohort == COMPARABLE_COHORT:
-        if config.route_contract != REGISTERED_SPAN_STREET:
-            raise ValueError(f"{COMPARABLE_COHORT} requires route_contract={REGISTERED_SPAN_STREET!r}")
+        if config.route_contract not in (REGISTERED_SPAN_STREET, PROVIDER_CORRIDOR_V1):
+            raise ValueError(
+                f"{COMPARABLE_COHORT} requires route_contract to be "
+                f"{REGISTERED_SPAN_STREET!r} or {PROVIDER_CORRIDOR_V1!r}"
+            )
     elif config.route_contract is not None:
         raise ValueError("route_contract is an opt-in field reserved for manifest-backed comparable campaigns")
     if config.source_measure_rule is not None and config.source_measure_rule not in SOURCE_MEASURE_RULES:
@@ -187,7 +191,7 @@ class RooflineCampaignConfig:
         "adaptive_all_specular_sampled_mixed_order_1",
         "omitted_diagnostic",
     ] = "exact_complete"
-    route_contract: Literal["registered_span_street_v1"] | None = None
+    route_contract: Literal["registered_span_street_v1", "provider_corridor_v1"] | None = None
     source_measure_rule: Literal["physical_3d_edge_length", "horizontal_projected_edge_length"] | None = None
 
     def __post_init__(self) -> None:
@@ -298,14 +302,48 @@ def _validate_prepared_seeds_and_cohort(prepared: PreparedRooflineCampaign) -> N
         raise ValueError("derived 64-bit point seeds collide within the planned campaign")
     if prepared.material_provenance.get("material_mode") != prepared.config.material_mode:
         raise ValueError("material provenance mode does not match campaign material_mode")
-    expected_kind = PANORAMA_LINKS if prepared.config.cohort == "primary_semantic_route" else STREET_ROUTE
+    if prepared.config.cohort == "primary_semantic_route":
+        expected_kind = PANORAMA_LINKS
+    elif prepared.config.route_contract == PROVIDER_CORRIDOR_V1:
+        expected_kind = PROVIDER_CORRIDOR
+    else:
+        expected_kind = STREET_ROUTE
     if prepared.walk.kind != expected_kind:
         raise ValueError(f"cohort {prepared.config.cohort!r} requires walk kind {expected_kind!r}")
     if prepared.config.cohort == COMPARABLE_COHORT:
-        _validate_comparable_route_provenance(prepared.walk)
+        _validate_comparable_route_provenance(prepared.walk, prepared.config.route_contract)
 
 
-def _validate_comparable_route_provenance(walk: Walk) -> None:
+def _validate_comparable_route_provenance(walk: Walk, route_contract: str | None = REGISTERED_SPAN_STREET) -> None:
+    if route_contract == PROVIDER_CORRIDOR_V1:
+        corridor = walk.provenance.get("provider_corridor")
+        if walk.provenance.get("path") != "provider_corridor" or not isinstance(corridor, dict):
+            raise ValueError("provider-corridor campaign walk must carry explicit corridor provenance")
+        if corridor.get("contract") != PROVIDER_CORRIDOR_V1:
+            raise ValueError("provider-corridor provenance carries the wrong contract identifier")
+        if not isinstance(corridor.get("selection_sha256"), str) or len(corridor["selection_sha256"]) != 64:
+            raise ValueError("provider-corridor campaign must seal its deterministic selection")
+        report = corridor.get("admitted_station_report")
+        graph = corridor.get("provider_graph")
+        if not isinstance(report, dict) or not isinstance(report.get("sha256"), str) or len(report["sha256"]) != 64:
+            raise ValueError("provider-corridor campaign must seal its admitted station report")
+        if not isinstance(graph, dict) or not isinstance(graph.get("sha256"), str) or len(graph["sha256"]) != 64:
+            raise ValueError("provider-corridor campaign must seal its provider graph")
+        station_ids = corridor.get("station_ids")
+        node_path = corridor.get("provider_node_path")
+        polyline = corridor.get("registered_polyline_enu_m")
+        if not isinstance(station_ids, list) or len(station_ids) != 2 or station_ids != sorted(station_ids):
+            raise ValueError("provider-corridor endpoints must use canonical station-ID direction")
+        if not isinstance(node_path, list) or not node_path:
+            raise ValueError("provider-corridor campaign must record its exact provider node path")
+        if not isinstance(polyline, list) or len(polyline) < 2:
+            raise ValueError("provider-corridor campaign must record its registered polyline")
+        gap = corridor.get("continuous_max_gap_m")
+        if not isinstance(gap, (int, float)) or not np.isfinite(gap) or gap > 20.0:
+            raise ValueError("provider-corridor continuous evidence gap must not exceed 20 m")
+        if not isinstance(corridor.get("selection_audit"), list):
+            raise ValueError("provider-corridor campaign must record its deterministic selection audit")
+        return
     street = walk.provenance.get("street_route")
     if walk.provenance.get("path") != "street" or not isinstance(street, dict):
         raise ValueError("comparable campaign walk must carry explicit street-route provenance")
@@ -580,7 +618,7 @@ def seal_coupler_provenance(coupler: SurfaceBodyCoupler) -> dict[str, Any]:
     vertices = np.asarray(vertices, dtype=np.float64)
     if vertices.shape != (areas.size, 3, 3) or np.any(~np.isfinite(vertices)):
         raise ValueError("body vertices must be finite triangle soup aligned with surface elements")
-    return {
+    sealed = {
         "class": f"{type(coupler).__module__}.{type(coupler).__qualname__}",
         "phantom": getattr(body, "name", type(body).__name__),
         "level": 2,
@@ -593,6 +631,15 @@ def seal_coupler_provenance(coupler: SurfaceBodyCoupler) -> dict[str, Any]:
         "normals_sha256": _array_digest(normals),
         "vertices_sha256": _array_digest(vertices),
     }
+    if getattr(coupler, "level2_backend", "numpy") != "numpy":
+        sealed.update(
+            {
+                "level2_backend": coupler.level2_backend,
+                "level2_algorithm": coupler.level2_algorithm,
+                "level2_direction_block_size": coupler.level2_direction_block_size,
+            }
+        )
+    return sealed
 
 
 def _atomic_json(path: Path, value: Any) -> None:

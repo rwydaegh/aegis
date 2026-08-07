@@ -23,6 +23,8 @@ from semantic_twin.cohort import (
     validate_manifest,
     validate_study_membership,
 )
+from semantic_twin.walk.links import LinkGraph
+from semantic_twin.walk.provider_corridor import PROVIDER_CORRIDOR_V1
 
 
 def _entry(manifest, site="korenmarkt"):
@@ -157,6 +159,36 @@ def test_route_readiness_accepts_only_the_exact_endpoint_key(monkeypatch, tmp_pa
     assert status.ready
     assert status.evidence == (str(report.relative_to(tmp_path)), str(cache.relative_to(tmp_path)))
     assert str(wrong.relative_to(tmp_path)) not in status.evidence
+
+    explicit_legacy = route_readiness(manifest, root=tmp_path, route_contract=REGISTERED_SPAN_STREET)[0]
+    assert json.dumps(explicit_legacy.as_dict(), sort_keys=True) == json.dumps(status.as_dict(), sort_keys=True)
+
+
+def test_provider_corridor_readiness_is_opt_in_and_report_hash_invalidates_seal(monkeypatch, tmp_path):
+    manifest = load_manifest()
+    entry = _entry(manifest)
+    report = tmp_path / entry["route"]["admitted_station_report"]
+    report.parent.mkdir(parents=True)
+    report.write_text('{"stations_admitted":[{"station":"a"},{"station":"b"}]}', encoding="utf-8")
+    stations = [
+        {"name": "a", "node": "a", "camera_enu_m": np.array([0.0, 0.0, 2.5])},
+        {"name": "b", "node": "b", "camera_enu_m": np.array([10.0, 0.0, 2.5])},
+    ]
+    graph = LinkGraph(
+        position={"a": np.array([0.0, 0.0]), "b": np.array([10.0, 0.0])},
+        neighbours={"a": ("b",), "b": ("a",)},
+    )
+    monkeypatch.setattr(cohort_contract, "load_admitted_stations", lambda *args, **kwargs: stations)
+    monkeypatch.setattr(cohort_contract, "load_link_graph", lambda *args, **kwargs: graph)
+    monkeypatch.setattr(cohort_contract, "provider_graph_input_paths", lambda *args, **kwargs: ())
+
+    first = route_readiness(manifest, root=tmp_path, route_contract=PROVIDER_CORRIDOR_V1)[0]
+    report.write_text(report.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    changed = route_readiness(manifest, root=tmp_path, route_contract=PROVIDER_CORRIDOR_V1)[0]
+
+    assert first.ready and first.kind == "provider_corridor"
+    assert first.expected_cache is None
+    assert first.selection_sha256 != changed.selection_sha256
 
 
 def test_route_readiness_rejects_endpoint_content_under_the_right_key(monkeypatch, tmp_path):

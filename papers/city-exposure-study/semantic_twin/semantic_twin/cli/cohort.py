@@ -6,7 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
-from semantic_twin.cohort import CohortManifestError, route_readiness
+from semantic_twin.cohort import REGISTERED_SPAN_STREET, CohortManifestError, route_readiness
+from semantic_twin.walk.provider_corridor import PROVIDER_CORRIDOR_V1
 
 
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
@@ -14,13 +15,23 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--root", type=Path, default=None, help="study root containing data/ and outputs/")
     parser.add_argument("--json", action="store_true", dest="as_json", help="emit machine-readable readiness JSON")
+    parser.add_argument(
+        "--route-contract",
+        choices=(REGISTERED_SPAN_STREET, PROVIDER_CORRIDOR_V1),
+        default=None,
+        help="opt into a route contract without changing the checked-in comparable manifest",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = arguments(argv)
     try:
-        statuses = route_readiness(manifest_path=args.manifest, root=args.root)
+        statuses = route_readiness(
+            manifest_path=args.manifest,
+            root=args.root,
+            route_contract=args.route_contract,
+        )
     except (CohortManifestError, OSError, json.JSONDecodeError) as error:
         print(f"cohort manifest error: {error}")
         return 2

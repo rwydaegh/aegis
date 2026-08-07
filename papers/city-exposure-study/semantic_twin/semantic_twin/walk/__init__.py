@@ -35,7 +35,7 @@ module a function used to live in:
 
 from __future__ import annotations
 
-from .builders import GridWalk, NearestCameraWalk, PanoramaLinkWalk, StreetRouteWalk
+from .builders import GridWalk, NearestCameraWalk, PanoramaLinkWalk, ProviderCorridorWalk, StreetRouteWalk
 from .grid import build_walk
 from .ground import (
     SKY_PROBE,
@@ -53,6 +53,7 @@ from .model import (
     KIND_RULE,
     NEAREST_OF,
     PANORAMA_LINKS,
+    PROVIDER_CORRIDOR,
     STREET_ROUTE,
     UNRECORDED,
     Walk,
@@ -70,6 +71,13 @@ from .orientation import (
     validate_body_yaw_alignment,
 )
 from .route import PanoramaRoute, RouteStation, build_panorama_route, panorama_walk
+from .provider_corridor import (
+    DEFAULT_MAX_EVIDENCE_GAP_M,
+    PROVIDER_CORRIDOR_V1,
+    ProviderCorridor,
+    continuous_nearest_camera_gap_m,
+    select_provider_corridor,
+)
 from .site import site_walk
 
 __all__ = [
@@ -77,6 +85,8 @@ __all__ = [
     "KIND_RULE",
     "NEAREST_OF",
     "PANORAMA_LINKS",
+    "PROVIDER_CORRIDOR",
+    "PROVIDER_CORRIDOR_V1",
     "SKY_PROBE",
     "STREET_ROUTE",
     "UNRECORDED",
@@ -86,17 +96,21 @@ __all__ = [
     "NearestCameraWalk",
     "PanoramaLinkWalk",
     "PanoramaRoute",
+    "ProviderCorridor",
+    "ProviderCorridorWalk",
     "RouteStation",
     "StreetRouteWalk",
     "Walk",
     "WalkBuilder",
     "BODY_YAW_CONVENTION",
     "BODY_YAW_FALLBACK",
+    "DEFAULT_MAX_EVIDENCE_GAP_M",
     "body_yaw_array_hash",
     "body_yaw_hash",
     "build_panorama_route",
     "build_walk",
     "clearance",
+    "continuous_nearest_camera_gap_m",
     "ground_datum",
     "ground_height",
     "ground_under_camera",
@@ -106,6 +120,7 @@ __all__ = [
     "route_body_yaw_deg",
     "route_order_hash",
     "site_walk",
+    "select_provider_corridor",
     "sky_visibility",
     "stratified_subset",
     "validate_body_yaw_alignment",

@@ -27,7 +27,8 @@ from ..transport.next_event import NextEventEstimator
 from ..transport.specular import DEFAULT_SPECULAR_CANDIDATE_BUDGET, OneBounceSpecularTransport
 from ..transport.specular_sampling import SampledOneBounceSpecularEstimator
 from ..transport.tracer import SbrTracer
-from ..walk.model import PANORAMA_LINKS, STREET_ROUTE
+from ..walk.model import PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE
+from ..walk.provider_corridor import PROVIDER_CORRIDOR_V1
 from ..walk.route import load_admitted_stations
 from .coupler import BodyCoupler
 from .execution import LegacyReplay, StudyEnvironment, _bind_materials, _build_walk, _prepare_scene, _trace_config
@@ -163,6 +164,11 @@ def _validate_setup_run_contract(setup: RooflineSetupConfig) -> None:
         raise ValueError("resident device next-event requires llvm_ad_rgb or cuda_ad_rgb")
 
 
+def _level2_body_backend(variant: str) -> str:
+    """Select CUDA body coupling only for an explicitly CUDA production run."""
+    return "cuda" if variant.startswith("cuda_") else "numpy"
+
+
 def _validate_setup_specular_contract(setup: RooflineSetupConfig) -> None:
     source = setup.source
     campaign = setup.campaign
@@ -223,6 +229,9 @@ def _validate_setup_cohort_contract(setup: RooflineSetupConfig) -> None:
     if setup.campaign.cohort == "primary_semantic_route":
         if setup.run.walk_path != "links":
             raise ValueError("legacy primary cohort requires a panorama-link route")
+    elif setup.campaign.route_contract == PROVIDER_CORRIDOR_V1:
+        if setup.run.walk_path != "provider_corridor":
+            raise ValueError(f"route contract {PROVIDER_CORRIDOR_V1!r} requires walk_path='provider_corridor'")
     elif setup.run.walk_path != "street":
         raise ValueError(f"cohort {setup.campaign.cohort!r} requires a declared street route")
     if setup.campaign.cohort == COMPARABLE_COHORT:
@@ -454,7 +463,12 @@ def prepare_roofline_campaign(
     finally:
         if route_key is not None:
             os.environ["GOOGLE_API_KEY"] = route_key
-    expected_kind = PANORAMA_LINKS if setup.campaign.cohort == "primary_semantic_route" else STREET_ROUTE
+    if setup.campaign.cohort == "primary_semantic_route":
+        expected_kind = PANORAMA_LINKS
+    elif setup.campaign.route_contract == PROVIDER_CORRIDOR_V1:
+        expected_kind = PROVIDER_CORRIDOR
+    else:
+        expected_kind = STREET_ROUTE
     if walk.kind != expected_kind:
         raise ValueError(f"prepared walk kind {walk.kind!r} does not match cohort route {expected_kind!r}")
     if setup.campaign.cohort == COMPARABLE_COHORT:
@@ -466,9 +480,14 @@ def prepare_roofline_campaign(
             manifest_path=setup.study_root / "config" / COHORT_MANIFEST_FILENAME,
             root=setup.study_root,
         )
-        actual_cache = walk.provenance.get("street_route", {}).get("cache_file")
-        if actual_cache != readiness.route.expected_cache:
-            raise ValueError("prepared street route does not use the manifest's exact registered endpoint cache")
+        if setup.campaign.route_contract == PROVIDER_CORRIDOR_V1:
+            actual_seal = walk.provenance.get("provider_corridor", {}).get("selection_sha256")
+            if actual_seal != readiness.route.selection_sha256:
+                raise ValueError("prepared provider corridor does not match the read-only readiness selection seal")
+        else:
+            actual_cache = walk.provenance.get("street_route", {}).get("cache_file")
+            if actual_cache != readiness.route.expected_cache:
+                raise ValueError("prepared street route does not use the manifest's exact registered endpoint cache")
     if len(walk) == 0:
         raise ValueError("prepared route is empty")
     next_event = setup.run.next_event
@@ -534,6 +553,7 @@ def prepare_roofline_campaign(
         setup.run.frequency_hz,
         level=2,
         body_mass_kg=environment.phantom_mass_kg,
+        level2_backend=_level2_body_backend(setup.run.variant),
     )
     input_paths = _automatic_input_paths(setup, environment, scene)
     input_records = [_input_record(path, setup.study_root) for path in input_paths]

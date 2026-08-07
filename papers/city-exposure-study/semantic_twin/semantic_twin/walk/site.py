@@ -38,14 +38,20 @@ from ..acquire.cache import route_key
 from ..acquire.routes import cached_walking_route, polyline_enu, site_anchor
 from ..scene.enu import EnuFrame
 from .ground import ground_under_camera
-from .model import CAMERA_REGISTERED, PANORAMA_LINKS, STREET_ROUTE, STRIDE_INTERPOLATED, Walk
+from .links import LinkGraph
+from .model import CAMERA_REGISTERED, PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE, STRIDE_INTERPOLATED, Walk
 from .orientation import orient_route_walk
+from .provider_corridor import (
+    DEFAULT_MAX_EVIDENCE_GAP_M,
+    provider_graph_input_paths,
+    select_provider_corridor,
+)
 from .route import HEAD_HEIGHT_M, PanoramaRoute, build_panorama_route, load_admitted_stations, load_link_graph
 
 #: What ``path`` may be, and which walk kind each one produces. ``closest``
 #: produces whichever of the other two stands nearer a camera, so its result
 #: carries the winner's kind and the contest lands in the provenance.
-PATH_KIND = {"links": PANORAMA_LINKS, "street": STREET_ROUTE}
+PATH_KIND = {"links": PANORAMA_LINKS, "street": STREET_ROUTE, "provider_corridor": PROVIDER_CORRIDOR}
 
 
 def densify(polylines: Sequence[np.ndarray], stride_m: float) -> np.ndarray:
@@ -344,6 +350,57 @@ def _order_along_path(points: np.ndarray, polylines: Sequence[np.ndarray]) -> np
     return np.argsort(coordinate, kind="stable")
 
 
+def _provider_corridor_walk(
+    geometry: Any,
+    site: str,
+    stations: Sequence[dict[str, Any]],
+    graph: LinkGraph,
+    *,
+    root: pathlib.Path | None,
+    radius_m: float | None,
+    head_height_m: float,
+    max_gap_m: float,
+) -> tuple[Walk, tuple[np.ndarray, ...], np.ndarray, dict[str, Any]]:
+    """Build the two exact endpoints of the selected provider corridor."""
+    base = (root or paths.root()).resolve()
+    report = base / "outputs" / "site_semantics" / site / "walk_semantic_250m.json"
+    provider_inputs = provider_graph_input_paths(site, base)
+    corridor = select_provider_corridor(
+        stations,
+        graph,
+        radius_m=radius_m,
+        max_gap_m=max_gap_m,
+        admitted_report=report if report.is_file() else None,
+        provider_inputs=provider_inputs,
+        root=base,
+    )
+    by_name = {str(station["name"]): station for station in stations}
+    endpoint_records = [by_name[station_id] for station_id in corridor.station_ids]
+    cameras = np.asarray([record["camera_enu_m"] for record in endpoint_records], dtype=np.float64)
+    ground, _ = ground_under_camera(geometry, cameras[:, :2], cameras[:, 2])
+    if not np.all(np.isfinite(ground)):
+        missing = [corridor.station_ids[index] for index in np.flatnonzero(~np.isfinite(ground))]
+        raise RuntimeError(f"no ground under provider corridor endpoints {missing}")
+    points = np.column_stack([cameras[:, :2], ground + head_height_m])
+    provenance: dict[str, Any] = {
+        "builder": "provider evidence corridor",
+        "path": "provider_corridor",
+        "stations": 2,
+        "road_length_m": corridor.path_length_m,
+        "provider_corridor": corridor.provenance(),
+        "point_kind": [CAMERA_REGISTERED, CAMERA_REGISTERED],
+    }
+    walk = Walk(
+        points=points,
+        ground_z_m=ground,
+        step_m=np.array([0.0, corridor.endpoint_span_m], dtype=np.float64),
+        provenance=provenance,
+        kind=PROVIDER_CORRIDOR,
+        site=site,
+    )
+    return walk, (corridor.registered_polyline,), cameras, provenance
+
+
 def site_walk(
     geometry: Any,
     site: str,
@@ -355,6 +412,7 @@ def site_walk(
     path: str = "links",
     endpoints: str = "span",
     crop_m: int = 250,
+    provider_corridor_max_gap_m: float = DEFAULT_MAX_EVIDENCE_GAP_M,
     **kwargs: Any,
 ) -> tuple[Walk, dict[str, Any]]:
     """The walk for one site, taken from its capture rather than from a grid.
@@ -404,6 +462,53 @@ def site_walk(
         )
     stations = load_admitted_stations(site, root=root)
     graph = load_link_graph(site, root=root, bridge_m=bridge_m)
+    if path == "provider_corridor":
+        radius_m = kwargs.get("radius_m")
+        walk, legs, heights, provenance = _provider_corridor_walk(
+            geometry,
+            site,
+            stations,
+            graph,
+            root=root,
+            radius_m=radius_m,
+            head_height_m=head_height_m,
+            max_gap_m=provider_corridor_max_gap_m,
+        )
+        provenance["stride_m"] = stride_m
+        if stride_m <= 0.0:
+            provenance["standpoints"] = len(walk)
+            walk = orient_route_walk(walk)
+            return walk, walk.provenance
+        strode = _stride_along(
+            geometry,
+            walk,
+            heights,
+            legs,
+            stride_m=stride_m,
+            head_height_m=head_height_m,
+        )
+        if strode is None:
+            raise RuntimeError("selected provider corridor has no road between its endpoints")
+        points, ground, point_kind = strode
+        provenance.update(
+            {
+                "standpoints": int(points.shape[0]),
+                "added_along_the_road": int(points.shape[0] - walk.points.shape[0]),
+                "standpoint_ordering": "increasing distance travelled along the selected path",
+                "point_kind": point_kind,
+            }
+        )
+        walk = orient_route_walk(
+            Walk(
+                points=points,
+                ground_z_m=ground,
+                step_m=np.concatenate([[0.0], np.linalg.norm(np.diff(points[:, :2], axis=0), axis=1)]),
+                provenance=provenance,
+                kind=PROVIDER_CORRIDOR,
+                site=site,
+            )
+        )
+        return walk, walk.provenance
     route = build_panorama_route(geometry, stations, graph, head_height_m=head_height_m, **kwargs)
     walk = dataclasses.replace(route.walk, site=site)
     provenance: dict[str, Any] = {
