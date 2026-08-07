@@ -303,9 +303,9 @@ def _splitmix_seed_word(seed: int) -> int:
     return value ^ (value >> 31)
 
 
-def _splitmix_uniform(mi: Any, counter: Any, seed: int, dimension: int) -> Any:
+def _splitmix_uniform(mi: Any, counter: Any, seed_word: Any, dimension: int) -> Any:
     """Float32 uniform from the CPU reference's SplitMix64 counter word."""
-    value = counter ^ mi.UInt64(_splitmix_seed_word(seed))
+    value = counter ^ seed_word
     value ^= mi.UInt64(((int(dimension) + 1) * 0xD1B54A32D192ED03) & _MASK_64)
     value += mi.UInt64(0x9E3779B97F4A7C15)
     value = (value ^ (value >> 30)) * mi.UInt64(0xBF58476D1CE4E5B9)
@@ -797,6 +797,10 @@ class _DeviceNextEventState:
         self.specular_visible_by_order: list[Any] = [self.dr.zeros(self.mi.UInt32, 1)]
         self.specular_accepted_by_order: list[Any] = [self.dr.zeros(self.mi.UInt32, 1)]
         self.specular_seed = (int(trace_seed) + int(gather.sampled_specular_seed_offset)) & _MASK_64
+        self.specular_seed_word = self.dr.opaque(
+            self.mi.UInt64,
+            _splitmix_seed_word(self.specular_seed),
+        )
         self.specular_arrays = gather._bind_specular_device(kernel)
         self.loop_errors: list[Any] = []
 
@@ -943,13 +947,13 @@ class _DeviceNextEventState:
             source_uniform = _splitmix_uniform(
                 mi,
                 counter,
-                self.specular_seed,
+                self.specular_seed_word,
                 SPECULAR_SOURCE_COUNTER_DIMENSION,
             )
             face_uniform = _splitmix_uniform(
                 mi,
                 counter,
-                self.specular_seed,
+                self.specular_seed_word,
                 SPECULAR_FACE_COUNTER_DIMENSION,
             )
             _source_index, source = self._sample_source(source_uniform, eligible)

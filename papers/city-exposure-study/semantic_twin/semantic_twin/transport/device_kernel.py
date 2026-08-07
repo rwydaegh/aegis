@@ -115,10 +115,11 @@ def _rotated_fibonacci_sphere(
     x = radius * cos_theta
     y = radius * sin_theta
     rotation = launch_rotation(seed)
+    r00, r01, r02, r10, r11, r12, r20, r21, r22 = (dr.opaque(mi.Float, float(value)) for value in rotation.flat)
     return mi.Vector3f(
-        float(rotation[0, 0]) * x + float(rotation[0, 1]) * y + float(rotation[0, 2]) * z,
-        float(rotation[1, 0]) * x + float(rotation[1, 1]) * y + float(rotation[1, 2]) * z,
-        float(rotation[2, 0]) * x + float(rotation[2, 1]) * y + float(rotation[2, 2]) * z,
+        r00 * x + r01 * y + r02 * z,
+        r10 * x + r11 * y + r12 * z,
+        r20 * x + r21 * y + r22 * z,
     )
 
 
