@@ -45,16 +45,21 @@ because its current geometry is invalid. Legacy Korenmarkt and Prague link
 runs remain sealed sensitivity artifacts and are byte-compatible. They are
 not the v2 cohort definition.
 
-Mask2Former and SAM3 session reuse across stations is implemented and under
-live GPU parity validation. No speedup claim is made until that validation is
-complete.
+Mask2Former and SAM3 session reuse across stations passed live A6000 parity.
+Every scientific panorama array, concept-cache array, prompt gate, and
+normalized metadata field was exact between independent and shared-session
+runs. One independent panorama took 116.981 seconds; two shared-session
+panoramas took 199.228 seconds total. These are validation anchors, not a
+universal per-panorama timing claim.
 
 ## Performance anchors
 
 The fresh Korenmarkt one-seed cold run took 2:35.73. A two-seed warm campaign
 took 2:27.79 total for 13 points. A Prague dry run took 47.96 seconds for 68
-points. These values are stage-specific anchors, not a promise for every city
-or hardware configuration.
+points; its full cold seed took 34:23.05. Of that full run, 1,584.75 seconds
+were the deterministic all-specular stage, 308.66 seconds were stochastic
+transport, and 119.95 seconds were body coupling. These values are
+stage-specific anchors, not a promise for every city or hardware configuration.
 
 ## Linked historical records
 

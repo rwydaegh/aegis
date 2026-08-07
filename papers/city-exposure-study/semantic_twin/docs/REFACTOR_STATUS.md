@@ -14,8 +14,8 @@ new campaign manifest rather than by this historical paragraph.
 > older ray-count, estimator, and readiness wording. Current production uses
 > 200,000 IID primary rays, 4,096 passive angular cells, exact direct transfer,
 > stochastic next-event diffuse and mixed transport, and the declared
-> one-reflection specular policy. Mask2Former and SAM3 session reuse is
-> implemented but its GPU speedup is still under validation.
+> one-reflection specular policy. Mask2Former and SAM3 session reuse passed
+> exact live A6000 scientific-output parity.
 
 ## What 100% complete means
 

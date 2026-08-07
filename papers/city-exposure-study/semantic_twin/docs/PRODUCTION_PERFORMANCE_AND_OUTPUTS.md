@@ -17,7 +17,10 @@ normal track does not need Blender.
 > historical trace. Current production uses 200,000 IID primary rays and
 > 4,096 passive angular cells. Fresh anchors are Korenmarkt cold one-seed
 > 2:35.73, Korenmarkt warm two-seed 2:27.79 total for 13 points, and Prague
-> dry-run 47.96 seconds for 68 points.
+> dry-run 47.96 seconds for 68 points. The fresh Prague cold seed took
+> 34:23.05; deterministic all-specular refinement accounted for 1,584.75
+> seconds, stochastic transport for 308.66 seconds, and body coupling for
+> 119.95 seconds.
 
 ## End-to-end stages
 

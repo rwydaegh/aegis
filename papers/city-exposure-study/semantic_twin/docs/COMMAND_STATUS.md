@@ -10,8 +10,8 @@ old captures even when its implementation has moved into the package.
 > diffuse and mixed transport, one-reflection all-specular plus sampled
 > mixed-specular transport, 200,000 IID primary rays, 4,096 passive angular
 > cells, and `max_bounces=3`. Mask2Former and SAM3 model-session reuse is
-> implemented and remains under live GPU parity validation, so this page makes
-> no speedup claim.
+> implemented and passed exact live A6000 parity. See the current contract for
+> its measured timing anchor.
 
 ## Status definitions
 
