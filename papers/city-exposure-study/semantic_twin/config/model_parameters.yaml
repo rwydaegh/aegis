@@ -55,6 +55,7 @@ parameters:
         all_specular: {method: adaptive, order: 1}
         mixed_specular_suffix: {method: sampled, samples_per_eligible_diffuse_vertex: 1, seed_offset: 2000}
         logical_specular_candidate_budget: 120000000
+        logical_specular_candidate_budget_overrides: {tokyo_hachiko: 320000000, reason: exact enumeration of a zero-path relative-convergence boundary}
         specular_candidate_chunk: 262144
         specular_refinement_relative_tolerance: 0.02
         specular_broad_phase: {method: mirrored_receiver_triangle_cone_bvh_v1, computational_threshold: 20000, source_chunk: 16, logical_candidate_accounting_unchanged: true}

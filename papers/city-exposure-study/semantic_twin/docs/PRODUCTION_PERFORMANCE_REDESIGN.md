@@ -58,6 +58,12 @@ and all seven compared arrays were exact. Logical candidate accounting remains
 unchanged, so the reduction is a computation reduction rather than a change to
 the estimator.
 
+Tokyo exposes a useful zero-path boundary case. Standpoint 13 produced no
+accepted order-1 path at every adaptive level, but relative error around zero is
+undefined. The campaign therefore retains the 2% rule and raises only Tokyo's
+computational cap to 320 million, enough to enumerate its 319.046 million full
+order-1 support. This proves the zero rather than adopting an absolute epsilon.
+
 ### Provider corridor evidence route
 
 `provider_corridor_v1` is an opt-in route contract added in `ff9c87da`. It does

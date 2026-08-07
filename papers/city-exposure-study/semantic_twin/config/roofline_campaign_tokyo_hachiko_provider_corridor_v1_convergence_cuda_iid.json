@@ -43,5 +43,5 @@
     "minimum_completed_specular_order": 0,
     "specular_acceptance": "adaptive_all_specular_sampled_mixed_order_1"
   },
-  "source": {"curve_resolution_m": 0.0001, "top_edge_tolerance_m": 0.25, "specular_order": 1, "specular_candidate_budget": 120000000, "specular_candidate_chunk": 262144, "specular_refinement_relative_tolerance": 0.02, "specular_suffix_mode": "sampled", "sampled_specular_samples": 1, "sampled_specular_seed_offset": 2000}
+  "source": {"curve_resolution_m": 0.0001, "top_edge_tolerance_m": 0.25, "specular_order": 1, "specular_candidate_budget": 320000000, "specular_candidate_chunk": 262144, "specular_refinement_relative_tolerance": 0.02, "specular_suffix_mode": "sampled", "sampled_specular_samples": 1, "sampled_specular_seed_offset": 2000}
 }

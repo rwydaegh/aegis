@@ -32,6 +32,11 @@ Those pages retain historical evidence and are not rewritten as archives.
   triangle-cone broad phase when the candidate set reaches 20,000. It uses
   source chunks of 16 and leaves the exact Float64 solve unchanged. The
   threshold and chunk are computational controls, not scientific parameters.
+- The adaptive candidate budget is normally 120 million. Tokyo uses a recorded
+  320 million computational cap because one standpoint has zero accepted
+  order-1 paths and therefore cannot satisfy a relative convergence test around
+  zero. Its 319.046 million candidate support is fully enumerated instead of
+  introducing an absolute convergence epsilon.
 - The production baseline launches 200,000 IID primary rays and uses 4,096 passive
   angular cells. The cells are output directions, not 4,096 independent ray
   launch strata. Rotated Fibonacci launch is retained as a sampling diagnostic,
