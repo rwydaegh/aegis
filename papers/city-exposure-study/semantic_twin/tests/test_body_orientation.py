@@ -319,6 +319,27 @@ def test_virtual_family_phantoms_all_detect_minus_y_anterior(phantom: str) -> No
     np.testing.assert_array_equal(frame.anterior, np.array([0.0, -1.0, 0.0]))
 
 
+@pytest.mark.slow
+def test_real_virtual_family_coupler_fixed_yaw_matches_writable_axis() -> None:
+    pytest.importorskip("aegis")
+
+    path = Path("/home/user/aegis/data/duke.stl")
+    if not path.exists():
+        pytest.skip("phantom mesh not available")
+    coupler = BodyCoupler(str(path), 15.0e9, body_mass_kg=72.4)
+    assert coupler.body_anterior_axis.shape == (3,)
+    assert not coupler.body_anterior_axis.flags.writeable
+    np.testing.assert_array_equal(coupler.body_anterior_axis, np.array([0.0, -1.0, 0.0]))
+
+    grid = np.array([[0.0, 0.0, 1.0]], dtype=np.float64)
+    rho = np.array([1.0], dtype=np.float64)
+    sealed = coupler.couple(grid, rho, 4.0 * np.pi, 0.5, body_yaw_deg=37.0)
+    coupler.body_anterior_axis = np.array(coupler.body_anterior_axis, copy=True)
+    writable = coupler.couple(grid, rho, 4.0 * np.pi, 0.5, body_yaw_deg=37.0)
+    for field in fields(BodyExposure):
+        assert getattr(sealed, field.name) == pytest.approx(getattr(writable, field.name), rel=1.0e-14, abs=1.0e-15)
+
+
 def test_mixed_measure_matches_dense_rigid_yaw_level_two_average() -> None:
     coupler = _asymmetric_coupler()
     measure = _mixed_measure()
