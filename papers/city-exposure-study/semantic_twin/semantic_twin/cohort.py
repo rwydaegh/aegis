@@ -216,10 +216,15 @@ def route_readiness(
         document = load_manifest(manifest_path)
     else:
         validate_manifest(document)
-    if manifest_path is not None:
+    # An explicit root wins over the manifest's inferred checkout. This is
+    # useful when validating a frozen manifest against a separately staged
+    # input tree, while the manifest-only form still infers its own root.
+    if root is not None:
+        base = Path(root)
+    elif manifest_path is not None:
         base = _manifest_root(Path(manifest_path))
     else:
-        base = Path(root) if root is not None else paths.root()
+        base = paths.root()
     base = base.resolve()
     statuses: list[RouteReadiness] = []
     for entry in document["included_sites"]:

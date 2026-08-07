@@ -172,15 +172,11 @@ def test_reregister_resolves_the_canonical_f64_mesh_for_a_selected_cohort(tmp_pa
 
     def fake_register(station_dir, support_mesh, **kwargs):
         calls.append((station_dir, support_mesh, kwargs))
-        (station_dir / "alignment" / "pose_aligned.json").write_text(
-            json.dumps({"position_enu_m": [0.0, 0.0, 2.5]})
-        )
+        (station_dir / "alignment" / "pose_aligned.json").write_text(json.dumps({"position_enu_m": [0.0, 0.0, 2.5]}))
         return ["align"]
 
     monkeypatch.setattr(registration_repair, "register", fake_register)
-    changed = reregister_site(
-        RepairOptions(site=site, root_dir=tmp_path, cohort_dir=cohort, dry_run=False)
-    )
+    changed = reregister_site(RepairOptions(site=site, root_dir=tmp_path, cohort_dir=cohort, dry_run=False))
 
     assert changed == ["pano_00_new"]
     assert calls[0][1] == f64
