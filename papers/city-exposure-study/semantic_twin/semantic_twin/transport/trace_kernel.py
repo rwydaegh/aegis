@@ -16,6 +16,83 @@ from ..illumination import IlluminationModel, nearest_cell, sample_sphere
 from .observers import BounceEvidenceTally, PathRecorder
 
 
+LAUNCH_SAMPLING_MODES = ("iid", "rotated_fibonacci")
+
+# The golden angle represented as an exact uint32 Weyl increment. Keeping the
+# phase in integer arithmetic avoids the loss of angular precision that a
+# float32 device index would otherwise suffer after a few hundred thousand
+# rays. The quantisation is below 1.5e-9 radians per increment.
+_GOLDEN_ANGLE_UINT32 = np.uint64(0x61C88647)
+_UINT32_TO_RADIANS = 2.0 * np.pi / float(1 << 32)
+
+
+def launch_rotation(seed: int) -> np.ndarray:
+    """Return one Haar-uniform SO(3) rotation determined only by ``seed``.
+
+    Shoemake's three-uniform quaternion construction makes every rotation
+    equally likely. The generator is separate from the transport generator, so
+    selecting this launch rule does not consume or reorder diffuse-bounce draws.
+    """
+    seed_value = int(seed) & 0xFFFFFFFFFFFFFFFF
+    u1, u2, u3 = np.random.Generator(np.random.PCG64(seed_value)).random(3)
+    root_one = np.sqrt(1.0 - u1)
+    root_u = np.sqrt(u1)
+    x = root_one * np.sin(2.0 * np.pi * u2)
+    y = root_one * np.cos(2.0 * np.pi * u2)
+    z = root_u * np.sin(2.0 * np.pi * u3)
+    w = root_u * np.cos(2.0 * np.pi * u3)
+    return np.array(
+        [
+            [1.0 - 2.0 * (y * y + z * z), 2.0 * (x * y - z * w), 2.0 * (x * z + y * w)],
+            [2.0 * (x * y + z * w), 1.0 - 2.0 * (x * x + z * z), 2.0 * (y * z - x * w)],
+            [2.0 * (x * z - y * w), 2.0 * (y * z + x * w), 1.0 - 2.0 * (x * x + y * y)],
+        ],
+        dtype=np.float64,
+    )
+
+
+def rotated_fibonacci_sphere(indices: np.ndarray, total: int, seed: int) -> np.ndarray:
+    """Return globally indexed Fibonacci launch directions for one replica.
+
+    The fixed ``total``-point lattice is randomly rotated once per seed. For
+    every lattice point, a Haar-uniform rotation makes its marginal direction
+    uniform on the sphere. Therefore the mean over replicas is an unbiased
+    sphere integral, while each replica is much more even than IID launching.
+    """
+    raw = np.asarray(indices)
+    if raw.ndim != 1 or not np.issubdtype(raw.dtype, np.integer):
+        raise ValueError("launch indices must be a one-dimensional integer array")
+    if total < 1:
+        raise ValueError("total launch rays must be positive")
+    if raw.size and (np.any(raw < 0) or np.any(raw >= total)):
+        raise ValueError("launch indices must lie inside the complete Fibonacci lattice")
+    index = raw.astype(np.uint64, copy=False)
+    z = 1.0 - (2.0 * index.astype(np.float64) + 1.0) / float(total)
+    phase = (index * _GOLDEN_ANGLE_UINT32) & np.uint64(0xFFFFFFFF)
+    theta = phase.astype(np.float64) * _UINT32_TO_RADIANS
+    radius = np.sqrt(np.maximum(0.0, 1.0 - z * z))
+    base = np.column_stack((radius * np.cos(theta), radius * np.sin(theta), z))
+    return base @ launch_rotation(seed).T
+
+
+def launch_directions(
+    count: int,
+    rng: np.random.Generator,
+    *,
+    mode: str,
+    ray_start: int,
+    total: int,
+    seed: int,
+) -> np.ndarray:
+    """Generate one launch range without changing the established IID path."""
+    if mode == "iid":
+        return sample_sphere(count, rng)
+    if mode == "rotated_fibonacci":
+        stop = ray_start + count
+        return rotated_fibonacci_sphere(np.arange(ray_start, stop, dtype=np.int64), total, seed)
+    raise ValueError(f"launch_sampling must be one of {', '.join(LAUNCH_SAMPLING_MODES)}, got {mode!r}")
+
+
 def _cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Evaluate ``np.cross`` for rows in the same arithmetic order."""
     out = np.empty(a.shape, dtype=np.float64)
@@ -126,8 +203,20 @@ class BatchState:
         rng: np.random.Generator,
         local_grid: np.ndarray,
         cell_counts: np.ndarray,
+        *,
+        launch_sampling: str,
+        ray_start: int,
+        total_rays: int,
+        seed: int,
     ) -> BatchState:
-        direction = sample_sphere(count, rng)
+        direction = launch_directions(
+            count,
+            rng,
+            mode=launch_sampling,
+            ray_start=ray_start,
+            total=total_rays,
+            seed=seed,
+        )
         cell = nearest_cell(direction, local_grid)
         np.add.at(cell_counts, cell, 1.0)
         position = np.tile(np.asarray(origin, dtype=np.float64), (count, 1))
@@ -427,9 +516,22 @@ def run_batch(
     models: dict[str, IlluminationModel],
     accumulators: TraceAccumulators,
     observers: BatchObservers,
+    *,
+    ray_start: int = 0,
+    seed: int | None = None,
 ) -> None:
     """Run one batch through the ordered trace phases."""
-    state = BatchState.begin(origin, count, rng, tracer.local_grid, accumulators.cell_counts)
+    state = BatchState.begin(
+        origin,
+        count,
+        rng,
+        tracer.local_grid,
+        accumulators.cell_counts,
+        launch_sampling=tracer.config.launch_sampling,
+        ray_start=ray_start,
+        total_rays=tracer.config.rays,
+        seed=tracer.config.seed if seed is None else seed,
+    )
     if observers.recorder is not None:
         observers.recorder.begin(origin, count)
     if observers.gather is not None:

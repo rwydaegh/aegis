@@ -80,6 +80,29 @@ class Walk:
     provenance: dict[str, Any]
     kind: str = UNRECORDED
     site: str | None = None
+    body_yaw_deg: np.ndarray | None = None
+
+    def __post_init__(self) -> None:
+        """Reject a body-yaw array that cannot be paired to route points."""
+        recorded = self.provenance.get("body_yaw_deg")
+        if recorded is not None and self.body_yaw_deg is None:
+            raise ValueError("provenance body_yaw_deg requires the sealed body_yaw_deg field")
+        if self.body_yaw_deg is None:
+            return
+        yaw = np.asarray(self.body_yaw_deg, dtype=np.float64)
+        if yaw.ndim != 1 or yaw.shape[0] != self.points.shape[0]:
+            raise ValueError(f"body_yaw_deg shape {yaw.shape} does not match points ({self.points.shape[0]},)")
+        if not np.all(np.isfinite(yaw)):
+            raise ValueError("body_yaw_deg must contain only finite values")
+        if np.any(yaw < 0.0) or np.any(yaw >= 360.0):
+            raise ValueError("body_yaw_deg must be normalized to [0, 360)")
+        if recorded is not None:
+            recorded_array = np.asarray(recorded, dtype=np.float64)
+            if recorded_array.shape != yaw.shape or not np.array_equal(recorded_array, yaw):
+                raise ValueError("provenance body_yaw_deg is not aligned with the sealed body_yaw_deg field")
+        sealed = np.array(yaw, dtype=np.float64, copy=True)
+        sealed.setflags(write=False)
+        object.__setattr__(self, "body_yaw_deg", sealed)
 
     def __len__(self) -> int:
         return int(self.points.shape[0])

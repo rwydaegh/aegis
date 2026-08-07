@@ -15,8 +15,10 @@ import numpy as np
 
 from semantic_twin import paths
 from semantic_twin.exposure.output_policy import OutputProfile, coerce_profile, profile as profile_spec
+from semantic_twin.materials import FINISH_ONLY_RULE
 from semantic_twin.runconfig import MATERIALS, RunConfig
 from semantic_twin.walk.model import CAMERA_REGISTERED, REGISTERED_ROAD_V1, STRIDE_INTERPOLATED
+from semantic_twin.walk.orientation import BODY_YAW_CONVENTION, BODY_YAW_FALLBACK, body_yaw_array_hash
 
 
 _COMMON_ROW_KEYS = frozenset(
@@ -352,7 +354,36 @@ def _valid_route_rows(manifest: dict[str, Any], config: RunConfig, rows: list[di
         return False
     if any(kind not in allowed for kind in point_kind):
         return False
-    return all(row["index"] < candidates and row.get("point_kind") == point_kind[row["index"]] for row in rows)
+    body_yaw = walk.get("body_yaw_deg")
+    if body_yaw is None:
+        return False
+    if not isinstance(body_yaw, list) or len(body_yaw) != candidates:
+        return False
+    if any(
+        type(value) not in (int, float) or not math.isfinite(value) or value < 0.0 or value >= 360.0
+        for value in body_yaw
+    ):
+        return False
+    if walk.get("body_yaw_convention") != BODY_YAW_CONVENTION:
+        return False
+    if walk.get("body_yaw_fallback") != BODY_YAW_FALLBACK:
+        return False
+    fallback_count = walk.get("body_yaw_fallback_count")
+    if type(fallback_count) is not int or not 0 <= fallback_count <= candidates:
+        return False
+    array_hash = walk.get("body_yaw_array_hash")
+    if not isinstance(array_hash, str) or array_hash != body_yaw_array_hash(np.asarray(body_yaw, dtype=np.float64)):
+        return False
+    if not _valid_sha256(walk.get("body_yaw_hash")) or not _valid_sha256(walk.get("body_yaw_route_order_hash")):
+        return False
+    return all(
+        row["index"] < candidates
+        and row.get("point_kind") == point_kind[row["index"]]
+        and type(row.get("body_yaw_deg")) in (int, float)
+        and math.isfinite(row["body_yaw_deg"])
+        and row["body_yaw_deg"] == body_yaw[row["index"]]
+        for row in rows
+    )
 
 
 def _read_spectra(
@@ -406,13 +437,21 @@ def same_run_identity(manifest: dict[str, Any], config: RunConfig, models: Mappi
             expected_fields = {field.name for field in fields(RunConfig)}
             recorded_fields = set(recorded)
             missing = expected_fields - recorded_fields
-            if recorded_fields - expected_fields or missing not in (set(), {"transport_kernel"}):
+            compatible_missing = {"transport_kernel", "launch_sampling"}
+            if recorded_fields - expected_fields or not missing <= compatible_missing:
                 return False
             if missing:
-                # NumPy was the sole transport family before the field existed.
-                # This also classifies old ``cuda_ad_rgb`` manifests correctly:
-                # CUDA named their intersection backend, not a resident kernel.
-                recorded = dict(recorded, transport_kernel="numpy")
+                recorded = dict(recorded)
+                if "transport_kernel" in missing:
+                    # NumPy was the sole transport family before the field existed.
+                    # This also classifies old ``cuda_ad_rgb`` manifests correctly:
+                    # CUDA named their intersection backend, not a resident kernel.
+                    recorded["transport_kernel"] = "numpy"
+                if "launch_sampling" in missing:
+                    # IID was the sole launch design before this field existed.
+                    # A rotated request still fails below because the restored
+                    # IID identity differs from the requested identity.
+                    recorded["launch_sampling"] = "iid"
             previous = RunConfig.from_dict(recorded)
             digest_matches = manifest.get("run_digest") == previous.digest()
         else:
@@ -420,7 +459,35 @@ def same_run_identity(manifest: dict[str, Any], config: RunConfig, models: Mappi
             digest_matches = True
     except (KeyError, TypeError, ValueError):
         return False
-    return digest_matches and previous.identity() == config.identity()
+    return digest_matches and previous.identity() == config.identity() and _same_roughness_rule(manifest)
+
+
+def _same_roughness_rule(manifest: Mapping[str, Any]) -> bool:
+    """Reject a persisted result produced by a non-production roughness rule.
+
+    The roughness rule is part of the sealed material-table provenance rather
+    than :class:`RunConfig`, so it must be checked alongside the run identity.
+    Older synthetic or pre-material manifests may not carry a surface table and
+    remain readable. Once a table is present, an explicit rule must be the
+    current finish-only production rule. In particular, a quadrature manifest
+    must not be reused under the new default.
+    """
+    surface_binding = manifest.get("surface_binding")
+    if surface_binding is None:
+        return True
+    if not isinstance(surface_binding, Mapping):
+        return False
+    provenance = surface_binding.get("provenance")
+    if provenance is None:
+        return False
+    if not isinstance(provenance, Mapping):
+        return False
+    rule = provenance.get("roughness_rule")
+    if rule is None:
+        nested = provenance.get("roughness_rule_provenance")
+        if isinstance(nested, Mapping):
+            rule = nested.get("rule")
+    return rule == FINISH_ONLY_RULE
 
 
 def same_models(manifest: dict[str, Any], config: RunConfig, models: Mapping[str, Any]) -> bool:
@@ -477,6 +544,7 @@ def legacy_run(manifest: dict[str, Any], requested: RunConfig, models: Mapping[s
         walk_npz=None,
         rays=trace.get("rays", 200_000),
         batch=trace.get("batch", 400_000),
+        launch_sampling=trace.get("launch_sampling", "iid"),
         local_cells=trace.get("local_cells", 512),
         exit_bands=trace.get("exit_bands", 18),
         seed=trace.get("seed", 7),

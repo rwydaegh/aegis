@@ -24,6 +24,7 @@ from semantic_twin.exposure.execution import ExecutionConfig
 from semantic_twin.exposure.reuse import model_identity
 from semantic_twin.exposure.sweeps import LadderSweepConfig
 from semantic_twin.runconfig import NextEventConfig, RunConfig
+from semantic_twin.walk import BODY_YAW_CONVENTION, BODY_YAW_FALLBACK, body_yaw_array_hash
 
 
 @pytest.fixture
@@ -459,24 +460,63 @@ def test_a_registered_route_reuses_only_rows_with_the_aligned_point_kind(ledger)
     stem = run_exposure.OUTPUT / "korenmarkt_walk_15ghz"
     manifest_path = stem.with_name(f"{stem.name}_manifest.json")
     document = json.loads(manifest_path.read_text())
-    document["walk"].update(
-        {
-            "route_geometry": "registered_road_v1",
-            "point_kind": ["camera_registered", "stride_interpolated", "camera_registered", "stride_interpolated"]
-            + ["camera_registered"] * 19,
-        }
-    )
-    manifest_path.write_text(json.dumps(document))
     rows_path = stem.with_name(f"{stem.name}_locations.jsonl")
     rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
-    for row in rows:
-        row["point_kind"] = document["walk"]["point_kind"][row["index"]]
+    _add_registered_route_orientation(document, rows)
+    manifest_path.write_text(json.dumps(document))
     rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
     seal_output_generation(run_exposure.OUTPUT, stem.name, document, config)
 
     assert run_exposure.reusable(config)
     rows[1]["point_kind"] = "camera_registered"
     rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    assert not run_exposure.reusable(config)
+
+
+def _add_registered_route_orientation(document, rows):
+    """Add the route orientation contract to a synthetic reusable run."""
+    candidates = document["walk"]["candidates_after_clearance"]
+    point_kind = ["camera_registered", "stride_interpolated", "camera_registered", "stride_interpolated"]
+    point_kind.extend(["camera_registered"] * (candidates - len(point_kind)))
+    body_yaw = [float((17 * index) % 360) for index in range(candidates)]
+    document["walk"].update(
+        {
+            "route_geometry": "registered_road_v1",
+            "point_kind": point_kind,
+            "body_yaw_deg": body_yaw,
+            "body_yaw_convention": BODY_YAW_CONVENTION,
+            "body_yaw_fallback": BODY_YAW_FALLBACK,
+            "body_yaw_fallback_count": 0,
+            "body_yaw_route_order_hash": "a" * 64,
+            "body_yaw_hash": "b" * 64,
+            "body_yaw_array_hash": body_yaw_array_hash(np.asarray(body_yaw, dtype=np.float64)),
+        }
+    )
+    for row in rows:
+        row["point_kind"] = point_kind[row["index"]]
+        row["body_yaw_deg"] = body_yaw[row["index"]]
+
+
+@pytest.mark.parametrize("damage", ["missing_manifest", "stale_hash", "malformed_row"])
+def test_registered_route_rejects_missing_stale_or_malformed_body_yaw(ledger, damage):
+    config = replay_config().replace(walk="route", locations=3)
+    complete_identified_run(run_exposure.OUTPUT, config)
+    stem = run_exposure.OUTPUT / "korenmarkt_walk_15ghz"
+    manifest_path = stem.with_name(f"{stem.name}_manifest.json")
+    document = json.loads(manifest_path.read_text())
+    rows_path = stem.with_name(f"{stem.name}_locations.jsonl")
+    rows = [json.loads(line) for line in rows_path.read_text().splitlines()]
+    _add_registered_route_orientation(document, rows)
+    if damage == "missing_manifest":
+        del document["walk"]["body_yaw_deg"]
+    elif damage == "stale_hash":
+        document["walk"]["body_yaw_array_hash"] = "c" * 64
+    else:
+        rows[1]["body_yaw_deg"] = "north"
+    manifest_path.write_text(json.dumps(document))
+    rows_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    seal_output_generation(run_exposure.OUTPUT, stem.name, document, config)
+
     assert not run_exposure.reusable(config)
 
 
@@ -524,6 +564,7 @@ IDENTITY_CHANGES = {
     "atlas_npz": "outputs/another_atlas.npz",
     "rays": 100_000,
     "batch": 100_000,
+    "launch_sampling": "rotated_fibonacci",
     "local_cells": 256,
     "exit_bands": 12,
     "seed": 9,
@@ -613,6 +654,18 @@ def test_a_modern_manifest_from_before_transport_identity_means_numpy(ledger):
     manifest.write_text(json.dumps(document))
 
     assert run_exposure.reusable(config)
+
+
+def test_a_manifest_from_before_launch_identity_means_iid(ledger):
+    config = replay_config()
+    complete_identified_run(run_exposure.OUTPUT, config)
+    manifest = run_exposure.OUTPUT / "korenmarkt_walk_15ghz_manifest.json"
+    document = json.loads(manifest.read_text())
+    del document["run"]["launch_sampling"]
+    manifest.write_text(json.dumps(document))
+
+    assert run_exposure.reusable(config)
+    assert not run_exposure.reusable(config.replace(launch_sampling="rotated_fibonacci"))
 
 
 def test_an_old_hybrid_cuda_manifest_is_never_reused_for_device_transport(ledger):

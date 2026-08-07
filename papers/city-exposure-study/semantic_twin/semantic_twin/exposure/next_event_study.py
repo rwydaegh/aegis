@@ -12,10 +12,11 @@ import numpy as np
 
 from semantic_twin import paths
 from semantic_twin.illumination import ISOTROPIC, ROOFTOP, SITE_LIFT_M, build_source_set, silhouette
-from semantic_twin.materials import classify_faces, clutter_triangles, load_table
+from semantic_twin.materials import FINISH_ONLY_RULE, classify_faces, clutter_triangles, load_table
 from semantic_twin.paths import site_mesh
 from semantic_twin.propagation.geometry import MitsubaGeometry
 from semantic_twin.transport import SbrTracer, TraceConfig
+from semantic_twin.transport.device_tracer import DeviceEscapeTracer
 from semantic_twin.transport.next_event import NextEventEstimator
 from semantic_twin.walk import build_walk, measure_ground_datum, site_walk
 
@@ -31,6 +32,11 @@ class NextEventStudyConfig:
     elevations: int = 600
     cell_m: float = 1.0
     dims: int = 3
+    curve_resolution_m: float = 1.0e-4
+    top_edge_tolerance_m: float = 0.25
+    crop_area_m2: float | None = None
+    density_per_m2: float | None = None
+    eirp_w: float | None = None
     site_lift_m: float = SITE_LIFT_M
     connections: int = 1
     frequency_hz: float = 15.0e9
@@ -43,8 +49,27 @@ class NextEventStudyConfig:
     drop_clutter: bool = False
     seed: int = 7
     variant: str = "llvm_ad_rgb"
+    transport_kernel: str = "numpy"
+    launch_sampling: str = "iid"
+    specular_order: int = 1
     tag: str = "next_event"
     root: pathlib.Path = field(default_factory=paths.root)
+
+    def __post_init__(self) -> None:
+        if self.transport_kernel not in ("numpy", "drjit"):
+            raise ValueError("transport_kernel must be 'numpy' or 'drjit'")
+        if self.launch_sampling not in ("iid", "rotated_fibonacci"):
+            raise ValueError("launch_sampling must be 'iid' or 'rotated_fibonacci'")
+        if self.specular_order not in (0, 1):
+            raise ValueError("specular_order must be zero or one")
+        if self.transport_kernel == "drjit":
+            if self.variant not in ("llvm_ad_rgb", "cuda_ad_rgb"):
+                raise ValueError("drjit next-event transport requires llvm_ad_rgb or cuda_ad_rgb")
+            if self.specular_order != 0:
+                raise ValueError(
+                    "drjit next-event transport supports diffuse source connections only; "
+                    "set specular_order=0 explicitly"
+                )
 
 
 @dataclass(frozen=True)
@@ -56,7 +81,7 @@ class _SiteStudy:
     datum: Any
     evaluate: np.ndarray
     sources: Any
-    tracer: SbrTracer
+    tracer: SbrTracer | DeviceEscapeTracer
     clutter_report: dict[str, Any]
     config: NextEventStudyConfig
 
@@ -143,16 +168,27 @@ def _prepare_site(site: str, mesh: pathlib.Path, config: NextEventStudyConfig) -
         dims=config.dims,
         site_lift_m=config.site_lift_m,
         clutter_triangles=clutter,
+        crop_area_m2=(config.crop_area_m2 if config.crop_area_m2 is not None else float(np.pi * config.crop_m**2)),
+        density_per_m2=config.density_per_m2,
+        eirp_w=config.eirp_w,
+        curve_resolution_m=config.curve_resolution_m,
+        top_edge_tolerance_m=config.top_edge_tolerance_m,
     )
     face_class = classify_faces(geometry.vertices, geometry.faces, datum.z_m)
-    binding = load_table(config.root / "config", config.frequency_hz)
+    binding = load_table(
+        config.root / "config",
+        config.frequency_hz,
+        roughness_rule=FINISH_ONLY_RULE,
+    )
     trace_config = TraceConfig(
         frequency_hz=config.frequency_hz,
         rays=config.rays,
         max_bounces=config.max_bounces,
         seed=config.seed,
+        launch_sampling=config.launch_sampling,
     )
-    tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, trace_config)
+    tracer_type = DeviceEscapeTracer if config.transport_kernel == "drjit" else SbrTracer
+    tracer = tracer_type(geometry, face_class, binding.permittivity, binding.rms_height_m, trace_config)
     return _SiteStudy(
         site,
         mesh,
@@ -175,6 +211,7 @@ def _trace_points(study: _SiteStudy) -> list[dict[str, Any]]:
         sources=study.sources,
         samples=study.config.connections,
         max_order=study.config.max_bounces,
+        specular_order=getattr(study.config, "specular_order", 1),
         diagnostic_models=models,
     )
     per_point = []
@@ -194,6 +231,15 @@ def _trace_points(study: _SiteStudy) -> list[dict[str, Any]]:
                 **{name: value for name, value in result.detail.items() if name != "bounced"},
             }
         )
+        if getattr(study.sources, "crop_area_m2", None) is not None and hasattr(
+            study.sources, "per_density_eirp_transfer"
+        ):
+            per_point[-1]["per_density_eirp_transfer"] = float(study.sources.per_density_eirp_transfer(result.total))
+        if (
+            getattr(study.sources, "physical_expected_count", None) is not None
+            and getattr(study.sources, "eirp_w", None) is not None
+        ):
+            per_point[-1]["physical_transfer_w_m2"] = float(study.sources.physical_transfer(result.total))
     return per_point
 
 
@@ -217,10 +263,14 @@ def _site_row(study: _SiteStudy, per_point: list[dict[str, Any]]) -> dict[str, A
         "site": study.site,
         "crop_radius_m": study.config.crop_m,
         "mesh": str(study.mesh.relative_to(study.config.root)),
-        "sources": study.sources.as_dict(),
+        "sources": study.sources.source_provenance(),
         "ground_datum_m": study.datum.z_m,
         "rays": study.config.rays,
         "max_bounces": study.config.max_bounces,
+        "transport_kernel": study.config.transport_kernel,
+        "launch_sampling": study.config.launch_sampling,
+        "variant": study.config.variant,
+        "specular_order": study.config.specular_order,
         "held_out": int(study.evaluate.shape[0]),
         "clutter": study.clutter_report,
         "surplus_db_median": float(np.median(surplus_db)),
@@ -249,8 +299,13 @@ def run_next_event_study(config: NextEventStudyConfig) -> pathlib.Path:
     payload = {
         "question": "how much more a pedestrian gets than the rooftops they can see would give on their own",
         "estimator": "next event estimation onto an explicit skyline source set",
-        "normalisation": "the line of sight term is 1, so antenna count, transmit power and the 4 pi all cancel",
+        "normalisation": (
+            "relative source weights are conditional arc-length probabilities; "
+            "per-density-EIRP transfer is unit transfer * crop area / (4 pi), "
+            "and physical transfer additionally multiplies density * EIRP"
+        ),
         "note": "builders and evaluation standpoints are disjoint",
+        "launch_sampling": config.launch_sampling,
         "rows": rows,
     }
     path = out_dir / f"{config.tag}_{config.crop_m}m.json"

@@ -59,6 +59,16 @@ from .model import (
     WalkBuilder,
     stratified_subset,
 )
+from .orientation import (
+    BODY_YAW_CONVENTION,
+    BODY_YAW_FALLBACK,
+    body_yaw_array_hash,
+    body_yaw_hash,
+    orient_route_walk,
+    route_body_yaw_deg,
+    route_order_hash,
+    validate_body_yaw_alignment,
+)
 from .route import PanoramaRoute, RouteStation, build_panorama_route, panorama_walk
 from .site import site_walk
 
@@ -80,6 +90,10 @@ __all__ = [
     "StreetRouteWalk",
     "Walk",
     "WalkBuilder",
+    "BODY_YAW_CONVENTION",
+    "BODY_YAW_FALLBACK",
+    "body_yaw_array_hash",
+    "body_yaw_hash",
     "build_panorama_route",
     "build_walk",
     "clearance",
@@ -88,7 +102,11 @@ __all__ = [
     "ground_under_camera",
     "measure_ground_datum",
     "panorama_walk",
+    "orient_route_walk",
+    "route_body_yaw_deg",
+    "route_order_hash",
     "site_walk",
     "sky_visibility",
     "stratified_subset",
+    "validate_body_yaw_alignment",
 ]

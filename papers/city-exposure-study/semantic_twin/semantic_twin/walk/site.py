@@ -38,6 +38,7 @@ from ..acquire.routes import cached_walking_route, polyline_enu, site_anchor
 from ..scene.enu import EnuFrame
 from .ground import ground_under_camera
 from .model import CAMERA_REGISTERED, PANORAMA_LINKS, STREET_ROUTE, STRIDE_INTERPOLATED, Walk
+from .orientation import orient_route_walk
 from .route import HEAD_HEIGHT_M, PanoramaRoute, build_panorama_route, load_admitted_stations, load_link_graph
 
 #: What ``path`` may be, and which walk kind each one produces. ``closest``
@@ -190,11 +191,19 @@ def _nearest_of(
     tried: dict[str, float] = {}
     for candidate in candidates:
         walk, record = site_walk(geometry, site, root=root, path=candidate, **kwargs)
+        if len(walk) == 0:
+            # An empty candidate has no standpoint distance to measure. Treat
+            # it as an infinitely poor contest entry rather than reducing an
+            # empty array, which emits a NaN warning and can poison the record.
+            tried[candidate] = float("inf")
+            continue
         cameras = np.array([s["camera_enu_m"] for s in load_admitted_stations(site, root=root)], dtype=float)
         gap = float(np.linalg.norm(walk.points[:, None, :2] - cameras[None, :, :2], axis=2).min(axis=1).mean())
         tried[candidate] = round(gap, 2)
         if gap < best_gap:
             best, best_gap = (walk, record), gap
+    if best is None:
+        raise ValueError(f"all candidate walks for {site!r} are empty")
     walk, record = best  # type: ignore[misc]
     record["path_chosen_by"] = "mean metres from a standpoint to the nearest camera"
     record["path_candidates_m"] = tried
@@ -232,7 +241,8 @@ def _keep_near_the_street(
         )
     point_kind = walk.provenance.get("point_kind")
     kept_kind = [kind for kind, keep in zip(point_kind, on, strict=True) if keep] if point_kind is not None else None
-    walk_provenance = {**walk.provenance, "kept_within_m": within}
+    walk_provenance = {key: value for key, value in walk.provenance.items() if not key.startswith("body_yaw_")}
+    walk_provenance["kept_within_m"] = within
     if kept_kind is not None:
         walk_provenance["point_kind"] = kept_kind
     return Walk(
@@ -394,13 +404,15 @@ def site_walk(
     walk = dataclasses.replace(walk, provenance=provenance)
     if stride_m <= 0.0:
         provenance["standpoints"] = len(walk)
-        return walk, provenance
+        walk = orient_route_walk(walk)
+        return walk, walk.provenance
 
     strode = _stride_along(geometry, walk, heights, legs, stride_m=stride_m, head_height_m=head_height_m)
     if strode is None:
         provenance["standpoints"] = len(walk)
         provenance["note"] = "no road between stations, so the stride added nothing"
-        return walk, provenance
+        walk = orient_route_walk(walk)
+        return walk, walk.provenance
 
     points, ground, point_kind = strode
     step = np.concatenate([[0.0], np.linalg.norm(np.diff(points[:, :2], axis=0), axis=1)])
@@ -408,7 +420,8 @@ def site_walk(
     provenance["added_along_the_road"] = int(points.shape[0] - len(walk))
     provenance["standpoint_ordering"] = "increasing distance travelled along the selected path"
     provenance["point_kind"] = point_kind
-    return (
+    provenance = {key: value for key, value in provenance.items() if not key.startswith("body_yaw_")}
+    walk = orient_route_walk(
         Walk(
             points=points,
             ground_z_m=ground,
@@ -416,6 +429,6 @@ def site_walk(
             provenance=provenance,
             kind=PATH_KIND[path],
             site=site,
-        ),
-        provenance,
+        )
     )
+    return walk, walk.provenance

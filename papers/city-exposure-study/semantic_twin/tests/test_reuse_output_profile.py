@@ -74,3 +74,43 @@ def test_study_reuse_adapter_passes_the_requested_profile(monkeypatch: pytest.Mo
 
     assert study.reusable(_config(), profile="minimal")
     assert captured["kwargs"] == {"profile": "minimal"}
+
+
+def test_reuse_rejects_a_manifest_with_the_historical_quadrature_material_rule() -> None:
+    """Changing the roughness reduction must invalidate old material numbers."""
+    config = _config()
+    manifest = {
+        "run": config.as_dict(),
+        "run_digest": config.digest(),
+        "surface_binding": {
+            "provenance": {
+                "roughness_rule": "quadrature",
+            }
+        },
+    }
+
+    manifest["surface_binding"]["provenance"]["roughness_rule"] = "finish_only"
+    assert reuse.same_run_identity(manifest, config, {})
+
+    manifest["surface_binding"]["provenance"]["roughness_rule"] = "quadrature"
+    assert not reuse.same_run_identity(manifest, config, {})
+
+
+def test_manifest_before_launch_sampling_means_iid_but_never_rotated_fibonacci() -> None:
+    iid = _config()
+    recorded = iid.as_dict()
+    recorded.pop("launch_sampling")
+    manifest = {"run": recorded, "run_digest": iid.digest()}
+
+    assert reuse.same_run_identity(manifest, iid, {})
+    assert not reuse.same_run_identity(manifest, iid.replace(launch_sampling="rotated_fibonacci"), {})
+
+
+def test_manifest_before_transport_and_launch_fields_restores_both_historical_defaults() -> None:
+    iid = _config()
+    recorded = iid.as_dict()
+    recorded.pop("transport_kernel")
+    recorded.pop("launch_sampling")
+    manifest = {"run": recorded, "run_digest": iid.digest()}
+
+    assert reuse.same_run_identity(manifest, iid, {})

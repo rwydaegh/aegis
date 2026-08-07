@@ -98,6 +98,10 @@ MATERIALS = (
 #: numerical runs even when they use the same Mitsuba intersection variant.
 TRANSPORT_KERNELS = ("numpy", "drjit")
 
+#: How the initial reciprocal directions cover the sphere. IID is the
+#: historical rule. Rotated Fibonacci is an opt-in randomized quadrature.
+LAUNCH_SAMPLING_MODES = ("iid", "rotated_fibonacci")
+
 #: The complete model tuple used by the escape/grid driver.  Keep this here,
 #: beside the named factory below, rather than making the command-line adapter
 #: carry a second copy of the production model order.
@@ -229,6 +233,8 @@ class RunConfig:
     #: Inert while ``rays`` stays at or below it, which is why it has cost nothing
     #: so far. It is the first higher ray sweep that would find out.
     batch: int = 400_000
+    #: The initial direction design. This does not govern diffuse bounces.
+    launch_sampling: str = "iid"
     local_cells: int = 512
     exit_bands: int = 18
     seed: int = 7
@@ -328,6 +334,7 @@ class RunConfig:
             "atlas_npz": None,
             "rays": 200_000,
             "batch": 400_000,
+            "launch_sampling": "iid",
             "local_cells": 512,
             "exit_bands": 18,
             "seed": 7,
@@ -364,6 +371,7 @@ class RunConfig:
             ("walk_path", WALK_PATHS),
             ("materials", MATERIALS),
             ("transport_kernel", TRANSPORT_KERNELS),
+            ("launch_sampling", LAUNCH_SAMPLING_MODES),
         ):
             value = getattr(self, name)
             if value not in allowed:
@@ -453,6 +461,10 @@ class RunConfig:
         # collide with either historical form.
         if document["transport_kernel"] == "numpy":
             document.pop("transport_kernel")
+        # Absence is the historical IID rule. Keep old run names while making
+        # every opt-in launch design part of the identity.
+        if document["launch_sampling"] == "iid":
+            document.pop("launch_sampling")
         document["roulette_start"] = min(self.effective_roulette_start, self.max_bounces + 1)
         return document
 

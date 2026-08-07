@@ -39,6 +39,15 @@ from .catalogue import (
     STREET_SMALL_CELL_PATHLOSS,
     VARIANTS,
 )
+from .curve import (
+    FacadeTipCurve,
+    build_facade_tip_curve,
+    build_mesh_edge_curve,
+    curve_from_polylines,
+    merge_segments,
+    polyline_segments,
+    silhouette_polyline,
+)
 from .measure import elevation_band_measure, measure_below
 from .model import (
     LAW_REGISTRY,
@@ -80,6 +89,7 @@ __all__ = [
     "AngularIllumination",
     "BandLaw",
     "BandPathlossLaw",
+    "FacadeTipCurve",
     "ElevationLaw",
     "FixedHeightLaw",
     "IlluminationModel",
@@ -88,15 +98,21 @@ __all__ = [
     "Roofline",
     "SourceSet",
     "build_source_set",
+    "build_facade_tip_curve",
+    "build_mesh_edge_curve",
+    "curve_from_polylines",
     "credited_by",
     "elevation_band_measure",
     "extract_roofline",
     "fibonacci_sphere",
     "measure_below",
+    "merge_segments",
     "nearest_cell",
     "register_law",
     "sample_sphere",
+    "polyline_segments",
     "silhouette",
+    "silhouette_polyline",
     "solid_angle_of_band",
     "thin",
 ]

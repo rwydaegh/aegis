@@ -160,6 +160,7 @@ def build_tracer(manifest: dict[str, Any], walk_npz: pathlib.Path | None, varian
         ray_epsilon_m=float(trace["ray_epsilon_m"]),
         seed=int(trace["seed"]),
         batch=int(trace["batch"]),
+        launch_sampling=str(trace.get("launch_sampling", "iid")),
     )
     print(f"binding covers {covered:.6f} of area, tracer config {config.as_dict()}", flush=True)
     return SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)

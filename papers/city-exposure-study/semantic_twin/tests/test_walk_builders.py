@@ -248,6 +248,8 @@ def test_densified_route_is_returned_in_path_order(monkeypatch: pytest.MonkeyPat
     assert walk.points[:, 1] == pytest.approx(0.0)
     assert walk.step_m.max() == pytest.approx(6.0)
     assert provenance["standpoint_ordering"] == "increasing distance travelled along the selected path"
+    assert walk.body_yaw_deg == pytest.approx(np.full(len(walk), 90.0))
+    assert len(provenance["body_yaw_deg"]) == len(walk)
 
 
 def test_densified_route_stays_in_the_registered_frame_and_labels_every_point(
@@ -400,15 +402,13 @@ def test_a_pilot_covers_the_whole_walk_rather_than_its_head() -> None:
     assert stratified_subset(walk, len(walk) + 5).tolist() == list(range(len(walk)))
 
 
-@pytest.mark.xfail(strict=True, reason="finding 11 in docs/BUGS.md, not fixed in the move")
+@pytest.mark.filterwarnings("error")
 def test_a_walk_with_no_standpoints_cannot_win_the_contest(monkeypatch: pytest.MonkeyPatch) -> None:
     """An empty candidate should lose on the measurement, not slip past it.
 
     `_nearest_of` scores a candidate by the mean distance from a standpoint to
-    the nearest camera. With no standpoints that mean is NaN, `NaN < best` is
-    False, and the empty walk is skipped rather than beaten. The winner is then
-    whatever else was built, chosen by default rather than by measurement, and
-    NaN reaches the manifest.
+    the nearest camera. An empty candidate has no such measurement and receives
+    an infinite score, so it cannot win or introduce a NaN into the manifest.
 
     Not hypothetical. At Mexico City's Zocalo no camera lies within 5 m of the
     routed walking path, so at a stride of zero the street candidate really is
@@ -428,8 +428,9 @@ def test_a_walk_with_no_standpoints_cannot_win_the_contest(monkeypatch: pytest.M
     monkeypatch.setattr(site_module, "site_walk", stub)
     monkeypatch.setattr(site_module, "load_admitted_stations", lambda site, root=None: cameras)
 
-    _, record = real(None, "nowhere", path="closest")
-    assert np.isfinite(list(record["path_candidates_m"].values())).all(), record["path_candidates_m"]
+    walk, record = real(None, "nowhere", path="closest")
+    assert len(walk) == 1
+    assert record["path_candidates_m"] == {"links": 40.0, "street": float("inf")}
 
 
 @pytest.mark.xfail(strict=True, reason="finding 11 in docs/BUGS.md, not fixed in the move")

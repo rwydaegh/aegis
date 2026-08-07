@@ -21,6 +21,7 @@ import pytest
 
 from semantic_twin.materials import (
     CLASS_NAMES,
+    FINISH_ONLY_RULE,
     IMAGE_MATERIALS,
     MASONRY_RULE,
     MATERIAL_VOCABULARY,
@@ -39,6 +40,7 @@ from semantic_twin.materials import (
     classify_faces,
     effective_rms_height,
     extend_classes,
+    finish_only_rms_height,
     entity_support_kind,
     geometric_binding,
     load_table,
@@ -741,6 +743,11 @@ def test_both_rules_return_the_finish_height_where_there_is_no_coursing(roughnes
         assert masonry_equivalent_rms_height(prior) == prior.rms_height_m
 
 
+def test_finish_only_reducer_returns_the_declared_finish_for_structured_classes(roughness) -> None:
+    for prior in roughness.classes.values():
+        assert finish_only_rms_height(prior) == prior.rms_height_m
+
+
 def test_a_coursed_surface_is_rougher_than_its_finish_under_either_rule(roughness) -> None:
     prior = roughness["brick_wall_with_mortar_joints"]
     assert effective_rms_height(prior) > prior.rms_height_m
@@ -779,8 +786,31 @@ def test_switching_the_roughness_rule_moves_only_the_coursed_classes() -> None:
         coursed = not masonry.spec[name].roughness_class.startswith("concrete_")
         moved = masonry.rms_height_m[index] != default.rms_height_m[index]
         assert moved == coursed, name
-    assert default.provenance["roughness_rule"] == QUADRATURE_RULE
+    assert default.provenance["roughness_rule"] == FINISH_ONLY_RULE
     assert masonry.provenance["roughness_rule"] == MASONRY_RULE
+
+
+def test_finish_only_vs_historical_quadrature_only_moves_periodic_classes(roughness) -> None:
+    finish = load_table(CONFIG, CARRIER_HZ)
+    quadrature = load_table(CONFIG, CARRIER_HZ, roughness_rule=QUADRATURE_RULE)
+    assert np.array_equal(finish.permittivity, quadrature.permittivity)
+    for index, name in enumerate(finish.class_names):
+        prior = roughness[finish.spec[name].roughness_class]
+        periodic = prior.periodic_component or {}
+        prior_is_structured = periodic.get("step_height_mm") not in (None, 0.0)
+        assert (finish.rms_height_m[index] != quadrature.rms_height_m[index]) == prior_is_structured
+    assert finish.provenance["periodic_relief_excluded"] is True
+    assert finish.provenance["roughness_rule_provenance"] == {
+        "rule": FINISH_ONLY_RULE,
+        "status": "production",
+        "periodic_relief_excluded": True,
+    }
+    for name in finish.class_names:
+        prior = roughness[finish.spec[name].roughness_class]
+        assert finish.provenance["rows"][name]["periodic_relief_excluded"] is bool(prior.periodic_component)
+        assert quadrature.provenance["rows"][name]["periodic_relief_excluded"] is False
+    assert quadrature.provenance["periodic_relief_excluded"] is False
+    assert quadrature.provenance["roughness_rule_provenance"]["status"] == "historical_sensitivity"
 
 
 # --- the layered stack -----------------------------------------------------

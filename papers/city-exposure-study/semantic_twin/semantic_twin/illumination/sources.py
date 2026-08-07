@@ -34,6 +34,7 @@ from typing import Any, Callable, ClassVar
 
 import numpy as np
 
+from .curve import FacadeTipCurve, build_facade_tip_curve
 from .roofline import FACADE_TIP_FAMILY, FACADE_TIP_LAW
 
 # The digest is intentionally text based. A direct float64 byte hash can change
@@ -293,9 +294,56 @@ class SourceSet:
     #: equal-weight population. Values are normalised before either direct or
     #: next-event scoring, so the absolute scale is intentionally irrelevant.
     source_weights: np.ndarray | None = None
+    #: The fixed one-dimensional support used by the production source law.
+    curve: FacadeTipCurve | None = None
+    #: Area of the declared ground crop.  This is intentionally separate from
+    #: the normalized quadrature weights and is required for physical scaling.
+    crop_area_m2: float | None = None
+    #: Active antenna density per ground area, when a physical scale is requested.
+    density_per_m2: float | None = None
+    #: Common source EIRP in watts, when a physical scale is requested.
+    eirp_w: float | None = None
+    #: Optional explicit expected active count.  If omitted it is derived from
+    #: ``density_per_m2 * crop_area_m2`` when both are available.
+    expected_count: float | None = None
 
     law: ClassVar[str] = FACADE_TIP_LAW
     family: ClassVar[str] = FACADE_TIP_FAMILY
+
+    @classmethod
+    def from_curve(
+        cls,
+        curve: FacadeTipCurve,
+        *,
+        cell_m: float = 1.0,
+        dims: int = 1,
+        azimuths: int = 0,
+        builders: int = 0,
+        floor_m: float = 0.0,
+        site_lift_m: float = 0.0,
+        crop_area_m2: float | None = None,
+        density_per_m2: float | None = None,
+        eirp_w: float | None = None,
+        expected_count: float | None = None,
+    ) -> "SourceSet":
+        """Create a placed source population from arc-length quadrature."""
+        if not isinstance(curve, FacadeTipCurve):
+            raise TypeError("curve must be a FacadeTipCurve")
+        return cls(
+            positions=curve.points,
+            cell_m=cell_m,
+            dims=dims,
+            azimuths=azimuths,
+            builders=builders,
+            floor_m=floor_m,
+            site_lift_m=site_lift_m,
+            source_weights=curve.normalized_weights(),
+            curve=curve,
+            crop_area_m2=crop_area_m2,
+            density_per_m2=density_per_m2,
+            eirp_w=eirp_w,
+            expected_count=expected_count,
+        )
 
     def __post_init__(self) -> None:
         positions = np.asarray(self.positions)
@@ -304,6 +352,24 @@ class SourceSet:
         if not np.all(np.isfinite(positions)):
             raise ValueError("positions must be finite")
         object.__setattr__(self, "positions", positions)
+        if self.curve is not None:
+            if not isinstance(self.curve, FacadeTipCurve):
+                raise TypeError("curve must be a FacadeTipCurve")
+            if self.curve.points.shape != positions.shape or not np.allclose(self.curve.points, positions):
+                raise ValueError("curve points must match SourceSet positions")
+            curve_weights = self.curve.normalized_weights()
+            if self.source_weights is None:
+                object.__setattr__(self, "source_weights", curve_weights)
+            elif not np.allclose(normalized_source_weights(self), curve_weights):
+                raise ValueError("curve segment lengths and source_weights disagree")
+        for name in ("crop_area_m2", "density_per_m2", "eirp_w", "expected_count"):
+            value = getattr(self, name)
+            if value is not None and (not np.isfinite(value) or value < 0.0):
+                raise ValueError(f"{name} must be finite and nonnegative")
+        if self.expected_count is not None and self.density_per_m2 is not None and self.crop_area_m2 is not None:
+            expected = self.density_per_m2 * self.crop_area_m2
+            if not np.isclose(self.expected_count, expected, rtol=1.0e-10, atol=1.0e-12):
+                raise ValueError("expected_count must equal density_per_m2 * crop_area_m2")
         if self.source_weights is None:
             return
         weights = np.asarray(self.source_weights, dtype=np.float64)
@@ -325,6 +391,11 @@ class SourceSet:
         """Relative source probabilities, with equal weighting by default."""
         return normalized_source_weights(self)
 
+    @property
+    def normalized_probabilities(self) -> np.ndarray:
+        """Canonical probability-vector spelling retained for callers."""
+        return self.normalized_source_weights()
+
     def weight_provenance(self) -> dict[str, Any]:
         """Summarize the source-weight measure without dumping its values.
 
@@ -340,6 +411,65 @@ class SourceSet:
             "normalized_weights_sha256": digest,
             "canonicalization": WEIGHT_CANONICALIZATION,
         }
+
+    @property
+    def support_length_m(self) -> float | None:
+        """Total represented facade-tip arc length, if a curve was supplied."""
+        return None if self.curve is None else self.curve.support_length_m
+
+    @property
+    def source_measure(self) -> FacadeTipCurve | None:
+        """Alias for the fixed route-observed curve support."""
+        return self.curve
+
+    @property
+    def source_hash(self) -> str | None:
+        """Stable geometry-and-weight hash, if the support is declared."""
+        return None if self.curve is None else self.curve.source_hash
+
+    @property
+    def physical_expected_count(self) -> float | None:
+        """Expected active count, without altering relative source arithmetic."""
+        if self.expected_count is not None:
+            return float(self.expected_count)
+        if self.density_per_m2 is not None and self.crop_area_m2 is not None:
+            return float(self.density_per_m2 * self.crop_area_m2)
+        return None
+
+    @property
+    def rho_A(self) -> float | None:
+        """Symbolic alias for active antenna density per ground area."""
+        return self.density_per_m2
+
+    def source_provenance(self) -> dict[str, Any]:
+        """Stable source-law metadata suitable for a study manifest."""
+        if self.curve is None:
+            raise ValueError("facade-tip curve data are required for source provenance")
+        data: dict[str, Any] = {
+            "law": self.law,
+            "family": self.family,
+            "kind": "placed",
+            "relative_weight_convention": "conditional uniform by represented arc length",
+            "physical_density_convention": "equal active antenna density per ground area",
+            "physical_scale_convention": (
+                "per_density_eirp_transfer = unit transfer * crop_area_m2 / (4 pi); "
+                "physical_transfer = per_density_eirp_transfer * density_per_m2 * eirp_w"
+            ),
+            "support_length_m": self.support_length_m,
+            "crop_area_m2": self.crop_area_m2,
+            "density_per_m2": self.density_per_m2,
+            "eirp_w": self.eirp_w,
+            "expected_count": self.physical_expected_count,
+            "curve_resolution_m": None,
+            "merge_rule": None,
+        }
+        if self.curve is not None:
+            data.update(self.curve.describe())
+        weights = self.weight_provenance()
+        data["weight_provenance"] = weights
+        data["normalized_weights_sha256"] = weights["normalized_weights_sha256"]
+        data["source_hash_sha256"] = self.curve.source_hash
+        return data
 
     def as_dict(self) -> dict[str, Any]:
         """The build resolutions, exactly as every shipped payload records them.
@@ -368,12 +498,44 @@ class SourceSet:
             "law": self.law,
             "family": self.family,
             "kind": "placed",
-            "construction": "silhouette fan from the walk, thinned to one site per cell",
+            "construction": (
+                "deterministic silhouette polylines from fixed builder standpoints, merged by arc length"
+                if self.curve is not None
+                else "silhouette fan from the walk, thinned to one site per cell"
+            ),
             **self.as_dict(),
         }
         if self.source_weights is not None:
             description["weight_provenance"] = self.weight_provenance()
+        if self.curve is not None:
+            description["source_measure"] = self.source_provenance()
         return description
+
+    def per_density_eirp_transfer(self, transfer: np.ndarray | float) -> np.ndarray | float:
+        """Scale a normalized transfer per unit active density and EIRP.
+
+        ``transfer`` is the legacy unit-source result (direct or total).  The
+        crop area converts the conditional route measure to an expected areal
+        count, while ``4 pi`` is the free-space EIRP convention.  A curve crop
+        area is mandatory because a route support alone cannot imply an areal
+        antenna count.
+        """
+        if self.curve is None:
+            raise ValueError("facade-tip curve data are required for per-density-and-EIRP transfer")
+        if self.crop_area_m2 is None or self.crop_area_m2 <= 0.0:
+            raise ValueError("crop_area_m2 is required for per-density-and-EIRP transfer")
+        return np.asarray(transfer) * self.crop_area_m2 / (4.0 * np.pi)
+
+    def physical_transfer(self, transfer: np.ndarray | float) -> np.ndarray | float:
+        """Optionally scale a normalized transfer by expected count and EIRP."""
+        if self.curve is None:
+            raise ValueError("facade-tip curve data are required for physical transfer")
+        count = self.physical_expected_count
+        if count is None:
+            raise ValueError("density_per_m2 and crop_area_m2 are required for physical transfer")
+        if self.eirp_w is None:
+            raise ValueError("eirp_w is required for physical transfer")
+        return np.asarray(transfer) * count * self.eirp_w / (4.0 * np.pi)
 
     def direct(self, geometry: Any, origins: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """The line of sight term, exact over the whole set."""
@@ -432,14 +594,21 @@ def build_source_set(
     site_lift_m: float = SITE_LIFT_M,
     clutter_triangles: np.ndarray | None = None,
     rng: np.random.Generator | None = None,
+    crop_area_m2: float | None = None,
+    density_per_m2: float | None = None,
+    eirp_w: float | None = None,
+    expected_count: float | None = None,
+    curve_resolution_m: float = 1.0e-4,
+    top_edge_tolerance_m: float = 0.25,
 ) -> SourceSet:
-    """Build the set from a walk, at the resolutions METHOD.md section 5.2 fixed.
+    """Build a deterministic route-observed facade-tip source population.
 
-    The defaults are the measured ones: 1440 azimuths, solid cells, and a cell
-    size of 1 m. 128 standpoints is where the builder count stops paying, and that
-    is the caller's to pass since it is a slice of their own walk.
+    The returned points are quadrature points at merged silhouette segments,
+    weighted by their represented arc lengths.  ``cell_m`` and ``dims`` remain
+    in the record for legacy payload compatibility but no longer construct the
+    production population.  Use ``source_provenance`` for the frozen measure.
     """
-    cloud = silhouette_cloud(
+    curve = build_facade_tip_curve(
         geometry,
         standpoints,
         silhouette,
@@ -447,12 +616,17 @@ def build_source_set(
         elevations=elevations,
         floor_m=floor_m,
         clutter_triangles=clutter_triangles,
+        curve_resolution_m=curve_resolution_m,
+        top_edge_tolerance_m=top_edge_tolerance_m,
     )
-    positions = thin(cloud, cell_m, rng, dims=dims)
-    # Straight up, rather than along the surface normal. A site is on a roof
-    # edge, where up is the direction that clears the roof, and the normal there
-    # is whichever of the two faces meeting at the edge the ray happened to hit.
-    positions[:, 2] += site_lift_m
+    positions = curve.points.copy()
+    if site_lift_m:
+        positions[:, 2] += site_lift_m
+        curve = FacadeTipCurve(
+            positions,
+            curve.segment_lengths_m,
+            {**curve.provenance, "site_lift_m": float(site_lift_m)},
+        )
     return SourceSet(
         positions=positions,
         cell_m=cell_m,
@@ -461,4 +635,10 @@ def build_source_set(
         builders=int(np.asarray(standpoints).shape[0]),
         floor_m=floor_m,
         site_lift_m=site_lift_m,
+        source_weights=curve.normalized_weights(),
+        curve=curve,
+        crop_area_m2=crop_area_m2,
+        density_per_m2=density_per_m2,
+        eirp_w=eirp_w,
+        expected_count=expected_count,
     )

@@ -48,6 +48,9 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--variant", default="llvm_ad_rgb")
+    parser.add_argument("--transport-kernel", choices=["numpy", "drjit"], default="numpy")
+    parser.add_argument("--launch-sampling", choices=["iid", "rotated_fibonacci"], default="iid")
+    parser.add_argument("--specular-order", type=int, choices=[0, 1], default=1)
     parser.add_argument("--tag", default="next_event")
     return parser.parse_args(argv)
 
@@ -76,6 +79,9 @@ def config_from_arguments(args: argparse.Namespace) -> NextEventStudyConfig:
         drop_clutter=args.drop_clutter,
         seed=args.seed,
         variant=args.variant,
+        transport_kernel=args.transport_kernel,
+        launch_sampling=args.launch_sampling,
+        specular_order=args.specular_order,
         tag=args.tag,
     )
 

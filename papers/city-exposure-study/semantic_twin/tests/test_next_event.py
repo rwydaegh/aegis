@@ -335,7 +335,26 @@ def test_estimate_field_conserves_direct_and_bounced_scalars_across_batches():
     estimator = NextEventEstimator(tracer, geometry, sources, samples=2)
     scalar = estimator.estimate(np.array([0.0, 0.0, 10.0]), seed=11)
     with_field, field = estimator.estimate_field(np.array([0.0, 0.0, 10.0]), seed=11)
-    assert with_field == scalar
+    assert with_field.direct == pytest.approx(scalar.direct, rel=1.0e-14, abs=1.0e-15)
+    assert with_field.total == pytest.approx(scalar.total, rel=1.0e-14, abs=1.0e-15)
+    # Field mode reuses deterministic direct/specular work. Cache hits and the
+    # split timing components are intentionally different between the calls,
+    # while the physical transport details remain identical.
+    volatile = {
+        "deterministic_specular_seconds",
+        "direct_seconds",
+        "stochastic_trace_seconds",
+        "deterministic_specular_cache_hit",
+        "direct_cache_hit",
+        "specular_suffix_seconds_in_stochastic_trace",
+        "specular_diagnostic_seconds_reused",
+        "timing_note",
+        "timing_components_non_overlapping",
+        "estimator_wall_seconds",
+        "estimator_overhead_seconds",
+    }
+    stable = set(scalar.detail) - volatile
+    assert {key: with_field.detail[key] for key in stable} == {key: scalar.detail[key] for key in stable}
     assert field.direct == pytest.approx(scalar.direct, rel=1.0e-14, abs=1.0e-15)
     expected_atoms = np.array([1.0 / (3.0 * 10.0**2), (2.0 / 3.0) / (8.0**2 + 8.0**2)])
     expected_directions = np.array([[0.0, 0.0, -1.0], [-8.0, 0.0, -8.0]])

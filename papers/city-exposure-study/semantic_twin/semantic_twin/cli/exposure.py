@@ -134,6 +134,7 @@ def _escape_config(
         atlas_npz=str(atlas_npz) if atlas_npz is not None else None,
         rays=rays,
         batch=options.pop("batch", 400_000),
+        launch_sampling=options.pop("launch_sampling", "iid"),
         local_cells=options.pop("local_cells", 512),
         exit_bands=options.pop("exit_bands", 18),
         seed=options.pop("seed", 7),
@@ -252,6 +253,12 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--frequency-ghz", type=float, default=15.0)
     parser.add_argument("--local-cells", type=int, default=512)
+    parser.add_argument(
+        "--launch-sampling",
+        choices=("iid", "rotated_fibonacci"),
+        default="iid",
+        help="initial sphere design. Rotated Fibonacci is randomized once per seed",
+    )
     parser.add_argument("--variant", default="llvm_ad_rgb")
     parser.add_argument(
         "--transport-kernel",
@@ -331,6 +338,7 @@ def main(argv: list[str] | None = None) -> int:
             args.frequency_ghz * 1e9,
             variant=args.variant,
             transport_kernel=args.transport_kernel,
+            launch_sampling=args.launch_sampling,
             seeds=tuple(int(value) for value in args.ladder_seeds.split(",")),
             local_cells=args.local_cells,
             walk_radius_m=args.walk_radius_m,
@@ -352,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
             args.frequency_ghz * 1e9,
             variant=args.variant,
             transport_kernel=args.transport_kernel,
+            launch_sampling=args.launch_sampling,
             seed=args.seed,
             local_cells=args.local_cells,
             walk_radius_m=args.walk_radius_m,
@@ -381,6 +390,7 @@ def main(argv: list[str] | None = None) -> int:
             args.frequency_ghz * 1e9,
             variant=args.variant,
             transport_kernel=args.transport_kernel,
+            launch_sampling=args.launch_sampling,
             seed=args.seed,
             tag=args.tag,
             local_cells=args.local_cells,

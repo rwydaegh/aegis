@@ -17,6 +17,7 @@ from semantic_twin.exposure.execution import (
     PreparedScene,
     _bind_materials,
     _build_walk,
+    _bound_material,
     _manifest,
     _prepare_scene,
     _result_row,
@@ -29,7 +30,7 @@ from semantic_twin.exposure.execution import (
 )
 from semantic_twin.exposure.reuse import same_output_generation
 from semantic_twin.exposure.sweeps import LadderSweepConfig, SweepEnvironment, run_coverage_ladder
-from semantic_twin.materials import HOST_SURFACE_CLASS_RULE, Provenance
+from semantic_twin.materials import FINISH_ONLY_RULE, HOST_SURFACE_CLASS_RULE, Provenance
 from semantic_twin.runconfig import RunConfig
 from semantic_twin.transport.tracer import TraceConfig
 from semantic_twin.vision.surface_atlas import load_surface_atlas
@@ -90,6 +91,51 @@ def test_walk_material_manifest_rule_describes_structural_support_majority(tmp_p
     assert result.face_source.tolist() == [int(Provenance.IMAGE_WALK_ENTITY)]
     assert captured["class_rule"] == HOST_SURFACE_CLASS_RULE
     assert "strictly outweighs" in captured["class_rule"]
+
+
+@pytest.mark.parametrize("binding_mode", ["geometric", "evidence"])
+def test_execution_material_paths_select_the_production_finish_only_rule(binding_mode):
+    """The execution seam must not inherit a changed catalogue default by accident."""
+    captured = {}
+
+    class Table:
+        class_names = ("facade",)
+        permittivity = np.array([4.0 - 0.1j])
+        rms_height_m = np.array([0.001])
+
+    def load_table(*_args, **kwargs):
+        captured.update(kwargs)
+        return Table()
+
+    environment = SimpleNamespace(
+        material_config=object(),
+        load_table=load_table,
+        site_walk_semantics=lambda *_args: None,
+        site_fishnet=lambda *_args: None,
+    )
+    run = escape_config(materials="geometric")
+    scene = SimpleNamespace(
+        face_class=np.array([0], dtype=np.int8),
+        areas=np.array([1.0]),
+    )
+
+    if binding_mode == "geometric":
+        bound = _bind_materials(run, scene, environment)
+    else:
+        semantic = SimpleNamespace(
+            class_names=("facade",),
+            class_binding={},
+            face_class=np.array([0], dtype=np.int8),
+            face_source=np.array([int(Provenance.GEOMETRIC)], dtype=np.int8),
+            covered_fraction_by_face=0.0,
+            covered_fraction_by_area=0.0,
+            provenance={},
+        )
+        semantic.class_binding = {"facade": object()}
+        bound = _bound_material(run, semantic, {}, "test class rule", "test binding", environment)
+
+    assert bound.table is not None
+    assert captured["roughness_rule"] == FINISH_ONLY_RULE
 
 
 @pytest.mark.parametrize(
@@ -567,12 +613,13 @@ def test_result_row_couples_all_illumination_models_in_one_body_pass():
     captured = {}
 
     class Coupler:
-        def couple_many(self, grid, spectra, solid_angle, reference):
+        def couple_many(self, grid, spectra, solid_angle, reference, **kwargs):
             captured.update(
                 grid=grid.copy(),
                 spectra=spectra.copy(),
                 solid_angle=solid_angle,
                 reference=reference,
+                **kwargs,
             )
             return tuple(
                 SimpleNamespace(as_dict=lambda value=value: {"peak_sab_w_m2": value}) for value in (0.11, 0.22, 0.33)
@@ -596,6 +643,7 @@ def test_result_row_couples_all_illumination_models_in_one_body_pass():
         points=np.array([[2.0, 3.0, 4.0]]),
         ground_z_m=np.array([2.5]),
         provenance={"point_kind": ["camera_registered"]},
+        body_yaw_deg=np.array([17.0]),
     )
     names = ("isotropic", "rooftop", "street_small_cell")
 
@@ -612,9 +660,41 @@ def test_result_row_couples_all_illumination_models_in_one_body_pass():
     assert captured["grid"].tolist() == result.local_grid.tolist()
     assert captured["solid_angle"] == 2.0 * np.pi
     assert captured["reference"] == 0.7
+    assert captured["body_yaw_deg"] == 17.0
+    assert row["body_yaw_deg"] == 17.0
     assert row["isotropic_peak_sab_w_m2"] == 0.11
     assert row["rooftop_peak_sab_w_m2"] == 0.22
     assert row["street_small_cell_peak_sab_w_m2"] == 0.33
+
+
+def test_result_row_emits_the_yaw_for_the_requested_final_route_index():
+    captured = {}
+
+    class Coupler:
+        def couple(self, *_args, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(as_dict=lambda: {"peak_sab_w_m2": 0.1})
+
+    result = SimpleNamespace(
+        local_grid=np.array([[0.0, 0.0, 1.0]]),
+        local_solid_angle=4.0 * np.pi,
+        rho={"rooftop": np.array([0.2])},
+        seconds=0.1,
+        scalars=lambda: {},
+    )
+    walk = SimpleNamespace(
+        points=np.array([[0.0, 0.0, 1.5], [1.0, 0.0, 1.5], [2.0, 0.0, 1.5]]),
+        ground_z_m=np.zeros(3),
+        provenance={"point_kind": ["camera_registered", "stride_interpolated", "camera_registered"]},
+        body_yaw_deg=np.array([90.0, 90.0, 90.0]),
+    )
+
+    row = _result_row(SimpleNamespace(reference_s0_w_m2=1.0), Coupler(), walk, 1, result, {"rooftop": object()})
+
+    assert row["index"] == 1
+    assert row["point_kind"] == "stride_interpolated"
+    assert row["body_yaw_deg"] == 90.0
+    assert captured == {"body_yaw_deg": 90.0}
 
 
 def test_device_execute_selects_resident_tracer_and_keeps_output_contract(tmp_path, monkeypatch):
