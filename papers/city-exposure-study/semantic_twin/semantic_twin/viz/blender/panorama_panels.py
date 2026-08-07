@@ -35,6 +35,22 @@ PUBLICATION_PANEL_KEYS = (
     "host_gated_material",
     "final_transport",
 )
+CURTAIN_LABELS = {
+    "photo": ("PHOTO", "registered source"),
+    "raw_sam3": ("SAM 3", "single-view concepts"),
+    "full_support": ("SUPPORT", "traced geometry"),
+    "fused_entity": ("ENTITY", "all-view posterior"),
+    "host_gated_material": ("RF MATERIAL", "host-gated posterior"),
+    "final_transport": ("TRANSPORT", "final tracer state"),
+}
+CURTAIN_ACCENTS = (
+    (103, 209, 255, 255),
+    (255, 92, 154, 255),
+    (91, 221, 184, 255),
+    (195, 131, 255, 255),
+    (255, 190, 83, 255),
+    (92, 231, 255, 255),
+)
 AUDIT_PANEL_KEYS = (
     "vistas_weight",
     "sam3_weight",
@@ -531,13 +547,70 @@ def render_sam3_raw_instance_panel(
     return output
 
 
-def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    for name in ("DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"):
+def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    stem = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
+    for name in (stem, f"/usr/share/fonts/truetype/dejavu/{stem}"):
         try:
             return ImageFont.truetype(name, size)
         except OSError:
             continue
     return ImageFont.load_default()
+
+
+def _label_curtain(
+    canvas: Image.Image,
+    records: Sequence[PanelRecord],
+    cuts: Sequence[int],
+) -> tuple[Image.Image, list[dict[str, str]]]:
+    """Add compact publication labels without obscuring scene landmarks."""
+    width, height = canvas.size
+    scale = max(height / 832.0, 0.5)
+    margin = max(6, round(11 * scale))
+    top = max(8, round(18 * scale))
+    card_height = max(40, round(60 * scale))
+    radius = max(6, round(10 * scale))
+    title_font = _font(max(11, round(17 * scale)), bold=True)
+    detail_font = _font(max(9, round(11 * scale)))
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    labels: list[dict[str, str]] = []
+    for index, record in enumerate(records):
+        left, right = cuts[index : index + 2]
+        heading, detail = CURTAIN_LABELS.get(record.spec.key, (record.spec.title.upper(), record.spec.role))
+        labels.append({"key": record.spec.key, "heading": heading, "detail": detail})
+        card_left = left + margin
+        card_right = right - margin
+        if card_right <= card_left:
+            continue
+        accent = CURTAIN_ACCENTS[index % len(CURTAIN_ACCENTS)]
+        draw.rounded_rectangle(
+            (card_left, top, card_right, top + card_height),
+            radius=radius,
+            fill=(9, 14, 22, 218),
+            outline=(255, 255, 255, 70),
+            width=max(1, round(scale)),
+        )
+        draw.rounded_rectangle(
+            (card_left, top, card_left + max(4, round(6 * scale)), top + card_height),
+            radius=max(2, round(4 * scale)),
+            fill=accent,
+        )
+        text_left = card_left + max(12, round(17 * scale))
+        draw.text(
+            (text_left, top + max(5, round(7 * scale))),
+            f"{index + 1:02d}  {heading}",
+            fill=(250, 252, 255, 255),
+            font=title_font,
+        )
+        draw.text(
+            (text_left, top + max(23, round(32 * scale))),
+            detail,
+            fill=(202, 213, 226, 255),
+            font=detail_font,
+        )
+        if index:
+            draw.line((left, 0, left, height), fill=(255, 255, 255, 105), width=max(1, round(scale)))
+    return Image.alpha_composite(canvas.convert("RGBA"), overlay).convert("RGB"), labels
 
 
 def _placeholder(size: tuple[int, int], title: str, reason: str) -> Image.Image:
@@ -645,6 +718,7 @@ def compose_vertical_curtain(
     width: int | None = None,
     height: int | None = None,
     cut_positions: Sequence[int] | None = None,
+    label_panels: bool = False,
     specs: Sequence[PanelSpec] | None = None,
     metadata: Mapping[str, Any] | None = None,
 ) -> CompositionResult:
@@ -688,6 +762,9 @@ def compose_vertical_curtain(
         panel = _load_panel(record, (target_width, target_height)).crop(bounds)
         canvas.paste(panel, (left, 0))
         rendered.append(_record_file(record, panel, bounds))
+    labels: list[dict[str, str]] = []
+    if label_panels:
+        canvas, labels = _label_curtain(canvas, records, cuts)
     output = pathlib.Path(output_path).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(output)
@@ -697,7 +774,11 @@ def compose_vertical_curtain(
         canvas.size,
         tuple(rendered),
         "registered_360_vertical_curtain",
-        metadata={**(metadata or {}), "cut_positions": list(cuts)},
+        metadata={
+            **(metadata or {}),
+            "cut_positions": list(cuts),
+            "panel_labels": labels,
+        },
     )
 
 

@@ -142,6 +142,38 @@ def test_vertical_curtain_rejects_invalid_cuts(tmp_path: Path) -> None:
             raise AssertionError("invalid longitude cuts must be rejected")
 
 
+def test_vertical_curtain_can_add_publication_labels(tmp_path: Path) -> None:
+    paths = {}
+    for key in PUBLICATION_PANEL_KEYS:
+        path = tmp_path / f"{key}.png"
+        Image.new("RGB", (1200, 600), (90, 100, 110)).save(path)
+        paths[key] = path
+
+    plain = compose_vertical_curtain(
+        paths,
+        tmp_path / "plain.png",
+        specs=publication_panel_specs(),
+    )
+    labelled = compose_vertical_curtain(
+        paths,
+        tmp_path / "labelled.png",
+        specs=publication_panel_specs(),
+        label_panels=True,
+    )
+
+    plain_pixels = np.asarray(Image.open(plain.output_path))
+    labelled_pixels = np.asarray(Image.open(labelled.output_path))
+    assert not np.array_equal(plain_pixels, labelled_pixels)
+    assert [item["heading"] for item in labelled.metadata["panel_labels"]] == [
+        "PHOTO",
+        "SAM 3",
+        "SUPPORT",
+        "ENTITY",
+        "RF MATERIAL",
+        "TRANSPORT",
+    ]
+
+
 def test_records_reject_mismatched_registered_dimensions(tmp_path: Path) -> None:
     paths = _panel_images(tmp_path, PRIMARY_PANEL_KEYS)
     Image.new("RGB", (41, 20)).save(paths["final_transport"])
