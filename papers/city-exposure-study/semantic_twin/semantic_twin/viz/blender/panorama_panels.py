@@ -644,14 +644,16 @@ def compose_vertical_curtain(
     *,
     width: int | None = None,
     height: int | None = None,
+    cut_positions: Sequence[int] | None = None,
     specs: Sequence[PanelSpec] | None = None,
     metadata: Mapping[str, Any] | None = None,
 ) -> CompositionResult:
-    """Compose synchronized panels as vertical curtains on a 2:1 canvas.
+    """Compose synchronized panels as one registered 360-degree curtain.
 
     The canvas is always ``(2 * height, height)``.  Each panel occupies a
-    deterministic vertical slice.  This makes panel boundaries and source
-    pixels easy to compare while preserving one registered projection.
+    deterministic longitude interval from the same registered projection.
+    Source panels are scaled to the shared canvas before their intervals are
+    cropped, so the horizontal axis spans 360 degrees exactly once.
     """
     selected = tuple(specs or pipeline_panel_specs())
     if isinstance(panels, Mapping):
@@ -668,14 +670,22 @@ def compose_vertical_curtain(
     target_width = int(width or 2 * target_height)
     if target_width != 2 * target_height:
         raise ValueError("vertical curtain output must have a 2:1 width-to-height ratio")
+    if cut_positions is None:
+        cuts = tuple(index * target_width // len(records) for index in range(len(records))) + (target_width,)
+    else:
+        cuts = tuple(int(position) for position in cut_positions)
+        if len(cuts) != len(records) + 1:
+            raise ValueError("cut_positions must contain one more position than the panel count")
+        if cuts[0] != 0 or cuts[-1] != target_width:
+            raise ValueError("cut_positions must begin at 0 and end at the output width")
+        if any(left >= right for left, right in zip(cuts, cuts[1:])):
+            raise ValueError("cut_positions must be strictly increasing")
     canvas = Image.new("RGB", (target_width, target_height), (18, 20, 24))
-    slice_width = target_width // len(records)
     rendered: list[PanelRecord] = []
     for index, record in enumerate(records):
-        left = index * slice_width
-        right = target_width if index == len(records) - 1 else (index + 1) * slice_width
+        left, right = cuts[index : index + 2]
         bounds = (left, 0, right, target_height)
-        panel = _load_panel(record, (right - left, target_height))
+        panel = _load_panel(record, (target_width, target_height)).crop(bounds)
         canvas.paste(panel, (left, 0))
         rendered.append(_record_file(record, panel, bounds))
     output = pathlib.Path(output_path).resolve()
@@ -686,8 +696,8 @@ def compose_vertical_curtain(
         _sha256(output),
         canvas.size,
         tuple(rendered),
-        "vertical_curtain_2_to_1",
-        metadata=metadata or {},
+        "registered_360_vertical_curtain",
+        metadata={**(metadata or {}), "cut_positions": list(cuts)},
     )
 
 

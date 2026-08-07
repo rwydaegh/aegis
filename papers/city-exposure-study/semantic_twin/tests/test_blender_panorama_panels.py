@@ -75,13 +75,14 @@ def test_composers_record_slices_dimensions_and_hashes(tmp_path: Path) -> None:
     }
     curtain = compose_vertical_curtain(paths, tmp_path / "curtain.png", specs=primary_panel_specs(), metadata=metadata)
     assert curtain.dimensions == (40, 20)
-    assert curtain.layout == "vertical_curtain_2_to_1"
+    assert curtain.layout == "registered_360_vertical_curtain"
     assert len(curtain.panels) == 5
     assert curtain.panels[-1].slice_bounds == (32, 0, 40, 20)
     assert curtain.output_sha256 == hashlib.sha256(curtain.output_path.read_bytes()).hexdigest()
     manifest_path = write_composition_manifest(curtain, tmp_path / "curtain.json")
     manifest = json.loads(manifest_path.read_text())
     assert manifest["capture"] == "capture-a"
+    assert manifest["cut_positions"] == [0, 8, 16, 24, 32, 40]
     assert manifest["panels"][0]["channel"] == "photo"
     assert manifest["panels"][0]["dimensions"] == [8, 20]
     assert manifest["panels"][-1]["slice_bounds"] == [32, 0, 40, 20]
@@ -96,6 +97,49 @@ def test_composers_record_slices_dimensions_and_hashes(tmp_path: Path) -> None:
     assert comparison.dimensions == (40, 100)
     assert comparison.panels[1].slice_bounds == (0, 20, 40, 40)
     assert comparison.panels[1].dimensions == (40, 20)
+
+
+def test_vertical_curtain_crops_one_shared_horizontal_axis(tmp_path: Path) -> None:
+    paths = _panel_images(tmp_path, PRIMARY_PANEL_KEYS)
+    for index, key in enumerate(PRIMARY_PANEL_KEYS):
+        pixels = np.empty((20, 40, 3), dtype=np.uint8)
+        pixels[..., 0] = np.arange(40, dtype=np.uint8)
+        pixels[..., 1] = index * 40
+        pixels[..., 2] = 0
+        Image.fromarray(pixels).save(paths[key])
+
+    curtain = compose_vertical_curtain(
+        paths,
+        tmp_path / "curtain.png",
+        specs=primary_panel_specs(),
+        cut_positions=(0, 4, 12, 21, 31, 40),
+    )
+    output = np.asarray(Image.open(curtain.output_path))
+
+    assert output[10, :, 0].tolist() == list(range(40))
+    assert output[10, [0, 4, 12, 21, 31], 1].tolist() == [0, 40, 80, 120, 160]
+    assert curtain.panels[2].dimensions == (9, 20)
+    assert curtain.panels[2].slice_bounds == (12, 0, 21, 20)
+
+
+def test_vertical_curtain_rejects_invalid_cuts(tmp_path: Path) -> None:
+    paths = _panel_images(tmp_path, PRIMARY_PANEL_KEYS)
+    for cuts, message in (
+        ((0, 8, 16, 24, 40), "one more position"),
+        ((1, 8, 16, 24, 32, 40), "begin at 0"),
+        ((0, 8, 16, 16, 32, 40), "strictly increasing"),
+    ):
+        try:
+            compose_vertical_curtain(
+                paths,
+                tmp_path / "curtain.png",
+                specs=primary_panel_specs(),
+                cut_positions=cuts,
+            )
+        except ValueError as error:
+            assert message in str(error)
+        else:
+            raise AssertionError("invalid longitude cuts must be rejected")
 
 
 def test_records_reject_mismatched_registered_dimensions(tmp_path: Path) -> None:
