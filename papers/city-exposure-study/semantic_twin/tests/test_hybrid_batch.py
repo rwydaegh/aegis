@@ -46,17 +46,27 @@ def test_metadata_contract_rejects_wrong_source_and_accepts_complete_output(tmp_
     station = _station(tmp_path, "pano_00_a")
     output = station / "semantics"
     (output / "views").mkdir(parents=True)
+    (output / "concepts").mkdir()
     concepts = tmp_path / "semantic_concepts.json"
     concepts.write_text('{"concepts": []}')
     contract = hybrid_batch._contract_for(concepts=concepts)
     contract["output_width"] = 8
-    monkeypatch.setattr(hybrid_batch, "inference_views", lambda: ("one", "two"))
+    monkeypatch.setattr(
+        hybrid_batch,
+        "inference_views",
+        lambda: (SimpleNamespace(name="one"), SimpleNamespace(name="two")),
+    )
 
     arrays = {
         name: np.zeros((4, 8), dtype=np.float32)
         for name in ("entity", "rf_material", "material_concept", "material_source", "confidence")
     }
     np.savez_compressed(output / "panorama_semantics.npz", **arrays)
+    for name in ("one", "two"):
+        (output / "views" / f"{name}.jpg").write_bytes(b"view")
+        np.save(output / "views" / f"{name}_labels.npy", np.zeros((2, 2), dtype=np.uint8))
+        np.save(output / "views" / f"{name}_confidence.npy", np.zeros((2, 2), dtype=np.float16))
+        np.savez(output / "concepts" / f"{name}.npz", cache_key=np.asarray("concept-key"))
     (output / "views" / "cache_settings.json").write_text(
         json.dumps(
             {
@@ -83,6 +93,7 @@ def test_metadata_contract_rejects_wrong_source_and_accepts_complete_output(tmp_
                     "repository_commit": contract["sam_repository_commit"],
                 },
                 "concept_vocabulary": {"id_count": contract["concept_id_count"]},
+                "concept_cache_key": "concept-key",
                 "views": [{}, {}],
             }
         )

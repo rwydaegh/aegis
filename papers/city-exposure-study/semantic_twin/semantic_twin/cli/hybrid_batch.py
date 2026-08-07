@@ -28,6 +28,7 @@ import os
 import pathlib
 import tempfile
 import time
+import zipfile
 from typing import Any, Iterable
 
 import numpy as np
@@ -278,8 +279,11 @@ def _metadata_contract_valid(
                 return False, f"entity raster shape is {arrays['entity'].shape}, expected {expected_shape}"
             if any(tuple(arrays[name].shape) != expected_shape for name in required):
                 return False, "semantic arrays do not share the production raster shape"
-    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, TypeError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
         return False, f"invalid semantic artifact: {exc}"
+
+    if not isinstance(metadata, dict) or not isinstance(cache, dict):
+        return False, "semantic metadata or cache settings is not a JSON object"
 
     if metadata.get("backend") != "hybrid" or metadata.get("model") != contract["model"]:
         return False, "semantic backend/model does not match the production contract"
@@ -295,6 +299,8 @@ def _metadata_contract_valid(
     if dense_revision != contract["dense_revision"]:
         return False, "semantic dense checkpoint revision is not the pinned production revision"
     concept_backend = metadata.get("concept_backend", {})
+    if not isinstance(concept_backend, dict):
+        return False, "semantic SAM 3 metadata is not an object"
     if (
         concept_backend.get("model") != SAM3_MODEL
         or concept_backend.get("revision") != contract["sam_revision"]
@@ -302,6 +308,8 @@ def _metadata_contract_valid(
     ):
         return False, "semantic SAM 3 backend is not the pinned production revision"
     vocabulary = metadata.get("concept_vocabulary", {})
+    if not isinstance(vocabulary, dict):
+        return False, "semantic concept vocabulary is not an object"
     if vocabulary.get("id_count") != contract["concept_id_count"]:
         return False, "semantic concept vocabulary is not the reviewed production catalogue"
     if cache.get("model") != contract["model"] or cache.get("inference_size") != contract["inference_size"]:
@@ -313,9 +321,26 @@ def _metadata_contract_valid(
     cache_revision = cache_identity.get("resolved_revision") if isinstance(cache_identity, dict) else None
     if cache_revision != contract["dense_revision"]:
         return False, "dense view cache checkpoint revision is not pinned"
-    expected_views = len(tuple(inference_views()))
-    if len(metadata.get("views", ())) != expected_views:
-        return False, f"semantic manifest has {len(metadata.get('views', ()))} views, expected {expected_views}"
+    expected_view_names = tuple(view.name for view in inference_views())
+    view_records = metadata.get("views", ())
+    if not isinstance(view_records, list) or len(view_records) != len(expected_view_names):
+        return (
+            False,
+            f"semantic manifest has {len(view_records) if isinstance(view_records, list) else 0} views, expected {len(expected_view_names)}",
+        )
+    for view_name in expected_view_names:
+        for suffix in (".jpg", "_labels.npy", "_confidence.npy"):
+            if not (output / "views" / f"{view_name}{suffix}").is_file():
+                return False, f"view cache is incomplete: {view_name}{suffix}"
+        concept_file = output / "concepts" / f"{view_name}.npz"
+        if not concept_file.is_file():
+            return False, f"SAM 3 concept cache is incomplete: {view_name}.npz"
+        try:
+            with np.load(concept_file, allow_pickle=False) as concept:
+                if "cache_key" not in concept or str(concept["cache_key"]) != str(metadata.get("concept_cache_key")):
+                    return False, f"SAM 3 concept cache key mismatch: {view_name}.npz"
+        except (OSError, ValueError, zipfile.BadZipFile) as exc:
+            return False, f"invalid SAM 3 concept cache {view_name}.npz: {exc}"
     return True, "complete"
 
 
