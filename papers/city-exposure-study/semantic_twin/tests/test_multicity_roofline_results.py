@@ -31,7 +31,7 @@ def _canonical_sha256(value: object) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def _write_campaign(root: Path, *, reference_mode: str = "per_density_eirp") -> None:
+def _write_campaign(root: Path, *, reference_mode: str = "per_density_eirp", zero_direct: bool = False) -> None:
     seeds = (7, 8)
     points = 2
     identity_data = {
@@ -58,7 +58,7 @@ def _write_campaign(root: Path, *, reference_mode: str = "per_density_eirp") -> 
     replicas.mkdir(parents=True)
     committed = []
     for replica_index, seed in enumerate(seeds):
-        direct = np.asarray([1.0, 2.0], dtype=np.float64)
+        direct = np.asarray([0.0 if zero_direct else 1.0, 2.0], dtype=np.float64)
         specular = np.asarray([0.2, 0.4], dtype=np.float64)
         diffuse = np.asarray([0.1, 0.2], dtype=np.float64) * (replica_index + 1)
         raw = np.stack((direct, specular, diffuse, direct + specular + diffuse), axis=1)
@@ -144,9 +144,41 @@ def test_multicity_writer_validates_and_exports_route_results(tmp_path: Path) ->
     assert city["route"][0]["peak_sab_ensemble_field"] == pytest.approx(1.3)
     assert city["route_cdf"]["wbsar"]["probability"] == pytest.approx([0.25, 0.75])
     assert city["convergence"]["look_to_look"][0]["to_replicas"] == 2
+    uncertainty = city["route_quantile_uncertainty"]
+    assert uncertainty["bootstrap_replicates"] == 2000
+    assert uncertainty["quantiles"]["wbsar"]["q50"]["estimate"] == pytest.approx(2.025)
+    assert len(uncertainty["quantiles"]["wbsar"]["q50"]["ci95_percentile"]) == 2
+    assert city["tail_instability"]["status"] == "finite_direct_support"
+    assert city["tail_instability"]["look_to_look"][0]["route_quantile_abs_change_db"]["q10"] > 0.0
     manifest = json.loads(artifacts.manifest.read_text(encoding="utf-8"))
     assert manifest["sources"]["fixture"]["campaign_identity_sha256"] == city["provenance"]["campaign_identity_sha256"]
     assert manifest["artifacts"][artifacts.json.name]["sha256"] == _sha256(artifacts.json)
+
+
+def test_bootstrap_is_byte_deterministic_for_same_campaign(tmp_path: Path) -> None:
+    campaign = tmp_path / "campaign"
+    _write_campaign(campaign)
+
+    first = write_multicity_results([CampaignInput("fixture", campaign)], tmp_path / "first")
+    second = write_multicity_results([CampaignInput("fixture", campaign)], tmp_path / "second")
+
+    assert first.json.read_bytes() == second.json.read_bytes()
+
+
+def test_tail_diagnostic_exposes_zero_direct_support(tmp_path: Path) -> None:
+    campaign = tmp_path / "campaign"
+    _write_campaign(campaign, zero_direct=True)
+
+    artifacts = write_multicity_results([CampaignInput("fixture", campaign)], tmp_path / "result")
+    city = json.loads(artifacts.json.read_text(encoding="utf-8"))["cities"]["fixture"]
+
+    assert city["tail_instability"]["status"] == "structural_zero_direct_present"
+    assert city["tail_instability"]["zero_direct_standpoints"] == [0]
+    assert city["route"][0]["multipath_surplus_db"] is None
+    assert (
+        city["route_quantile_uncertainty"]["quantiles"]["multipath_surplus_db"]["q50"]["finite_bootstrap_replicates"]
+        == 2000
+    )
 
 
 def test_multicity_writer_rejects_manifest_mutation(tmp_path: Path) -> None:

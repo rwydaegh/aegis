@@ -99,9 +99,7 @@ def _finite_quantile(values: np.ndarray, quantile: float) -> float | None:
 def _bootstrap_quantiles(sampled_routes: np.ndarray, final_route: np.ndarray) -> dict[str, Any]:
     report: dict[str, Any] = {}
     for quantile in BOOTSTRAP_QUANTILES:
-        bootstrap_values = np.asarray(
-            [_finite_quantile(route, quantile) for route in sampled_routes], dtype=np.float64
-        )
+        bootstrap_values = np.asarray([_finite_quantile(route, quantile) for route in sampled_routes], dtype=np.float64)
         bootstrap_values = bootstrap_values[np.isfinite(bootstrap_values)]
         key = f"q{int(round(100 * quantile)):02d}"
         report[key] = {
@@ -127,10 +125,7 @@ def _bootstrap_route_uncertainty(campaign: _Campaign) -> dict[str, Any]:
 
     component_total = COMPONENTS.index("total")
     component_direct = COMPONENTS.index("direct")
-    body = {
-        name: campaign.body_metrics[:, :, component_total, index]
-        for index, name in enumerate(BODY_METRICS)
-    }
+    body = {name: campaign.body_metrics[:, :, component_total, index] for index, name in enumerate(BODY_METRICS)}
     raw_total = campaign.raw_transfer[:, :, component_total]
     raw_direct = campaign.raw_transfer[:, :, component_direct]
     replica_metrics = {
@@ -289,6 +284,70 @@ def _convergence_rows(campaign: _Campaign, looks: tuple[int, ...]) -> list[dict[
     return [{"look_to_look": rows, "standard_error": standard_error}]
 
 
+def _quantile_db_change(previous: np.ndarray, current: np.ndarray, quantile: float) -> float | None:
+    previous_quantile = _finite_quantile(previous, quantile)
+    current_quantile = _finite_quantile(current, quantile)
+    if previous_quantile is None or current_quantile is None or previous_quantile <= 0.0 or current_quantile <= 0.0:
+        return None
+    return float(abs(10.0 * np.log10(current_quantile / previous_quantile)))
+
+
+def _pointwise_db_change(previous: np.ndarray, current: np.ndarray, indices: np.ndarray) -> dict[str, Any]:
+    selected_previous = previous[indices]
+    selected_current = current[indices]
+    valid = (selected_previous > 0.0) & (selected_current > 0.0)
+    change = np.abs(10.0 * np.log10(selected_current[valid] / selected_previous[valid]))
+    return {
+        "standpoints": [int(index) for index in indices],
+        "finite_change_count": int(change.size),
+        "undefined_db_change_count": int(indices.size - change.size),
+        "maximum_abs_db": None if change.size == 0 else float(np.max(change)),
+        "p90_abs_db": None if change.size == 0 else float(np.quantile(change, 0.90)),
+    }
+
+
+def _tail_instability(campaign: _Campaign, looks: tuple[int, ...]) -> dict[str, Any]:
+    total_index = COMPONENTS.index("total")
+    direct_index = COMPONENTS.index("direct")
+    wbsar_index = BODY_METRICS.index("sar_wb_w_kg")
+    direct_final = np.mean(campaign.raw_transfer[:, :, direct_index], axis=0)
+    wbsar_by_look = {look: np.mean(campaign.body_metrics[:look, :, total_index, wbsar_index], axis=0) for look in looks}
+    final_wbsar = wbsar_by_look[looks[-1]]
+    lower_count = max(1, int(np.ceil(0.10 * campaign.points)))
+    lower_indices = np.argsort(final_wbsar, kind="stable")[:lower_count]
+    transitions = []
+    for previous, current in zip(looks, looks[1:]):
+        previous_values = wbsar_by_look[previous]
+        current_values = wbsar_by_look[current]
+        transitions.append(
+            {
+                "from_replicas": previous,
+                "to_replicas": current,
+                "route_quantile_abs_change_db": {
+                    f"q{int(round(100 * quantile)):02d}": _quantile_db_change(previous_values, current_values, quantile)
+                    for quantile in BOOTSTRAP_QUANTILES
+                },
+                "final_lower_decile_points": _pointwise_db_change(previous_values, current_values, lower_indices),
+            }
+        )
+    zero_direct = np.flatnonzero(direct_final <= 0.0)
+    nonpositive_wbsar = np.flatnonzero(final_wbsar <= 0.0)
+    return {
+        "status": "structural_zero_direct_present" if zero_direct.size else "finite_direct_support",
+        "zero_direct_standpoints": [int(index) for index in zero_direct],
+        "nonpositive_final_wbsar_standpoints": [int(index) for index in nonpositive_wbsar],
+        "final_lower_decile_definition": (
+            f"lowest {lower_count} of {campaign.points} standpoints ranked by final replica-mean wbSAR"
+        ),
+        "final_lower_decile_standpoints": [int(index) for index in lower_indices],
+        "look_to_look": transitions,
+        "interpretation": (
+            "Central route-quantile stability does not certify individual low-support standpoints. "
+            "Inspect final_lower_decile_points and zero_direct_standpoints before treating the lower tail as stable."
+        ),
+    }
+
+
 def _timings(campaign: _Campaign) -> dict[str, dict[str, float | int | None]]:
     result: dict[str, dict[str, float | int | None]] = {}
     for index, name in enumerate(TIMING_FIELDS):
@@ -333,6 +392,8 @@ def _city_data(city: str, campaign: _Campaign, looks: Sequence[int] | None) -> d
         "route": rows,
         "route_cdf": cdfs,
         "convergence": _convergence_rows(campaign, selected_looks)[0],
+        "route_quantile_uncertainty": _bootstrap_route_uncertainty(campaign),
+        "tail_instability": _tail_instability(campaign, selected_looks),
         "timings": _timings(campaign),
     }
 
@@ -359,6 +420,10 @@ def build_multicity_results(
                 "peak_sab_mean_per_replica": "arithmetic mean of each replica's body-surface maximum Sab",
             },
             "cdf_plotting_position": "(rank - 0.5) / number of route standpoints",
+            "uncertainty_scope": (
+                "bootstrap intervals quantify finite-replica uncertainty conditional on the fixed registered route; "
+                "they do not quantify route-selection or city-sampling uncertainty"
+            ),
         },
         "cities": cities,
     }
@@ -402,7 +467,7 @@ def _plot(data: Mapping[str, Any], pdf: Path, png: Path) -> None:
     figure, axes = plt.subplots(2, 2, figsize=(11.5, 7.4))
     cdf_panels = (
         (axes[0, 0], "wbsar", r"Normalized whole-body SAR (m$^2$ kg$^{-1}$)"),
-        (axes[0, 1], "peak_sab_ensemble_field", "Normalized peak $S_{ab}$ of replica-mean field"),
+        (axes[0, 1], "peak_sab_mean_per_replica", "Normalized mean per-replica peak $S_{ab}$"),
         (axes[1, 0], "multipath_surplus_db", "Multipath surplus (dB)"),
     )
     colors = plt.get_cmap("tab10")
@@ -411,6 +476,14 @@ def _plot(data: Mapping[str, Any], pdf: Path, png: Path) -> None:
         for axis, metric, xlabel in cdf_panels:
             cdf = campaign["route_cdf"][metric]
             axis.plot(cdf["x"], cdf["probability"], drawstyle="steps-post", lw=1.8, color=color, label=city)
+            uncertainty = campaign["route_quantile_uncertainty"]["quantiles"].get(metric)
+            if uncertainty is not None:
+                for quantile_key, probability in (("q50", 0.50), ("q90", 0.90)):
+                    estimate = uncertainty[quantile_key]["estimate"]
+                    interval = uncertainty[quantile_key]["ci95_percentile"]
+                    if estimate is not None and interval is not None:
+                        axis.hlines(probability, interval[0], interval[1], color=color, lw=1.0, zorder=4)
+                        axis.plot(estimate, probability, "o", ms=3.0, color=color, zorder=5)
             axis.set_xlabel(xlabel)
             axis.set_ylabel("Route CDF")
             axis.set_ylim(0.0, 1.0)
@@ -419,6 +492,8 @@ def _plot(data: Mapping[str, Any], pdf: Path, png: Path) -> None:
         x = [row["to_replicas"] for row in transitions]
         y = [row["wbsar"]["maximum_abs_db"] for row in transitions]
         axes[1, 1].plot(x, y, marker="o", ms=3.5, lw=1.6, color=color, label=city)
+        central = [row["route_quantile_abs_change_db"]["q50"] for row in campaign["tail_instability"]["look_to_look"]]
+        axes[1, 1].plot(x, central, ls="--", lw=1.2, color=color)
 
     for axis in (axes[0, 0], axes[0, 1]):
         positive = [line.get_xdata() for line in axis.lines if np.all(np.asarray(line.get_xdata()) > 0.0)]
@@ -427,6 +502,28 @@ def _plot(data: Mapping[str, Any], pdf: Path, png: Path) -> None:
     axes[1, 1].set_xlabel("Replicas in current look")
     axes[1, 1].set_ylabel("Maximum route wbSAR change (dB)")
     axes[1, 1].grid(alpha=0.22)
+    axes[1, 1].text(
+        0.02,
+        0.98,
+        "solid: max pointwise\ndashed: route q50",
+        transform=axes[1, 1].transAxes,
+        va="top",
+        fontsize=8,
+    )
+    zero_direct = [
+        f"{city}: {len(campaign['tail_instability']['zero_direct_standpoints'])}"
+        for city, campaign in data["cities"].items()
+        if campaign["tail_instability"]["zero_direct_standpoints"]
+    ]
+    if zero_direct:
+        axes[1, 0].text(
+            0.02,
+            0.98,
+            "zero-direct points omitted from surplus CDF\n" + ", ".join(zero_direct),
+            transform=axes[1, 0].transAxes,
+            va="top",
+            fontsize=8,
+        )
     handles, labels = axes[0, 0].get_legend_handles_labels()
     figure.suptitle("Current normalized roofline campaigns", y=0.985)
     figure.legend(
@@ -437,7 +534,14 @@ def _plot(data: Mapping[str, Any], pdf: Path, png: Path) -> None:
         ncol=min(5, len(labels)),
         frameon=False,
     )
-    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.9))
+    figure.text(
+        0.5,
+        0.012,
+        "CDF circles show q50/q90 replica-bootstrap 95% intervals. Worst-point convergence remains visible.",
+        ha="center",
+        fontsize=8,
+    )
+    figure.tight_layout(rect=(0.0, 0.035, 1.0, 0.9))
     figure.savefig(pdf, bbox_inches="tight")
     figure.savefig(png, dpi=220, bbox_inches="tight")
     plt.close(figure)
