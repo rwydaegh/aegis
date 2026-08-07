@@ -13,8 +13,9 @@ normal track does not need Blender.
 > **Current-contract notice.** See
 > [CURRENT_PRODUCTION_CONTRACT.md](CURRENT_PRODUCTION_CONTRACT.md) for the
 > active ray, source, material, and transport settings. The timing table below
-> preserves earlier Prague measurements, including the 1.6-million-ray
-> historical trace. Current production uses 200,000 IID primary rays and
+> preserves earlier hybrid measurements, including the 1.6-million-ray
+> historical trace. Current production uses the
+> `first_material_interaction_v1` contract, 200,000 IID primary rays, and
 > 4,096 passive angular cells. The seed-independent device-kernel fix now
 > measures 3.14 to 3.24 s for the Korenmarkt 14-point stochastic stage, versus
 > roughly 62 s per seed before the fix. CUDA level-2 body coupling is exact to
@@ -22,12 +23,11 @@ normal track does not need Blender.
 > measured 46x faster on Duke and 81x faster on the real-point benchmark. These
 > are stage measurements, not whole-city promises. Earlier anchors remain
 > below as historical records.
-> The integrated optimized provider-corridor campaigns currently cover five
-> cities. Korenmarkt completed 16 replicas over 10 standpoints in 83.37 s wall
-> time on one A6000. The other current city timings are listed below. These are
-> measured campaign anchors, not a claim of full estimator convergence or
-> publication finality.
-> The first comparable-city v2 Korenmarkt street-route seed took 2:13.75 for
+> Five first-material-interaction campaigns are complete. They use seeds 7
+> through 22, looks 4, 8, 12, and 16, and the same 200,000-ray, 4,096-cell
+> baseline. These are measured campaign anchors, not a claim of publication
+> finality.
+> A historical comparable-city v2 Korenmarkt street-route seed took 2:13.75 for
 > 14 points. Nested-face reuse avoided 68,383,253 of 120,750,721 logical
 > adaptive-specular candidate evaluations, a 56.63% reduction.
 
@@ -72,13 +72,18 @@ for a new city.
 
 | Work | Value | Status |
 | --- | ---: | --- |
-| Optimized Korenmarkt provider corridor | 83.37 s for 16 complete replicas over 10 standpoints, 5.21 s per walk replica | current integrated measurement |
-| Optimized Prague provider corridor | 185.68 s for 16 replicas over 22 standpoints | current integrated measurement |
-| Optimized Madrid provider corridor | 115.75 s for 16 replicas over 14 standpoints | current integrated measurement |
-| Optimized Mexico City provider corridor | 219.52 s for 64 replicas over 11 standpoints | current cached-deterministic measurement |
-| Optimized Tokyo Hachiko provider corridor | 325.76 s for 64 replicas over 16 standpoints | current cached-deterministic measurement |
-| Integrated accumulated estimator work | 61.584 s total over 160 standpoint-replica observations | current measured stage ledger |
-| Integrated stochastic, specular, body work | 42.119 s, 13.317 s, 2.041 s | current measured stage ledger |
+| First-material-interaction Korenmarkt | 29.79 s for 16 replicas over 10 standpoints | current production measurement |
+| First-material-interaction Prague | 69.02 s for 16 replicas over 22 standpoints | current production measurement |
+| First-material-interaction Madrid | 40.70 s for 16 replicas over 14 standpoints | current production measurement |
+| First-material-interaction Mexico City | 30.92 s for 16 replicas over 11 standpoints | current production measurement |
+| First-material-interaction Tokyo Hachiko | 50.11 s for 16 replicas over 16 standpoints | current production measurement |
+| Historical hybrid Korenmarkt | 83.37 s for 16 replicas over 10 standpoints | historical sensitivity measurement |
+| Historical hybrid Prague | 185.68 s for 16 replicas over 22 standpoints | historical sensitivity measurement |
+| Historical hybrid Madrid | 115.75 s for 16 replicas over 14 standpoints | historical sensitivity measurement |
+| Historical hybrid Mexico City | 219.52 s for 64 replicas over 11 standpoints | historical sensitivity measurement |
+| Historical hybrid Tokyo Hachiko | 325.76 s for 64 replicas over 16 standpoints | historical sensitivity measurement |
+| Integrated accumulated estimator work | 61.584 s total over 160 standpoint-replica observations | historical hybrid stage ledger |
+| Integrated stochastic, specular, body work | 42.119 s, 13.317 s, 2.041 s | historical hybrid stage ledger |
 | 68-point standard run | 185.0 s total | measured |
 | Standard run output | 2.17 MB total for the historical Prague rooftop-only standard archive: 2.01 MB spectra, 126 KB rows, 31 KB manifest | measured |
 | New standard/full spectrum storage | Roughly 2 MB per selected source model, based on the historical rooftop-only measurement. Three selected models are estimated at about 6 MB. The new all-model size is not yet measured | estimated |
@@ -92,11 +97,28 @@ for a new city.
 | Old compressed checkpoint write | 34.42 s | measured |
 | Old growing checkpoint rewrite at 24 replicas | about 7.2 min extra | historical extrapolation, pending an integrated GPU rerun |
 
-The authenticated five-city comparison is sealed in the gitignored worktree
-artifacts `outputs/roofline_campaign/current_five_city/current_five_city.json`,
-`current_five_city.csv`, `current_five_city.pdf`, and `current_five_city.png`,
-with `current_five_city_manifest.json`. The manifest is the companion
-integrity record for those figures and tables.
+The authenticated first-material-interaction comparison is sealed in the
+gitignored worktree artifacts under
+`outputs/roofline_campaign/current_five_city_first_material_interaction/`:
+`current_five_city_first_material_interaction.{json,csv,pdf,png}` and
+`current_five_city_first_material_interaction_manifest.json`. The manifest is
+the companion integrity record for those figures and tables.
+
+- [JSON](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json)
+- [CSV](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.csv)
+- [PDF](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.pdf)
+- [PNG](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.png)
+- [Manifest](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction_manifest.json)
+
+Common-seed topology reports compare the current contract with the historical
+hybrid. Central q50 and q90 total-transfer differences are small. The large q10
+differences in Mexico and Tokyo are driven by zero-direct points 0, 1, 3 and
+13, 14, 15. Madrid's positive shift comes from exact full order-1 support that
+the historical adaptive and capped hybrid did not capture. Estimator-stage
+ratios are 0.1826 to 0.3154, and stochastic-stage ratios are 0.0283 to 0.0378
+across the five cities. These are stage ratios, not whole-wall speedups. The
+[authenticated reports](ROOFLINE_CAMPAIGN_RESULTS.md#current-first-material-interaction-campaigns)
+link each city report.
 
 The 185 second standard run and the 100.37 second trace-only replica have not
 yet been split into identical stage categories. New manifests record
@@ -112,8 +134,8 @@ Old paired campaign artifacts have a timing attribution defect. Cache hits repea
 cold deterministic all-specular seconds in their timing rows. Scientific outputs
 are unaffected. The final code fixes the attribution, but paired campaign timing
 must not be presented as corrected measurements. The 83.37 s provider-corridor
-campaign is a fresh integrated run after the timing and performance fixes and
-does not inherit that defect.
+campaign is a historical hybrid sensitivity run. It is not the current
+first-material-interaction baseline.
 
 ## Output profiles
 
@@ -147,9 +169,11 @@ checkpoint index records hashes and advances with a cumulative total-body `Sab`
 field for the committed prefix and requested convergence looks. Directional
 samples, panorama audit assets, and Blender objects are not generated.
 
-Production roofline transport includes at most one specular reflection.
-`max_bounces=3` does not add higher specular orders. Higher specular orders are
-absent from production output.
+Production roofline transport uses `first_material_interaction_v1`: exact
+direct, exact order-1 all-specular, and stochastic first-diffuse next-event
+estimation only at the first blocking material vertex. There is no mixed suffix.
+The historical `max_bounces=3` hybrid is sensitivity evidence, not a complete
+three-bounce model.
 
 ## What to retain, remove, and regenerate
 
@@ -266,11 +290,10 @@ from 0.0925 s to 0.0756 s, or 1.22x. A plane microbenchmark measured 4.2x, but
 that microbenchmark result is not a city-level speedup claim. Independent rich
 parity checks were exact or within measured roundoff.
 
-The source-conditioned conservative-screen mixed-suffix estimator remains
-proposed. Its oracle promotion gates are at least 4x variance-time improvement,
-at least 10x lower zero-score frequency, no more than 2x point cost, and no
-detectable bias. It must not replace the current estimator before those gates
-pass.
+The source-conditioned conservative-screen mixed-suffix estimator was rejected
+for production. It removed zero scores, but its variance-time gain failed the
+promotion gate. It remains experimental evidence only. See
+[SOURCE_CONDITIONED_SUFFIX_PILOT.md](SOURCE_CONDITIONED_SUFFIX_PILOT.md).
 
 ## Many-city operating recipe
 
@@ -308,21 +331,23 @@ registration, SAM3, Vistas, depth, and fusion have not been split into stage
 measurements. The next integrated GPU run should capture those stages and the
 checkpoint ledger. The seed-independent device kernels, CUDA body coupling,
 CUDA Float64 specular broad phase, and resident minimal CUDA reductions are now
-landed exact or roundoff-bounded changes. Ray and cell budgets, the
-source-conditioned mixed-suffix estimator, and semantic-stage reductions remain
-validation work.
+landed exact or roundoff-bounded changes. Ray and cell budgets and
+semantic-stage reductions remain validation work. The source-conditioned
+mixed-suffix pilot failed its variance-time gate and remains experimental
+evidence only.
 
-The current production path fixes the one-reflection specular limit,
-finish-only roughness, and area-weighted body mean. Prague paired outputs passed
-their historical paired-campaign audit. Recovery timing remains excluded from
-scientific timing claims. See
+The current production path is `first_material_interaction_v1`, with exact
+direct and order-1 all-specular terms and stochastic first-diffuse next-event
+estimation only at the first blocking material vertex. It has no mixed suffix.
+Finish-only roughness and the area-weighted body mean remain active. Prague
+paired outputs passed their historical paired-campaign audit. Recovery timing
+remains excluded from scientific timing claims. See
 [the ranked redesign](PRODUCTION_PERFORMANCE_REDESIGN.md) before treating a
 proposed performance change as a production setting.
 
 Do not describe the current performance package as proof that final physics
 are publication-ready. It is a reproducible and measured execution path that
-separates fast scientific results from optional audit evidence. Median and p90
-route summaries are stable in the five-city snapshot, but rare no-direct
-points retain sampled mixed diffuse-to-specular suffix heavy tails. More brute
-replicas alone are not the remedy. Estimator redesign and paired tail
-validation remain open.
+separates production results from optional audit evidence. The five-city
+first-material-interaction campaigns have 12-to-16 total-transfer changes below
+0.1 dB. Mexico points 0, 1, and 3 and Tokyo points 13, 14, and 15 have zero
+direct transport, but remain meaningful shadowed points and are not excluded.

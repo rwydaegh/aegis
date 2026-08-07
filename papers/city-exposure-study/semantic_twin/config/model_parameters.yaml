@@ -48,14 +48,14 @@ parameters:
         launch_sampling: iid
         passive_output_cells: 4096
         passive_cells_are_launch_bins: false
-        max_bounces: 3
+        transport_topology: first_material_interaction_v1
+        max_bounces: 1
         direct_transport: exact
-        diffuse_transport: stochastic_next_event
-        mixed_transport: stochastic_next_event
-        all_specular: {method: adaptive, order: 1}
-        mixed_specular_suffix: {method: sampled, samples_per_eligible_diffuse_vertex: 1, seed_offset: 2000}
-        logical_specular_candidate_budget: 120000000
-        logical_specular_candidate_budget_overrides: {tokyo_hachiko: 320000000, reason: exact enumeration of a zero-path relative-convergence boundary}
+        diffuse_transport: stochastic_next_event_at_first_blocking_material_vertex
+        mixed_transport: absent
+        all_specular: {method: exact_full_support, order: 1}
+        mixed_specular_suffix: {method: disabled}
+        logical_specular_candidate_budget_by_site: {korenmarkt: 300000000, prague_staromestske: 350000000, madrid_plazamayor: 160000000, mexico_zocalo: 120000000, tokyo_hachiko: 320000000}
         specular_candidate_chunk: 262144
         specular_refinement_relative_tolerance: 0.02
         specular_broad_phase: {method: mirrored_receiver_triangle_cone_bvh_v1, computational_threshold: 20000, source_chunk: 16, logical_candidate_accounting_unchanged: true}
@@ -64,11 +64,11 @@ parameters:
         body_coupling_level: 2
         body_coupling_backend: {cuda: drjit_float64_dot_relu_power_block_reduce_fixed512_v1, cpu: numpy_float64_matmul_relu_direction_chunks_v1, cuda_direction_block: 512}
       units: "m, Hz, rays, output cells, interactions, candidates, tolerance, and policy names"
-      source: "docs/CURRENT_PRODUCTION_CONTRACT.md:9-35; config/roofline_campaign_korenmarkt_comparable_pilot_cuda.json:21-71"
+      source: "docs/CURRENT_PRODUCTION_CONTRACT.md; config/roofline_campaign_*_first_material_interaction_v1_convergence_cuda_iid.json"
       scope: comparable_city v2 production transport and body contract
       status: canonical
       affects_published_results: true
-      conflicts: "4096 is a passive output-direction count, not a launch-bin stratification; rotated Fibonacci launch remains a diagnostic"
+      conflicts: "4096 is a passive output-direction count, not a launch-bin stratification; rotated Fibonacci launch and the max_bounces=3 sampled-suffix hybrid remain diagnostics; candidate caps are computational guards"
     comparable_city_v2_contract:
       value:
         schema: city-cohort-manifest-v2
@@ -91,13 +91,13 @@ parameters:
       affects_published_results: true
       conflicts: "Krakow is an intended member but remains quota-pending; Times Square is retained only as an explicit invalid-geometry exclusion"
     maximum_bounces:
-      value: 3
+      value: 1
       units: interactions
-      source: semantic_twin/runconfig.py:180 RunConfig.max_bounces; semantic_twin/transport/tracer.py:64 DEFAULT_MAX_BOUNCES
-      scope: propagation
+      source: config/roofline_campaign_*_first_material_interaction_v1_convergence_cuda_iid.json run.max_bounces
+      scope: current roofline production propagation
       status: canonical
       affects_published_results: true
-      conflicts: "illumination sensitivity study uses 4; next-event and monostatic accumulators permit order 8"
+      conflicts: "RunConfig and TraceConfig defaults remain 3; the historical hybrid uses 3; illumination sensitivity uses 4; next-event and monostatic accumulators permit order 8"
     roulette_floor:
       value: 0.05
       units: probability
@@ -679,6 +679,35 @@ parameters:
       conflicts: "the separate convergence reference generation uses 512 cells and 200000 rays; historical Blender inputs also use the older low-resolution walk"
 
   roofline_campaigns:
+    first_material_interaction_v1:
+      value:
+        sites: [korenmarkt, prague_staromestske, madrid_plazamayor, mexico_zocalo, tokyo_hachiko]
+        transport_topology: first_material_interaction_v1
+        max_bounces: 1
+        direct_transport: exact
+        all_specular: {method: exact_full_support, order: 1}
+        first_diffuse: {method: stochastic_next_event, interaction: first_blocking_material_vertex}
+        specular_suffix_mode: disabled
+        frequency_hz: 15000000000.0
+        rays: 200000
+        launch_sampling: iid
+        local_cells: 4096
+        planned_seeds: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+        convergence_looks: [4, 8, 12, 16]
+        specular_candidate_budget_by_site: {korenmarkt: 300000000, prague_staromestske: 350000000, madrid_plazamayor: 160000000, mexico_zocalo: 120000000, tokyo_hachiko: 320000000}
+        specular_candidate_chunk: 262144
+        specular_broad_phase: cuda_float64_conservative_mirrored_receiver_triangle_cone_v1
+        components: [direct, all_specular, first_diffuse, total]
+        output_schema: roofline_body_campaign_first_material_interaction_v1
+        campaign_status: completed
+        wall_seconds_by_site: {korenmarkt: 29.79, prague_staromestske: 69.02, madrid_plazamayor: 40.70, mexico_zocalo: 30.92, tokyo_hachiko: 50.11}
+        maximum_12_to_16_total_transfer_change_db_by_site: {korenmarkt: 0.0000819, prague_staromestske: 0.0001559, madrid_plazamayor: 0.0004083, mexico_zocalo: 0.043625, tokyo_hachiko: 0.019732}
+      units: "Hz, rays, cells, interactions, candidates, PRNG seeds, seconds, and dB"
+      source: "config/roofline_campaign_*_first_material_interaction_v1_convergence_cuda_iid.json; outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json"
+      scope: current roofline production transport and five-city campaign
+      status: canonical
+      affects_published_results: true
+      conflicts: "candidate budgets and chunks are computational guards, not physical parameters; the historical max_bounces=3 sampled-suffix hybrid is sensitivity evidence"
     sampled_specular_pilots_and_paired_campaign:
       value:
         immutable_code_commit: 0844eadde0308ff8dfeda7142ec3903165f5a053

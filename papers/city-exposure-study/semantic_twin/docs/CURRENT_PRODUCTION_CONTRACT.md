@@ -23,11 +23,14 @@ Those pages retain historical evidence and are not rewritten as archives.
 
 ## Transport and coupling
 
-- The direct term is exact.
-- Diffuse and mixed transport use stochastic next-event estimation.
-- Production includes an all-specular one-reflection term and a sampled
-  mixed-specular suffix. `max_bounces=3` is the transport budget, but it does
-  not imply higher specular orders.
+- The active transport contract is `first_material_interaction_v1`. The direct
+  term is exact. The order-1 all-specular term is exact. Stochastic next-event
+  estimation samples only the first diffuse interaction at the first blocking
+  material vertex.
+- `first_material_interaction_v1` has no mixed suffix. It does not continue a
+  sampled path after the first diffuse event. The historical `max_bounces=3`
+  hybrid was sensitivity evidence, not a complete three-bounce production
+  model.
 - Deterministic specular candidates use the conservative mirrored-receiver
   triangle-cone broad phase when the candidate set reaches 20,000. The
   certified CUDA Float64 broad phase leaves the existing host exact final
@@ -41,7 +44,8 @@ Those pages retain historical evidence and are not rewritten as archives.
   320 million computational cap because one standpoint has zero accepted
   order-1 paths and therefore cannot satisfy a relative convergence test around
   zero. Its 319.046 million candidate support is fully enumerated instead of
-  introducing an absolute convergence epsilon.
+  introducing an absolute convergence epsilon. These caps, broad-phase
+  thresholds, and chunks are computational guards, not model parameters.
 - The production baseline launches 200,000 IID primary rays and uses 4,096 passive
   angular cells. The cells are output directions, not 4,096 independent ray
   launch strata. Rotated Fibonacci launch is retained as a sampling diagnostic,
@@ -55,7 +59,7 @@ Those pages retain historical evidence and are not rewritten as archives.
 The current 200,000-ray and 4,096-cell values are the production contract, not
 the result of a completed budget reduction. Candidate ray and cell reductions
 remain diagnostic until paired convergence checks cover scalar peaks, whole-body
-SAR, directional spectra, and the mixed-specular suffix.
+SAR, and directional spectra under `first_material_interaction_v1`.
 
 ## Comparable-city cohort
 
@@ -85,11 +89,11 @@ lengths, gaps, station IDs, and selection hashes.
 
 ## Performance anchors
 
-The first fully integrated optimized campaign used the opt-in Korenmarkt
-provider corridor, 10 standpoints, 16 IID replicas, 200,000 rays, and 4,096
-passive output cells. It completed in 83.37 s wall time on one A6000, or 5.21 s
-per complete walk replica. Accumulated measured work across all 160
-standpoint-replica observations was 61.584 s estimator, including 42.119 s
+The historical hybrid campaign used the opt-in Korenmarkt provider corridor,
+10 standpoints, 16 IID replicas, 200,000 rays, and 4,096 passive output cells.
+It completed in 83.37 s wall time on one A6000, or 5.21 s per complete walk
+replica. Accumulated measured work across all 160 standpoint-replica
+observations was 61.584 s estimator, including 42.119 s
 stochastic transport and 13.317 s deterministic specular work, plus 2.041 s
 body coupling. The 12-to-16-replica change was 0.00795 dB maximum for area-mean
 absorbed power and 0.00663 dB maximum for total transfer. All 42 sealed file
@@ -125,23 +129,36 @@ time from 74.09 to 38.90 s, with scientific arrays byte-identical. Estimator
 time fell from 39.22 to 4.35 s. This benchmark is separate from the device
 kernel compilation timing above.
 
-The current provider-corridor campaign snapshot is:
+The completed first-material-interaction campaign snapshot is:
 
 | City | Standpoints | Replicas | Wall time |
 | --- | ---: | ---: | ---: |
-| Korenmarkt | 10 | 16 | 83.37 s |
-| Prague | 22 | 16 | 185.68 s |
-| Madrid | 14 | 16 | 115.75 s |
-| Mexico City | 11 | 64 | 219.52 s |
-| Tokyo Hachiko | 16 | 64 | 325.76 s |
+| Korenmarkt | 10 | 16 | 29.79 s |
+| Prague | 22 | 16 | 69.02 s |
+| Madrid | 14 | 16 | 40.70 s |
+| Mexico City | 11 | 16 | 30.92 s |
+| Tokyo Hachiko | 16 | 16 | 50.11 s |
 
-Mexico and Tokyo use cached deterministic transport work. Tokyo additionally
-has a separate exact 16-replica proof run of approximately 753 s wall time.
-The current route medians and p90 summaries are stable, but no-direct points
-retain rare sampled mixed diffuse-to-specular suffix heavy tails. These runs do
-not establish full estimator convergence or publication finality. Running 256
-brute-force replicas would not repair that lower estimator support. Estimator
-redesign and paired tail validation are required next.
+All five campaigns use seeds 7 through 22, looks 4, 8, 12, and 16, 200,000 IID
+primary rays, and 4,096 output cells. The 12-to-16 maximum total-transfer
+changes are 0.0000819 dB for Korenmarkt, 0.0001559 dB for Prague, 0.0004083 dB
+for Madrid, 0.043625 dB for Mexico City, and 0.019732 dB for Tokyo Hachiko.
+Every value is below 0.1 dB. Mexico and Tokyo are not directly comparable with
+their historical 64-replica timings.
+
+Mexico points 0, 1, and 3, and Tokyo points 13, 14, and 15 have zero direct
+transport. They remain meaningful shadowed points and are not excluded.
+
+Strict-authenticated common-seed topology reports compare this contract with
+the historical hybrid. Their central q50 and q90 total-transfer differences are
+small. The large q10 differences in Mexico and Tokyo are driven by the shared
+zero-direct strata. Madrid's positive shift reflects exact full order-1 support
+that the historical adaptive and capped hybrid did not capture. The reports
+also show estimator-stage ratios of 0.1826 to 0.3154 and stochastic-stage ratios
+of 0.0283 to 0.0378 across the five cities. These are stage ratios, not whole
+wall-time claims.
+
+See the [topology sensitivity reports](ROOFLINE_CAMPAIGN_RESULTS.md#current-first-material-interaction-campaigns).
 
 The minimal CUDA reduction path is now certified. It retains the rich and audit
 path, but reduces the ordinary per-ray host transfer from about 11.5 MB to the
@@ -150,10 +167,19 @@ fell from 0.0925 s to 0.0756 s, or 1.22x. A plane microbenchmark measured 4.2x,
 which must not be interpreted as a 4.2x city speedup. The reduction is exact or
 within measured roundoff in the independent rich parity checks.
 
-The source-conditioned conservative-screen mixed-suffix estimator remains a
-proposal. It must first pass an oracle promotion gate of at least 4x
-variance-time improvement, at least 10x lower zero-score frequency, no more
-than 2x point cost, and no detectable bias. It is not part of this contract.
+The source-conditioned conservative-screen mixed-suffix estimator was rejected
+for production. It removed zero scores, but its variance-time gain was below
+the promotion gate. The pilot remains experimental evidence only. See
+[SOURCE_CONDITIONED_SUFFIX_PILOT.md](SOURCE_CONDITIONED_SUFFIX_PILOT.md).
+
+The authenticated five-city outputs are retained under
+`outputs/roofline_campaign/current_five_city_first_material_interaction/`:
+
+- [JSON](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json)
+- [CSV](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.csv)
+- [PDF](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.pdf)
+- [PNG](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.png)
+- [Manifest](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction_manifest.json)
 
 ## Linked historical records
 

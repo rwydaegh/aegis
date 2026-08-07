@@ -5,6 +5,12 @@ landed exact changes from proposed optimisations and from scientific choices
 that still require paired convergence evidence. A proposed speedup is not a
 production result until its acceptance gates pass.
 
+The current scientific transport contract is
+`first_material_interaction_v1`: exact direct, exact order-1 all-specular, and
+stochastic first-diffuse next-event estimation only at the first blocking
+material vertex. It has no mixed suffix. The historical `max_bounces=3` hybrid
+is sensitivity evidence, not a complete three-bounce model.
+
 ## What is landed
 
 ### Seed-independent device kernels
@@ -58,6 +64,10 @@ and all seven compared arrays were exact. Logical candidate accounting remains
 unchanged, so the reduction is a computation reduction rather than a change to
 the estimator.
 
+The candidate budget, broad-phase threshold, and source chunk are computational
+guards. They are not physical model parameters and do not define additional
+specular orders.
+
 The current cold exact-specular audit measured the CPU broad phase filtering
 97.3% of candidate work for Mexico City and 98.9% for Tokyo. The certified CUDA
 Float64 broad phase leaves the existing host exact final kernel unchanged and
@@ -105,6 +115,29 @@ The corridor is evidence-complete for this snapshot. Five provider-corridor
 campaigns have now run, but the full ten-city cohort is not ready and the
 current campaign statistics are not a claim of full estimator convergence.
 
+### First-material-interaction campaign
+
+The five completed production campaigns use seeds 7 through 22, looks 4, 8, 12,
+and 16, 200,000 IID primary rays, and 4,096 output cells. Wall times are 29.79 s
+for Korenmarkt, 69.02 s for Prague, 40.70 s for Madrid, 30.92 s for Mexico
+City, and 50.11 s for Tokyo Hachiko. The 12-to-16 maximum total-transfer
+changes are 0.0000819, 0.0001559, 0.0004083, 0.043625, and 0.019732 dB in the
+same city order. All are below 0.1 dB.
+
+Mexico points 0, 1, and 3 and Tokyo points 13, 14, and 15 have zero direct
+transport. They remain meaningful shadowed points and are not excluded. Mexico
+and Tokyo first-material-interaction timings are not direct comparisons with
+their historical 64-replica hybrid timings.
+
+The authenticated comparison files are retained under
+`outputs/roofline_campaign/current_five_city_first_material_interaction/`:
+
+- [JSON](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json)
+- [CSV](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.csv)
+- [PDF](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.pdf)
+- [PNG](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.png)
+- [Manifest](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction_manifest.json)
+
 ## Ranked next work
 
 ### 1. Make transport reuse more selective
@@ -122,37 +155,29 @@ that the outputs and invalidation boundaries are correct.
 ### 2. Measure the stochastic estimator before changing it
 
 The production estimator uses 200,000 IID primary rays and 4,096 passive output
-cells. The cells are not 4,096 launch strata. The all-specular term is exact,
-while diffuse and mixed transport use next-event sampling. The mixed-specular
-suffix is rare, so reducing rays without measuring that suffix can change the
-tail while leaving a mean plot looking stable.
+cells. The cells are not 4,096 launch strata. The direct and order-1
+all-specular terms are exact. Next-event sampling covers only the first diffuse
+interaction at the first blocking material vertex. There is no mixed suffix in
+the production estimator.
 
 Run paired sweeps over rays and passive cells, keeping geometry, materials,
 seeds, and output checks fixed. Candidate diagnostic points are 25k, 50k,
 100k, 200k, and 400k rays, with 512, 1,024, 2,048, and 4,096 cells. These are
 study points, not approved defaults. A candidate baseline must pass two
 consecutive convergence looks for scalar peaks, whole-body SAR, directional
-spectra, and the mixed-suffix contribution.
+spectra, and the first-diffuse contribution.
 
 Do not promote 30,000 rays or 512 cells merely because an early scalar check is
 close. The paired convergence evidence must be attached to the final city and
 frequency contract.
 
-### 3. Source-condition the mixed-suffix estimator
+### 3. Keep the source-conditioned suffix pilot experimental
 
-The next estimator proposal is a source-conditioned conservative screen for the
-mixed diffuse-to-specular suffix. It must preserve the exact direct and
-specular atoms and sample only terms that contain a diffuse event. Nested
-equal-area launch strata and Rao-Blackwell branch splitting remain possible
-implementation choices. The output-direction grid remains separate from launch
-strata.
-
-Build an analytic and synthetic oracle first. Promote the proposal only if it
-achieves at least 4x variance-time improvement, at least 10x lower zero-score
-frequency, no more than 2x point cost, and no detectable bias. Compare variance
-at equal wall time, not only equal ray count. Keep the current estimator as the
-publication baseline until these gates pass without a material or tail
-regression.
+The source-conditioned conservative-screen mixed-suffix pilot removed zero
+scores, but its variance-time gain was below the fourfold promotion gate. The
+zero-score improvement therefore does not justify production adoption. Keep the
+pilot as experimental evidence and do not describe it as pending production.
+See [SOURCE_CONDITIONED_SUFFIX_PILOT.md](SOURCE_CONDITIONED_SUFFIX_PILOT.md).
 
 ### 4. Reduce semantic preparation after transport is stable
 
@@ -183,7 +208,7 @@ The pending rows are planning estimates. Landed rows report measured anchors:
 | Resident minimal CUDA reductions | landed, exact or roundoff-bounded | Korenmarkt point 0 0.0925 to 0.0756 s, 1.22x, with rich and audit paths retained |
 | Static transport cache split | pending | potentially large for sweeps, frequency, and source-law changes, subject to invalidation proofs |
 | Ray or cell reduction | pending science | only claim after paired convergence and equal-output checks |
-| Source-conditioned mixed-suffix screen | proposed science | requires at least 4x variance-time, at least 10x lower zero-score frequency, no more than 2x point cost, and no detectable bias |
+| Source-conditioned mixed-suffix screen | rejected experimental result | removed zero scores, but failed the variance-time gate. It is not a production candidate |
 | Semantic view reduction | pending | likely multi-x for cold city preparation, but not a transport-speed claim |
 
 The measured stage wins should be combined with a stage ledger before making a
@@ -214,7 +239,7 @@ Before a performance change enters production, require:
 6. an output-size and retention check for the intended profile.
 
 For a scientific estimator change, add convergence of the reported peak,
-whole-body SAR, directional spectrum, and mixed-suffix contribution. For a
+whole-body SAR, directional spectrum, and first-diffuse contribution. For a
 route change, add the continuous evidence-gap audit and preserve the legacy
 route bytes.
 
@@ -234,19 +259,16 @@ manifest or hashes that make a removed render reproducible.
 
 ## Current boundary
 
-The current provider-corridor campaign snapshot is:
+The current first-material-interaction campaign snapshot is:
 
-| City | Standpoints | Replicas | Wall time | Last reported total-transfer change |
+| City | Standpoints | Replicas | Wall time | 12-to-16 total-transfer change |
 | --- | ---: | ---: | ---: | ---: |
-| Korenmarkt | 10 | 16 | 83.37 s | 12 to 16: 0.00663 dB |
-| Prague | 22 | 16 | 185.68 s | 12 to 16: 0.00640 dB |
-| Madrid | 14 | 16 | 115.75 s | 12 to 16: 0.00628 dB |
-| Mexico City | 11 | 64 | 219.52 s | 48 to 64: 0.20077 dB |
-| Tokyo Hachiko | 16 | 64 | 325.76 s | 48 to 64: 0.29756 dB |
+| Korenmarkt | 10 | 16 | 29.79 s | 0.0000819 dB |
+| Prague | 22 | 16 | 69.02 s | 0.0001559 dB |
+| Madrid | 14 | 16 | 40.70 s | 0.0004083 dB |
+| Mexico City | 11 | 16 | 30.92 s | 0.043625 dB |
+| Tokyo Hachiko | 16 | 16 | 50.11 s | 0.019732 dB |
 
-Mexico and Tokyo use cached deterministic transport work. Tokyo also has a
-separate exact 16-replica proof run of approximately 753 s wall time. Median
-and p90 route summaries are stable, but no-direct route points retain rare
-sampled mixed diffuse-to-specular suffix heavy tails. Running 256 brute-force
-replicas would not repair that estimator support. Estimator redesign and
-paired tail validation are the next scientific step.
+All five campaigns use seeds 7 through 22, looks 4, 8, 12, and 16. Mexico and
+Tokyo are not directly comparable with their historical 64-replica hybrid
+timings. Zero-direct shadowed points remain in both city outputs.

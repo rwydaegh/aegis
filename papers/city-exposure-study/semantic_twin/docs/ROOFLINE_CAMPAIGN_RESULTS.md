@@ -1,52 +1,75 @@
 # Roofline campaign results
 
-## Current optimized campaign
+## Current first-material-interaction campaigns
 
-The fresh Korenmarkt `provider_corridor_v1` campaign is the first integrated
-current-production anchor. It used 10 registered route standpoints,
-16 IID replicas with seeds 7 through 22, 200,000 primary rays, 4,096 passive
-output cells, 457 roofline quadrature sources over 157.545 m of support, the
-atlas material binding, and CUDA level-2 body coupling.
+The current production contract is `first_material_interaction_v1`. It uses an
+exact direct term, an exact order-1 all-specular term, and stochastic
+next-event estimation only at the first blocking material vertex. It has no
+mixed diffuse-to-specular suffix. The historical `max_bounces=3` hybrid is
+sensitivity evidence, not a complete three-bounce model.
 
-It completed in 83.37 s wall time on one A6000, or 5.21 s per complete walk
-replica. The accumulated stage ledger over 160 standpoint-replica observations
-records 61.584 s estimator wall time, 42.119 s stochastic transport, 13.317 s
-specular work, 2.041 s body coupling, and 0.058 s direct shadow work. These
-stage fields overlap through estimator accounting and must not be added to the
-external wall time.
+Five completed campaigns use seeds 7 through 22, looks 4, 8, 12, and 16,
+200,000 IID primary rays, and 4,096 passive output cells. Their wall times are
+29.79 s for Korenmarkt, 69.02 s for Prague, 40.70 s for Madrid, 30.92 s for
+Mexico City, and 50.11 s for Tokyo Hachiko on one A6000.
 
-The maximum 12-to-16-replica changes were 0.00795 dB for area-mean absorbed
-power, 0.00139 dB for ensemble field peak, and 0.00663 dB for total transfer.
-All 42 manifest hashes matched, all 16 replica shards were committed, and all
-93 checked numeric arrays were finite. The campaign and checkpoint identities
-both equal
-`14d6c8467e641cd6ef92c12471f885fa6bc1786a34bfe8d5575cfcadfcc595c6`.
+The maximum 12-to-16 total-transfer changes are 0.0000819 dB for Korenmarkt,
+0.0001559 dB for Prague, 0.0004083 dB for Madrid, 0.043625 dB for Mexico City,
+and 0.019732 dB for Tokyo Hachiko. Every value is below 0.1 dB. Mexico and
+Tokyo are not directly comparable with their historical 64-replica timings.
 
-The sealed local result is
-`outputs/roofline_campaign/korenmarkt_provider_corridor_v1_convergence_cuda_iid`.
-The output profile is `minimal_results_plus_resumable_seed_shards`, so it does
-not generate Blender artifacts.
+Mexico points 0, 1, and 3 and Tokyo points 13, 14, and 15 have zero direct
+transport. They are meaningful shadowed points and are not excluded.
 
-## Current five-city provider-corridor campaign
+The strict-authenticated common-seed topology reports compare the current
+contract with the historical hybrid. Total-transfer route q10, q50, and q90
+changes (first material interaction minus hybrid, in dB) are Korenmarkt
+`-0.00529/-0.00798/-0.00872`, Prague `-0.000741/-0.00507/-0.00693`, Madrid
+`+0.0676/+0.1046/+0.0881`, Mexico `-11.109/-0.00174/-0.00209`, and Tokyo
+`-2.125/-0.00481/-0.00828`. The large Mexico and Tokyo q10 changes are driven
+by the shared zero-direct strata listed above. Madrid's positive shift reflects
+exact full order-1 support under the current contract, where the historical
+adaptive and capped hybrid did not capture all specular support.
 
-The current production snapshot contains five completed provider-corridor
-campaigns. These are separate single-IID city campaigns with the same sealed
-transport contract, not a claim that the intended ten-city cohort is complete.
+The first-material-interaction estimator stage ratios versus the historical
+hybrid are 0.1826, 0.2068, 0.1679, 0.2505, and 0.3154 in the same city order,
+which corresponds to 3.17x to 5.95x faster stage execution. Stochastic-stage
+ratios are 0.0283, 0.0314, 0.0310, 0.0378, and 0.0340, or about 26.4x to 35.3x
+faster. These are stage ratios, not whole-wall speedup claims, especially for
+Mexico and Tokyo. Reports:
+
+- [Korenmarkt](../outputs/roofline_campaign/current_topology_sensitivity/korenmarkt.json)
+- [Prague](../outputs/roofline_campaign/current_topology_sensitivity/prague.json)
+- [Madrid](../outputs/roofline_campaign/current_topology_sensitivity/madrid.json)
+- [Mexico](../outputs/roofline_campaign/current_topology_sensitivity/mexico.json)
+- [Tokyo](../outputs/roofline_campaign/current_topology_sensitivity/tokyo.json)
+
+The authenticated five-city export is available in the gitignored worktree
+artifacts:
+
+- [JSON](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json)
+- [CSV](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.csv)
+- [PDF](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.pdf)
+- [PNG](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.png)
+- [Manifest](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction_manifest.json)
+
+## Current five-city first-material-interaction campaign
+
+The current production snapshot contains five completed first-material-
+interaction campaigns. These are separate single-IID city campaigns with the
+same sealed transport contract, not a claim that the intended ten-city cohort is
+complete.
 
 | City | Standpoints | Replicas | Wall time | Last reported change |
 | --- | ---: | ---: | ---: | ---: |
-| Korenmarkt | 10 | 16 | 83.37 s | 12 to 16 total transfer: 0.00663 dB |
-| Prague | 22 | 16 | 185.68 s | 12 to 16 total transfer: 0.00640 dB |
-| Madrid | 14 | 16 | 115.75 s | 12 to 16 total transfer: 0.00628 dB |
-| Mexico City | 11 | 64 | 219.52 s | 48 to 64 total transfer: 0.20077 dB, mean `Sab`: 0.17070 |
-| Tokyo Hachiko | 16 | 64 | 325.76 s | 48 to 64 total transfer: 0.29756 dB, mean `Sab`: 0.28785 |
+| Korenmarkt | 10 | 16 | 29.79 s | 12 to 16 total transfer: 0.0000819 dB |
+| Prague | 22 | 16 | 69.02 s | 12 to 16 total transfer: 0.0001559 dB |
+| Madrid | 14 | 16 | 40.70 s | 12 to 16 total transfer: 0.0004083 dB |
+| Mexico City | 11 | 16 | 30.92 s | 12 to 16 total transfer: 0.043625 dB |
+| Tokyo Hachiko | 16 | 16 | 50.11 s | 12 to 16 total transfer: 0.019732 dB |
 
-Mexico and Tokyo use cached deterministic transport work. Tokyo also has a
-separate exact 16-replica proof run that took approximately 753 s wall time.
-The route median and p90 summaries are already very stable across the current
-looks. The no-direct route points retain rare sampled mixed diffuse-to-specular
-suffix heavy tails, so the campaigns are convergence evidence, not a blanket
-claim of full estimator convergence or publication finality.
+These campaigns are convergence evidence, not a blanket claim of publication
+finality. The zero-direct points listed above remain in the result set.
 
 The certified CUDA Float64 specular broad phase leaves the host exact final
 kernel unchanged, uses about 96 MiB resident memory, and produced byte-identical
@@ -55,12 +78,12 @@ path arrays with zero lost candidates. The real full-solve times fell from
 The resident minimal CUDA reduction path also passed independent rich parity.
 It reduces ordinary per-ray host transfer from about 11.5 MB to reduced fields
 plus about 216 bytes of scalar metadata. These are landed implementation
-changes, separate from the still-proposed mixed-suffix estimator redesign.
+changes.
 
-Increasing every city to 256 brute-force replicas would not repair the lower
-support of that rare suffix estimator. The next methodological step is to
-redesign and validate that estimator, with paired output and tail checks, rather
-than treating a larger replica count as a substitute for a better estimator.
+The source-conditioned conservative-screen mixed-suffix pilot removed zero
+scores but failed its variance-time gate. It is experimental evidence only and
+is not pending production. See
+[SOURCE_CONDITIONED_SUFFIX_PILOT.md](SOURCE_CONDITIONED_SUFFIX_PILOT.md).
 
 The authenticated multicity report tool accepts only completed single-IID
 campaigns with matching identity, manifest, replica, route, and numeric-array
@@ -83,13 +106,16 @@ are sealed at `b985ab58`.
 Korenmarkt and Prague one-seed CUDA pilots passed independent audits. The
 Korenmarkt and Prague paired outputs remain historical sampler-comparison
 artifacts. Their results are final only for those paired campaigns, not for the
-current five-city provider-corridor campaign. Recovery timing is excluded from
+current five-city first-material-interaction campaign. Recovery timing is excluded from
 scientific timing claims.
 
 The normal result track is scalar and checkpoint based. Blender is optional and
 is not part of the numerical result contract.
 
 ## Korenmarkt paired campaign
+
+This is historical hybrid sensitivity evidence. It is not the current
+first-material-interaction production model.
 
 The campaign used the full declared 13-point route, common geometry and source
 identity, exact direct directional atoms, the one-reflection transport limit,
@@ -118,6 +144,9 @@ the paired artifacts. Its numerical impact remains unresolved and is not a
 published conclusion.
 
 ## Prague paired campaign
+
+This is historical hybrid sensitivity evidence. It is not the current
+first-material-interaction production model.
 
 At look 16, Prague route median surplus was 1.10519 dB for IID and 1.10465 dB
 for rotated Fibonacci. The normalized whole-body SAR medians were 0.0121379 and
@@ -195,7 +224,8 @@ The two-city paper files are:
 The hashed recovery files are [RECOVERY_PROVENANCE.json](/home/user/aegis-roofline-results-20260807T015530Z/recovery_provenance/RECOVERY_PROVENANCE.json)
 and [RECOVERY_PACKAGE_MANIFEST.sha256](/home/user/aegis-roofline-results-20260807T015530Z/recovery_provenance/RECOVERY_PACKAGE_MANIFEST.sha256).
 
-Multi-city readiness remains separate from these results. Five provider-
-corridor campaigns are now complete, while the intended ten-site cohort still
-requires independent readiness checks for its remaining sites. See
+Multi-city readiness remains separate from these results. Five
+first-material-interaction campaigns are now complete, while the intended
+ten-site cohort still requires independent readiness checks for its remaining
+sites. See
 [MULTICITY_CAMPAIGN_READINESS.md](MULTICITY_CAMPAIGN_READINESS.md).
