@@ -69,29 +69,33 @@ locations. Consequently it can change direct, next-event-estimation,
 specular, and body-coupled contributions even when the nominal total source
 power is unchanged.
 
-## Verified numerical indication
+## Verified paired sensitivity
 
-The sealed Korenmarkt result has
-
-\[
-    L_3 = 182.954\ \mathrm{m}.
-\]
-
-A non-sealed CPU indication for the same type of source construction found
+The exact Korenmarkt source artifact contains 506 segments with
 
 \[
-    L_3 = 179.335\ \mathrm{m},
+    L_3 = 182.953912\ \mathrm{m},
     \qquad
-    L_{xy} = 154.019\ \mathrm{m},
+    L_{xy} = 160.509814\ \mathrm{m},
     \qquad
-    L_{xy}/L_3 = 0.859.
+    L_{xy}/L_3 = 0.877324.
 \]
 
-The indicated mean edge slope was \(19.9^\circ\), with 31.0% of 3D edge
-length above \(30^\circ\). Reweighting the same edge set by the projected
-measure changed the source-weight distribution by total variation distance
-0.104 in that indication. These values are a sensitivity signal, not a
-replacement for a sealed paired run.
+A paired seed-7 A6000 run used identical 13 receiver positions, source-curve
+hash, transport configuration, and point seeds. Only the normalized source
+weights differed. Relative to the physical 3D baseline, horizontal-projected
+weighting changed the mean pointwise raw transfer by:
+
+- direct: -0.89%,
+- one-reflection specular: -3.13%,
+- diffuse: -1.17%,
+- total: -1.41%.
+
+For the total body field, mean pointwise peak \(S_{\mathrm{ab}}\) changed by
+-1.23%, while mean \(S_{\mathrm{ab}}\), absorbed power, and whole-body SAR each
+changed by -0.56%. This one-seed common-random-number result supports retaining
+physical 3D length as the reproducibility baseline while treating projected
+length as a modest, explicit sensitivity. It is not a convergence claim.
 
 The sealed Prague result has
 
