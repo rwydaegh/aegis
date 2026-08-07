@@ -396,11 +396,18 @@ def _route_panorama_hook_collections(made: Any, view_layers: Sequence[Any], befo
         marked = bool(group.get("panorama_overlay_collection", False))
         role = str(group.get("panorama_overlay_role", ""))
         if pipeline_scene:
-            admitted_layers = (
-                (capture_pose_layer,)
-                if role == "registered acquisition cameras and projection planes"
-                else tuple(view_layers[1:])
-            )
+            if role in {
+                "registered acquisition cameras and projection planes",
+                "nearby acquisition marker",
+            }:
+                admitted_layers = (capture_pose_layer,)
+            elif role == "support registration overlay":
+                # The cyan support copy answers the support-panel question.  It
+                # used to leak into every Atlas layer, where coincident surfaces
+                # produced a cyan stipple and obscured the semantic colours.
+                admitted_layers = (capture_pose_layer,)
+            else:
+                admitted_layers = tuple(view_layers[1:])
         else:
             admitted_layers = (
                 (capture_pose_layer,)

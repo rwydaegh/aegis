@@ -21,11 +21,20 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 
 EQUIRECTANGULAR_PROJECTION = "equirectangular"
 PRIMARY_PANEL_KEYS = ("photo", "full_support", "fused_entity", "host_gated_material", "final_transport")
+PUBLICATION_PANEL_KEYS = (
+    "photo",
+    "raw_sam3",
+    "full_support",
+    "fused_entity",
+    "host_gated_material",
+    "final_transport",
+)
 AUDIT_PANEL_KEYS = (
     "vistas_weight",
     "sam3_weight",
@@ -53,6 +62,19 @@ class PanelSpec:
     @property
     def label(self) -> str:
         return self.title
+
+
+RAW_SAM3_PANEL_SPEC = PanelSpec(
+    "raw_sam3",
+    "SAM 3 surface concepts (single-panorama image space)",
+    "support_concept",
+    None,
+    (
+        "SAM 3 surface-concept winner after spherical reprojection of the perspective views; "
+        "before all-camera Atlas fusion and distinct from the raw overlapping instance masks"
+    ),
+    unavailable_reason="pinned SAM 3 panorama semantics are unavailable",
+)
 
 
 @dataclass(frozen=True)
@@ -152,6 +174,17 @@ def primary_panel_specs() -> tuple[PanelSpec, ...]:
     )
 
 
+def publication_panel_specs() -> tuple[PanelSpec, ...]:
+    """Return the paper sequence including image-space SAM 3 evidence.
+
+    The SAM 3 raster is composed outside Blender because it already lives in
+    the registered equirectangular image domain.  Rendering it through a 3-D
+    mesh would introduce the very depth fighting this panel is meant to avoid.
+    """
+    primary = primary_panel_specs()
+    return (primary[0], RAW_SAM3_PANEL_SPEC, *primary[1:])
+
+
 def audit_panel_specs() -> tuple[PanelSpec, ...]:
     """Return audit panels with truthful names for weights and uncertainty."""
     return (
@@ -231,15 +264,19 @@ def pipeline_layer_specs(*, include_audit: bool = True) -> tuple[tuple[str, tupl
     """Return prepared-scene layer names and collection keys.
 
     These layers are intentionally all camera views of the same registered
-    panorama.  The photo layer keeps only the linked photograph, while every
-    scientific layer admits the support holdout and its one measured channel.
+    panorama.  The photo and traced-support layers keep the support holdout,
+    which is transparent over the linked photograph and suppresses back
+    surfaces in the translucent support copy.  Atlas layers render their own
+    measured surface without the coplanar holdout.  Keeping both there would
+    make Cycles choose between equal-depth faces and create a false triangle
+    stipple.
     """
     layers: list[tuple[str, tuple[str, ...]]] = []
     for spec in pipeline_panel_specs(include_audit=include_audit):
-        if spec.key == "photo":
-            shown = ("twin",)
-        else:
+        if spec.key in {"photo", "full_support"}:
             shown = tuple(dict.fromkeys(("twin", *spec.show_collections)))
+        else:
+            shown = spec.show_collections
         layers.append((spec.title, shown))
     return tuple(layers)
 
@@ -318,6 +355,180 @@ def _sha256(path: pathlib.Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def render_sam3_concept_panel(
+    panorama_path: pathlib.Path | str,
+    semantics_path: pathlib.Path | str,
+    semantics_metadata_path: pathlib.Path | str,
+    output_path: pathlib.Path | str,
+    *,
+    dimensions: tuple[int, int] | None = None,
+    opacity: float = 0.82,
+) -> PanelRecord:
+    """Render the pinned SAM 3 surface concepts directly in panorama space.
+
+    This is deliberately not called a raw instance-mask panel.  SAM 3 runs on
+    overlapping perspective views and can return overlapping instances.  The
+    stored ``support_concept`` raster is their deterministic spherical winner,
+    before projection into the multi-camera surface Atlas.  Keeping that scope
+    in the title and provenance prevents the image from being mistaken for the
+    fused Atlas or for untouched model logits.
+    """
+    if not 0.0 < opacity <= 1.0:
+        raise ValueError("SAM 3 panel opacity must be in (0, 1]")
+    panorama = pathlib.Path(panorama_path).resolve()
+    semantics = pathlib.Path(semantics_path).resolve()
+    metadata_path = pathlib.Path(semantics_metadata_path).resolve()
+    output = pathlib.Path(output_path).resolve()
+    for source in (panorama, semantics, metadata_path):
+        if not source.is_file():
+            raise FileNotFoundError(source)
+
+    metadata = json.loads(metadata_path.read_text())
+    concept_backend = metadata.get("concept_backend")
+    if not isinstance(concept_backend, Mapping) or not str(concept_backend.get("model", "")).endswith("sam3"):
+        raise ValueError("semantic metadata does not identify a pinned SAM 3 concept backend")
+
+    with np.load(semantics, allow_pickle=False) as arrays:
+        if "support_concept" not in arrays:
+            raise ValueError("semantic raster has no SAM 3 support_concept channel")
+        concept = np.asarray(arrays["support_concept"], dtype=np.int32)
+    if concept.ndim != 2 or concept.size == 0 or np.any(concept < 0):
+        raise ValueError("support_concept must be a nonempty nonnegative 2-D raster")
+
+    source_size = (int(concept.shape[1]), int(concept.shape[0]))
+    target_size = dimensions or source_size
+    if target_size[0] <= 0 or target_size[1] <= 0:
+        raise ValueError("SAM 3 panel dimensions must be positive")
+    if target_size != source_size:
+        concept = np.asarray(
+            Image.fromarray(concept, mode="I").resize(target_size, Image.Resampling.NEAREST),
+            dtype=np.int32,
+        )
+
+    with Image.open(panorama) as source:
+        photograph = source.convert("RGB").resize(target_size, Image.Resampling.LANCZOS)
+    photograph_array = np.asarray(photograph, dtype=np.float32)
+    from ...vision.fuse import palette
+
+    colours = palette(int(concept.max(initial=0)) + 1)
+    overlay = colours[concept].astype(np.float32)
+    present = concept > 0
+    composed = photograph_array.copy()
+    composed[present] = (1.0 - opacity) * photograph_array[present] + opacity * overlay[present]
+    output.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(np.clip(np.rint(composed), 0, 255).astype(np.uint8)).save(output)
+
+    labels = metadata.get("concept_id2label", {})
+    provenance = {
+        "panel": {
+            "key": RAW_SAM3_PANEL_SPEC.key,
+            "title": RAW_SAM3_PANEL_SPEC.title,
+            "channel": RAW_SAM3_PANEL_SPEC.channel,
+            "role": RAW_SAM3_PANEL_SPEC.role,
+        },
+        "panorama_path": str(panorama),
+        "panorama_sha256": _sha256(panorama),
+        "semantics_path": str(semantics),
+        "semantics_sha256": _sha256(semantics),
+        "semantics_metadata_path": str(metadata_path),
+        "semantics_metadata_sha256": _sha256(metadata_path),
+        "concept_backend": concept_backend,
+        "concept_id2label": labels,
+        "dimensions": list(target_size),
+        "opacity": opacity,
+        "labelled_fraction": float(np.count_nonzero(present) / present.size),
+        "scope": RAW_SAM3_PANEL_SPEC.role,
+    }
+    output.with_suffix(".provenance.json").write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")
+    return PanelRecord(
+        RAW_SAM3_PANEL_SPEC,
+        output,
+        "available",
+        dimensions=target_size,
+        sha256=_sha256(output),
+    )
+
+
+def render_sam3_raw_instance_panel(
+    view_path: pathlib.Path | str,
+    concept_cache_path: pathlib.Path | str,
+    output_path: pathlib.Path | str,
+    *,
+    opacity: float = 0.22,
+) -> pathlib.Path:
+    """Render the un-fused overlapping SAM 3 instances for one source view.
+
+    Unlike :func:`render_sam3_concept_panel`, this diagnostic reads the packed
+    model masks before spherical reprojection or Atlas fusion.  All instances
+    are retained.  Low-score masks are drawn first so high-score instances
+    remain legible, while repeated overlaps remain visibly denser.
+    """
+    if not 0.0 < opacity <= 1.0:
+        raise ValueError("raw SAM 3 instance opacity must be in (0, 1]")
+    view = pathlib.Path(view_path).resolve()
+    cache = pathlib.Path(concept_cache_path).resolve()
+    output = pathlib.Path(output_path).resolve()
+    for source in (view, cache):
+        if not source.is_file():
+            raise FileNotFoundError(source)
+
+    with np.load(cache, allow_pickle=False) as arrays:
+        required = {"packed_masks", "mask_shape", "scores", "labels", "kinds"}
+        missing = sorted(required.difference(arrays.files))
+        if missing:
+            raise ValueError(f"SAM 3 concept cache is missing arrays: {missing}")
+        packed_masks = np.asarray(arrays["packed_masks"], dtype=np.uint8)
+        mask_shape = tuple(int(value) for value in arrays["mask_shape"])
+        scores = np.asarray(arrays["scores"], dtype=np.float32)
+        labels = np.asarray(arrays["labels"], dtype=str)
+        kinds = np.asarray(arrays["kinds"], dtype=str)
+        cache_key = str(arrays["cache_key"]) if "cache_key" in arrays else None
+    if len(mask_shape) != 2 or min(mask_shape) <= 0:
+        raise ValueError("raw SAM 3 mask_shape must contain two positive dimensions")
+    if packed_masks.ndim != 2 or not (len(packed_masks) == len(scores) == len(labels) == len(kinds)):
+        raise ValueError("raw SAM 3 instance arrays do not share one instance dimension")
+    pixel_count = mask_shape[0] * mask_shape[1]
+    expected_bytes = (pixel_count + 7) // 8
+    if packed_masks.shape[1] != expected_bytes:
+        raise ValueError("raw SAM 3 packed masks do not match mask_shape")
+
+    with Image.open(view) as source:
+        photograph = source.convert("RGB").resize((mask_shape[1], mask_shape[0]), Image.Resampling.LANCZOS)
+    composed = np.asarray(photograph, dtype=np.float32).copy()
+    unique_labels = sorted(set(labels.tolist()))
+    label_ids = {label: index + 1 for index, label in enumerate(unique_labels)}
+    from ...vision.fuse import palette
+
+    colours = palette(len(unique_labels) + 1).astype(np.float32)
+    for index in np.argsort(scores, kind="stable"):
+        mask = np.unpackbits(packed_masks[index], count=pixel_count).reshape(mask_shape).astype(bool)
+        if not np.any(mask):
+            continue
+        colour = colours[label_ids[str(labels[index])]]
+        composed[mask] = (1.0 - opacity) * composed[mask] + opacity * colour
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(np.clip(np.rint(composed), 0, 255).astype(np.uint8)).save(output)
+    provenance = {
+        "panel": "raw_sam3_instances",
+        "scope": "un-fused overlapping model masks for one source perspective view",
+        "view_path": str(view),
+        "view_sha256": _sha256(view),
+        "concept_cache_path": str(cache),
+        "concept_cache_sha256": _sha256(cache),
+        "cache_key": cache_key,
+        "dimensions": [mask_shape[1], mask_shape[0]],
+        "instance_count": int(len(labels)),
+        "labels": labels.tolist(),
+        "kinds": kinds.tolist(),
+        "scores": scores.astype(float).tolist(),
+        "opacity_per_instance": opacity,
+        "draw_order": "ascending score, highest score last",
+    }
+    output.with_suffix(".provenance.json").write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")
+    return output
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -558,6 +769,8 @@ __all__ = [
     "AUDIT_PANEL_KEYS",
     "EQUIRECTANGULAR_PROJECTION",
     "PRIMARY_PANEL_KEYS",
+    "PUBLICATION_PANEL_KEYS",
+    "RAW_SAM3_PANEL_SPEC",
     "CompositionResult",
     "PanelRecord",
     "PanelSpec",
@@ -572,7 +785,10 @@ __all__ = [
     "pipeline_layer_specs",
     "pipeline_panel_specs",
     "primary_panel_specs",
+    "publication_panel_specs",
     "records_from_paths",
+    "render_sam3_concept_panel",
+    "render_sam3_raw_instance_panel",
     "stamp_pipeline_contract",
     "vertical_curtain",
     "write_composition_manifest",

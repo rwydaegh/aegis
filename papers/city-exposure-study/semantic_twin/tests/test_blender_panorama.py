@@ -681,7 +681,7 @@ def test_registered_panorama_scene_stays_linked_and_survives_reopen(tmp_path: pa
     assert measured["support_overlay_objects"] == 1
     assert measured["support_overlay_marker"]
     assert measured["support_overlay_scale"] == pytest.approx(0.99999)
-    assert measured["support_overlay_opacity"] == pytest.approx(0.08)
+    assert measured["support_overlay_opacity"] == pytest.approx(0.45)
     assert measured["support_holdout_layers"] == ["ViewLayer", "Panorama capture poses", "Exposure standpoints"]
     assert measured["support_holdout_values"] == {
         "ViewLayer": True,

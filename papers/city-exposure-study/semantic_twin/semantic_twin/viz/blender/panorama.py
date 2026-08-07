@@ -32,7 +32,11 @@ if TYPE_CHECKING:
 
 KORENMARKT_HERO_CAPTURE = "walk_05_1084407470281938"
 SUPPORT_OVERLAY_SCALE = 0.99999
-SUPPORT_OVERLAY_OPACITY = 0.08
+# The support panel is an explanatory layer, not a registration watermark.  At
+# eight percent the cyan surface disappeared into a detailed streetscape and
+# became almost impossible to distinguish in a paper-sized slice.  Keep enough
+# photograph to audit alignment while making the traced surface unambiguous.
+SUPPORT_OVERLAY_OPACITY = 0.45
 NEARBY_MARKER_NAME = "Nearby registered capture marker"
 ACQUISITION_COLLECTION_NAME = "Registered panorama acquisition poses"
 RECTILINEAR_FOV_DEG = 90.0

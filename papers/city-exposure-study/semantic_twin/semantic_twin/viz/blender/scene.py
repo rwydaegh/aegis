@@ -1148,17 +1148,12 @@ def _linked_audit_display(source: Any, name: str, channel: str, into: Any) -> An
     if not copy.material_slots:
         raise RuntimeError("atlas audit display source has no material slot")
     copy.material_slots[0].link = "OBJECT"
-    contribution_channels = {
-        "vistas_prior_weight",
-        "sam3_concept_weight",
-        "source_contribution_state",
-    }
-    if channel in contribution_channels:
-        copy.material_slots[0].material = emissive_material(f"{name}_material", channel)
-        copy["display_shader"] = "unlit emission"
-    else:
-        copy.material_slots[0].material = lit_material(f"{name}_material", channel)
-        copy["display_shader"] = "lit principled"
+    # These are measured categorical or scalar channels.  Lighting them makes
+    # a one-sample panorama proof look noisy and changes apparent values with
+    # face orientation.  An opaque emitter preserves the encoded colours and is
+    # deterministic even in inexpensive audit renders.
+    copy.material_slots[0].material = emissive_material(f"{name}_material", channel)
+    copy["display_shader"] = "unlit emission"
     copy["display_channel"] = channel
     copy["shared_mesh_datablock"] = source.data.name
     copy["display_copy_only"] = True
