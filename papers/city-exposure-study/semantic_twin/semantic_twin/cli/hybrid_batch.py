@@ -367,6 +367,8 @@ def complete_output(
         record = json.loads(sidecar.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         return False, f"invalid batch contract sidecar: {exc}"
+    if not isinstance(record, dict):
+        return False, "invalid batch contract sidecar: root is not an object"
     contract = expected_contract or _contract_for(concepts=concepts)
     if record.get("schema") != SCHEMA or record.get("contract") != contract:
         return False, "batch contract differs from the current production pins"
@@ -393,6 +395,8 @@ def _load_job(path: pathlib.Path, *, contract: dict[str, Any], source: pathlib.P
             document = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise ValueError(f"invalid existing job manifest {path}: {exc}") from exc
+        if not isinstance(document, dict):
+            raise ValueError(f"invalid existing job manifest {path}: root is not an object")
         if document.get("schema") != SCHEMA or document.get("contract") != contract:
             raise ValueError("existing job manifest belongs to a different production contract")
         return document
