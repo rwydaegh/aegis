@@ -7,7 +7,7 @@ machine-readable exports.  Exposure values are deliberately kept on the
 
 Example::
 
-    python -m semantic_twin.report.roofline_result_figures \
+    python -m semantic_twin.cli.roofline_result_figures \
         --city korenmarkt outputs/korenmarkt_iid outputs/korenmarkt_fibonacci \
         --city prague outputs/prague_iid outputs/prague_fibonacci \
         --output outputs/paper/roofline_results
@@ -15,7 +15,6 @@ Example::
 
 from __future__ import annotations
 
-import argparse
 import csv
 import json
 from dataclasses import dataclass
@@ -607,40 +606,11 @@ def write_publication_results(
     return FigureArtifacts(pdf_path, png_path, json_path, csv_path, latex_path)
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--city",
-        nargs=3,
-        action="append",
-        metavar=("NAME", "IID_DIRECTORY", "FIBONACCI_DIRECTORY"),
-        required=True,
-        help="city name and its paired IID and rotated-Fibonacci directories (repeatable)",
-    )
-    parser.add_argument("--output", type=Path, required=True, help="output path stem")
-    parser.add_argument("--looks", default=",".join(str(value) for value in DEFAULT_LOOKS))
-    parser.add_argument("--final-look", type=int, default=None)
-    arguments = parser.parse_args(argv)
-    try:
-        looks = tuple(int(value) for value in arguments.looks.split(",") if value.strip())
-        campaigns = [CampaignPair(name, Path(iid), Path(fibonacci)) for name, iid, fibonacci in arguments.city]
-        artifacts = write_publication_results(campaigns, arguments.output, looks=looks, final_look=arguments.final_look)
-    except (CampaignComparisonError, OSError, ValueError) as exc:
-        parser.error(str(exc))
-    print("wrote " + ", ".join(str(path) for path in artifacts.__dict__.values()))
-    return 0
-
-
 __all__ = [
     "CampaignPair",
     "FigureArtifacts",
     "RESULT_SCHEMA_VERSION",
     "build_plot_data",
     "collect_reports",
-    "main",
     "write_publication_results",
 ]
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

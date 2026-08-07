@@ -14,7 +14,6 @@ other identity drift.
 
 from __future__ import annotations
 
-import argparse
 import copy
 import hashlib
 import json
@@ -1082,23 +1081,4 @@ def write_report(
     return path
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("iid_directory", type=Path)
-    parser.add_argument("rotated_fibonacci_directory", type=Path)
-    parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--looks", default="4,8,12,16", help="comma-separated common replica looks")
-    arguments = parser.parse_args(argv)
-    try:
-        looks = tuple(int(value) for value in arguments.looks.split(",") if value.strip())
-        write_report(arguments.iid_directory, arguments.rotated_fibonacci_directory, arguments.output, looks=looks)
-    except ValueError as exc:
-        parser.error(str(exc))
-    return 0
-
-
 __all__ = ["CampaignComparisonError", "compare_campaigns", "write_report"]
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
