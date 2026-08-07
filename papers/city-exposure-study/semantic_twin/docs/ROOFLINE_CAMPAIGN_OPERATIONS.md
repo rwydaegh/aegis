@@ -16,6 +16,16 @@ cohorts whose claims must remain separate:
 - Toulouse remains excluded. Do not silently replace one of the final ten with
   it or repair its old acquisition defect inside a production run.
 
+Only Korenmarkt and Prague are runnable now. Brussels, Madrid, Mexico Zocalo,
+and Tokyo require semantic rebuilds. Four other sites require route or geometry
+repairs. Times Square is invalid under the current geometry contract. See
+[MULTICITY_CAMPAIGN_READINESS.md](MULTICITY_CAMPAIGN_READINESS.md) for the
+site gates.
+
+The final code is `f5f394da`, after performance proposal reuse in `9111c591`.
+Report commits are `8db6bef0` and `37b4498d`. Scientific paired campaigns use
+the sealed config commit `b985ab58`.
+
 Every result uses the full declared walk and the fixed body yaw attached to each
 standpoint. A grid, a partial pilot walk, uniform-yaw averaging, and an
 interpolated camera claim are different estimands and are refused as production
@@ -55,6 +65,10 @@ area-weighted mean, absorbed power, and whole-body SAR are reduced from that
 summed field. The headline peak is computed after averaging the triangle field
 over replicas. It is not the average of per-replica maxima.
 
+Production transport includes at most one specular reflection. A configured
+`max_bounces=3` does not add higher specular orders. Higher specular orders are
+absent from the production result.
+
 The minimal output is:
 
 - `campaign_identity.json`, containing the hash-sealed scientific identity
@@ -77,6 +91,13 @@ field per declared convergence look and one current field. A new replica writes
 its scalar shard, diagnostic sidecar, and a new cumulative field before the
 index is atomically advanced. Unindexed partial files are ignored. A prior
 non-look cumulative field is removed only after the new index is durable.
+
+Each scalar shard carries per-standpoint direct, specular, diffuse, and total
+transfers, component body metrics, timings, field metadata, and reference scale
+arrays. The sidecar keeps exact specular and cache diagnostics. The final output
+contains the campaign identity, `locations.jsonl`, `summary.json`, and a hashed
+`manifest.json`. Directional samples and Blender audit products are separate
+from this scalar campaign output.
 
 ## Performance gates
 
@@ -123,6 +144,19 @@ The performance decision is order-of-magnitude, not seconds hunting:
    simplification is admissible only when it preserves support boundaries,
    semantic seams, and verified transport within the declared tolerance.
 
+### Current A6000 gate
+
+On commit `809ba738`, the A6000 gate passed 163 tests with zero skipped in
+9.97 s. `/usr/bin/time` reported 10.52 s wall time and 657156 KiB maximum RSS.
+This is a gate result, not an integrated production speed or RAM measurement.
+
+The Korenmarkt and Prague one-seed CUDA pilots passed independent audits. The
+Korenmarkt IID and Fibonacci paired 16-seed campaigns passed full audit with
+seeds 7 through 22 and looks 4, 8, 12, and 16. Prague paired outputs cover both
+modes, seeds 7 through 22, and 68 points. Both paired audits passed. Each Prague
+mode has 49 hash-valid manifest entries, a 68x56024 body array, and no orphan
+files. Fibonacci is not adopted.
+
 ### Experimental sampled specular suffix
 
 The sampled CPU and CUDA pilots combine a numerically converged adaptive
@@ -142,6 +176,27 @@ Direct and deterministic all-specular body fields are cached once per route
 point across replicas. The sampled mixed suffix is coupled for every replica and
 never enters that cache. Preflight seals the proposal hashes, counter dimensions,
 sample count, seed offset, and bounded cache capacities.
+
+The old paired artifacts have a timing attribution bug. Cache hits repeat cold
+deterministic all-specular seconds. Scientific outputs are unaffected. Final
+code fixes the attribution, so paired campaign timing must not be described as
+corrected. Recovery resumed `9111c591` from `b985ab58` at seed 16 and is hashed
+under `recovery_provenance/`. The real Korenmarkt seed 7 scientific arrays are
+bit-exact. Estimator plus body timing sums are 72.2126 s and 65.4395 s under
+different timing rules. End-to-end speedup remains unresolved. The final CUDA
+gate passed 166 tests. Prague look-16 total paired delta maximum and p90 were
+0.17949 dB and 0.00756 dB. All-body values were 2.07801 dB and 0.08054 dB.
+Total variance q50/q90 were 1.267/51.19. Diffuse variance q50/q90 were
+1.153/3.437. Suffix acceptance was 1664/210918849 for IID and
+1750/210901371 for rotated Fibonacci. Suffix impact was not persisted and
+remains unresolved. Timing is excluded from these audit conclusions.
+
+The performance proposal reuse builds and uploads one immutable full-geometry
+device face proposal per estimator. It avoids repeated 600,000-face proposal
+builds and uploads. Old host preparation was 0.856 s per gather for Korenmarkt
+and 1.001 s per gather for Prague. Estimated savings over 16 replicas are about
+178 s for Korenmarkt and 1089 s for Prague. These are proposal-reuse estimates,
+not paired campaign timings.
 
 ## Safe campaign staging
 
@@ -238,3 +293,19 @@ hidden. Without
 `--dry-run`, the same prepared objects and sealed identity pass directly to
 `run_roofline_campaign`. There is no second preparation pass in which the source
 population could change.
+
+### Measured preflight snapshots
+
+On commit `809ba738`, measured dry-run preflight took 17.83 s for Korenmarkt
+with 13 standpoints, 506 source sites, 182.953912 m of source support, and
+617091 faces. Prague preflight took 52.19 s with 68 standpoints, 1225 source
+sites, 654.604943 m of source support, and 664619 faces.
+
+The collision BVH retains those original 617091 and 664619 support faces.
+Blender Atlas LOD merging is display-only. Exact transport-mesh decimation is
+not low-risk without convergence evidence.
+
+These are preflight timings only. Korenmarkt paired outputs passed their audit.
+Prague paired outputs passed their final independent audit. Do not report paired
+campaign timing as corrected because the old artifacts repeat cold deterministic
+all-specular seconds on cache hits.
