@@ -26,6 +26,9 @@ from semantic_twin.walk import (
     StreetRouteWalk,
     Walk,
     WalkBuilder,
+    body_yaw_array_hash,
+    body_yaw_hash,
+    route_order_hash,
 )
 from semantic_twin.walk import site as site_module
 from semantic_twin.walk.model import KIND_RULE
@@ -281,6 +284,37 @@ def test_densified_route_stays_in_the_registered_frame_and_labels_every_point(
         "camera_registered",
     ]
     assert walk.provenance["point_kind"] == provenance["point_kind"]
+
+
+def test_street_filter_reorients_the_kept_route_and_reseals_yaw(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Filtering an oriented route must not leave a stale yaw seal behind."""
+    graph = straight_graph(3, step=10.0)
+    cameras = [station(f"pano_{i}", f"n{i}", (float(i) * 10.0, 0.0)) for i in range(3)]
+    line = np.array([[0.0, 0.0], [10.0, 0.0]])
+    monkeypatch.setattr(site_module, "load_admitted_stations", lambda site, root=None: cameras)
+    monkeypatch.setattr(site_module, "load_link_graph", lambda site, root=None, bridge_m=0.0: graph)
+    monkeypatch.setattr(
+        site_module,
+        "street_path",
+        lambda site, route, **kwargs: ((line,), {"polyline_enu": line.tolist()}),
+    )
+
+    walk, provenance = site_module.site_walk(
+        open_square(),
+        "nowhere",
+        stride_m=0.0,
+        path="street",
+        clearance_samples=16,
+    )
+
+    assert walk.points[:, 0] == pytest.approx([0.0, 10.0])
+    assert walk.body_yaw_deg == pytest.approx([90.0, 90.0])
+    assert provenance["body_yaw_deg"] == pytest.approx([90.0, 90.0])
+    assert provenance["body_yaw_route_order_hash"] == route_order_hash(walk.points)
+    assert provenance["body_yaw_hash"] == body_yaw_hash(walk.points, walk.body_yaw_deg)
+    assert provenance["body_yaw_array_hash"] == body_yaw_array_hash(walk.body_yaw_deg)
 
 
 def test_the_grid_ordering_is_fixed_by_the_geometry_and_not_by_the_seed() -> None:

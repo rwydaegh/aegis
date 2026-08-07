@@ -422,6 +422,10 @@ def site_walk(
     if path == "street":
         legs, street = street_path(site, route, root=root, crop_m=crop_m, endpoints=endpoints)
         walk = _keep_near_the_street(walk, provenance, street, site=site, stride_m=stride_m)
+        # The street filter changes the route topology, so the yaw seal from
+        # the unfiltered panorama route no longer aligns with these points.
+        # It is recomputed below after the final route has been assembled.
+        provenance = {key: value for key, value in provenance.items() if not key.startswith("body_yaw_")}
     else:
         legs = route.road_polyline
     provenance["point_kind"] = list(walk.provenance.get("point_kind", [CAMERA_REGISTERED] * len(walk)))
