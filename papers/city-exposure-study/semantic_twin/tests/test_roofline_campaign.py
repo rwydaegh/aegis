@@ -593,6 +593,60 @@ def test_combined_sampled_policy_uses_inclusion_not_formal_completion(tmp_path):
     assert "work.stop_reason='candidate_budget_exhausted'" in str(error.value)
 
 
+def test_combined_sampled_policy_accepts_exact_all_specular_branch(tmp_path):
+    _, exact = FakeEstimator().estimate_field(np.zeros(3), seed=1)
+    combined = dataclasses.replace(
+        exact,
+        specular_estimate_kind="exact_all_sampled_mixed_order_1",
+        finite_resolution_specular_estimate=False,
+        specular_numerically_converged=True,
+        maximum_completed_all_specular_order=1,
+        maximum_completed_specular_suffix_order=0,
+        all_specular_k_hat=exact.specular_k_hat,
+        all_specular_atom_mass=exact.specular_atom_mass,
+        specular_components_separable=True,
+        sampled_specular_suffix_full_support=True,
+    )
+    config = RooflineCampaignConfig(
+        site="test",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "combined-exact",
+        planned_seeds=(1,),
+        minimum_completed_specular_order=0,
+        specular_acceptance="adaptive_all_specular_sampled_mixed_order_1",
+    )
+    work = {
+        "enabled": True,
+        "numerically_converged": True,
+        "support_complete": True,
+        "stop_reason": "full_reflection_and_source_support_enumerated",
+    }
+    sampled = {
+        "enabled": True,
+        "samples_per_vertex": 2,
+        "uncertainty_scope": "conditional_on_traced_diffuse_vertices; campaign replicas control total uncertainty",
+        "sampling_identity": {
+            "status": "experimental_opt_in",
+            "surface_support_complete": True,
+            "source_support": 4,
+            "source_count": 4,
+        },
+    }
+    detail = {"finite_resolution_specular_work": work, "sampled_specular_suffix": sampled}
+    _validate_specular_acceptance(combined, detail, config)
+
+    with pytest.raises(RuntimeError, match="work.support_complete_when_exact=False"):
+        _validate_specular_acceptance(
+            combined,
+            {
+                "finite_resolution_specular_work": {**work, "support_complete": False},
+                "sampled_specular_suffix": sampled,
+            },
+            config,
+        )
+
+
 def test_combined_sampled_policy_requires_zero_formal_minimum(tmp_path):
     with pytest.raises(ValueError, match="requires minimum_completed_specular_order=0"):
         RooflineCampaignConfig(

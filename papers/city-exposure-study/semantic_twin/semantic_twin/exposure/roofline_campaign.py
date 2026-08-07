@@ -1520,17 +1520,38 @@ def _validate_adaptive_specular(field: NextEventField, work: Any) -> None:
 
 
 def _sampled_field_accepted(field: NextEventField) -> bool:
-    return (
+    common = (
         field.includes_specular
-        and field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1"
-        and field.finite_resolution_specular_estimate
         and field.specular_numerically_converged
-        and field.maximum_completed_all_specular_order == 0
         and field.maximum_completed_specular_suffix_order == 0
         and not field.specular_order_one_complete
         and not field.specular_complete_through_bounce_cap
         and field.sampled_specular_suffix_full_support
         and field.specular_components_separable
+    )
+    adaptive = (
+        field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1"
+        and field.finite_resolution_specular_estimate
+        and field.maximum_completed_all_specular_order == 0
+    )
+    exact = (
+        field.specular_estimate_kind == "exact_all_sampled_mixed_order_1"
+        and not field.finite_resolution_specular_estimate
+        and field.maximum_completed_all_specular_order == 1
+    )
+    return common and (adaptive or exact)
+
+
+def _sampled_all_specular_work_accepted(field: NextEventField, work: Any) -> bool:
+    if field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1":
+        return _adaptive_work_accepted(work)
+    return (
+        field.specular_estimate_kind == "exact_all_sampled_mixed_order_1"
+        and isinstance(work, dict)
+        and bool(work.get("enabled", False))
+        and bool(work.get("numerically_converged", False))
+        and bool(work.get("support_complete", False))
+        and work.get("stop_reason") == "full_reflection_and_source_support_enumerated"
     )
 
 
@@ -1573,15 +1594,19 @@ def _sampled_mixed_failed_clauses(
     except (TypeError, ValueError):
         positive_sample_count = False
     scope = str(sampled_dict.get("uncertainty_scope", ""))
+    adaptive = field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1"
+    exact = field.specular_estimate_kind == "exact_all_sampled_mixed_order_1"
+    expected_stop = "relative_tolerance_reached" if adaptive else "full_reflection_and_source_support_enumerated"
     checks: dict[str, tuple[Any, bool]] = {
         "field.includes_specular": (field.includes_specular, field.includes_specular),
         "field.specular_estimate_kind": (
             field.specular_estimate_kind,
-            field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1",
+            adaptive or exact,
         ),
         "field.finite_resolution_specular_estimate": (
             field.finite_resolution_specular_estimate,
-            field.finite_resolution_specular_estimate,
+            (adaptive and field.finite_resolution_specular_estimate)
+            or (exact and not field.finite_resolution_specular_estimate),
         ),
         "field.specular_numerically_converged": (
             field.specular_numerically_converged,
@@ -1589,7 +1614,8 @@ def _sampled_mixed_failed_clauses(
         ),
         "field.maximum_completed_all_specular_order": (
             field.maximum_completed_all_specular_order,
-            field.maximum_completed_all_specular_order == 0,
+            (adaptive and field.maximum_completed_all_specular_order == 0)
+            or (exact and field.maximum_completed_all_specular_order == 1),
         ),
         "field.maximum_completed_specular_suffix_order": (
             field.maximum_completed_specular_suffix_order,
@@ -1616,7 +1642,11 @@ def _sampled_mixed_failed_clauses(
         ),
         "work.stop_reason": (
             work_dict.get("stop_reason"),
-            work_dict.get("stop_reason") == "relative_tolerance_reached",
+            work_dict.get("stop_reason") == expected_stop,
+        ),
+        "work.support_complete_when_exact": (
+            work_dict.get("support_complete"),
+            not exact or bool(work_dict.get("support_complete", False)),
         ),
         "sampled.is_mapping": (type(sampled).__name__, isinstance(sampled, dict)),
         "sampled.enabled": (sampled_dict.get("enabled"), bool(sampled_dict.get("enabled", False))),
@@ -1650,7 +1680,7 @@ def _validate_sampled_mixed_specular(field: NextEventField, detail: dict[str, An
     sampled = detail.get("sampled_specular_suffix")
     accepted = (
         _sampled_field_accepted(field)
-        and _adaptive_work_accepted(work)
+        and _sampled_all_specular_work_accepted(field, work)
         and _sampled_suffix_accepted(sampled)
         and _sampled_identity_accepted(sampled)
     )
