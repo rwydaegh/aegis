@@ -6,6 +6,7 @@ import time
 from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, ClassVar
 
 import numpy as np
@@ -21,6 +22,13 @@ from .device_next_event import (
 from .device_tracer import DeviceEscapeTracer
 from .directional import DirectionalMeasure, _directions
 from .model import Surplus, require_credit
+from .persistent_cache import (
+    CACHE_SCHEMA,
+    DirectCacheValue,
+    PersistentTransportCache,
+    SpecularCacheValue,
+    cache_key,
+)
 from .specular import (
     DEFAULT_SPECULAR_CANDIDATE_BUDGET,
     OneBounceSpecularTransport,
@@ -939,6 +947,7 @@ class NextEventEstimator:
     specular_refinement_relative_tolerance: float = 0.02
     diagnostic_models: Mapping[str, AngularIllumination] = field(default_factory=dict)
     deterministic_cache_size: int = 8
+    persistent_cache_dir: Path | None = None
     _deterministic_cache: OrderedDict[tuple[Any, ...], Any] = field(
         default_factory=OrderedDict,
         init=False,
@@ -946,6 +955,12 @@ class NextEventEstimator:
         compare=False,
     )
     _device_specular_face_proposal: BoundDeviceSpecularFaceProposal | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _persistent_cache: PersistentTransportCache | None = field(
         default=None,
         init=False,
         repr=False,
@@ -979,6 +994,10 @@ class NextEventEstimator:
             raise ValueError("sampled specular suffixes require specular_order=1")
         if self.deterministic_cache_size < 1:
             raise ValueError("deterministic_cache_size must be positive")
+        if self.persistent_cache_dir is not None:
+            cache_dir = Path(self.persistent_cache_dir)
+            object.__setattr__(self, "persistent_cache_dir", cache_dir)
+            object.__setattr__(self, "_persistent_cache", PersistentTransportCache(cache_dir))
         if not np.isfinite(self.specular_refinement_relative_tolerance) or not (
             0.0 < self.specular_refinement_relative_tolerance < 1.0
         ):
@@ -1237,7 +1256,7 @@ class NextEventEstimator:
         stop_reason = "candidate_budget_exhausted"
         blocked_next_cycle: dict[str, int] | None = None
 
-        def selection(strata: int):  # noqa: ANN202
+        def selection(strata: int):
             return self.source_quadrature.select(sites, probabilities, strata)
 
         surface_face_index = np.asarray(transport.surfaces.face_index, dtype=np.int64)
@@ -1616,18 +1635,28 @@ class NextEventEstimator:
         dict[str, Any] | None,
         float,
         bool,
+        bool,
+        str | None,
     ]:
         """Prepare deterministic reflection work once for a standpoint."""
         key = self._deterministic_key("specular", origin, maximum_order)
         cached = self._cache_get(key)
         if cached is not None:
-            suffix_transport, specular_work, all_specular, refinement, finite_work = cached
-            return suffix_transport, specular_work, all_specular, refinement, finite_work, 0.0, True
+            suffix_transport, specular_work, all_specular, refinement, finite_work, persistent_key = cached
+            return (
+                suffix_transport,
+                specular_work,
+                all_specular,
+                refinement,
+                finite_work,
+                0.0,
+                True,
+                False,
+                persistent_key,
+            )
 
         started = time.perf_counter()
         all_specular_transport = self.specular_transport if self.specular_order == 1 else None
-        suffix_transport = None
-        finite_work: dict[str, Any] | None = None
         supports_specular = hasattr(self.tracer, "geometry") and hasattr(self.tracer, "_surface_response")
         specular_work = None
         if all_specular_transport is None and self.specular_order == 1 and supports_specular:
@@ -1651,72 +1680,181 @@ class NextEventEstimator:
                 max_bounces=maximum_order,
             )
 
-        all_specular = None
-        refinement: list[dict[str, Any]] = []
-        if all_specular_transport is not None and maximum_order >= 1:
-            sites = np.asarray(self.sources.sites(), dtype=np.float64)
-            probabilities = normalized_source_weights(self.sources)
-            all_specular_cost = all_specular_transport.surfaces.triangles.shape[0] * sites.shape[0]
-            if all_specular_cost <= self.specular_candidate_budget:
-                all_specular = all_specular_transport.solve_all_sources(
-                    sites,
-                    np.asarray(origin, dtype=np.float64),
-                    probabilities,
-                )
-                support_complete = bool(all_specular.diagnostics.candidate_support_complete)
+        def compute() -> SpecularCacheValue:
+            all_specular = None
+            refinement: list[dict[str, Any]] = []
+            finite_work: dict[str, Any] | None = None
+            suffix_transport_enabled = False
+            if all_specular_transport is not None and maximum_order >= 1:
+                sites = np.asarray(self.sources.sites(), dtype=np.float64)
+                probabilities = normalized_source_weights(self.sources)
+                all_specular_cost = all_specular_transport.surfaces.triangles.shape[0] * sites.shape[0]
+                if all_specular_cost <= self.specular_candidate_budget:
+                    all_specular = all_specular_transport.solve_all_sources(
+                        sites,
+                        np.asarray(origin, dtype=np.float64),
+                        probabilities,
+                    )
+                    support_complete = bool(all_specular.diagnostics.candidate_support_complete)
+                    finite_work = {
+                        "method": "exact_all_specular_order_1",
+                        "candidate_budget": self.specular_candidate_budget,
+                        "candidate_work_used": all_specular.diagnostics.candidates,
+                        "total_candidates_upper_bound": all_specular.diagnostics.candidates,
+                        "relative_tolerance": self.specular_refinement_relative_tolerance,
+                        "numerically_converged": support_complete,
+                        "support_complete": support_complete,
+                        "mixed_specular_suffix_enabled": bool(
+                            self.specular_suffix_mode == "sampled" or (specular_work and specular_work.enabled)
+                        ),
+                        "stop_reason": "full_reflection_and_source_support_enumerated",
+                        "enabled": True,
+                        "estimate_count": 1,
+                    }
+                    suffix_transport_enabled = bool(
+                        self.specular_suffix_mode == "exact"
+                        and specular_work is not None
+                        and specular_work.enabled
+                        and support_complete
+                    )
+                elif getattr(self.sources, "curve", None) is not None:
+                    all_specular, refinement, finite_work = self._adaptive_all_specular(
+                        all_specular_transport,
+                        np.asarray(origin, dtype=np.float64),
+                    )
+                else:
+                    finite_work = {
+                        "method": "adaptive_receiver_faces_and_probability_strata",
+                        "candidate_budget": self.specular_candidate_budget,
+                        "candidate_work_used": 0,
+                        "relative_tolerance": self.specular_refinement_relative_tolerance,
+                        "numerically_converged": False,
+                        "support_complete": False,
+                        "mixed_specular_suffix_enabled": False,
+                        "stop_reason": "source_curve_required_for_bounded_source_refinement",
+                        "enabled": False,
+                        "estimate_count": 0,
+                    }
+            if finite_work is not None and self.specular_suffix_mode == "sampled":
                 finite_work = {
-                    "method": "exact_all_specular_order_1",
-                    "candidate_budget": self.specular_candidate_budget,
-                    "candidate_work_used": all_specular.diagnostics.candidates,
-                    "total_candidates_upper_bound": all_specular.diagnostics.candidates,
-                    "relative_tolerance": self.specular_refinement_relative_tolerance,
-                    "numerically_converged": support_complete,
-                    "support_complete": support_complete,
+                    **finite_work,
                     "mixed_specular_suffix_enabled": bool(
-                        self.specular_suffix_mode == "sampled" or (specular_work and specular_work.enabled)
+                        all_specular_transport is not None
+                        and all_specular_transport.surfaces.triangles.shape[0] > 0
+                        and len(self.sources) > 0
                     ),
-                    "stop_reason": "full_reflection_and_source_support_enumerated",
-                    "enabled": True,
-                    "estimate_count": 1,
+                    "mixed_specular_suffix_method": "full_support_sampled_one_reflection",
                 }
-                if (
-                    self.specular_suffix_mode == "exact"
-                    and specular_work is not None
-                    and specular_work.enabled
-                    and support_complete
-                ):
-                    suffix_transport = all_specular_transport
-            elif getattr(self.sources, "curve", None) is not None:
-                all_specular, refinement, finite_work = self._adaptive_all_specular(
-                    all_specular_transport,
-                    np.asarray(origin, dtype=np.float64),
+            return SpecularCacheValue(
+                specular_work,
+                all_specular,
+                refinement,
+                finite_work,
+                suffix_transport_enabled,
+            )
+
+        persistent_hit = False
+        persistent_key = None
+        if self._persistent_cache is None:
+            persistent_value = compute()
+        else:
+            identity = self._persistent_cache.identity(
+                self,
+                kind="deterministic_one_reflection",
+                origin=origin,
+                maximum_order=maximum_order,
+                transport=all_specular_transport,
+            )
+            persistent_key = None if identity is None else cache_key(identity)
+            persistent_value, persistent_hit = self._persistent_cache.specular(identity, compute)
+        suffix_transport = all_specular_transport if persistent_value.suffix_transport_enabled else None
+        value = (
+            suffix_transport,
+            persistent_value.specular_work,
+            persistent_value.paths,
+            persistent_value.refinement,
+            persistent_value.finite_work,
+        )
+        self._cache_put(key, (*value, persistent_key))
+        seconds = 0.0 if persistent_hit else time.perf_counter() - started
+        return *value, seconds, persistent_hit, persistent_hit, persistent_key
+
+    def _deterministic_direct(
+        self,
+        origin: np.ndarray,
+        maximum_order: int,
+        field_grid: np.ndarray | None,
+    ) -> tuple[
+        np.ndarray,
+        np.ndarray,
+        tuple[np.ndarray, np.ndarray, np.ndarray, float, float] | None,
+        float,
+        bool,
+        bool,
+        str | None,
+    ]:
+        """Resolve exact direct work through memory and optional disk caches."""
+        key = self._deterministic_key("direct", origin, maximum_order, field_grid is not None)
+        cached = self._cache_get(key)
+        if cached is not None:
+            direct, seen, field_data, persistent_key = cached
+            return direct, seen, field_data, 0.0, True, False, persistent_key
+
+        direct_seconds = 0.0
+
+        def compute() -> DirectCacheValue:
+            nonlocal direct_seconds
+            started = time.perf_counter()
+            if field_grid is None:
+                direct, seen = direct_from_sites(
+                    self.geometry,
+                    np.atleast_2d(origin),
+                    self.sources.sites(),
+                    weights=getattr(self.sources, "source_weights", None),
                 )
+                field_data = None
             else:
-                finite_work = {
-                    "method": "adaptive_receiver_faces_and_probability_strata",
-                    "candidate_budget": self.specular_candidate_budget,
-                    "candidate_work_used": 0,
-                    "relative_tolerance": self.specular_refinement_relative_tolerance,
-                    "numerically_converged": False,
-                    "support_complete": False,
-                    "mixed_specular_suffix_enabled": False,
-                    "stop_reason": "source_curve_required_for_bounded_source_refinement",
-                    "enabled": False,
-                    "estimate_count": 0,
-                }
-        if finite_work is not None and self.specular_suffix_mode == "sampled":
-            finite_work = {
-                **finite_work,
-                "mixed_specular_suffix_enabled": bool(
-                    all_specular_transport is not None
-                    and all_specular_transport.surfaces.triangles.shape[0] > 0
-                    and len(self.sources) > 0
-                ),
-                "mixed_specular_suffix_method": "full_support_sampled_one_reflection",
-            }
-        value = (suffix_transport, specular_work, all_specular, refinement, finite_work)
-        self._cache_put(key, value)
-        return *value, time.perf_counter() - started, False
+                direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value = _direct_field_data(
+                    self.geometry,
+                    np.asarray(origin, dtype=np.float64),
+                    self.sources,
+                    field_grid,
+                )
+                direct = np.array([direct_value], dtype=np.float64)
+                seen = np.array([seen_value], dtype=np.float64)
+                field_data = (direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value)
+            direct_seconds = time.perf_counter() - started
+            return DirectCacheValue(direct, seen, field_data)
+
+        persistent_hit = False
+        persistent_key = None
+        if self._persistent_cache is None:
+            value = compute()
+        else:
+            identity = self._persistent_cache.identity(
+                self,
+                kind="exact_direct",
+                origin=origin,
+                maximum_order=maximum_order,
+                field_grid=field_grid,
+            )
+            persistent_key = None if identity is None else cache_key(identity)
+            value, persistent_hit = self._persistent_cache.direct(
+                identity,
+                compute,
+                field_cells=None if field_grid is None else field_grid.shape[0],
+            )
+        cached_value = (value.direct, value.seen, value.field_data, persistent_key)
+        self._cache_put(key, cached_value)
+        return (
+            value.direct,
+            value.seen,
+            value.field_data,
+            direct_seconds,
+            persistent_hit,
+            persistent_hit,
+            persistent_key,
+        )
 
     def _estimate_device(
         self,
@@ -1749,37 +1887,13 @@ class NextEventEstimator:
             finite_resolution_work,
             deterministic_specular_seconds,
             deterministic_specular_cache_hit,
+            deterministic_specular_persistent_cache_hit,
+            deterministic_specular_persistent_cache_key,
         ) = self._deterministic_specular(origin, maximum_order)
 
-        direct_key = self._deterministic_key("direct", origin, maximum_order, field_grid is not None)
-        cached_direct = self._cache_get(direct_key)
-        if cached_direct is None:
-            direct_started = time.perf_counter()
-            if field_grid is None:
-                direct, seen = direct_from_sites(
-                    self.geometry,
-                    np.atleast_2d(origin),
-                    self.sources.sites(),
-                    weights=getattr(self.sources, "source_weights", None),
-                )
-                field_data = None
-            else:
-                direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value = _direct_field_data(
-                    self.geometry,
-                    np.asarray(origin, dtype=np.float64),
-                    self.sources,
-                    field_grid,
-                )
-                direct = np.array([direct_value], dtype=np.float64)
-                seen = np.array([seen_value], dtype=np.float64)
-                field_data = (direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value)
-            direct_seconds = time.perf_counter() - direct_started
-            self._cache_put(direct_key, (direct, seen, field_data))
-            direct_cache_hit = False
-        else:
-            direct, seen, field_data = cached_direct
-            direct_seconds = 0.0
-            direct_cache_hit = True
+        direct, seen, field_data, direct_seconds, direct_cache_hit, direct_persistent_cache_hit, direct_cache_key = (
+            self._deterministic_direct(origin, maximum_order, field_grid)
+        )
 
         gather = DeviceNextEventGather(
             sources=self.sources,
@@ -1894,6 +2008,14 @@ class NextEventEstimator:
                 "estimator_overhead_seconds",
             ],
         }
+        if self._persistent_cache is not None:
+            detail["deterministic_specular_persistent_cache_hit"] = deterministic_specular_persistent_cache_hit
+            detail["direct_persistent_cache_hit"] = direct_persistent_cache_hit
+            detail["persistent_transport_cache"] = {
+                "schema": CACHE_SCHEMA,
+                "deterministic_specular_key_sha256": deterministic_specular_persistent_cache_key,
+                "direct_key_sha256": direct_cache_key,
+            }
         surplus = Surplus(
             estimator=self.name,
             law=self.sources.law,
@@ -1946,6 +2068,8 @@ class NextEventEstimator:
             finite_resolution_work,
             deterministic_specular_seconds,
             deterministic_specular_cache_hit,
+            deterministic_specular_persistent_cache_hit,
+            deterministic_specular_persistent_cache_key,
         ) = self._deterministic_specular(origin, maximum_order)
 
         sampled_suffix = None
@@ -1956,35 +2080,9 @@ class NextEventEstimator:
             if sampled_transport is not None:
                 sampled_suffix = SampledOneBounceSpecularEstimator(sampled_transport, self.sources)
 
-        direct_key = self._deterministic_key("direct", origin, maximum_order, field_grid is not None)
-        cached_direct = self._cache_get(direct_key)
-        if cached_direct is None:
-            direct_started = time.perf_counter()
-            if field_grid is None:
-                direct, seen = direct_from_sites(
-                    self.geometry,
-                    np.atleast_2d(origin),
-                    self.sources.sites(),
-                    weights=getattr(self.sources, "source_weights", None),
-                )
-                field_data = None
-            else:
-                direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value = _direct_field_data(
-                    self.geometry,
-                    np.asarray(origin, dtype=np.float64),
-                    self.sources,
-                    field_grid,
-                )
-                direct = np.array([direct_value], dtype=np.float64)
-                seen = np.array([seen_value], dtype=np.float64)
-                field_data = (direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value)
-            direct_seconds = time.perf_counter() - direct_started
-            self._cache_put(direct_key, (direct, seen, field_data))
-            direct_cache_hit = False
-        else:
-            direct, seen, field_data = cached_direct
-            direct_seconds = 0.0
-            direct_cache_hit = True
+        direct, seen, field_data, direct_seconds, direct_cache_hit, direct_persistent_cache_hit, direct_cache_key = (
+            self._deterministic_direct(origin, maximum_order, field_grid)
+        )
         gather = NextEventGather(
             geometry=self.geometry,
             sources=self.sources,
@@ -2032,7 +2130,9 @@ class NextEventEstimator:
             "deterministic_specular_cache_hit": deterministic_specular_cache_hit,
             "direct_cache_hit": direct_cache_hit,
             "specular_suffix_seconds_in_stochastic_trace": gather.specular_seconds,
-            "specular_diagnostic_seconds_reused": deterministic_specular_cache_hit,
+            "specular_diagnostic_seconds_reused": bool(
+                deterministic_specular_cache_hit and not deterministic_specular_persistent_cache_hit
+            ),
             "timing_note": (
                 "top-level timing components are disjoint; suffix timing is contained in stochastic trace, "
                 "and cached candidate/path diagnostics describe their original computation"
@@ -2048,6 +2148,14 @@ class NextEventEstimator:
             "specular_complete_through_bounce_cap": False,
             "specular_result_complete": False,
         }
+        if self._persistent_cache is not None:
+            detail["deterministic_specular_persistent_cache_hit"] = deterministic_specular_persistent_cache_hit
+            detail["direct_persistent_cache_hit"] = direct_persistent_cache_hit
+            detail["persistent_transport_cache"] = {
+                "schema": CACHE_SCHEMA,
+                "deterministic_specular_key_sha256": deterministic_specular_persistent_cache_key,
+                "direct_key_sha256": direct_cache_key,
+            }
         if specular_work is not None:
             sampled_suffix_active = bool(sampled_suffix is not None and sampled_suffix.ready and maximum_order >= 2)
             all_specular_complete = bool(

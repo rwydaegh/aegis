@@ -438,8 +438,13 @@ def prepare_roofline_campaign(
     environment: StudyEnvironment,
     *,
     backend: PreparationBackend | None = None,
+    persistent_cache_dir: Path | None = None,
 ) -> PreparedRooflineCampaign:
-    """Build the full route, exact curve, transport, body, and sealed identity."""
+    """Build the full route, exact curve, transport, body, and sealed identity.
+
+    ``persistent_cache_dir`` is an optional runtime acceleration location. It is
+    deliberately absent from campaign and transport provenance.
+    """
     selected = default_preparation_backend() if backend is None else backend
     scene = selected.prepare_scene(setup.run, environment)
     material = selected.bind_materials(setup.run, scene, environment)
@@ -522,6 +527,7 @@ def prepare_roofline_campaign(
         sampled_specular_seed_offset=setup.source.sampled_specular_seed_offset,
         deterministic_cache_size=max(8, 2 * len(walk) + 4),
         diagnostic_models={},
+        **({} if persistent_cache_dir is None else {"persistent_cache_dir": persistent_cache_dir}),
     )
     coupler = selected.coupler_type(
         environment.phantom,
