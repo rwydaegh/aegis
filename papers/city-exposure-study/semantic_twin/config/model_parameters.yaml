@@ -57,9 +57,11 @@ parameters:
         logical_specular_candidate_budget: 120000000
         specular_candidate_chunk: 262144
         specular_refinement_relative_tolerance: 0.02
+        specular_broad_phase: {method: mirrored_receiver_triangle_cone_bvh_v1, computational_threshold: 20000, source_chunk: 16, logical_candidate_accounting_unchanged: true}
         source_edge_length: {baseline: physical_3d_edge_length, sensitivity: horizontal_projected_edge_length}
         roughness: {production: finish_only, quadrature: historical_sensitivity, masonry_two_level: research_only, rcwa: research_only}
         body_coupling_level: 2
+        body_coupling_backend: {cuda: drjit_float64_dot_relu_power_block_reduce_fixed512_v1, cpu: numpy_float64_matmul_relu_direction_chunks_v1, cuda_direction_block: 512}
       units: "m, Hz, rays, output cells, interactions, candidates, tolerance, and policy names"
       source: "docs/CURRENT_PRODUCTION_CONTRACT.md:9-35; config/roofline_campaign_korenmarkt_comparable_pilot_cuda.json:21-71"
       scope: comparable_city v2 production transport and body contract
@@ -80,6 +82,7 @@ parameters:
         route_stride_m: 6.0
         times_square_policy: excluded
         excluded_site: newyork_timessquare
+        provider_corridor_v1: {status: opt_in, max_continuous_gap_m: 20.0, selection: maximum_endpoint_span_then_shortest_path_then_station_id, legacy_route_bytes_unchanged: true}
       units: "counts, m, and contract policy names"
       source: "config/city_cohort_manifest.json:2-16; config/roofline_campaign_korenmarkt_comparable_pilot_cuda.json:21-24; docs/CURRENT_PRODUCTION_CONTRACT.md:37-46"
       scope: comparable_city v2 membership, route, and material contract
@@ -744,14 +747,15 @@ parameters:
     comparable_runtime_anchors:
       value:
         timing_kind: measured_stage_anchors
-        korenmarkt: {legacy_link_cold_one_seed_s: 155.73, legacy_link_warm_two_seed_total_s: 147.79, legacy_link_points: 13, comparable_street_one_seed_s: 133.75, comparable_street_points: 14, adaptive_specular_logical_candidates: 120750721, adaptive_specular_executed_candidates: 52367468, adaptive_specular_avoided_fraction: 0.566318}
+        korenmarkt: {legacy_link_cold_one_seed_s: 155.73, legacy_link_warm_two_seed_total_s: 147.79, legacy_link_points: 13, comparable_street_one_seed_s: 133.75, comparable_street_points: 14, seed_fixed_stochastic_14_points_s: [3.14, 3.24], pre_fix_stochastic_per_seed_s_approx: 62.0, persistent_cache_cold_wall_s: 74.09, persistent_cache_warm_wall_s: 38.90, persistent_cache_cold_estimator_s: 39.22, persistent_cache_warm_estimator_s: 4.35, provider_corridor_16_replica_wall_s: 83.37, provider_corridor_replicas: 16, provider_corridor_points: 10, provider_corridor_estimator_s: 61.58382642297511, provider_corridor_stochastic_s: 42.118780829998286, provider_corridor_specular_s: 13.317147764002584, provider_corridor_body_s: 2.040532347982662, provider_corridor_last_look_area_mean_max_abs_db: 0.007949287851536407, provider_corridor_last_look_total_transfer_max_abs_db: 0.0066343204539103355, provider_corridor_identity_sha256: 14d6c8467e641cd6ef92c12471f885fa6bc1786a34bfe8d5575cfcadfcc595c6, scientific_arrays_byte_identical: true, adaptive_specular_logical_candidates: 120750721, adaptive_specular_executed_candidates: 52367468, adaptive_specular_avoided_fraction: 0.566318}
         prague: {dry_run_s: 47.96, dry_run_points: 68, full_cold_seed_s: 2063.05, points: 68, deterministic_all_specular_s: 1584.75, stochastic_transport_s: 308.66, body_coupling_s: 119.95}
+        body_coupling_cuda: {algorithm: drjit_float64_dot_relu_power_block_reduce_fixed512_v1, max_relative_error: 6.64e-16, duke_speedup_x: 46.0, real_point_speedup_x: 81.0, deterministic: true}
       units: "seconds, points, and timing provenance"
-      source: docs/CURRENT_PRODUCTION_CONTRACT.md:55-62
+      source: docs/CURRENT_PRODUCTION_CONTRACT.md:62-84; docs/PRODUCTION_PERFORMANCE_REDESIGN.md
       scope: comparable_city v2 implementation timing observations
       status: diagnostic
       affects_published_results: false
-      conflicts: "measured hardware and stage anchors, not free runtime parameters or universal city timing promises; legacy link-route and comparable street-route timings are different estimands"
+      conflicts: "measured hardware and stage anchors, not free runtime parameters or universal city timing promises; the roughly 62 s value is a historical kernel-compilation symptom; legacy link-route and comparable street-route timings are different estimands"
     sealed_exposure_generation:
       value: {format_version: 1, generation_id_hex_chars: 32, sealed_artifacts: [locations, spectra], manifest_commit_record: true, same_generation_required: true, required_by: [reuse, angular_convergence, blender_export]}
       units: "format version, digest characters, and policy"

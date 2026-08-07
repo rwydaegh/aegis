@@ -15,12 +15,16 @@ normal track does not need Blender.
 > active ray, source, material, and transport settings. The timing table below
 > preserves earlier Prague measurements, including the 1.6-million-ray
 > historical trace. Current production uses 200,000 IID primary rays and
-> 4,096 passive angular cells. Fresh anchors are Korenmarkt cold one-seed
-> 2:35.73, Korenmarkt warm two-seed 2:27.79 total for 13 points, and Prague
-> dry-run 47.96 seconds for 68 points. The fresh Prague cold seed took
-> 34:23.05; deterministic all-specular refinement accounted for 1,584.75
-> seconds, stochastic transport for 308.66 seconds, and body coupling for
-> 119.95 seconds.
+> 4,096 passive angular cells. The seed-independent device-kernel fix now
+> measures 3.14 to 3.24 s for the Korenmarkt 14-point stochastic stage, versus
+> roughly 62 s per seed before the fix. CUDA level-2 body coupling is exact to
+> \(6.64\mathbin{\times}10^{-16}\) relative error in the verified benchmark and
+> measured 46x faster on Duke and 81x faster on the real-point benchmark. These
+> are stage measurements, not whole-city promises. Earlier anchors remain
+> below as historical records.
+> The integrated optimized Korenmarkt provider-corridor campaign completed 16
+> replicas over 10 standpoints in 83.37 s wall time on one A6000. This is the
+> current end-to-end anchor.
 > The first comparable-city v2 Korenmarkt street-route seed took 2:13.75 for
 > 14 points. Nested-face reuse avoided 68,383,253 of 120,750,721 logical
 > adaptive-specular candidate evaluations, a 56.63% reduction.
@@ -53,6 +57,12 @@ changes are recorded in `8db6bef0` and `37b4498d`. Scientific paired campaigns
 use the sealed config commit `b985ab58`. Current campaigns seal their own code
 and configuration identity.
 
+The exact performance changes are documented in
+[the ranked redesign](PRODUCTION_PERFORMANCE_REDESIGN.md). In particular,
+`ab570573` removes seed literals from stochastic device kernels and
+`ff9c87da` adds the explicit CUDA body-coupling backend and the opt-in provider
+corridor route.
+
 ## Measured and estimated timing
 
 The values below are from the Prague run with ready city inputs. They are not a
@@ -60,10 +70,13 @@ promise for a new city.
 
 | Work | Value | Status |
 | --- | ---: | --- |
+| Optimized Korenmarkt provider corridor | 83.37 s for 16 complete replicas over 10 standpoints, 5.21 s per walk replica | current integrated measurement |
+| Integrated accumulated estimator work | 61.584 s total over 160 standpoint-replica observations | current measured stage ledger |
+| Integrated stochastic, specular, body work | 42.119 s, 13.317 s, 2.041 s | current measured stage ledger |
 | 68-point standard run | 185.0 s total | measured |
 | Standard run output | 2.17 MB total for the historical Prague rooftop-only standard archive: 2.01 MB spectra, 126 KB rows, 31 KB manifest | measured |
 | New standard/full spectrum storage | Roughly 2 MB per selected source model, based on the historical rooftop-only measurement. Three selected models are estimated at about 6 MB. The new all-model size is not yet measured | estimated |
-| Warm A6000 trace | 1.346 s per point at 1.6 million rays, 4096 cells, 3 bounces | measured |
+| Warm A6000 trace | 1.346 s per point at 1.6 million rays, 4096 cells, 3 bounces | historical measured anchor |
 | Warm A6000 trace rate | about 1.19 Mray/s | measured |
 | One 68-point replica, trace only | 100.37 s | measured |
 | 24 replicas, trace only | 2404.7 s, or 40.15 min | measured |
@@ -71,7 +84,7 @@ promise for a new city.
 | 32-replica final checkpoint | about 0.92 GB | extrapolated |
 | Old final checkpoint load | 6.35 s | measured |
 | Old compressed checkpoint write | 34.42 s | measured |
-| Old growing checkpoint rewrite at 24 replicas | about 7.2 min extra | extrapolated, pending an integrated GPU rerun |
+| Old growing checkpoint rewrite at 24 replicas | about 7.2 min extra | historical extrapolation, pending an integrated GPU rerun |
 
 The 185 second standard run and the 100.37 second trace-only replica have not
 yet been split into identical stage categories. New manifests record
@@ -86,7 +99,9 @@ That gate result is not an integrated production timing.
 Old paired campaign artifacts have a timing attribution defect. Cache hits repeat
 cold deterministic all-specular seconds in their timing rows. Scientific outputs
 are unaffected. The final code fixes the attribution, but paired campaign timing
-must not be presented as corrected measurements.
+must not be presented as corrected measurements. The 83.37 s provider-corridor
+campaign is a fresh integrated run after the timing and performance fixes and
+does not inherit that defect.
 
 ## Output profiles
 
@@ -175,10 +190,18 @@ campaign is rerun with the new store.
 
 ## Main bottlenecks and safe optimisations
 
-1. **Ray tracing.** This is the largest measured cost. Batch-size testing is
-   planned at 100k, 200k, 400k, and 800k rays with identical output checks.
-2. **Body coupling.** Measure this before adding larger batches. It may become
-   the next limit after tracing is faster.
+1. **Ray tracing.** This remains the largest measured whole-run cost in the
+   historical Prague breakdown. The current stochastic device kernels no longer
+   recompile per seed. Batch-size and ray-budget testing still needs identical
+   output checks.
+2. **Deterministic specular work.** Commit `7a65fd4e` now applies a
+   conservative mirrored-receiver triangle-cone broad phase before the unchanged
+   exact Float64 solve. It reduced a Korenmarkt final-level candidate set from
+   3,204,960 to 1,610 survivors, with an 8.90x reduction. The full 14-point
+   deterministic stage fell from 32.312 to 17.585 s, and a Prague point-zero
+   stage fell from 13.764 to 3.756 s. City outputs and the seven compared arrays
+   were exact. The 20,000 computational threshold and source chunk of 16 are
+   performance controls, not scientific parameters.
 3. **Checkpoint compression.** Per-replica shards avoid repeated full-file
    rewrites while preserving exact restart data.
 4. **City preparation.** Prague fishnet cutting for 13 admitted panoramas took
@@ -208,6 +231,12 @@ and the process-level saving was 2.02%. All 96 compared output hashes were
 identical. It is a useful low-risk optimisation, but it will not remove the
 main ray-tracing cost.
 
+The persistent transport cache is a separate exact optimisation. In the
+comparable Korenmarkt benchmark it reduced wall time from 74.09 to 38.90 s and
+estimator time from 39.22 to 4.35 s. The scientific arrays were byte-identical.
+These values must not be combined with the historical Prague timing or the
+seed-compilation timing without a common stage ledger.
+
 ## Many-city operating recipe
 
 1. Build and seal one city input package. Record all hashes and stage times.
@@ -222,9 +251,11 @@ main ray-tracing cost.
    canonical audit products needed to regenerate the selected figures.
 
 Multi-city readiness is tracked in [MULTICITY_CAMPAIGN_READINESS.md](MULTICITY_CAMPAIGN_READINESS.md).
-Only Korenmarkt and Prague are runnable now. Four sites require semantic
-rebuilds. Four sites require route or geometry repairs. Times Square is invalid
-for the current geometry contract.
+The ten-site cohort remains an intended cohort, not a completed run set. The
+provider-corridor report covers five sites, while the checked-in comparable
+route remains `registered_span_street_v1`. Tokyo's current atlas snapshot has
+10 admitted panoramas, 34,700 observed faces, 602,721 sparse texels, and
+351,154 supported texels. Do not describe the cohort as ten-city ready.
 
 ## Benchmark protocol
 
@@ -241,13 +272,16 @@ walk-only run.
 Cold end-to-end time for a new city is unknown because acquisition,
 registration, SAM3, Vistas, depth, and fusion have not been split into stage
 measurements. The next integrated GPU run should capture those stages and the
-new checkpoint ledger.
+checkpoint ledger. The seed-independent device kernels and CUDA body coupling
+are now landed exact changes. The specular broad phase, ray and cell budgets,
+mixed-suffix estimator, and semantic-stage reductions remain validation work.
 
 The current production path fixes the one-reflection specular limit,
-finish-only roughness, and area-weighted body mean. The sampled suffix impact
-remains unresolved because separate suffix transfer was not persisted. Prague
-paired outputs passed their final independent audit. Recovery timing remains
-excluded from scientific timing claims.
+finish-only roughness, and area-weighted body mean. Prague paired outputs passed
+their final independent audit. Recovery timing remains excluded from scientific
+timing claims. See
+[the ranked redesign](PRODUCTION_PERFORMANCE_REDESIGN.md) before treating a
+proposed performance change as a production setting.
 
 Do not describe the current performance package as proof that final physics
 are publication-ready. It is a reproducible and measured execution path that

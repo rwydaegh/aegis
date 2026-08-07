@@ -1,6 +1,33 @@
 # Roofline campaign results
 
-## Status
+## Current optimized campaign
+
+The fresh Korenmarkt `provider_corridor_v1` campaign is the current integrated
+performance and convergence anchor. It used 10 registered route standpoints,
+16 IID replicas with seeds 7 through 22, 200,000 primary rays, 4,096 passive
+output cells, 457 roofline quadrature sources over 157.545 m of support, the
+atlas material binding, and CUDA level-2 body coupling.
+
+It completed in 83.37 s wall time on one A6000, or 5.21 s per complete walk
+replica. The accumulated stage ledger over 160 standpoint-replica observations
+records 61.584 s estimator wall time, 42.119 s stochastic transport, 13.317 s
+specular work, 2.041 s body coupling, and 0.058 s direct shadow work. These
+stage fields overlap through estimator accounting and must not be added to the
+external wall time.
+
+The maximum 12-to-16-replica changes were 0.00795 dB for area-mean absorbed
+power, 0.00139 dB for ensemble field peak, and 0.00663 dB for total transfer.
+All 42 manifest hashes matched, all 16 replica shards were committed, and all
+93 checked numeric arrays were finite. The campaign and checkpoint identities
+both equal
+`14d6c8467e641cd6ef92c12471f885fa6bc1786a34bfe8d5575cfcadfcc595c6`.
+
+The sealed local result is
+`outputs/roofline_campaign/korenmarkt_provider_corridor_v1_convergence_cuda_iid`.
+The output profile is `minimal_results_plus_resumable_seed_shards`, so it does
+not generate Blender artifacts.
+
+## Historical paired campaign status
 
 The final code is `f5f394da`. It includes the immutable full-geometry device
 face proposal reuse from `9111c591`. Report code was added in `8db6bef0` and
