@@ -25,8 +25,8 @@ not an implicit straight-line fallback.
 From the semantic-twin directory, run:
 
 ```bash
-python -m semantic_twin.cohort
-python -m semantic_twin.cohort --json
+python -m semantic_twin.cli.cohort
+python -m semantic_twin.cli.cohort --json
 ```
 
 The command is read-only. It validates the manifest, then reports one row per
@@ -39,7 +39,7 @@ gates.
 For a staged checkout, pass the study root explicitly:
 
 ```bash
-python -m semantic_twin.cohort --root /path/to/semantic_twin --json
+python -m semantic_twin.cli.cohort --root /path/to/semantic_twin --json
 ```
 
 No command in this utility contacts Google, writes a cache, or manufactures
