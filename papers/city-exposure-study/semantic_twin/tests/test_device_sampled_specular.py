@@ -14,6 +14,7 @@ from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
 from semantic_twin.propagation.geometry import MitsubaGeometry
 from semantic_twin.transport.device_kernel import DeviceSbrKernel
 from semantic_twin.transport.device_next_event import (
+    BoundDeviceSpecularFaceProposal,
     DeviceNextEventGather,
     device_specular_face_sample,
 )
@@ -23,6 +24,7 @@ from semantic_twin.transport.specular import (
     OneBounceSpecularTransport,
     ReceiverVisibleFaceCandidates,
     StratifiedSourceQuadrature,
+    SpecularSurfaces,
 )
 from semantic_twin.transport.specular_sampling import SampledOneBounceSpecularEstimator
 from semantic_twin.transport.tracer import SbrTracer, TraceConfig
@@ -515,6 +517,112 @@ def test_production_estimator_composes_device_sampled_suffix_and_exact_atoms(tmp
     assert field.specular == pytest.approx(field.all_specular_mass + field.mixed_specular_mass, rel=2e-15)
     assert field.bounced == pytest.approx(result.detail["bounced"], rel=2e-15)
     assert field.directional_measure(result.total).total == pytest.approx(1.0, rel=2e-15)
+
+
+def test_production_estimator_binds_face_proposal_once_and_reuses_exact_results(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_variant("llvm_ad_rgb")
+    geometry = MitsubaGeometry(_write_cube(tmp_path / "cube.ply"), variant="llvm_ad_rgb")
+    config = TraceConfig(
+        rays=4_097,
+        batch=2_003,
+        local_cells=64,
+        max_bounces=3,
+        roulette_start=4,
+        seed=37,
+    )
+    tracer = DeviceEscapeTracer(
+        geometry,
+        np.zeros(geometry.face_count, dtype=np.int64),
+        np.array([4.2 - 0.15j]),
+        np.array([1.0e-3]),
+        config,
+    )
+    original = BoundDeviceSpecularFaceProposal.bind.__func__
+    calls: list[int] = []
+
+    def counted_bind(cls, proposal, kernel):  # noqa: ANN001, ANN202
+        calls.append(id(proposal))
+        return original(cls, proposal, kernel)
+
+    monkeypatch.setattr(BoundDeviceSpecularFaceProposal, "bind", classmethod(counted_bind))
+    estimator = NextEventEstimator(
+        tracer,
+        geometry,
+        SourceSet(
+            positions=np.array([[1.0, 0.0, 0.0]]),
+            cell_m=1.0,
+            dims=3,
+            azimuths=0,
+            builders=0,
+        ),
+        max_order=3,
+        specular_order=1,
+        specular_suffix_mode="sampled",
+    )
+
+    first_result, first_field = estimator.estimate_field(np.zeros(3), seed=37)
+    second_result, second_field = estimator.estimate_field(np.zeros(3), seed=37)
+
+    assert len(calls) == 1
+    assert estimator._device_specular_face_proposal is not None
+    assert first_result.total == second_result.total
+    np.testing.assert_array_equal(first_field.bounced_mass, second_field.bounced_mass)
+    np.testing.assert_array_equal(first_field.specular_atom_mass, second_field.specular_atom_mass)
+    np.testing.assert_array_equal(first_field.specular_k_hat, second_field.specular_k_hat)
+
+
+def test_sampled_device_suffix_does_not_inherit_incomplete_specular_transport_support(tmp_path: Path) -> None:
+    _set_variant("llvm_ad_rgb")
+    geometry = MitsubaGeometry(_write_cube(tmp_path / "cube.ply"), variant="llvm_ad_rgb")
+    config = TraceConfig(
+        rays=2_003,
+        batch=2_003,
+        local_cells=64,
+        max_bounces=2,
+        roulette_start=3,
+        seed=43,
+    )
+    tracer = DeviceEscapeTracer(
+        geometry,
+        np.zeros(geometry.face_count, dtype=np.int64),
+        np.array([4.2 - 0.15j]),
+        np.array([1.0e-3]),
+        config,
+    )
+    complete = OneBounceSpecularTransport(tracer).surfaces
+    incomplete = SpecularSurfaces(
+        complete.triangles[:1],
+        complete.normals[:1],
+        complete.face_index[:1],
+        complete.material_class[:1],
+        support_complete=False,
+        scene_face_count=complete.scene_face_count,
+    )
+    estimator = NextEventEstimator(
+        tracer,
+        geometry,
+        SourceSet(
+            positions=np.array([[0.0, 0.0, 0.0]]),
+            cell_m=1.0,
+            dims=3,
+            azimuths=0,
+            builders=0,
+        ),
+        max_order=2,
+        specular_order=1,
+        specular_transport=OneBounceSpecularTransport(tracer, incomplete),
+        specular_suffix_mode="sampled",
+    )
+
+    result, _field = estimator.estimate_field(np.zeros(3), seed=43)
+    identity = result.detail["sampled_specular_suffix"]["sampling_identity"]
+
+    assert identity["face_count"] == geometry.face_count
+    assert identity["surface_scene_face_count"] == geometry.face_count
+    assert identity["surface_support_complete"] is True
 
 
 def test_production_estimator_composes_device_sampled_suffix_with_adaptive_all_specular(

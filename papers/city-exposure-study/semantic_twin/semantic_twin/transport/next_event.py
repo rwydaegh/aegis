@@ -13,7 +13,11 @@ import numpy as np
 from ..illumination.model import AngularIllumination, PlacedIllumination
 from ..illumination.sources import direct_from_sites, normalized_source_weights, visible
 from ..illumination.sphere import nearest_cell
-from .device_next_event import DeviceNextEventGather
+from .device_next_event import (
+    BoundDeviceSpecularFaceProposal,
+    DeviceNextEventGather,
+    DeviceSpecularFaceProposal,
+)
 from .device_tracer import DeviceEscapeTracer
 from .directional import DirectionalMeasure, _directions
 from .model import Surplus, require_credit
@@ -940,6 +944,12 @@ class NextEventEstimator:
         repr=False,
         compare=False,
     )
+    _device_specular_face_proposal: BoundDeviceSpecularFaceProposal | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     name: ClassVar[str] = "next_event"
     gather_seed_offset: ClassVar[int] = 1000
@@ -977,6 +987,13 @@ class NextEventEstimator:
             raise NotImplementedError(
                 "resident device next-event estimation supports omitted specular transport or the "
                 "full-support sampled order-one suffix; select specular_suffix_mode='sampled' or use SbrTracer"
+            )
+        if isinstance(self.tracer, DeviceEscapeTracer) and device_sampled:
+            proposal = DeviceSpecularFaceProposal.from_geometry(self.tracer.geometry)
+            object.__setattr__(
+                self,
+                "_device_specular_face_proposal",
+                BoundDeviceSpecularFaceProposal.bind(proposal, self.tracer.kernel),
             )
 
     def _deterministic_key(
@@ -1617,6 +1634,7 @@ class NextEventEstimator:
             sampled_specular_samples=self.sampled_specular_samples,
             sampled_specular_seed_offset=self.sampled_specular_seed_offset,
             collect_field=field_grid is not None,
+            specular_face_proposal=self._device_specular_face_proposal,
         )
         trace_started = time.perf_counter()
         point = self.tracer.trace(

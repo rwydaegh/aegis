@@ -116,6 +116,7 @@ class FakeEstimator:
             "direct_seconds": 0.01,
             "stochastic_trace_seconds": 0.04,
             "specular_suffix_seconds": 0.03,
+            "deterministic_specular_seconds": 0.07,
         }
         return Surplus("next_event", "facade_tip", field.direct, field.total, detail), field
 
@@ -478,7 +479,7 @@ def test_campaign_resumes_a_committed_prefix_and_reduces_peak_after_field_mean(t
     timing = first["timing_seconds_per_replica_mean"]
     assert timing["direct_shadow_seconds"] == pytest.approx(0.01)
     assert timing["stochastic_trace_seconds"] == pytest.approx(0.04)
-    assert timing["specular_seconds"] == pytest.approx(0.05)
+    assert timing["specular_seconds"] == pytest.approx(0.07)
     assert timing["body_coupling_seconds"] is not None
     assert campaign.coupler.yaws == [10.0] * 3 + [20.0] * 3
 

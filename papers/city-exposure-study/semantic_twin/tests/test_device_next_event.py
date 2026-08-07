@@ -11,7 +11,9 @@ from semantic_twin.materials.atlas_binding import AtlasMaterialBinding
 from semantic_twin.propagation.geometry import DeviceIntersection, MitsubaGeometry
 from semantic_twin.transport.device_kernel import DeviceSbrKernel
 from semantic_twin.transport.device_next_event import (
+    BoundDeviceSpecularFaceProposal,
     DeviceNextEventGather,
+    DeviceSpecularFaceProposal,
     device_source_sample,
 )
 from semantic_twin.transport.device_tracer import DeviceEscapeTracer
@@ -234,6 +236,44 @@ def test_resident_gather_is_invariant_to_transfer_batch_size(tmp_path: Path) -> 
     assert np.array_equal(whole.chi_by_order(), split.chi_by_order())
     assert whole.connections == split.connections
     assert whole.cleared == split.cleared
+
+
+def test_distinct_gathers_share_one_immutable_specular_face_binding(tmp_path: Path) -> None:
+    _set_variant("llvm_ad_rgb")
+    geometry = MitsubaGeometry(_write_cube(tmp_path / "cube.ply"), variant="llvm_ad_rgb")
+    config = TraceConfig(rays=2_003, local_cells=64, max_bounces=2, roulette_start=3, seed=83)
+    tracer = DeviceEscapeTracer(
+        geometry,
+        np.zeros(geometry.face_count, dtype=np.int64),
+        np.array([4.2 - 0.15j]),
+        np.array([1.0e-3]),
+        config,
+    )
+    proposal = DeviceSpecularFaceProposal.from_geometry(geometry)
+    binding = BoundDeviceSpecularFaceProposal.bind(proposal, tracer.kernel)
+    sources = _sources(np.array([[0.0, 0.0, 0.0]]))
+
+    def run() -> DeviceNextEventGather:
+        gather = DeviceNextEventGather(
+            sources,
+            max_order=2,
+            specular_suffix_order=1,
+            specular_face_proposal=binding,
+        )
+        tracer.trace(np.zeros(3), {}, next_event=gather)
+        return gather
+
+    first = run()
+    second = run()
+
+    assert first._face_triangles is proposal.triangles
+    assert second._face_triangles is proposal.triangles
+    assert first._specular_device_arrays is binding.device_arrays
+    assert second._specular_device_arrays is binding.device_arrays
+    assert not proposal.triangles.flags.writeable
+    np.testing.assert_array_equal(first.bounced_mass(), second.bounced_mass())
+    np.testing.assert_array_equal(first.specular_bounced_mass(), second.specular_bounced_mass())
+    assert first.sampled_specular_diagnostics() == second.sampled_specular_diagnostics()
 
 
 def test_resident_plane_gather_has_statistical_cpu_parity(tmp_path: Path) -> None:

@@ -148,6 +148,154 @@ def _array_sha256(value: np.ndarray) -> str:
     return digest.hexdigest()
 
 
+def _readonly_array(value: np.ndarray, dtype: Any) -> np.ndarray:
+    """Return one contiguous immutable array for a shared device proposal."""
+    array = np.array(value, dtype=dtype, order="C", copy=True)
+    array.setflags(write=False)
+    return array
+
+
+@dataclass(frozen=True)
+class DeviceSpecularFaceProposal:
+    """Immutable full-support face proposal shared by resident gathers."""
+
+    triangles: np.ndarray
+    normals: np.ndarray
+    face_index: np.ndarray
+    probability: np.ndarray
+    alias_threshold: np.ndarray
+    alias_index: np.ndarray
+    support_complete: bool
+    scene_face_count: int
+    construction: str
+
+    def __post_init__(self) -> None:
+        triangles = _readonly_array(self.triangles, np.float32)
+        normals = _readonly_array(self.normals, np.float32)
+        face_index = _readonly_array(self.face_index, np.uint32)
+        probability = _readonly_array(self.probability, np.float64)
+        alias_threshold = _readonly_array(self.alias_threshold, np.float32)
+        alias_index = _readonly_array(self.alias_index, np.uint32)
+        count = probability.size
+        if triangles.shape != (count, 3, 3) or normals.shape != (count, 3):
+            raise ValueError("sampled specular proposal geometry has inconsistent shapes")
+        if face_index.shape != (count,) or alias_threshold.shape != (count,) or alias_index.shape != (count,):
+            raise ValueError("sampled specular proposal vectors must match its face count")
+        if self.scene_face_count < count:
+            raise ValueError("sampled specular scene_face_count cannot be smaller than its proposal")
+        if self.support_complete and self.scene_face_count != count:
+            raise ValueError("a complete sampled specular proposal must contain every scene face")
+        if not self.construction:
+            raise ValueError("sampled specular proposal construction must be named")
+        object.__setattr__(self, "triangles", triangles)
+        object.__setattr__(self, "normals", normals)
+        object.__setattr__(self, "face_index", face_index)
+        object.__setattr__(self, "probability", probability)
+        object.__setattr__(self, "alias_threshold", alias_threshold)
+        object.__setattr__(self, "alias_index", alias_index)
+
+    @classmethod
+    def from_geometry(cls, geometry: Any) -> DeviceSpecularFaceProposal:
+        """Build the production area mixture once from finite geometry faces."""
+        if not hasattr(geometry, "vertices") or not hasattr(geometry, "faces"):
+            return cls(
+                np.empty((0, 3, 3)),
+                np.empty((0, 3)),
+                np.empty(0),
+                np.empty(0),
+                np.empty(0),
+                np.empty(0),
+                True,
+                0,
+                "geometry_without_finite_faces",
+            )
+        vertices = np.asarray(geometry.vertices, dtype=np.float64)
+        faces = np.asarray(geometry.faces, dtype=np.int64)
+        triangles = vertices[faces]
+        cross = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
+        double_area = np.linalg.norm(cross, axis=1)
+        valid = double_area > 1.0e-12
+        return cls._from_finite_faces(
+            triangles[valid],
+            cross[valid] / double_area[valid, None],
+            np.arange(faces.shape[0], dtype=np.uint32)[valid],
+            scene_face_count=int(np.sum(valid)),
+            support_complete=True,
+            construction="all_nondegenerate_mesh_faces",
+        )
+
+    @classmethod
+    def _from_finite_faces(
+        cls,
+        triangles: np.ndarray,
+        normals: np.ndarray,
+        face_index: np.ndarray,
+        *,
+        scene_face_count: int,
+        support_complete: bool,
+        construction: str,
+    ) -> DeviceSpecularFaceProposal:
+        count = triangles.shape[0]
+        if count == 0:
+            probability = np.empty(0, dtype=np.float64)
+            threshold = np.empty(0, dtype=np.float32)
+            alias = np.empty(0, dtype=np.uint32)
+        else:
+            cross = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
+            area = 0.5 * np.linalg.norm(cross, axis=1)
+            probability = 0.9 * area / np.sum(area, dtype=np.float64) + 0.1 / count
+            threshold, alias = _alias_table(probability)
+        return cls(
+            triangles,
+            normals,
+            face_index,
+            probability,
+            threshold,
+            alias,
+            support_complete,
+            scene_face_count,
+            construction,
+        )
+
+
+@dataclass(frozen=True)
+class BoundDeviceSpecularFaceProposal:
+    """One immutable proposal uploaded once for one resident geometry."""
+
+    proposal: DeviceSpecularFaceProposal
+    device_key: tuple[str, int]
+    device_arrays: tuple[Any, ...]
+
+    @classmethod
+    def bind(cls, proposal: DeviceSpecularFaceProposal, kernel: Any) -> BoundDeviceSpecularFaceProposal:
+        mi, dr = kernel.mi, kernel.dr
+        key = (str(mi.variant()), id(kernel.geometry))
+        if proposal.probability.size == 0:
+            return cls(proposal, key, ())
+        triangle = proposal.triangles
+        normal = proposal.normals
+        arrays = (
+            mi.Float(triangle[:, 0, 0]),
+            mi.Float(triangle[:, 0, 1]),
+            mi.Float(triangle[:, 0, 2]),
+            mi.Float(triangle[:, 1, 0] - triangle[:, 0, 0]),
+            mi.Float(triangle[:, 1, 1] - triangle[:, 0, 1]),
+            mi.Float(triangle[:, 1, 2] - triangle[:, 0, 2]),
+            mi.Float(triangle[:, 2, 0] - triangle[:, 0, 0]),
+            mi.Float(triangle[:, 2, 1] - triangle[:, 0, 1]),
+            mi.Float(triangle[:, 2, 2] - triangle[:, 0, 2]),
+            mi.Float(normal[:, 0]),
+            mi.Float(normal[:, 1]),
+            mi.Float(normal[:, 2]),
+            mi.UInt32(proposal.face_index),
+            mi.Float(proposal.probability.astype(np.float32)),
+            mi.Float(proposal.alias_threshold),
+            mi.UInt32(proposal.alias_index),
+        )
+        dr.eval(*arrays)
+        return cls(proposal, key, arrays)
+
+
 def _splitmix_seed_word(seed: int) -> int:
     value = (int(seed) + 0x9E3779B97F4A7C15) & _MASK_64
     value = ((value ^ (value >> 30)) * 0xBF58476D1CE4E5B9) & _MASK_64
@@ -188,6 +336,7 @@ class DeviceNextEventGather:
     sampled_specular_samples: int = 1
     sampled_specular_seed_offset: int = 2000
     collect_field: bool = True
+    specular_face_proposal: BoundDeviceSpecularFaceProposal | None = None
 
     _sites: np.ndarray = field(init=False, repr=False)
     _probabilities: np.ndarray = field(init=False, repr=False)
@@ -274,51 +423,24 @@ class DeviceNextEventGather:
         key = (str(getattr(geometry, "variant", "")), id(geometry))
         if self._specular_device_key == key and self._specular_device_arrays is not None:
             return
-        if not hasattr(geometry, "vertices") or not hasattr(geometry, "faces"):
-            self._face_triangles = np.empty((0, 3, 3), dtype=np.float32)
-            self._face_normals = np.empty((0, 3), dtype=np.float32)
-            self._face_index = np.empty(0, dtype=np.uint32)
-            self._face_probability = np.empty(0, dtype=np.float64)
-            self._face_alias_threshold = np.empty(0, dtype=np.float32)
-            self._face_alias_index = np.empty(0, dtype=np.uint32)
-            self._surface_support_complete = True
-            self._surface_scene_face_count = 0
-            self._specular_device_key = key
-            self._specular_device_arrays = ()
-            return
-        vertices = np.asarray(geometry.vertices, dtype=np.float64)
-        faces = np.asarray(geometry.faces, dtype=np.int64)
-        triangles = vertices[faces]
-        cross = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
-        double_area = np.linalg.norm(cross, axis=1)
-        valid = double_area > 1.0e-12
-        triangles = triangles[valid]
-        double_area = double_area[valid]
-        face_index = np.arange(faces.shape[0], dtype=np.uint32)[valid]
-        self._surface_scene_face_count = int(np.sum(valid))
-        self._surface_support_complete = True
-        if triangles.shape[0] == 0:
-            self._face_triangles = np.empty((0, 3, 3), dtype=np.float32)
-            self._face_normals = np.empty((0, 3), dtype=np.float32)
-            self._face_index = face_index
-            self._face_probability = np.empty(0, dtype=np.float64)
-            self._face_alias_threshold = np.empty(0, dtype=np.float32)
-            self._face_alias_index = np.empty(0, dtype=np.uint32)
-            self._specular_device_key = key
-            self._specular_device_arrays = ()
-            return
-        area = 0.5 * double_area
-        count = area.size
-        probability = 0.9 * area / np.sum(area, dtype=np.float64) + 0.1 / count
-        threshold, alias = _alias_table(probability)
-        self._face_triangles = np.ascontiguousarray(triangles, dtype=np.float32)
-        self._face_normals = np.ascontiguousarray(cross[valid] / double_area[:, None], dtype=np.float32)
-        self._face_index = np.ascontiguousarray(face_index)
-        self._face_probability = np.asarray(probability, dtype=np.float64)
-        self._face_alias_threshold = threshold
-        self._face_alias_index = alias
-        self._specular_device_key = None
-        self._specular_device_arrays = None
+        if self.specular_face_proposal is None:
+            proposal = DeviceSpecularFaceProposal.from_geometry(geometry)
+            bound = None
+        else:
+            bound = self.specular_face_proposal
+            if bound.device_key != (str(kernel.mi.variant()), id(geometry)):
+                raise ValueError("sampled specular face proposal is bound to a different device geometry")
+            proposal = bound.proposal
+        self._face_triangles = proposal.triangles
+        self._face_normals = proposal.normals
+        self._face_index = proposal.face_index
+        self._face_probability = proposal.probability
+        self._face_alias_threshold = proposal.alias_threshold
+        self._face_alias_index = proposal.alias_index
+        self._surface_support_complete = proposal.support_complete
+        self._surface_scene_face_count = proposal.scene_face_count
+        self._specular_device_key = None if bound is None else bound.device_key
+        self._specular_device_arrays = None if bound is None else bound.device_arrays
 
     def begin_trace(self, rays: int, local_grid: np.ndarray) -> None:
         """Reset host reductions before a complete, possibly batched trace."""

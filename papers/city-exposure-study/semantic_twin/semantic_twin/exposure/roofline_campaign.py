@@ -1210,13 +1210,17 @@ def _couple_body_components(
 def _point_timing_row(
     estimator_seconds: float, body_seconds: float, field: NextEventField, detail: dict[str, Any]
 ) -> tuple[float, ...]:
-    all_specular_seconds = float(field.all_specular_diagnostics.get("seconds", 0.0))
-    suffix_specular_seconds = float(detail.get("specular_suffix_seconds", 0.0))
+    if "deterministic_specular_seconds" in detail:
+        specular_seconds = float(detail["deterministic_specular_seconds"])
+    else:
+        all_specular_seconds = float(field.all_specular_diagnostics.get("seconds", 0.0))
+        suffix_specular_seconds = float(detail.get("specular_suffix_seconds", 0.0))
+        specular_seconds = all_specular_seconds + suffix_specular_seconds
     return (
         estimator_seconds,
         float(detail["direct_seconds"]) if "direct_seconds" in detail else np.nan,
         float(detail["stochastic_trace_seconds"]) if "stochastic_trace_seconds" in detail else np.nan,
-        all_specular_seconds + suffix_specular_seconds,
+        specular_seconds,
         body_seconds,
     )
 
