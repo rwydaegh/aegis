@@ -10,6 +10,15 @@ This guide separates two tracks:
 The two tracks use the same sealed city inputs and transport settings. The
 normal track does not need Blender.
 
+> **Current-contract notice.** See
+> [CURRENT_PRODUCTION_CONTRACT.md](CURRENT_PRODUCTION_CONTRACT.md) for the
+> active ray, source, material, and transport settings. The timing table below
+> preserves earlier Prague measurements, including the 1.6-million-ray
+> historical trace. Current production uses 200,000 IID primary rays and
+> 4,096 passive angular cells. Fresh anchors are Korenmarkt cold one-seed
+> 2:35.73, Korenmarkt warm two-seed 2:27.79 total for 13 points, and Prague
+> dry-run 47.96 seconds for 68 points.
+
 ## End-to-end stages
 
 ```text
@@ -32,10 +41,11 @@ The city and tracer are prepared once for all replicas of a walk. The current
 CDF campaign keeps the same registered standpoints and changes the independent
 ray seed. Atlas lookup data are reused when their input hash matches.
 
-The final code is `f5f394da`. It includes immutable full-geometry device face
-proposal reuse from `9111c591`. The report command changes are recorded in
-`8db6bef0` and `37b4498d`. Scientific paired campaigns use the sealed config
-commit `b985ab58`.
+The historical timing snapshot used code `f5f394da`. It includes immutable
+full-geometry device face proposal reuse from `9111c591`. The report command
+changes are recorded in `8db6bef0` and `37b4498d`. Scientific paired campaigns
+use the sealed config commit `b985ab58`. Current campaigns seal their own code
+and configuration identity.
 
 ## Measured and estimated timing
 

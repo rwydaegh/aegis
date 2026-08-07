@@ -1,5 +1,12 @@
 # Roofline source measure
 
+> **Current-contract notice.** Production uses the physical three-dimensional
+> edge-length measure for conditional source weights. Horizontal-projected
+> roofline length is an explicit opt-in sensitivity, not a replacement. Current
+> source artifacts retain exact endpoints and audit sidecars. The sealed
+> Prague endpoint limitation described below is historical. See
+> [CURRENT_PRODUCTION_CONTRACT.md](CURRENT_PRODUCTION_CONTRACT.md).
+
 ## Purpose
 
 The source model separates two questions that should not be conflated:
@@ -7,16 +14,17 @@ The source model separates two questions that should not be conflated:
 1. How many effective emitters belong to a site.
 2. How those emitters are distributed along the represented roofline.
 
-With fixed areal site density \(\rho_A\), the total source count is set by the
-crop area \(A_{\mathrm{crop}}\):
+With fixed areal site density \(\rho_A\), the expected active-source count is
+set by the crop area \(A_{\mathrm{crop}}\):
 
 \[
     N_{\mathrm{site}} = \rho_A A_{\mathrm{crop}}.
 \]
 
-This fixes the total source scaling. It does not, by itself, determine the
-conditional placement of source mass along roof edges. That placement is the
-source measure described here.
+This fixes the physical source scaling. It is not the number of numerical
+source quadrature points. It does not, by itself, determine the conditional
+placement of source mass along roof edges. That placement is the source measure
+described here.
 
 ## Measures currently under consideration
 
@@ -91,9 +99,10 @@ The sealed Prague result has
     L_3 = 654.605\ \mathrm{m}.
 \]
 
-An exact Prague projection is not available because the endpoint geometry was
-not retained in the sealed artifact. It must not be reconstructed by guessing
-from the scalar length.
+The historical sealed artifact did not retain endpoint geometry, so an exact
+projection could not be reconstructed from that scalar length. Current source
+artifacts retain exact endpoints and make the paired projection sensitivity
+auditable. Its production decision still requires the paired run below.
 
 ## Recommended decision procedure
 
