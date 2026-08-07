@@ -26,6 +26,7 @@ from .specular import (
     OneBounceSpecularTransport,
     ReceiverVisibleFaceCandidates,
     SpecularCandidateSet,
+    SpecularDiagnostics,
     SpecularPaths,
     SpecularWorkEstimate,
     StratifiedSourceQuadrature,
@@ -1211,6 +1212,9 @@ class NextEventEstimator:
                     "method": "adaptive_receiver_faces_and_probability_strata",
                     "candidate_budget": budget,
                     "candidate_work_used": 0,
+                    "executed_candidate_work_used": 0,
+                    "avoided_candidate_work": 0,
+                    "executed_candidate_seconds": 0.0,
                     "visibility_rays_used": 0,
                     "refinement_work_used": 0,
                     "relative_tolerance": tolerance,
@@ -1225,6 +1229,8 @@ class NextEventEstimator:
         candidates = self.visible_face_candidates.refine_level(transport, receiver, face_samples)
         visibility_rays = face_samples
         candidate_work = 0
+        executed_candidate_work = 0
+        executed_candidate_seconds = 0.0
         refinement: list[dict[str, Any]] = []
         face_level = 0
         source_level = 0
@@ -1234,17 +1240,11 @@ class NextEventEstimator:
         def selection(strata: int):  # noqa: ANN202
             return self.source_quadrature.select(sites, probabilities, strata)
 
-        def solve(
-            candidate_set: SpecularCandidateSet,
-            selected: Any,
-            *,
-            axis: str,
-            face_index: int,
-            source_index: int,
-            previous_face: tuple[SpecularPaths, float] | None,
-            previous_source: tuple[SpecularPaths, float] | None,
-        ) -> tuple[SpecularPaths, float]:
-            nonlocal candidate_work
+        surface_face_index = np.asarray(transport.surfaces.face_index, dtype=np.int64)
+        reusable_face_identity = np.unique(surface_face_index).size == surface_face_index.size
+
+        def execute(candidate_set: SpecularCandidateSet, selected: Any) -> SpecularPaths:
+            nonlocal executed_candidate_seconds, executed_candidate_work
             paired_receiver = np.broadcast_to(receiver, selected.positions.shape)
             paths = transport.solve_paired(
                 selected.positions,
@@ -1253,6 +1253,76 @@ class NextEventEstimator:
                 source_index=selected.source_index,
                 candidate_set=candidate_set,
             )
+            executed_candidate_work += paths.diagnostics.candidates
+            executed_candidate_seconds += paths.diagnostics.seconds
+            return paths
+
+        def merge_face_blocks(
+            parts: tuple[SpecularPaths, ...],
+            candidate_set: SpecularCandidateSet,
+            selected: Any,
+        ) -> SpecularPaths:
+            candidate_faces = candidate_set.sequences[:, 0]
+            actual_faces = surface_face_index[candidate_faces]
+            rank_by_actual = {int(actual): rank for rank, actual in enumerate(actual_faces)}
+            accepted = sum(part.diagnostics.accepted for part in parts)
+            logical_candidates = int(candidate_faces.size * selected.positions.shape[0])
+            diagnostics = SpecularDiagnostics(
+                endpoint_pairs=int(selected.positions.shape[0]),
+                plane_sequences=int(candidate_faces.size),
+                candidates=logical_candidates,
+                geometric=sum(part.diagnostics.geometric for part in parts),
+                visible=sum(part.diagnostics.visible for part in parts),
+                accepted=accepted,
+                chunks=(logical_candidates + transport.candidate_chunk - 1) // transport.candidate_chunk,
+                seconds=sum(part.diagnostics.seconds for part in parts),
+                candidate_method=candidate_set.method,
+                candidate_support_complete=candidate_set.support_complete,
+                selected_faces=int(np.unique(candidate_faces).size),
+                support_faces=int(transport.surfaces.scene_face_count or transport.surfaces.triangles.shape[0]),
+                missed_support_faces=candidate_set.missed_support_faces,
+                candidate_diagnostics=dict(candidate_set.diagnostics),
+            )
+            if accepted == 0:
+                return SpecularPaths.empty(diagnostics)
+            k_hat = np.concatenate([part.k_hat for part in parts])
+            transfer = np.concatenate([part.transfer for part in parts])
+            reflection = np.concatenate([part.reflection_point for part in parts])
+            source = np.concatenate([part.source_index for part in parts])
+            endpoint = np.concatenate([part.endpoint_index for part in parts])
+            sequence = np.concatenate([part.surface_sequence for part in parts])
+            length = np.concatenate([part.unfolded_length_m for part in parts])
+            face_rank = np.fromiter(
+                (rank_by_actual[int(face)] for face in sequence[:, 0]),
+                dtype=np.int64,
+                count=accepted,
+            )
+            order = np.lexsort((face_rank, endpoint))
+            return SpecularPaths(
+                k_hat[order],
+                transfer[order],
+                reflection[order],
+                source[order],
+                endpoint[order],
+                sequence[order],
+                length[order],
+                diagnostics,
+            )
+
+        def record(
+            paths: SpecularPaths,
+            selected: Any,
+            candidate_set: SpecularCandidateSet,
+            *,
+            axis: str,
+            face_index: int,
+            source_index: int,
+            previous_face: tuple[SpecularPaths, float] | None,
+            previous_source: tuple[SpecularPaths, float] | None,
+            executed_candidates: int,
+            executed_seconds: float,
+        ) -> tuple[SpecularPaths, float]:
+            nonlocal candidate_work
             candidate_work += paths.diagnostics.candidates
             transfer = paths.total
             if previous_face is None:
@@ -1284,8 +1354,16 @@ class NextEventEstimator:
                     "finite_resolution_support_incomplete": True,
                     "candidates": paths.diagnostics.candidates,
                     "cumulative_candidates": candidate_work,
+                    "executed_candidates": executed_candidates,
+                    "avoided_candidates": paths.diagnostics.candidates - executed_candidates,
+                    "cumulative_executed_candidates": executed_candidate_work,
+                    "cumulative_avoided_candidates": candidate_work - executed_candidate_work,
                     "accepted": paths.diagnostics.accepted,
-                    "seconds": paths.diagnostics.seconds,
+                    "seconds": executed_seconds,
+                    "executed_seconds": executed_seconds,
+                    "cumulative_executed_seconds": executed_candidate_seconds,
+                    "logical_solution_seconds": paths.diagnostics.seconds,
+                    "reused_block_seconds": max(paths.diagnostics.seconds - executed_seconds, 0.0),
                     "transfer": transfer,
                     "absolute_change_from_previous_face_level": absolute_face,
                     "relative_change_from_previous_face_level": relative_face,
@@ -1307,6 +1385,9 @@ class NextEventEstimator:
                 "method": "adaptive_receiver_faces_and_probability_strata",
                 "candidate_budget": budget,
                 "candidate_work_used": 0,
+                "executed_candidate_work_used": 0,
+                "avoided_candidate_work": 0,
+                "executed_candidate_seconds": 0.0,
                 "visibility_rays_used": visibility_rays,
                 "refinement_work_used": visibility_rays,
                 "relative_tolerance": tolerance,
@@ -1317,14 +1398,18 @@ class NextEventEstimator:
                 "enabled": False,
             }
             return None, refinement, work
-        current = solve(
-            candidates,
+        initial_paths = execute(candidates, selected)
+        current = record(
+            initial_paths,
             selected,
+            candidates,
             axis="initial",
             face_index=face_level,
             source_index=source_level,
             previous_face=None,
             previous_source=None,
+            executed_candidates=initial_paths.diagnostics.candidates,
+            executed_seconds=initial_paths.diagnostics.seconds,
         )
 
         while True:
@@ -1373,45 +1458,115 @@ class NextEventEstimator:
                 break
 
             if source_is_exact:
-                corner = solve(
-                    next_candidates,
+                old_faces = candidates.sequences[:, 0]
+                next_faces = next_candidates.sequences[:, 0]
+                nested_faces = (
+                    np.unique(old_faces).size == old_faces.size
+                    and np.unique(next_faces).size == next_faces.size
+                    and np.all(np.isin(old_faces, next_faces))
+                )
+                reuse_faces = reusable_face_identity and nested_faces
+                if reuse_faces:
+                    delta_mask = ~np.isin(next_faces, old_faces)
+                    delta_candidates = SpecularCandidateSet(
+                        next_candidates.sequences[delta_mask],
+                        method=next_candidates.method,
+                        support_complete=False,
+                        missed_support_faces=next_candidates.missed_support_faces,
+                        diagnostics=next_candidates.diagnostics,
+                    )
+                    delta = execute(delta_candidates, selected)
+                    corner_paths = merge_face_blocks((current[0], delta), next_candidates, selected)
+                    executed = delta.diagnostics.candidates
+                else:
+                    corner_paths = execute(next_candidates, selected)
+                    executed = corner_paths.diagnostics.candidates
+                corner = record(
+                    corner_paths,
                     selected,
+                    next_candidates,
                     axis="receiver_faces",
                     face_index=next_face_level,
                     source_index=source_level,
                     previous_face=current,
                     previous_source=None,
+                    executed_candidates=executed,
+                    executed_seconds=(delta.diagnostics.seconds if reuse_faces else corner_paths.diagnostics.seconds),
                 )
-                record = refinement[-1]
-                record["source_axis_converged"] = True
-                record["numerically_converged"] = bool(corner[1] > 0.0 and record["face_axis_converged"])
+                row = refinement[-1]
+                row["source_axis_converged"] = True
+                row["numerically_converged"] = bool(corner[1] > 0.0 and row["face_axis_converged"])
             else:
-                source_only = solve(
-                    candidates,
+                source_paths = execute(candidates, next_selected)
+                source_only = record(
+                    source_paths,
                     next_selected,
+                    candidates,
                     axis="source_quadrature",
                     face_index=face_level,
                     source_index=next_source_level,
                     previous_face=None,
                     previous_source=current,
+                    executed_candidates=source_paths.diagnostics.candidates,
+                    executed_seconds=source_paths.diagnostics.seconds,
                 )
-                face_only = solve(
-                    next_candidates,
+                old_faces = candidates.sequences[:, 0]
+                next_faces = next_candidates.sequences[:, 0]
+                nested_faces = (
+                    np.unique(old_faces).size == old_faces.size
+                    and np.unique(next_faces).size == next_faces.size
+                    and np.all(np.isin(old_faces, next_faces))
+                )
+                reuse_faces = reusable_face_identity and nested_faces
+                if reuse_faces:
+                    delta_mask = ~np.isin(next_faces, old_faces)
+                    delta_candidates = SpecularCandidateSet(
+                        next_candidates.sequences[delta_mask],
+                        method=next_candidates.method,
+                        support_complete=False,
+                        missed_support_faces=next_candidates.missed_support_faces,
+                        diagnostics=next_candidates.diagnostics,
+                    )
+                    old_source_delta = execute(delta_candidates, selected)
+                    face_paths = merge_face_blocks((current[0], old_source_delta), next_candidates, selected)
+                    face_executed = old_source_delta.diagnostics.candidates
+                else:
+                    face_paths = execute(next_candidates, selected)
+                    face_executed = face_paths.diagnostics.candidates
+                face_only = record(
+                    face_paths,
                     selected,
+                    next_candidates,
                     axis="receiver_faces",
                     face_index=next_face_level,
                     source_index=source_level,
                     previous_face=current,
                     previous_source=None,
+                    executed_candidates=face_executed,
+                    executed_seconds=(
+                        old_source_delta.diagnostics.seconds if reuse_faces else face_paths.diagnostics.seconds
+                    ),
                 )
-                corner = solve(
-                    next_candidates,
+                if reuse_faces:
+                    new_source_delta = execute(delta_candidates, next_selected)
+                    corner_paths = merge_face_blocks((source_only[0], new_source_delta), next_candidates, next_selected)
+                    corner_executed = new_source_delta.diagnostics.candidates
+                else:
+                    corner_paths = execute(next_candidates, next_selected)
+                    corner_executed = corner_paths.diagnostics.candidates
+                corner = record(
+                    corner_paths,
                     next_selected,
+                    next_candidates,
                     axis="crossed_corner",
                     face_index=next_face_level,
                     source_index=next_source_level,
                     previous_face=source_only,
                     previous_source=face_only,
+                    executed_candidates=corner_executed,
+                    executed_seconds=(
+                        new_source_delta.diagnostics.seconds if reuse_faces else corner_paths.diagnostics.seconds
+                    ),
                 )
             current = corner
             candidates = next_candidates
@@ -1429,6 +1584,9 @@ class NextEventEstimator:
             "method": "adaptive_receiver_faces_and_probability_strata",
             "candidate_budget": budget,
             "candidate_work_used": candidate_work,
+            "executed_candidate_work_used": executed_candidate_work,
+            "avoided_candidate_work": candidate_work - executed_candidate_work,
+            "executed_candidate_seconds": executed_candidate_seconds,
             "total_candidates_upper_bound": candidate_work,
             "visibility_rays_used": visibility_rays,
             "refinement_work_used": candidate_work + visibility_rays,
