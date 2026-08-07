@@ -36,6 +36,7 @@ test = [
   "trimesh>=4",
 ]
 raycast = ["embreex>=2.17", "trimesh>=4"]
+agent = ["mcp>=1.29,<2"]
 
 [tool.setuptools.packages.find]
 # Every subpackage, not just the top level. The explicit list this replaces named

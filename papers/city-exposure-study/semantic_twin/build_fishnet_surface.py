@@ -24,6 +24,11 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--depth-break-ratio", type=float, default=0.15)
     parser.add_argument("--min-piece-area-px", type=float, default=1.0)
     parser.add_argument("--baseline", action="store_true", help="also count the image-tile quadtree for comparison")
+    parser.add_argument(
+        "--include-non-surface-classes",
+        action="store_true",
+        help="experimental review mode: project every mesh-visible class, including object and unknown labels",
+    )
     return parser.parse_args(argv)
 
 
@@ -45,6 +50,7 @@ def main(argv: list[str] | None = None) -> None:
             depth_break_ratio=args.depth_break_ratio,
             min_piece_area_px=args.min_piece_area_px,
             baseline=args.baseline,
+            include_non_surface_classes=args.include_non_surface_classes,
         )
     )
 
