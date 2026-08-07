@@ -1,0 +1,1359 @@
+{
+ "area": "graslei",
+ "photos": {
+  "493993762": [
+   {
+    "pano_id": "ikylB5XxU8i4X5QM99OxZg",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993762_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993762_0_key.jpg",
+    "target_box": {
+     "x0": 0.396,
+     "x1": 0.596,
+     "y0": 0.212,
+     "y1": 0.926
+    },
+    "range_m": 22.1,
+    "frontality": 0.927,
+    "fov": 57.8,
+    "heading": 241.97,
+    "pitch": 18.49,
+    "rank": 0.867,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "b_dbrDSMRNA2WaN-_4XWAw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993762_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993762_1_key.jpg",
+    "target_box": {
+     "x0": 0.392,
+     "x1": 0.584,
+     "y0": 0.281,
+     "y1": 0.948
+    },
+    "range_m": 13.0,
+    "frontality": 0.791,
+    "fov": 90.09,
+    "heading": 257.64,
+    "pitch": 29.67,
+    "rank": 0.756,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "514020945": [
+   {
+    "pano_id": "oHkzzwfrG_kxGk-Ppq9LKA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020945_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020945_0_key.jpg",
+    "target_box": {
+     "x0": 0.201,
+     "x1": 0.721,
+     "y0": 0.261,
+     "y1": 1.0
+    },
+    "range_m": 4.7,
+    "frontality": 0.963,
+    "fov": 100.0,
+    "heading": 327.3,
+    "pitch": 27.59,
+    "rank": 0.806,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "fU6bBP19SYLwbrQk_iowhg",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020945_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020945_1_key.jpg",
+    "target_box": {
+     "x0": 0.355,
+     "x1": 0.662,
+     "y0": 0.168,
+     "y1": 0.937
+    },
+    "range_m": 13.2,
+    "frontality": 0.932,
+    "fov": 49.18,
+    "heading": 290.42,
+    "pitch": 10.5,
+    "rank": 0.786,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "514020946": [
+   {
+    "pano_id": "Z-46WEKgHWzjcvT-pgFvZw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020946_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020946_0_key.jpg",
+    "target_box": {
+     "x0": 0.363,
+     "x1": 0.701,
+     "y0": 0.182,
+     "y1": 0.953
+    },
+    "range_m": 17.3,
+    "frontality": 0.747,
+    "fov": 70.59,
+    "heading": 75.92,
+    "pitch": 22.69,
+    "rank": 0.747,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "Qp4NCCcNCVbQjoV-morlHA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020946_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/514020946_1_key.jpg",
+    "target_box": {
+     "x0": 0.337,
+     "x1": 0.696,
+     "y0": 0.16,
+     "y1": 0.932
+    },
+    "range_m": 26.5,
+    "frontality": 0.856,
+    "fov": 48.37,
+    "heading": 86.45,
+    "pitch": 15.29,
+    "rank": 0.661,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494008001": [
+   {
+    "pano_id": "_BPhF6-qe5eN6kXZCNbd8w",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008001_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008001_0_key.jpg",
+    "target_box": {
+     "x0": 0.313,
+     "x1": 0.674,
+     "y0": 0.204,
+     "y1": 0.938
+    },
+    "range_m": 9.8,
+    "frontality": 0.986,
+    "fov": 64.57,
+    "heading": 41.37,
+    "pitch": 14.09,
+    "rank": 0.98,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "NNhwBHF1TNLC6kqXsPA2Yw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008001_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008001_1_key.jpg",
+    "target_box": {
+     "x0": 0.324,
+     "x1": 0.676,
+     "y0": 0.179,
+     "y1": 0.923
+    },
+    "range_m": 16.8,
+    "frontality": 1.0,
+    "fov": 39.25,
+    "heading": 33.03,
+    "pitch": 8.29,
+    "rank": 0.556,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "493993763": [
+   {
+    "id": "127142749406522",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993763_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993763_0_key.jpg",
+    "target_box": {
+     "x0": 0.679,
+     "x1": 0.822,
+     "y0": 0.0,
+     "y1": 0.783,
+     "top_clipped": false
+    },
+    "range_m": 6.8,
+    "score": 0.232,
+    "is_pano": false,
+    "captured_at": 1430737736000,
+    "source": "mapillary"
+   }
+  ],
+  "494007824": [
+   {
+    "pano_id": "c6GzNFrSeDloUg0aDOAbxw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007824_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007824_0_key.jpg",
+    "target_box": {
+     "x0": 0.233,
+     "x1": 1.0,
+     "y0": 0.169,
+     "y1": 1.0
+    },
+    "range_m": 10.4,
+    "frontality": 0.862,
+    "fov": 86.42,
+    "heading": 78.09,
+    "pitch": 25.67,
+    "rank": 0.837,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "cKVCGLG0vjouTTur1HClRw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007824_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007824_1_key.jpg",
+    "target_box": {
+     "x0": 0.0,
+     "x1": 0.747,
+     "y0": 0.179,
+     "y1": 1.0
+    },
+    "range_m": 9.1,
+    "frontality": 0.829,
+    "fov": 95.4,
+    "heading": 142.52,
+    "pitch": 28.73,
+    "rank": 0.774,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007983": [
+   {
+    "pano_id": "c6GzNFrSeDloUg0aDOAbxw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007983_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007983_0_key.jpg",
+    "target_box": {
+     "x0": 0.152,
+     "x1": 0.961,
+     "y0": 0.168,
+     "y1": 0.951
+    },
+    "range_m": 15.4,
+    "frontality": 0.956,
+    "fov": 62.32,
+    "heading": 87.56,
+    "pitch": 17.96,
+    "rank": 0.935,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "cKVCGLG0vjouTTur1HClRw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007983_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007983_1_key.jpg",
+    "target_box": {
+     "x0": 0.007,
+     "x1": 0.814,
+     "y0": 0.148,
+     "y1": 0.973
+    },
+    "range_m": 13.8,
+    "frontality": 0.911,
+    "fov": 68.32,
+    "heading": 129.0,
+    "pitch": 19.82,
+    "rank": 0.91,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007930": [
+   {
+    "pano_id": "7mhdWh7t-QoRhKep_ah_RA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007930_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007930_0_key.jpg",
+    "target_box": {
+     "x0": 0.332,
+     "x1": 1.0,
+     "y0": 0.129,
+     "y1": 1.0
+    },
+    "range_m": 8.3,
+    "frontality": 0.565,
+    "fov": 100.0,
+    "heading": 73.65,
+    "pitch": 37.2,
+    "rank": 0.481,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "K7qioDaXx8nEofI2l58o9A",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007930_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007930_1_key.jpg",
+    "target_box": {
+     "x0": 0.196,
+     "x1": 0.837,
+     "y0": 0.156,
+     "y1": 0.927
+    },
+    "range_m": 32.4,
+    "frontality": 0.969,
+    "fov": 36.34,
+    "heading": 114.92,
+    "pitch": 11.0,
+    "rank": 0.356,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007986": [
+   {
+    "pano_id": "cKVCGLG0vjouTTur1HClRw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007986_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007986_0_key.jpg",
+    "target_box": {
+     "x0": 0.081,
+     "x1": 0.832,
+     "y0": 0.179,
+     "y1": 0.941
+    },
+    "range_m": 18.0,
+    "frontality": 0.962,
+    "fov": 60.51,
+    "heading": 123.04,
+    "pitch": 18.36,
+    "rank": 0.923,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "c6GzNFrSeDloUg0aDOAbxw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007986_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007986_1_key.jpg",
+    "target_box": {
+     "x0": 0.169,
+     "x1": 0.91,
+     "y0": 0.17,
+     "y1": 0.938
+    },
+    "range_m": 19.7,
+    "frontality": 0.962,
+    "fov": 55.8,
+    "heading": 91.33,
+    "pitch": 16.86,
+    "rank": 0.876,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007823": [
+   {
+    "pano_id": "cKVCGLG0vjouTTur1HClRw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007823_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007823_0_key.jpg",
+    "target_box": {
+     "x0": 0.065,
+     "x1": 0.879,
+     "y0": 0.169,
+     "y1": 0.926
+    },
+    "range_m": 22.9,
+    "frontality": 0.98,
+    "fov": 46.41,
+    "heading": 119.19,
+    "pitch": 13.42,
+    "rank": 0.764,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "oHkzzwfrG_kxGk-Ppq9LKA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007823_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007823_1_key.jpg",
+    "target_box": {
+     "x0": 0.058,
+     "x1": 0.761,
+     "y0": 0.072,
+     "y1": 0.966
+    },
+    "range_m": 19.3,
+    "frontality": 0.784,
+    "fov": 54.35,
+    "heading": 146.0,
+    "pitch": 15.82,
+    "rank": 0.724,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "493993764": [
+   {
+    "pano_id": "ikylB5XxU8i4X5QM99OxZg",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993764_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993764_0_key.jpg",
+    "target_box": {
+     "x0": 0.163,
+     "x1": 1.0,
+     "y0": 0.192,
+     "y1": 1.0
+    },
+    "range_m": 5.5,
+    "frontality": 0.93,
+    "fov": 100.0,
+    "heading": 296.33,
+    "pitch": 23.9,
+    "rank": 0.815,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "b_dbrDSMRNA2WaN-_4XWAw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993764_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993764_1_key.jpg",
+    "target_box": {
+     "x0": 0.074,
+     "x1": 0.68,
+     "y0": 0.0,
+     "y1": 1.0
+    },
+    "range_m": 10.3,
+    "frontality": 0.605,
+    "fov": 64.13,
+    "heading": 10.64,
+    "pitch": 13.44,
+    "rank": 0.6,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007984": [
+   {
+    "pano_id": "Ev81H5Y5YXIkod53kKL-Vw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007984_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007984_0_key.jpg",
+    "target_box": {
+     "x0": 0.388,
+     "x1": 0.603,
+     "y0": 0.167,
+     "y1": 0.9
+    },
+    "range_m": 53.4,
+    "frontality": 0.78,
+    "fov": 25.0,
+    "heading": 61.41,
+    "pitch": 7.26,
+    "rank": 0.011,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007977": [
+   {
+    "pano_id": "Z-46WEKgHWzjcvT-pgFvZw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007977_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007977_0_key.jpg",
+    "target_box": {
+     "x0": 0.287,
+     "x1": 0.65,
+     "y0": 0.174,
+     "y1": 0.951
+    },
+    "range_m": 17.4,
+    "frontality": 0.782,
+    "fov": 66.9,
+    "heading": 319.81,
+    "pitch": 21.03,
+    "rank": 0.776,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "_BPhF6-qe5eN6kXZCNbd8w",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007977_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007977_1_key.jpg",
+    "target_box": {
+     "x0": 0.29,
+     "x1": 0.716,
+     "y0": 0.19,
+     "y1": 0.922
+    },
+    "range_m": 28.8,
+    "frontality": 0.996,
+    "fov": 42.26,
+    "heading": 276.01,
+    "pitch": 13.05,
+    "rank": 0.593,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007999": [
+   {
+    "pano_id": "Qp4NCCcNCVbQjoV-morlHA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007999_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007999_0_key.jpg",
+    "target_box": {
+     "x0": 0.359,
+     "x1": 0.651,
+     "y0": 0.236,
+     "y1": 0.93
+    },
+    "range_m": 15.5,
+    "frontality": 0.982,
+    "fov": 67.83,
+    "heading": 347.26,
+    "pitch": 20.57,
+    "rank": 0.977,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "ogHqQHla1hjH_G9u7z8Heg",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007999_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007999_1_key.jpg",
+    "target_box": {
+     "x0": 0.357,
+     "x1": 0.625,
+     "y0": 0.209,
+     "y1": 0.935
+    },
+    "range_m": 16.7,
+    "frontality": 0.911,
+    "fov": 63.6,
+    "heading": 22.42,
+    "pitch": 19.21,
+    "rank": 0.892,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007927": [
+   {
+    "pano_id": "bsbx1KcNBCjX9tOjP0pZcQ",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007927_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007927_0_key.jpg",
+    "target_box": {
+     "x0": 0.011,
+     "x1": 0.794,
+     "y0": 0.229,
+     "y1": 0.982
+    },
+    "range_m": 11.9,
+    "frontality": 0.93,
+    "fov": 87.97,
+    "heading": 60.15,
+    "pitch": 27.87,
+    "rank": 0.896,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "cj7-tyeCDTPQRfNaKwuXAw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007927_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007927_1_key.jpg",
+    "target_box": {
+     "x0": 0.234,
+     "x1": 1.0,
+     "y0": 0.198,
+     "y1": 1.0
+    },
+    "range_m": 8.8,
+    "frontality": 0.805,
+    "fov": 100.0,
+    "heading": 2.18,
+    "pitch": 35.73,
+    "rank": 0.701,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "493993761": [
+   {
+    "id": "1026624108591972",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_0_key.jpg",
+    "target_box": {
+     "x0": 0.084,
+     "x1": 0.918,
+     "y0": 0.0,
+     "y1": 0.488,
+     "top_clipped": false
+    },
+    "range_m": 42.8,
+    "score": 0.668,
+    "is_pano": false,
+    "captured_at": 1687514524437,
+    "source": "mapillary"
+   },
+   {
+    "id": "882472926803325",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_1_key.jpg",
+    "target_box": {
+     "x0": 0.243,
+     "x1": 0.594,
+     "y0": 0.002,
+     "y1": 0.489,
+     "top_clipped": false
+    },
+    "range_m": 35.4,
+    "score": 0.56,
+    "is_pano": false,
+    "captured_at": 1687514525650,
+    "source": "mapillary"
+   }
+  ],
+  "494008008": [
+   {
+    "pano_id": "ft-xQkzJh_GEzZP_wr86eg",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008008_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008008_0_key.jpg",
+    "target_box": {
+     "x0": 0.212,
+     "x1": 0.845,
+     "y0": 0.183,
+     "y1": 0.945
+    },
+    "range_m": 13.1,
+    "frontality": 0.969,
+    "fov": 60.88,
+    "heading": 98.78,
+    "pitch": 15.82,
+    "rank": 0.933,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "c6GzNFrSeDloUg0aDOAbxw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008008_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008008_1_key.jpg",
+    "target_box": {
+     "x0": 0.165,
+     "x1": 0.744,
+     "y0": 0.135,
+     "y1": 0.959
+    },
+    "range_m": 14.4,
+    "frontality": 0.881,
+    "fov": 56.13,
+    "heading": 141.2,
+    "pitch": 14.51,
+    "rank": 0.804,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007953": [
+   {
+    "pano_id": "cj7-tyeCDTPQRfNaKwuXAw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007953_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007953_0_key.jpg",
+    "target_box": {
+     "x0": 0.178,
+     "x1": 1.0,
+     "y0": 0.309,
+     "y1": 1.0
+    },
+    "range_m": 7.0,
+    "frontality": 0.903,
+    "fov": 100.0,
+    "heading": 171.75,
+    "pitch": 45.45,
+    "rank": 0.695,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "GLwpDecre91jpB-aJpRI-Q",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007953_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007953_1_key.jpg",
+    "target_box": {
+     "x0": 0.22,
+     "x1": 0.627,
+     "y0": 0.269,
+     "y1": 1.0
+    },
+    "range_m": 9.1,
+    "frontality": 0.66,
+    "fov": 100.0,
+    "heading": 245.88,
+    "pitch": 37.92,
+    "rank": 0.562,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007989": [
+   {
+    "pano_id": "Z-46WEKgHWzjcvT-pgFvZw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007989_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007989_0_key.jpg",
+    "target_box": {
+     "x0": 0.359,
+     "x1": 0.61,
+     "y0": 0.171,
+     "y1": 0.939
+    },
+    "range_m": 21.0,
+    "frontality": 0.734,
+    "fov": 57.82,
+    "heading": 311.75,
+    "pitch": 18.19,
+    "rank": 0.686,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "CAoSF0NJSE0wb2dLRUlDQWdJRGhtNkhvckFF",
+    "date": "2023-02",
+    "official": false,
+    "copyright": "\u00a9 Madeira360 - Visitas Virtuais 360 - Inhouse Servi\u00e7es",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007989_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007989_1_key.jpg",
+    "target_box": {
+     "x0": 0.33,
+     "x1": 0.663,
+     "y0": 0.214,
+     "y1": 0.924
+    },
+    "range_m": 22.2,
+    "frontality": 0.992,
+    "fov": 55.01,
+    "heading": 276.37,
+    "pitch": 17.27,
+    "rank": 0.491,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007850": [
+   {
+    "pano_id": "cj7-tyeCDTPQRfNaKwuXAw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007850_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007850_0_key.jpg",
+    "target_box": {
+     "x0": 0.035,
+     "x1": 0.652,
+     "y0": 0.168,
+     "y1": 1.0
+    },
+    "range_m": 10.9,
+    "frontality": 0.646,
+    "fov": 94.23,
+    "heading": 87.45,
+    "pitch": 30.09,
+    "rank": 0.607,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "CAoSF0NJSE0wb2dLRUlDQWdJREU0OEdZX0FF",
+    "date": "2018-09",
+    "official": false,
+    "copyright": "\u00a9 PROPERTY IMMO Web marketing Solutions",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007850_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007850_1_key.jpg",
+    "target_box": {
+     "x0": 0.179,
+     "x1": 0.811,
+     "y0": 0.227,
+     "y1": 0.925
+    },
+    "range_m": 18.7,
+    "frontality": 0.999,
+    "fov": 60.4,
+    "heading": 40.4,
+    "pitch": 18.59,
+    "rank": 0.527,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "493993666": [
+   {
+    "pano_id": "WNIphHvR_OukfEYal1LZnQ",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993666_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993666_0_key.jpg",
+    "target_box": {
+     "x0": 0.323,
+     "x1": 0.689,
+     "y0": 0.176,
+     "y1": 0.931
+    },
+    "range_m": 13.5,
+    "frontality": 0.98,
+    "fov": 48.08,
+    "heading": 306.98,
+    "pitch": 10.25,
+    "rank": 0.806,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "MmX_gUQjxdY3Lr5p6UIONw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993666_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993666_1_key.jpg",
+    "target_box": {
+     "x0": 0.053,
+     "x1": 0.765,
+     "y0": 0.242,
+     "y1": 1.0
+    },
+    "range_m": 4.3,
+    "frontality": 0.938,
+    "fov": 100.0,
+    "heading": 338.83,
+    "pitch": 29.52,
+    "rank": 0.758,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494008011": [
+   {
+    "pano_id": "ft-xQkzJh_GEzZP_wr86eg",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008011_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008011_0_key.jpg",
+    "target_box": {
+     "x0": 0.183,
+     "x1": 0.748,
+     "y0": 0.165,
+     "y1": 0.951
+    },
+    "range_m": 13.7,
+    "frontality": 0.93,
+    "fov": 59.87,
+    "heading": 137.21,
+    "pitch": 15.8,
+    "rank": 0.888,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "GwrMrdrnLLu2uIYYaCIsHQ",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008011_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008011_1_key.jpg",
+    "target_box": {
+     "x0": 0.268,
+     "x1": 0.809,
+     "y0": 0.147,
+     "y1": 0.955
+    },
+    "range_m": 14.4,
+    "frontality": 0.892,
+    "fov": 57.21,
+    "heading": 88.77,
+    "pitch": 15.05,
+    "rank": 0.829,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "493993669": [
+   {
+    "pano_id": "LQ_u5W4FN4Y8ue8a3wymLg",
+    "date": "2026-04",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993669_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993669_0_key.jpg",
+    "target_box": {
+     "x0": 0.249,
+     "x1": 0.684,
+     "y0": 0.168,
+     "y1": 0.946
+    },
+    "range_m": 19.1,
+    "frontality": 0.843,
+    "fov": 62.31,
+    "heading": 254.32,
+    "pitch": 19.59,
+    "rank": 0.82,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "T2byPbp5rUE8A7enNapirA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993669_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993669_1_key.jpg",
+    "target_box": {
+     "x0": 0.0,
+     "x1": 1.0,
+     "y0": 0.337,
+     "y1": 1.0
+    },
+    "range_m": 6.7,
+    "frontality": 0.996,
+    "fov": 100.0,
+    "heading": 216.35,
+    "pitch": 45.57,
+    "rank": 0.764,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007959": [
+   {
+    "pano_id": "GLwpDecre91jpB-aJpRI-Q",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007959_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007959_0_key.jpg",
+    "target_box": {
+     "x0": 0.099,
+     "x1": 1.0,
+     "y0": 0.32,
+     "y1": 1.0
+    },
+    "range_m": 8.9,
+    "frontality": 0.989,
+    "fov": 100.0,
+    "heading": 29.28,
+    "pitch": 38.39,
+    "rank": 0.837,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "cj7-tyeCDTPQRfNaKwuXAw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007959_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007959_1_key.jpg",
+    "target_box": {
+     "x0": 0.176,
+     "x1": 0.695,
+     "y0": 0.199,
+     "y1": 0.971
+    },
+    "range_m": 14.5,
+    "frontality": 0.831,
+    "fov": 80.7,
+    "heading": 71.54,
+    "pitch": 26.05,
+    "rank": 0.821,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "1410441581": [
+   {
+    "pano_id": "jQNAvW327q2enggrMO_2PA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/1410441581_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/1410441581_0_key.jpg",
+    "target_box": {
+     "x0": 0.456,
+     "x1": 0.557,
+     "y0": 0.133,
+     "y1": 0.945
+    },
+    "range_m": 19.8,
+    "frontality": 0.318,
+    "fov": 48.2,
+    "heading": 192.64,
+    "pitch": 13.51,
+    "rank": 0.245,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "Qp4NCCcNCVbQjoV-morlHA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/1410441581_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/1410441581_1_key.jpg",
+    "target_box": {
+     "x0": 0.469,
+     "x1": 0.526,
+     "y0": 0.126,
+     "y1": 0.936
+    },
+    "range_m": 28.0,
+    "frontality": 0.184,
+    "fov": 34.78,
+    "heading": 343.49,
+    "pitch": 9.65,
+    "rank": 0.056,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494018352": [
+   {
+    "pano_id": "jQNAvW327q2enggrMO_2PA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494018352_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494018352_0_key.jpg",
+    "target_box": {
+     "x0": 0.011,
+     "x1": 0.843,
+     "y0": 0.174,
+     "y1": 0.946
+    },
+    "range_m": 9.5,
+    "frontality": 0.954,
+    "fov": 71.39,
+    "heading": 193.38,
+    "pitch": 15.15,
+    "rank": 0.953,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "XZJjiJYFW0yCUAPNUJ63Cw",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494018352_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494018352_1_key.jpg",
+    "target_box": {
+     "x0": 0.158,
+     "x1": 0.936,
+     "y0": 0.147,
+     "y1": 0.924
+    },
+    "range_m": 15.2,
+    "frontality": 0.938,
+    "fov": 46.73,
+    "heading": 155.67,
+    "pitch": 9.56,
+    "rank": 0.737,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007995": [
+   {
+    "pano_id": "OUqKZk6dokXrno0uZF21CA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007995_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007995_0_key.jpg",
+    "target_box": {
+     "x0": 0.274,
+     "x1": 0.712,
+     "y0": 0.249,
+     "y1": 0.933
+    },
+    "range_m": 13.0,
+    "frontality": 0.995,
+    "fov": 73.32,
+    "heading": 357.47,
+    "pitch": 21.61,
+    "rank": 0.995,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "ogHqQHla1hjH_G9u7z8Heg",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007995_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007995_1_key.jpg",
+    "target_box": {
+     "x0": 0.346,
+     "x1": 0.769,
+     "y0": 0.251,
+     "y1": 1.0
+    },
+    "range_m": 9.2,
+    "frontality": 0.812,
+    "fov": 96.08,
+    "heading": 315.86,
+    "pitch": 29.23,
+    "rank": 0.756,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007934": [
+   {
+    "pano_id": "GLwpDecre91jpB-aJpRI-Q",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007934_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007934_0_key.jpg",
+    "target_box": {
+     "x0": 0.0,
+     "x1": 1.0,
+     "y0": 0.314,
+     "y1": 1.0
+    },
+    "range_m": 6.3,
+    "frontality": 0.974,
+    "fov": 100.0,
+    "heading": 186.23,
+    "pitch": 44.37,
+    "rank": 0.749,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "ggR9gvZ5AXudvA2kVBJqXQ",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007934_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007934_1_key.jpg",
+    "target_box": {
+     "x0": 0.02,
+     "x1": 0.649,
+     "y0": 0.226,
+     "y1": 1.0
+    },
+    "range_m": 8.4,
+    "frontality": 0.64,
+    "fov": 100.0,
+    "heading": 249.61,
+    "pitch": 36.37,
+    "rank": 0.55,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007950": [
+   {
+    "pano_id": "T2byPbp5rUE8A7enNapirA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007950_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007950_0_key.jpg",
+    "target_box": {
+     "x0": 0.308,
+     "x1": 0.708,
+     "y0": 0.231,
+     "y1": 0.928
+    },
+    "range_m": 18.5,
+    "frontality": 0.987,
+    "fov": 64.86,
+    "heading": 212.99,
+    "pitch": 20.52,
+    "rank": 0.972,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "HAa1IZ4eFQJt9mwCn4nsew",
+    "date": "2026-04",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007950_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007950_1_key.jpg",
+    "target_box": {
+     "x0": 0.304,
+     "x1": 0.66,
+     "y0": 0.186,
+     "y1": 0.936
+    },
+    "range_m": 20.3,
+    "frontality": 0.881,
+    "fov": 59.52,
+    "heading": 250.37,
+    "pitch": 18.74,
+    "rank": 0.839,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007957": [
+   {
+    "pano_id": "ub7JWiqpep9adcq_7jXuFg",
+    "date": "2026-04",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007957_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007957_0_key.jpg",
+    "target_box": {
+     "x0": 0.272,
+     "x1": 0.661,
+     "y0": 0.289,
+     "y1": 0.965
+    },
+    "range_m": 11.3,
+    "frontality": 0.901,
+    "fov": 96.36,
+    "heading": 319.29,
+    "pitch": 31.5,
+    "rank": 0.838,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "zW15LNNl2dQOeroJLK3KrQ",
+    "date": "2026-04",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007957_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007957_1_key.jpg",
+    "target_box": {
+     "x0": 0.331,
+     "x1": 0.785,
+     "y0": 0.288,
+     "y1": 1.0
+    },
+    "range_m": 9.8,
+    "frontality": 0.852,
+    "fov": 100.0,
+    "heading": 261.96,
+    "pitch": 35.24,
+    "rank": 0.753,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "1410441582": [
+   {
+    "pano_id": "kEseG_qL-Uj1jbxa7PFrww",
+    "date": "2026-04",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/1410441582_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/1410441582_0_key.jpg",
+    "target_box": {
+     "x0": 0.266,
+     "x1": 0.66,
+     "y0": 0.122,
+     "y1": 0.98
+    },
+    "range_m": 10.5,
+    "frontality": 0.755,
+    "fov": 60.8,
+    "heading": 31.46,
+    "pitch": 13.19,
+    "rank": 0.739,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "HDwpxKKk4t7R6kzdfpIuSQ",
+    "date": "2026-04",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/1410441582_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/1410441582_1_key.jpg",
+    "target_box": {
+     "x0": 0.257,
+     "x1": 0.723,
+     "y0": 0.152,
+     "y1": 0.931
+    },
+    "range_m": 19.3,
+    "frontality": 0.956,
+    "fov": 34.39,
+    "heading": 7.58,
+    "pitch": 7.23,
+    "rank": 0.344,
+    "source": "inhouse_streetview"
+   }
+  ],
+  "494007922": [
+   {
+    "pano_id": "T2byPbp5rUE8A7enNapirA",
+    "date": "2024-09",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007922_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007922_0_key.jpg",
+    "target_box": {
+     "x0": 0.303,
+     "x1": 0.711,
+     "y0": 0.305,
+     "y1": 0.935
+    },
+    "range_m": 12.2,
+    "frontality": 0.996,
+    "fov": 90.47,
+    "heading": 209.58,
+    "pitch": 29.31,
+    "rank": 0.951,
+    "source": "inhouse_streetview"
+   },
+   {
+    "pano_id": "LQ_u5W4FN4Y8ue8a3wymLg",
+    "date": "2026-04",
+    "official": true,
+    "copyright": "\u00a9 Inhouse",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007922_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007922_1_key.jpg",
+    "target_box": {
+     "x0": 0.325,
+     "x1": 0.649,
+     "y0": 0.178,
+     "y1": 0.932
+    },
+    "range_m": 23.0,
+    "frontality": 0.883,
+    "fov": 53.12,
+    "heading": 243.04,
+    "pitch": 16.62,
+    "rank": 0.767,
+    "source": "inhouse_streetview"
+   }
+  ]
+ }
+}

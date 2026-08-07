@@ -1,0 +1,91 @@
+{
+ "osm_id": 514020945,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 2,
+   "evidence": "inferred"
+  },
+  "confidence": 0.66,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "seen"
+  },
+  "identification": "A very small heritage stone house on Pensmarkt, Ghent \u2014 one of the late-medieval tripe-market houses built against the flank of the Groot Vleeshuis, 3.8 m frontage on a 13 m\u00b2 plot, rough Tournai-limestone rubble walls with arched leaded-light windows, now in caf\u00e9 use (Het Spijker) with a terrace at ground level.",
+  "ledges": {
+   "sills": true,
+   "cornice": false,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "marble",
+   "roughness_mm": 12,
+   "trim": "wood",
+   "evidence": "seen"
+  },
+  "notes": "Plate A (Inhouse 3D tiles) is degenerate at this range \u2014 a melted mass with no facade information; nothing was read from it. Street photo _1 outlines a distant red-brick crow-stepped gable across the square that contradicts _0 and does not match a 13 m\u00b2 Pensmarkt unit; treated as a geolocation error and discarded. All facade reading comes from _0. Wall is Tournai bluestone rubble, not brick \u2014 'marble' is the closest available dielectric proxy for dense limestone (concrete would under-state permittivity); roughness 12 mm carries the irregular rubble faces and deeply raked joints in the 1\u201310 cm regime rather than as mesh. 'trim' = wood for the substantial dark timber joinery: window frames, leaded casements and the panelled aprons under the first-floor sills; the reveals and sills themselves are dressed stone, same as wall. Reveal class deep is supported \u2014 the wall is a thick rubble wall and jamb shadow is unambiguous in _0. Bay count is inferred: the photo shows the rhythm across the whole terrace of houses but the outline is an axis-aligned box over an obliquely-viewed facade, so I cannot isolate this unit's party walls; 2 bays follows from 3.8 m frontage minus piers with ~1.2 m openings. Roof inferred: gable-to-street on a narrow deep plot (5.4 m depth), ridge perpendicular \u2014 not visible from the pavement in either photo. Height 9.0 m is flagged no-data upstream; 3.2 + 2.6 + 2.6 = 8.4 m of storey plus roof is consistent with it and I have not overridden it. Scene direction: pedestrian street, car_access none \u2014 place no vehicles. Real clutter here is terrace furniture (stacked green chairs, round tables, umbrella), parked bicycles, blackboard menus, terracotta window planters, projecting bracket signs and enamel brewery plaques; all above 10 cm and worth explicit geometry given the 0.1 m standoff from the corridor.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": false,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 3.2,
+   "upper_height_m": 2.6,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.2,
+   "height_m": 1.8,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 514020945,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "heritage": "4",
+   "addr:street": "Pensmarkt"
+  },
+  "frontage_width_m": 3.8,
+  "footprint_m": [
+   5.4,
+   3.0
+  ],
+  "footprint_area_m2": 13,
+  "height_m": 9.0,
+  "height_source": "no-data",
+  "street_frontages": 1,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Pensmarkt",
+   "surface": null,
+   "car_access": "none",
+   "distance_m": 0.1
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.4,
+   "x1": 0.607,
+   "y0": 0.128,
+   "y1": 0.815
+  }
+ },
+ "plate": "renders/plates/graslei/514020945.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020945_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020945_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.466461,
+ "model": "claude-opus-5"
+}

@@ -1,0 +1,85 @@
+{
+ "osm_id": 494018352,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 4,
+   "evidence": "inferred"
+  },
+  "confidence": 0.42,
+  "ground_floor": {
+   "kind": "residential_door",
+   "evidence": "inferred"
+  },
+  "identification": "A modest two-storey-plus-attic brick mid-terrace dwelling of the Ghent historic core, probably 18th-19th century in its present facade, fronting a sett-paved pedestrian lane behind the Graslei quay and in residential use.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": false,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 5,
+   "trim": "marble",
+   "evidence": "inferred"
+  },
+  "notes": "Set A resolves nothing on this building. The only well-resolved facade in the frame (pale, legible window rows, top centre) is a neighbour further up the block, NOT the outlined target; inside the magenta box the Inhouse tiles have collapsed into a melted purple-grey mass with a few pinkish planar streaks. I can assert \"pitched, not flat\" and no more, so the roof is marked inferred despite set A nominally being the roof view. Every field here is inferred.\n\nStoreys: 9.2 m read as total height to ridge. Ground 3.2 + one upper 2.9 puts eaves at ~6.1 m, leaving 3.1 m of roof over a 3.75 m half-span = ~40 deg pitch, the standard Flemish tiled figure. Reading 9.2 as eaves height would force three storeys and make the building taller than it reads against its neighbours in the plate. Count excludes the attic per schema.\n\nRoof orientation is derived from the measured footprint, not from the image: a 10.3 m frontage on a 7.5 m depth cannot carry a street-facing gable, which is the narrow-and-deep typology. Ridge runs parallel to the lane; party gables into the neighbours on both sides (3 attached).\n\nThis is deliberately NOT read as a Graslei/Korenlei quay guild house. Those are narrow-fronted (5-8 m), deep, tall and gable-to-water with stepped or crow gables. The measured record here is wide, shallow and low, which is a back-lane terrace unit. Applying the quay-front stepped-gable prior would have been the generic-plausible error.\n\nGround floor: car_access=none on a sett path, plain building=house, no shop tag, 7 m off a side lane. The cafe glazing of this quarter belongs to the quay frontage, not to this unit.\n\nMaterials: brick relief and mortar joints are in the 1-10 cm regime and are carried entirely by roughness_mm ~5 (hand-moulded Flemish brick, fairly flush lime joints), never as mesh. Trim coded \"marble\" as the closest available dielectric match (eps' ~7, dense calcite) for Belgian blue limestone (arduin) used at sills, plinth and door surround; it is not literally marble. Explicit geometry requested is confined to the >10 cm regime: shallow window reveals, sills, eaves cornice.\n\nClutter guidance for the generator: car_access=none, so place NO vehicles on this frontage. Sett-paved pedestrian lane in the Ghent core supports leaning bicycles, wheelie bins, and a doorstep threshold stone. Detail budget should sit on the openings, the eaves line and the ground-floor door; the rear and party walls are occluded by 3 attached neighbours and deserve almost nothing.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 2,
+   "ground_height_m": 3.2,
+   "upper_height_m": 2.9,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.1,
+   "height_m": 1.9,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "inferred"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494018352,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house"
+  },
+  "frontage_width_m": 10.3,
+  "footprint_m": [
+   12.3,
+   7.5
+  ],
+  "footprint_area_m2": 69,
+  "height_m": 9.2,
+  "height_source": "adopted-photo",
+  "street_frontages": 1,
+  "attached_neighbours": 3,
+  "fronting_street": {
+   "highway": "path",
+   "name": null,
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 7.0
+  },
+  "plate_view": "oblique",
+  "target_box_normalised": {
+   "x0": 0.165,
+   "x1": 0.624,
+   "y0": 0.515,
+   "y1": 0.908
+  }
+ },
+ "plate": "renders/plates/graslei/494018352.png",
+ "photos": [],
+ "view": "oblique",
+ "cost_usd": 0.253745,
+ "model": "claude-opus-5"
+}
