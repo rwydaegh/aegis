@@ -10,6 +10,10 @@ import numpy as np
 
 from ..illumination.sphere import fibonacci_sphere
 from .specular_broadphase import conservative_order_one_candidates
+from .specular_device_broadphase import (
+    DeviceBroadPhaseUnavailable,
+    bind_cuda_order_one_broad_phase,
+)
 
 DEFAULT_SPECULAR_CANDIDATE_BUDGET = 120_000_000
 MEASURED_CANDIDATES_PER_SECOND = 1_000_000.0
@@ -594,6 +598,11 @@ class OneBounceSpecularTransport:
         self.epsilon_m = float(tracer.config.ray_epsilon_m if epsilon_m is None else epsilon_m)
         self.broad_phase_threshold = int(broad_phase_threshold)
         self.broad_phase_source_chunk = int(broad_phase_source_chunk)
+        self._device_broad_phase = bind_cuda_order_one_broad_phase(
+            self.surfaces.triangles,
+            self.surfaces.normals,
+            tracer,
+        )
 
     def work_estimate(self, *, sources: int, rays: int, samples: int, max_bounces: int) -> SpecularWorkEstimate:
         """Bound exact all-face work before any candidate arrays are allocated."""
@@ -689,15 +698,28 @@ class OneBounceSpecularTransport:
         broad_phase = None
         if candidate_count >= self.broad_phase_threshold and pair_count and np.all(receivers == receivers[0]):
             surface = candidate_sequences[:, 0]
-            broad_phase = conservative_order_one_candidates(
-                sources,
-                receivers[0],
-                self.surfaces.triangles[surface],
-                self.surfaces.normals[surface],
-                epsilon_m=self.epsilon_m,
-                source_chunk=self.broad_phase_source_chunk,
-                inside_tolerance=_INSIDE_TRIANGLE_TOLERANCE,
-            )
+            if self._device_broad_phase is not None:
+                try:
+                    broad_phase = self._device_broad_phase.candidates(
+                        sources,
+                        receivers[0],
+                        surface,
+                        epsilon_m=self.epsilon_m,
+                        source_chunk=self.broad_phase_source_chunk,
+                        inside_tolerance=_INSIDE_TRIANGLE_TOLERANCE,
+                    )
+                except DeviceBroadPhaseUnavailable:
+                    broad_phase = None
+            if broad_phase is None:
+                broad_phase = conservative_order_one_candidates(
+                    sources,
+                    receivers[0],
+                    self.surfaces.triangles[surface],
+                    self.surfaces.normals[surface],
+                    epsilon_m=self.epsilon_m,
+                    source_chunk=self.broad_phase_source_chunk,
+                    inside_tolerance=_INSIDE_TRIANGLE_TOLERANCE,
+                )
         return self._solve_candidate_kernel(
             sources,
             receivers,
