@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from semantic_twin.illumination.sources import SourceSet
+from semantic_twin.illumination.sphere import nearest_cell
 from semantic_twin.materials.atlas_binding import AtlasMaterialBinding
 from semantic_twin.propagation.geometry import DeviceIntersection, MitsubaGeometry
 from semantic_twin.transport.device_kernel import DeviceSbrKernel
@@ -236,6 +237,84 @@ def test_resident_gather_is_invariant_to_transfer_batch_size(tmp_path: Path) -> 
     assert np.array_equal(whole.chi_by_order(), split.chi_by_order())
     assert whole.connections == split.connections
     assert whole.cleared == split.cleared
+
+
+@pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
+@pytest.mark.parametrize("local_cells", [64, 512, 4096])
+def test_compact_resident_reduction_matches_rich_host_reduction(
+    tmp_path: Path,
+    variant: str,
+    local_cells: int,
+) -> None:
+    _set_variant(variant)
+    geometry = MitsubaGeometry(_write_plane(tmp_path / "plane.ply"), variant=variant)
+    config = TraceConfig(
+        rays=4096,
+        local_cells=local_cells,
+        exit_bands=32,
+        max_bounces=1,
+        roulette_start=2,
+        batch=4096,
+        seed=912,
+    )
+    tracer = DeviceEscapeTracer(
+        geometry,
+        np.zeros(geometry.face_count, dtype=np.int64),
+        np.array([4.2 - 0.15j]),
+        np.array([1.0]),
+        config,
+    )
+    sources = _sources(np.array([[0.0, 0.0, 3.0], [2.0, 0.0, 4.0]]))
+    origin = np.array([0.0, 0.0, 1.0])
+
+    rich_gather = DeviceNextEventGather(sources, max_order=1, collect_field=True)
+    rich_gather.begin_trace(config.rays, tracer.local_grid)
+    rich = tracer.kernel.trace_escape_records(origin, seed=config.seed, next_event=rich_gather)
+    cells = nearest_cell(rich.all_launch_direction, tracer.local_grid)
+    rich_gather.consume(rich.next_event, rich.all_launch_direction, launch_cells=cells)
+    rich_gather.end_trace()
+
+    compact_gather = DeviceNextEventGather(sources, max_order=1, collect_field=True)
+    compact_gather.begin_trace(config.rays, tracer.local_grid)
+    compact = tracer.kernel.trace_escape_records(
+        origin,
+        seed=config.seed,
+        next_event=compact_gather,
+        compact=True,
+    )
+    compact_gather.consume_reduced(compact.next_event)
+    compact_gather.end_trace()
+
+    assert compact.escaped == rich.escaped
+    assert compact.zero_bounce == np.count_nonzero(rich.bounces == 0)
+    assert compact.truncated == rich.truncated
+    assert compact.roulette_killed == rich.roulette_killed
+    expected_exit = np.zeros(config.exit_bands, dtype=np.float64)
+    exit_band = np.clip(
+        np.searchsorted(tracer.exit_sin_edges, rich.exit_direction[:, 2], side="right") - 1,
+        0,
+        config.exit_bands - 1,
+    )
+    np.add.at(expected_exit, exit_band, rich.throughput)
+    np.testing.assert_allclose(compact.exit_power, expected_exit, rtol=2.0e-12, atol=1.0e-12)
+    excess = rich.path_length - np.einsum(
+        "ij,ij->i",
+        rich.exit_direction,
+        rich.last_vertex - origin,
+    )
+    assert compact.bounce_sum == pytest.approx(float(rich.bounces.sum()), abs=0.0)
+    assert compact.delay_weight == pytest.approx(float(rich.throughput.sum(dtype=np.float64)), rel=2.0e-12)
+    assert compact.delay_sum == pytest.approx(float(np.sum(rich.throughput * excess)), rel=2.0e-12)
+    assert compact.truncated_throughput == pytest.approx(rich.truncated_throughput, rel=2.0e-12)
+    np.testing.assert_allclose(compact_gather.chi_by_order(), rich_gather.chi_by_order(), rtol=2.0e-6)
+    np.testing.assert_allclose(
+        compact_gather.bounced_mass(),
+        rich_gather.bounced_mass(),
+        rtol=2.0e-6,
+        atol=1.0e-10,
+    )
+    assert compact_gather.connections == rich_gather.connections
+    assert compact_gather.cleared == rich_gather.cleared
 
 
 def test_distinct_gathers_share_one_immutable_specular_face_binding(tmp_path: Path) -> None:

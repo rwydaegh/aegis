@@ -20,6 +20,7 @@ from typing import Any
 
 import numpy as np
 
+from ..illumination.sphere import fibonacci_sphere
 from .trace_kernel import launch_rotation
 
 
@@ -28,6 +29,25 @@ _STATUS_TRUNCATED = 2
 _STATUS_ROULETTE = 3
 _STATUS_CANOPY_LOOP_ERROR = 4
 _PACKED_COLUMNS = 13
+
+
+@dataclass(frozen=True)
+class DeviceReducedTrace:
+    """Scalar and histogram reductions from a minimal production trace."""
+
+    exit_power: np.ndarray
+    escaped: int
+    zero_bounce: int
+    bounce_sum: float
+    delay_sum: float
+    delay_weight: float
+    truncated: int
+    truncated_throughput: float
+    roulette_killed: int
+    ray_start: int
+    rays: int
+    seconds: float
+    next_event: Any
 
 
 @dataclass(frozen=True)
@@ -123,6 +143,54 @@ def _rotated_fibonacci_sphere(
     )
 
 
+def _nearest_fibonacci_cell(mi: Any, dr: Any, direction: Any, grid: tuple[Any, ...], cells: int) -> Any:
+    """Constant-time exact inverse of this spherical Fibonacci grid.
+
+    This is the four-candidate map of Keinert et al., ACM TOG 34(6), 2015,
+    DOI 10.1145/2816795.2818131, evaluated in float64 as its GPU precision
+    analysis requires. Candidate distances use the established grid itself.
+    """
+    direction64 = mi.Vector3d(direction)
+    golden_ratio = 0.5 * (1.0 + math.sqrt(5.0))
+    tau = 2.0 * np.pi
+    radial = dr.maximum(1.0 - direction64.z * direction64.z, 0.0)
+    level = dr.maximum(
+        2.0,
+        dr.floor(dr.log2(float(cells) * np.pi * math.sqrt(5.0) * radial) / math.log2(golden_ratio + 1.0)),
+    )
+    fibonacci = dr.power(golden_ratio, level) / math.sqrt(5.0)
+    f0 = dr.round(fibonacci)
+    f1 = dr.round(fibonacci * golden_ratio)
+    ka0 = 2.0 * f0 / float(cells)
+    ka1 = 2.0 * f1 / float(cells)
+    frac0 = (f0 + 1.0) * golden_ratio - dr.floor((f0 + 1.0) * golden_ratio)
+    frac1 = (f1 + 1.0) * golden_ratio - dr.floor((f1 + 1.0) * golden_ratio)
+    kb0 = (frac0 - (golden_ratio - 1.0)) * tau
+    kb1 = (frac1 - (golden_ratio - 1.0)) * tau
+    azimuth = dr.atan2(direction64.y, direction64.x)
+    height = direction64.z - 1.0 + 1.0 / float(cells)
+    determinant = ka0 * kb1 - ka1 * kb0
+    c0 = dr.floor((ka1 * azimuth - kb1 * height) / determinant)
+    c1 = dr.floor((-ka0 * azimuth + kb0 * height) / determinant)
+
+    best = dr.full(mi.Float64, float("inf"), dr.width(direction64.x))
+    nearest = dr.zeros(mi.UInt32, dr.width(direction64.x))
+    gx, gy, gz = grid
+    for corner in range(4):
+        u = float(corner & 1)
+        v = float(corner >> 1)
+        candidate_float = dr.clip(f0 * (c0 + u) + f1 * (c1 + v), 0.0, float(cells - 1))
+        candidate = mi.UInt32(candidate_float)
+        dx = direction64.x - dr.gather(mi.Float64, gx, candidate)
+        dy = direction64.y - dr.gather(mi.Float64, gy, candidate)
+        dz = direction64.z - dr.gather(mi.Float64, gz, candidate)
+        squared_distance = dx * dx + dy * dy + dz * dz
+        improve = (squared_distance < best) | ((squared_distance == best) & (candidate < nearest))
+        best = dr.select(improve, squared_distance, best)
+        nearest = dr.select(improve, candidate, nearest)
+    return nearest
+
+
 def _cosine_hemisphere(
     mi: Any,
     dr: Any,
@@ -216,13 +284,23 @@ class DeviceSbrKernel:
                 raise ValueError("atlas material classes leave the material table")
         self.wavelength_m = 299_792_458.0 / float(config.frequency_hz)
 
+        local_grid = fibonacci_sphere(int(config.local_cells))
+        self._local_grid_device = tuple(
+            mi.Float64(np.ascontiguousarray(local_grid[:, component])) for component in range(3)
+        )
+
         self._face_class_device = mi.UInt32(self.face_class)
         self._permittivity_device = mi.Complex2f(
             mi.Float(np.ascontiguousarray(self.permittivity.real)),
             mi.Float(np.ascontiguousarray(self.permittivity.imag)),
         )
         self._rms_height_device = mi.Float(np.ascontiguousarray(self.rms_height_m))
-        device_arrays = [self._face_class_device, self._permittivity_device, self._rms_height_device]
+        device_arrays = [
+            self._face_class_device,
+            self._permittivity_device,
+            self._rms_height_device,
+            *self._local_grid_device,
+        ]
         if self.atlas_material is not None:
             self._atlas_face_to_row_device = mi.Int32(
                 np.ascontiguousarray(self.atlas_material.face_to_atlas_row, dtype=np.int32)
@@ -258,7 +336,8 @@ class DeviceSbrKernel:
         seed: int | None = None,
         observers: Any = None,
         next_event: Any = None,
-    ) -> DeviceEscapeRecords:
+        compact: bool = False,
+    ) -> DeviceEscapeRecords | DeviceReducedTrace:
         """Trace raw escape records, with all transport work kept on Dr.Jit.
 
         ``ray_start`` is the global counter offset. Splitting one run into any
@@ -285,9 +364,6 @@ class DeviceSbrKernel:
         )
         started = time.perf_counter()
         ray_index = dr.arange(mi.UInt32, count) + dr.opaque(mi.UInt32, ray_start)
-        next_event_state = (
-            None if next_event is None else next_event._device_state(self, ray_index, count, used_seed_value)
-        )
         next_event_seed = None
         if next_event is not None:
             gather_seed_value = (used_seed_value + int(next_event.seed_offset)) & 0xFFFFFFFFFFFFFFFF
@@ -307,6 +383,19 @@ class DeviceSbrKernel:
         # expression has a different ray-range offset.
         dr.eval(direction)
         launch_direction = direction
+        launch_cell = None
+        if compact and next_event is not None and bool(next_event.collect_field):
+            launch_cell = _nearest_fibonacci_cell(
+                mi,
+                dr,
+                launch_direction,
+                self._local_grid_device,
+                int(self.config.local_cells),
+            )
+            dr.eval(launch_cell)
+        next_event_state = (
+            None if next_event is None else next_event._device_state(self, ray_index, count, used_seed_value)
+        )
         point = np.asarray(origin, dtype=np.float64)
         if point.shape != (3,):
             raise ValueError(f"origin must have shape (3,), got {point.shape}")
@@ -558,6 +647,21 @@ class DeviceSbrKernel:
             # materialised inputs.
             dr.eval(position, direction, throughput, path_length, last_vertex, bounces, status, alive)
 
+        if compact:
+            return self._transfer_reduced(
+                origin=point,
+                direction=direction,
+                throughput=throughput,
+                path_length=path_length,
+                last_vertex=last_vertex,
+                bounces=bounces,
+                status=status,
+                ray_start=ray_start,
+                count=count,
+                started=started,
+                next_event_state=next_event_state,
+                launch_cell=launch_cell,
+            )
         records = self._transfer_records(
             ray_index,
             launch_direction,
@@ -692,6 +796,95 @@ class DeviceSbrKernel:
         supported = atlas_hit & dr.gather(mi.Bool, self._atlas_supported_device, texel, atlas_hit)
         nonblocking = atlas_hit & dr.gather(mi.Bool, self._atlas_nonblocking_device, texel, atlas_hit)
         return supported, nonblocking, texel
+
+    def _transfer_reduced(
+        self,
+        *,
+        origin: np.ndarray,
+        direction: Any,
+        throughput: Any,
+        path_length: Any,
+        last_vertex: Any,
+        bounces: Any,
+        status: Any,
+        ray_start: int,
+        count: int,
+        started: float,
+        next_event_state: Any,
+        launch_cell: Any | None,
+    ) -> DeviceReducedTrace:
+        """Transfer only production histograms and scalar escape diagnostics."""
+        mi, dr = self.mi, self.dr
+        escaped = status == _STATUS_ESCAPED
+        truncated = status == _STATUS_TRUNCATED
+        exit_bands = int(self.config.exit_bands)
+        exit_band = mi.UInt32(
+            dr.clip(
+                dr.floor((mi.Float64(direction.z) + 1.0) * (0.5 * exit_bands)),
+                0,
+                exit_bands - 1,
+            )
+        )
+        exit_power = dr.zeros(mi.Float64, exit_bands)
+        dr.scatter_reduce(
+            dr.ReduceOp.Add,
+            exit_power,
+            mi.Float64(throughput),
+            exit_band,
+            escaped,
+            mode=dr.ReduceMode.Auto,
+        )
+        ox, oy, oz = (float(value) for value in origin)
+        excess = mi.Float64(path_length) - (
+            mi.Float64(direction.x) * (mi.Float64(last_vertex.x) - ox)
+            + mi.Float64(direction.y) * (mi.Float64(last_vertex.y) - oy)
+            + mi.Float64(direction.z) * (mi.Float64(last_vertex.z) - oz)
+        )
+        escaped_weight = dr.select(escaped, mi.Float64(throughput), 0.0)
+        scalar_parts = (
+            dr.sum(mi.Float64(escaped)),
+            dr.sum(mi.Float64(escaped & (bounces == 0))),
+            dr.sum(dr.select(escaped, mi.Float64(bounces), 0.0)),
+            dr.sum(escaped_weight * excess),
+            dr.sum(escaped_weight),
+            dr.sum(mi.Float64(truncated)),
+            dr.sum(dr.select(truncated, mi.Float64(throughput), 0.0)),
+            dr.sum(mi.Float64(status == _STATUS_ROULETTE)),
+            dr.sum(mi.Float64(status == _STATUS_CANOPY_LOOP_ERROR)),
+        )
+        transferred = np.asarray(dr.concat((*scalar_parts, exit_power)), dtype=np.float64)
+        if transferred.size != 9 + exit_bands:
+            raise RuntimeError("compact device escape reduction packing is inconsistent")
+        summary = transferred[:9]
+        if int(summary[8]):
+            raise RuntimeError(
+                f"{int(summary[8])} rays exceeded the support-mesh face count while crossing "
+                "non-blocking canopy cells; the mesh likely contains a repeated self-intersection"
+            )
+        next_event = (
+            None
+            if next_event_state is None
+            else next_event_state.transfer_reduced(
+                ray_start,
+                launch_cell,
+                int(self.config.local_cells),
+            )
+        )
+        return DeviceReducedTrace(
+            exit_power=transferred[9:].copy(),
+            escaped=int(summary[0]),
+            zero_bounce=int(summary[1]),
+            bounce_sum=float(summary[2]),
+            delay_sum=float(summary[3]),
+            delay_weight=float(summary[4]),
+            truncated=int(summary[5]),
+            truncated_throughput=float(summary[6]),
+            roulette_killed=int(summary[7]),
+            ray_start=ray_start,
+            rays=count,
+            seconds=time.perf_counter() - started,
+            next_event=next_event,
+        )
 
     def _transfer_records(self, *parts: Any) -> DeviceEscapeRecords:
         """Compact escaped rays and cross the device boundary in one array copy."""
