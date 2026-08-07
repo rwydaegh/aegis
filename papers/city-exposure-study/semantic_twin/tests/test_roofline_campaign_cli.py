@@ -149,6 +149,44 @@ def test_shipped_pilot_configs_load(name, site, variant, kernel, acceptance):
         assert setup.source.sampled_specular_seed_offset == 2000
 
 
+def test_shipped_cuda_convergence_configs_load():
+    configs = (
+        ("roofline_campaign_korenmarkt_convergence_cuda_iid.json", "korenmarkt", "iid"),
+        (
+            "roofline_campaign_korenmarkt_convergence_cuda_rotated_fibonacci.json",
+            "korenmarkt",
+            "rotated_fibonacci",
+        ),
+        ("roofline_campaign_prague_convergence_cuda_iid.json", "prague_staromestske", "iid"),
+        (
+            "roofline_campaign_prague_convergence_cuda_rotated_fibonacci.json",
+            "prague_staromestske",
+            "rotated_fibonacci",
+        ),
+    )
+    setups = [load_roofline_setup(paths.root() / "config" / name) for name, _, _ in configs]
+    assert [setup.run.site for setup in setups] == [site for _, site, _ in configs]
+    assert all(setup.run.variant == "cuda_ad_rgb" for setup in setups)
+    assert all(setup.run.transport_kernel == "drjit" for setup in setups)
+    assert [setup.run.launch_sampling for setup in setups] == [mode for _, _, mode in configs]
+    assert all(setup.run.walk == "route" for setup in setups)
+    assert all(setup.run.materials == "atlas" for setup in setups)
+    assert all(setup.run.max_bounces == 3 for setup in setups)
+    assert all(setup.run.rays == 200_000 for setup in setups)
+    assert all(setup.run.local_cells == 4096 for setup in setups)
+    assert all(setup.campaign.planned_seeds == tuple(range(7, 23)) for setup in setups)
+    assert all(setup.campaign.convergence_looks == (4, 8, 12, 16) for setup in setups)
+    assert len({setup.campaign.output_dir for setup in setups}) == len(setups)
+    assert len({setup.run.tag for setup in setups}) == len(setups)
+    for setup in setups:
+        assert setup.campaign.specular_acceptance == "adaptive_all_specular_sampled_mixed_order_1"
+        assert setup.campaign.minimum_completed_specular_order == 0
+        assert setup.source.specular_order == 1
+        assert setup.source.specular_suffix_mode == "sampled"
+        assert setup.source.sampled_specular_samples == 1
+        assert setup.source.sampled_specular_seed_offset == 2000
+
+
 def test_preparation_builds_sources_from_every_declared_standpoint(monkeypatch, tmp_path):
     mesh = tmp_path / "mesh.ply"
     mesh.write_text("mesh")
