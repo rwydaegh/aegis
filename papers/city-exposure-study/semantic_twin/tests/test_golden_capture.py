@@ -7,6 +7,8 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
+import pytest
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from golden import capture
@@ -135,3 +137,121 @@ def test_source_dirty_excludes_fixtures_and_handoffs_but_keeps_executable_inputs
     source.write_text("committed\n")
     aegis_source.write_text("relevant aegis change\n")
     assert capture._git_dirty(study, capture.SOURCE_PATHSPECS) is True
+
+
+def test_seed_spread_reduces_cached_probe_rows_without_study_outputs(tmp_path: pathlib.Path, monkeypatch: Any) -> None:
+    """Exercise the spread reducer with a tiny synthetic capture cache.
+
+    The real spread command deliberately traces five 16-standpoint runs. This
+    regression only needs to prove that its cache contract and reductions stay
+    wired to the current capture code, so it supplies the completed rows in a
+    temporary directory instead of requiring a mesh or a minute-long tracer
+    run.
+    """
+    import golden.cases as cases
+
+    exposure_out = tmp_path / "exposure_korenmarkt"
+    exposure_out.mkdir()
+    base = _FakeCase(
+        ident="exposure_korenmarkt_130m_geometric",
+        fixture=tmp_path / "unused.json",
+        payload={},
+        argv=("--seed", "7", "--tag", "golden_base"),
+    )
+    monkeypatch.setattr(capture, "CASES_BY_ID", {base.ident: base})
+    monkeypatch.setattr(cases, "EXPOSURE_OUT", exposure_out)
+
+    metric_names = (
+        "chi_isotropic",
+        "chi_rooftop",
+        "chi_street_small_cell",
+        "sky_fraction",
+        "mean_bounces",
+        "isotropic_peak_sab_w_m2",
+        "rooftop_peak_sab_w_m2",
+        "isotropic_sar_wb_w_kg",
+        "rooftop_sar_wb_w_kg",
+    )
+    for seed in (7, 8):
+        rows = []
+        for index in range(16):
+            rows.append(
+                {
+                    "index": index,
+                    **{name: float(seed + index / 100.0) for name in metric_names},
+                }
+            )
+        tag = f"golden_spread_seed{seed}_15ghz"
+        (exposure_out / f"{tag}_locations.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows))
+        (exposure_out / f"{tag}_manifest.json").write_text(json.dumps({"wall_seconds": 0.01}))
+
+    result = capture.seed_spread(sys.executable, seeds=(7, 8))
+
+    assert result["standpoint_sets_identical"] is True
+    assert result["seeds"] == [7, 8]
+    summary = result["median_over_16_standpoints"]
+    assert summary["chi_isotropic"]["medians"] == [7.075, 8.075]
+    import math
+
+    assert summary["chi_isotropic"]["db_range"] == pytest.approx(10.0 * math.log10(8.075 / 7.075))
+
+
+def test_monte_carlo_uses_current_material_and_walk_exports(tmp_path: pathlib.Path, monkeypatch: Any) -> None:
+    """Exercise the fixed-point Monte Carlo helper without a local mesh.
+
+    The helper is an optional, expensive measurement, but its imports are part
+    of the capture tool's public command path. Small fakes let this test cover
+    construction, two fixed standpoints, and the seed loop while keeping the
+    golden test suite independent of ``outputs/`` and Mitsuba.
+    """
+    from types import SimpleNamespace
+
+    import semantic_twin.materials as materials
+    import semantic_twin.propagation as propagation
+    import semantic_twin.walk as walk
+
+    class FakeGeometry:
+        vertices = __import__("numpy").zeros((3, 3))
+        faces = __import__("numpy").zeros((1, 3), dtype=int)
+
+    class FakeTracer:
+        def __init__(self, *_args: Any) -> None:
+            self.seeds: list[int] = []
+
+        def trace(self, _origin: Any, models: Any, *, ground_z_m: float, seed: int) -> Any:
+            del ground_z_m
+            self.seeds.append(seed)
+            return SimpleNamespace(susceptibility={name: float(seed) for name in models})
+
+    tracer_instances: list[FakeTracer] = []
+
+    def make_tracer(*args: Any) -> FakeTracer:
+        tracer = FakeTracer(*args)
+        tracer_instances.append(tracer)
+        return tracer
+
+    monkeypatch.setattr(capture, "ROOT", tmp_path)
+    monkeypatch.setattr(materials, "classify_faces", lambda *_args, **_kwargs: __import__("numpy").zeros(1, dtype=int))
+    monkeypatch.setattr(
+        materials, "load_table", lambda *_args, **_kwargs: SimpleNamespace(permittivity=[1], rms_height_m=[0])
+    )
+    monkeypatch.setattr(walk, "measure_ground_datum", lambda *_args, **_kwargs: SimpleNamespace(z_m=0.0))
+    monkeypatch.setattr(
+        walk,
+        "build_walk",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            points=__import__("numpy").zeros((428, 3)),
+            ground_z_m=__import__("numpy").zeros(428),
+        ),
+    )
+    monkeypatch.setattr(propagation, "MODELS", {"isotropic": object()})
+    monkeypatch.setattr(propagation, "MitsubaGeometry", lambda *_args, **_kwargs: FakeGeometry())
+    monkeypatch.setattr(propagation, "TraceConfig", lambda **kwargs: SimpleNamespace(**kwargs))
+    monkeypatch.setattr(propagation, "SbrTracer", make_tracer)
+
+    result = capture.monte_carlo(seeds=2)
+
+    assert result["rays"] == 200_000
+    assert set(result["standpoints"]) == {"427", "213"}
+    assert len(tracer_instances) == 1
+    assert tracer_instances[0].seeds == [90_000, 90_001, 90_000, 90_001]

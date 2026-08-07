@@ -158,6 +158,21 @@ def test_resume_keeps_complete_locations_and_drops_partial_ones(tmp_path: pathli
     assert path.read_text() == "".join(json.dumps(row) + "\n" for row in rows[:3])
 
 
+def test_site_mesh_uses_the_canonical_format_gate(tmp_path: pathlib.Path) -> None:
+    """A newer plain build beats an adjacent but refused ``_f64`` build."""
+    directory = tmp_path / "data" / "geometry" / "fixture"
+    directory.mkdir(parents=True)
+    f64 = directory / "inhouse_leaf_250m_f64.ply"
+    plain = directory / "inhouse_leaf_250m.ply"
+    f64.write_bytes(b"old f64")
+    plain.write_bytes(b"format-v3")
+    f64.with_suffix(".json").write_text(json.dumps({"format_version": 2}))
+    plain.with_suffix(".json").write_text(json.dumps({"format_version": 3}))
+
+    bystander_study.paths.forget_disk_reads()
+    assert bystander_study.site_mesh(tmp_path, "fixture", 250) == plain
+
+
 def test_study_writer_keeps_loop_seed_and_flush_order(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> None:
     events: list[tuple[object, ...]] = []
     library = _library()

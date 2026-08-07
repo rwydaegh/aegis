@@ -22,10 +22,12 @@ import textwrap
 import numpy as np
 import pytest
 
+import semantic_twin.transport.sionna_check as sionna_check
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
 from semantic_twin.illumination import ISOTROPIC, ROOFTOP, STREET_SMALL_CELL
 from semantic_twin.propagation.geometry import PlaneGeometry
 from semantic_twin.transport.sionna_check import (
+    CompareOptions,
     FULLY_DIFFUSE_RMS_HEIGHT_M,
     MODES,
     SLAB_THICKNESS_M,
@@ -67,6 +69,41 @@ CLASS_PERMITTIVITY = (
     complex(5.24, -0.46055233),
 )
 CLASS_RMS_HEIGHT_M = (0.00378594, 0.00115509, 0.0006, 0.00015)
+
+
+def test_site_mesh_uses_the_canonical_provenance_resolver(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The Sionna harness must not reimplement mesh filename/version policy."""
+    calls: list[tuple[str, int, object]] = []
+    expected = sionna_check.ROOT / "data" / "geometry" / "fixture" / "mesh.ply"
+
+    def resolve(site: str, crop_m: int, *, root_dir=None):  # noqa: ANN001
+        calls.append((site, crop_m, root_dir))
+        return expected
+
+    monkeypatch.setattr(sionna_check.paths, "site_mesh", resolve)
+
+    assert sionna_check.site_mesh("fixture", 250) == expected
+    assert calls == [("fixture", 250, sionna_check.ROOT)]
+
+
+def test_compare_preserves_historical_keyword_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected = sionna_check.ROOT / "outputs" / "comparison.json"
+    seen: dict[str, object] = {}
+
+    def fake_compare(site: str, options: CompareOptions):
+        seen["site"] = site
+        seen["options"] = options
+        return expected
+
+    monkeypatch.setattr(sionna_check, "_compare", fake_compare)
+
+    assert sionna_check.compare("fixture", locations=3, local=True) == expected
+    assert seen == {"site": "fixture", "options": CompareOptions(locations=3, local=True)}
+
+
+def test_compare_rejects_unknown_configuration() -> None:
+    with pytest.raises(TypeError, match="unexpected keyword"):
+        CompareOptions.from_kwargs({"not_a_compare_option": 1})
 
 
 def _subprocess_json(body: str) -> dict:
