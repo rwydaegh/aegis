@@ -45,7 +45,6 @@ _OPTIONAL_SUFFIX_KEYS = (
     "sampled_suffix_transfer",
     "sampled_specular_transfer",
     "mixed_specular_transfer",
-    "chi_specular_suffix",
 )
 
 
@@ -105,8 +104,52 @@ def _required_path(root: Path, name: str) -> Path:
     return path
 
 
+def _validate_input_record(record: Any) -> str:
+    if not isinstance(record, dict):
+        raise CampaignComparisonError("campaign identity inputs.files contains a non-object record")
+    path = record.get("path")
+    if not isinstance(path, str) or not path:
+        raise CampaignComparisonError("campaign identity input record has no path")
+    size = record.get("bytes")
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise CampaignComparisonError(f"campaign identity input record has invalid bytes: {path}")
+    if not _is_sha256(record.get("sha256")):
+        raise CampaignComparisonError(f"campaign identity input record has invalid SHA-256: {path}")
+    return path
+
+
+def _is_selected_run_config(path: str, site: str, mode: str) -> bool:
+    filename = Path(path).name
+    return filename.startswith(f"roofline_campaign_{site}_") and filename.endswith(f"_{mode}.json")
+
+
+def _normalise_run_config_input(data: dict[str, Any], mode: str) -> None:
+    inputs = data.get("inputs")
+    if inputs is None:
+        return
+    if not isinstance(inputs, dict) or not isinstance(inputs.get("files"), list):
+        raise CampaignComparisonError("campaign identity inputs.files must be a list")
+    configuration = data.get("configuration")
+    site = configuration.get("site") if isinstance(configuration, dict) else None
+    if not isinstance(site, str) or not site:
+        raise CampaignComparisonError("campaign identity does not seal a site for run-config normalization")
+    records = inputs["files"]
+    selected: list[dict[str, Any]] = []
+    for record in records:
+        path = _validate_input_record(record)
+        if _is_selected_run_config(path, site, mode):
+            selected.append(record)
+    if len(selected) != 1:
+        raise CampaignComparisonError(
+            f"campaign identity must contain exactly one sealed {mode} run-config input for {site}"
+        )
+    inputs["files"] = [record for record in records if record is not selected[0]]
+    inputs["file_count"] = len(inputs["files"])
+    inputs["bytes"] = sum(record["bytes"] for record in inputs["files"])
+
+
 def _normalise_launch_sampling(data: dict[str, Any]) -> tuple[dict[str, Any], str]:
-    """Return identity data with the historical omitted IID value made explicit."""
+    """Return identity data with launch and its operational run-config input normalized."""
     normalised = copy.deepcopy(data)
     transport = normalised.get("transport")
     tracer = transport.get("tracer") if isinstance(transport, dict) else None
@@ -119,6 +162,7 @@ def _normalise_launch_sampling(data: dict[str, Any]) -> tuple[dict[str, Any], st
     # Launch design is the one deliberate difference in this comparison.  Keep
     # its value separately and remove it from the compatibility fingerprint.
     configuration.pop("launch_sampling", None)
+    _normalise_run_config_input(normalised, mode)
     return normalised, mode
 
 

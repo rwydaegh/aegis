@@ -40,6 +40,7 @@ def _write_campaign(
     seeds: tuple[int, ...] = tuple(range(1, 17)),
     incompatible: bool = False,
     suffix_mode: str = "sampled",
+    chi_suffix_diagnostic: bool = False,
 ) -> None:
     points = 3
     identity_data = {
@@ -99,6 +100,8 @@ def _write_campaign(
                     "candidates": 100 if suffix_mode == "sampled" else 0,
                 }
             }
+            if chi_suffix_diagnostic:
+                diagnostic["sampled_specular_suffix"]["chi_specular_suffix"] = 0.123
             if suffix_mode == "sampled":
                 diagnostic["all_specular_transfer"] = 0.25
             diagnostics.append(diagnostic)
@@ -399,3 +402,44 @@ def test_shipped_convergence_configs_seal_the_same_campaign_identity(site: str) 
     left, _ = _normalise_launch_sampling(iid_identity)
     right, _ = _normalise_launch_sampling(fibonacci_identity)
     assert left == right
+
+
+def test_launch_normalization_removes_only_the_selected_run_config_input() -> None:
+    shared = {"path": "config/korenmarkt.json", "bytes": 10, "sha256": "a" * 64}
+    iid_config = {
+        "path": "config/roofline_campaign_korenmarkt_convergence_cuda_iid.json",
+        "bytes": 3,
+        "sha256": "b" * 64,
+    }
+    fibonacci_config = {
+        "path": "config/roofline_campaign_korenmarkt_convergence_cuda_rotated_fibonacci.json",
+        "bytes": 4,
+        "sha256": "c" * 64,
+    }
+    base = {
+        "configuration": {"site": "korenmarkt"},
+        "transport": {"tracer": {"configuration": {"rays": 200000}}},
+        "inputs": {"bytes": 13, "file_count": 2, "files": [shared, iid_config]},
+    }
+    fibonacci = copy.deepcopy(base)
+    base["transport"]["tracer"]["configuration"]["launch_sampling"] = "iid"
+    fibonacci["transport"]["tracer"]["configuration"]["launch_sampling"] = "rotated_fibonacci"
+    fibonacci["inputs"]["files"] = [shared, fibonacci_config]
+
+    left, _ = _normalise_launch_sampling(base)
+    right, _ = _normalise_launch_sampling(fibonacci)
+
+    assert left == right
+    assert left["inputs"]["bytes"] == 10
+    assert left["inputs"]["file_count"] == 1
+
+
+def test_chi_suffix_diagnostic_is_not_treated_as_sampled_suffix_transfer(tmp_path: Path) -> None:
+    iid = tmp_path / "iid"
+    fibonacci = tmp_path / "fibonacci"
+    _write_campaign(iid, "iid", chi_suffix_diagnostic=True)
+    _write_campaign(fibonacci, "rotated_fibonacci", chi_suffix_diagnostic=True)
+
+    report = compare_campaigns(iid, fibonacci)
+
+    assert report["looks"]["4"]["sampled_suffix"]["impact"]["status"] == "not_persisted"
