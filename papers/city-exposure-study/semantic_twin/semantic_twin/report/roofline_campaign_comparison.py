@@ -430,6 +430,33 @@ def _validate_seed_metadata(
     return seeds
 
 
+def _validate_location_row(root: Path, row: dict[str, Any], index: int) -> None:
+    standpoint = row.get("standpoint")
+    if isinstance(standpoint, bool) or not isinstance(standpoint, int) or standpoint != index:
+        raise CampaignComparisonError(f"locations.jsonl is not an ordered complete route: {root}")
+    try:
+        position = np.asarray(row.get("position_m"), dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise CampaignComparisonError(f"locations.jsonl position_m is not numeric: {root}") from exc
+    if position.shape != (3,) or not np.all(np.isfinite(position)):
+        raise CampaignComparisonError(f"locations.jsonl position_m must be finite with shape (3,): {root}")
+    if "body_yaw_deg" not in row:
+        return
+    try:
+        yaw = np.asarray(row["body_yaw_deg"], dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise CampaignComparisonError(f"locations.jsonl body_yaw_deg is not numeric: {root}") from exc
+    if yaw.shape != () or not np.isfinite(yaw.item()):
+        raise CampaignComparisonError(f"locations.jsonl body_yaw_deg must be finite scalar: {root}")
+
+
+def _validate_location_rows(root: Path, locations: list[dict[str, Any]], points: int) -> None:
+    if len(locations) != points:
+        raise CampaignComparisonError(f"locations.jsonl has the wrong number of rows: {root}")
+    for index, row in enumerate(locations):
+        _validate_location_row(root, row, index)
+
+
 def _validate_campaign_metadata(
     root: Path,
     identity_data: dict[str, Any],
@@ -439,8 +466,7 @@ def _validate_campaign_metadata(
     points, committed = _validate_checkpoint_schema(root, checkpoint)
     seeds = _validate_seed_metadata(root, identity_data, committed, summary)
     locations = _load_jsonl(_required_path(root, "locations.jsonl"))
-    if len(locations) != points or [row.get("standpoint") for row in locations] != list(range(points)):
-        raise CampaignComparisonError(f"locations.jsonl is not an ordered complete route: {root}")
+    _validate_location_rows(root, locations, points)
     return seeds, points, locations, committed
 
 
@@ -892,6 +918,15 @@ def _convergence_evidence(campaign: _Campaign, looks: tuple[int, ...]) -> dict[s
     return {"standard_error": standard_error, "look_to_look": changes}
 
 
+def _validate_paired_locations(left: _Campaign, right: _Campaign) -> None:
+    for lhs, rhs in zip(left.locations, right.locations, strict=True):
+        if lhs.get("standpoint") != rhs.get("standpoint") or lhs.get("position_m") != rhs.get("position_m"):
+            raise CampaignComparisonError("campaign routes are not paired by standpoint")
+        if "body_yaw_deg" in lhs or "body_yaw_deg" in rhs:
+            if lhs.get("body_yaw_deg") != rhs.get("body_yaw_deg"):
+                raise CampaignComparisonError("campaign routes are not paired by body yaw")
+
+
 def _validate_pair(left: _Campaign, right: _Campaign, looks: tuple[int, ...]) -> None:
     if left.sampling != "iid" or right.sampling != "rotated_fibonacci":
         raise CampaignComparisonError("comparison requires one IID directory and one rotated_fibonacci directory")
@@ -905,9 +940,7 @@ def _validate_pair(left: _Campaign, right: _Campaign, looks: tuple[int, ...]) ->
         raise CampaignComparisonError("campaign identities are incompatible after launch-sampling normalization")
     if left.points != right.points:
         raise CampaignComparisonError("campaigns have different route lengths")
-    for lhs, rhs in zip(left.locations, right.locations, strict=True):
-        if lhs.get("standpoint") != rhs.get("standpoint") or lhs.get("position_m") != rhs.get("position_m"):
-            raise CampaignComparisonError("campaign routes are not paired by standpoint")
+    _validate_paired_locations(left, right)
     for look in looks:
         if look > len(left.seeds) or look not in left.convergence_looks or look not in right.convergence_looks:
             raise CampaignComparisonError(f"requested look {look} is not common to both completed campaigns")
