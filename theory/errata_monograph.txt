@@ -125,3 +125,47 @@ Action required: either restate prop:approx1 on the integrated operator
 with the measured numbers, or drop the approximation and use the exact
 refracted direction e'_p (free, since the channel entries are complex
 either way). The TWC paper does the latter.
+
+
+Erratum 4: depth-integral identity and incoherent corollary drop a 1/2
+----------------------------------------------------------------------
+
+Discovered 2026-08-09 by a convention audit (peak vs RMS phasors) run
+for the TWC coherent-exposure paper.
+
+Location: lem:depth-id (eq:depth-id), its proof in app:depth-identity,
+cor:single-wave (eq:Sab-n-alone and the S_inc^(1) definition), and
+cor:incoherent.
+
+The monograph's own convention is peak phasors: eq:Sab-double-sum
+carries sigma/2, the Fresnel appendix defines the incident flux as
+|E|^2 cos(theta)/(2 Z0), and eq:psi-def uses the Sionna normalisation
+(peak phasor, |psi|^2/(2 Z0) = P G / 4 pi r^2). In that convention the
+depth-integral identity is
+
+    sigma/(4 alpha_n) |t_{s,n}|^2 = T_{s,n} cos(theta_n) / (2 Z0),
+
+not / Z0 as printed. Verified numerically at normal incidence with skin
+at 28 GHz: sigma/(4 alpha) |t|^2 / (T / (2 Z0)) = 1.0000 exactly. The
+proof in app:depth-identity keeps the 1/2 on the incident flux but
+drops it on the transmitted flux.
+
+Consequence: cor:single-wave (P/Z0 prefactor, S_inc = P |psi|^2 / Z0)
+and cor:incoherent (|x|^2 / Z0) are off by exactly a factor 2 (3 dB)
+against the monograph's own phasor convention. Any absolute exposure
+number computed from these corollaries with Sionna-normalised psi
+overestimates by 3 dB.
+
+The TWC paper is correct: its eq:Sab-int has sigma/2, its incoherent
+limit has (2 Z0)^{-1}, and its T0/T_s/T_p definitions are consistent
+(fixed in the round-2 pass of 2026-08-09, see the paper fork's
+WOUT_RESPONSE.md). The TAP paper is convention-free (defines S_inc
+directly as a time-averaged power density, no phasors) and needs no
+change. ICNIRP 2020 basic restrictions are time-averaged quantities
+(wbSAR over 30 min, local S_ab over 6 min and 4 cm^2), so the
+peak-phasor 1/2 must be carried, as the TWC paper does.
+
+Action required: insert the missing 1/2 in eq:depth-id, the proof, and
+the two corollaries, or redefine psi as RMS everywhere (then eq:psi-def
+and eq:Sab-double-sum change instead). Audit any code implementing
+cor:incoherent directly.

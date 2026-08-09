@@ -4351,6 +4351,15 @@ $O(1/|\tilde{n}|^2)$, with the same physical origin as
 Approximation~1 (\cref{rem:approx1-why}): the normal electric field
 inside tissue is $O(1/|\tilde{n}|)$.  The proof is in
 \cref{app:depth-identity}.
+\hl{todo: factor 2 error. In this monograph's own peak-phasor
+convention (eq Sab-double-sum has sigma/2, appendix line defines
+incident flux with 1/(2 Z0)) the correct identity is T cos(theta)
+divided by 2 Z0, not Z0. Verified numerically at normal incidence:
+sigma/(4 alpha) |t|^2 = T/(2 Z0) exactly. The proof in the appendix
+drops the 1/2 on the transmitted flux while keeping it on the incident
+flux. The error propagates to cor single-wave and cor incoherent,
+which are off by 3 dB. See erratum 4 in errata\_monograph.txt. The TWC
+paper has the correct (2 Z0) form.}
 \end{lemma}
 
 % -------------------------------------------------------
@@ -4500,6 +4509,10 @@ collapses to $\Teff^{(1)} \approx T_0$, yielding
   \Sab^{(1)} = S_{\mathrm{inc}}^{(1)}\,T_0\,\ReLU(\mu_1),
 \end{equation}
 which is the fully unpolarised geometric absorption law of Part~I.
+\hl{todo: the P/Z0 prefactor in eq Sab-n-alone and the S inc
+definition inherit the factor 2 error of lem depth-id: with the
+peak-phasor psi of eq psi-def both must read P/(2 Z0). 3 dB. See
+erratum 4.}
 \end{corollary}
 
 \begin{corollary}[Incoherent limit]\label{cor:incoherent}
@@ -4514,6 +4527,9 @@ $n \neq n'$ average to zero.  Only the self-terms survive:
 Under the pseudo-Brewster approximation this reduces to the
 multi-source formula of Part~I\@.  The coherent law strictly
 contains the incoherent result as a special case.
+\hl{todo: the prefactor must be |x|^2/(2 Z0), not |x|^2/Z0, in the
+peak-phasor convention of eq psi-def. Inherited from lem depth-id, see
+erratum 4. The TWC paper's eq incoherent-limit has the correct form.}
 \end{corollary}
 
 Both approximations affect only cross-terms: Approximation~1 because
