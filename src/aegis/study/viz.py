@@ -43,7 +43,7 @@ def plot_scene(run_dir, out_path=None, title=None):
     from matplotlib.patches import Wedge
 
     run_dir = Path(run_dir)
-    scene = json.loads((run_dir / "scene.json").read_text())
+    scene = json.loads((run_dir / "scene.json").read_text(encoding="utf-8"))
     out_path = Path(out_path) if out_path else run_dir / "scene_map.png"
 
     fig, ax = plt.subplots(figsize=(7.5, 7.0))

@@ -130,7 +130,7 @@ def run_study(cfg, agents, sites, kernel, out_dir, freq_hz, city=None) -> dict:
 
         summary["covariates"] = city_covariates(city, sites, agents, cfg.cities.radius_m)
 
-    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     _write_cdf_figure(x, f, summary["headline"], out_dir / "cdf.png")
     _write_scene_json(out_dir, agents, sites, p_abs_w, is_user)
     return summary
@@ -165,7 +165,7 @@ def _write_scene_json(out_dir, agents, sites, p_abs_w, is_user):
             for i, a in enumerate(agents)
         ],
     }
-    (out_dir / "scene.json").write_text(json.dumps(scene))
+    (out_dir / "scene.json").write_text(json.dumps(scene), encoding="utf-8")
 
 
 def _write_cdf_figure(x, f, headline, path):

@@ -105,7 +105,7 @@ def route_walk(orig, dest, cache_dir, api_key=None):
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"route_{_cache_key(orig, dest)}.json"
     if cache_file.exists():
-        return [tuple(p) for p in json.loads(cache_file.read_text())]
+        return [tuple(p) for p in json.loads(cache_file.read_text(encoding="utf-8"))]
 
     key = api_key or os.environ.get(_API_KEY_ENV) or os.environ.get(_API_KEY_ENV_FALLBACK)
     if not key:
@@ -120,7 +120,7 @@ def route_walk(orig, dest, cache_dir, api_key=None):
         raise RuntimeError(f"Routes API returned no route: {payload.get('error') or payload}")
     encoded = routes[0]["polyline"]["encodedPolyline"]
     coords = decode_polyline(encoded)
-    cache_file.write_text(json.dumps(coords))
+    cache_file.write_text(json.dumps(coords), encoding="utf-8")
     return coords
 
 

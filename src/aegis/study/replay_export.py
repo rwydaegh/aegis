@@ -228,7 +228,7 @@ def main(argv=None) -> int:
     seed = args.seed if args.seed is not None else cfg.channel.seed
     artifact = build_artifact(cfg, Path(args.work), seed, args.frames)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(artifact))
+    Path(args.out).write_text(json.dumps(artifact), encoding="utf-8")
     print(f"wrote {args.out}: {len(artifact['frames'])} frames, {len(artifact['body']['faces'])} faces")
     return 0
 

@@ -81,7 +81,7 @@ def run_cities(cfg, out_dir, seed) -> dict:
         "failures": failures,
         "cities": results,
     }
-    (out_dir / "cities_summary.json").write_text(json.dumps(combined, indent=2))
+    (out_dir / "cities_summary.json").write_text(json.dumps(combined, indent=2), encoding="utf-8")
     _overlay_cdf(results, out_dir / "cities_cdf")
     return combined
 

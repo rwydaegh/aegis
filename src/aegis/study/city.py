@@ -151,10 +151,10 @@ class CityCache:
         current mesh silently."""
         tag_file = path.with_suffix(".hash")
         tag = self._mesh_tag()
-        if path.exists() and tag_file.exists() and tag_file.read_text() == tag:
+        if path.exists() and tag_file.exists() and tag_file.read_text(encoding="utf-8") == tag:
             return
         self.mesh.to_sionna_xml(path, radio_materials=True) if radio else self.mesh.to_sionna_xml(path)
-        tag_file.write_text(tag)
+        tag_file.write_text(tag, encoding="utf-8")
 
     @property
     def sionna_scene(self):
@@ -187,10 +187,10 @@ class CityCache:
         # and mesh, candidates, and traced scene always derive from one snapshot.
         osm_path = cache_dir / "osm.xml"
         if osm_path.exists():
-            xml = osm_path.read_text()
+            xml = osm_path.read_text(encoding="utf-8")
         else:
             xml = fetch_osm(lat, lon, radius_m)
-            osm_path.write_text(xml)
+            osm_path.write_text(xml, encoding="utf-8")
         # Ground disk past the analysis radius: the street-level ground bounce
         # is a first-order path at 28 GHz and OSM only meshes road ribbons.
         mesh = build_environment_from_osm(xml, origin_lat=lat, origin_lon=lon, ground_radius_m=1.5 * float(radius_m))

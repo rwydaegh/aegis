@@ -119,7 +119,7 @@ class StudyConfig:
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> StudyConfig:
-        raw = yaml.safe_load(Path(path).read_text()) or {}
+        raw = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
         return _build(cls, raw)
 
 

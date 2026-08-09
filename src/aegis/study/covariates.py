@@ -40,7 +40,7 @@ def phantom_mass_kg(name: str) -> float | None:
         try:
             import yaml
 
-            data = yaml.safe_load(path.read_text()) or {}
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
             entry = data.get(name)
             if isinstance(entry, dict) and "mass_kg" in entry:
                 return float(entry["mass_kg"])

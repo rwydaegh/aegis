@@ -154,7 +154,7 @@ def compare_city(cfg, city_latlon, out_dir, seed=42):  # pragma: no cover - heav
     }
     import json
 
-    (out_dir / "compare_summary.json").write_text(json.dumps(summary))
+    (out_dir / "compare_summary.json").write_text(json.dumps(summary), encoding="utf-8")
     _write_compare_figure(det_w, stoch_w, err, out_dir / "det_vs_stoch")
     return summary
 
