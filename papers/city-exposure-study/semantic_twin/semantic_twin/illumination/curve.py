@@ -22,6 +22,9 @@ CURVE_HASH_VERSION = "facade_tip_curve_canonical_ascii_v1"
 MERGE_RULE = "union_collinear_intervals_orientation_invariant"
 EDGE_MERGE_RULE = "undirected_mesh_vertex_edge_id_union"
 MESH_NUMERICAL_FLOOR_M = 1.0e-6
+PHYSICAL_3D_EDGE_LENGTH = "physical_3d_edge_length"
+HORIZONTAL_PROJECTED_EDGE_LENGTH = "horizontal_projected_edge_length"
+SOURCE_MEASURE_RULES = (PHYSICAL_3D_EDGE_LENGTH, HORIZONTAL_PROJECTED_EDGE_LENGTH)
 
 
 def _canonical_digest(*arrays: np.ndarray) -> str:
@@ -131,12 +134,14 @@ def _group_segments(
 def _merge_group(
     intervals: list[tuple[float, float, np.ndarray, np.ndarray]],
     tolerance_m: float,
-) -> tuple[list[np.ndarray], list[float]]:
+) -> tuple[list[np.ndarray], list[float], list[np.ndarray], list[np.ndarray]]:
     intervals.sort(key=lambda item: item[0])
     a0, b0, origin, direction = intervals[0]
     low, high = min(a0, b0), max(a0, b0)
     points: list[np.ndarray] = []
     represented: list[float] = []
+    starts: list[np.ndarray] = []
+    ends: list[np.ndarray] = []
     for a, b, _, _ in intervals[1:]:
         a_low, b_high = min(a, b), max(a, b)
         if a_low <= high + tolerance_m:
@@ -144,10 +149,47 @@ def _merge_group(
             continue
         points.append(origin + 0.5 * (low + high) * direction)
         represented.append(high - low)
+        starts.append(origin + low * direction)
+        ends.append(origin + high * direction)
         low, high = a_low, b_high
     points.append(origin + 0.5 * (low + high) * direction)
     represented.append(high - low)
-    return points, represented
+    starts.append(origin + low * direction)
+    ends.append(origin + high * direction)
+    return points, represented, starts, ends
+
+
+def _merge_segments_with_endpoints(
+    starts: np.ndarray,
+    ends: np.ndarray,
+    lengths: np.ndarray | None = None,
+    *,
+    tolerance_m: float = 1.0e-4,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    start, end, seg_length = _prepare_segments(starts, ends, lengths, tolerance_m)
+    if start.shape[0] == 0:
+        empty = np.empty((0, 3), dtype=np.float64)
+        return empty, np.empty(0, dtype=np.float64), empty.copy(), empty.copy()
+    groups = _group_segments(start, end, seg_length, tolerance_m)
+    points: list[np.ndarray] = []
+    represented: list[float] = []
+    merged_starts: list[np.ndarray] = []
+    merged_ends: list[np.ndarray] = []
+    for key in sorted(groups):
+        group_points, group_lengths, group_starts, group_ends = _merge_group(groups[key], tolerance_m)
+        points.extend(group_points)
+        represented.extend(group_lengths)
+        merged_starts.extend(group_starts)
+        merged_ends.extend(group_ends)
+    if not points:
+        empty = np.empty((0, 3), dtype=np.float64)
+        return empty, np.empty(0, dtype=np.float64), empty.copy(), empty.copy()
+    return (
+        np.asarray(points, dtype=np.float64),
+        np.asarray(represented, dtype=np.float64),
+        np.asarray(merged_starts, dtype=np.float64),
+        np.asarray(merged_ends, dtype=np.float64),
+    )
 
 
 def merge_segments(
@@ -164,19 +206,13 @@ def merge_segments(
     gaps no larger than ``tolerance_m`` are joined, which makes repeated views
     robust to ray-fan rounding while preserving disjoint facade edges.
     """
-    start, end, seg_length = _prepare_segments(starts, ends, lengths, tolerance_m)
-    if start.shape[0] == 0:
-        return np.empty((0, 3)), np.empty(0, dtype=np.float64)
-    groups = _group_segments(start, end, seg_length, tolerance_m)
-    points: list[np.ndarray] = []
-    represented: list[float] = []
-    for key in sorted(groups):
-        group_points, group_lengths = _merge_group(groups[key], tolerance_m)
-        points.extend(group_points)
-        represented.extend(group_lengths)
-    if not points:
-        return np.empty((0, 3)), np.empty(0, dtype=np.float64)
-    return np.asarray(points, dtype=np.float64), np.asarray(represented, dtype=np.float64)
+    points, represented, _, _ = _merge_segments_with_endpoints(
+        starts,
+        ends,
+        lengths,
+        tolerance_m=tolerance_m,
+    )
+    return points, represented
 
 
 @dataclass(frozen=True)
@@ -186,6 +222,8 @@ class FacadeTipCurve:
     points: np.ndarray
     segment_lengths_m: np.ndarray
     provenance: dict[str, Any]
+    segment_starts: np.ndarray | None = None
+    segment_ends: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         points = _as_polyline(self.points)
@@ -194,9 +232,23 @@ class FacadeTipCurve:
             raise ValueError("segment_lengths_m must match points")
         if np.any(~np.isfinite(lengths)) or np.any(lengths <= 0.0):
             raise ValueError("segment_lengths_m must be finite and positive")
+        starts = None if self.segment_starts is None else _as_polyline(self.segment_starts)
+        ends = None if self.segment_ends is None else _as_polyline(self.segment_ends)
+        if (starts is None) != (ends is None):
+            raise ValueError("segment_starts and segment_ends must be supplied together")
+        if starts is not None:
+            if starts.shape != points.shape or ends is None or ends.shape != points.shape:
+                raise ValueError("segment endpoints must match points")
+            geometric_lengths = np.linalg.norm(ends - starts, axis=1)
+            if not np.allclose(geometric_lengths, lengths, rtol=2.0e-12, atol=1.0e-12):
+                raise ValueError("segment endpoints must reproduce segment_lengths_m")
+            if not np.allclose(0.5 * (starts + ends), points, rtol=2.0e-12, atol=1.0e-12):
+                raise ValueError("points must be segment endpoint midpoints")
         object.__setattr__(self, "points", points)
         object.__setattr__(self, "segment_lengths_m", lengths)
         object.__setattr__(self, "provenance", dict(self.provenance))
+        object.__setattr__(self, "segment_starts", starts)
+        object.__setattr__(self, "segment_ends", ends)
 
     @property
     def arc_lengths(self) -> np.ndarray:
@@ -207,11 +259,27 @@ class FacadeTipCurve:
     def support_length_m(self) -> float:
         return float(np.sum(self.segment_lengths_m, dtype=np.float64))
 
-    def normalized_weights(self) -> np.ndarray:
-        total = self.support_length_m
+    @property
+    def has_exact_endpoints(self) -> bool:
+        return self.segment_starts is not None and self.segment_ends is not None
+
+    def measure_lengths(self, rule: str = PHYSICAL_3D_EDGE_LENGTH) -> np.ndarray:
+        if rule == PHYSICAL_3D_EDGE_LENGTH:
+            return self.segment_lengths_m
+        if rule != HORIZONTAL_PROJECTED_EDGE_LENGTH:
+            raise ValueError(f"unknown source measure rule {rule!r}")
+        if not self.has_exact_endpoints:
+            raise ValueError("horizontal projected edge length requires exact segment endpoints")
+        if self.segment_starts is None or self.segment_ends is None:
+            raise RuntimeError("endpoint availability invariant failed")
+        return np.linalg.norm(self.segment_ends[:, :2] - self.segment_starts[:, :2], axis=1)
+
+    def normalized_weights(self, rule: str = PHYSICAL_3D_EDGE_LENGTH) -> np.ndarray:
+        lengths = self.measure_lengths(rule)
+        total = float(np.sum(lengths, dtype=np.float64))
         if total <= 0.0:
-            raise ValueError("facade-tip curve has no positive support length")
-        return self.segment_lengths_m / total
+            raise ValueError(f"facade-tip curve has no positive support under {rule}")
+        return lengths / total
 
     @property
     def hash_sha256(self) -> str:
@@ -256,7 +324,12 @@ def curve_from_polylines(
         starts = np.empty((0, 3))
         ends = np.empty((0, 3))
         lengths = np.empty(0)
-    points, represented = merge_segments(starts, ends, lengths, tolerance_m=tolerance_m)
+    points, represented, merged_starts, merged_ends = _merge_segments_with_endpoints(
+        starts,
+        ends,
+        lengths,
+        tolerance_m=tolerance_m,
+    )
     if points.shape[0] == 0:
         raise ValueError("route observations contain no positive facade-tip support")
     details = {
@@ -265,7 +338,7 @@ def curve_from_polylines(
         "merge_rule": MERGE_RULE,
         **(provenance or {}),
     }
-    return FacadeTipCurve(points, represented, details)
+    return FacadeTipCurve(points, represented, details, merged_starts, merged_ends)
 
 
 def _mesh_edge_faces(faces: np.ndarray) -> dict[tuple[int, int], list[int]]:
@@ -1176,21 +1249,29 @@ def _union_interval_records(
 def _materialize_interval_records(
     interval_records: list[_MeshInterval],
     coordinate_tolerance: float,
-) -> tuple[np.ndarray, np.ndarray, list[tuple[int, int]]]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[tuple[int, int]]]:
     points_list: list[np.ndarray] = []
     lengths_list: list[float] = []
+    starts_list: list[np.ndarray] = []
+    ends_list: list[np.ndarray] = []
     contributing_edges: set[tuple[int, int]] = set()
     for start_coordinates, end_coordinates, low, high, original_edges in interval_records:
         start = np.asarray(start_coordinates, dtype=np.float64) * coordinate_tolerance
         end = np.asarray(end_coordinates, dtype=np.float64) * coordinate_tolerance
+        interval_start = start + low * (end - start)
+        interval_end = start + high * (end - start)
         midpoint = start + 0.5 * (low + high) * (end - start)
         length = float(high - low) * float(np.linalg.norm(end - start))
         points_list.append(midpoint)
         lengths_list.append(length)
+        starts_list.append(interval_start)
+        ends_list.append(interval_end)
         contributing_edges.update(original_edges)
     return (
         np.asarray(points_list, dtype=np.float64),
         np.asarray(lengths_list, dtype=np.float64),
+        np.asarray(starts_list, dtype=np.float64),
+        np.asarray(ends_list, dtype=np.float64),
         sorted(contributing_edges),
     )
 
@@ -1308,7 +1389,7 @@ def build_mesh_edge_curve(
     interval_records = _union_interval_records(interval_result.interval_records, coordinate_tolerance)
     if not interval_records:
         raise ValueError("route silhouette selected only zero-length or unmatched mesh-edge intervals")
-    points, lengths, contributing_edges = _materialize_interval_records(
+    points, lengths, segment_starts, segment_ends, contributing_edges = _materialize_interval_records(
         interval_records,
         coordinate_tolerance,
     )
@@ -1362,6 +1443,8 @@ def build_mesh_edge_curve(
             "merge_rule": EDGE_MERGE_RULE,
             "curve_resolution_m": 0.0,
         },
+        segment_starts,
+        segment_ends,
     )
 
 

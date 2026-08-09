@@ -40,14 +40,64 @@ parameters:
       status: canonical
       affects_published_results: true
       conflicts: none
-    maximum_bounces:
-      value: 3
-      units: interactions
-      source: semantic_twin/runconfig.py:180 RunConfig.max_bounces; semantic_twin/transport/tracer.py:64 DEFAULT_MAX_BOUNCES
-      scope: propagation
+    comparable_city_v2_production:
+      value:
+        crop_m: 250
+        frequency_hz: 15000000000.0
+        rays: 200000
+        launch_sampling: iid
+        passive_output_cells: 4096
+        passive_cells_are_launch_bins: false
+        transport_topology: first_material_interaction_v1
+        max_bounces: 1
+        direct_transport: exact
+        diffuse_transport: stochastic_next_event_at_first_blocking_material_vertex
+        mixed_transport: absent
+        all_specular: {method: exact_full_support, order: 1}
+        mixed_specular_suffix: {method: disabled}
+        logical_specular_candidate_budget_by_site: {korenmarkt: 300000000, prague_staromestske: 350000000, madrid_plazamayor: 160000000, mexico_zocalo: 120000000, tokyo_hachiko: 320000000}
+        specular_candidate_chunk: 262144
+        specular_refinement_relative_tolerance: 0.02
+        specular_broad_phase: {method: mirrored_receiver_triangle_cone_bvh_v1, computational_threshold: 20000, source_chunk: 16, logical_candidate_accounting_unchanged: true}
+        source_edge_length: {baseline: physical_3d_edge_length, sensitivity: horizontal_projected_edge_length}
+        roughness: {production: finish_only, quadrature: historical_sensitivity, masonry_two_level: research_only, rcwa: research_only}
+        body_coupling_level: 2
+        body_coupling_backend: {cuda: drjit_float64_dot_relu_power_block_reduce_fixed512_v1, cpu: numpy_float64_matmul_relu_direction_chunks_v1, cuda_direction_block: 512}
+      units: "m, Hz, rays, output cells, interactions, candidates, tolerance, and policy names"
+      source: "docs/CURRENT_PRODUCTION_CONTRACT.md; config/roofline_campaign_*_first_material_interaction_v1_convergence_cuda_iid.json"
+      scope: comparable_city v2 production transport and body contract
       status: canonical
       affects_published_results: true
-      conflicts: "illumination sensitivity study uses 4; next-event and monostatic accumulators permit order 8"
+      conflicts: "4096 is a passive output-direction count, not a launch-bin stratification; rotated Fibonacci launch and the max_bounces=3 sampled-suffix hybrid remain diagnostics; candidate caps are computational guards"
+    comparable_city_v2_contract:
+      value:
+        schema: city-cohort-manifest-v2
+        cohort: comparable_city
+        intended_sites: 10
+        panorama_acquisitions: 9
+        quota_pending_sites: [krakow_rynek]
+        primary_material_mode: atlas
+        production_material_mode: atlas
+        route_contract: registered_span_street_v1
+        route_radius_m: 90.0
+        route_stride_m: 6.0
+        times_square_policy: excluded
+        excluded_site: newyork_timessquare
+        provider_corridor_v1: {status: opt_in, max_continuous_gap_m: 20.0, selection: maximum_endpoint_span_then_shortest_path_then_station_id, legacy_route_bytes_unchanged: true}
+      units: "counts, m, and contract policy names"
+      source: "config/city_cohort_manifest.json:2-16; config/roofline_campaign_korenmarkt_comparable_pilot_cuda.json:21-24; docs/CURRENT_PRODUCTION_CONTRACT.md:37-46"
+      scope: comparable_city v2 membership, route, and material contract
+      status: canonical
+      affects_published_results: true
+      conflicts: "Krakow is an intended member but remains quota-pending; Times Square is retained only as an explicit invalid-geometry exclusion"
+    maximum_bounces:
+      value: 1
+      units: interactions
+      source: config/roofline_campaign_*_first_material_interaction_v1_convergence_cuda_iid.json run.max_bounces
+      scope: current roofline production propagation
+      status: canonical
+      affects_published_results: true
+      conflicts: "RunConfig and TraceConfig defaults remain 3; the historical hybrid uses 3; illumination sensitivity uses 4; next-event and monostatic accumulators permit order 8"
     roulette_floor:
       value: 0.05
       units: probability
@@ -388,6 +438,14 @@ parameters:
       status: canonical
       affects_published_results: true
       conflicts: "production rejects any other immutable SAM 3 weights/source pair and any semantic catalogue mutation even when it keeps 61 IDs; Mask2Former also accepts only its reviewed repository and exact commit"
+    semantic_session_parity:
+      value: {device: A6000, independent_p00_s: 116.981, shared_p00_p01_total_s: 199.228, scientific_arrays_exact: true, exact_fields: [scientific_panorama_arrays, concept_cache_arrays, prompt_gate, normalised_metadata]}
+      units: "device identity, seconds, and parity policy"
+      source: docs/CURRENT_PRODUCTION_CONTRACT.md:48-53
+      scope: live Mask2Former and SAM 3 session-reuse validation
+      status: diagnostic
+      affects_published_results: false
+      conflicts: "measured live validation anchors, not a universal per-panorama timing or a production free parameter"
     skyline_registration:
       value: {seeds: [714261, 1, 2, 3, 5, 8, 13, 21], bins: 1024, minimum_distance_m: 8.0, smoothing_size: 11, smoothing_percentile: 90.0, robust_quantile: 0.8, orientation_prior_weight: 0.001}
       units: "m, bins, fraction, dimensionless"
@@ -621,6 +679,35 @@ parameters:
       conflicts: "the separate convergence reference generation uses 512 cells and 200000 rays; historical Blender inputs also use the older low-resolution walk"
 
   roofline_campaigns:
+    first_material_interaction_v1:
+      value:
+        sites: [korenmarkt, prague_staromestske, madrid_plazamayor, mexico_zocalo, tokyo_hachiko]
+        transport_topology: first_material_interaction_v1
+        max_bounces: 1
+        direct_transport: exact
+        all_specular: {method: exact_full_support, order: 1}
+        first_diffuse: {method: stochastic_next_event, interaction: first_blocking_material_vertex}
+        specular_suffix_mode: disabled
+        frequency_hz: 15000000000.0
+        rays: 200000
+        launch_sampling: iid
+        local_cells: 4096
+        planned_seeds: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+        convergence_looks: [4, 8, 12, 16]
+        specular_candidate_budget_by_site: {korenmarkt: 300000000, prague_staromestske: 350000000, madrid_plazamayor: 160000000, mexico_zocalo: 120000000, tokyo_hachiko: 320000000}
+        specular_candidate_chunk: 262144
+        specular_broad_phase: cuda_float64_conservative_mirrored_receiver_triangle_cone_v1
+        components: [direct, all_specular, first_diffuse, total]
+        output_schema: roofline_body_campaign_first_material_interaction_v1
+        campaign_status: completed
+        wall_seconds_by_site: {korenmarkt: 29.79, prague_staromestske: 69.02, madrid_plazamayor: 40.70, mexico_zocalo: 30.92, tokyo_hachiko: 50.11}
+        maximum_12_to_16_total_transfer_change_db_by_site: {korenmarkt: 0.0000819, prague_staromestske: 0.0001559, madrid_plazamayor: 0.0004083, mexico_zocalo: 0.043625, tokyo_hachiko: 0.019732}
+      units: "Hz, rays, cells, interactions, candidates, PRNG seeds, seconds, and dB"
+      source: "config/roofline_campaign_*_first_material_interaction_v1_convergence_cuda_iid.json; outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json"
+      scope: current roofline production transport and five-city campaign
+      status: canonical
+      affects_published_results: true
+      conflicts: "candidate budgets and chunks are computational guards, not physical parameters; the historical max_bounces=3 sampled-suffix hybrid is sensitivity evidence"
     sampled_specular_pilots_and_paired_campaign:
       value:
         immutable_code_commit: 0844eadde0308ff8dfeda7142ec3903165f5a053
@@ -687,6 +774,18 @@ parameters:
       conflicts: "max_bounces=3 is a transport interaction cap, not three specular reflections. Exactly one specular order is configured and higher specular orders are absent. The sampled suffix uses one sample per eligible diffuse vertex. Pilot and paired campaign artifacts have separate acceptance and timing records. Prague paired timing is excluded because recovery mixes timing rules."
 
   runtime_and_visualisation:
+    comparable_runtime_anchors:
+      value:
+        timing_kind: measured_stage_anchors
+        korenmarkt: {legacy_link_cold_one_seed_s: 155.73, legacy_link_warm_two_seed_total_s: 147.79, legacy_link_points: 13, comparable_street_one_seed_s: 133.75, comparable_street_points: 14, seed_fixed_stochastic_14_points_s: [3.14, 3.24], pre_fix_stochastic_per_seed_s_approx: 62.0, persistent_cache_cold_wall_s: 74.09, persistent_cache_warm_wall_s: 38.90, persistent_cache_cold_estimator_s: 39.22, persistent_cache_warm_estimator_s: 4.35, provider_corridor_16_replica_wall_s: 83.37, provider_corridor_replicas: 16, provider_corridor_points: 10, provider_corridor_estimator_s: 61.58382642297511, provider_corridor_stochastic_s: 42.118780829998286, provider_corridor_specular_s: 13.317147764002584, provider_corridor_body_s: 2.040532347982662, provider_corridor_last_look_area_mean_max_abs_db: 0.007949287851536407, provider_corridor_last_look_total_transfer_max_abs_db: 0.0066343204539103355, provider_corridor_identity_sha256: 14d6c8467e641cd6ef92c12471f885fa6bc1786a34bfe8d5575cfcadfcc595c6, scientific_arrays_byte_identical: true, adaptive_specular_logical_candidates: 120750721, adaptive_specular_executed_candidates: 52367468, adaptive_specular_avoided_fraction: 0.566318}
+        prague: {dry_run_s: 47.96, dry_run_points: 68, full_cold_seed_s: 2063.05, points: 68, deterministic_all_specular_s: 1584.75, stochastic_transport_s: 308.66, body_coupling_s: 119.95}
+        body_coupling_cuda: {algorithm: drjit_float64_dot_relu_power_block_reduce_fixed512_v1, max_relative_error: 6.64e-16, duke_speedup_x: 46.0, real_point_speedup_x: 81.0, deterministic: true}
+      units: "seconds, points, and timing provenance"
+      source: docs/CURRENT_PRODUCTION_CONTRACT.md:62-84; docs/PRODUCTION_PERFORMANCE_REDESIGN.md
+      scope: comparable_city v2 implementation timing observations
+      status: diagnostic
+      affects_published_results: false
+      conflicts: "measured hardware and stage anchors, not free runtime parameters or universal city timing promises; the roughly 62 s value is a historical kernel-compilation symptom; legacy link-route and comparable street-route timings are different estimands"
     sealed_exposure_generation:
       value: {format_version: 1, generation_id_hex_chars: 32, sealed_artifacts: [locations, spectra], manifest_commit_record: true, same_generation_required: true, required_by: [reuse, angular_convergence, blender_export]}
       units: "format version, digest characters, and policy"

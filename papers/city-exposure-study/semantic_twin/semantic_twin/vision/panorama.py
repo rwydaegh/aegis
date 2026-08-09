@@ -88,6 +88,151 @@ class PanoramaRunConfig:
     production: bool = False
 
 
+@dataclass(frozen=True)
+class PanoramaModelIdentity:
+    """Immutable settings that determine model inference and its fused output."""
+
+    backend: str
+    model: str
+    device: str
+    dense_revision: str | None
+    sam_revision: str | None
+    sam_repository_commit: str | None
+    view_size: int
+    inference_size: int
+    concept_resolution: int
+    concept_threshold: float
+    prompt_batch: int
+    gate_min_pixels: int
+    output_width: int
+    production: bool
+    catalogue_sha256: str | None
+    catalogue_semantic_sha256: str | None
+
+
+def _model_identity(config: PanoramaRunConfig) -> tuple[PanoramaModelIdentity, dict[str, Any] | None]:
+    """Read the complete session identity without constructing either model."""
+    catalogue_identity: dict[str, Any] | None = None
+    if config.backend == "hybrid":
+        from .prompted import semantic_catalogue_identity
+
+        if config.concepts is None:
+            raise SystemExit("--backend hybrid needs --concepts pointing at the concept catalogue")
+        catalogue_identity = semantic_catalogue_identity(config.concepts, production=config.production)
+    return (
+        PanoramaModelIdentity(
+            backend=config.backend,
+            model=config.model,
+            device=config.device,
+            dense_revision=config.dense_revision,
+            sam_revision=config.sam_revision,
+            sam_repository_commit=config.sam_repository_commit,
+            view_size=int(config.view_size),
+            inference_size=int(config.inference_size),
+            concept_resolution=int(config.concept_resolution),
+            concept_threshold=float(config.concept_threshold),
+            prompt_batch=int(config.prompt_batch),
+            gate_min_pixels=int(config.gate_min_pixels),
+            output_width=int(config.output_width),
+            production=bool(config.production),
+            catalogue_sha256=(catalogue_identity or {}).get("catalogue_sha256"),
+            catalogue_semantic_sha256=(catalogue_identity or {}).get("catalogue_semantic_sha256"),
+        ),
+        catalogue_identity,
+    )
+
+
+class PanoramaModelSession:
+    """Models and immutable prompt features shared by compatible panorama runs.
+
+    The session owns only expensive, read-only inference state. Per-panorama
+    caches, prompt gates, elapsed counters and output state are created by
+    :meth:`concept_pass`, so one station cannot leak state into the next.
+    """
+
+    def __init__(self, config: PanoramaRunConfig) -> None:
+        from .prompted import MODEL as SAM3_MODEL
+        from .prompted import (
+            PRODUCTION_CONCEPT_ID_COUNT,
+            Sam3ConceptBackend,
+            _is_commit,
+            cache_key,
+        )
+
+        self.identity, self.catalogue_identity = _model_identity(config)
+        self.backend = Mask2FormerBackend(
+            config.model,
+            config.device,
+            inference_size=config.inference_size,
+            revision=config.dense_revision,
+            production=config.production,
+        )
+        self.catalog: ConceptCatalog | None = None
+        self.concept_backend: Any | None = None
+        self.concept_cache_key: str | None = None
+        if config.backend != "hybrid":
+            return
+
+        concepts_path = config.concepts
+        if concepts_path is None:
+            raise RuntimeError("hybrid PanoramaModelSession has no concept catalogue")
+        catalog = ConceptCatalog.load(concepts_path)
+        if config.production and len(catalog.id2label()) != PRODUCTION_CONCEPT_ID_COUNT:
+            raise ValueError(
+                f"production hybrid inference requires the fixed {PRODUCTION_CONCEPT_ID_COUNT}-ID concept vocabulary"
+            )
+        if BRIDGE not in catalog.bridges:
+            raise SystemExit(f"the catalogue has no {BRIDGE} bridge, so prompts cannot be gated or fused")
+        self.catalog = catalog
+        self.concept_backend = Sam3ConceptBackend(
+            catalog,
+            device=self.backend.device,
+            resolution=config.concept_resolution,
+            threshold=config.concept_threshold,
+            prompt_batch=config.prompt_batch,
+            revision=config.sam_revision,
+            repository_commit=config.sam_repository_commit,
+            production=config.production,
+        )
+        self.concept_cache_key = cache_key(
+            model=SAM3_MODEL,
+            resolution=config.concept_resolution,
+            threshold=config.concept_threshold,
+            view_size=config.view_size,
+            catalog=catalog,
+            model_revision=config.sam_revision if _is_commit(config.sam_revision) else None,
+        )
+
+    def validate(self, config: PanoramaRunConfig) -> None:
+        """Refuse reuse when any inference or output-defining setting drifts."""
+        identity, _catalogue_identity = _model_identity(config)
+        if identity == self.identity:
+            return
+        changed = [
+            field_name
+            for field_name in PanoramaModelIdentity.__dataclass_fields__
+            if getattr(identity, field_name) != getattr(self.identity, field_name)
+        ]
+        raise ValueError(f"PanoramaModelSession is incompatible with this run: changed {', '.join(changed)}")
+
+    def concept_pass(self, config: PanoramaRunConfig) -> ConceptPass | None:
+        """Create fresh station-local prompted state around the shared backend."""
+        if config.backend != "hybrid":
+            return None
+        if self.catalog is None or self.concept_backend is None or self.concept_cache_key is None:
+            raise RuntimeError("hybrid PanoramaModelSession has no concept backend")
+        concept_dir = config.out / "concepts"
+        concept_dir.mkdir(parents=True, exist_ok=True)
+        return ConceptPass(
+            catalog=self.catalog,
+            bridge=self.catalog.bridges[BRIDGE],
+            backend=self.concept_backend,
+            cache_dir=concept_dir,
+            cache_key=self.concept_cache_key,
+            minimum_pixels=config.gate_min_pixels,
+        )
+
+
 @dataclass
 class ConceptPass:
     """Optional open-vocabulary pass bolted onto the dense one."""
@@ -141,6 +286,28 @@ class ConceptPass:
         return prediction, gate
 
 
+def _dense_view_prediction(
+    panorama_rgb: np.ndarray,
+    backend: Any,
+    views_dir: pathlib.Path,
+    view: PerspectiveView,
+    *,
+    view_size: int,
+    reuse: bool,
+) -> tuple[Image.Image | None, np.ndarray, np.ndarray, pathlib.Path, pathlib.Path, pathlib.Path]:
+    image_path = views_dir / f"{view.name}.jpg"
+    labels_path = views_dir / f"{view.name}_labels.npy"
+    confidence_path = views_dir / f"{view.name}_confidence.npy"
+    if reuse and labels_path.exists() and confidence_path.exists():
+        return None, np.load(labels_path), np.load(confidence_path), image_path, labels_path, confidence_path
+    image = perspective_crop(panorama_rgb, view, width=view_size, height=view_size)
+    image.save(image_path, quality=95)
+    labels, confidence = backend.predict(image)
+    np.save(labels_path, labels)
+    np.save(confidence_path, confidence)
+    return image, labels, confidence, image_path, labels_path, confidence_path
+
+
 def predict_views(
     panorama: Image.Image,
     backend: Any,
@@ -164,19 +331,14 @@ def predict_views(
     manifest: list[ViewPrediction] = []
     concept_predictions: dict[str, Any] = {}
     for view in inference_views():
-        image_path = views_dir / f"{view.name}.jpg"
-        labels_path = views_dir / f"{view.name}_labels.npy"
-        confidence_path = views_dir / f"{view.name}_confidence.npy"
-        image: Image.Image | None = None
-        if reuse and labels_path.exists() and confidence_path.exists():
-            labels = np.load(labels_path)
-            confidence = np.load(confidence_path)
-        else:
-            image = perspective_crop(panorama_rgb, view, width=view_size, height=view_size)
-            image.save(image_path, quality=95)
-            labels, confidence = backend.predict(image)
-            np.save(labels_path, labels)
-            np.save(confidence_path, confidence)
+        image, labels, confidence, image_path, labels_path, confidence_path = _dense_view_prediction(
+            panorama_rgb,
+            backend,
+            views_dir,
+            view,
+            view_size=view_size,
+            reuse=reuse,
+        )
         predictions.append((view, labels, confidence))
         record = ViewPrediction(view, str(image_path), str(labels_path), str(confidence_path))
         if concepts is not None:
@@ -252,67 +414,17 @@ def vegetation_from_concepts(
     return form, subtype, resolved_confidence
 
 
-def run(config: PanoramaRunConfig) -> None:
+def run(config: PanoramaRunConfig, *, session: PanoramaModelSession | None = None) -> None:
+    model_session = session or PanoramaModelSession(config)
+    model_session.validate(config)
     out = config.out
     views_dir = out / "views"
     views_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
-    backend = Mask2FormerBackend(
-        config.model,
-        config.device,
-        inference_size=config.inference_size,
-        revision=config.dense_revision,
-        production=config.production,
-    )
-
-    concepts: ConceptPass | None = None
-    catalog: ConceptCatalog | None = None
-    catalogue_identity: dict[str, Any] | None = None
-    if config.backend == "hybrid":
-        from .prompted import MODEL as SAM3_MODEL
-        from .prompted import (
-            PRODUCTION_CONCEPT_ID_COUNT,
-            Sam3ConceptBackend,
-            _is_commit,
-            cache_key,
-            semantic_catalogue_identity,
-        )
-
-        if config.concepts is None:
-            raise SystemExit("--backend hybrid needs --concepts pointing at the concept catalogue")
-        catalogue_identity = semantic_catalogue_identity(config.concepts, production=config.production)
-        catalog = ConceptCatalog.load(config.concepts)
-        if config.production and len(catalog.id2label()) != PRODUCTION_CONCEPT_ID_COUNT:
-            raise ValueError(
-                f"production hybrid inference requires the fixed {PRODUCTION_CONCEPT_ID_COUNT}-ID concept vocabulary"
-            )
-        if BRIDGE not in catalog.bridges:
-            raise SystemExit(f"the catalogue has no {BRIDGE} bridge, so prompts cannot be gated or fused")
-        concept_dir = out / "concepts"
-        concept_dir.mkdir(parents=True, exist_ok=True)
-        concepts = ConceptPass(
-            catalog=catalog,
-            bridge=catalog.bridges[BRIDGE],
-            backend=Sam3ConceptBackend(
-                catalog,
-                resolution=config.concept_resolution,
-                threshold=config.concept_threshold,
-                prompt_batch=config.prompt_batch,
-                revision=config.sam_revision,
-                repository_commit=config.sam_repository_commit,
-                production=config.production,
-            ),
-            cache_dir=concept_dir,
-            cache_key=cache_key(
-                model=SAM3_MODEL,
-                resolution=config.concept_resolution,
-                threshold=config.concept_threshold,
-                view_size=config.view_size,
-                catalog=catalog,
-                model_revision=config.sam_revision if _is_commit(config.sam_revision) else None,
-            ),
-            minimum_pixels=config.gate_min_pixels,
-        )
+    backend = model_session.backend
+    concepts = model_session.concept_pass(config)
+    catalog = model_session.catalog
+    catalogue_identity = model_session.catalogue_identity
 
     # Read before the run, because predict_views rewrites the stamp on its way
     # out. Without it the wall clock below is unreadable: a warm re-run over

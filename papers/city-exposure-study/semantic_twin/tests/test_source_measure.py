@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 
 from semantic_twin.illumination import build_facade_tip_curve, build_mesh_edge_curve
-from semantic_twin.illumination.curve import curve_from_polylines
+from semantic_twin.illumination.curve import (
+    HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    PHYSICAL_3D_EDGE_LENGTH,
+    curve_from_polylines,
+)
 from semantic_twin.illumination.roofline import silhouette
 from semantic_twin.illumination.sources import SourceSet, build_source_set, direct_from_sites, normalized_source_weights
 
@@ -20,6 +24,63 @@ def test_arc_length_weights_sum_to_one_for_unequal_segments() -> None:
     np.testing.assert_allclose(curve.segment_lengths_m, [1.0, 3.0])
     np.testing.assert_allclose(curve.normalized_weights(), [0.25, 0.75])
     assert curve.support_length_m == pytest.approx(4.0)
+
+
+def test_sloped_segment_retains_exact_endpoints_and_both_length_measures() -> None:
+    sloped = np.array([[1.0, 2.0, 3.0], [4.0, 6.0, 15.0]], dtype=np.float64)
+    curve = curve_from_polylines([sloped])
+
+    assert curve.has_exact_endpoints
+    np.testing.assert_allclose(curve.segment_starts, sloped[:1])
+    np.testing.assert_allclose(curve.segment_ends, sloped[1:])
+    np.testing.assert_allclose(curve.points, [[2.5, 4.0, 9.0]])
+    np.testing.assert_allclose(curve.measure_lengths(PHYSICAL_3D_EDGE_LENGTH), [13.0])
+    np.testing.assert_allclose(curve.measure_lengths(HORIZONTAL_PROJECTED_EDGE_LENGTH), [5.0])
+
+
+def test_projected_measure_changes_weights_but_not_physical_areal_count() -> None:
+    curve = curve_from_polylines(
+        [
+            np.array([[1.0, 0.0, 2.0], [4.0, 0.0, 6.0]], dtype=np.float64),
+            np.array([[10.0, 0.0, 2.0], [15.0, 0.0, 2.0]], dtype=np.float64),
+        ]
+    )
+    physical = SourceSet.from_curve(
+        curve,
+        crop_area_m2=200.0,
+        density_per_m2=0.1,
+        source_measure_rule=PHYSICAL_3D_EDGE_LENGTH,
+    )
+    legacy_default = SourceSet.from_curve(curve, crop_area_m2=200.0, density_per_m2=0.1)
+    projected = SourceSet.from_curve(
+        curve,
+        crop_area_m2=200.0,
+        density_per_m2=0.1,
+        source_measure_rule=HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    )
+
+    np.testing.assert_allclose(physical.normalized_source_weights(), [0.5, 0.5])
+    np.testing.assert_array_equal(legacy_default.normalized_source_weights(), physical.normalized_source_weights())
+    np.testing.assert_allclose(projected.normalized_source_weights(), [0.375, 0.625])
+    assert physical.physical_expected_count == projected.physical_expected_count == pytest.approx(20.0)
+    assert physical.source_hash == projected.source_hash == curve.source_hash
+    assert "source_measure_rule" not in legacy_default.source_provenance()
+    assert physical.source_provenance()["source_measure_rule"] == PHYSICAL_3D_EDGE_LENGTH
+    assert projected.source_provenance()["source_measure_rule"] == HORIZONTAL_PROJECTED_EDGE_LENGTH
+
+
+def test_projected_measure_allows_zero_segments_but_refuses_zero_total() -> None:
+    mixed = curve_from_polylines(
+        [
+            np.array([[1.0, 0.0, 1.0], [1.0, 0.0, 3.0]], dtype=np.float64),
+            np.array([[2.0, 0.0, 1.0], [4.0, 0.0, 1.0]], dtype=np.float64),
+        ]
+    )
+    np.testing.assert_allclose(mixed.normalized_weights(HORIZONTAL_PROJECTED_EDGE_LENGTH), [0.0, 1.0])
+
+    vertical = curve_from_polylines([np.array([[1.0, 0.0, 1.0], [1.0, 0.0, 3.0]], dtype=np.float64)])
+    with pytest.raises(ValueError, match="no positive support"):
+        vertical.normalized_weights(HORIZONTAL_PROJECTED_EDGE_LENGTH)
 
 
 def test_duplicate_views_are_unioned_without_double_counting() -> None:
@@ -392,6 +453,15 @@ def test_build_facade_tip_curve_forwards_top_edge_tolerance_to_mesh_selector() -
 
 
 def test_build_source_set_lifts_exact_edges_without_changing_arc_measure() -> None:
+    unlifted = build_source_set(
+        _TriangularFacade(),
+        np.array([[0.0, 0.0, 2.0]]),
+        _interval_north_ray,
+        azimuths=16,
+        elevations=4,
+        site_lift_m=0.0,
+        crop_area_m2=40.0,
+    )
     sources = build_source_set(
         _TriangularFacade(),
         np.array([[0.0, 0.0, 2.0]]),
@@ -406,6 +476,14 @@ def test_build_source_set_lifts_exact_edges_without_changing_arc_measure() -> No
     assert sources.support_length_m > 0.0
     assert sources.physical_expected_count == pytest.approx(10.0)
     assert sources.positions[0, 2] == pytest.approx(4.5)
+    assert sources.curve is not None and unlifted.curve is not None
+    np.testing.assert_allclose(sources.curve.segment_starts[:, 2], unlifted.curve.segment_starts[:, 2] + 0.5)
+    np.testing.assert_allclose(sources.curve.segment_ends[:, 2], unlifted.curve.segment_ends[:, 2] + 0.5)
+    np.testing.assert_array_equal(sources.curve.segment_lengths_m, unlifted.curve.segment_lengths_m)
+    np.testing.assert_allclose(
+        sources.curve.measure_lengths(HORIZONTAL_PROJECTED_EDGE_LENGTH),
+        unlifted.curve.measure_lengths(HORIZONTAL_PROJECTED_EDGE_LENGTH),
+    )
     np.testing.assert_allclose(sources.normalized_source_weights(), [1.0])
     assert sources.source_provenance()["merge_rule"] == "undirected_mesh_vertex_edge_id_union"
 

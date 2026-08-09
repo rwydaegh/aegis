@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import replace
+from typing import Any
 
 import numpy as np
 import pytest
 
 from semantic_twin.illumination import ISOTROPIC
 from semantic_twin.illumination.curve import FacadeTipCurve
-from semantic_twin.illumination.sources import SourceSet
+from semantic_twin.illumination.sources import SourceSet, normalized_source_weights
+from semantic_twin.materials import AtlasMaterialBinding
 from semantic_twin.propagation.closed_form import PEC_PERMITTIVITY
 from semantic_twin.propagation.geometry import PlaneGeometry
 from semantic_twin.transport.next_event import NextEventEstimator, NextEventField, NextEventGather
@@ -21,10 +23,11 @@ from semantic_twin.transport.specular import (
     SpecularComplexityError,
     SpecularSurfaces,
     StratifiedSourceQuadrature,
+    _inside_triangles,
 )
+from semantic_twin.transport.specular_broadphase import conservative_order_one_candidates
 from semantic_twin.transport.specular_sampling import SampledOneBounceSpecularEstimator
 from semantic_twin.transport.tracer import SbrTracer, TraceConfig, fresnel_power_reflectance, specular_share
-from semantic_twin.materials import AtlasMaterialBinding
 
 
 class TriangleGeometry:
@@ -371,6 +374,157 @@ def test_candidate_chunk_size_does_not_change_paths_or_transfer() -> None:
     assert small.total == pytest.approx(large.total, rel=2.0e-13)
 
 
+def _oracle_geometric_candidates(
+    sources: np.ndarray,
+    receiver: np.ndarray,
+    triangles: np.ndarray,
+    normals: np.ndarray,
+    epsilon_m: float,
+) -> np.ndarray:
+    source_count = sources.shape[0]
+    face_count = triangles.shape[0]
+    flat = np.arange(source_count * face_count, dtype=np.int64)
+    pair = flat // face_count
+    face = flat - pair * face_count
+    triangle = triangles[face]
+    normal = normals[face]
+    plane_point = triangle[:, 0]
+    source = sources[pair]
+    repeated_receiver = np.broadcast_to(receiver, source.shape)
+    source_side = np.einsum("ij,ij->i", source - plane_point, normal)
+    receiver_side = np.einsum("ij,ij->i", repeated_receiver - plane_point, normal)
+    image = source - 2.0 * source_side[:, None] * normal
+    image_line = image - repeated_receiver
+    denominator = np.einsum("ij,ij->i", image_line, normal)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        fraction = -receiver_side / denominator
+    finite = np.isfinite(fraction)
+    reflection = repeated_receiver + np.where(finite, fraction, 0.0)[:, None] * image_line
+    geometric = (
+        (np.linalg.norm(source - repeated_receiver, axis=1) > 1.0e-12)
+        & (source_side * receiver_side > epsilon_m * epsilon_m)
+        & finite
+        & (fraction > 0.0)
+        & (fraction < 1.0)
+        & _inside_triangles(reflection, triangle)
+    )
+    return flat[geometric]
+
+
+def test_conservative_broad_phase_has_no_false_negatives_in_adversarial_scenes() -> None:
+    rng = np.random.default_rng(294_817)
+    epsilon_m = 1.0e-3
+    for scale in (1.0e-3, 1.0, 1.0e3):
+        face_count = 47
+        source_count = 19
+        center = scale * rng.normal(size=(face_count, 3))
+        edge1 = scale * rng.normal(size=(face_count, 3))
+        edge2 = scale * rng.normal(size=(face_count, 3))
+        cross = np.cross(edge1, edge2)
+        weak = np.linalg.norm(cross, axis=1) < scale * scale * 1.0e-7
+        edge2[weak] += scale * np.array([0.0, 1.0, 0.0])
+        cross = np.cross(edge1, edge2)
+        triangles = np.stack((center, center + edge1, center + edge2), axis=1)
+        normals = cross / np.linalg.norm(cross, axis=1)[:, None]
+        sources = scale * rng.normal(size=(source_count, 3))
+        receiver = scale * rng.normal(size=3)
+
+        broad = conservative_order_one_candidates(
+            sources,
+            receiver,
+            triangles,
+            normals,
+            epsilon_m=epsilon_m,
+            source_chunk=7,
+        )
+        oracle = _oracle_geometric_candidates(sources, receiver, triangles, normals, epsilon_m)
+
+        assert np.setdiff1d(oracle, broad.flat_index).size == 0
+        assert broad.logical_candidates == source_count * face_count
+        assert broad.survivors == broad.flat_index.size
+
+    triangle = np.array([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]])
+    normals = np.array([[0.0, 0.0, 1.0]])
+    receiver = np.array([0.25, 0.25, 2.0])
+    reflection = np.array([-1.9e-8, 0.5, 0.0])
+    mirrored_receiver = np.array([0.25, 0.25, -2.0])
+    boundary_source = mirrored_receiver + 3.5 * (reflection - mirrored_receiver)
+    broad = conservative_order_one_candidates(
+        boundary_source[None, :],
+        receiver,
+        triangle,
+        normals,
+        epsilon_m=epsilon_m,
+    )
+    np.testing.assert_array_equal(
+        _oracle_geometric_candidates(boundary_source[None, :], receiver, triangle, normals, epsilon_m),
+        [0],
+    )
+    np.testing.assert_array_equal(broad.flat_index, [0])
+
+    translation = np.array([1.0e9, -2.0e9, 3.0e9])
+    skinny = translation + np.array([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0e-7, 1.0e-5, 0.0]]])
+    skinny_normal = np.array([[0.0, 0.0, 1.0]])
+    translated_receiver = translation + np.array([0.2, 2.0e-6, 2.0])
+    translated_reflection = skinny[0, 0] + 0.3 * (skinny[0, 1] - skinny[0, 0])
+    translated_reflection += 0.2 * (skinny[0, 2] - skinny[0, 0])
+    translated_mirror = translated_receiver.copy()
+    translated_mirror[2] -= 4.0
+    translated_source = translated_mirror + 3.5 * (translated_reflection - translated_mirror)
+    translated = conservative_order_one_candidates(
+        translated_source[None, :],
+        translated_receiver,
+        skinny,
+        skinny_normal,
+        epsilon_m=epsilon_m,
+    )
+    np.testing.assert_array_equal(
+        _oracle_geometric_candidates(
+            translated_source[None, :],
+            translated_receiver,
+            skinny,
+            skinny_normal,
+            epsilon_m,
+        ),
+        [0],
+    )
+    np.testing.assert_array_equal(translated.flat_index, [0])
+
+
+def test_broad_phase_preserves_exact_paths_and_original_cartesian_order() -> None:
+    remote = np.concatenate([PLANE + np.array([0.0, 40.0 * index, 0.0]) for index in range(12)])
+    tracer = _tracer(remote)
+    sources = np.array(
+        [
+            [-3.0, 0.0, 5.0],
+            [4.0, 1.0, 6.0],
+            [-3.0, 40.0, 5.0],
+            [4.0, 41.0, 6.0],
+        ]
+    )
+    receiver = np.array([2.0, 0.0, 2.0])
+    receivers = np.broadcast_to(receiver, sources.shape)
+    oracle = OneBounceSpecularTransport(tracer, broad_phase_threshold=10**9).solve_paired(sources, receivers)
+    filtered = OneBounceSpecularTransport(tracer, broad_phase_threshold=0, broad_phase_source_chunk=2).solve_paired(
+        sources,
+        receivers,
+    )
+
+    np.testing.assert_array_equal(filtered.k_hat, oracle.k_hat)
+    np.testing.assert_array_equal(filtered.transfer, oracle.transfer)
+    np.testing.assert_array_equal(filtered.reflection_point, oracle.reflection_point)
+    np.testing.assert_array_equal(filtered.source_index, oracle.source_index)
+    np.testing.assert_array_equal(filtered.endpoint_index, oracle.endpoint_index)
+    np.testing.assert_array_equal(filtered.surface_sequence, oracle.surface_sequence)
+    np.testing.assert_array_equal(filtered.unfolded_length_m, oracle.unfolded_length_m)
+    assert filtered.diagnostics.geometric == oracle.diagnostics.geometric
+    assert filtered.diagnostics.visible == oracle.diagnostics.visible
+    assert filtered.diagnostics.accepted == oracle.diagnostics.accepted
+    broad = filtered.diagnostics.candidate_diagnostics["broad_phase"]
+    assert broad["logical_candidates"] == sources.shape[0] * remote.shape[0]
+    assert broad["survivors"] < broad["logical_candidates"]
+
+
 def test_paired_surface_kernel_matches_individual_exact_solves() -> None:
     planes = np.concatenate((PLANE, PLANE + np.array([0.0, 40.0, 0.0])))
     solver = OneBounceSpecularTransport(_tracer(planes), candidate_chunk=2)
@@ -629,6 +783,327 @@ def _curve_source_set(count: int = 32) -> SourceSet:
     return SourceSet.from_curve(curve)
 
 
+class _NestedFaceCandidates:
+    sample_levels = (1,)
+    growth_factor = 2
+
+    def refine_level(
+        self,
+        transport: OneBounceSpecularTransport,
+        receiver: np.ndarray,
+        angular_samples: int,
+        *,
+        previous: SpecularCandidateSet | None = None,
+    ) -> SpecularCandidateSet:
+        del receiver
+        selected = np.array([[1]], dtype=np.int64) if previous is None else np.array([[0], [1]], dtype=np.int64)
+        prior_rays = 0 if previous is None else int(previous.diagnostics["total_visibility_rays"])
+        return SpecularCandidateSet(
+            selected,
+            method="focused_nested_face_fixture",
+            support_complete=False,
+            missed_support_faces=transport.surfaces.triangles.shape[0] - selected.shape[0],
+            diagnostics={
+                "angular_samples": angular_samples,
+                "total_visibility_rays": prior_rays + angular_samples,
+                "finite_resolution_support_incomplete": True,
+            },
+        )
+
+
+class _IdenticalFaceCandidates(_NestedFaceCandidates):
+    def refine_level(
+        self,
+        transport: OneBounceSpecularTransport,
+        receiver: np.ndarray,
+        angular_samples: int,
+        *,
+        previous: SpecularCandidateSet | None = None,
+    ) -> SpecularCandidateSet:
+        candidate_set = super().refine_level(
+            transport,
+            receiver,
+            angular_samples,
+            previous=previous,
+        )
+        return replace(candidate_set, sequences=np.array([[0], [1]], dtype=np.int64))
+
+
+class _RecordingSpecularTransport(OneBounceSpecularTransport):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.executed_candidate_pairs: list[tuple[int, int]] = []
+
+    def solve_paired(self, sources: np.ndarray, receivers: np.ndarray, **kwargs: Any):  # noqa: ANN201
+        candidate_set = kwargs.get("candidate_set")
+        source_index = np.asarray(kwargs.get("source_index"), dtype=np.int64)
+        if candidate_set is not None:
+            self.executed_candidate_pairs.extend(
+                (int(source), int(face)) for source in source_index for face in candidate_set.sequences[:, 0]
+            )
+        return super().solve_paired(sources, receivers, **kwargs)
+
+
+def test_adaptive_refinement_reuses_nested_face_blocks_with_exact_full_solve_parity() -> None:
+    wall = np.array([[[-10.0, -20.0, 0.0], [-10.0, 20.0, 0.0], [-10.0, 0.0, 20.0]]])
+    planes = np.concatenate((PLANE, wall))
+    tracer = _tracer(planes, rays=8, max_bounces=1)
+    transport = _RecordingSpecularTransport(tracer, candidate_budget=12)
+    estimator = NextEventEstimator(
+        tracer,
+        tracer.geometry,
+        _curve_source_set(),
+        max_order=1,
+        specular_candidate_budget=12,
+        specular_transport=transport,
+        visible_face_candidates=_NestedFaceCandidates(),
+        source_quadrature=StratifiedSourceQuadrature((1,)),
+        specular_refinement_relative_tolerance=1.0e-6,
+    )
+    receiver = np.array([0.0, 0.0, 2.0])
+
+    paths, refinement, work = estimator._adaptive_all_specular(transport, receiver)
+
+    assert paths is not None
+    assert work["candidate_work_used"] == 9
+    assert work["executed_candidate_work_used"] == 6
+    assert work["avoided_candidate_work"] == 3
+    assert len(transport.executed_candidate_pairs) == 6
+    assert len(set(transport.executed_candidate_pairs)) == 6
+    assert [row["candidates"] for row in refinement] == [1, 2, 2, 4]
+    assert [row["executed_candidates"] for row in refinement] == [1, 2, 1, 2]
+    assert [row["cumulative_executed_candidates"] for row in refinement] == [1, 3, 4, 6]
+    assert [row["cumulative_avoided_candidates"] for row in refinement] == [0, 0, 1, 3]
+    assert [row["seconds"] for row in refinement] == [row["executed_seconds"] for row in refinement]
+    assert [row["cumulative_executed_seconds"] for row in refinement] == pytest.approx(
+        np.cumsum([row["executed_seconds"] for row in refinement])
+    )
+    assert work["executed_candidate_seconds"] == pytest.approx(refinement[-1]["cumulative_executed_seconds"])
+    assert all(row["logical_solution_seconds"] >= row["executed_seconds"] for row in refinement)
+    assert all(row["reused_block_seconds"] >= 0.0 for row in refinement)
+
+    sites = np.asarray(estimator.sources.sites(), dtype=np.float64)
+    probabilities = normalized_source_weights(estimator.sources)
+    initial_selected = estimator.source_quadrature.select(sites, probabilities, 1)
+    selected = estimator.source_quadrature.select(sites, probabilities, 2)
+    initial_faces = SpecularCandidateSet(
+        np.array([[1]], dtype=np.int64),
+        method="focused_nested_face_fixture",
+        support_complete=False,
+        missed_support_faces=1,
+        diagnostics={
+            "angular_samples": 1,
+            "total_visibility_rays": 1,
+            "finite_resolution_support_incomplete": True,
+        },
+    )
+    all_faces = SpecularCandidateSet(
+        np.array([[0], [1]], dtype=np.int64),
+        method="focused_nested_face_fixture",
+        support_complete=False,
+        missed_support_faces=0,
+        diagnostics={
+            "angular_samples": 2,
+            "total_visibility_rays": 3,
+            "finite_resolution_support_incomplete": True,
+        },
+    )
+    legacy_transport = OneBounceSpecularTransport(tracer, candidate_budget=12)
+
+    def legacy_solve(candidate_set: SpecularCandidateSet, source_selection: Any):  # noqa: ANN202
+        return legacy_transport.solve_paired(
+            source_selection.positions,
+            np.broadcast_to(receiver, source_selection.positions.shape),
+            endpoint_weight=source_selection.probabilities,
+            source_index=source_selection.source_index,
+            candidate_set=candidate_set,
+        )
+
+    legacy_paths = (
+        legacy_solve(initial_faces, initial_selected),
+        legacy_solve(initial_faces, selected),
+        legacy_solve(all_faces, initial_selected),
+        legacy_solve(all_faces, selected),
+    )
+    reference = legacy_paths[-1]
+    np.testing.assert_array_equal(
+        np.array([row["transfer"] for row in refinement]),
+        np.array([block.total for block in legacy_paths]),
+    )
+    assert [row["accepted"] for row in refinement] == [block.diagnostics.accepted for block in legacy_paths]
+    assert [row["candidates"] for row in refinement] == [block.diagnostics.candidates for block in legacy_paths]
+    np.testing.assert_array_equal(paths.k_hat, reference.k_hat)
+    np.testing.assert_array_equal(paths.transfer, reference.transfer)
+    np.testing.assert_array_equal(paths.reflection_point, reference.reflection_point)
+    np.testing.assert_array_equal(paths.source_index, reference.source_index)
+    np.testing.assert_array_equal(paths.endpoint_index, reference.endpoint_index)
+    np.testing.assert_array_equal(paths.surface_sequence, reference.surface_sequence)
+    np.testing.assert_array_equal(paths.unfolded_length_m, reference.unfolded_length_m)
+    observed_diagnostics = paths.diagnostics.as_dict()
+    reference_diagnostics = reference.diagnostics.as_dict()
+    observed_diagnostics.pop("seconds")
+    reference_diagnostics.pop("seconds")
+    assert observed_diagnostics == reference_diagnostics
+
+
+def test_adaptive_face_reuse_remains_callable_after_source_support_is_exact() -> None:
+    wall = np.array([[[-10.0, -20.0, 0.0], [-10.0, 20.0, 0.0], [-10.0, 0.0, 20.0]]])
+    tracer = _tracer(np.concatenate((PLANE, wall)), rays=8, max_bounces=1)
+    transport = _RecordingSpecularTransport(tracer, candidate_budget=12)
+    sources = SourceSet(
+        positions=np.array([[-3.0, 0.0, 5.0]]),
+        cell_m=1.0,
+        dims=3,
+        azimuths=0,
+        builders=0,
+    )
+    estimator = NextEventEstimator(
+        tracer,
+        tracer.geometry,
+        sources,
+        max_order=1,
+        specular_candidate_budget=12,
+        specular_transport=transport,
+        visible_face_candidates=_NestedFaceCandidates(),
+        source_quadrature=StratifiedSourceQuadrature((1,)),
+        specular_refinement_relative_tolerance=1.0e-6,
+    )
+
+    paths, refinement, work = estimator._adaptive_all_specular(transport, np.array([0.0, 0.0, 2.0]))
+
+    assert paths is not None
+    assert work["stop_reason"] == "relative_tolerance_reached"
+    assert work["candidate_work_used"] == 5
+    assert work["executed_candidate_work_used"] == 2
+    assert work["avoided_candidate_work"] == 3
+    assert [row["candidates"] for row in refinement] == [1, 2, 2]
+    assert [row["executed_candidates"] for row in refinement] == [1, 1, 0]
+    assert all(row["source_axis_converged"] for row in refinement[1:])
+
+
+def test_adaptive_face_reuse_executes_no_candidates_for_an_identical_face_level() -> None:
+    wall = np.array([[[-10.0, -20.0, 0.0], [-10.0, 20.0, 0.0], [-10.0, 0.0, 20.0]]])
+    tracer = _tracer(np.concatenate((PLANE, wall)), rays=8, max_bounces=1)
+    transport = _RecordingSpecularTransport(tracer, candidate_budget=7)
+    sources = SourceSet(
+        positions=np.array([[-3.0, 0.0, 5.0]]),
+        cell_m=1.0,
+        dims=3,
+        azimuths=0,
+        builders=0,
+    )
+    estimator = NextEventEstimator(
+        tracer,
+        tracer.geometry,
+        sources,
+        max_order=1,
+        specular_candidate_budget=7,
+        specular_transport=transport,
+        visible_face_candidates=_IdenticalFaceCandidates(),
+        source_quadrature=StratifiedSourceQuadrature((1,)),
+        specular_refinement_relative_tolerance=1.0e-6,
+    )
+
+    paths, refinement, work = estimator._adaptive_all_specular(transport, np.array([0.0, 0.0, 2.0]))
+
+    assert paths is not None
+    assert work["stop_reason"] == "relative_tolerance_reached"
+    assert work["candidate_work_used"] == 4
+    assert work["executed_candidate_work_used"] == 2
+    assert work["avoided_candidate_work"] == 2
+    assert [row["executed_candidates"] for row in refinement] == [2, 0]
+    assert len(transport.executed_candidate_pairs) == 2
+
+
+def test_adaptive_face_reuse_preserves_unique_nonidentity_face_mapping() -> None:
+    wall = np.array([[[-10.0, -20.0, 0.0], [-10.0, 20.0, 0.0], [-10.0, 0.0, 20.0]]])
+    tracer = _tracer(np.concatenate((PLANE, wall)), rays=8, max_bounces=1)
+    surfaces = SpecularSurfaces.from_tracer(tracer)
+    permuted = SpecularSurfaces(
+        triangles=surfaces.triangles[::-1],
+        normals=surfaces.normals[::-1],
+        face_index=surfaces.face_index[::-1],
+        material_class=surfaces.material_class[::-1],
+        support_complete=surfaces.support_complete,
+        scene_face_count=surfaces.scene_face_count,
+        construction="focused_nonidentity_face_mapping",
+    )
+    transport = _RecordingSpecularTransport(tracer, permuted, candidate_budget=12)
+    estimator = NextEventEstimator(
+        tracer,
+        tracer.geometry,
+        _curve_source_set(),
+        max_order=1,
+        specular_candidate_budget=12,
+        specular_transport=transport,
+        visible_face_candidates=_NestedFaceCandidates(),
+        source_quadrature=StratifiedSourceQuadrature((1,)),
+        specular_refinement_relative_tolerance=1.0e-6,
+    )
+    receiver = np.array([0.0, 0.0, 2.0])
+
+    paths, _refinement, work = estimator._adaptive_all_specular(transport, receiver)
+
+    assert paths is not None
+    assert work["candidate_work_used"] == 9
+    assert work["executed_candidate_work_used"] == 6
+    assert work["avoided_candidate_work"] == 3
+    sites = np.asarray(estimator.sources.sites(), dtype=np.float64)
+    selected = estimator.source_quadrature.select(sites, normalized_source_weights(estimator.sources), 2)
+    candidate_set = SpecularCandidateSet(
+        np.array([[0], [1]], dtype=np.int64),
+        method="focused_nested_face_fixture",
+        support_complete=False,
+        missed_support_faces=0,
+        diagnostics={
+            "angular_samples": 2,
+            "total_visibility_rays": 3,
+            "finite_resolution_support_incomplete": True,
+        },
+    )
+    reference = OneBounceSpecularTransport(tracer, permuted, candidate_budget=12).solve_paired(
+        selected.positions,
+        np.broadcast_to(receiver, selected.positions.shape),
+        endpoint_weight=selected.probabilities,
+        source_index=selected.source_index,
+        candidate_set=candidate_set,
+    )
+    np.testing.assert_array_equal(paths.k_hat, reference.k_hat)
+    np.testing.assert_array_equal(paths.transfer, reference.transfer)
+    np.testing.assert_array_equal(paths.reflection_point, reference.reflection_point)
+    np.testing.assert_array_equal(paths.source_index, reference.source_index)
+    np.testing.assert_array_equal(paths.endpoint_index, reference.endpoint_index)
+    np.testing.assert_array_equal(paths.surface_sequence, reference.surface_sequence)
+    np.testing.assert_array_equal(paths.unfolded_length_m, reference.unfolded_length_m)
+
+
+def test_adaptive_face_reuse_falls_back_for_nonunique_output_face_identity() -> None:
+    wall = np.array([[[-10.0, -20.0, 0.0], [-10.0, 20.0, 0.0], [-10.0, 0.0, 20.0]]])
+    tracer = _tracer(np.concatenate((PLANE, wall)), rays=8, max_bounces=1)
+    surfaces = SpecularSurfaces.from_tracer(tracer)
+    ambiguous = replace(surfaces, face_index=np.zeros(surfaces.face_index.shape, dtype=np.int64))
+    transport = _RecordingSpecularTransport(tracer, ambiguous, candidate_budget=12)
+    estimator = NextEventEstimator(
+        tracer,
+        tracer.geometry,
+        _curve_source_set(),
+        max_order=1,
+        specular_candidate_budget=12,
+        specular_transport=transport,
+        visible_face_candidates=_NestedFaceCandidates(),
+        source_quadrature=StratifiedSourceQuadrature((1,)),
+        specular_refinement_relative_tolerance=1.0e-6,
+    )
+
+    paths, _refinement, work = estimator._adaptive_all_specular(transport, np.array([0.0, 0.0, 2.0]))
+
+    assert paths is not None
+    assert work["candidate_work_used"] == 9
+    assert work["executed_candidate_work_used"] == 9
+    assert work["avoided_candidate_work"] == 0
+    assert len(transport.executed_candidate_pairs) == 9
+
+
 def test_finite_resolution_refinement_crosses_receiver_faces_and_source_strata() -> None:
     tracer = _tracer(PLANE, rays=16, max_bounces=1)
     estimator = NextEventEstimator(
@@ -649,6 +1124,8 @@ def test_finite_resolution_refinement_crosses_receiver_faces_and_source_strata()
     assert work["enabled"] is True
     assert work["method"] == "adaptive_receiver_faces_and_probability_strata"
     assert work["candidate_work_used"] == 6
+    assert work["executed_candidate_work_used"] == 3
+    assert work["avoided_candidate_work"] == 3
     assert work["visibility_rays_used"] == 15
     assert work["refinement_work_used"] == 21
     assert work["refinement_work_used"] <= work["candidate_budget"]

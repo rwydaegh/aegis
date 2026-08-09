@@ -119,11 +119,12 @@ from __future__ import annotations
 import io
 import math
 import pathlib
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any
 
 import numpy as np
 
+from .. import paths
 from ..illumination import IlluminationModel
 from .tracer import DEFAULT_MAX_BOUNCES
 
@@ -525,6 +526,103 @@ def build_payload(
     return payload
 
 
+def _clear_payload_scene(scene: Any) -> None:
+    """Remove the transmitters and receivers from the reusable Sionna scene."""
+    for name in list(scene.transmitters):
+        scene.remove(name)
+    for name in list(scene.receivers):
+        scene.remove(name)
+
+
+def _solve_payload_chunk(
+    scene: Any,
+    solver: Any,
+    rt: Any,
+    np_module: Any,
+    directions: np.ndarray,
+    origin: np.ndarray,
+    payload: dict[str, Any],
+    *,
+    start: int,
+    stop: int,
+    range_m: float,
+    reference: float,
+    location: int,
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Solve one target chunk and return total, direct and path-buffer usage."""
+    _clear_payload_scene(scene)
+    scene.add(rt.Transmitter("tx", position=[float(v) for v in origin]))
+    for i in range(start, stop):
+        position = origin + range_m * directions[i]
+        scene.add(rt.Receiver(f"rx{i}", position=[float(v) for v in position]))
+    paths = solver(
+        scene,
+        max_depth=int(payload["max_depth"]),
+        los=True,
+        specular_reflection=True,
+        diffuse_reflection=bool(payload["diffuse"]),
+        refraction=False,
+        diffraction=bool(payload["diffraction"]),
+        samples_per_src=int(payload["samples_per_src"]),
+        max_num_paths_per_src=int(payload["max_num_paths_per_src"]),
+        synthetic_array=True,
+        seed=int(payload["seed"]) + location,
+    )
+    real_part, imaginary_part = paths.a
+    amplitude = np_module.asarray(real_part) + 1j * np_module.asarray(imaginary_part)
+    power = 0.5 * (np_module.abs(amplitude) ** 2).sum(axis=(1, 3))[:, 0, :] / reference
+    interactions = np_module.asarray(paths.interactions)
+    if interactions.ndim == 4:
+        line_of_sight = np_module.all(interactions == 0, axis=0)[:, 0, :]
+    else:
+        line_of_sight = np_module.all(interactions == 0, axis=0)
+    return (
+        power.sum(axis=1),
+        np_module.where(line_of_sight, power, 0.0).sum(axis=1),
+        int(np_module.asarray(paths.valid).sum()),
+    )
+
+
+def _solve_payload_location(
+    scene: Any,
+    solver: Any,
+    rt: Any,
+    np_module: Any,
+    directions: np.ndarray,
+    origin: np.ndarray,
+    payload: dict[str, Any],
+    *,
+    range_m: float,
+    reference: float,
+    chunk: int,
+    location: int,
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Solve all direction chunks for one standpoint."""
+    total = np_module.zeros(directions.shape[0])
+    direct = np_module.zeros(directions.shape[0])
+    high_water = 0
+    for start in range(0, directions.shape[0], chunk):
+        stop = min(start + chunk, directions.shape[0])
+        chunk_total, chunk_direct, chunk_high_water = _solve_payload_chunk(
+            scene,
+            solver,
+            rt,
+            np_module,
+            directions,
+            origin,
+            payload,
+            start=start,
+            stop=stop,
+            range_m=range_m,
+            reference=reference,
+            location=location,
+        )
+        total[start:stop] = chunk_total
+        direct[start:stop] = chunk_direct
+        high_water = max(high_water, chunk_high_water)
+    return total, direct, high_water
+
+
 def run_payload(payload: dict[str, Any], workdir: str | None = None) -> dict[str, Any]:
     """Answer one payload. Self contained, so it can run inside a Modal container.
 
@@ -589,40 +687,22 @@ def run_payload(payload: dict[str, Any], workdir: str | None = None) -> dict[str
     # answer so the caller can refuse a saturated run rather than publish it.
     high_water = 0
     for location, origin in enumerate(origins):
-        for start in range(0, directions.shape[0], chunk):
-            stop = min(start + chunk, directions.shape[0])
-            for name in list(scene.transmitters):
-                scene.remove(name)
-            for name in list(scene.receivers):
-                scene.remove(name)
-            scene.add(rt.Transmitter("tx", position=[float(v) for v in origin]))
-            for i in range(start, stop):
-                position = origin + range_m * directions[i]
-                scene.add(rt.Receiver(f"rx{i}", position=[float(v) for v in position]))
-            paths = solver(
-                scene,
-                max_depth=int(payload["max_depth"]),
-                los=True,
-                specular_reflection=True,
-                diffuse_reflection=bool(payload["diffuse"]),
-                refraction=False,
-                diffraction=bool(payload["diffraction"]),
-                samples_per_src=int(payload["samples_per_src"]),
-                max_num_paths_per_src=int(payload["max_num_paths_per_src"]),
-                synthetic_array=True,
-                seed=int(payload["seed"]) + location,
-            )
-            real_part, imaginary_part = paths.a
-            amplitude = np.asarray(real_part) + 1j * np.asarray(imaginary_part)
-            power = 0.5 * (np.abs(amplitude) ** 2).sum(axis=(1, 3))[:, 0, :] / reference
-            interactions = np.asarray(paths.interactions)
-            if interactions.ndim == 4:
-                line_of_sight = np.all(interactions == 0, axis=0)[:, 0, :]
-            else:
-                line_of_sight = np.all(interactions == 0, axis=0)
-            total[location, start:stop] = power.sum(axis=1)
-            direct[location, start:stop] = np.where(line_of_sight, power, 0.0).sum(axis=1)
-            high_water = max(high_water, int(np.asarray(paths.valid).sum()))
+        location_total, location_direct, location_high_water = _solve_payload_location(
+            scene,
+            solver,
+            rt,
+            np,
+            directions,
+            origin,
+            payload,
+            range_m=range_m,
+            reference=reference,
+            chunk=chunk,
+            location=location,
+        )
+        total[location] = location_total
+        direct[location] = location_direct
+        high_water = max(high_water, location_high_water)
 
     return {
         "total": total.tolist(),
@@ -643,6 +723,7 @@ def modal_app(gpu: str = "L4", timeout_s: int = 7200) -> tuple[Any, Any]:
     depth and sky sample count. That product is what a rented L4 is for.
     """
     import sys
+    import tempfile
 
     import modal
     from modal._vendor import cloudpickle
@@ -664,7 +745,8 @@ def modal_app(gpu: str = "L4", timeout_s: int = 7200) -> tuple[Any, Any]:
 
     @app.function(image=image, gpu=gpu, timeout=timeout_s, serialized=True, max_containers=4)
     def solve(payload: dict) -> dict:
-        return worker(payload, workdir="/tmp/scene")
+        with tempfile.TemporaryDirectory(prefix="sionna-scene-") as workdir:
+            return worker(payload, workdir=workdir)
 
     return app, solve
 
@@ -869,11 +951,14 @@ PRODUCTION_TAG = "city250_corrected"
 
 
 def site_mesh(site: str, crop_m: int) -> pathlib.Path:
-    for name in (f"inhouse_leaf_{crop_m}m_f64.ply", f"inhouse_leaf_{crop_m}m.ply"):
-        candidate = ROOT / "data" / "geometry" / site / name
-        if candidate.exists():
-            return candidate
-    raise FileNotFoundError(f"no {crop_m} m mesh for {site}")
+    """Resolve the trace mesh through the study's validated provenance gate.
+
+    Keep this small compatibility wrapper because the cross-validation module's
+    public helper was used by a few notebooks. The resolver itself belongs to
+    :mod:`semantic_twin.paths`: it prefers the double-precision rebuild and
+    rejects meshes whose sidecar format is too old or missing.
+    """
+    return paths.site_mesh(site, crop_m, root_dir=ROOT)
 
 
 def load_site(site: str, crop_m: int, frequency_hz: float, *, variant: str) -> dict[str, Any]:
@@ -993,26 +1078,65 @@ def tracer_reference(
     }
 
 
-def compare(
-    site: str,
-    *,
-    modes: tuple[str, ...] = MODES,
-    crop_m: int = 250,
-    frequency_hz: float = 15.0e9,
-    locations: int = 8,
-    sky_samples: int = 900,
-    rays: int = 200_000,
-    max_depth: int = 4,
-    samples_per_src: int = 200_000,
-    target_chunk: int = 32,
-    max_num_paths_per_src: int = 16_000_000,
-    seed: int = 7,
-    variant: str = "llvm_ad_rgb",
-    gpu: str = "L4",
-    local: bool = False,
-    diffraction: bool = False,
-) -> pathlib.Path:
-    """Run both tools at one site and write the comparison."""
+@dataclass(frozen=True)
+class CompareOptions:
+    """Configuration for one estimator/Sionna city comparison."""
+
+    modes: tuple[str, ...] = MODES
+    crop_m: int = 250
+    frequency_hz: float = 15.0e9
+    locations: int = 8
+    sky_samples: int = 900
+    rays: int = 200_000
+    max_depth: int = 4
+    samples_per_src: int = 200_000
+    target_chunk: int = 32
+    max_num_paths_per_src: int = 16_000_000
+    seed: int = 7
+    variant: str = "llvm_ad_rgb"
+    gpu: str = "L4"
+    local: bool = False
+    diffraction: bool = False
+
+    @classmethod
+    def from_kwargs(cls, values: dict[str, Any]) -> "CompareOptions":
+        """Build options from the historical keyword-only ``compare`` API."""
+        names = {field.name for field in fields(cls)}
+        unknown = sorted(set(values) - names)
+        if unknown:
+            joined = ", ".join(unknown)
+            raise TypeError(f"compare() got unexpected keyword argument(s): {joined}")
+        return cls(**values)
+
+
+def compare(site: str, *, options: CompareOptions | None = None, **kwargs: Any) -> pathlib.Path:
+    """Run both tools at one site and write the comparison.
+
+    The historical keyword arguments remain accepted. New callers may pass a
+    :class:`CompareOptions` value to keep a comparison configuration together.
+    """
+    if options is not None and kwargs:
+        raise TypeError("compare() accepts either options or historical keyword arguments, not both")
+    return _compare(site, options or CompareOptions.from_kwargs(kwargs))
+
+
+def _compare(site: str, options: CompareOptions) -> pathlib.Path:
+    """Implementation for :func:`compare`, with configuration grouped in one value."""
+    modes = options.modes
+    crop_m = options.crop_m
+    frequency_hz = options.frequency_hz
+    locations = options.locations
+    sky_samples = options.sky_samples
+    rays = options.rays
+    max_depth = options.max_depth
+    samples_per_src = options.samples_per_src
+    target_chunk = options.target_chunk
+    max_num_paths_per_src = options.max_num_paths_per_src
+    seed = options.seed
+    variant = options.variant
+    gpu = options.gpu
+    local = options.local
+    diffraction = options.diffraction
     import json
     import time
 

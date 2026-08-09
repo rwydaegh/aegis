@@ -132,6 +132,8 @@ class SemanticBuildOptions:
     max_sky_conflict: float = 0.5
     min_conflict_range_m: float = 2.0
     out_root: pathlib.Path = DEFAULT_OUT
+    cohort_dir: pathlib.Path | None = None
+    semantics_dirname: str = "semantics"
 
     @property
     def admission_gate(self) -> AdmissionGate:
@@ -225,6 +227,7 @@ def stations(
     min_conflict_range_m: float,
     root: pathlib.Path | None = None,
     semantics_dirname: str | None = None,
+    cohort_dir: pathlib.Path | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Every panorama directory of a site, split into admitted and refused.
 
@@ -233,7 +236,7 @@ def stations(
     admission. No artifact is borrowed from the legacy ``semantics`` folder.
     """
     admitted, refused = [], []
-    for folder in _station_directories(site, root, semantics_dirname):
+    for folder in _station_directories(site, root, semantics_dirname, cohort_dir):
         accepted, record = _station_record(
             folder,
             max_residual_deg=max_residual_deg,
@@ -249,14 +252,45 @@ def _station_directories(
     site: str,
     root: pathlib.Path | None,
     semantics_dirname: str | None,
+    cohort_dir: pathlib.Path | None = None,
 ) -> list[pathlib.Path]:
     """Camera directories for the site and its walk campaigns."""
+    if cohort_dir is not None:
+        return _cohort_station_directories(cohort_dir, root)
     found: list[pathlib.Path] = []
     selected = Site.get(site)
     for role in ("stations", "walk"):
         for entry in selected.imagery_by_role(role):
             found.extend(_imagery_stations(entry, root, semantics_dirname))
     return found
+
+
+def _cohort_station_directories(
+    cohort_dir: pathlib.Path,
+    root: pathlib.Path | None,
+) -> list[pathlib.Path]:
+    """Resolve an isolated cohort and enumerate its explicit ``pano_*`` folders.
+
+    A cohort is intentionally not treated like a declared :class:`ImagerySet`.
+    It is a one-run override for a dated capture, so reading the site's canonical
+    directory or accepting a flat single-camera layout here would make it easy
+    to mix campaigns without noticing.  The resolved directory must stay
+    physically beneath the study root, including when a symlink is supplied.
+    """
+    study_root = (root or paths.root()).expanduser().resolve()
+    requested = pathlib.Path(cohort_dir).expanduser()
+    candidate = requested if requested.is_absolute() else study_root / requested
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise FileNotFoundError(f"cohort directory does not exist: {candidate}") from error
+    if not resolved.is_dir():
+        raise FileNotFoundError(f"cohort directory is not a directory: {candidate}")
+    try:
+        resolved.relative_to(study_root)
+    except ValueError as error:
+        raise ValueError(f"cohort directory must remain beneath study root: {candidate}") from error
+    return sorted(folder for folder in resolved.glob("pano_*") if folder.is_dir())
 
 
 def _imagery_stations(
@@ -480,14 +514,7 @@ def _load_site_semantic_rasters(
         raise ValueError(f"{station} metadata carries only half of the vegetation vocabulary")
     with np.load(path) as document:
         entity = document["entity"]
-        has_form = "vegetation_form" in document.files
-        has_subtype = "vegetation_subtype" in document.files
-        if has_form != has_subtype:
-            raise ValueError(f"{station} NPZ carries only half of the vegetation axis")
-        if expects_vegetation != has_form:
-            metadata = "declares" if expects_vegetation else "does not declare"
-            arrays = "contains" if has_form else "does not contain"
-            raise ValueError(f"{station} metadata {metadata} vegetation but its NPZ {arrays} the arrays")
+        has_form = _validate_vegetation_axes(document.files, expects_vegetation, station)
         rows = np.arange(height) * entity.shape[0] // height
         columns = np.arange(width) * entity.shape[1] // width
         labels = np.ascontiguousarray(entity[np.ix_(rows, columns)])
@@ -495,17 +522,44 @@ def _load_site_semantic_rasters(
             return labels, None, None
         vegetation_form = document["vegetation_form"]
         vegetation_subtype = document["vegetation_subtype"]
-        if vegetation_form.shape != entity.shape or vegetation_subtype.shape != entity.shape:
-            raise ValueError(f"{station} vegetation rasters do not match its entity raster")
-        if vegetation_form.size and (int(vegetation_form.min()) < 0 or int(vegetation_form.max()) >= form_count):
-            raise ValueError(f"{station} vegetation form leaves its declared vocabulary")
-        if vegetation_subtype.size and (
-            int(vegetation_subtype.min()) < 0 or int(vegetation_subtype.max()) >= subtype_count
-        ):
-            raise ValueError(f"{station} vegetation subtype leaves its declared vocabulary")
+        _validate_vegetation_shapes(vegetation_form, vegetation_subtype, entity.shape, station)
+        _validate_vegetation_range(vegetation_form, form_count, "form", station)
+        _validate_vegetation_range(vegetation_subtype, subtype_count, "subtype", station)
         forms = np.ascontiguousarray(vegetation_form[np.ix_(rows, columns)])
         subtypes = np.ascontiguousarray(vegetation_subtype[np.ix_(rows, columns)])
     return labels, forms, subtypes
+
+
+def _validate_vegetation_axes(files: list[str], expects_vegetation: bool, station: str) -> bool:
+    has_form = "vegetation_form" in files
+    has_subtype = "vegetation_subtype" in files
+    if has_form != has_subtype:
+        raise ValueError(f"{station} NPZ carries only half of the vegetation axis")
+    if expects_vegetation != has_form:
+        metadata = "declares" if expects_vegetation else "does not declare"
+        arrays = "contains" if has_form else "does not contain"
+        raise ValueError(f"{station} metadata {metadata} vegetation but its NPZ {arrays} the arrays")
+    return has_form
+
+
+def _validate_vegetation_shapes(
+    vegetation_form: np.ndarray,
+    vegetation_subtype: np.ndarray,
+    entity_shape: tuple[int, ...],
+    station: str,
+) -> None:
+    if vegetation_form.shape != entity_shape or vegetation_subtype.shape != entity_shape:
+        raise ValueError(f"{station} vegetation rasters do not match its entity raster")
+
+
+def _validate_vegetation_range(
+    values: np.ndarray,
+    vocabulary_size: int,
+    axis: str,
+    station: str,
+) -> None:
+    if values.size and (int(values.min()) < 0 or int(values.max()) >= vocabulary_size):
+        raise ValueError(f"{station} vegetation {axis} leaves its declared vocabulary")
 
 
 def _vegetation_block(
@@ -582,6 +636,51 @@ def vocabulary_matches(meta_path: pathlib.Path, prior: dict[str, Any]) -> bool:
     return document["entity_id2label"] == prior["entity_id2label"]
 
 
+def _station_jobs(
+    admitted: list[dict[str, Any]],
+    prior: dict[str, Any],
+    mesh_path: pathlib.Path,
+    options: SemanticBuildOptions,
+) -> tuple[list[tuple], list[str], list[str] | None, list[str] | None]:
+    jobs: list[tuple] = []
+    mismatched: list[str] = []
+    vegetation_form_names: list[str] | None = None
+    vegetation_subtype_names: list[str] | None = None
+    for station in admitted:
+        folder = pathlib.Path(station["folder"])
+        semantic_dir = semantic_evidence_directory(folder, options.semantics_dirname)
+        meta_path = semantic_dir / "semantics.json"
+        if not vocabulary_matches(meta_path, prior):
+            mismatched.append(station["station"])
+            continue
+        meta = json.loads(meta_path.read_text())
+        vegetation_form_names, vegetation_subtype_names, compatible = _site_vegetation_vocabularies(
+            meta,
+            vegetation_form_names,
+            vegetation_subtype_names,
+        )
+        if not compatible:
+            mismatched.append(station["station"])
+            continue
+        form_vocabulary = meta.get("vegetation_form_id2label")
+        subtype_vocabulary = meta.get("vegetation_subtype_id2label")
+        transient = {int(k) for k, v in meta["entity_id2label"].items() if v in TRANSIENT_CLASSES}
+        jobs.append(
+            (
+                str(mesh_path),
+                json.loads((folder / "alignment" / "pose_aligned.json").read_text()),
+                str(semantic_dir / "panorama_semantics.npz"),
+                transient,
+                options.grid_height,
+                station["station"],
+                options.block_rows,
+                0 if form_vocabulary is None else len(form_vocabulary),
+                0 if subtype_vocabulary is None else len(subtype_vocabulary),
+            )
+        )
+    return jobs, mismatched, vegetation_form_names, vegetation_subtype_names
+
+
 def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
     import trimesh
 
@@ -592,6 +691,8 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
         max_residual_deg=options.max_residual_deg,
         max_sky_conflict=options.max_sky_conflict,
         min_conflict_range_m=options.min_conflict_range_m,
+        cohort_dir=options.cohort_dir,
+        semantics_dirname=None if options.semantics_dirname == "semantics" else options.semantics_dirname,
     )
     prior_semantics = _prior_semantics()
     prior = json.loads(prior_semantics.read_text())
@@ -617,40 +718,12 @@ def build(site: str, options: SemanticBuildOptions) -> dict[str, Any] | None:
         report["result"] = "no admitted station, nothing written"
         return report
 
-    jobs, mismatched = [], []
-    vegetation_form_names: list[str] | None = None
-    vegetation_subtype_names: list[str] | None = None
-    for station in admitted:
-        folder = pathlib.Path(station["folder"])
-        meta_path = folder / "semantics" / "semantics.json"
-        if not vocabulary_matches(meta_path, prior):
-            mismatched.append(station["station"])
-            continue
-        meta = json.loads(meta_path.read_text())
-        vegetation_form_names, vegetation_subtype_names, compatible = _site_vegetation_vocabularies(
-            meta,
-            vegetation_form_names,
-            vegetation_subtype_names,
-        )
-        if not compatible:
-            mismatched.append(station["station"])
-            continue
-        form_vocabulary = meta.get("vegetation_form_id2label")
-        subtype_vocabulary = meta.get("vegetation_subtype_id2label")
-        transient = {int(k) for k, v in meta["entity_id2label"].items() if v in TRANSIENT_CLASSES}
-        jobs.append(
-            (
-                str(mesh_path),
-                json.loads((folder / "alignment" / "pose_aligned.json").read_text()),
-                str(folder / "semantics" / "panorama_semantics.npz"),
-                transient,
-                options.grid_height,
-                station["station"],
-                options.block_rows,
-                0 if form_vocabulary is None else len(form_vocabulary),
-                0 if subtype_vocabulary is None else len(subtype_vocabulary),
-            )
-        )
+    jobs, mismatched, vegetation_form_names, vegetation_subtype_names = _station_jobs(
+        admitted,
+        prior,
+        mesh_path,
+        options,
+    )
     report["stations_with_a_different_vocabulary"] = mismatched
     if not jobs:
         report["result"] = "every admitted station carries a vocabulary the prior does not cover"

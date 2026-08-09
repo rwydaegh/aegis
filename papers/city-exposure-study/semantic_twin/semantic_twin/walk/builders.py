@@ -31,7 +31,7 @@ from typing import Any
 
 from .ground import SKY_PROBE, measure_ground_datum
 from .grid import build_walk
-from .model import GRID, NEAREST_OF, PANORAMA_LINKS, STREET_ROUTE, Walk
+from .model import GRID, NEAREST_OF, PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE, Walk
 from .route import HEAD_HEIGHT_M
 from .site import site_walk
 
@@ -157,6 +157,14 @@ class StreetRouteWalk(_CaptureWalk):
 
     kind = STREET_ROUTE
     path = "street"
+
+
+@dataclass(frozen=True)
+class ProviderCorridorWalk(_CaptureWalk):
+    """Longest provider path continuously supported by admitted cameras."""
+
+    kind = PROVIDER_CORRIDOR
+    path = "provider_corridor"
 
 
 @dataclass(frozen=True)

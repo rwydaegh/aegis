@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import pathlib
 
 from semantic_twin.vision.registration_repair import RepairOptions, reregister_site
 
@@ -12,6 +13,19 @@ def main() -> None:
     parser.add_argument("--site", required=True)
     parser.add_argument("--crop-m", type=int, default=250)
     parser.add_argument("--station", action="append", help="Limit to named station directories")
+    parser.add_argument(
+        "--cohort-dir",
+        type=pathlib.Path,
+        help=(
+            "Restrict station discovery to this explicitly selected panorama cohort. "
+            "Relative paths are resolved from the study root."
+        ),
+    )
+    parser.add_argument(
+        "--semantics-dirname",
+        default="semantics",
+        help="Semantic evidence directory beneath each selected panorama station",
+    )
     parser.add_argument(
         "--dz-bounds",
         type=float,
@@ -37,6 +51,8 @@ def main() -> None:
             site=args.site,
             crop_m=args.crop_m,
             station_names=tuple(args.station) if args.station else None,
+            cohort_dir=args.cohort_dir,
+            semantics_dirname=args.semantics_dirname,
             dz_bounds=tuple(args.dz_bounds) if args.dz_bounds else None,
             dry_run=args.dry_run,
             no_backup=args.no_backup,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -14,16 +15,24 @@ from semantic_twin.exposure.roofline_campaign import (
     campaign_identity,
     component_measures,
     derive_point_seed,
+    first_material_interaction_measures,
     reference_scale,
     run_roofline_campaign,
     seal_coupler_provenance,
     seal_transport_provenance,
     _validate_specular_acceptance,
 )
+from semantic_twin.illumination.curve import (
+    HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    PHYSICAL_3D_EDGE_LENGTH,
+    curve_from_polylines,
+)
+from semantic_twin.illumination.sources import SourceSet
 from semantic_twin.transport.model import Surplus
 from semantic_twin.transport.next_event import NextEventField
 from semantic_twin.transport.specular import OneBounceSpecularTransport
 from semantic_twin.walk.model import PANORAMA_LINKS, Walk
+from semantic_twin.walk.provider_corridor import PROVIDER_CORRIDOR_V1
 
 
 class FakeSources:
@@ -121,6 +130,33 @@ class FakeEstimator:
         return Surplus("next_event", "facade_tip", field.direct, field.total, detail), field
 
 
+class FirstMaterialInteractionFakeEstimator(FakeEstimator):
+    """A sealed exact direct/all-specular/first-diffuse field for campaign tests."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.transport_topology = "first_material_interaction_v1"
+        self.specular_suffix_mode = "disabled"
+
+    def estimate_field(self, origin, *, ground_z_m=0.0, seed=None):
+        surplus, field = super().estimate_field(origin, ground_z_m=ground_z_m, seed=seed)
+        field = dataclasses.replace(
+            field,
+            maximum_completed_specular_suffix_order=0,
+            all_specular_diagnostics={"seconds": 0.02, "candidates": 4, "candidate_support_complete": True},
+            specular_work={"enabled": True, "support_complete": True},
+        )
+        detail = {
+            **surplus.detail,
+            "transport_topology": "first_material_interaction_v1",
+            "first_material_interaction_nee_only": True,
+            "mixed_specular_suffix_order_1": 0.0,
+            "mixed_specular_suffix_order_1_included": False,
+            "sampled_specular_suffix": {"enabled": False},
+        }
+        return dataclasses.replace(surplus, detail=detail), field
+
+
 class FakeCoupler:
     def __init__(self) -> None:
         self.body = SimpleNamespace(
@@ -171,7 +207,16 @@ class FakeCoupler:
         return exposure, sab
 
 
-def prepared(tmp_path, estimator=None, *, seeds=(1, 2), material=None, looks=None):
+def prepared(
+    tmp_path,
+    estimator=None,
+    *,
+    seeds=(1, 2),
+    material=None,
+    looks=None,
+    source_measure_rule=None,
+    config=None,
+):
     walk = Walk(
         points=np.array([[0.0, 0.0, 1.5], [0.0, 0.0, 1.5]], dtype=np.float64),
         ground_z_m=np.zeros(2, dtype=np.float64),
@@ -181,14 +226,16 @@ def prepared(tmp_path, estimator=None, *, seeds=(1, 2), material=None, looks=Non
         site="test_square",
         body_yaw_deg=np.array([10.0, 20.0], dtype=np.float64),
     )
-    config = RooflineCampaignConfig(
-        site="test_square",
-        cohort="primary_semantic_route",
-        material_mode="atlas",
-        output_dir=tmp_path / "campaign",
-        planned_seeds=seeds,
-        convergence_looks=((1, 2) if len(seeds) == 2 else ()) if looks is None else looks,
-    )
+    if config is None:
+        config = RooflineCampaignConfig(
+            site="test_square",
+            cohort="primary_semantic_route",
+            material_mode="atlas",
+            output_dir=tmp_path / "campaign",
+            planned_seeds=seeds,
+            convergence_looks=((1, 2) if len(seeds) == 2 else ()) if looks is None else looks,
+            source_measure_rule=source_measure_rule,
+        )
     selected_estimator = FakeEstimator() if estimator is None else estimator
     coupler = FakeCoupler()
     return PreparedRooflineCampaign(
@@ -204,6 +251,255 @@ def prepared(tmp_path, estimator=None, *, seeds=(1, 2), material=None, looks=Non
         transport_provenance=seal_transport_provenance(selected_estimator),
         coupler_provenance=seal_coupler_provenance(coupler),
     )
+
+
+def _sha256(path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_coupler_seal_distinguishes_level_two_backend_and_reduction_algorithm() -> None:
+    numpy_coupler = FakeCoupler()
+    numpy_coupler.level2_backend = "numpy"
+    numpy_coupler.level2_algorithm = "numpy_float64_matmul_relu_direction_chunks_v1"
+    numpy_coupler.level2_direction_block_size = None
+    cuda_coupler = FakeCoupler()
+    cuda_coupler.level2_backend = "cuda"
+    cuda_coupler.level2_algorithm = "drjit_float64_dot_relu_power_block_reduce_fixed512_v1"
+    cuda_coupler.level2_direction_block_size = 512
+
+    numpy_seal = seal_coupler_provenance(numpy_coupler)
+    cuda_seal = seal_coupler_provenance(cuda_coupler)
+
+    assert "level2_backend" not in numpy_seal
+    assert cuda_seal["level2_backend"] == "cuda"
+    assert cuda_seal["level2_direction_block_size"] == 512
+    assert cuda_seal["level2_algorithm"] == "drjit_float64_dot_relu_power_block_reduce_fixed512_v1"
+    assert cuda_seal != numpy_seal
+
+
+def test_default_campaign_identity_dict_is_legacy_byte_compatible(tmp_path):
+    config = RooflineCampaignConfig(
+        site="test_square",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path,
+        planned_seeds=(1, 2),
+        convergence_looks=(1, 2),
+    )
+    assert config.identity_dict() == {
+        "schema_version": "roofline_body_campaign_v1",
+        "site": "test_square",
+        "cohort": "primary_semantic_route",
+        "material_mode": "atlas",
+        "planned_seeds": [1, 2],
+        "reference_mode": "per_density_eirp",
+        "sampling_claim": "full_declared_walk",
+        "point_seed_derivation": "blake2b_64_person_AEGIS_NEE_v1(seed_u64,standpoint_u64)",
+        "body_chunk_cells": 512,
+        "convergence_looks": [1, 2],
+        "minimum_completed_specular_order": 1,
+        "specular_acceptance": "exact_complete",
+    }
+
+
+def test_first_material_interaction_campaign_persists_closed_named_components(tmp_path):
+    config = RooflineCampaignConfig(
+        site="test_square",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "first-material",
+        planned_seeds=(1,),
+        minimum_completed_specular_order=1,
+        specular_acceptance="first_material_interaction_exact_order_1",
+        transport_topology="first_material_interaction_v1",
+    )
+    campaign = prepared(
+        tmp_path,
+        estimator=FirstMaterialInteractionFakeEstimator(),
+        seeds=(1,),
+        config=config,
+    )
+    result = run_roofline_campaign(campaign)
+
+    identity = json.loads((config.output_dir / "campaign_identity.json").read_text())
+    assert identity["data"]["configuration"]["transport_topology"] == "first_material_interaction_v1"
+    assert identity["data"]["components"] == ["direct", "all_specular", "first_diffuse", "total"]
+    assert identity["data"]["transport"]["estimator"]["configuration"]["transport_topology"] == (
+        "first_material_interaction_v1"
+    )
+
+    checkpoint = json.loads(result["checkpoint"].read_text())
+    assert checkpoint["schema_version"] == "roofline_body_campaign_first_material_interaction_v1"
+    assert checkpoint["components"] == ["direct", "all_specular", "first_diffuse", "total"]
+    with np.load(config.output_dir / "checkpoint" / checkpoint["committed"][0]["path"], allow_pickle=False) as shard:
+        raw_transfer = np.asarray(shard["raw_transfer"])
+        body_metrics = np.asarray(shard["body_metrics"])
+    np.testing.assert_allclose(raw_transfer[:, 1], 0.125, rtol=0.0, atol=0.0)
+    np.testing.assert_allclose(raw_transfer[:, 3], np.sum(raw_transfer[:, :3], axis=1), rtol=2.0e-12, atol=1.0e-15)
+    np.testing.assert_allclose(
+        body_metrics[:, 3, 4], np.sum(body_metrics[:, :3, 4], axis=1), rtol=2.0e-12, atol=1.0e-15
+    )
+
+    row = json.loads(result["locations"].read_text().splitlines()[0])
+    assert set(row["components"]) == {"direct", "all_specular", "first_diffuse", "total"}
+    assert row["specular_diagnostic_variants"][0]["data"]["first_material_interaction_nee_only"] is True
+    assert json.loads(result["summary"].read_text())["components"] == [
+        "direct",
+        "all_specular",
+        "first_diffuse",
+        "total",
+    ]
+
+
+def test_first_material_interaction_measure_rejects_mixed_suffix(tmp_path):
+    _, exact = FirstMaterialInteractionFakeEstimator().estimate_field(np.zeros(3), seed=1)
+    scale = reference_scale(FirstMaterialInteractionFakeEstimator().sources, np.zeros(3), "per_density_eirp")
+    measures = first_material_interaction_measures(exact, scale, "test")
+    assert tuple(measures) == ("direct", "all_specular", "first_diffuse", "total")
+    assert measures["total"].total == pytest.approx(
+        measures["direct"].total + measures["all_specular"].total + measures["first_diffuse"].total
+    )
+    mixed = dataclasses.replace(
+        exact,
+        specular_k_hat=np.concatenate((exact.specular_k_hat, exact.specular_k_hat)),
+        specular_atom_mass=np.concatenate((exact.specular_atom_mass, np.array([0.001]))),
+        mixed_specular_k_hat=exact.specular_k_hat,
+        mixed_specular_atom_mass=np.array([0.001]),
+        mixed_specular_mass=0.001,
+    )
+    with pytest.raises(RuntimeError, match="mixed specular suffix"):
+        first_material_interaction_measures(mixed, scale, "test")
+
+
+def test_first_material_interaction_acceptance_refuses_mixed_suffix(tmp_path):
+    _surplus, exact = FirstMaterialInteractionFakeEstimator().estimate_field(np.zeros(3), seed=1)
+    config = RooflineCampaignConfig(
+        site="test",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "first",
+        planned_seeds=(1,),
+        specular_acceptance="first_material_interaction_exact_order_1",
+        transport_topology="first_material_interaction_v1",
+    )
+    detail = {
+        "transport_topology": "first_material_interaction_v1",
+        "first_material_interaction_nee_only": True,
+        "mixed_specular_suffix_order_1": 0.0,
+        "mixed_specular_suffix_order_1_included": False,
+        "sampled_specular_suffix": {"enabled": False},
+    }
+    _validate_specular_acceptance(exact, detail, config)
+    mixed = dataclasses.replace(
+        exact,
+        specular_k_hat=np.concatenate((exact.specular_k_hat, exact.specular_k_hat)),
+        specular_atom_mass=np.concatenate((exact.specular_atom_mass, np.array([0.001]))),
+        mixed_specular_k_hat=exact.specular_k_hat,
+        mixed_specular_atom_mass=np.array([0.001]),
+        mixed_specular_mass=0.001,
+    )
+    with pytest.raises(RuntimeError, match="no_mixed_suffix_mass"):
+        _validate_specular_acceptance(mixed, detail, config)
+
+
+def test_explicit_source_measure_rule_changes_sealed_identity(tmp_path):
+    default = RooflineCampaignConfig(
+        site="test_square",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "default",
+        planned_seeds=(1,),
+    )
+    physical = dataclasses.replace(
+        default,
+        output_dir=tmp_path / "physical",
+        source_measure_rule=PHYSICAL_3D_EDGE_LENGTH,
+    )
+    projected = dataclasses.replace(
+        default,
+        output_dir=tmp_path / "projected",
+        source_measure_rule=HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    )
+
+    assert "source_measure_rule" not in default.identity_dict()
+    assert physical.identity_dict()["source_measure_rule"] == PHYSICAL_3D_EDGE_LENGTH
+    assert projected.identity_dict()["source_measure_rule"] == HORIZONTAL_PROJECTED_EDGE_LENGTH
+    assert physical.identity_dict() != projected.identity_dict()
+
+
+def test_completed_endpoint_curve_writes_hashed_atomic_source_audit(tmp_path):
+    curve = curve_from_polylines(
+        [
+            np.array([[1.0, 0.0, 2.0], [4.0, 0.0, 6.0]], dtype=np.float64),
+            np.array([[10.0, 0.0, 2.0], [15.0, 0.0, 2.0]], dtype=np.float64),
+        ]
+    )
+    estimator = FakeEstimator()
+    estimator.sources = SourceSet.from_curve(
+        curve,
+        crop_area_m2=100.0,
+        density_per_m2=0.02,
+        eirp_w=5.0,
+        source_measure_rule=HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    )
+    campaign = prepared(
+        tmp_path,
+        estimator,
+        seeds=(1,),
+        looks=(),
+        source_measure_rule=HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    )
+    outputs = run_roofline_campaign(campaign)
+    audit_json = campaign.config.output_dir / "source_curve_audit.json"
+    audit_npz = campaign.config.output_dir / "source_curve_audit.npz"
+
+    audit = json.loads(audit_json.read_text())
+    manifest = json.loads(outputs["manifest"].read_text())
+    assert audit["selected_source_measure_rule"] == HORIZONTAL_PROJECTED_EDGE_LENGTH
+    assert audit["source_measure_rule_was_explicit"] is True
+    assert audit["physical_3d_total_m"] == pytest.approx(10.0)
+    assert audit["horizontal_projected_total_m"] == pytest.approx(8.0)
+    assert audit["npz"]["sha256"] == _sha256(audit_npz)
+    assert audit["npz"]["bytes"] == audit_npz.stat().st_size
+    assert manifest["files"]["source_curve_audit.json"] == _sha256(audit_json)
+    assert manifest["files"]["source_curve_audit.npz"] == _sha256(audit_npz)
+    with np.load(audit_npz, allow_pickle=False) as payload:
+        np.testing.assert_allclose(payload["segment_starts_m"], curve.segment_starts)
+        np.testing.assert_allclose(payload["segment_ends_m"], curve.segment_ends)
+        np.testing.assert_allclose(payload["midpoints_m"], curve.points)
+        np.testing.assert_allclose(payload["physical_3d_lengths_m"], [5.0, 5.0])
+        np.testing.assert_allclose(payload["horizontal_projected_lengths_m"], [3.0, 5.0])
+        assert payload["selected_measure_rule"].item() == HORIZONTAL_PROJECTED_EDGE_LENGTH
+    assert audit_npz.stat().st_size < 10_000
+
+
+def test_legacy_curve_campaign_skips_source_audit_safely(tmp_path):
+    campaign = prepared(tmp_path, seeds=(1,), looks=())
+    outputs = run_roofline_campaign(campaign)
+    manifest = json.loads(outputs["manifest"].read_text())
+
+    assert not (campaign.config.output_dir / "source_curve_audit.json").exists()
+    assert not (campaign.config.output_dir / "source_curve_audit.npz").exists()
+    assert not any(name.startswith("source_curve_audit") for name in manifest["files"])
+
+
+def test_legacy_summary_keys_remain_exactly_stable(tmp_path):
+    outputs = run_roofline_campaign(prepared(tmp_path, seeds=(1,), looks=()))
+    summary = json.loads(outputs["summary"].read_text())
+
+    assert set(summary) == {
+        "schema_version",
+        "site",
+        "cohort",
+        "standpoints",
+        "replicas",
+        "seeds",
+        "reference_mode",
+        "timing_seconds_observed_total",
+        "timing_observation_counts",
+        "convergence",
+    }
+    assert "components" not in summary
 
 
 def test_reference_normalization_cancels_d_ref_and_keeps_exact_four_pi():
@@ -222,6 +518,39 @@ def test_reference_normalization_cancels_d_ref_and_keeps_exact_four_pi():
     direct = component_measures(field, scale, "identity")["direct"]
     _, incident = direct.scaled_paths_data(scale.reference_s0_w_m2)
     assert incident.sum() == pytest.approx(100.0 * 0.25 / (4.0 * np.pi))
+
+
+def test_comparable_campaign_opt_in_separates_route_and_material_mode(tmp_path):
+    with pytest.raises(ValueError, match="requires route_contract"):
+        RooflineCampaignConfig(
+            site="korenmarkt",
+            cohort="comparable_city",
+            material_mode="atlas",
+            output_dir=tmp_path / "missing-route",
+            planned_seeds=(1,),
+        )
+
+    primary = RooflineCampaignConfig(
+        site="korenmarkt",
+        cohort="comparable_city",
+        route_contract="registered_span_street_v1",
+        material_mode="atlas",
+        output_dir=tmp_path / "primary",
+        planned_seeds=(1,),
+    )
+    control = dataclasses.replace(primary, output_dir=tmp_path / "control", material_mode="geometric")
+    assert primary.identity_dict()["route_contract"] == "registered_span_street_v1"
+    assert control.material_mode == "geometric"
+
+    with pytest.raises(ValueError, match="supports atlas primary runs"):
+        dataclasses.replace(primary, material_mode="semantic")
+
+    corridor = dataclasses.replace(
+        primary,
+        output_dir=tmp_path / "provider-corridor",
+        route_contract=PROVIDER_CORRIDOR_V1,
+    )
+    assert corridor.identity_dict()["route_contract"] == PROVIDER_CORRIDOR_V1
 
 
 @pytest.mark.parametrize(
@@ -411,6 +740,60 @@ def test_combined_sampled_policy_uses_inclusion_not_formal_completion(tmp_path):
         )
     assert "work.numerically_converged=False" in str(error.value)
     assert "work.stop_reason='candidate_budget_exhausted'" in str(error.value)
+
+
+def test_combined_sampled_policy_accepts_exact_all_specular_branch(tmp_path):
+    _, exact = FakeEstimator().estimate_field(np.zeros(3), seed=1)
+    combined = dataclasses.replace(
+        exact,
+        specular_estimate_kind="exact_all_sampled_mixed_order_1",
+        finite_resolution_specular_estimate=False,
+        specular_numerically_converged=True,
+        maximum_completed_all_specular_order=1,
+        maximum_completed_specular_suffix_order=0,
+        all_specular_k_hat=exact.specular_k_hat,
+        all_specular_atom_mass=exact.specular_atom_mass,
+        specular_components_separable=True,
+        sampled_specular_suffix_full_support=True,
+    )
+    config = RooflineCampaignConfig(
+        site="test",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "combined-exact",
+        planned_seeds=(1,),
+        minimum_completed_specular_order=0,
+        specular_acceptance="adaptive_all_specular_sampled_mixed_order_1",
+    )
+    work = {
+        "enabled": True,
+        "numerically_converged": True,
+        "support_complete": True,
+        "stop_reason": "full_reflection_and_source_support_enumerated",
+    }
+    sampled = {
+        "enabled": True,
+        "samples_per_vertex": 2,
+        "uncertainty_scope": "conditional_on_traced_diffuse_vertices; campaign replicas control total uncertainty",
+        "sampling_identity": {
+            "status": "experimental_opt_in",
+            "surface_support_complete": True,
+            "source_support": 4,
+            "source_count": 4,
+        },
+    }
+    detail = {"finite_resolution_specular_work": work, "sampled_specular_suffix": sampled}
+    _validate_specular_acceptance(combined, detail, config)
+
+    with pytest.raises(RuntimeError, match="work.support_complete_when_exact=False"):
+        _validate_specular_acceptance(
+            combined,
+            {
+                "finite_resolution_specular_work": {**work, "support_complete": False},
+                "sampled_specular_suffix": sampled,
+            },
+            config,
+        )
 
 
 def test_combined_sampled_policy_requires_zero_formal_minimum(tmp_path):

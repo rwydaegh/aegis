@@ -4,6 +4,15 @@ This page is the command map for `semantic_twin/`. It covers all 69 Python
 files at the study root. A root file may remain for published notebooks and
 old captures even when its implementation has moved into the package.
 
+> **Current-contract notice.** Numerical production is defined by
+> [CURRENT_PRODUCTION_CONTRACT.md](CURRENT_PRODUCTION_CONTRACT.md): route-
+> observed roofline sources, exact direct transfer, stochastic next-event
+> diffuse and mixed transport, one-reflection all-specular plus sampled
+> mixed-specular transport, 200,000 IID primary rays, 4,096 passive angular
+> cells, and `max_bounces=3`. Mask2Former and SAM3 model-session reuse is
+> implemented and passed exact live A6000 parity. See the current contract for
+> its measured timing anchor.
+
 ## Status definitions
 
 | Status | Meaning |

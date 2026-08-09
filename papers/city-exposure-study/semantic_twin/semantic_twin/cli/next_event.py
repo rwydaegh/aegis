@@ -36,9 +36,12 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--walk", choices=["route", "grid"], default="route")
     parser.add_argument(
         "--walk-path",
-        choices=["links", "street", "closest"],
+        choices=["links", "street", "closest", "provider_corridor"],
         default="links",
-        help="links walks the capture path, street asks Google Routes, closest measures both and keeps the nearer",
+        help=(
+            "links walks the capture path, street asks Google Routes, closest measures both and keeps the nearer, "
+            "provider_corridor selects the longest continuously evidence-supported provider path"
+        ),
     )
     parser.add_argument("--walk-stride-m", type=float, default=6.0)
     parser.add_argument(

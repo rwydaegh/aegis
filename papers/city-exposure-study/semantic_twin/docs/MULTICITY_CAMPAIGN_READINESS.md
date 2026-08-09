@@ -1,6 +1,19 @@
 # Multicity campaign readiness
 
-## Current decision
+> **Current-contract notice.** The earlier two-site readiness snapshot below is
+> retained for provenance. For the current comparable-city v2 definition, use
+> [CURRENT_PRODUCTION_CONTRACT.md](CURRENT_PRODUCTION_CONTRACT.md): the
+> comparable-city v2 contract contains ten intended atlas-backed sites using
+> exact cached registered-span pedestrian routes. Nine have panorama
+> acquisitions, while Krakow remains pending Street View quota. Each site must
+> independently pass input readiness before it is run. Times Square remains
+> excluded for invalid geometry. This notice does not claim that all inputs or
+> production campaigns are complete.
+
+Everything below this notice is the earlier sealed-readiness snapshot. It is
+retained as provenance and must not be read as the current cohort definition.
+
+## Historical decision
 
 Exactly two sites are sealed production-ready now: Korenmarkt and Prague. No
 other site is sealed production-ready.

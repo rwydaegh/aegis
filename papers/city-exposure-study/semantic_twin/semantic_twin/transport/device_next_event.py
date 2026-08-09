@@ -56,6 +56,77 @@ class DeviceNextEventBatch:
         object.__setattr__(self, "specular_accepted_by_order", accepted)
 
 
+@dataclass(frozen=True)
+class DeviceNextEventReduction:
+    """Compact device reductions for one minimal roofline ray range.
+
+    Unlike :class:`DeviceNextEventBatch`, this contract never contains one
+    value per launched ray.  Order totals and, when requested, launch-cell
+    fields are reduced before crossing the device boundary.
+    """
+
+    raw_by_order: np.ndarray
+    specular_raw_by_order: np.ndarray
+    connections_by_order: np.ndarray
+    cleared_by_order: np.ndarray
+    specular_candidates_by_order: np.ndarray
+    specular_geometric_by_order: np.ndarray
+    specular_visible_by_order: np.ndarray
+    specular_accepted_by_order: np.ndarray
+    raw_field_mass: np.ndarray
+    specular_raw_field_mass: np.ndarray
+    ray_start: int
+    rays: int
+    samples: int
+    sampled_specular_samples: int = 1
+
+    def __post_init__(self) -> None:
+        raw = np.asarray(self.raw_by_order, dtype=np.float64)
+        specular = np.asarray(self.specular_raw_by_order, dtype=np.float64)
+        connections = np.asarray(self.connections_by_order, dtype=np.uint64)
+        cleared = np.asarray(self.cleared_by_order, dtype=np.uint64)
+        if raw.ndim != 1 or specular.shape != raw.shape:
+            raise ValueError("compact next-event order reductions must be aligned vectors")
+        if connections.shape != raw.shape or cleared.shape != raw.shape:
+            raise ValueError("compact next-event counts must have one value per order")
+        count_arrays = (
+            self.specular_candidates_by_order,
+            self.specular_geometric_by_order,
+            self.specular_visible_by_order,
+            self.specular_accepted_by_order,
+        )
+        normalized_counts = tuple(np.asarray(value, dtype=np.uint64) for value in count_arrays)
+        if any(value.shape != raw.shape for value in normalized_counts):
+            raise ValueError("compact sampled-specular counts must have one value per order")
+        candidates, geometric, visible, accepted = normalized_counts
+        if (
+            np.any(cleared > connections)
+            or np.any(accepted > visible)
+            or np.any(visible > geometric)
+            or np.any(geometric > candidates)
+        ):
+            raise ValueError("compact next-event diagnostic stages are inconsistent")
+        field = np.asarray(self.raw_field_mass, dtype=np.float64)
+        specular_field = np.asarray(self.specular_raw_field_mass, dtype=np.float64)
+        if field.ndim != 1 or specular_field.shape != field.shape:
+            raise ValueError("compact next-event fields must be aligned vectors")
+        if self.ray_start < 0 or self.rays < 1 or self.samples < 1 or self.sampled_specular_samples < 1:
+            raise ValueError("compact next-event metadata is invalid")
+        for name, value in (
+            ("raw_by_order", raw),
+            ("specular_raw_by_order", specular),
+            ("connections_by_order", connections),
+            ("cleared_by_order", cleared),
+            ("specular_candidates_by_order", candidates),
+            ("specular_geometric_by_order", geometric),
+            ("specular_visible_by_order", visible),
+            ("specular_accepted_by_order", accepted),
+            ("raw_field_mass", field),
+            ("specular_raw_field_mass", specular_field),
+        ):
+            object.__setattr__(self, name, value)
+
+
 def _specular_count_array(raw: np.ndarray | None, orders: int, name: str) -> np.ndarray:
     value = np.zeros(orders, dtype=np.uint64) if raw is None else np.asarray(raw, dtype=np.uint64)
     if value.shape != (orders,):
@@ -303,9 +374,9 @@ def _splitmix_seed_word(seed: int) -> int:
     return value ^ (value >> 31)
 
 
-def _splitmix_uniform(mi: Any, counter: Any, seed: int, dimension: int) -> Any:
+def _splitmix_uniform(mi: Any, counter: Any, seed_word: Any, dimension: int) -> Any:
     """Float32 uniform from the CPU reference's SplitMix64 counter word."""
-    value = counter ^ mi.UInt64(_splitmix_seed_word(seed))
+    value = counter ^ seed_word
     value ^= mi.UInt64(((int(dimension) + 1) * 0xD1B54A32D192ED03) & _MASK_64)
     value += mi.UInt64(0x9E3779B97F4A7C15)
     value = (value ^ (value >> 30)) * mi.UInt64(0xBF58476D1CE4E5B9)
@@ -337,6 +408,10 @@ class DeviceNextEventGather:
     sampled_specular_seed_offset: int = 2000
     collect_field: bool = True
     specular_face_proposal: BoundDeviceSpecularFaceProposal | None = None
+    #: A closed first-surface transport contract.  The tracer may still perform
+    #: its terminal collision query, but no next-event contribution is allowed
+    #: after depth zero.
+    first_material_interaction_only: bool = False
 
     _sites: np.ndarray = field(init=False, repr=False)
     _probabilities: np.ndarray = field(init=False, repr=False)
@@ -392,6 +467,8 @@ class DeviceNextEventGather:
             raise ValueError("sampled_specular_samples must be positive")
         if self.sampled_specular_seed_offset < 0:
             raise ValueError("sampled_specular_seed_offset must be nonnegative")
+        if not isinstance(self.first_material_interaction_only, bool):
+            raise TypeError("first_material_interaction_only must be boolean")
         sites = np.asarray(self.sources.sites(), dtype=np.float64)
         if sites.ndim != 2 or sites.shape[1] != 3 or not np.all(np.isfinite(sites)):
             raise ValueError("source sites must have shape (sources, 3) and be finite")
@@ -482,6 +559,53 @@ class DeviceNextEventGather:
         if self.collect_field:
             self._accumulate_field(batch, launch, launch_cells, source_order_count)
         self._received_rays += batch.rays
+
+    def consume_reduced(self, reduction: DeviceNextEventReduction) -> None:
+        """Accumulate one already reduced minimal-production range."""
+        if self._local_grid is None:
+            raise RuntimeError("begin_trace must be called before consuming device reductions")
+        if reduction.samples != self.samples:
+            raise RuntimeError("device next-event reduction used the wrong sample count")
+        if reduction.sampled_specular_samples != self.sampled_specular_samples:
+            raise RuntimeError("device next-event reduction used the wrong sampled-specular count")
+        if reduction.ray_start != self._received_rays:
+            raise RuntimeError("device next-event reductions are not in contiguous global ray order")
+        source_order_count = reduction.raw_by_order.size
+        order_count = source_order_count if self.max_order is None else self.max_order + 1
+        self._grow_order_accumulators(order_count)
+        reductions = (
+            reduction.raw_by_order,
+            reduction.connections_by_order,
+            reduction.cleared_by_order,
+            reduction.specular_raw_by_order,
+            reduction.specular_candidates_by_order,
+            reduction.specular_geometric_by_order,
+            reduction.specular_visible_by_order,
+            reduction.specular_accepted_by_order,
+        )
+        accumulators = (
+            self._raw_by_order,
+            self._connections_by_order,
+            self._cleared_by_order,
+            self._specular_raw_by_order,
+            self._specular_candidates_by_order,
+            self._specular_geometric_by_order,
+            self._specular_visible_by_order,
+            self._specular_accepted_by_order,
+        )
+        used_orders = min(source_order_count, order_count)
+        for accumulator, values in zip(accumulators, reductions, strict=True):
+            collapsed = self._reduced_order_tail(values, order_count, values.dtype)
+            accumulator[:used_orders] += collapsed[:used_orders]
+        self._sampled_specular_counter += int(np.sum(reduction.specular_candidates_by_order, dtype=np.uint64))
+        if self.collect_field:
+            if reduction.raw_field_mass.shape != self._raw_field_mass.shape:
+                raise RuntimeError("compact next-event field has the wrong launch-cell count")
+            self._raw_field_mass += reduction.raw_field_mass
+            self._specular_raw_field_mass += reduction.specular_raw_field_mass
+        elif reduction.raw_field_mass.size or reduction.specular_raw_field_mass.size:
+            raise RuntimeError("scalar next-event gather received an unexpected angular field")
+        self._received_rays += reduction.rays
 
     def _validated_launch(self, batch: DeviceNextEventBatch, launch_direction: np.ndarray) -> np.ndarray:
         if self._local_grid is None:
@@ -797,6 +921,10 @@ class _DeviceNextEventState:
         self.specular_visible_by_order: list[Any] = [self.dr.zeros(self.mi.UInt32, 1)]
         self.specular_accepted_by_order: list[Any] = [self.dr.zeros(self.mi.UInt32, 1)]
         self.specular_seed = (int(trace_seed) + int(gather.sampled_specular_seed_offset)) & _MASK_64
+        self.specular_seed_word = self.dr.opaque(
+            self.mi.UInt64,
+            _splitmix_seed_word(self.specular_seed),
+        )
         self.specular_arrays = gather._bind_specular_device(kernel)
         self.loop_errors: list[Any] = []
 
@@ -876,6 +1004,8 @@ class _DeviceNextEventState:
         random_draw: Any,
     ) -> None:
         """Add one fixed-width order row after material response."""
+        if self.gather.first_material_interaction_only and depth != 0:
+            return
         mi, dr = self.mi, self.dr
         total_weight = dr.zeros(mi.Float, self.ray_count)
         total_connections = dr.zeros(mi.UInt32, 1)
@@ -943,13 +1073,13 @@ class _DeviceNextEventState:
             source_uniform = _splitmix_uniform(
                 mi,
                 counter,
-                self.specular_seed,
+                self.specular_seed_word,
                 SPECULAR_SOURCE_COUNTER_DIMENSION,
             )
             face_uniform = _splitmix_uniform(
                 mi,
                 counter,
-                self.specular_seed,
+                self.specular_seed_word,
                 SPECULAR_FACE_COUNTER_DIMENSION,
             )
             _source_index, source = self._sample_source(source_uniform, eligible)
@@ -1187,6 +1317,105 @@ class _DeviceNextEventState:
             specular_geometric_by_order=counts[3 * orders : 4 * orders],
             specular_visible_by_order=counts[4 * orders : 5 * orders],
             specular_accepted_by_order=counts[5 * orders : 6 * orders],
+            sampled_specular_samples=self.gather.sampled_specular_samples,
+        )
+
+    def transfer_reduced(
+        self,
+        ray_start: int,
+        launch_cell: Any | None,
+        field_cells: int,
+    ) -> DeviceNextEventReduction:
+        """Reduce order totals and launch-cell fields before host transfer."""
+        mi, dr = self.mi, self.dr
+        orders = max(len(self.weight_by_order), len(self.specular_weight_by_order))
+        while len(self.weight_by_order) < orders:
+            self.weight_by_order.append(dr.zeros(mi.Float, self.ray_count))
+            self.connections_by_order.append(dr.zeros(mi.UInt32, 1))
+            self.cleared_by_order.append(dr.zeros(mi.UInt32, 1))
+        self._ensure_specular_order(orders - 1)
+
+        loop_errors = dr.zeros(mi.UInt32, 1)
+        for value in self.loop_errors:
+            loop_errors += value
+        count_parts: list[Any] = [loop_errors]
+        count_parts.extend(self.connections_by_order)
+        count_parts.extend(self.cleared_by_order)
+        for values in (
+            self.specular_candidates_by_order,
+            self.specular_geometric_by_order,
+            self.specular_visible_by_order,
+            self.specular_accepted_by_order,
+        ):
+            count_parts.extend(values)
+
+        raw_totals = [dr.sum(mi.Float64(value)) for value in self.weight_by_order]
+        specular_totals = [dr.sum(mi.Float64(value)) for value in self.specular_weight_by_order]
+        field_parts: list[Any] = []
+        if self.gather.collect_field:
+            if launch_cell is None or field_cells < 1:
+                raise RuntimeError("compact field collection needs resident launch-cell indices")
+            diffuse_field = dr.zeros(mi.Float64, field_cells)
+            specular_field = dr.zeros(mi.Float64, field_cells)
+            diffuse_per_ray = dr.zeros(mi.Float64, self.ray_count)
+            specular_per_ray = dr.zeros(mi.Float64, self.ray_count)
+            for value in self.weight_by_order:
+                diffuse_per_ray += mi.Float64(value)
+            for value in self.specular_weight_by_order:
+                specular_per_ray += mi.Float64(value)
+            dr.scatter_reduce(
+                dr.ReduceOp.Add,
+                diffuse_field,
+                diffuse_per_ray,
+                launch_cell,
+                mode=dr.ReduceMode.Auto,
+            )
+            dr.scatter_reduce(
+                dr.ReduceOp.Add,
+                specular_field,
+                specular_per_ray,
+                launch_cell,
+                mode=dr.ReduceMode.Auto,
+            )
+            field_parts.extend((diffuse_field, specular_field))
+
+        counts = np.asarray(dr.concat(count_parts), dtype=np.uint32).astype(np.uint64)
+        if counts[0]:
+            raise RuntimeError(
+                "device next-event shadow ray exceeded the support-mesh face count while crossing "
+                "non-blocking atlas cells"
+            )
+        floating_parts = raw_totals + specular_totals + field_parts
+        floating = np.asarray(dr.concat(floating_parts), dtype=np.float64)
+        total_count = 2 * orders
+        expected = total_count + (2 * field_cells if self.gather.collect_field else 0)
+        if floating.size != expected or counts.size != 1 + 6 * orders:
+            raise RuntimeError("compact device next-event reduction packing is inconsistent")
+        field_offset = total_count
+        raw_field = (
+            floating[field_offset : field_offset + field_cells].copy()
+            if self.gather.collect_field
+            else np.empty(0, dtype=np.float64)
+        )
+        specular_field = (
+            floating[field_offset + field_cells : field_offset + 2 * field_cells].copy()
+            if self.gather.collect_field
+            else np.empty(0, dtype=np.float64)
+        )
+        return DeviceNextEventReduction(
+            raw_by_order=floating[:orders].copy(),
+            specular_raw_by_order=floating[orders:total_count].copy(),
+            connections_by_order=counts[1 : 1 + orders],
+            cleared_by_order=counts[1 + orders : 1 + 2 * orders],
+            specular_candidates_by_order=counts[1 + 2 * orders : 1 + 3 * orders],
+            specular_geometric_by_order=counts[1 + 3 * orders : 1 + 4 * orders],
+            specular_visible_by_order=counts[1 + 4 * orders : 1 + 5 * orders],
+            specular_accepted_by_order=counts[1 + 5 * orders : 1 + 6 * orders],
+            raw_field_mass=raw_field,
+            specular_raw_field_mass=specular_field,
+            ray_start=ray_start,
+            rays=self.ray_count,
+            samples=self.gather.samples,
             sampled_specular_samples=self.gather.sampled_specular_samples,
         )
 

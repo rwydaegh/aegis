@@ -34,7 +34,12 @@ from typing import Any, Callable, ClassVar
 
 import numpy as np
 
-from .curve import FacadeTipCurve, build_facade_tip_curve
+from .curve import (
+    PHYSICAL_3D_EDGE_LENGTH,
+    SOURCE_MEASURE_RULES,
+    FacadeTipCurve,
+    build_facade_tip_curve,
+)
 from .roofline import FACADE_TIP_FAMILY, FACADE_TIP_LAW
 
 # The digest is intentionally text based. A direct float64 byte hash can change
@@ -207,6 +212,53 @@ def visible(
     return clear & (distance > 0.0), distance
 
 
+def _direct_weights(weights: np.ndarray | None, source_count: int) -> np.ndarray | None:
+    if weights is None:
+        return None
+    raw = np.asarray(weights, dtype=np.float64)
+    if raw.shape != (source_count,):
+        raise ValueError(f"weights must have shape ({source_count},), got {raw.shape}")
+    if np.any(~np.isfinite(raw)) or np.any(raw < 0.0):
+        raise ValueError("weights must be finite and nonnegative")
+    total_weight = float(raw.sum())
+    if total_weight <= 0.0:
+        raise ValueError("weights must contain a positive value for a non-empty source set")
+    # Keep the historical arithmetic when an explicit array merely spells out
+    # the equal-weight default.
+    return None if np.all(raw == raw[0]) else raw / total_weight
+
+
+def _direct_from_one_origin(
+    geometry: Any,
+    origin: np.ndarray,
+    sites: np.ndarray,
+    normalized: np.ndarray | None,
+    *,
+    epsilon_m: float,
+    chunk: int,
+) -> tuple[float, float]:
+    total = 0.0
+    visible_count = 0.0
+    for start in range(0, sites.shape[0], chunk):
+        target = sites[start : start + chunk]
+        clear, distance = visible(
+            geometry,
+            np.broadcast_to(origin, target.shape),
+            target,
+            epsilon_m=epsilon_m,
+        )
+        contribution = 1.0 / distance[clear] ** 2
+        if normalized is not None:
+            contribution *= normalized[start : start + chunk][clear]
+        total += float(np.sum(contribution))
+        visible_count += (
+            float(np.sum(normalized[start : start + chunk][clear])) if normalized is not None else int(clear.sum())
+        )
+    if normalized is not None:
+        return total, visible_count
+    return total / sites.shape[0], visible_count / sites.shape[0]
+
+
 def direct_from_sites(
     geometry: Any,
     origins: np.ndarray,
@@ -234,43 +286,69 @@ def direct_from_sites(
     seen = np.zeros(origins.shape[0], dtype=np.float64)
     if sites.shape[0] == 0:
         return direct, seen
-
-    if weights is None:
-        normalized = None
-    else:
-        raw = np.asarray(weights, dtype=np.float64)
-        if raw.shape != (sites.shape[0],):
-            raise ValueError(f"weights must have shape ({sites.shape[0]},), got {raw.shape}")
-        if np.any(~np.isfinite(raw)) or np.any(raw < 0.0):
-            raise ValueError("weights must be finite and nonnegative")
-        total_weight = float(raw.sum())
-        if total_weight <= 0.0:
-            raise ValueError("weights must contain a positive value for a non-empty source set")
-        # Keep the historical arithmetic when an explicit array merely spells
-        # out the equal-weight default.
-        normalized = None if np.all(raw == raw[0]) else raw / total_weight
-
+    normalized = _direct_weights(weights, sites.shape[0])
     for i, origin in enumerate(origins):
-        total = 0.0
-        visible_count = 0.0
-        for start in range(0, sites.shape[0], chunk):
-            target = sites[start : start + chunk]
-            clear, distance = visible(
-                geometry,
-                np.broadcast_to(origin, target.shape),
-                target,
-                epsilon_m=epsilon_m,
-            )
-            contribution = 1.0 / distance[clear] ** 2
-            if normalized is not None:
-                contribution *= normalized[start : start + chunk][clear]
-            total += float(np.sum(contribution))
-            visible_count += (
-                float(np.sum(normalized[start : start + chunk][clear])) if normalized is not None else int(clear.sum())
-            )
-        direct[i] = total if normalized is not None else total / sites.shape[0]
-        seen[i] = visible_count if normalized is not None else visible_count / sites.shape[0]
+        direct[i], seen[i] = _direct_from_one_origin(
+            geometry,
+            origin,
+            sites,
+            normalized,
+            epsilon_m=epsilon_m,
+            chunk=chunk,
+        )
     return direct, seen
+
+
+def _validated_source_positions(value: np.ndarray) -> np.ndarray:
+    positions = np.asarray(value)
+    if positions.ndim != 2 or positions.shape[1] != 3:
+        raise ValueError(f"positions must have shape (sites, 3), got {positions.shape}")
+    if not np.all(np.isfinite(positions)):
+        raise ValueError("positions must be finite")
+    return positions
+
+
+def _validate_curve_binding(sources: SourceSet, positions: np.ndarray) -> None:
+    if sources.source_measure_rule is not None and sources.source_measure_rule not in SOURCE_MEASURE_RULES:
+        raise ValueError(f"unknown source measure rule {sources.source_measure_rule!r}")
+    curve = sources.curve
+    if curve is None:
+        return
+    if not isinstance(curve, FacadeTipCurve):
+        raise TypeError("curve must be a FacadeTipCurve")
+    if curve.points.shape != positions.shape or not np.allclose(curve.points, positions):
+        raise ValueError("curve points must match SourceSet positions")
+    rule = sources.source_measure_rule or PHYSICAL_3D_EDGE_LENGTH
+    curve_weights = curve.normalized_weights(rule)
+    if sources.source_weights is None:
+        object.__setattr__(sources, "source_weights", curve_weights)
+    elif not np.allclose(normalized_source_weights(sources), curve_weights):
+        raise ValueError("curve segment lengths and source_weights disagree")
+
+
+def _validate_physical_source_metadata(sources: SourceSet) -> None:
+    for name in ("crop_area_m2", "density_per_m2", "eirp_w", "expected_count"):
+        value = getattr(sources, name)
+        if value is not None and (not np.isfinite(value) or value < 0.0):
+            raise ValueError(f"{name} must be finite and nonnegative")
+    if sources.expected_count is None or sources.density_per_m2 is None or sources.crop_area_m2 is None:
+        return
+    expected = sources.density_per_m2 * sources.crop_area_m2
+    if not np.isclose(sources.expected_count, expected, rtol=1.0e-10, atol=1.0e-12):
+        raise ValueError("expected_count must equal density_per_m2 * crop_area_m2")
+
+
+def _validate_explicit_source_weights(sources: SourceSet, positions: np.ndarray) -> None:
+    if sources.source_weights is None:
+        return
+    weights = np.asarray(sources.source_weights, dtype=np.float64)
+    if weights.shape != (positions.shape[0],):
+        raise ValueError(f"source_weights must have shape ({positions.shape[0]},), got {weights.shape}")
+    if np.any(~np.isfinite(weights)) or np.any(weights < 0.0):
+        raise ValueError("source_weights must be finite and nonnegative")
+    if positions.shape[0] and float(weights.sum()) <= 0.0:
+        raise ValueError("source_weights must contain a positive value for a non-empty source set")
+    object.__setattr__(sources, "source_weights", weights)
 
 
 @dataclass(frozen=True)
@@ -306,6 +384,9 @@ class SourceSet:
     #: Optional explicit expected active count.  If omitted it is derived from
     #: ``density_per_m2 * crop_area_m2`` when both are available.
     expected_count: float | None = None
+    #: Explicit opt-in source measure. ``None`` preserves the historical 3D
+    #: rule and its byte-stable serialized identity.
+    source_measure_rule: str | None = None
 
     law: ClassVar[str] = FACADE_TIP_LAW
     family: ClassVar[str] = FACADE_TIP_FAMILY
@@ -325,6 +406,7 @@ class SourceSet:
         density_per_m2: float | None = None,
         eirp_w: float | None = None,
         expected_count: float | None = None,
+        source_measure_rule: str | None = None,
     ) -> "SourceSet":
         """Create a placed source population from arc-length quadrature."""
         if not isinstance(curve, FacadeTipCurve):
@@ -337,49 +419,21 @@ class SourceSet:
             builders=builders,
             floor_m=floor_m,
             site_lift_m=site_lift_m,
-            source_weights=curve.normalized_weights(),
+            source_weights=curve.normalized_weights(source_measure_rule or PHYSICAL_3D_EDGE_LENGTH),
             curve=curve,
             crop_area_m2=crop_area_m2,
             density_per_m2=density_per_m2,
             eirp_w=eirp_w,
             expected_count=expected_count,
+            source_measure_rule=source_measure_rule,
         )
 
     def __post_init__(self) -> None:
-        positions = np.asarray(self.positions)
-        if positions.ndim != 2 or positions.shape[1] != 3:
-            raise ValueError(f"positions must have shape (sites, 3), got {positions.shape}")
-        if not np.all(np.isfinite(positions)):
-            raise ValueError("positions must be finite")
+        positions = _validated_source_positions(self.positions)
         object.__setattr__(self, "positions", positions)
-        if self.curve is not None:
-            if not isinstance(self.curve, FacadeTipCurve):
-                raise TypeError("curve must be a FacadeTipCurve")
-            if self.curve.points.shape != positions.shape or not np.allclose(self.curve.points, positions):
-                raise ValueError("curve points must match SourceSet positions")
-            curve_weights = self.curve.normalized_weights()
-            if self.source_weights is None:
-                object.__setattr__(self, "source_weights", curve_weights)
-            elif not np.allclose(normalized_source_weights(self), curve_weights):
-                raise ValueError("curve segment lengths and source_weights disagree")
-        for name in ("crop_area_m2", "density_per_m2", "eirp_w", "expected_count"):
-            value = getattr(self, name)
-            if value is not None and (not np.isfinite(value) or value < 0.0):
-                raise ValueError(f"{name} must be finite and nonnegative")
-        if self.expected_count is not None and self.density_per_m2 is not None and self.crop_area_m2 is not None:
-            expected = self.density_per_m2 * self.crop_area_m2
-            if not np.isclose(self.expected_count, expected, rtol=1.0e-10, atol=1.0e-12):
-                raise ValueError("expected_count must equal density_per_m2 * crop_area_m2")
-        if self.source_weights is None:
-            return
-        weights = np.asarray(self.source_weights, dtype=np.float64)
-        if weights.shape != (positions.shape[0],):
-            raise ValueError(f"source_weights must have shape ({positions.shape[0]},), got {weights.shape}")
-        if np.any(~np.isfinite(weights)) or np.any(weights < 0.0):
-            raise ValueError("source_weights must be finite and nonnegative")
-        if positions.shape[0] and float(weights.sum()) <= 0.0:
-            raise ValueError("source_weights must contain a positive value for a non-empty source set")
-        object.__setattr__(self, "source_weights", weights)
+        _validate_curve_binding(self, positions)
+        _validate_physical_source_metadata(self)
+        _validate_explicit_source_weights(self, positions)
 
     def __len__(self) -> int:
         return int(self.positions.shape[0])
@@ -465,6 +519,16 @@ class SourceSet:
         }
         if self.curve is not None:
             data.update(self.curve.describe())
+        if self.source_measure_rule is not None:
+            data["source_measure_rule"] = self.source_measure_rule
+            data["relative_weight_convention"] = (
+                "conditional uniform by represented physical 3D edge length"
+                if self.source_measure_rule == PHYSICAL_3D_EDGE_LENGTH
+                else "conditional uniform by represented horizontal projected edge length"
+            )
+            data["selected_support_length_m"] = float(
+                np.sum(self.curve.measure_lengths(self.source_measure_rule), dtype=np.float64)
+            )
         weights = self.weight_provenance()
         data["weight_provenance"] = weights
         data["normalized_weights_sha256"] = weights["normalized_weights_sha256"]
@@ -600,6 +664,7 @@ def build_source_set(
     expected_count: float | None = None,
     curve_resolution_m: float = 1.0e-4,
     top_edge_tolerance_m: float = 0.25,
+    source_measure_rule: str | None = None,
 ) -> SourceSet:
     """Build a deterministic route-observed facade-tip source population.
 
@@ -622,10 +687,17 @@ def build_source_set(
     positions = curve.points.copy()
     if site_lift_m:
         positions[:, 2] += site_lift_m
+        segment_starts = None if curve.segment_starts is None else curve.segment_starts.copy()
+        segment_ends = None if curve.segment_ends is None else curve.segment_ends.copy()
+        if segment_starts is not None and segment_ends is not None:
+            segment_starts[:, 2] += site_lift_m
+            segment_ends[:, 2] += site_lift_m
         curve = FacadeTipCurve(
             positions,
             curve.segment_lengths_m,
             {**curve.provenance, "site_lift_m": float(site_lift_m)},
+            segment_starts,
+            segment_ends,
         )
     return SourceSet(
         positions=positions,
@@ -635,10 +707,11 @@ def build_source_set(
         builders=int(np.asarray(standpoints).shape[0]),
         floor_m=floor_m,
         site_lift_m=site_lift_m,
-        source_weights=curve.normalized_weights(),
+        source_weights=curve.normalized_weights(source_measure_rule or PHYSICAL_3D_EDGE_LENGTH),
         curve=curve,
         crop_area_m2=crop_area_m2,
         density_per_m2=density_per_m2,
         eirp_w=eirp_w,
         expected_count=expected_count,
+        source_measure_rule=source_measure_rule,
     )

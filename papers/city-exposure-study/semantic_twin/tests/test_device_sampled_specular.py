@@ -17,6 +17,8 @@ from semantic_twin.transport.device_next_event import (
     BoundDeviceSpecularFaceProposal,
     DeviceNextEventGather,
     device_specular_face_sample,
+    _splitmix_seed_word,
+    _splitmix_uniform,
 )
 from semantic_twin.transport.device_tracer import DeviceEscapeTracer
 from semantic_twin.transport.next_event import NextEventEstimator
@@ -26,7 +28,7 @@ from semantic_twin.transport.specular import (
     StratifiedSourceQuadrature,
     SpecularSurfaces,
 )
-from semantic_twin.transport.specular_sampling import SampledOneBounceSpecularEstimator
+from semantic_twin.transport.specular_sampling import SampledOneBounceSpecularEstimator, _counter_uniform
 from semantic_twin.transport.tracer import SbrTracer, TraceConfig
 
 
@@ -234,6 +236,31 @@ def test_one_face_resident_image_solve_matches_the_cpu_oracle(tmp_path: Path, va
     assert batch.specular_accepted_by_order[2] == 4
 
 
+@pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
+def test_device_splitmix_seed_word_matches_cpu_bits_and_is_repeatable(variant: str) -> None:
+    _set_variant(variant)
+    import drjit as dr
+    import mitsuba as mi
+
+    counters = np.array([0, 1, 2, 17, 2**32 - 1, 2**63, 2**64 - 1], dtype=np.uint64)
+    seed = 0xFEDCBA9876543210
+    dimension = 1
+
+    def draw(used_seed: int) -> np.ndarray:
+        seed_word = dr.opaque(mi.UInt64, _splitmix_seed_word(used_seed))
+        return np.asarray(_splitmix_uniform(mi, mi.UInt64(counters), seed_word, dimension))
+
+    actual = draw(seed)
+    repeated = draw(seed)
+    changed = draw(seed + 1)
+    cpu = _counter_uniform(seed, counters, dimension)
+    expected = (np.floor(cpu * float(1 << 24)) * (1.0 / float(1 << 24))).astype(np.float32)
+
+    np.testing.assert_array_equal(actual, expected)
+    np.testing.assert_array_equal(actual, repeated)
+    assert not np.array_equal(actual, changed)
+
+
 def test_sampled_specular_is_batch_invariant_and_uses_original_launch_bins(tmp_path: Path) -> None:
     _set_variant("llvm_ad_rgb")
     geometry = MitsubaGeometry(_write_cube(tmp_path / "cube.ply"), variant="llvm_ad_rgb")
@@ -318,6 +345,36 @@ def test_sampled_specular_seed_is_repeatable_but_not_constant(tmp_path: Path) ->
     np.testing.assert_array_equal(first.specular_bounced_mass(), repeated.specular_bounced_mass())
     np.testing.assert_array_equal(first.chi_specular_suffix_by_order(), repeated.chi_specular_suffix_by_order())
     assert not np.array_equal(first.specular_bounced_mass(), changed.specular_bounced_mass())
+
+
+def test_changed_point_and_seed_reuse_compiled_sampled_specular_kernels(tmp_path: Path) -> None:
+    _set_variant("llvm_ad_rgb")
+    import drjit as dr
+
+    geometry = MitsubaGeometry(_write_cube(tmp_path / "cache_cube.ply"), variant="llvm_ad_rgb")
+    config = TraceConfig(rays=256, batch=256, local_cells=32, max_bounces=2, roulette_start=3, seed=47)
+    kernel = _kernel(geometry, config, roughness=np.array([1.0e-3]))
+    gather = DeviceNextEventGather(
+        Sources([[0.0, 0.0, 0.0]]),
+        max_order=2,
+        specular_suffix_order=1,
+        sampled_specular_samples=2,
+    )
+    kernel.trace_escape_records(np.zeros(3), seed=47, next_event=gather)
+    dr.kernel_history_clear()
+
+    with dr.scoped_set_flag(dr.JitFlag.KernelHistory):
+        records = kernel.trace_escape_records(
+            np.array([0.25, -0.5, 0.75]),
+            seed=48,
+            next_event=gather,
+        )
+    launches = [entry for entry in dr.kernel_history() if entry["type"] == dr.KernelType.JIT]
+
+    assert records.next_event is not None
+    assert records.next_event.specular_candidates_by_order.sum() > 0
+    assert launches
+    assert all(entry["cache_hit"] for entry in launches)
 
 
 def test_resident_atlas_reflection_response_matches_the_cpu_oracle(tmp_path: Path) -> None:

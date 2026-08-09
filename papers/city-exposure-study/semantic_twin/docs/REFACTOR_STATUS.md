@@ -2,10 +2,20 @@
 
 The semantic-twin refactor is complete within its stated scope. The scope is
 architecture, production execution contracts, output profiles, checkpoint
-behavior, and the supporting performance and retention records. The current
-immutable code commit is `f5f394da`. The performance proposal reuse is from
-`9111c591`. The report commits are `8db6bef0` and `37b4498d`. Scientific paired
-campaigns use `b985ab58`.
+behavior, and the supporting performance and retention records. The historical
+completion snapshot used `f5f394da`, with performance proposal reuse from
+`9111c591`, report commits `8db6bef0` and `37b4498d`, and paired campaigns from
+`b985ab58`. The active contract has since advanced and is identified by each
+new campaign manifest rather than by this historical paragraph.
+
+> **Current-contract notice.** The authoritative runtime contract is
+> [CURRENT_PRODUCTION_CONTRACT.md](CURRENT_PRODUCTION_CONTRACT.md). This
+> status page preserves earlier refactor and campaign snapshots, including
+> older ray-count, estimator, and readiness wording. Current production uses
+> 200,000 IID primary rays, 4,096 passive angular cells, exact direct transfer,
+> stochastic next-event diffuse and mixed transport, and the declared
+> one-reflection specular policy. Mask2Former and SAM3 session reuse passed
+> exact live A6000 scientific-output parity.
 
 ## What 100% complete means
 

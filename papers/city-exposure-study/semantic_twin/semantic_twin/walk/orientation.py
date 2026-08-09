@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 
-from .model import PANORAMA_LINKS, STREET_ROUTE, Walk
+from .model import PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE, Walk
 
 # ENU azimuth: zero points north, positive angles turn towards east.
 BODY_YAW_CONVENTION = "ENU azimuth in degrees, clockwise from north (0=north, 90=east)"
@@ -20,7 +20,7 @@ BODY_YAW_FALLBACK = (
     "for a zero-motion tangent, use the first nonzero forward difference, then the first nonzero backward difference; "
     "use 0 degrees when the entire route has no horizontal motion"
 )
-_ROUTE_KINDS = frozenset((PANORAMA_LINKS, STREET_ROUTE))
+_ROUTE_KINDS = frozenset((PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE))
 _DEFAULT_EPSILON_M = 1.0e-9
 
 

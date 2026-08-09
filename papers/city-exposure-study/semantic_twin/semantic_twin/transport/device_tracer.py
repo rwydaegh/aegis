@@ -17,7 +17,7 @@ import numpy as np
 
 from ..illumination import IlluminationModel, fibonacci_sphere, nearest_cell
 from .device_next_event import DeviceNextEventGather
-from .device_kernel import DeviceEscapeRecords, DeviceSbrKernel
+from .device_kernel import DeviceEscapeRecords, DeviceReducedTrace, DeviceSbrKernel
 from .model import require_credit
 from .trace_kernel import EscapeDeposit, TraceAccumulators, deposit, range_to_source_shell
 from .tracer import (
@@ -157,6 +157,7 @@ class DeviceEscapeTracer:
         bounce_sums: list[int] = []
         ray_start = 0
         used_seed = cfg.seed if seed is None else seed
+        compact = not models and next_event is not None
         if next_event is not None:
             next_event.begin_trace(cfg.rays, self.local_grid)
         while ray_start < cfg.rays:
@@ -168,7 +169,27 @@ class DeviceEscapeTracer:
             }
             if next_event is not None:
                 kernel_kwargs["next_event"] = next_event
+            if compact:
+                kernel_kwargs["compact"] = True
             part = self.kernel.trace_escape_records(origin, **kernel_kwargs)
+            if compact:
+                if not isinstance(part, DeviceReducedTrace):
+                    raise RuntimeError("device kernel did not return requested compact reductions")
+                accumulators.exit_power += part.exit_power
+                accumulators.totals["escaped"] += part.escaped
+                accumulators.totals["zero_bounce"] += part.zero_bounce
+                accumulators.totals["truncated"] += part.truncated
+                truncated_terms.append(np.asarray([part.truncated_throughput], dtype=np.float64))
+                delay_weight_terms.append(np.asarray([part.delay_weight], dtype=np.float64))
+                delay_sum_terms.append(np.asarray([part.delay_sum], dtype=np.float64))
+                bounce_sums.append(int(part.bounce_sum))
+                if part.next_event is None:
+                    raise RuntimeError("device kernel did not return requested compact next-event reductions")
+                next_event.consume_reduced(part.next_event)
+                ray_start += count
+                continue
+            if not isinstance(part, DeviceEscapeRecords):
+                raise RuntimeError("device kernel returned compact reductions to the rich trace path")
             launch_cells = nearest_cell(part.all_launch_direction, self.local_grid)
             delay_weight, delay_sum, bounce_sum = self._score_records(
                 origin,

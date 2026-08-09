@@ -11,12 +11,12 @@ from semantic_twin.scene import surface_atlas_builder as _builder
 from semantic_twin.scene.site_semantics import site_mesh, stations
 from semantic_twin.vision.surface_atlas import sha256_file
 
-# Keep the historical script import surface while the implementation lives in
-# the package.  This script is still the supported direct command-line entry
-# point used by existing study runs.
 from semantic_twin.scene.surface_atlas_builder import (  # noqa: F401
+    CameraSurfaceObservations,
+    ConceptCatalog,
     DEFAULT_OUT,
     REQUIRED_RASTERS,
+    ReducedCameraSurfaceEvidence,
     VEGETATION_RASTERS,
     SurfaceAtlasBuildOptions,
     _barycentric,
@@ -35,7 +35,10 @@ from semantic_twin.scene.surface_atlas_builder import (  # noqa: F401
     _vegetation_evidence_summary,
     _vocabulary,
 )
-from semantic_twin.scene.surface_atlas_builder import *  # noqa: F403,F401,E402
+
+
+def __getattr__(name: str) -> Any:
+    return getattr(_builder, name)
 
 
 def build(site: str, options: SurfaceAtlasBuildOptions) -> dict[str, Any]:
@@ -62,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         concepts=args.concepts,
         out_root=args.out,
         semantics_dirname=args.semantics_dirname,
+        cohort_dir=args.cohort_dir,
     )
     manifest = build(args.site, options)
     print(

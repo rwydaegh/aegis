@@ -29,6 +29,11 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", help="Prepare and preflight without tracing a replica")
     parser.add_argument("--preflight-output", type=Path, help="Preflight report path")
     parser.add_argument("--staging-manifest", type=Path, help="Exact staged-input manifest path")
+    parser.add_argument(
+        "--persistent-transport-cache",
+        type=Path,
+        help="Runtime-only exact direct/specular cache directory. It is excluded from campaign identity.",
+    )
     return parser.parse_args(argv)
 
 
@@ -64,7 +69,11 @@ def run(args: argparse.Namespace, *, environment: Any | None = None) -> int:
 
     selected_environment = _execution_environment() if environment is None else environment
     try:
-        prepared = prepare_roofline_campaign(setup, selected_environment)
+        prepared = prepare_roofline_campaign(
+            setup,
+            selected_environment,
+            persistent_cache_dir=getattr(args, "persistent_transport_cache", None),
+        )
         report = preflight_report(prepared)
     except Exception as error:
         failure = _failure(error, phase="preparation")

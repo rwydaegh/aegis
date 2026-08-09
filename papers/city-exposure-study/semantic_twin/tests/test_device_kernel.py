@@ -9,7 +9,12 @@ import pytest
 
 from semantic_twin.materials.atlas_binding import AtlasMaterialBinding
 from semantic_twin.propagation.geometry import DeviceIntersection, MitsubaGeometry
-from semantic_twin.transport.device_kernel import DeviceEscapeRecords, DeviceSbrKernel
+from semantic_twin.transport.device_kernel import (
+    DeviceEscapeRecords,
+    DeviceSbrKernel,
+    _rotated_fibonacci_sphere,
+)
+from semantic_twin.transport.trace_kernel import launch_rotation
 from semantic_twin.transport.tracer import TraceConfig, fresnel_power_reflectance
 
 
@@ -535,7 +540,11 @@ def test_canopy_search_is_a_structured_loop_without_material_work() -> None:
     assert "dr.opaque" in source
 
 
-def test_changed_origin_and_seed_reuse_compiled_device_kernels(tmp_path: Path) -> None:
+@pytest.mark.parametrize("launch_sampling", ["iid", "rotated_fibonacci"])
+def test_changed_origin_and_seed_reuse_compiled_device_kernels(
+    tmp_path: Path,
+    launch_sampling: str,
+) -> None:
     _set_variant("llvm_ad_rgb")
     import drjit as dr
 
@@ -545,6 +554,7 @@ def test_changed_origin_and_seed_reuse_compiled_device_kernels(tmp_path: Path) -
         rays=256,
         max_bounces=2,
         roulette_start=3,
+        launch_sampling=launch_sampling,
     )
     kernel.trace_escape_records(np.zeros(3), seed=91)
     dr.kernel_history_clear()
@@ -555,6 +565,39 @@ def test_changed_origin_and_seed_reuse_compiled_device_kernels(tmp_path: Path) -
 
     assert launches
     assert all(entry["cache_hit"] for entry in launches)
+
+
+@pytest.mark.parametrize("variant", ["llvm_ad_rgb", "cuda_ad_rgb"])
+def test_opaque_fibonacci_rotation_preserves_literal_device_array(variant: str) -> None:
+    _set_variant(variant)
+    import drjit as dr
+    import mitsuba as mi
+
+    count = 257
+    total = 1021
+    seed = 0xFEDCBA9876543210
+    ray_index = dr.arange(mi.UInt32, count)
+    actual = _rotated_fibonacci_sphere(mi, dr, ray_index, total, seed)
+
+    odd = 2.0 * mi.Float(ray_index) + 1.0
+    z = (float(total) - odd) / float(total)
+    phase = ray_index * mi.UInt32(0x61C88647)
+    theta = mi.Float(phase) * (2.0 * np.pi / float(1 << 32))
+    radius = dr.sqrt(dr.maximum(0.0, odd * (2.0 * float(total) - odd))) / float(total)
+    sin_theta, cos_theta = dr.sincos(theta)
+    x = radius * cos_theta
+    y = radius * sin_theta
+    rotation = launch_rotation(seed)
+    literal = mi.Vector3f(
+        float(rotation[0, 0]) * x + float(rotation[0, 1]) * y + float(rotation[0, 2]) * z,
+        float(rotation[1, 0]) * x + float(rotation[1, 1]) * y + float(rotation[1, 2]) * z,
+        float(rotation[2, 0]) * x + float(rotation[2, 1]) * y + float(rotation[2, 2]) * z,
+    )
+    repeated = _rotated_fibonacci_sphere(mi, dr, ray_index, total, seed)
+    dr.eval(actual, literal, repeated)
+
+    np.testing.assert_array_equal(np.asarray(actual), np.asarray(literal))
+    np.testing.assert_array_equal(np.asarray(actual), np.asarray(repeated))
 
 
 def test_repeated_nonblocking_self_hit_fails_instead_of_hanging() -> None:

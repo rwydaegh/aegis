@@ -19,14 +19,27 @@ from typing import Any, Literal, Protocol
 
 import numpy as np
 
+from ..illumination.curve import (
+    HORIZONTAL_PROJECTED_EDGE_LENGTH,
+    PHYSICAL_3D_EDGE_LENGTH,
+    SOURCE_MEASURE_RULES,
+    FacadeTipCurve,
+)
 from ..illumination.sources import normalized_source_weights
+from ..cohort import COMPARABLE_COHORT, REGISTERED_SPAN_STREET
 from ..transport.directional import DirectionalMeasure
 from ..transport.next_event import NextEventField
 from ..transport.specular_sampling import SampledOneBounceSpecularEstimator
-from ..walk.model import PANORAMA_LINKS, STREET_ROUTE, Walk
+from ..walk.model import PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE, Walk
+from ..walk.provider_corridor import PROVIDER_CORRIDOR_V1
 from .coupler import BodyExposure
 
+# This alias is the durable shard schema for historical hybrid campaigns.
+# New first-material-interaction campaigns record their distinct component names
+# in the campaign identity and checkpoint header rather than silently changing
+# the meaning of a legacy ``specular`` column.
 COMPONENTS = ("direct", "specular", "diffuse", "total")
+FIRST_MATERIAL_INTERACTION_COMPONENTS = ("direct", "all_specular", "first_diffuse", "total")
 BODY_METRICS = (
     "arriving_power_density_w_m2",
     "susceptibility",
@@ -53,12 +66,16 @@ TIMING_FIELDS = (
     "body_coupling_seconds",
 )
 SCHEMA_VERSION = "roofline_body_campaign_v1"
+FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION = "roofline_body_campaign_first_material_interaction_v1"
 POINT_SEED_ALGORITHM = "blake2b_64_person_AEGIS_NEE_v1(seed_u64,standpoint_u64)"
 TEMPORARY_GLOB = ".*.tmp-*"
 IDENTITY_FILENAME = "campaign_identity.json"
 LOCATIONS_FILENAME = "locations.jsonl"
 SUMMARY_FILENAME = "summary.json"
 MANIFEST_FILENAME = "manifest.json"
+SOURCE_CURVE_AUDIT_JSON = "source_curve_audit.json"
+SOURCE_CURVE_AUDIT_NPZ = "source_curve_audit.npz"
+SOURCE_CURVE_AUDIT_SCHEMA = "source_curve_audit_v1"
 
 
 class FieldEstimator(Protocol):
@@ -91,7 +108,7 @@ class SurfaceBodyCoupler(Protocol):
 
 
 def _validate_campaign_names(config: RooflineCampaignConfig) -> None:
-    if config.cohort not in ("primary_semantic_route", "geometric_transfer_extension"):
+    if config.cohort not in ("primary_semantic_route", "geometric_transfer_extension", COMPARABLE_COHORT):
         raise ValueError(f"unknown cohort {config.cohort!r}")
     if config.material_mode not in ("walk", "semantic", "atlas", "geometric"):
         raise ValueError(f"unknown material mode {config.material_mode!r}")
@@ -99,6 +116,16 @@ def _validate_campaign_names(config: RooflineCampaignConfig) -> None:
         raise ValueError(f"unknown reference mode {config.reference_mode!r}")
     if not config.site:
         raise ValueError("site must be non-empty")
+    if config.cohort == COMPARABLE_COHORT:
+        if config.route_contract not in (REGISTERED_SPAN_STREET, PROVIDER_CORRIDOR_V1):
+            raise ValueError(
+                f"{COMPARABLE_COHORT} requires route_contract to be "
+                f"{REGISTERED_SPAN_STREET!r} or {PROVIDER_CORRIDOR_V1!r}"
+            )
+    elif config.route_contract is not None:
+        raise ValueError("route_contract is an opt-in field reserved for manifest-backed comparable campaigns")
+    if config.source_measure_rule is not None and config.source_measure_rule not in SOURCE_MEASURE_RULES:
+        raise ValueError(f"unknown source measure rule {config.source_measure_rule!r}")
 
 
 def _validate_campaign_seeds(config: RooflineCampaignConfig) -> None:
@@ -129,10 +156,19 @@ def _validate_campaign_specular_policy(config: RooflineCampaignConfig) -> None:
         "exact_complete",
         "adaptive_converged",
         "adaptive_all_specular_sampled_mixed_order_1",
+        "first_material_interaction_exact_order_1",
         "omitted_diagnostic",
     ):
         raise ValueError(f"unknown specular acceptance policy {config.specular_acceptance!r}")
-    expected_order = 1 if config.specular_acceptance == "exact_complete" else 0
+    expected_order = (
+        1
+        if config.specular_acceptance
+        in (
+            "exact_complete",
+            "first_material_interaction_exact_order_1",
+        )
+        else 0
+    )
     if config.minimum_completed_specular_order != expected_order:
         raise ValueError(f"{config.specular_acceptance} requires minimum_completed_specular_order={expected_order}")
 
@@ -146,6 +182,8 @@ def _validate_campaign_looks_and_cohort(config: RooflineCampaignConfig) -> None:
         raise ValueError("the primary semantic-route cohort cannot use geometric materials")
     if config.cohort == "geometric_transfer_extension" and config.material_mode != "geometric":
         raise ValueError("the geometric transfer extension must be explicitly geometric")
+    if config.cohort == COMPARABLE_COHORT and config.material_mode not in ("atlas", "geometric"):
+        raise ValueError("the comparable cohort supports atlas primary runs and explicit geometric controls")
 
 
 @dataclass(frozen=True)
@@ -153,7 +191,7 @@ class RooflineCampaignConfig:
     """Decisions that define one resumable production campaign."""
 
     site: str
-    cohort: Literal["primary_semantic_route", "geometric_transfer_extension"]
+    cohort: Literal["primary_semantic_route", "geometric_transfer_extension", "comparable_city"]
     material_mode: Literal["walk", "semantic", "atlas", "geometric"]
     output_dir: Path
     planned_seeds: tuple[int, ...]
@@ -166,19 +204,46 @@ class RooflineCampaignConfig:
         "exact_complete",
         "adaptive_converged",
         "adaptive_all_specular_sampled_mixed_order_1",
+        "first_material_interaction_exact_order_1",
         "omitted_diagnostic",
     ] = "exact_complete"
+    transport_topology: Literal["hybrid_max_bounces_v1", "first_material_interaction_v1"] = "hybrid_max_bounces_v1"
+    route_contract: Literal["registered_span_street_v1", "provider_corridor_v1"] | None = None
+    source_measure_rule: Literal["physical_3d_edge_length", "horizontal_projected_edge_length"] | None = None
 
     def __post_init__(self) -> None:
         _validate_campaign_names(self)
         _validate_campaign_seeds(self)
         _validate_campaign_specular_policy(self)
         _validate_campaign_looks_and_cohort(self)
+        if self.transport_topology not in ("hybrid_max_bounces_v1", "first_material_interaction_v1"):
+            raise ValueError(f"unknown transport topology {self.transport_topology!r}")
+        first = self.transport_topology == "first_material_interaction_v1"
+        if first != (self.specular_acceptance == "first_material_interaction_exact_order_1"):
+            raise ValueError(
+                "first-material-interaction topology requires first_material_interaction_exact_order_1 acceptance"
+            )
         object.__setattr__(self, "output_dir", Path(self.output_dir))
 
+    @property
+    def components(self) -> tuple[str, str, str, str]:
+        return (
+            FIRST_MATERIAL_INTERACTION_COMPONENTS
+            if self.transport_topology == "first_material_interaction_v1"
+            else COMPONENTS
+        )
+
+    @property
+    def schema_version(self) -> str:
+        return (
+            FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION
+            if self.transport_topology == "first_material_interaction_v1"
+            else SCHEMA_VERSION
+        )
+
     def identity_dict(self) -> dict[str, Any]:
-        return {
-            "schema_version": SCHEMA_VERSION,
+        identity = {
+            "schema_version": self.schema_version,
             "site": self.site,
             "cohort": self.cohort,
             "material_mode": self.material_mode,
@@ -191,6 +256,14 @@ class RooflineCampaignConfig:
             "minimum_completed_specular_order": self.minimum_completed_specular_order,
             "specular_acceptance": self.specular_acceptance,
         }
+        if self.transport_topology != "hybrid_max_bounces_v1":
+            identity["transport_topology"] = self.transport_topology
+            identity["components"] = list(self.components)
+        if self.route_contract is not None:
+            identity["route_contract"] = self.route_contract
+        if self.source_measure_rule is not None:
+            identity["source_measure_rule"] = self.source_measure_rule
+        return identity
 
 
 def _validate_walk_arrays(prepared: PreparedRooflineCampaign) -> np.ndarray:
@@ -223,6 +296,9 @@ def _validate_prepared_contract(prepared: PreparedRooflineCampaign, points: int)
         raise ValueError(f"walk site {prepared.walk.site!r} does not match campaign site {prepared.config.site!r}")
     if prepared.config.sampling_claim != "full_declared_walk":
         raise ValueError("this runner only supports the full declared walk")
+    live_rule = getattr(prepared.estimator.sources, "source_measure_rule", None)
+    if live_rule != prepared.config.source_measure_rule:
+        raise ValueError("prepared source measure rule does not match campaign configuration")
 
 
 def _validate_prepared_provenance_shape(prepared: PreparedRooflineCampaign) -> None:
@@ -270,10 +346,58 @@ def _validate_prepared_seeds_and_cohort(prepared: PreparedRooflineCampaign) -> N
     if prepared.material_provenance.get("material_mode") != prepared.config.material_mode:
         raise ValueError("material provenance mode does not match campaign material_mode")
     if prepared.config.cohort == "primary_semantic_route":
-        if prepared.walk.kind != PANORAMA_LINKS:
-            raise ValueError("primary semantic cohort requires a panorama-link route")
-    elif prepared.walk.kind != STREET_ROUTE:
-        raise ValueError("geometric transfer extension requires a declared street route")
+        expected_kind = PANORAMA_LINKS
+    elif prepared.config.route_contract == PROVIDER_CORRIDOR_V1:
+        expected_kind = PROVIDER_CORRIDOR
+    else:
+        expected_kind = STREET_ROUTE
+    if prepared.walk.kind != expected_kind:
+        raise ValueError(f"cohort {prepared.config.cohort!r} requires walk kind {expected_kind!r}")
+    if prepared.config.cohort == COMPARABLE_COHORT:
+        _validate_comparable_route_provenance(prepared.walk, prepared.config.route_contract)
+
+
+def _validate_comparable_route_provenance(walk: Walk, route_contract: str | None = REGISTERED_SPAN_STREET) -> None:
+    if route_contract == PROVIDER_CORRIDOR_V1:
+        corridor = walk.provenance.get("provider_corridor")
+        if walk.provenance.get("path") != "provider_corridor" or not isinstance(corridor, dict):
+            raise ValueError("provider-corridor campaign walk must carry explicit corridor provenance")
+        if corridor.get("contract") != PROVIDER_CORRIDOR_V1:
+            raise ValueError("provider-corridor provenance carries the wrong contract identifier")
+        if not isinstance(corridor.get("selection_sha256"), str) or len(corridor["selection_sha256"]) != 64:
+            raise ValueError("provider-corridor campaign must seal its deterministic selection")
+        report = corridor.get("admitted_station_report")
+        graph = corridor.get("provider_graph")
+        if not isinstance(report, dict) or not isinstance(report.get("sha256"), str) or len(report["sha256"]) != 64:
+            raise ValueError("provider-corridor campaign must seal its admitted station report")
+        if not isinstance(graph, dict) or not isinstance(graph.get("sha256"), str) or len(graph["sha256"]) != 64:
+            raise ValueError("provider-corridor campaign must seal its provider graph")
+        station_ids = corridor.get("station_ids")
+        node_path = corridor.get("provider_node_path")
+        polyline = corridor.get("registered_polyline_enu_m")
+        if not isinstance(station_ids, list) or len(station_ids) != 2 or station_ids != sorted(station_ids):
+            raise ValueError("provider-corridor endpoints must use canonical station-ID direction")
+        if not isinstance(node_path, list) or not node_path:
+            raise ValueError("provider-corridor campaign must record its exact provider node path")
+        if not isinstance(polyline, list) or len(polyline) < 2:
+            raise ValueError("provider-corridor campaign must record its registered polyline")
+        gap = corridor.get("continuous_max_gap_m")
+        if not isinstance(gap, (int, float)) or not np.isfinite(gap) or gap > 20.0:
+            raise ValueError("provider-corridor continuous evidence gap must not exceed 20 m")
+        if not isinstance(corridor.get("selection_audit"), list):
+            raise ValueError("provider-corridor campaign must record its deterministic selection audit")
+        return
+    street = walk.provenance.get("street_route")
+    if walk.provenance.get("path") != "street" or not isinstance(street, dict):
+        raise ValueError("comparable campaign walk must carry explicit street-route provenance")
+    if street.get("endpoints") != "span":
+        raise ValueError("comparable campaign route must use the registered span endpoints")
+    cache_key = street.get("cache_key")
+    cache_file = street.get("cache_file")
+    if not isinstance(cache_key, str) or len(cache_key) != 16:
+        raise ValueError("comparable campaign route must record its exact endpoint cache key")
+    if not isinstance(cache_file, str) or not cache_file.endswith(f"_{cache_key}.json"):
+        raise ValueError("comparable campaign route cache file and endpoint key disagree")
 
 
 @dataclass(frozen=True)
@@ -420,6 +544,8 @@ def _estimator_configuration(estimator: FieldEstimator) -> dict[str, Any]:
         )
         if hasattr(estimator, name)
     }
+    if getattr(estimator, "transport_topology", "hybrid_max_bounces_v1") != "hybrid_max_bounces_v1":
+        configuration["transport_topology"] = _json_value(estimator.transport_topology)
     if not configuration:
         raise ValueError("estimator exposes no sealed numerical configuration")
     visible_candidates = getattr(estimator, "visible_face_candidates", None)
@@ -537,7 +663,7 @@ def seal_coupler_provenance(coupler: SurfaceBodyCoupler) -> dict[str, Any]:
     vertices = np.asarray(vertices, dtype=np.float64)
     if vertices.shape != (areas.size, 3, 3) or np.any(~np.isfinite(vertices)):
         raise ValueError("body vertices must be finite triangle soup aligned with surface elements")
-    return {
+    sealed = {
         "class": f"{type(coupler).__module__}.{type(coupler).__qualname__}",
         "phantom": getattr(body, "name", type(body).__name__),
         "level": 2,
@@ -550,6 +676,15 @@ def seal_coupler_provenance(coupler: SurfaceBodyCoupler) -> dict[str, Any]:
         "normals_sha256": _array_digest(normals),
         "vertices_sha256": _array_digest(vertices),
     }
+    if getattr(coupler, "level2_backend", "numpy") != "numpy":
+        sealed.update(
+            {
+                "level2_backend": coupler.level2_backend,
+                "level2_algorithm": coupler.level2_algorithm,
+                "level2_direction_block_size": coupler.level2_direction_block_size,
+            }
+        )
+    return sealed
 
 
 def _atomic_json(path: Path, value: Any) -> None:
@@ -569,6 +704,68 @@ def _file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _atomic_npz(path: Path, arrays: dict[str, np.ndarray]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp-{os.getpid()}")
+    with temporary.open("wb") as handle:
+        np.savez_compressed(handle, **arrays)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)
+
+
+def _write_source_curve_audit(prepared: PreparedRooflineCampaign) -> dict[str, str]:
+    """Write exact curve geometry only for endpoint-aware production curves."""
+    sources = prepared.estimator.sources
+    curve = getattr(sources, "curve", None)
+    if not isinstance(curve, FacadeTipCurve) or not curve.has_exact_endpoints:
+        return {}
+    if curve.segment_starts is None or curve.segment_ends is None:
+        raise RuntimeError("endpoint-aware curve lost one of its endpoint arrays")
+    physical_lengths = np.asarray(curve.measure_lengths(PHYSICAL_3D_EDGE_LENGTH), dtype=np.float64)
+    projected_lengths = np.asarray(curve.measure_lengths(HORIZONTAL_PROJECTED_EDGE_LENGTH), dtype=np.float64)
+    selected_rule = prepared.config.source_measure_rule or PHYSICAL_3D_EDGE_LENGTH
+    arrays = {
+        "segment_starts_m": np.asarray(curve.segment_starts, dtype=np.float64),
+        "segment_ends_m": np.asarray(curve.segment_ends, dtype=np.float64),
+        "midpoints_m": np.asarray(curve.points, dtype=np.float64),
+        "physical_3d_lengths_m": physical_lengths,
+        "horizontal_projected_lengths_m": projected_lengths,
+        "physical_3d_total_m": np.asarray(float(np.sum(physical_lengths, dtype=np.float64))),
+        "horizontal_projected_total_m": np.asarray(float(np.sum(projected_lengths, dtype=np.float64))),
+        "measure_rule_labels": np.asarray(SOURCE_MEASURE_RULES),
+        "selected_measure_rule": np.asarray(selected_rule),
+    }
+    output = prepared.config.output_dir
+    npz_path = output / SOURCE_CURVE_AUDIT_NPZ
+    json_path = output / SOURCE_CURVE_AUDIT_JSON
+    _atomic_npz(npz_path, arrays)
+    array_hashes = {name: _array_digest(value) for name, value in arrays.items()}
+    weights = np.asarray(normalized_source_weights(sources), dtype=np.float64)
+    document = {
+        "schema_version": SOURCE_CURVE_AUDIT_SCHEMA,
+        "selected_source_measure_rule": selected_rule,
+        "source_measure_rule_was_explicit": prepared.config.source_measure_rule is not None,
+        "available_source_measure_rules": list(SOURCE_MEASURE_RULES),
+        "segments": int(physical_lengths.size),
+        "physical_3d_total_m": float(np.sum(physical_lengths, dtype=np.float64)),
+        "horizontal_projected_total_m": float(np.sum(projected_lengths, dtype=np.float64)),
+        "curve_source_hash_sha256": curve.source_hash,
+        "normalized_weights_sha256": _array_digest(weights),
+        "array_sha256": array_hashes,
+        "npz": {
+            "path": SOURCE_CURVE_AUDIT_NPZ,
+            "sha256": _file_sha256(npz_path),
+            "bytes": npz_path.stat().st_size,
+        },
+    }
+    _atomic_json(json_path, document)
+    return {
+        SOURCE_CURVE_AUDIT_JSON: _file_sha256(json_path),
+        SOURCE_CURVE_AUDIT_NPZ: _file_sha256(npz_path),
+    }
 
 
 def campaign_identity(prepared: PreparedRooflineCampaign) -> dict[str, Any]:
@@ -628,7 +825,7 @@ def campaign_identity(prepared: PreparedRooflineCampaign) -> dict[str, Any]:
         "materials": prepared.material_provenance,
         "inputs": prepared.input_provenance,
         "transport": live_transport,
-        "components": list(COMPONENTS),
+        "components": list(prepared.config.components),
         "body_metrics": list(BODY_METRICS),
         "reference_fields": list(REFERENCE_FIELDS),
         "timing_fields": list(TIMING_FIELDS),
@@ -705,6 +902,58 @@ def component_measures(
     return measures
 
 
+def first_material_interaction_measures(
+    field: NextEventField,
+    scale: ReferenceScale,
+    reference_id: str,
+) -> dict[str, DirectionalMeasure]:
+    """Return the closed direct, one-mirror, and first-diffuse partition."""
+    if field.mixed_specular_mass != 0.0 or field.mixed_specular_atom_mass.size:
+        raise RuntimeError("first-material-interaction field unexpectedly contains a mixed specular suffix")
+    if not np.array_equal(field.specular_k_hat, field.all_specular_k_hat) or not np.array_equal(
+        field.specular_atom_mass, field.all_specular_atom_mass
+    ):
+        raise RuntimeError("first-material-interaction field combines all-specular and another atom class")
+    reference = scale.transfer_m_inv2
+    empty_directions = np.empty((0, 3), dtype=np.float64)
+    empty_mass = np.empty(0, dtype=np.float64)
+    direct = DirectionalMeasure(
+        field.direct_k_hat,
+        field.direct_atom_mass / reference,
+        empty_directions,
+        empty_mass,
+        reference_id=f"{reference_id}:direct",
+    )
+    all_specular = DirectionalMeasure(
+        field.all_specular_k_hat,
+        field.all_specular_atom_mass / reference,
+        empty_directions,
+        empty_mass,
+        reference_id=f"{reference_id}:all-specular",
+    )
+    first_diffuse = DirectionalMeasure(
+        empty_directions,
+        empty_mass,
+        -field.local_grid,
+        field.bounced_mass / reference,
+        reference_id=f"{reference_id}:first-diffuse",
+    )
+    total = field.directional_measure(reference, reference_id=f"{reference_id}:total")
+    if not np.isclose(
+        total.total,
+        direct.total + all_specular.total + first_diffuse.total,
+        rtol=2.0e-12,
+        atol=1.0e-15,
+    ):
+        raise RuntimeError("first-material-interaction components do not conserve transfer")
+    return {
+        "direct": direct,
+        "all_specular": all_specular,
+        "first_diffuse": first_diffuse,
+        "total": total,
+    }
+
+
 def _body_metric_array(exposure: BodyExposure) -> np.ndarray:
     return np.asarray([getattr(exposure, name) for name in BODY_METRICS], dtype=np.float64)
 
@@ -773,6 +1022,13 @@ class RooflineCheckpoint:
         self.points = int(points)
         self.surfaces = int(surfaces)
         self.convergence_looks = convergence_looks
+        configuration = identity.get("data", {}).get("configuration", {})
+        self.components = tuple(configuration.get("components", COMPONENTS))
+        self.schema_version = str(configuration.get("schema_version", SCHEMA_VERSION))
+        if len(self.components) != 4 or len(set(self.components)) != len(self.components):
+            raise ValueError("campaign checkpoint requires four uniquely named components")
+        if self.components[0] != "direct" or self.components[-1] != "total":
+            raise ValueError("campaign checkpoint component order must start with direct and end with total")
         self.root.mkdir(parents=True, exist_ok=True)
         self.shard_dir.mkdir(parents=True, exist_ok=True)
         self.cumulative_dir.mkdir(parents=True, exist_ok=True)
@@ -781,11 +1037,11 @@ class RooflineCheckpoint:
             self._validate_index()
         else:
             self.index = {
-                "schema_version": SCHEMA_VERSION,
+                "schema_version": self.schema_version,
                 "identity_sha256": identity["sha256"],
                 "points": self.points,
                 "surfaces": self.surfaces,
-                "components": list(COMPONENTS),
+                "components": list(self.components),
                 "body_metrics": list(BODY_METRICS),
                 "reference_fields": list(REFERENCE_FIELDS),
                 "timing_fields": list(TIMING_FIELDS),
@@ -828,11 +1084,11 @@ class RooflineCheckpoint:
 
     def _expected_index_header(self) -> dict[str, Any]:
         return {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": self.schema_version,
             "identity_sha256": self.identity["sha256"],
             "points": self.points,
             "surfaces": self.surfaces,
-            "components": list(COMPONENTS),
+            "components": list(self.components),
             "body_metrics": list(BODY_METRICS),
             "reference_fields": list(REFERENCE_FIELDS),
             "timing_fields": list(TIMING_FIELDS),
@@ -914,8 +1170,8 @@ class RooflineCheckpoint:
 
     def _validate_arrays(self, arrays: dict[str, np.ndarray]) -> None:
         expected_shapes = {
-            "raw_transfer": (self.points, len(COMPONENTS)),
-            "body_metrics": (self.points, len(COMPONENTS), len(BODY_METRICS)),
+            "raw_transfer": (self.points, len(self.components)),
+            "body_metrics": (self.points, len(self.components), len(BODY_METRICS)),
             "timings": (self.points, len(TIMING_FIELDS)),
             "field_meta": (self.points, len(FIELD_META)),
             "reference": (self.points, len(REFERENCE_FIELDS)),
@@ -1014,10 +1270,10 @@ class _ReplicaBuffers:
     diagnostics: list[dict[str, Any]]
 
     @classmethod
-    def empty(cls, points: int, surfaces: int) -> _ReplicaBuffers:
+    def empty(cls, points: int, surfaces: int, components: tuple[str, str, str, str]) -> _ReplicaBuffers:
         return cls(
-            raw_transfer=np.zeros((points, len(COMPONENTS)), dtype=np.float64),
-            body_metrics=np.zeros((points, len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64),
+            raw_transfer=np.zeros((points, len(components)), dtype=np.float64),
+            body_metrics=np.zeros((points, len(components), len(BODY_METRICS)), dtype=np.float64),
             total_sab=np.zeros((points, surfaces), dtype=np.float64),
             timings=np.full((points, len(TIMING_FIELDS)), np.nan, dtype=np.float64),
             field_meta=np.zeros((points, len(FIELD_META)), dtype=np.float64),
@@ -1056,7 +1312,12 @@ def _estimate_point_transport(
     if not np.isclose(float(surplus.total), field.total, rtol=2.0e-10, atol=1.0e-14):
         raise RuntimeError("scalar and directional estimates disagree on total transfer")
     _validate_specular_acceptance(field, surplus.detail, prepared.config)
-    measures = component_measures(field, scale, f"{prepared.config.site}:{point_index}:seed:{seed}")
+    reference_id = f"{prepared.config.site}:{point_index}:seed:{seed}"
+    measures = (
+        first_material_interaction_measures(field, scale, reference_id)
+        if prepared.config.transport_topology == "first_material_interaction_v1"
+        else component_measures(field, scale, reference_id)
+    )
     return point_seed, surplus, field, scale, measures, estimator_seconds
 
 
@@ -1142,7 +1403,7 @@ def _couple_body_component(
     if cached is not None:
         body_cache_hits[component] = True
         return cached
-    if component == "specular" and field.specular_components_separable:
+    if component in ("specular", "all_specular") and field.specular_components_separable:
         result = _couple_separable_specular(
             prepared,
             field,
@@ -1183,10 +1444,11 @@ def _couple_body_components(
     body_areas: np.ndarray,
     body_mass: float,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, bool]]:
-    metrics = np.zeros((len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64)
+    components = prepared.config.components
+    metrics = np.zeros((len(components), len(BODY_METRICS)), dtype=np.float64)
     component_sab: list[np.ndarray] = []
     body_cache_hits: dict[str, bool] = {}
-    for component_index, component in enumerate(COMPONENTS[:3]):
+    for component_index, component in enumerate(components[:3]):
         component_metric, component_field = _couple_body_component(
             prepared,
             component,
@@ -1243,7 +1505,7 @@ def _point_diagnostic(
     detail: dict[str, Any],
     body_cache_hits: dict[str, bool],
 ) -> dict[str, Any]:
-    return {
+    diagnostic = {
         "point_seed": point_seed,
         "specular_estimate_kind": field.specular_estimate_kind,
         "finite_resolution_specular_estimate": field.finite_resolution_specular_estimate,
@@ -1264,6 +1526,12 @@ def _point_diagnostic(
             "stochastic_trace_seconds": "stochastic_trace_seconds" in detail,
         },
     }
+    if detail.get("transport_topology") == "first_material_interaction_v1":
+        diagnostic["transport_topology"] = "first_material_interaction_v1"
+        diagnostic["first_material_interaction_nee_only"] = bool(
+            detail.get("first_material_interaction_nee_only", False)
+        )
+    return diagnostic
 
 
 def _run_replica(
@@ -1273,7 +1541,7 @@ def _run_replica(
 ) -> ReplicaData:
     points = len(prepared.walk)
     surfaces = int(np.asarray(prepared.coupler.body.areas).size)
-    buffers = _ReplicaBuffers.empty(points, surfaces)
+    buffers = _ReplicaBuffers.empty(points, surfaces, prepared.config.components)
     body_areas = np.asarray(prepared.coupler.body.areas, dtype=np.float64)
     body_mass = float(prepared.coupler.body_mass_kg)
     for point_index, (origin, ground_z, yaw) in enumerate(
@@ -1282,12 +1550,20 @@ def _run_replica(
         point_seed, surplus, field, scale, measures, estimator_seconds = _estimate_point_transport(
             prepared, seed, point_index, origin, ground_z
         )
-        buffers.raw_transfer[point_index] = (
-            field.direct_atoms,
-            field.specular,
-            float(np.sum(field.bounced_mass, dtype=np.float64)),
-            field.total,
-        )
+        if prepared.config.transport_topology == "first_material_interaction_v1":
+            buffers.raw_transfer[point_index] = (
+                field.direct_atoms,
+                field.all_specular_mass,
+                float(np.sum(field.bounced_mass, dtype=np.float64)),
+                field.total,
+            )
+        else:
+            buffers.raw_transfer[point_index] = (
+                field.direct_atoms,
+                field.specular,
+                float(np.sum(field.bounced_mass, dtype=np.float64)),
+                field.total,
+            )
         buffers.reference[point_index] = (scale.transfer_m_inv2, scale.reference_s0_w_m2)
         body_started = time.perf_counter()
         point_metrics, point_sab, body_cache_hits = _couple_body_components(
@@ -1325,6 +1601,9 @@ def _validate_specular_acceptance(
         return
     if policy == "adaptive_all_specular_sampled_mixed_order_1":
         _validate_sampled_mixed_specular(field, detail)
+        return
+    if policy == "first_material_interaction_exact_order_1":
+        _validate_first_material_interaction(field, detail)
         return
     if policy == "omitted_diagnostic":
         _validate_omitted_specular(field)
@@ -1368,17 +1647,38 @@ def _validate_adaptive_specular(field: NextEventField, work: Any) -> None:
 
 
 def _sampled_field_accepted(field: NextEventField) -> bool:
-    return (
+    common = (
         field.includes_specular
-        and field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1"
-        and field.finite_resolution_specular_estimate
         and field.specular_numerically_converged
-        and field.maximum_completed_all_specular_order == 0
         and field.maximum_completed_specular_suffix_order == 0
         and not field.specular_order_one_complete
         and not field.specular_complete_through_bounce_cap
         and field.sampled_specular_suffix_full_support
         and field.specular_components_separable
+    )
+    adaptive = (
+        field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1"
+        and field.finite_resolution_specular_estimate
+        and field.maximum_completed_all_specular_order == 0
+    )
+    exact = (
+        field.specular_estimate_kind == "exact_all_sampled_mixed_order_1"
+        and not field.finite_resolution_specular_estimate
+        and field.maximum_completed_all_specular_order == 1
+    )
+    return common and (adaptive or exact)
+
+
+def _sampled_all_specular_work_accepted(field: NextEventField, work: Any) -> bool:
+    if field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1":
+        return _adaptive_work_accepted(work)
+    return (
+        field.specular_estimate_kind == "exact_all_sampled_mixed_order_1"
+        and isinstance(work, dict)
+        and bool(work.get("enabled", False))
+        and bool(work.get("numerically_converged", False))
+        and bool(work.get("support_complete", False))
+        and work.get("stop_reason") == "full_reflection_and_source_support_enumerated"
     )
 
 
@@ -1421,15 +1721,19 @@ def _sampled_mixed_failed_clauses(
     except (TypeError, ValueError):
         positive_sample_count = False
     scope = str(sampled_dict.get("uncertainty_scope", ""))
+    adaptive = field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1"
+    exact = field.specular_estimate_kind == "exact_all_sampled_mixed_order_1"
+    expected_stop = "relative_tolerance_reached" if adaptive else "full_reflection_and_source_support_enumerated"
     checks: dict[str, tuple[Any, bool]] = {
         "field.includes_specular": (field.includes_specular, field.includes_specular),
         "field.specular_estimate_kind": (
             field.specular_estimate_kind,
-            field.specular_estimate_kind == "adaptive_all_sampled_mixed_order_1",
+            adaptive or exact,
         ),
         "field.finite_resolution_specular_estimate": (
             field.finite_resolution_specular_estimate,
-            field.finite_resolution_specular_estimate,
+            (adaptive and field.finite_resolution_specular_estimate)
+            or (exact and not field.finite_resolution_specular_estimate),
         ),
         "field.specular_numerically_converged": (
             field.specular_numerically_converged,
@@ -1437,7 +1741,8 @@ def _sampled_mixed_failed_clauses(
         ),
         "field.maximum_completed_all_specular_order": (
             field.maximum_completed_all_specular_order,
-            field.maximum_completed_all_specular_order == 0,
+            (adaptive and field.maximum_completed_all_specular_order == 0)
+            or (exact and field.maximum_completed_all_specular_order == 1),
         ),
         "field.maximum_completed_specular_suffix_order": (
             field.maximum_completed_specular_suffix_order,
@@ -1464,7 +1769,11 @@ def _sampled_mixed_failed_clauses(
         ),
         "work.stop_reason": (
             work_dict.get("stop_reason"),
-            work_dict.get("stop_reason") == "relative_tolerance_reached",
+            work_dict.get("stop_reason") == expected_stop,
+        ),
+        "work.support_complete_when_exact": (
+            work_dict.get("support_complete"),
+            not exact or bool(work_dict.get("support_complete", False)),
         ),
         "sampled.is_mapping": (type(sampled).__name__, isinstance(sampled, dict)),
         "sampled.enabled": (sampled_dict.get("enabled"), bool(sampled_dict.get("enabled", False))),
@@ -1498,7 +1807,7 @@ def _validate_sampled_mixed_specular(field: NextEventField, detail: dict[str, An
     sampled = detail.get("sampled_specular_suffix")
     accepted = (
         _sampled_field_accepted(field)
-        and _adaptive_work_accepted(work)
+        and _sampled_all_specular_work_accepted(field, work)
         and _sampled_suffix_accepted(sampled)
         and _sampled_identity_accepted(sampled)
     )
@@ -1507,6 +1816,43 @@ def _validate_sampled_mixed_specular(field: NextEventField, detail: dict[str, An
         raise RuntimeError(
             "combined adaptive all-specular and sampled mixed-suffix field failed its declared acceptance. "
             f"Failed clauses: {failures}"
+        )
+
+
+def _validate_first_material_interaction(field: NextEventField, detail: dict[str, Any]) -> None:
+    """Enforce the closed one-material-interaction transport partition."""
+    work = field.specular_work
+    all_diagnostics = field.all_specular_diagnostics
+    sampled = detail.get("sampled_specular_suffix", {})
+    checks = {
+        "transport_topology": detail.get("transport_topology") == "first_material_interaction_v1",
+        "first_material_interaction_nee_only": detail.get("first_material_interaction_nee_only") is True,
+        "exact_direct_atoms": np.isclose(field.direct, field.direct_atoms, rtol=2.0e-12, atol=1.0e-15),
+        "exact_order_1_all_specular": (
+            field.includes_specular
+            and field.specular_estimate_kind == "exact_order_1"
+            and not field.finite_resolution_specular_estimate
+            and field.maximum_completed_all_specular_order == 1
+            and field.specular_bounce_cap == 1
+            and bool(all_diagnostics.get("candidate_support_complete", False))
+            and bool(work.get("support_complete", False))
+        ),
+        "no_mixed_suffix_mass": field.mixed_specular_mass == 0.0 and field.mixed_specular_atom_mass.size == 0,
+        "all_specular_atoms_only": (
+            np.array_equal(field.specular_k_hat, field.all_specular_k_hat)
+            and np.array_equal(field.specular_atom_mass, field.all_specular_atom_mass)
+            and np.isclose(field.specular, field.all_specular_mass, rtol=2.0e-12, atol=1.0e-15)
+        ),
+        "no_sampled_suffix": (
+            detail.get("mixed_specular_suffix_order_1", 0.0) == 0.0
+            and not bool(detail.get("mixed_specular_suffix_order_1_included", False))
+            and not bool(sampled.get("enabled", False))
+        ),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise RuntimeError(
+            "first-material-interaction field violated its closed transport contract: " + ", ".join(failed)
         )
 
 
@@ -1544,15 +1890,16 @@ def _convergence(
     previous_raw = None
     previous_mean_sab = None
     previous_peak = None
+    total_index = checkpoint.components.index("total")
     for look in reached:
-        raw_sum = np.zeros((checkpoint.points, len(COMPONENTS)), dtype=np.float64)
-        metric_sum = np.zeros((checkpoint.points, len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64)
+        raw_sum = np.zeros((checkpoint.points, len(checkpoint.components)), dtype=np.float64)
+        metric_sum = np.zeros((checkpoint.points, len(checkpoint.components), len(BODY_METRICS)), dtype=np.float64)
         for seed in seeds[:look]:
             data = checkpoint.load(seed)
             raw_sum += data["raw_transfer"]
             metric_sum += data["body_metrics"]
-        raw_mean = raw_sum[:, 3] / look
-        mean_sab = metric_sum[:, 3, BODY_METRICS.index("mean_sab_w_m2")] / look
+        raw_mean = raw_sum[:, total_index] / look
+        mean_sab = metric_sum[:, total_index, BODY_METRICS.index("mean_sab_w_m2")] / look
         peak = np.max(checkpoint.load_sab_sum(look) / look, axis=1)
         record: dict[str, Any] = {"seeds": look}
         if previous_raw is not None:
@@ -1603,9 +1950,9 @@ class _SummaryMoments:
 
 
 def _accumulate_summary(checkpoint: RooflineCheckpoint, seeds: tuple[int, ...]) -> _SummaryAccumulation:
-    raw_sum = np.zeros((checkpoint.points, len(COMPONENTS)), dtype=np.float64)
+    raw_sum = np.zeros((checkpoint.points, len(checkpoint.components)), dtype=np.float64)
     raw_sq = np.zeros_like(raw_sum)
-    metric_sum = np.zeros((checkpoint.points, len(COMPONENTS), len(BODY_METRICS)), dtype=np.float64)
+    metric_sum = np.zeros((checkpoint.points, len(checkpoint.components), len(BODY_METRICS)), dtype=np.float64)
     metric_sq = np.zeros_like(metric_sum)
     timing_sum = np.zeros((checkpoint.points, len(TIMING_FIELDS)), dtype=np.float64)
     timing_count = np.zeros_like(timing_sum)
@@ -1647,9 +1994,10 @@ def _location_components(
     metric_mean: np.ndarray,
     metric_se: np.ndarray,
     ensemble_peak: np.ndarray,
+    components: tuple[str, str, str, str],
 ) -> dict[str, Any]:
-    components: dict[str, Any] = {}
-    for component_index, component in enumerate(COMPONENTS):
+    output: dict[str, Any] = {}
+    for component_index, component in enumerate(components):
         body = {}
         for metric_index, name in enumerate(BODY_METRICS):
             output_name = "mean_per_replica_peak_sab_w_m2" if name == "peak_sab_w_m2" else name
@@ -1659,14 +2007,14 @@ def _location_components(
             }
         if component == "total":
             body["ensemble_field_peak_sab_w_m2"] = float(ensemble_peak[point_index])
-        components[component] = {
+        output[component] = {
             "raw_transfer_m_inv2": {
                 "mean": float(raw_mean[point_index, component_index]),
                 "se": float(raw_se[point_index, component_index]),
             },
             "body": body,
         }
-    return components
+    return output
 
 
 def _location_row(
@@ -1681,8 +2029,8 @@ def _location_row(
     accumulation: _SummaryAccumulation,
     diagnostic_variants: list[list[dict[str, Any]]],
 ) -> dict[str, Any]:
-    direct = moments.raw_mean[point_index, 0]
-    total = moments.raw_mean[point_index, 3]
+    direct = moments.raw_mean[point_index, prepared.config.components.index("direct")]
+    total = moments.raw_mean[point_index, prepared.config.components.index("total")]
     return {
         "site": prepared.config.site,
         "cohort": prepared.config.cohort,
@@ -1710,6 +2058,7 @@ def _location_row(
             moments.metric_mean,
             moments.metric_se,
             moments.ensemble_peak,
+            prepared.config.components,
         ),
         "timing_seconds_per_replica_mean": {
             name: (
@@ -1736,8 +2085,8 @@ def _summary_payload(
     seeds: tuple[int, ...],
     accumulation: _SummaryAccumulation,
 ) -> dict[str, Any]:
-    return {
-        "schema_version": SCHEMA_VERSION,
+    payload = {
+        "schema_version": prepared.config.schema_version,
         "site": prepared.config.site,
         "cohort": prepared.config.cohort,
         "standpoints": checkpoint.points,
@@ -1754,6 +2103,9 @@ def _summary_payload(
         },
         "convergence": _convergence(checkpoint, seeds, prepared.config.convergence_looks),
     }
+    if prepared.config.transport_topology == "first_material_interaction_v1":
+        payload["components"] = list(prepared.config.components)
+    return payload
 
 
 def _summarize(prepared: PreparedRooflineCampaign, checkpoint: RooflineCheckpoint) -> dict[str, Any]:
@@ -1811,7 +2163,14 @@ def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]
     identity = campaign_identity(prepared)
     output = prepared.config.output_dir
     output.mkdir(parents=True, exist_ok=True)
-    for name in (IDENTITY_FILENAME, LOCATIONS_FILENAME, SUMMARY_FILENAME, MANIFEST_FILENAME):
+    for name in (
+        IDENTITY_FILENAME,
+        LOCATIONS_FILENAME,
+        SUMMARY_FILENAME,
+        MANIFEST_FILENAME,
+        SOURCE_CURVE_AUDIT_JSON,
+        SOURCE_CURVE_AUDIT_NPZ,
+    ):
         for temporary in output.glob(f".{name}.tmp-*"):
             temporary.unlink(missing_ok=True)
     identity_path = output / IDENTITY_FILENAME
@@ -1841,12 +2200,13 @@ def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]
     manifest_path = output / MANIFEST_FILENAME
     _write_jsonl(locations_path, result["rows"])
     _atomic_json(summary_path, result["summary"])
+    source_curve_audit_files = _write_source_curve_audit(prepared)
     surface_files: dict[str, str] = {}
     for entry in [checkpoint.index["cumulative_sab"], *checkpoint.index["look_sab"]]:
         if entry is not None:
             surface_files[f"checkpoint/{entry['path']}"] = entry["sha256"]
     manifest = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": prepared.config.schema_version,
         "identity_sha256": identity["sha256"],
         "output_profile": "minimal_results_plus_resumable_seed_shards",
         "optional_audit_and_blender_artifacts": "not_generated",
@@ -1854,6 +2214,7 @@ def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]
             IDENTITY_FILENAME: _file_sha256(identity_path),
             LOCATIONS_FILENAME: _file_sha256(locations_path),
             SUMMARY_FILENAME: _file_sha256(summary_path),
+            **source_curve_audit_files,
             "checkpoint/index.json": _file_sha256(checkpoint.index_path),
             **{f"checkpoint/{entry['path']}": entry["sha256"] for entry in checkpoint.index["committed"]},
             **{

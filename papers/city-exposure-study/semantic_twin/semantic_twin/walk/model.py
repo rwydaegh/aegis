@@ -34,6 +34,10 @@ PANORAMA_LINKS = "panorama_links"
 #: it.
 STREET_ROUTE = "street_route"
 
+#: The longest provider-link corridor whose complete registered polyline stays
+#: inside the declared admitted-camera evidence radius.
+PROVIDER_CORRIDOR = "provider_corridor"
+
 #: Not a way of choosing standpoints but a way of choosing between two of them.
 #: A builder wears it. A walk never does: a contest hands back the winner's
 #: points, so the winner's kind is what produced the number.
@@ -54,6 +58,7 @@ KIND_RULE = {
     GRID: "a three metre grid over walkable ground, chained nearest neighbour",
     PANORAMA_LINKS: "the panorama link chain, standpoints at the cameras and along the road between them",
     STREET_ROUTE: "a walking path from A to B across the square, standpoints at a fixed stride",
+    PROVIDER_CORRIDOR: "an evidence-supported corridor on the panorama provider's own link graph",
     NEAREST_OF: "whichever capture path stood nearer a camera",
     UNRECORDED: "unrecorded",
 }

@@ -6,6 +6,7 @@ import time
 from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, ClassVar
 
 import numpy as np
@@ -21,11 +22,19 @@ from .device_next_event import (
 from .device_tracer import DeviceEscapeTracer
 from .directional import DirectionalMeasure, _directions
 from .model import Surplus, require_credit
+from .persistent_cache import (
+    CACHE_SCHEMA,
+    DirectCacheValue,
+    PersistentTransportCache,
+    SpecularCacheValue,
+    cache_key,
+)
 from .specular import (
     DEFAULT_SPECULAR_CANDIDATE_BUDGET,
     OneBounceSpecularTransport,
     ReceiverVisibleFaceCandidates,
     SpecularCandidateSet,
+    SpecularDiagnostics,
     SpecularPaths,
     SpecularWorkEstimate,
     StratifiedSourceQuadrature,
@@ -475,6 +484,11 @@ class NextEventGather:
     sampled_specular_estimator: SampledOneBounceSpecularEstimator | None = None
     sampled_specular_samples: int = 1
     sampled_specular_seed: int = 0
+    #: Restrict the reciprocal next-event gather to its first material vertex.
+    #: This is deliberately a transport-topology choice, not a roulette or
+    #: ray-budget optimisation: direct and deterministic one-reflection atoms
+    #: are added by :class:`NextEventEstimator` outside this gather.
+    first_material_interaction_only: bool = False
 
     total: float = 0.0
     by_order: np.ndarray = field(init=False)
@@ -507,6 +521,8 @@ class NextEventGather:
             raise ValueError("exact and sampled specular suffix estimators are mutually exclusive")
         if self.sampled_specular_samples < 1:
             raise ValueError("sampled_specular_samples must be positive")
+        if not isinstance(self.first_material_interaction_only, bool):
+            raise TypeError("first_material_interaction_only must be boolean")
         if self.field_grid is not None:
             grid = np.asarray(self.field_grid, dtype=np.float64)
             if grid.ndim != 2 or grid.shape[1] != 3 or grid.shape[0] == 0:
@@ -542,6 +558,17 @@ class NextEventGather:
         face: np.ndarray | None = None,
     ) -> None:
         del path_length, face
+        if self.first_material_interaction_only and not np.all(np.asarray(order) == 1):
+            keep = np.asarray(order) == 1
+            index = index[keep]
+            position = position[keep]
+            incoming = incoming[keep]
+            normal = normal[keep]
+            throughput = throughput[keep]
+            share = share[keep]
+            order = np.asarray(order)[keep]
+            if position.shape[0] == 0:
+                return
         sites = self.sources.sites()
         if sites.shape[0] == 0 or position.shape[0] == 0:
             return
@@ -938,6 +965,12 @@ class NextEventEstimator:
     specular_refinement_relative_tolerance: float = 0.02
     diagnostic_models: Mapping[str, AngularIllumination] = field(default_factory=dict)
     deterministic_cache_size: int = 8
+    persistent_cache_dir: Path | None = None
+    #: ``hybrid_max_bounces_v1`` preserves the historical bounded hybrid
+    #: transport. ``first_material_interaction_v1`` is the closed first-surface
+    #: contract: exact direct and order-one all-specular atoms plus diffuse NEE
+    #: at the first material vertex only.
+    transport_topology: str = "hybrid_max_bounces_v1"
     _deterministic_cache: OrderedDict[tuple[Any, ...], Any] = field(
         default_factory=OrderedDict,
         init=False,
@@ -945,6 +978,12 @@ class NextEventEstimator:
         compare=False,
     )
     _device_specular_face_proposal: BoundDeviceSpecularFaceProposal | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _persistent_cache: PersistentTransportCache | None = field(
         default=None,
         init=False,
         repr=False,
@@ -962,6 +1001,8 @@ class NextEventEstimator:
             raise ValueError("specular_candidate_budget must be positive")
         if self.specular_suffix_mode not in ("exact", "sampled", "disabled"):
             raise ValueError("specular_suffix_mode must be 'exact', 'sampled', or 'disabled'")
+        if self.transport_topology not in ("hybrid_max_bounces_v1", "first_material_interaction_v1"):
+            raise ValueError("transport_topology must be hybrid_max_bounces_v1 or first_material_interaction_v1")
         if (
             not isinstance(self.sampled_specular_samples, int)
             or isinstance(self.sampled_specular_samples, bool)
@@ -976,14 +1017,31 @@ class NextEventEstimator:
             raise ValueError("sampled_specular_seed_offset must be a nonnegative integer")
         if self.specular_suffix_mode == "sampled" and self.specular_order != 1:
             raise ValueError("sampled specular suffixes require specular_order=1")
+        if self.transport_topology == "first_material_interaction_v1":
+            maximum_order = self.tracer.config.max_bounces if self.max_order is None else self.max_order
+            if maximum_order != 1:
+                raise ValueError("first-material-interaction transport requires max_order=1")
+            if self.specular_order != 1:
+                raise ValueError("first-material-interaction transport requires exact order-one all-specular support")
+            if self.specular_suffix_mode != "disabled":
+                raise ValueError("first-material-interaction transport requires specular_suffix_mode='disabled'")
         if self.deterministic_cache_size < 1:
             raise ValueError("deterministic_cache_size must be positive")
+        if self.persistent_cache_dir is not None:
+            cache_dir = Path(self.persistent_cache_dir)
+            object.__setattr__(self, "persistent_cache_dir", cache_dir)
+            object.__setattr__(self, "_persistent_cache", PersistentTransportCache(cache_dir))
         if not np.isfinite(self.specular_refinement_relative_tolerance) or not (
             0.0 < self.specular_refinement_relative_tolerance < 1.0
         ):
             raise ValueError("specular_refinement_relative_tolerance must lie strictly between zero and one")
         device_sampled = self.specular_order == 1 and self.specular_suffix_mode == "sampled"
-        if isinstance(self.tracer, DeviceEscapeTracer) and self.specular_order != 0 and not device_sampled:
+        device_first_interaction = self.transport_topology == "first_material_interaction_v1"
+        if (
+            isinstance(self.tracer, DeviceEscapeTracer)
+            and self.specular_order != 0
+            and not (device_sampled or device_first_interaction)
+        ):
             raise NotImplementedError(
                 "resident device next-event estimation supports omitted specular transport or the "
                 "full-support sampled order-one suffix; select specular_suffix_mode='sampled' or use SbrTracer"
@@ -1017,6 +1075,7 @@ class NextEventEstimator:
             maximum_order,
             self.specular_order,
             self.specular_suffix_mode,
+            self.transport_topology,
             self.sampled_specular_samples,
             self.sampled_specular_seed_offset,
             self.specular_candidate_budget,
@@ -1211,6 +1270,9 @@ class NextEventEstimator:
                     "method": "adaptive_receiver_faces_and_probability_strata",
                     "candidate_budget": budget,
                     "candidate_work_used": 0,
+                    "executed_candidate_work_used": 0,
+                    "avoided_candidate_work": 0,
+                    "executed_candidate_seconds": 0.0,
                     "visibility_rays_used": 0,
                     "refinement_work_used": 0,
                     "relative_tolerance": tolerance,
@@ -1225,26 +1287,22 @@ class NextEventEstimator:
         candidates = self.visible_face_candidates.refine_level(transport, receiver, face_samples)
         visibility_rays = face_samples
         candidate_work = 0
+        executed_candidate_work = 0
+        executed_candidate_seconds = 0.0
         refinement: list[dict[str, Any]] = []
         face_level = 0
         source_level = 0
         stop_reason = "candidate_budget_exhausted"
         blocked_next_cycle: dict[str, int] | None = None
 
-        def selection(strata: int):  # noqa: ANN202
+        def selection(strata: int):
             return self.source_quadrature.select(sites, probabilities, strata)
 
-        def solve(
-            candidate_set: SpecularCandidateSet,
-            selected: Any,
-            *,
-            axis: str,
-            face_index: int,
-            source_index: int,
-            previous_face: tuple[SpecularPaths, float] | None,
-            previous_source: tuple[SpecularPaths, float] | None,
-        ) -> tuple[SpecularPaths, float]:
-            nonlocal candidate_work
+        surface_face_index = np.asarray(transport.surfaces.face_index, dtype=np.int64)
+        reusable_face_identity = np.unique(surface_face_index).size == surface_face_index.size
+
+        def execute(candidate_set: SpecularCandidateSet, selected: Any) -> SpecularPaths:
+            nonlocal executed_candidate_seconds, executed_candidate_work
             paired_receiver = np.broadcast_to(receiver, selected.positions.shape)
             paths = transport.solve_paired(
                 selected.positions,
@@ -1253,6 +1311,76 @@ class NextEventEstimator:
                 source_index=selected.source_index,
                 candidate_set=candidate_set,
             )
+            executed_candidate_work += paths.diagnostics.candidates
+            executed_candidate_seconds += paths.diagnostics.seconds
+            return paths
+
+        def merge_face_blocks(
+            parts: tuple[SpecularPaths, ...],
+            candidate_set: SpecularCandidateSet,
+            selected: Any,
+        ) -> SpecularPaths:
+            candidate_faces = candidate_set.sequences[:, 0]
+            actual_faces = surface_face_index[candidate_faces]
+            rank_by_actual = {int(actual): rank for rank, actual in enumerate(actual_faces)}
+            accepted = sum(part.diagnostics.accepted for part in parts)
+            logical_candidates = int(candidate_faces.size * selected.positions.shape[0])
+            diagnostics = SpecularDiagnostics(
+                endpoint_pairs=int(selected.positions.shape[0]),
+                plane_sequences=int(candidate_faces.size),
+                candidates=logical_candidates,
+                geometric=sum(part.diagnostics.geometric for part in parts),
+                visible=sum(part.diagnostics.visible for part in parts),
+                accepted=accepted,
+                chunks=(logical_candidates + transport.candidate_chunk - 1) // transport.candidate_chunk,
+                seconds=sum(part.diagnostics.seconds for part in parts),
+                candidate_method=candidate_set.method,
+                candidate_support_complete=candidate_set.support_complete,
+                selected_faces=int(np.unique(candidate_faces).size),
+                support_faces=int(transport.surfaces.scene_face_count or transport.surfaces.triangles.shape[0]),
+                missed_support_faces=candidate_set.missed_support_faces,
+                candidate_diagnostics=dict(candidate_set.diagnostics),
+            )
+            if accepted == 0:
+                return SpecularPaths.empty(diagnostics)
+            k_hat = np.concatenate([part.k_hat for part in parts])
+            transfer = np.concatenate([part.transfer for part in parts])
+            reflection = np.concatenate([part.reflection_point for part in parts])
+            source = np.concatenate([part.source_index for part in parts])
+            endpoint = np.concatenate([part.endpoint_index for part in parts])
+            sequence = np.concatenate([part.surface_sequence for part in parts])
+            length = np.concatenate([part.unfolded_length_m for part in parts])
+            face_rank = np.fromiter(
+                (rank_by_actual[int(face)] for face in sequence[:, 0]),
+                dtype=np.int64,
+                count=accepted,
+            )
+            order = np.lexsort((face_rank, endpoint))
+            return SpecularPaths(
+                k_hat[order],
+                transfer[order],
+                reflection[order],
+                source[order],
+                endpoint[order],
+                sequence[order],
+                length[order],
+                diagnostics,
+            )
+
+        def record(
+            paths: SpecularPaths,
+            selected: Any,
+            candidate_set: SpecularCandidateSet,
+            *,
+            axis: str,
+            face_index: int,
+            source_index: int,
+            previous_face: tuple[SpecularPaths, float] | None,
+            previous_source: tuple[SpecularPaths, float] | None,
+            executed_candidates: int,
+            executed_seconds: float,
+        ) -> tuple[SpecularPaths, float]:
+            nonlocal candidate_work
             candidate_work += paths.diagnostics.candidates
             transfer = paths.total
             if previous_face is None:
@@ -1284,8 +1412,16 @@ class NextEventEstimator:
                     "finite_resolution_support_incomplete": True,
                     "candidates": paths.diagnostics.candidates,
                     "cumulative_candidates": candidate_work,
+                    "executed_candidates": executed_candidates,
+                    "avoided_candidates": paths.diagnostics.candidates - executed_candidates,
+                    "cumulative_executed_candidates": executed_candidate_work,
+                    "cumulative_avoided_candidates": candidate_work - executed_candidate_work,
                     "accepted": paths.diagnostics.accepted,
-                    "seconds": paths.diagnostics.seconds,
+                    "seconds": executed_seconds,
+                    "executed_seconds": executed_seconds,
+                    "cumulative_executed_seconds": executed_candidate_seconds,
+                    "logical_solution_seconds": paths.diagnostics.seconds,
+                    "reused_block_seconds": max(paths.diagnostics.seconds - executed_seconds, 0.0),
                     "transfer": transfer,
                     "absolute_change_from_previous_face_level": absolute_face,
                     "relative_change_from_previous_face_level": relative_face,
@@ -1307,6 +1443,9 @@ class NextEventEstimator:
                 "method": "adaptive_receiver_faces_and_probability_strata",
                 "candidate_budget": budget,
                 "candidate_work_used": 0,
+                "executed_candidate_work_used": 0,
+                "avoided_candidate_work": 0,
+                "executed_candidate_seconds": 0.0,
                 "visibility_rays_used": visibility_rays,
                 "refinement_work_used": visibility_rays,
                 "relative_tolerance": tolerance,
@@ -1317,14 +1456,18 @@ class NextEventEstimator:
                 "enabled": False,
             }
             return None, refinement, work
-        current = solve(
-            candidates,
+        initial_paths = execute(candidates, selected)
+        current = record(
+            initial_paths,
             selected,
+            candidates,
             axis="initial",
             face_index=face_level,
             source_index=source_level,
             previous_face=None,
             previous_source=None,
+            executed_candidates=initial_paths.diagnostics.candidates,
+            executed_seconds=initial_paths.diagnostics.seconds,
         )
 
         while True:
@@ -1373,45 +1516,115 @@ class NextEventEstimator:
                 break
 
             if source_is_exact:
-                corner = solve(
-                    next_candidates,
+                old_faces = candidates.sequences[:, 0]
+                next_faces = next_candidates.sequences[:, 0]
+                nested_faces = (
+                    np.unique(old_faces).size == old_faces.size
+                    and np.unique(next_faces).size == next_faces.size
+                    and np.all(np.isin(old_faces, next_faces))
+                )
+                reuse_faces = reusable_face_identity and nested_faces
+                if reuse_faces:
+                    delta_mask = ~np.isin(next_faces, old_faces)
+                    delta_candidates = SpecularCandidateSet(
+                        next_candidates.sequences[delta_mask],
+                        method=next_candidates.method,
+                        support_complete=False,
+                        missed_support_faces=next_candidates.missed_support_faces,
+                        diagnostics=next_candidates.diagnostics,
+                    )
+                    delta = execute(delta_candidates, selected)
+                    corner_paths = merge_face_blocks((current[0], delta), next_candidates, selected)
+                    executed = delta.diagnostics.candidates
+                else:
+                    corner_paths = execute(next_candidates, selected)
+                    executed = corner_paths.diagnostics.candidates
+                corner = record(
+                    corner_paths,
                     selected,
+                    next_candidates,
                     axis="receiver_faces",
                     face_index=next_face_level,
                     source_index=source_level,
                     previous_face=current,
                     previous_source=None,
+                    executed_candidates=executed,
+                    executed_seconds=(delta.diagnostics.seconds if reuse_faces else corner_paths.diagnostics.seconds),
                 )
-                record = refinement[-1]
-                record["source_axis_converged"] = True
-                record["numerically_converged"] = bool(corner[1] > 0.0 and record["face_axis_converged"])
+                row = refinement[-1]
+                row["source_axis_converged"] = True
+                row["numerically_converged"] = bool(corner[1] > 0.0 and row["face_axis_converged"])
             else:
-                source_only = solve(
-                    candidates,
+                source_paths = execute(candidates, next_selected)
+                source_only = record(
+                    source_paths,
                     next_selected,
+                    candidates,
                     axis="source_quadrature",
                     face_index=face_level,
                     source_index=next_source_level,
                     previous_face=None,
                     previous_source=current,
+                    executed_candidates=source_paths.diagnostics.candidates,
+                    executed_seconds=source_paths.diagnostics.seconds,
                 )
-                face_only = solve(
-                    next_candidates,
+                old_faces = candidates.sequences[:, 0]
+                next_faces = next_candidates.sequences[:, 0]
+                nested_faces = (
+                    np.unique(old_faces).size == old_faces.size
+                    and np.unique(next_faces).size == next_faces.size
+                    and np.all(np.isin(old_faces, next_faces))
+                )
+                reuse_faces = reusable_face_identity and nested_faces
+                if reuse_faces:
+                    delta_mask = ~np.isin(next_faces, old_faces)
+                    delta_candidates = SpecularCandidateSet(
+                        next_candidates.sequences[delta_mask],
+                        method=next_candidates.method,
+                        support_complete=False,
+                        missed_support_faces=next_candidates.missed_support_faces,
+                        diagnostics=next_candidates.diagnostics,
+                    )
+                    old_source_delta = execute(delta_candidates, selected)
+                    face_paths = merge_face_blocks((current[0], old_source_delta), next_candidates, selected)
+                    face_executed = old_source_delta.diagnostics.candidates
+                else:
+                    face_paths = execute(next_candidates, selected)
+                    face_executed = face_paths.diagnostics.candidates
+                face_only = record(
+                    face_paths,
                     selected,
+                    next_candidates,
                     axis="receiver_faces",
                     face_index=next_face_level,
                     source_index=source_level,
                     previous_face=current,
                     previous_source=None,
+                    executed_candidates=face_executed,
+                    executed_seconds=(
+                        old_source_delta.diagnostics.seconds if reuse_faces else face_paths.diagnostics.seconds
+                    ),
                 )
-                corner = solve(
-                    next_candidates,
+                if reuse_faces:
+                    new_source_delta = execute(delta_candidates, next_selected)
+                    corner_paths = merge_face_blocks((source_only[0], new_source_delta), next_candidates, next_selected)
+                    corner_executed = new_source_delta.diagnostics.candidates
+                else:
+                    corner_paths = execute(next_candidates, next_selected)
+                    corner_executed = corner_paths.diagnostics.candidates
+                corner = record(
+                    corner_paths,
                     next_selected,
+                    next_candidates,
                     axis="crossed_corner",
                     face_index=next_face_level,
                     source_index=next_source_level,
                     previous_face=source_only,
                     previous_source=face_only,
+                    executed_candidates=corner_executed,
+                    executed_seconds=(
+                        new_source_delta.diagnostics.seconds if reuse_faces else corner_paths.diagnostics.seconds
+                    ),
                 )
             current = corner
             candidates = next_candidates
@@ -1429,6 +1642,9 @@ class NextEventEstimator:
             "method": "adaptive_receiver_faces_and_probability_strata",
             "candidate_budget": budget,
             "candidate_work_used": candidate_work,
+            "executed_candidate_work_used": executed_candidate_work,
+            "avoided_candidate_work": candidate_work - executed_candidate_work,
+            "executed_candidate_seconds": executed_candidate_seconds,
             "total_candidates_upper_bound": candidate_work,
             "visibility_rays_used": visibility_rays,
             "refinement_work_used": candidate_work + visibility_rays,
@@ -1458,18 +1674,28 @@ class NextEventEstimator:
         dict[str, Any] | None,
         float,
         bool,
+        bool,
+        str | None,
     ]:
         """Prepare deterministic reflection work once for a standpoint."""
         key = self._deterministic_key("specular", origin, maximum_order)
         cached = self._cache_get(key)
         if cached is not None:
-            suffix_transport, specular_work, all_specular, refinement, finite_work = cached
-            return suffix_transport, specular_work, all_specular, refinement, finite_work, 0.0, True
+            suffix_transport, specular_work, all_specular, refinement, finite_work, persistent_key = cached
+            return (
+                suffix_transport,
+                specular_work,
+                all_specular,
+                refinement,
+                finite_work,
+                0.0,
+                True,
+                False,
+                persistent_key,
+            )
 
         started = time.perf_counter()
         all_specular_transport = self.specular_transport if self.specular_order == 1 else None
-        suffix_transport = None
-        finite_work: dict[str, Any] | None = None
         supports_specular = hasattr(self.tracer, "geometry") and hasattr(self.tracer, "_surface_response")
         specular_work = None
         if all_specular_transport is None and self.specular_order == 1 and supports_specular:
@@ -1493,110 +1719,131 @@ class NextEventEstimator:
                 max_bounces=maximum_order,
             )
 
-        all_specular = None
-        refinement: list[dict[str, Any]] = []
-        if all_specular_transport is not None and maximum_order >= 1:
-            sites = np.asarray(self.sources.sites(), dtype=np.float64)
-            probabilities = normalized_source_weights(self.sources)
-            all_specular_cost = all_specular_transport.surfaces.triangles.shape[0] * sites.shape[0]
-            if all_specular_cost <= self.specular_candidate_budget:
-                all_specular = all_specular_transport.solve_all_sources(
-                    sites,
-                    np.asarray(origin, dtype=np.float64),
-                    probabilities,
-                )
-                support_complete = bool(all_specular.diagnostics.candidate_support_complete)
+        def compute() -> SpecularCacheValue:
+            all_specular = None
+            refinement: list[dict[str, Any]] = []
+            finite_work: dict[str, Any] | None = None
+            suffix_transport_enabled = False
+            if all_specular_transport is not None and maximum_order >= 1:
+                sites = np.asarray(self.sources.sites(), dtype=np.float64)
+                probabilities = normalized_source_weights(self.sources)
+                all_specular_cost = all_specular_transport.surfaces.triangles.shape[0] * sites.shape[0]
+                if all_specular_cost <= self.specular_candidate_budget:
+                    all_specular = all_specular_transport.solve_all_sources(
+                        sites,
+                        np.asarray(origin, dtype=np.float64),
+                        probabilities,
+                    )
+                    support_complete = bool(all_specular.diagnostics.candidate_support_complete)
+                    finite_work = {
+                        "method": "exact_all_specular_order_1",
+                        "candidate_budget": self.specular_candidate_budget,
+                        "candidate_work_used": all_specular.diagnostics.candidates,
+                        "total_candidates_upper_bound": all_specular.diagnostics.candidates,
+                        "relative_tolerance": self.specular_refinement_relative_tolerance,
+                        "numerically_converged": support_complete,
+                        "support_complete": support_complete,
+                        "mixed_specular_suffix_enabled": bool(
+                            self.specular_suffix_mode == "sampled" or (specular_work and specular_work.enabled)
+                        ),
+                        "stop_reason": "full_reflection_and_source_support_enumerated",
+                        "enabled": True,
+                        "estimate_count": 1,
+                    }
+                    suffix_transport_enabled = bool(
+                        self.specular_suffix_mode == "exact"
+                        and specular_work is not None
+                        and specular_work.enabled
+                        and support_complete
+                    )
+                elif getattr(self.sources, "curve", None) is not None:
+                    all_specular, refinement, finite_work = self._adaptive_all_specular(
+                        all_specular_transport,
+                        np.asarray(origin, dtype=np.float64),
+                    )
+                else:
+                    finite_work = {
+                        "method": "adaptive_receiver_faces_and_probability_strata",
+                        "candidate_budget": self.specular_candidate_budget,
+                        "candidate_work_used": 0,
+                        "relative_tolerance": self.specular_refinement_relative_tolerance,
+                        "numerically_converged": False,
+                        "support_complete": False,
+                        "mixed_specular_suffix_enabled": False,
+                        "stop_reason": "source_curve_required_for_bounded_source_refinement",
+                        "enabled": False,
+                        "estimate_count": 0,
+                    }
+            if finite_work is not None and self.specular_suffix_mode == "sampled":
                 finite_work = {
-                    "method": "exact_all_specular_order_1",
-                    "candidate_budget": self.specular_candidate_budget,
-                    "candidate_work_used": all_specular.diagnostics.candidates,
-                    "total_candidates_upper_bound": all_specular.diagnostics.candidates,
-                    "relative_tolerance": self.specular_refinement_relative_tolerance,
-                    "numerically_converged": support_complete,
-                    "support_complete": support_complete,
+                    **finite_work,
                     "mixed_specular_suffix_enabled": bool(
-                        self.specular_suffix_mode == "sampled" or (specular_work and specular_work.enabled)
+                        all_specular_transport is not None
+                        and all_specular_transport.surfaces.triangles.shape[0] > 0
+                        and len(self.sources) > 0
                     ),
-                    "stop_reason": "full_reflection_and_source_support_enumerated",
-                    "enabled": True,
-                    "estimate_count": 1,
+                    "mixed_specular_suffix_method": "full_support_sampled_one_reflection",
                 }
-                if (
-                    self.specular_suffix_mode == "exact"
-                    and specular_work is not None
-                    and specular_work.enabled
-                    and support_complete
-                ):
-                    suffix_transport = all_specular_transport
-            elif getattr(self.sources, "curve", None) is not None:
-                all_specular, refinement, finite_work = self._adaptive_all_specular(
-                    all_specular_transport,
-                    np.asarray(origin, dtype=np.float64),
-                )
-            else:
-                finite_work = {
-                    "method": "adaptive_receiver_faces_and_probability_strata",
-                    "candidate_budget": self.specular_candidate_budget,
-                    "candidate_work_used": 0,
-                    "relative_tolerance": self.specular_refinement_relative_tolerance,
-                    "numerically_converged": False,
-                    "support_complete": False,
-                    "mixed_specular_suffix_enabled": False,
-                    "stop_reason": "source_curve_required_for_bounded_source_refinement",
-                    "enabled": False,
-                    "estimate_count": 0,
-                }
-        if finite_work is not None and self.specular_suffix_mode == "sampled":
-            finite_work = {
-                **finite_work,
-                "mixed_specular_suffix_enabled": bool(
-                    all_specular_transport is not None
-                    and all_specular_transport.surfaces.triangles.shape[0] > 0
-                    and len(self.sources) > 0
-                ),
-                "mixed_specular_suffix_method": "full_support_sampled_one_reflection",
-            }
-        value = (suffix_transport, specular_work, all_specular, refinement, finite_work)
-        self._cache_put(key, value)
-        return *value, time.perf_counter() - started, False
+            return SpecularCacheValue(
+                specular_work,
+                all_specular,
+                refinement,
+                finite_work,
+                suffix_transport_enabled,
+            )
 
-    def _estimate_device(
+        persistent_hit = False
+        persistent_key = None
+        if self._persistent_cache is None:
+            persistent_value = compute()
+        else:
+            identity = self._persistent_cache.identity(
+                self,
+                kind="deterministic_one_reflection",
+                origin=origin,
+                maximum_order=maximum_order,
+                transport=all_specular_transport,
+            )
+            persistent_key = None if identity is None else cache_key(identity)
+            persistent_value, persistent_hit = self._persistent_cache.specular(identity, compute)
+        suffix_transport = all_specular_transport if persistent_value.suffix_transport_enabled else None
+        value = (
+            suffix_transport,
+            persistent_value.specular_work,
+            persistent_value.paths,
+            persistent_value.refinement,
+            persistent_value.finite_work,
+        )
+        self._cache_put(key, (*value, persistent_key))
+        seconds = 0.0 if persistent_hit else time.perf_counter() - started
+        return *value, seconds, persistent_hit, persistent_hit, persistent_key
+
+    def _deterministic_direct(
         self,
         origin: np.ndarray,
-        *,
-        ground_z_m: float,
-        seed: int | None,
+        maximum_order: int,
         field_grid: np.ndarray | None,
     ) -> tuple[
-        Surplus,
-        DeviceNextEventGather,
+        np.ndarray,
+        np.ndarray,
         tuple[np.ndarray, np.ndarray, np.ndarray, float, float] | None,
-        SpecularPaths | None,
-        list[dict[str, Any]],
+        float,
+        bool,
+        bool,
+        str | None,
     ]:
-        """Run resident diffuse and sampled mixed connections with exact direct paths."""
-        sampled_mode = self.specular_order == 1 and self.specular_suffix_mode == "sampled"
-        if self.specular_order != 0 and not sampled_mode:
-            raise NotImplementedError(
-                "resident device next-event estimation supports specular_order=0 or the "
-                "full-support sampled order-one suffix"
-            )
-        estimator_started = time.perf_counter()
-        maximum_order = self.tracer.config.max_bounces if self.max_order is None else self.max_order
-        (
-            _suffix_transport,
-            specular_work,
-            all_specular,
-            source_refinement,
-            finite_resolution_work,
-            deterministic_specular_seconds,
-            deterministic_specular_cache_hit,
-        ) = self._deterministic_specular(origin, maximum_order)
+        """Resolve exact direct work through memory and optional disk caches."""
+        key = self._deterministic_key("direct", origin, maximum_order, field_grid is not None)
+        cached = self._cache_get(key)
+        if cached is not None:
+            direct, seen, field_data, persistent_key = cached
+            return direct, seen, field_data, 0.0, True, False, persistent_key
 
-        direct_key = self._deterministic_key("direct", origin, maximum_order, field_grid is not None)
-        cached_direct = self._cache_get(direct_key)
-        if cached_direct is None:
-            direct_started = time.perf_counter()
+        direct_seconds = 0.0
+
+        def compute() -> DirectCacheValue:
+            nonlocal direct_seconds
+            started = time.perf_counter()
             if field_grid is None:
                 direct, seen = direct_from_sites(
                     self.geometry,
@@ -1615,13 +1862,78 @@ class NextEventEstimator:
                 direct = np.array([direct_value], dtype=np.float64)
                 seen = np.array([seen_value], dtype=np.float64)
                 field_data = (direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value)
-            direct_seconds = time.perf_counter() - direct_started
-            self._cache_put(direct_key, (direct, seen, field_data))
-            direct_cache_hit = False
+            direct_seconds = time.perf_counter() - started
+            return DirectCacheValue(direct, seen, field_data)
+
+        persistent_hit = False
+        persistent_key = None
+        if self._persistent_cache is None:
+            value = compute()
         else:
-            direct, seen, field_data = cached_direct
-            direct_seconds = 0.0
-            direct_cache_hit = True
+            identity = self._persistent_cache.identity(
+                self,
+                kind="exact_direct",
+                origin=origin,
+                maximum_order=maximum_order,
+                field_grid=field_grid,
+            )
+            persistent_key = None if identity is None else cache_key(identity)
+            value, persistent_hit = self._persistent_cache.direct(
+                identity,
+                compute,
+                field_cells=None if field_grid is None else field_grid.shape[0],
+            )
+        cached_value = (value.direct, value.seen, value.field_data, persistent_key)
+        self._cache_put(key, cached_value)
+        return (
+            value.direct,
+            value.seen,
+            value.field_data,
+            direct_seconds,
+            persistent_hit,
+            persistent_hit,
+            persistent_key,
+        )
+
+    def _estimate_device(
+        self,
+        origin: np.ndarray,
+        *,
+        ground_z_m: float,
+        seed: int | None,
+        field_grid: np.ndarray | None,
+    ) -> tuple[
+        Surplus,
+        DeviceNextEventGather,
+        tuple[np.ndarray, np.ndarray, np.ndarray, float, float] | None,
+        SpecularPaths | None,
+        list[dict[str, Any]],
+    ]:
+        """Run resident diffuse and sampled mixed connections with exact direct paths."""
+        sampled_mode = self.specular_order == 1 and self.specular_suffix_mode == "sampled"
+        first_interaction = self.transport_topology == "first_material_interaction_v1"
+        if self.specular_order != 0 and not (sampled_mode or first_interaction):
+            raise NotImplementedError(
+                "resident device next-event estimation supports specular_order=0 or the "
+                "full-support sampled order-one suffix"
+            )
+        estimator_started = time.perf_counter()
+        maximum_order = self.tracer.config.max_bounces if self.max_order is None else self.max_order
+        (
+            _suffix_transport,
+            specular_work,
+            all_specular,
+            source_refinement,
+            finite_resolution_work,
+            deterministic_specular_seconds,
+            deterministic_specular_cache_hit,
+            deterministic_specular_persistent_cache_hit,
+            deterministic_specular_persistent_cache_key,
+        ) = self._deterministic_specular(origin, maximum_order)
+
+        direct, seen, field_data, direct_seconds, direct_cache_hit, direct_persistent_cache_hit, direct_cache_key = (
+            self._deterministic_direct(origin, maximum_order, field_grid)
+        )
 
         gather = DeviceNextEventGather(
             sources=self.sources,
@@ -1635,6 +1947,7 @@ class NextEventEstimator:
             sampled_specular_seed_offset=self.sampled_specular_seed_offset,
             collect_field=field_grid is not None,
             specular_face_proposal=self._device_specular_face_proposal,
+            first_material_interaction_only=first_interaction,
         )
         trace_started = time.perf_counter()
         point = self.tracer.trace(
@@ -1736,6 +2049,17 @@ class NextEventEstimator:
                 "estimator_overhead_seconds",
             ],
         }
+        if first_interaction:
+            detail["transport_topology"] = self.transport_topology
+            detail["first_material_interaction_nee_only"] = True
+        if self._persistent_cache is not None:
+            detail["deterministic_specular_persistent_cache_hit"] = deterministic_specular_persistent_cache_hit
+            detail["direct_persistent_cache_hit"] = direct_persistent_cache_hit
+            detail["persistent_transport_cache"] = {
+                "schema": CACHE_SCHEMA,
+                "deterministic_specular_key_sha256": deterministic_specular_persistent_cache_key,
+                "direct_key_sha256": direct_cache_key,
+            }
         surplus = Surplus(
             estimator=self.name,
             law=self.sources.law,
@@ -1788,6 +2112,8 @@ class NextEventEstimator:
             finite_resolution_work,
             deterministic_specular_seconds,
             deterministic_specular_cache_hit,
+            deterministic_specular_persistent_cache_hit,
+            deterministic_specular_persistent_cache_key,
         ) = self._deterministic_specular(origin, maximum_order)
 
         sampled_suffix = None
@@ -1798,35 +2124,9 @@ class NextEventEstimator:
             if sampled_transport is not None:
                 sampled_suffix = SampledOneBounceSpecularEstimator(sampled_transport, self.sources)
 
-        direct_key = self._deterministic_key("direct", origin, maximum_order, field_grid is not None)
-        cached_direct = self._cache_get(direct_key)
-        if cached_direct is None:
-            direct_started = time.perf_counter()
-            if field_grid is None:
-                direct, seen = direct_from_sites(
-                    self.geometry,
-                    np.atleast_2d(origin),
-                    self.sources.sites(),
-                    weights=getattr(self.sources, "source_weights", None),
-                )
-                field_data = None
-            else:
-                direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value = _direct_field_data(
-                    self.geometry,
-                    np.asarray(origin, dtype=np.float64),
-                    self.sources,
-                    field_grid,
-                )
-                direct = np.array([direct_value], dtype=np.float64)
-                seen = np.array([seen_value], dtype=np.float64)
-                field_data = (direct_mass, direct_k_hat, direct_atom_mass, direct_value, seen_value)
-            direct_seconds = time.perf_counter() - direct_started
-            self._cache_put(direct_key, (direct, seen, field_data))
-            direct_cache_hit = False
-        else:
-            direct, seen, field_data = cached_direct
-            direct_seconds = 0.0
-            direct_cache_hit = True
+        direct, seen, field_data, direct_seconds, direct_cache_hit, direct_persistent_cache_hit, direct_cache_key = (
+            self._deterministic_direct(origin, maximum_order, field_grid)
+        )
         gather = NextEventGather(
             geometry=self.geometry,
             sources=self.sources,
@@ -1840,6 +2140,7 @@ class NextEventEstimator:
             sampled_specular_estimator=sampled_suffix,
             sampled_specular_samples=self.sampled_specular_samples,
             sampled_specular_seed=(trace_seed + self.sampled_specular_seed_offset) & ((1 << 64) - 1),
+            first_material_interaction_only=self.transport_topology == "first_material_interaction_v1",
         )
         trace_started = time.perf_counter()
         point = self.tracer.trace(
@@ -1874,7 +2175,9 @@ class NextEventEstimator:
             "deterministic_specular_cache_hit": deterministic_specular_cache_hit,
             "direct_cache_hit": direct_cache_hit,
             "specular_suffix_seconds_in_stochastic_trace": gather.specular_seconds,
-            "specular_diagnostic_seconds_reused": deterministic_specular_cache_hit,
+            "specular_diagnostic_seconds_reused": bool(
+                deterministic_specular_cache_hit and not deterministic_specular_persistent_cache_hit
+            ),
             "timing_note": (
                 "top-level timing components are disjoint; suffix timing is contained in stochastic trace, "
                 "and cached candidate/path diagnostics describe their original computation"
@@ -1890,6 +2193,17 @@ class NextEventEstimator:
             "specular_complete_through_bounce_cap": False,
             "specular_result_complete": False,
         }
+        if self.transport_topology == "first_material_interaction_v1":
+            detail["transport_topology"] = self.transport_topology
+            detail["first_material_interaction_nee_only"] = True
+        if self._persistent_cache is not None:
+            detail["deterministic_specular_persistent_cache_hit"] = deterministic_specular_persistent_cache_hit
+            detail["direct_persistent_cache_hit"] = direct_persistent_cache_hit
+            detail["persistent_transport_cache"] = {
+                "schema": CACHE_SCHEMA,
+                "deterministic_specular_key_sha256": deterministic_specular_persistent_cache_key,
+                "direct_key_sha256": direct_cache_key,
+            }
         if specular_work is not None:
             sampled_suffix_active = bool(sampled_suffix is not None and sampled_suffix.ready and maximum_order >= 2)
             all_specular_complete = bool(

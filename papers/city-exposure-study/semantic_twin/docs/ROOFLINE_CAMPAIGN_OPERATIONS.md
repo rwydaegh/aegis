@@ -1,6 +1,21 @@
 # Roofline exposure campaign operations
 
-## Scientific contract
+> **Current-contract notice.** The cohort description and readiness snapshot
+> below are historical operating guidance. The current comparable-city v2
+> contract is [CURRENT_PRODUCTION_CONTRACT.md](CURRENT_PRODUCTION_CONTRACT.md):
+> atlas-backed, route-observed sources and exact cached registered-span
+> pedestrian street routes for a ten-site intended cohort. Nine have panorama
+> acquisitions, while Krakow remains pending quota. Every site must pass input
+> readiness before execution. Times Square is excluded for invalid geometry.
+> Current transport uses 200,000 IID primary rays, 4,096 passive angular cells,
+> exact direct transfer, stochastic next-event diffuse and mixed transport, and
+> one-reflection all-specular plus sampled mixed-specular transport.
+
+## Historical cohort snapshot
+
+The cohort membership in this subsection is preserved as an earlier operating
+snapshot. It is superseded by the current-contract notice above and must not be
+used to configure a comparable-city v2 run.
 
 The campaign is not an eleven-city semantic comparison. It has two named
 cohorts whose claims must remain separate:
@@ -22,7 +37,7 @@ repairs. Times Square is invalid under the current geometry contract. See
 [MULTICITY_CAMPAIGN_READINESS.md](MULTICITY_CAMPAIGN_READINESS.md) for the
 site gates.
 
-The final code is `f5f394da`, after performance proposal reuse in `9111c591`.
+The historical snapshot code is `f5f394da`, after performance proposal reuse in `9111c591`.
 Report commits are `8db6bef0` and `37b4498d`. Scientific paired campaigns use
 the sealed config commit `b985ab58`.
 

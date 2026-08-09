@@ -285,6 +285,7 @@ def test_cli_contract_exposes_every_numerical_build_choice() -> None:
         "concepts": pathlib.Path("config/semantic_concepts.json").resolve(),
         "out": build_surface_atlas.DEFAULT_OUT,
         "semantics_dirname": "semantics",
+        "cohort_dir": None,
     }
 
 

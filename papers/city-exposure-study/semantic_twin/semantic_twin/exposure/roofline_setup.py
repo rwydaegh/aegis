@@ -13,6 +13,13 @@ from typing import Any, Callable, Literal
 
 import numpy as np
 
+from ..cohort import (
+    COMPARABLE_COHORT,
+    campaign_readiness,
+    default_manifest_path,
+    load_manifest,
+    validate_study_membership,
+)
 from ..illumination import build_source_set, silhouette
 from ..runconfig import NextEventConfig, RunConfig
 from ..transport.device_tracer import DeviceEscapeTracer
@@ -20,7 +27,8 @@ from ..transport.next_event import NextEventEstimator
 from ..transport.specular import DEFAULT_SPECULAR_CANDIDATE_BUDGET, OneBounceSpecularTransport
 from ..transport.specular_sampling import SampledOneBounceSpecularEstimator
 from ..transport.tracer import SbrTracer
-from ..walk.model import PANORAMA_LINKS, STREET_ROUTE
+from ..walk.model import PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE
+from ..walk.provider_corridor import PROVIDER_CORRIDOR_V1
 from ..walk.route import load_admitted_stations
 from .coupler import BodyCoupler
 from .execution import LegacyReplay, StudyEnvironment, _bind_materials, _build_walk, _prepare_scene, _trace_config
@@ -32,18 +40,8 @@ from .roofline_campaign import (
     seal_transport_provenance,
 )
 
-PRIMARY_SEMANTIC_SITES = frozenset(
-    {
-        "brussels_grandplace",
-        "korenmarkt",
-        "madrid_plazamayor",
-        "mexico_zocalo",
-        "prague_staromestske",
-        "tokyo_hachiko",
-    }
-)
-GEOMETRIC_EXTENSION_SITES = frozenset({"krakow_rynek", "london_trafalgar", "milan_duomo", "newyork_timessquare"})
 JSON_SUFFIX = ".json"
+COHORT_MANIFEST_FILENAME = "city_cohort_manifest.json"
 
 
 def _validate_positive_finite(value: float, message: str) -> None:
@@ -166,6 +164,11 @@ def _validate_setup_run_contract(setup: RooflineSetupConfig) -> None:
         raise ValueError("resident device next-event requires llvm_ad_rgb or cuda_ad_rgb")
 
 
+def _level2_body_backend(variant: str) -> str:
+    """Select CUDA body coupling only for an explicitly CUDA production run."""
+    return "cuda" if variant.startswith("cuda_") else "numpy"
+
+
 def _validate_setup_specular_contract(setup: RooflineSetupConfig) -> None:
     source = setup.source
     campaign = setup.campaign
@@ -177,22 +180,75 @@ def _validate_setup_specular_contract(setup: RooflineSetupConfig) -> None:
     if source.specular_order == 1 and campaign.specular_acceptance == "omitted_diagnostic":
         raise ValueError("omitted-specular diagnostics require specular_order=0")
     combined_policy = "adaptive_all_specular_sampled_mixed_order_1"
+    first_interaction_policy = "first_material_interaction_exact_order_1"
     if campaign.specular_acceptance == combined_policy and source.specular_suffix_mode != "sampled":
         raise ValueError("combined sampled-specular acceptance requires specular_suffix_mode=sampled")
     if campaign.specular_acceptance == combined_policy and run.max_bounces < 2:
         raise ValueError("combined sampled-specular acceptance requires max_bounces>=2")
     if campaign.specular_acceptance == "exact_complete" and source.specular_suffix_mode != "exact":
         raise ValueError("exact-complete acceptance requires specular_suffix_mode=exact")
-    if run.transport_kernel == "drjit" and source.specular_order == 1 and source.specular_suffix_mode != "sampled":
+    if campaign.specular_acceptance == first_interaction_policy:
+        if run.max_bounces != 1:
+            raise ValueError("first-material-interaction acceptance requires max_bounces=1")
+        if source.specular_order != 1:
+            raise ValueError("first-material-interaction acceptance requires specular_order=1")
+        if source.specular_suffix_mode != "disabled":
+            raise ValueError("first-material-interaction acceptance requires specular_suffix_mode=disabled")
+    if (
+        run.transport_kernel == "drjit"
+        and source.specular_order == 1
+        and source.specular_suffix_mode != "sampled"
+        and campaign.specular_acceptance != first_interaction_policy
+    ):
         raise ValueError("resident device order-one transport requires specular_suffix_mode=sampled")
 
 
+def _setup_manifest(setup: RooflineSetupConfig) -> dict[str, Any]:
+    manifest_path = setup.study_root / "config" / COHORT_MANIFEST_FILENAME
+    if not manifest_path.is_file():
+        if setup.campaign.cohort == COMPARABLE_COHORT:
+            raise FileNotFoundError(f"comparable campaign manifest is missing: {manifest_path}")
+        manifest_path = default_manifest_path()
+    return load_manifest(manifest_path)
+
+
+def _validate_comparable_setup(setup: RooflineSetupConfig, manifest: dict[str, Any], entry: dict[str, Any]) -> None:
+    contract_crop_m = int(manifest["contract"]["crop_m"])
+    if setup.run.crop_m != contract_crop_m:
+        raise ValueError(f"comparable cohort requires the manifest crop_m={contract_crop_m}")
+    route_radius_m = float(manifest["contract"]["route_radius_m"])
+    if setup.run.walk_radius_m != route_radius_m:
+        raise ValueError(f"comparable cohort requires the manifest walk_radius_m={route_radius_m}")
+    if setup.run.materials == "atlas":
+        declared_atlas = (setup.study_root / entry["materials"]["atlas_npz"]).resolve()
+        selected_atlas = declared_atlas if setup.run.atlas_npz is None else Path(setup.run.atlas_npz).resolve()
+        if selected_atlas != declared_atlas:
+            raise ValueError("comparable primary run must use the atlas declared by its cohort manifest")
+    readiness = campaign_readiness(
+        setup.run.site,
+        setup.campaign.cohort,
+        setup.campaign.route_contract or "",
+        setup.campaign.material_mode,
+        document=manifest,
+        root=setup.study_root,
+    )
+    if not readiness.ready:
+        raise ValueError(f"comparable campaign inputs are not ready: {readiness.as_dict()}")
+
+
 def _validate_setup_cohort_contract(setup: RooflineSetupConfig) -> None:
+    manifest = _setup_manifest(setup)
+    entry = validate_study_membership(setup.run.site, setup.campaign.cohort, manifest)
     if setup.campaign.cohort == "primary_semantic_route":
-        if setup.run.site not in PRIMARY_SEMANTIC_SITES or setup.run.walk_path != "links":
-            raise ValueError("primary cohort requires one of six admitted panorama-link routes")
-    elif setup.run.site not in GEOMETRIC_EXTENSION_SITES or setup.run.walk_path != "street":
-        raise ValueError("geometric extension requires one of four declared street-route sites")
+        if setup.run.walk_path != "links":
+            raise ValueError("legacy primary cohort requires a panorama-link route")
+    elif setup.campaign.route_contract == PROVIDER_CORRIDOR_V1:
+        if setup.run.walk_path != "provider_corridor":
+            raise ValueError(f"route contract {PROVIDER_CORRIDOR_V1!r} requires walk_path='provider_corridor'")
+    elif setup.run.walk_path != "street":
+        raise ValueError(f"cohort {setup.campaign.cohort!r} requires a declared street route")
+    if setup.campaign.cohort == COMPARABLE_COHORT:
+        _validate_comparable_setup(setup, manifest, entry)
     if setup.run.next_event.drop_clutter:
         raise ValueError(
             "drop_clutter is not silently approximated here; provide a sealed support-face clutter mask first"
@@ -364,7 +420,20 @@ def _automatic_input_paths(
         if path.is_file()
     )
     _add_route_input_paths(root, run, candidates)
-    if run.walk_path == "street":
+    if setup.campaign.cohort == COMPARABLE_COHORT:
+        manifest_path = root / "config" / COHORT_MANIFEST_FILENAME
+        readiness = campaign_readiness(
+            run.site,
+            setup.campaign.cohort,
+            setup.campaign.route_contract or "",
+            setup.campaign.material_mode,
+            manifest_path=manifest_path,
+            root=root,
+        )
+        candidates.add(manifest_path)
+        candidates.update(root / relative for relative in readiness.route.evidence)
+        candidates.update(root / relative for relative in readiness.materials.evidence)
+    elif run.walk_path == "street":
         candidates.update((root / "data" / "street_routes").glob(f"{run.site}_*{JSON_SUFFIX}"))
     _add_material_input_paths(setup, environment, candidates)
     _add_declared_input_paths(setup, root, candidates)
@@ -391,8 +460,13 @@ def prepare_roofline_campaign(
     environment: StudyEnvironment,
     *,
     backend: PreparationBackend | None = None,
+    persistent_cache_dir: Path | None = None,
 ) -> PreparedRooflineCampaign:
-    """Build the full route, exact curve, transport, body, and sealed identity."""
+    """Build the full route, exact curve, transport, body, and sealed identity.
+
+    ``persistent_cache_dir`` is an optional runtime acceleration location. It is
+    deliberately absent from campaign and transport provenance.
+    """
     selected = default_preparation_backend() if backend is None else backend
     scene = selected.prepare_scene(setup.run, environment)
     material = selected.bind_materials(setup.run, scene, environment)
@@ -402,9 +476,31 @@ def prepare_roofline_campaign(
     finally:
         if route_key is not None:
             os.environ["GOOGLE_API_KEY"] = route_key
-    expected_kind = PANORAMA_LINKS if setup.campaign.cohort == "primary_semantic_route" else STREET_ROUTE
+    if setup.campaign.cohort == "primary_semantic_route":
+        expected_kind = PANORAMA_LINKS
+    elif setup.campaign.route_contract == PROVIDER_CORRIDOR_V1:
+        expected_kind = PROVIDER_CORRIDOR
+    else:
+        expected_kind = STREET_ROUTE
     if walk.kind != expected_kind:
         raise ValueError(f"prepared walk kind {walk.kind!r} does not match cohort route {expected_kind!r}")
+    if setup.campaign.cohort == COMPARABLE_COHORT:
+        readiness = campaign_readiness(
+            setup.run.site,
+            setup.campaign.cohort,
+            setup.campaign.route_contract or "",
+            setup.campaign.material_mode,
+            manifest_path=setup.study_root / "config" / COHORT_MANIFEST_FILENAME,
+            root=setup.study_root,
+        )
+        if setup.campaign.route_contract == PROVIDER_CORRIDOR_V1:
+            actual_seal = walk.provenance.get("provider_corridor", {}).get("selection_sha256")
+            if actual_seal != readiness.route.selection_sha256:
+                raise ValueError("prepared provider corridor does not match the read-only readiness selection seal")
+        else:
+            actual_cache = walk.provenance.get("street_route", {}).get("cache_file")
+            if actual_cache != readiness.route.expected_cache:
+                raise ValueError("prepared street route does not use the manifest's exact registered endpoint cache")
     if len(walk) == 0:
         raise ValueError("prepared route is empty")
     next_event = setup.run.next_event
@@ -428,6 +524,7 @@ def prepare_roofline_campaign(
         expected_count=setup.source.expected_count,
         curve_resolution_m=setup.source.curve_resolution_m,
         top_edge_tolerance_m=setup.source.top_edge_tolerance_m,
+        source_measure_rule=setup.campaign.source_measure_rule,
     )
     trace_config = selected.trace_config(setup.run, environment)
     tracer_options = {} if material.atlas_material is None else {"atlas_material": material.atlas_material}
@@ -460,14 +557,17 @@ def prepare_roofline_campaign(
         specular_suffix_mode=setup.source.specular_suffix_mode,
         sampled_specular_samples=setup.source.sampled_specular_samples,
         sampled_specular_seed_offset=setup.source.sampled_specular_seed_offset,
+        transport_topology=setup.campaign.transport_topology,
         deterministic_cache_size=max(8, 2 * len(walk) + 4),
         diagnostic_models={},
+        **({} if persistent_cache_dir is None else {"persistent_cache_dir": persistent_cache_dir}),
     )
     coupler = selected.coupler_type(
         environment.phantom,
         setup.run.frequency_hz,
         level=2,
         body_mass_kg=environment.phantom_mass_kg,
+        level2_backend=_level2_body_backend(setup.run.variant),
     )
     input_paths = _automatic_input_paths(setup, environment, scene)
     input_records = [_input_record(path, setup.study_root) for path in input_paths]
@@ -600,6 +700,9 @@ def _preflight_readiness(
     if policy == "adaptive_all_specular_sampled_mixed_order_1":
         ready = bool(adaptive["enabled"] and sampled["enabled"])
         return ready, adaptive.get("reason") or sampled.get("reason")
+    if policy == "first_material_interaction_exact_order_1":
+        ready = bool(exact_work["enabled"] and exact_work.get("support_complete", False))
+        return ready, exact_work.get("reason")
     ready = estimator.specular_order == 0
     return ready, None if ready else "omitted diagnostic requires specular_order=0"
 

@@ -336,8 +336,8 @@ def seed_spread(python: str, seeds: tuple[int, ...] = (7, 8, 9, 10, 11)) -> dict
 def monte_carlo(seeds: int = 8) -> dict[str, object]:
     """Monte Carlo noise alone: one fixed standpoint, one fixed walk, eight trace seeds."""
     import numpy as np
-    from semantic_twin.propagation.scene import classify_faces, load_bindings
-    from semantic_twin.propagation.walk import build_walk, measure_ground_datum
+    from semantic_twin.materials import classify_faces, load_table
+    from semantic_twin.walk import build_walk, measure_ground_datum
 
     from semantic_twin.propagation import MODELS, MitsubaGeometry, SbrTracer, TraceConfig
 
@@ -345,7 +345,7 @@ def monte_carlo(seeds: int = 8) -> dict[str, object]:
     geometry = MitsubaGeometry(mesh, variant="llvm_ad_rgb")
     datum = measure_ground_datum(geometry, radius_m=90.0)
     face_class = classify_faces(geometry.vertices, geometry.faces, datum.z_m)
-    binding = load_bindings(ROOT / "config", 15.0e9)
+    binding = load_table(ROOT / "config", 15.0e9)
     walk = build_walk(geometry, ground_datum_m=datum.z_m, radius_m=90.0, spacing_m=3.0, seed=7)
     config = TraceConfig(frequency_hz=15.0e9, rays=200_000, local_cells=512, max_bounces=3, seed=7)
     tracer = SbrTracer(geometry, face_class, binding.permittivity, binding.rms_height_m, config)

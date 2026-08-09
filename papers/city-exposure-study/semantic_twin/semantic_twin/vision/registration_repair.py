@@ -43,6 +43,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from semantic_twin import paths
+from semantic_twin.vision.surface_atlas import semantic_evidence_directory
 
 #: Written beside the pose it replaces, so a re-registration is always reversible
 #: and the crop that produced each pose stays legible on disk.
@@ -58,28 +59,105 @@ class RepairOptions:
     site: str
     crop_m: int = 250
     station_names: tuple[str, ...] | None = None
+    cohort_dir: pathlib.Path | None = None
+    semantics_dirname: str = "semantics"
     dz_bounds: tuple[float, float] | None = None
     dry_run: bool = False
     no_backup: bool = False
     root_dir: pathlib.Path | None = None
 
 
-def stations(site: str, *, root_dir: pathlib.Path | None = None) -> list[pathlib.Path]:
-    """Panorama directories of a site that carry the inputs registration needs."""
-    root = paths.panorama_set(site) if root_dir is None else root_dir / "data" / "panoramas" / site
+def stations(
+    site: str,
+    *,
+    root_dir: pathlib.Path | None = None,
+    cohort_dir: pathlib.Path | None = None,
+    semantics_dirname: str = "semantics",
+) -> list[pathlib.Path]:
+    """Panorama directories carrying the inputs registration needs.
+
+    By default, station discovery is scoped to the site's canonical panorama
+    set.  ``cohort_dir`` is an explicit escape hatch for a deliberately
+    selected capture cohort, such as a dated Google Street View pull.  It is
+    resolved relative to ``root_dir`` (the study root) when given as a relative
+    path, so a registration run cannot silently mix an old set with a newly
+    acquired one merely because both happen to be under ``data/panoramas``.
+    """
+    study_root = _study_root(root_dir)
+    panorama_root = _station_root(site, study_root, root_dir=root_dir, cohort_dir=cohort_dir)
+    return [
+        folder
+        for folder in _candidate_station_directories(panorama_root)
+        if _has_registration_evidence(folder, semantics_dirname)
+    ]
+
+
+def _study_root(root_dir: pathlib.Path | None) -> pathlib.Path:
+    """Return the root used for resolving an explicit cohort and subprocesses."""
+    return paths.root() if root_dir is None else root_dir
+
+
+def _station_root(
+    site: str,
+    study_root: pathlib.Path,
+    *,
+    root_dir: pathlib.Path | None,
+    cohort_dir: pathlib.Path | None,
+) -> pathlib.Path:
+    """Resolve one canonical site set or one explicitly selected cohort."""
+    if cohort_dir is None:
+        root = _canonical_station_root(site, study_root, root_dir=root_dir)
+        error = f"no panorama directory for {site}"
+    else:
+        root = _explicit_cohort_root(cohort_dir, study_root)
+        error = f"no cohort directory at {root}"
     if not root.is_dir():
-        raise SystemExit(f"no panorama directory for {site}")
-    found = sorted(f for f in root.glob("pano_*") if f.is_dir())
-    if not found and (root / INITIAL_POSE_NAME).exists():
-        found = [root]
-    ready = []
-    for folder in found:
-        if not (folder / INITIAL_POSE_NAME).exists():
-            continue
-        if not (folder / "semantics" / "panorama_semantics.npz").exists():
-            continue
-        ready.append(folder)
-    return ready
+        raise SystemExit(error)
+    return root
+
+
+def _canonical_station_root(
+    site: str,
+    study_root: pathlib.Path,
+    *,
+    root_dir: pathlib.Path | None,
+) -> pathlib.Path:
+    if root_dir is None:
+        return paths.panorama_set(site)
+    return study_root / "data" / "panoramas" / site
+
+
+def _explicit_cohort_root(cohort_dir: pathlib.Path, study_root: pathlib.Path) -> pathlib.Path:
+    root = pathlib.Path(cohort_dir).expanduser()
+    if not root.is_absolute():
+        root = study_root / root
+    return root.resolve()
+
+
+def _candidate_station_directories(root: pathlib.Path) -> list[pathlib.Path]:
+    """List named panorama folders, accepting a single top-level station."""
+    found = sorted(folder for folder in root.glob("pano_*") if folder.is_dir())
+    if found or not (root / INITIAL_POSE_NAME).exists():
+        return found
+    return [root]
+
+
+def _has_registration_evidence(folder: pathlib.Path, semantics_dirname: str) -> bool:
+    """Whether a station has both the initial pose and selected segmentation."""
+    if not (folder / INITIAL_POSE_NAME).exists():
+        return False
+    semantics = _semantic_directory(folder, semantics_dirname)
+    return (semantics / "panorama_semantics.npz").exists()
+
+
+def _semantic_directory(folder: pathlib.Path, semantics_dirname: str) -> pathlib.Path:
+    try:
+        return semantic_evidence_directory(folder, semantics_dirname)
+    except ValueError as exc:
+        raise SystemExit(
+            "--semantics-dirname must be a relative path that is non-symlinked and physically beneath each "
+            "panorama folder"
+        ) from exc
 
 
 def panorama_image(folder: pathlib.Path) -> pathlib.Path | None:
@@ -114,8 +192,10 @@ def register(
     dry_run: bool,
     dz_bounds: tuple[float, float] | None = None,
     root_dir: pathlib.Path | None = None,
+    semantics_dirname: str = "semantics",
 ) -> list[str]:
     image = panorama_image(folder)
+    semantics = semantic_evidence_directory(folder, semantics_dirname)
     command = [
         sys.executable,
         "-m",
@@ -123,9 +203,9 @@ def register(
         "--mesh",
         str(mesh),
         "--semantics",
-        str(folder / "semantics" / "panorama_semantics.npz"),
+        str(semantics / "panorama_semantics.npz"),
         "--semantics-json",
-        str(folder / "semantics" / "semantics.json"),
+        str(semantics / "semantics.json"),
         "--pose",
         str(folder / INITIAL_POSE_NAME),
         "--out",
@@ -148,11 +228,17 @@ def register(
 def reregister_site(options: RepairOptions) -> list[str]:
     """Repair all selected registrations for one site and return changed stations."""
     study_root = options.root_dir or paths.root()
-    mesh = paths.geometry_dir(options.site, study_root) / f"inhouse_leaf_{options.crop_m}m.ply"
-    if not mesh.exists():
-        raise SystemExit(f"no {options.crop_m} m mesh for {options.site} at {mesh}")
+    try:
+        mesh = paths.site_mesh(options.site, options.crop_m, root_dir=study_root)
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc)) from exc
 
-    folders = stations(options.site, root_dir=study_root)
+    folders = stations(
+        options.site,
+        root_dir=study_root,
+        cohort_dir=options.cohort_dir,
+        semantics_dirname=options.semantics_dirname,
+    )
     if options.station_names:
         wanted = set(options.station_names)
         folders = [f for f in folders if f.name in wanted]
@@ -170,6 +256,7 @@ def reregister_site(options: RepairOptions) -> list[str]:
             dry_run=options.dry_run,
             dz_bounds=options.dz_bounds,
             root_dir=study_root,
+            semantics_dirname=options.semantics_dirname,
         )
         if options.dry_run:
             print(" ".join(command))

@@ -52,6 +52,76 @@ class CountingSky(OpenSky):
         return super().intersect(origins, directions)
 
 
+def test_first_material_interaction_gather_ignores_later_vertices() -> None:
+    gather = NextEventGather(
+        OpenSky(),
+        one_site(3.0),
+        np.random.default_rng(17),
+        max_order=1,
+        first_material_interaction_only=True,
+    )
+    gather.vertex(
+        index=np.array([0, 1], dtype=np.int64),
+        position=np.zeros((2, 3), dtype=np.float64),
+        incoming=np.tile(np.array([[0.0, 0.0, -1.0]]), (2, 1)),
+        normal=np.tile(np.array([[0.0, 0.0, 1.0]]), (2, 1)),
+        throughput=np.ones(2, dtype=np.float64),
+        share=np.zeros(2, dtype=np.float64),
+        order=np.array([1, 2], dtype=np.int64),
+        path_length=np.ones(2, dtype=np.float64),
+    )
+
+    assert gather.connections == 1
+    assert gather.cleared == 1
+    assert gather.total > 0.0
+    assert gather.by_order.shape == (2,)
+    assert gather.by_order[0] == 0.0
+    assert gather.by_order[1] == pytest.approx(gather.total)
+
+
+def test_first_material_interaction_estimator_locks_closed_topology() -> None:
+    geometry = PlaneGeometry(0.0)
+    source = one_site(3.0)
+    one_bounce = SbrTracer(
+        geometry,
+        None,
+        np.array([PEC_PERMITTIVITY]),
+        np.array([1.0]),
+        TraceConfig(rays=8, max_bounces=1, local_cells=8),
+    )
+    estimator = NextEventEstimator(
+        one_bounce,
+        geometry,
+        source,
+        max_order=1,
+        specular_order=1,
+        specular_suffix_mode="disabled",
+        transport_topology="first_material_interaction_v1",
+    )
+    assert estimator.transport_topology == "first_material_interaction_v1"
+
+    with pytest.raises(ValueError, match="max_order=1"):
+        NextEventEstimator(
+            one_bounce,
+            geometry,
+            source,
+            max_order=2,
+            specular_order=1,
+            specular_suffix_mode="disabled",
+            transport_topology="first_material_interaction_v1",
+        )
+    with pytest.raises(ValueError, match="specular_suffix_mode='disabled'"):
+        NextEventEstimator(
+            one_bounce,
+            geometry,
+            source,
+            max_order=1,
+            specular_order=1,
+            specular_suffix_mode="sampled",
+            transport_topology="first_material_interaction_v1",
+        )
+
+
 def bounce_over_plane(
     source_height_m: float,
     head_height_m: float,

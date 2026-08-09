@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 
+from .. import paths
 from ..propagation.bystander_geometry import (
     ABSORBER_PERMITTIVITY,
     CLOTHING_RMS_HEIGHT_M,
@@ -97,22 +98,13 @@ def _finished_locations(rows_path: pathlib.Path, expected_crowd_rows: int) -> se
 
 
 def site_mesh(root: pathlib.Path, site: str, crop_m: int) -> pathlib.Path:
-    """The double precision support mesh for a site, refusing the defective one.
+    """Resolve a traceable support mesh through the canonical study resolver.
 
-    The same rule ``run_exposure.py`` applies, spelled out again here rather
-    than imported. Importing the study runner would drag its whole semantic
-    binding chain into a module that needs none of it, and this package is
-    edited by more than one hand at a time.
+    This compatibility entry point retains the historical ``root`` argument
+    used by the bystander runner and :mod:`semantic_twin.propagation.bystanders`.
+    Mesh selection and format provenance are owned by :func:`semantic_twin.paths.site_mesh`.
     """
-    directory = pathlib.Path(root) / "data" / "geometry" / site
-    for candidate in (f"inhouse_leaf_{crop_m}m_f64.ply", f"inhouse_leaf_{crop_m}m.ply"):
-        path = directory / candidate
-        manifest = path.with_suffix(".json")
-        if not path.exists() or not manifest.exists():
-            continue
-        if int(json.loads(manifest.read_text()).get("format_version", 0)) >= 3:
-            return path
-    raise FileNotFoundError(f"no double precision {crop_m} m mesh for {site}")
+    return paths.site_mesh(site, crop_m, root_dir=pathlib.Path(root))
 
 
 def ground_datum(root: pathlib.Path, site: str, geometry: Any, *, radius_m: float = 15.0, samples: int = 4096) -> float:

@@ -50,7 +50,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--walk-path",
-        choices=["links", "street", "closest"],
+        choices=["links", "street", "closest", "provider_corridor"],
         default="links",
         help="links walks the capture path, street asks Google Routes, closest measures both and keeps the nearer",
     )

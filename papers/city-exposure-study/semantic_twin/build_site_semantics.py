@@ -34,15 +34,37 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-sky-conflict", type=float, default=0.5)
     parser.add_argument("--min-conflict-range-m", type=float, default=2.0)
     parser.add_argument("--out", type=pathlib.Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--cohort-dir",
+        type=pathlib.Path,
+        help="explicit dated panorama cohort beneath the study root; never mixed with canonical cameras",
+    )
+    parser.add_argument(
+        "--semantics-dirname",
+        default="semantics",
+        help="relative evidence directory selected beneath every admitted panorama folder",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = arguments(argv)
+    selected = _selected_sites(args)
+    options = _build_options(args)
+    for site in selected:
+        _run_site(site, args, options)
+    return 0
+
+
+def _selected_sites(args: argparse.Namespace) -> tuple[str, ...]:
     selected = SITES if args.all_sites else tuple(args.site or ())
     if not selected:
         raise SystemExit("name --site or pass --all-sites")
-    options = SemanticBuildOptions(
+    return selected
+
+
+def _build_options(args: argparse.Namespace) -> SemanticBuildOptions:
+    return SemanticBuildOptions(
         crop_m=args.crop_m,
         grid_height=args.grid_height,
         block_rows=args.block_rows,
@@ -51,30 +73,40 @@ def main(argv: list[str] | None = None) -> int:
         max_sky_conflict=args.max_sky_conflict,
         min_conflict_range_m=args.min_conflict_range_m,
         out_root=args.out,
+        cohort_dir=args.cohort_dir,
+        semantics_dirname=args.semantics_dirname,
     )
-    for site in selected:
-        try:
-            report = _build(site, options)
-        except FileNotFoundError as exc:
-            print(f"[skip] {site}: {exc}", flush=True)
-            continue
-        if report is None or report.get("result") != "written":
-            print(
-                f"[none] {site}: {report.get('result') if report else 'nothing'}, "
-                f"{len(report['stations_admitted']) if report else 0} admitted of "
-                f"{len(report['stations_admitted']) + len(report['stations_refused']) if report else 0}",
-                flush=True,
-            )
-            continue
-        coverage = report["coverage"]
-        print(
-            f"[bound] {site} at {args.crop_m} m: {len(report['stations_cast'])} stations of "
-            f"{len(report['stations_admitted']) + len(report['stations_refused'])}, "
-            f"{coverage['covered_fraction_by_face']:.4f} of faces, "
-            f"{coverage['covered_fraction_by_area']:.4f} of area -> {report['walk_npz']}",
-            flush=True,
-        )
-    return 0
+
+
+def _run_site(site: str, args: argparse.Namespace, options: SemanticBuildOptions) -> None:
+    try:
+        report = _build(site, options)
+    except FileNotFoundError as exc:
+        print(f"[skip] {site}: {exc}", flush=True)
+        return
+    if report is None or report.get("result") != "written":
+        _print_empty_site(site, report)
+        return
+    _print_site_bound(site, args.crop_m, report)
+
+
+def _print_empty_site(site: str, report: dict | None) -> None:
+    admitted = len(report["stations_admitted"]) if report else 0
+    total = admitted + len(report["stations_refused"]) if report else 0
+    result = report.get("result") if report else "nothing"
+    print(f"[none] {site}: {result}, {admitted} admitted of {total}", flush=True)
+
+
+def _print_site_bound(site: str, crop_m: int, report: dict) -> None:
+    coverage = report["coverage"]
+    station_count = len(report["stations_cast"])
+    total = len(report["stations_admitted"]) + len(report["stations_refused"])
+    print(
+        f"[bound] {site} at {crop_m} m: {station_count} stations of {total}, "
+        f"{coverage['covered_fraction_by_face']:.4f} of faces, "
+        f"{coverage['covered_fraction_by_area']:.4f} of area -> {report['walk_npz']}",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":
