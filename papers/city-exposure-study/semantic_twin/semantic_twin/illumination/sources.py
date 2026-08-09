@@ -191,12 +191,18 @@ def silhouette_cloud(
     return np.concatenate(out) if out else np.empty((0, 3))
 
 
+#: Shadow-ray start offset for exact direct visibility. The persistent
+#: transport cache records this value in its identity, so it must be read from
+#: here rather than restated as a literal.
+DIRECT_EPSILON_M = 1.0e-3
+
+
 def visible(
     geometry: Any,
     origins: np.ndarray,
     targets: np.ndarray,
     *,
-    epsilon_m: float = 1.0e-3,
+    epsilon_m: float = DIRECT_EPSILON_M,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Whether each origin sees its target, and how far away it is.
 
@@ -265,7 +271,7 @@ def direct_from_sites(
     sites: np.ndarray,
     *,
     weights: np.ndarray | None = None,
-    epsilon_m: float = 1.0e-3,
+    epsilon_m: float = DIRECT_EPSILON_M,
     chunk: int = 400_000,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Direct term and visible fraction, one shadow ray per standpoint per site.

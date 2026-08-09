@@ -73,13 +73,19 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _cdf(values: np.ndarray) -> dict[str, list[float]]:
-    finite = np.sort(np.asarray(values, dtype=np.float64)[np.isfinite(values)])
+def _cdf(values: np.ndarray) -> dict[str, Any]:
+    array = np.asarray(values, dtype=np.float64)
+    finite = np.sort(array[np.isfinite(array)])
+    counts = {
+        "defined_standpoints": int(finite.size),
+        "excluded_nonfinite_standpoints": int(array.size - finite.size),
+    }
     if finite.size == 0:
-        return {"x": [], "probability": []}
+        return {"x": [], "probability": [], **counts}
     return {
         "x": [float(value) for value in finite],
         "probability": [float(value) for value in (np.arange(finite.size) + 0.5) / finite.size],
+        **counts,
     }
 
 
@@ -397,6 +403,7 @@ def _city_data(city: str, campaign: _Campaign, looks: Sequence[int] | None) -> d
             "launch_sampling": campaign.sampling,
         },
         "contract": {
+            "site": configuration.get("site"),
             "cohort": configuration.get("cohort"),
             "route_contract": configuration.get("route_contract"),
             "material_mode": configuration.get("material_mode"),
@@ -415,6 +422,31 @@ def _city_data(city: str, campaign: _Campaign, looks: Sequence[int] | None) -> d
     }
 
 
+def _require_coherent_contracts(cities: Mapping[str, Mapping[str, Any]]) -> None:
+    sites: dict[str, str] = {}
+    for city, campaign in cities.items():
+        site = campaign["contract"]["site"]
+        if not isinstance(site, str) or not site.strip():
+            raise CampaignComparisonError(
+                f"campaign for city {city!r} has no site in its sealed identity configuration; "
+                "refusing to pool campaigns whose site binding is unknown"
+            )
+        if site in sites:
+            raise CampaignComparisonError(
+                f"cities {sites[site]!r} and {city!r} both resolve to campaign site {site!r}; "
+                "refusing to pool two campaigns of the same site as distinct cities"
+            )
+        sites[site] = city
+    for key in ("route_contract", "material_mode"):
+        values = {city: campaign["contract"][key] for city, campaign in cities.items()}
+        distinct = {value for value in values.values()}
+        if len(distinct) > 1:
+            raise CampaignComparisonError(
+                f"pooled campaigns disagree on {key}: {values!r}; "
+                "a multicity comparison requires one contract for all cities"
+            )
+
+
 def build_multicity_results(
     campaigns: Mapping[str, _Campaign], *, looks: Sequence[int] | None = None
 ) -> dict[str, Any]:
@@ -422,6 +454,7 @@ def build_multicity_results(
     if not campaigns:
         raise ValueError("at least one campaign is required")
     cities = {city: _city_data(city, campaign, looks) for city, campaign in campaigns.items()}
+    _require_coherent_contracts(cities)
     topology_metadata = (
         {}
         if all(campaign.schema_version == SCHEMA_VERSION for campaign in campaigns.values())
@@ -607,6 +640,7 @@ def _write_artifact_manifest(path: Path, artifacts: Iterable[Path], data: Mappin
     records = {artifact.name: {"sha256": _sha256(artifact), "bytes": artifact.stat().st_size} for artifact in artifacts}
     source_campaigns = {
         city: {
+            "site": campaign["contract"]["site"],
             "campaign_identity_sha256": campaign["provenance"]["campaign_identity_sha256"],
             "campaign_manifest_sha256": campaign["provenance"]["campaign_manifest_sha256"],
             **(

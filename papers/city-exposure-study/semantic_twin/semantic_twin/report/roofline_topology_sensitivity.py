@@ -217,10 +217,31 @@ def _scalar_pair(hybrid: float, first: float) -> dict[str, float | None]:
 
 
 def _route_quantiles(hybrid: np.ndarray, first: np.ndarray) -> dict[str, Any]:
-    result: dict[str, Any] = {}
+    paired_changes = np.asarray(
+        [change for change in _db_change(hybrid, first) if change is not None], dtype=np.float64
+    )
+    result: dict[str, Any] = {
+        "definitions": {
+            "per_arm": (
+                "each arm's route quantile computed independently, then compared; "
+                "difference_db is the ratio of the two quantiles, not a quantile of per-standpoint changes"
+            ),
+            "paired_db_change": (
+                "quantiles of the per-standpoint dB change first/hybrid, "
+                "excluding standpoints where either arm is nonpositive"
+            ),
+        },
+        "paired_db_change": {
+            "defined_standpoints": int(paired_changes.size),
+            "excluded_standpoints": int(np.asarray(hybrid).size - paired_changes.size),
+        },
+    }
     for quantile in (0.10, 0.50, 0.90):
         key = f"q{int(quantile * 100)}"
         result[key] = _scalar_pair(float(np.quantile(hybrid, quantile)), float(np.quantile(first, quantile)))
+        result["paired_db_change"][key] = (
+            None if paired_changes.size == 0 else float(np.quantile(paired_changes, quantile))
+        )
     return result
 
 
