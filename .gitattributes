@@ -74,3 +74,4 @@ site/** linguist-generated
 # Lock files: accept the new version on conflicts, regenerate after
 uv.lock merge=binary
 aegis-web/package-lock.json merge=binary
+papers/city-exposure-study/semantic_twin/outputs/roofline_campaign/** -text
