@@ -559,14 +559,21 @@ class TestComputeRtRoute:
             "t]\x00\xed%c",  # embedded null byte (schemathesis-found)
             "scene\x00.xml",
             "\x00",
+            -999999999999,  # non-string JSON value (schemathesis-found)
+            12.5,
+            True,
+            [1, 2],
+            {"a": 1},
         ],
     )
     def test_unresolvable_scene_path_never_500(self, viewer_app, bad_scene_path):
-        """A scene_path that ``Path.resolve`` cannot handle (embedded null byte)
-        must be rejected as an invalid scene, not surface a raw 500.
+        """A scene_path that ``Path`` cannot handle (embedded null byte,
+        non-string JSON value) must be rejected as an invalid scene, not
+        surface a raw 500.
 
-        Schemathesis synthesised a scene_path with a null byte; ``Path.resolve``
-        raised ``ValueError: embedded null byte`` deep in ``_validate_scene_path``.
+        Schemathesis synthesised a scene_path with a null byte (``Path.resolve``
+        raised ``ValueError``) and later an integer scene_path (``Path``
+        raised ``TypeError``) deep in ``_validate_scene_path``.
         """
         with viewer_app.test_client() as c:
             resp = c.post("/api/compute/rt", json={"scene_path": bad_scene_path})
