@@ -308,6 +308,46 @@ def test_content_identity_excludes_seed_launch_and_cache_location_but_invalidate
     assert all(cache_key(identity(value, point)) != baseline_key for value, point in variants)
 
 
+def test_identity_reads_live_algorithm_constants(tmp_path) -> None:
+    from semantic_twin.transport import next_event as next_event_module
+    from semantic_twin.transport import specular_broadphase
+
+    origin = np.array([2.0, 0.0, 2.0])
+
+    def identity(value: NextEventEstimator) -> dict:
+        cache = value._persistent_cache
+        assert cache is not None
+        document = cache.identity(
+            value,
+            kind="deterministic_one_reflection",
+            origin=origin,
+            maximum_order=1,
+            transport=value.specular_transport,
+        )
+        assert document is not None
+        return document
+
+    baseline = identity(estimator(tmp_path / "baseline"))
+    settings = baseline["deterministic_settings"]
+    assert settings["direct_epsilon_m"] == next_event_module.DIRECT_EPSILON_M
+    assert settings["minimum_connect_m"] == next_event_module.MIN_CONNECT_M
+    assert settings["broadphase_inside_tolerance"] == specular_broadphase._DEFAULT_INSIDE_TOLERANCE
+    assert settings["broadphase_round_off_multiplier"] == specular_broadphase._ROUND_OFF_MULTIPLIER
+
+    patches = (
+        (next_event_module, "DIRECT_EPSILON_M", 5.0e-3),
+        (next_event_module, "MIN_CONNECT_M", 0.75),
+        (specular_broadphase, "_DEFAULT_INSIDE_TOLERANCE", specular_broadphase._DEFAULT_INSIDE_TOLERANCE * 2.0),
+        (specular_broadphase, "_ROUND_OFF_MULTIPLIER", specular_broadphase._ROUND_OFF_MULTIPLIER * 2.0),
+    )
+    baseline_key = cache_key(baseline)
+    for index, (module, name, replacement) in enumerate(patches):
+        with pytest.MonkeyPatch.context() as context:
+            context.setattr(module, name, replacement)
+            patched_key = cache_key(identity(estimator(tmp_path / f"patched_{index}")))
+        assert patched_key != baseline_key, name
+
+
 def test_corrupt_entry_is_a_miss_and_is_atomically_replaced(tmp_path) -> None:
     origin = np.array([2.0, 0.0, 2.0])
     first, _field = estimator(tmp_path / "cache").estimate_field(origin)

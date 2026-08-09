@@ -13,6 +13,7 @@ from semantic_twin.report.roofline_campaign_comparison import CampaignComparison
 from semantic_twin.report.roofline_topology_sensitivity import (
     _ALLOWED_IDENTITY_PATHS,
     _REMOVED_IDENTITY_PATHS,
+    _route_quantiles,
     compare_topologies,
     write_topology_sensitivity,
 )
@@ -86,6 +87,7 @@ def test_topology_report_writes_authenticated_machine_and_figure_artifacts(tmp_p
     first_row = report["per_seed_point"][0]
     assert first_row["raw_transfer"]["first_all_specular"] == pytest.approx(0.25)
     assert "q90" in report["final_route"]["total_body_metrics"]["sar_wb_w_kg"]["route_quantiles"]
+    assert "paired_db_change" in report["final_route"]["total_body_metrics"]["sar_wb_w_kg"]["route_quantiles"]
     assert report["zero_direct_strata"]["shared"] == []
     assert len(report["convergence"]) == 4
     assert "first_all_specular" in artifacts.csv.read_text(encoding="utf-8").splitlines()[0]
@@ -114,6 +116,27 @@ def test_topology_report_rejects_ray_budget_drift(tmp_path: Path) -> None:
 
     with pytest.raises(CampaignComparisonError, match="transport.tracer.configuration.rays"):
         compare_topologies(hybrid, first)
+
+
+def test_route_quantiles_report_paired_changes_distinct_from_per_arm_ratios() -> None:
+    import numpy as np
+
+    hybrid = np.array([1.0, 10.0, 100.0, 0.0])
+    first = np.array([2.0, 10.0, 50.0, 1.0])
+
+    report = _route_quantiles(hybrid, first)
+
+    paired = report["paired_db_change"]
+    assert paired["defined_standpoints"] == 3
+    assert paired["excluded_standpoints"] == 1
+    assert paired["q50"] == pytest.approx(0.0)
+    assert paired["q10"] == pytest.approx(-2.408239965, abs=1.0e-6)
+    assert paired["q90"] == pytest.approx(2.408239965, abs=1.0e-6)
+    per_arm_q50_db = report["q50"]["difference_db"]
+    assert per_arm_q50_db == pytest.approx(10.0 * np.log10(6.0 / 5.5))
+    assert paired["q50"] != pytest.approx(per_arm_q50_db)
+    assert "per_arm" in report["definitions"]
+    assert "paired_db_change" in report["definitions"]
 
 
 def test_topology_sensitivity_cli_parses_inputs() -> None:

@@ -12,6 +12,7 @@ from typing import Any, ClassVar
 import numpy as np
 
 from ..illumination.model import AngularIllumination, PlacedIllumination
+from ..illumination.sources import DIRECT_EPSILON_M as _SOURCE_DIRECT_EPSILON_M
 from ..illumination.sources import direct_from_sites, normalized_source_weights, visible
 from ..illumination.sphere import nearest_cell
 from .device_next_event import (
@@ -47,6 +48,11 @@ from .tracer import SbrTracer
 #: `1/r**2` at a few centimetres is meaningless.
 MIN_CONNECT_M = 0.5
 
+#: Shadow-ray start offset for the exact direct term. One value, defined at
+#: its point of use in :mod:`semantic_twin.illumination.sources`, re-exported
+#: here so the persistent transport cache can record it without a literal.
+DIRECT_EPSILON_M = _SOURCE_DIRECT_EPSILON_M
+
 
 def _direct_field_masses(
     geometry: Any,
@@ -54,7 +60,7 @@ def _direct_field_masses(
     sources: PlacedIllumination,
     local_grid: np.ndarray,
     *,
-    epsilon_m: float = 1.0e-3,
+    epsilon_m: float = DIRECT_EPSILON_M,
 ) -> tuple[np.ndarray, float]:
     """Exact direct source masses binned by receiver-local direction.
 
@@ -74,7 +80,7 @@ def _direct_field_atoms(
     origin: np.ndarray,
     sources: PlacedIllumination,
     *,
-    epsilon_m: float = 1.0e-3,
+    epsilon_m: float = DIRECT_EPSILON_M,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return visible direct sources as exact physical-arrival atoms.
 
@@ -94,7 +100,7 @@ def _direct_field_data(
     sources: PlacedIllumination,
     local_grid: np.ndarray | None,
     *,
-    epsilon_m: float = 1.0e-3,
+    epsilon_m: float = DIRECT_EPSILON_M,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, float]:
     """Collect direct bins, exact atoms, and scalar bookkeeping in one pass."""
     sites = np.asarray(sources.sites(), dtype=np.float64)

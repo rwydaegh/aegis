@@ -39,6 +39,9 @@ def _write_campaign(
     reference_mode: str = "per_density_eirp",
     zero_direct: bool = False,
     first_interaction: bool = False,
+    site: str | None = "fixture",
+    route_contract: str = "provider_corridor_v1",
+    material_mode: str = "atlas",
 ) -> None:
     seeds = (7, 8)
     points = 2
@@ -46,10 +49,10 @@ def _write_campaign(
     schema_version = FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION if first_interaction else SCHEMA_VERSION
     identity_data = {
         "configuration": {
-            "site": "fixture",
+            **({} if site is None else {"site": site}),
             "cohort": "comparable_city",
-            "route_contract": "provider_corridor_v1",
-            "material_mode": "atlas",
+            "route_contract": route_contract,
+            "material_mode": material_mode,
             "reference_mode": reference_mode,
             "planned_seeds": list(seeds),
             "convergence_looks": [1, 2],
@@ -167,6 +170,9 @@ def test_multicity_writer_validates_and_exports_route_results(tmp_path: Path) ->
     assert city["route"][0]["wbsar"] == pytest.approx(1.35)
     assert city["route"][0]["peak_sab_ensemble_field"] == pytest.approx(1.3)
     assert city["route_cdf"]["wbsar"]["probability"] == pytest.approx([0.25, 0.75])
+    assert city["route_cdf"]["wbsar"]["defined_standpoints"] == 2
+    assert city["route_cdf"]["wbsar"]["excluded_nonfinite_standpoints"] == 0
+    assert city["contract"]["site"] == "fixture"
     assert city["convergence"]["look_to_look"][0]["to_replicas"] == 2
     uncertainty = city["route_quantile_uncertainty"]
     assert uncertainty["bootstrap_replicates"] == 2000
@@ -176,6 +182,7 @@ def test_multicity_writer_validates_and_exports_route_results(tmp_path: Path) ->
     assert city["tail_instability"]["look_to_look"][0]["route_quantile_abs_change_db"]["q10"] > 0.0
     manifest = json.loads(artifacts.manifest.read_text(encoding="utf-8"))
     assert manifest["sources"]["fixture"]["campaign_identity_sha256"] == city["provenance"]["campaign_identity_sha256"]
+    assert manifest["sources"]["fixture"]["site"] == "fixture"
     assert manifest["artifacts"][artifacts.json.name]["sha256"] == _sha256(artifacts.json)
     assert "transport_topology" not in artifacts.csv.read_text(encoding="utf-8").splitlines()[0]
 
@@ -245,6 +252,50 @@ def test_multicity_writer_rejects_physical_scale_campaign(tmp_path: Path) -> Non
 
     with pytest.raises(CampaignComparisonError, match="per_density_eirp"):
         write_multicity_results([CampaignInput("fixture", campaign)], tmp_path / "result")
+
+
+def test_multicity_writer_rejects_missing_site_binding(tmp_path: Path) -> None:
+    campaign = tmp_path / "campaign"
+    _write_campaign(campaign, site=None)
+
+    with pytest.raises(CampaignComparisonError, match="no site in its sealed identity"):
+        write_multicity_results([CampaignInput("fixture", campaign)], tmp_path / "result")
+
+
+def test_multicity_writer_rejects_duplicate_site_under_distinct_city_labels(tmp_path: Path) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    _write_campaign(first, site="korenmarkt")
+    _write_campaign(second, site="korenmarkt")
+
+    with pytest.raises(CampaignComparisonError, match="both resolve to campaign site"):
+        write_multicity_results(
+            [CampaignInput("korenmarkt", first), CampaignInput("gent", second)], tmp_path / "result"
+        )
+
+
+def test_multicity_writer_rejects_heterogeneous_route_contract(tmp_path: Path) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    _write_campaign(first, site="korenmarkt", route_contract="registered_span_street_v1")
+    _write_campaign(second, site="prague", route_contract="provider_corridor_v1")
+
+    with pytest.raises(CampaignComparisonError, match="disagree on route_contract"):
+        write_multicity_results(
+            [CampaignInput("korenmarkt", first), CampaignInput("prague", second)], tmp_path / "result"
+        )
+
+
+def test_multicity_writer_rejects_heterogeneous_material_mode(tmp_path: Path) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    _write_campaign(first, site="korenmarkt", material_mode="atlas")
+    _write_campaign(second, site="prague", material_mode="uniform")
+
+    with pytest.raises(CampaignComparisonError, match="disagree on material_mode"):
+        write_multicity_results(
+            [CampaignInput("korenmarkt", first), CampaignInput("prague", second)], tmp_path / "result"
+        )
 
 
 def test_multicity_cli_parses_repeated_cities_and_looks() -> None:

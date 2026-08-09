@@ -256,12 +256,21 @@ def _common_identity(estimator: Any) -> dict[str, Any] | None:
     sites = np.asarray(estimator.sources.sites(), dtype=np.float64)
     weights = normalized_source_weights(estimator.sources)
     atlas = _atlas_identity(getattr(tracer, "atlas_material", None))
+    # Late imports keep this module import-light and avoid a cycle with
+    # next_event, which imports this cache. The identity must read the live
+    # constants: a literal here would keep serving stale entries after an
+    # algorithm constant changed.
+    from .next_event import DIRECT_EPSILON_M, MIN_CONNECT_M
+    from .specular_broadphase import _DEFAULT_INSIDE_TOLERANCE, _ROUND_OFF_MULTIPLIER
+
     deterministic_settings = {
         "samples": int(estimator.samples),
         "max_order": None if estimator.max_order is None else int(estimator.max_order),
         "connection_lift_m": float(estimator.connection_lift_m),
-        "direct_epsilon_m": 1.0e-3,
-        "minimum_connect_m": 0.5,
+        "direct_epsilon_m": float(DIRECT_EPSILON_M),
+        "minimum_connect_m": float(MIN_CONNECT_M),
+        "broadphase_inside_tolerance": float(_DEFAULT_INSIDE_TOLERANCE),
+        "broadphase_round_off_multiplier": float(_ROUND_OFF_MULTIPLIER),
         "specular_order": int(estimator.specular_order),
         "specular_candidate_budget": int(estimator.specular_candidate_budget),
         "specular_suffix_mode": str(estimator.specular_suffix_mode),
