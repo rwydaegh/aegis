@@ -75,3 +75,18 @@ The endgame is right, the timing is the trap.
 - Concrete instrument: an option agreement. UGent grants ZMT a 6-12 month option on an exclusive license, ZMT pays an option fee and the patent costs during evaluation. Common TTO structure, and it converts the patent from Robin's chore into ZMT's expense at the earliest legitimate moment.
 - The publish-everything appetite is compatible with all of this, with one asymmetry to know: after the priority filing, publish freely, the filed claims are safe (Wout already proposed submitting TAP and TWC immediately after filing). But everything published becomes prior art against any FUTURE filing. The pandora's box of follow-on research means this one filing is probably the only patent there will ever be, which raises, not lowers, the value of getting its text right at the PCT stage.
 - Robin's detachment is a negotiating asset. No emotional attachment to prosecution control means it can be traded away for money without pain. The thing to never trade is ownership before the deal exists.
+
+### The option agreement, and who holds it
+
+The option is the right-sized first commercial step with ZMT: for them it is cheap exclusivity (a modest option fee plus the patent costs while they evaluate, typically a fraction of a license), for us it converts interest into money, covers the PCT, and puts a deadline on their decision. It is a second-conversation instrument. The first conversation stays scientific.
+
+The fork nobody should miss: the option can be granted by UGent or by the BV, and that choice sets Robin's cut.
+
+- UGent grants ZMT the option directly: Robin receives the inventor share of the net income, ~25%.
+- The BV takes the Fast Lane license first, then the BV grants ZMT the option or sublicense: the BV (Robin at ~94% after UGent's 6%) captures nearly everything, minus the Fast Lane royalty, of which ~25% of UGent's net comes back anyway.
+
+An exclusive option to ZMT and a Fast Lane license to the BV compete for the same exclusivity, so sequencing is everything. If ZMT interest materialises, that is precisely the trigger to incorporate and take the Fast Lane license BEFORE anything is granted to ZMT. Serious ZMT option interest = incorporate now.
+
+Two actions that follow today: tell Filip and Alessandro that the intended path is an option-to-license with an industrial partner during the priority year (TechTransfer's own default requires a commercial commitment before national phase, this is that commitment, and it makes the IOF valorisation story concrete). And when the Fast Lane term sheet is read, check the sublicensing clause: if the BV's license cannot sublicense, the BV cannot grant ZMT anything, and the whole upside-capture route dies on a boilerplate term.
+
+Calendar fit: priority filed ~Oct-Nov 2026, PCT decision ~Oct-Nov 2027. Scientific contact autumn 2026, validation plus Ericsson demo through winter, commercial conversation spring 2027, option signed by summer, ZMT's attorneys direct the PCT rewrite before month 12. This matches the existing PCT criterion in the patent notes ("file only if ZMT conversation advancing, JSAC accepted, LOI, or VLAIO approved").
