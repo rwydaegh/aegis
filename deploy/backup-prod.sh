@@ -66,7 +66,7 @@ if [[ "$FULL" == "1" ]]; then
   # 4. Large license-gated build inputs that live only on prod: stream them
   #    straight from the box to gdrive (no local temp) via rclone's on-the-fly
   #    sftp backend. size-only so re-runs upload nothing when unchanged.
-  sftp=":sftp,host=$PROD_HOST,user=$PROD_USER,key_file=$SSH_KEY"
+  sftp=":sftp,host=$PROD_HOST,user=$PROD_USER,key_file=$SSH_KEY,known_hosts_file=$HOME/.ssh/known_hosts"
   log "Mirroring msi_raw antenna zips -> $GDRIVE_REMOTE/data"
   rclone sync "$sftp:$APP_DIR/data" "$GDRIVE_REMOTE/data" --size-only --transfers 4 || log "  (msi_raw mirror failed, non-critical)"
   log "Mirroring basestations lib -> $GDRIVE_REMOTE/basestations"
