@@ -1,0 +1,85 @@
+{
+ "osm_id": 1410441581,
+ "status": "ok",
+ "reading": {
+  "identification": "A very narrow (5.2 m) gable-fronted brick quayside house of the Flemish 16th\u201317th century burgher/guild-house type, wedged as a sliver infill in the Graslei/Korenlei terrace, with a horeca ground floor facing the pedestrian sett quay and dwelling/storage above.",
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 3.6,
+   "upper_height_m": 2.8,
+   "evidence": "inferred"
+  },
+  "bays": {
+   "count": 2,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.05,
+   "height_m": 1.9,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "inferred"
+  },
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "inferred"
+  },
+  "roof": {
+   "form": "stepped_gable",
+   "ridge_parallel_to_street": false,
+   "evidence": "inferred"
+  },
+  "ledges": {
+   "sills": true,
+   "cornice": false,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "concrete",
+   "evidence": "inferred"
+  },
+  "confidence": 0.35,
+  "notes": "PLATE UNUSABLE. The Inhouse 3D tiles in this region have degenerated into smeared shards; no storey line, opening, reveal or ground-floor edge survives, and the mauve cast is tile atmosphere rather than true colour. A reddish pitched-roof mass sits near the top of the magenta box but cannot be attributed to the target versus the row behind, so even the roof is marked inferred. Nothing here is seen.\n\nTAG CAVEAT: osm building=roof. I have read this as a roof-only mapping over a real narrow house rather than as an open canopy \u2014 a 13.2 m open canopy on a 19 m2 plot with 4 attached neighbours is not a form that occurs in this terrace. If the generator honours building=roof literally it will produce a wall-less shed and should override this grammar; flagged for the data owner.\n\nHEIGHT CONSISTENCY: 3.6 ground + 2 x 2.8 upper = 9.2 m eaves, + ~4.0 m stepped gable = the given 13.2 m. Storey count 3 is derived from that budget, not observed. If the 13.2 m turns out to be eaves rather than ridge, go to 4 storeys and keep the gable.\n\nCLUTTER: fronting way is highway=path, surface=sett, car_access=none. NO VEHICLES on this frontage \u2014 this is the pedestrian quay, and a parked-car rule firing here would repeat the medieval-square failure. Populate with cafe terrace furniture and parasols against the ground-floor glazing, bollards, bike clusters, and the quay edge with moored boats. Sett surface should be a roughness parameter, not tessellated cobbles.\n\nDETAIL BUDGET: concentrate on the gable silhouette (the crow-steps are the feature a rotated camera judges, and they are genuine >10 cm geometry producing strong edge diffraction against sky), on the window reveals and sills, and on the ground-floor glazing plane. The two flanks are buried between four attached neighbours, receive no beam and should get near-zero budget.\n\nPHYSICS: brick relief and lime mortar joints at 5-8 mm stay as the 6 mm RMS roughness number plus a scattering coefficient, never as mesh. The 0.12 m window reveals, the sills, the string courses and the gable steps are the facets that matter and must be explicit geometry. Trim is set to concrete as the nearest available dielectric proxy for Balegem sandstone (the real trim material, eps ~4-6); marble in the enum would be too high. No cornice: gable-fronted houses of this type terminate in the stepped coping rather than an eaves cornice, and the string courses stand in for the sandstone/brick banding (speklagen). No balconies \u2014 absent from this building type in Ghent.\n\nCONFIDENCE 0.35 reflects zero usable imagery plus an ambiguous building tag. The grammar is a defensible instance of the type, not a recovery of this specific facade. A single street photograph would move most of these fields to seen and roughly double the confidence."
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 1410441581,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "roof"
+  },
+  "frontage_width_m": 5.2,
+  "footprint_m": [
+   5.2,
+   4.1
+  ],
+  "footprint_area_m2": 19,
+  "height_m": 13.2,
+  "height_source": "adopted-photo",
+  "street_frontages": 1,
+  "attached_neighbours": 4,
+  "fronting_street": {
+   "highway": "path",
+   "name": null,
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 17.4
+  },
+  "plate_view": "street",
+  "target_box_normalised": {
+   "x0": 0.398,
+   "x1": 0.602,
+   "y0": 0.134,
+   "y1": 0.808
+  }
+ },
+ "plate": "renders/plates/graslei/1410441581.png",
+ "photos": [],
+ "view": "street",
+ "cost_usd": 0.23854250000000002,
+ "model": "claude-opus-5"
+}

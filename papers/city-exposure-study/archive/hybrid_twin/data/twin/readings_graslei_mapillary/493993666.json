@@ -1,0 +1,88 @@
+{
+ "osm_id": 493993666,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 2,
+   "evidence": "inferred"
+  },
+  "confidence": 0.45,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "inferred"
+  },
+  "identification": "'t Galgenhuisje, Groentenmarkt 5, Ghent: a late-17th/18th-century one-room-deep infill house wedged against the Groot Vleeshuis, in use as a caf\u00e9 since 1776 and known as the smallest caf\u00e9 in the city.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": false,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 3,
+   "trim": "marble",
+   "evidence": "inferred"
+  },
+  "notes": "Identification is solid, facade parameters are not. In set B the building is occluded by a Denys construction hoarding, a white picket fence and scaffolding; the magenta box mostly encloses the printed banner, whose text (\"'t Galgenhuisje ... het kleinste cafe van Gent. Sinds 1776\") is what identifies the target. Set A is a degraded 3D-tile mesh with no resolvable storey lines or openings. Hence every field is marked inferred; nothing here supports a 'seen'. Height 9.0 m has height_source=no-data, so I have distributed it rather than trusted it as measured: ground 3.2 m + upper 2.9 m gives a 6.1 m eaves, with the gable apex at 9.0 m (~53 deg pitch over the 4.3 m frontage). The gable is turned end-on to the square, which is both the Ghent vernacular and the only way 9 m of height sits sensibly on a 2.6 m depth; a ridge parallel to the street would need a ~63 deg pitch. 'marble' in the trim slot is a dielectric proxy for Balegem limestone (plinth, sills, door surround) - the enum has no limestone class. roughness_mm 3 carries the brick bond and mortar joints as a scattering term, per the 1-10 cm regime; do not mesh them. Geometry budget belongs on the window reveals, the stone sills, the gable cornice and the gable steps of the silhouette, and on the cafe threshold at eye level. Scene context: fronting street is pedestrian with car_access=none, so no parked or moving vehicles - the classic failure here would be lining Groentenmarkt with cars. Populate instead with cafe terrace furniture at the door, the construction hoarding line, bins, bikes, and wet paving_stones as seen in set B.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": false,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 2,
+   "ground_height_m": 3.2,
+   "upper_height_m": 2.9,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 0.85,
+   "height_m": 1.55,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "inferred"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 493993666,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house"
+  },
+  "frontage_width_m": 4.3,
+  "footprint_m": [
+   4.7,
+   2.6
+  ],
+  "footprint_area_m2": 11,
+  "height_m": 9.0,
+  "height_source": "no-data",
+  "street_frontages": 1,
+  "attached_neighbours": 1,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Groentenmarkt",
+   "surface": "paving_stones",
+   "car_access": "none",
+   "distance_m": 0.1
+  },
+  "plate_view": "street",
+  "street_photos": 1,
+  "target_box_normalised": {
+   "x0": 0.378,
+   "x1": 0.622,
+   "y0": 0.131,
+   "y1": 0.807
+  }
+ },
+ "plate": "renders/plates/graslei/493993666.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993666_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.36074300000000004,
+ "model": "claude-opus-5"
+}

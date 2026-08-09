@@ -1,0 +1,97 @@
+{
+ "osm_id": 493993761,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 12,
+   "evidence": "seen"
+  },
+  "confidence": 0.62,
+  "ground_floor": {
+   "kind": "institutional_portal",
+   "evidence": "inferred"
+  },
+  "identification": "Groot Vleeshuis, Ghent: a 1407-1419 late-Gothic brick market hall on the Groentenmarkt, one great single-volume hall under a very steep slate gabled roof with crow-stepped ends, now a public food hall.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "marble",
+   "evidence": "inferred"
+  },
+  "notes": "EVIDENCE WARNING: both set B street photographs show a DIFFERENT building - a two-storey yellow-brick late-19th-c. structure with a slate mansard roof, pedimented dormer, segmental brick arches with alternating light headers, stainless ramp handrail and a \"'t STAPEL huis\" signboard, standing on block paving with parked cars. That is not the Groot Vleeshuis (wrong period, material, scale, massing, ground plane) and contradicts car_access=none on the gravel Vleeshuistragel. The photos are mis-geocoded to this OSM ID and were discarded in full; none of their features were carried into these parameters. Only plate A and knowledge of the building were used, hence the low-to-moderate confidence on facade-scale fields.\n\nSEEN from plate A: the long continuous slate roof plane with its ridge running the length of the frontage, the overall low-wall/huge-roof massing, and the repeating rhythm of small pointed gables along the eaves. Nothing finer - the render dissolves well above mullion and reveal scale.\n\nMASSING: building:levels=1 is correct and must be respected - this is one great hall, not a stacked building. Eaves at roughly 7.5 m, the remaining ~8.5 m of the confirmed 16 m is the steep roof (12.9 m depth at ~55 deg gives about that rise). Crow-stepped gables at both ends, ridge parallel to the Groentenmarkt frontage. The repeating gables along the long side are the 1542-43 \"penshuizekes\" - small houses built against the hall - plus their dormers; at ~4.9 m spacing over the 58.5 m frontage that gives 12 bays.\n\nPHYSICS ALLOCATION: the >10 cm regime that matters is the deep window reveals in a roughly 0.6 m medieval wall, the stone sills and string courses, the corbelled eaves cornice, and the stepped gable copings - these are the facets and wedges that will govern street-level field on a corridor only 3.8 m away, and they should be explicit geometry. Hand-made brick with raked, weathered joints and the Balegem/Tournai stone banding stay as roughness (6 mm RMS) plus a scattering coefficient, never as mesh. Trim is set to \"marble\" as the nearest available dielectric proxy for the natural limestone dressings (eps ~7); \"concrete\" would be the fallback if the generator prefers it.\n\nCLUTTER: no vehicles on either frontage. fronting_street is a gravel path with car_access=none, and the Groentenmarkt side is pedestrianised market surface. Populate with market stalls, bollards, bicycles, terrace furniture and bins instead - a parked-car rule applied here would be the same failure that filled the medieval square.\n\nDETAIL BUDGET: spend it on the gable-end silhouettes, the eaves gable rhythm and the ground-floor portal, which is where the eye and the beam both go. The rear/river elevation deserves less.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 1,
+   "ground_height_m": 7.5,
+   "upper_height_m": 3,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1,
+   "height_m": 3,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "inferred"
+  }
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 493993761,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "public",
+   "name": "Groot Vleeshuis",
+   "building:material": "brick",
+   "building:levels": "1",
+   "roof:shape": "gabled",
+   "roof:material": "slate",
+   "addr:street": "Groentenmarkt"
+  },
+  "frontage_width_m": 58.5,
+  "footprint_m": [
+   72.1,
+   12.9
+  ],
+  "footprint_area_m2": 901,
+  "height_m": 16.0,
+  "height_source": "confirmed",
+  "street_frontages": 2,
+  "attached_neighbours": 6,
+  "fronting_street": {
+   "highway": "path",
+   "name": "Vleeshuistragel",
+   "surface": "gravel",
+   "car_access": "none",
+   "distance_m": 3.8
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.308,
+   "x1": 0.862,
+   "y0": 0.271,
+   "y1": 0.681
+  }
+ },
+ "plate": "renders/plates/graslei/493993761.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.443395,
+ "model": "claude-opus-5"
+}

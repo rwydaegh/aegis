@@ -1,0 +1,95 @@
+{
+ "osm_id": 494007850,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 6,
+   "evidence": "seen"
+  },
+  "confidence": 0.82,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "seen"
+  },
+  "identification": "A four-level 19th-century white-plastered Ghent corner town house on Hooiaard/Kortemunt, six regular bays with moulded architraves, projecting sills and a bracketed eaves cornice, now in retail/hospitality use with the Barouche cafe-brasserie occupying the entire ground floor behind a green glazed-brick plinth.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "plasterboard",
+   "roughness_mm": 0.8,
+   "trim": "concrete",
+   "evidence": "seen"
+  },
+  "notes": "EVIDENCE WARNING: street photo 494007850_1.jpg is NOT this building - it shows a Basic-Fit/Hans Anders shopfront under a modern concrete soffit, with the magenta box over an unrelated glazed entrance. All readings come from 494007850_0.jpg plus plate A for massing.\n\nSTOREY HEIGHTS ARE APPORTIONED, NOT MEASURED. The count of 4 is directly seen (ground + 3 upper tiers, matching building:levels=4). The 3.9 m / 3.35 m split is derived from the confirmed 16.0 m total: 3.9 + 3 x 3.35 = 13.95 m to eaves, leaving ~2.05 m roof rise over the 5.0 m depth (~40 degree pitch). The real facade is graded - ground ~3.9, piano nobile ~3.6, second ~3.4, third ~2.9 - so if the generator supports per-storey heights, use that taper rather than a uniform upper value; it is visible in the photo and reads strongly in silhouette.\n\nMATERIAL ENUM COMPROMISES. Wall is white limewashed lime render over brick; 'plasterboard' is the nearest enum token and matches building:material=plaster, but the permittivity should be set for render-on-brick, not for interior gypsum board - the brick backing dominates at 28 GHz. Trim (architraves, sills, cornice, shopfront entablature) is moulded render/stucco, mapped to 'concrete'. Roughness 0.8 mm is smooth painted render, weathered and patched but not textured; brick bond is invisible under the render so no bond relief belongs in the 1-10 cm regime here.\n\nBAY COUNT METHOD. Six bays counted on the top storey; the perspective run of bay spacings (270, 220, 180, 160, 140 px) is a consistent foreshortening series, confirming six rather than five or seven. Over 12.5 m frontage that is a 2.08 m pitch, ~1.2 m windows, ~0.9 m piers.\n\nWINDOW SUBDIVISION. Glazing bars are unambiguous - mullion and transom with small panes throughout. The first-floor left bays retain leaded diamond quarries (older glass, probably a heritage retention or pub-era insert); upper floors are rectangular small-pane sashes. If the generator supports per-storey glazing patterns, give floor 1 the diamond lattice and floors 2-3 the rectangular grid. Reveal is a class judgement from the oblique view: the sash sits back behind the plaster architrave by roughly a hand's depth, clearly not a deep Gothic brick reveal.\n\nROOF IS INFERRED, DELIBERATELY. roof:shape=gabled comes from data. The ridge orientation is inferred from a seen feature rather than from the roof itself: the facade terminates in a continuous horizontal dentilled eaves cornice across the full 12.5 m with no street-facing gable, which for this type means the ridge runs parallel to the street over the 5.0 m depth. The roof plane is not resolvable from the pavement and plate A's tiles are too degraded to read it.\n\nCORNER CONDITION. street_frontages=2 with a 5.0 m return. The return elevation should carry the same grammar at ~2 bays, same cornice and plinth continuing round the corner - a blank flank here would be wrong and would be visible from the Kortemunt approach.\n\nRAY-TRACING PRIORITIES (>10 cm regime): the bracketed/modillion eaves cornice is the single strongest scattering feature on this building and must be explicit geometry, not a texture band - it is the deepest projection on the facade and it runs the full frontage. Next: the six-bay reveal grid, the projecting window sills, and the moulded entablature band above the shopfront. The green glazed-brick plinth to ~1.4 m is markedly smoother and more specular than the render above and deserves its own material band.\n\nSTREET CLUTTER. fronting_street is pedestrian with car_access=none, so NO parked vehicles - this is exactly the case where a generic parked-car rule would be wrong. What is actually seen: cafe terrace with metal tables and chairs, several furled black parasols on poles, a red A-board, planters, and bicycles toward the corner. Terrace furniture sits on sett paving directly against the facade.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 3.9,
+   "upper_height_m": 3.35,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.2,
+   "height_m": 2.1,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [
+  "wall 'plasterboard' contradicts OSM building:material='plaster'"
+ ],
+ "facts": {
+  "osm_id": 494007850,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "retail",
+   "building:material": "plaster",
+   "building:levels": "4",
+   "roof:shape": "gabled",
+   "addr:street": "Kortemunt"
+  },
+  "frontage_width_m": 12.5,
+  "footprint_m": [
+   12.5,
+   5.0
+  ],
+  "footprint_area_m2": 61,
+  "height_m": 16.0,
+  "height_source": "confirmed",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Hooiaard",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.29,
+   "x1": 0.639,
+   "y0": 0.0,
+   "y1": 0.973
+  }
+ },
+ "plate": "renders/plates/graslei/494007850.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007850_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007850_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.6518320000000001,
+ "model": "claude-opus-5"
+}

@@ -1,0 +1,93 @@
+{
+ "osm_id": 494007986,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 5,
+   "evidence": "inferred"
+  },
+  "confidence": 0.55,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "seen"
+  },
+  "identification": "A 19th-century heritage-listed corner house on Hooiaard at the mouth of Schuddeveestraatje in Ghent's old port quarter, built or re-fronted in the neo-traditional Flemish manner: red-painted brick with white-painted stone toothed quoins and cross-mullioned windows over a bluestone plinth, four storeys, with a cafe occupying the ground floor and a terrace under a retractable awning.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": false,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 4,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "notes": "Evidence weighting: B_0 is close-range (~1 m) and carries essentially all the reliable detail \u2014 wall material, quoining, window subdivision, sills, plinth, ground-floor use. Plate A is tile-mesh smear at this range and supports massing only. B_1's magenta box straddles two unrelated facades (a white bay-windowed one and a green-painted one) at long range through a fisheye and matches neither the brick nor the quoins in B_0; I treated it as low-information rather than as contradicting B_0, which is the main reason confidence is 0.55 rather than 0.75.\n\nFrontage orientation is the load-bearing uncertainty. footprint 15.4 x 5.2 with frontage_width 14.6 is ambiguous about which side faces which street. The 2D box in B_0 compresses the receding wall to a narrow x-range, which reads as the 5.2 m end facing Schuddeveestraatje and the 14.6 m frontage running away along Hooiaard; addr:street=Hooiaard agrees. Bay count is therefore set for the Hooiaard face and marked inferred. If the generator instead places 14.6 m along the alley, re-derive bays at ~2.9 m spacing and expect barred windows over the plinth there rather than glazing.\n\nStorey stack is a reconciliation, not an observation: 15.4 m to ridge, less ~2.6 m for a 45-degree roof over a 5.2 m span, leaves ~12.8 m of wall, i.e. 3.8 + 3 x 3.0. B_0 is cut off at the top of frame so the full stack was never visible.\n\nGeometry vs roughness. Explicit facets (>10 cm regime): the toothed quoin strips up the corner and returning around every opening, the projecting stone window surrounds and sills, the bluestone plinth offset, the awning box. These are the scattering features that matter for a wall standing 1.2 m off the corridor, and they are exactly what a plain extruded footprint would lose. NOT geometry (1-10 cm regime): brick relief, mortar joints, the patches where red paint has spalled to bare brick \u2014 these are the 4 mm RMS number. The wrought-iron window bars (~2 cm rod at ~10 cm pitch) sit on the boundary and are better omitted than meshed coarsely.\n\nTrim is set to marble as the dielectric proxy for the bluestone plinth and the painted limestone/sandstone surrounds; there is no dense-limestone entry in the enum. Wall roughness is raised slightly above smooth-render values because repeated overpainting has partly filled joints while paint loss has opened others.\n\nClutter, calibrated to this street and not to Europe generally: car_access is none on a sett-surfaced living_street, so place no vehicles on Schuddeveestraatje. Correct clutter, all of it visible in B_0: cafe terrace tables, stacked rattan chairs and cushions plus lead-grey planters at the Hooiaard end under the awning; two grey utility cabinets and a ground-level planter against the alley wall; wall-mounted galvanised vent ducting and downpipes; wheelie bins and a leaning bicycle further down the alley; overhead cabling across the alley.\n\nDetail budget: spend it on the corner pier and the first two bays either side of it, the ground floor, and the alley elevation. The rear long wall and anything above the eaves deserve much less.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 3.8,
+   "upper_height_m": 3,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.5,
+   "height_m": 2.4,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494007986,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "start_date": "C19",
+   "heritage": "4",
+   "historic": "house",
+   "addr:street": "Hooiaard"
+  },
+  "frontage_width_m": 14.6,
+  "footprint_m": [
+   15.4,
+   5.2
+  ],
+  "footprint_area_m2": 77,
+  "height_m": 15.4,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "living_street",
+   "name": "Schuddeveestraatje",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 1.2
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.312,
+   "x1": 0.667,
+   "y0": 0.195,
+   "y1": 0.749
+  }
+ },
+ "plate": "renders/plates/graslei/494007986.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007986_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007986_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.692419,
+ "model": "claude-opus-5"
+}

@@ -1,7 +1,7 @@
 """Verification, benchmark, and figures for the self-shadowing visibility gate.
 
 Run with the project venv:
-  .venv-nf/bin/python studies/self_shadowing/make_figures.py
+  .venv/bin/python studies/self_shadowing/make_figures.py
 
 Produces studies/self_shadowing/report/figs/*.pdf and a results.json summary.
 """

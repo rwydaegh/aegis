@@ -1,0 +1,67 @@
+Tell me what you see in this image. Be aggressively exhaustive. Inventory the
+whole image before deciding what matters for RF. Include mundane background,
+small objects, openings, cables, vehicles, people, sky, shadows, and ambiguous
+regions. Aim to explain at least 99.5% of the pixels.
+
+Turn the inventory into a mutually exclusive scene partition. A pixel should
+belong to one final class. Split objects when their RF material differs, but do
+not create synonyms or overlapping classes. If two proposed classes overlap,
+state which one wins and why. Always include explicit ``sky`` and
+``unresolved_remainder`` classes, even if one is empty.
+
+For every class, provide:
+
+1. A short visual name such as ``red brick masonry`` or ``painted metal cable``.
+2. A concrete text prompt suitable for SAM3. Avoid abstract RF language in this
+   prompt.
+3. Its scene role: ``static_support``, ``opening``, ``thin_object``,
+   ``dynamic_object``, ``vegetation``, ``sky``, or ``unresolved``.
+4. The likely physical material and the closest available ITU material class.
+5. Your best estimate of RMS surface-height roughness in millimetres, a plausible
+   interval, and a confidence from 0 to 1. Make the estimate. Do not replace it
+   with a generic warning.
+6. A useful roughness correlation length in millimetres when it can be inferred.
+7. Whether the class should become a static ray-tracing surface, a separate
+   object proxy, an opening, or withheld evidence.
+8. Its expected image fraction and its priority when masks overlap.
+
+Use visible context. Distinguish, for example, red brick from pale carved stone,
+glass from dark window interiors, wooden frames from masonry, and cables from
+facade surfaces. Do not collapse the image into one generic ``building`` class.
+
+Return JSON with this shape:
+
+{
+  "scene_summary": "...",
+  "classes": [
+    {
+      "id": 1,
+      "name": "red brick masonry",
+      "sam3_prompt": "exposed red brick masonry between the stone window surrounds",
+      "scene_role": "static_support",
+      "physical_material": "fired clay brick with mortar joints",
+      "itu_material": "brick",
+      "rms_roughness_mm": 3.0,
+      "rms_roughness_interval_mm": [1.5, 6.0],
+      "roughness_confidence": 0.7,
+      "correlation_length_mm": 45.0,
+      "geometry_action": "static_surface",
+      "expected_image_fraction": 0.35,
+      "overlap_priority": 20,
+      "visual_evidence": "..."
+    }
+  ],
+  "overlap_rules": ["small foreground objects override facade materials"],
+  "coverage_audit": {
+    "expected_coverage": 0.995,
+    "likely_gaps": ["..."],
+    "likely_conflicts": ["..."],
+    "second_pass_prompts": ["..."]
+  }
+}
+
+After the first SAM3 pass, inspect the composed label map rather than each mask
+in isolation. Propose new prompts for uncovered coherent regions, merge
+synonyms, and resolve overlaps until the target coverage is reached. Never paint
+sky, a dynamic object, or a thin foreground object onto the static wall behind
+it merely to increase coverage.

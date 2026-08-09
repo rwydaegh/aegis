@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 from collections import Counter
 from dataclasses import dataclass
@@ -102,6 +103,13 @@ class FishnetBuildConfig:
     depth_break_ratio: float = 0.15
     min_piece_area_px: float = 1.0
     baseline: bool = False
+    include_non_surface_classes: bool = False
+
+
+def _contains_label_term(label: str, terms: set[str]) -> bool:
+    """Match taxonomy terms as words or phrases, not arbitrary substrings."""
+    folded = label.casefold()
+    return any(re.search(rf"(?<!\w){re.escape(term.casefold())}(?!\w)", folded) for term in terms)
 
 
 def build_fishnet_surface(config: FishnetBuildConfig) -> None:
@@ -120,12 +128,16 @@ def build_fishnet_surface(config: FishnetBuildConfig) -> None:
     )
     taxonomy = json.loads(config.semantics_json.read_text())["entity_id2label"]
     names = {int(key): value for key, value in taxonomy.items()}
-    transient = {key for key, value in names.items() if any(word in value.casefold() for word in TRANSIENT_WORDS)}
-    excluded = {
-        key
-        for key, value in names.items()
-        if key not in transient and any(word in value.casefold() for word in NON_SURFACE_WORDS)
-    }
+    if config.include_non_surface_classes:
+        transient: set[int] = set()
+        excluded: set[int] = set()
+    else:
+        transient = {key for key, value in names.items() if _contains_label_term(value, TRANSIENT_WORDS)}
+        excluded = {
+            key
+            for key, value in names.items()
+            if key not in transient and _contains_label_term(value, NON_SURFACE_WORDS)
+        }
 
     views = []
     budgets = []
@@ -243,6 +255,7 @@ def build_fishnet_surface(config: FishnetBuildConfig) -> None:
         "min_region_pixels": config.min_region_pixels,
         "depth_break_ratio": config.depth_break_ratio,
         "min_piece_area_px": config.min_piece_area_px,
+        "include_non_surface_classes": config.include_non_surface_classes,
         "transient_classes": sorted(names[key] for key in transient),
         "non_surface_classes": sorted(names[key] for key in excluded),
         "site_occlusion_budget": site_budget,

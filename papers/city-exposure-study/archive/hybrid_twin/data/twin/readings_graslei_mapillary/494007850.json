@@ -1,0 +1,95 @@
+{
+ "osm_id": 494007850,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 4,
+   "evidence": "inferred"
+  },
+  "confidence": 0.72,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "seen"
+  },
+  "identification": "A four-storey plastered and white-painted Ghent corner commercial house on Hooiaard/Kortemunt, an older masonry core refronted in smooth lime render, with a modern dark-framed cafe/breakfast bar occupying the full ground floor and tall multi-light timber windows on the three floors above.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 1,
+   "trim": "wood",
+   "evidence": "seen"
+  },
+  "notes": "EVIDENCE SPLIT WITHIN OBJECTS (schema forces one flag each, so stating it plainly):\n- storeys: count=4 is genuinely seen (three window rows over a tall glazed ground floor, photo B0, and corroborated by building:levels=4). The 4.0/3.2 m split is NOT seen; it is apportioned inside the confirmed 16.0 m total, leaving ~2.4 m of gable/attic above the top ceiling. Treat the split as inferred.\n- ledges: sills and the string course over the shopfront are seen in photo B1. The eaves cornice is inferred - the top of the building is cut off in every frame (both outlines dashed/clipped at the top). Absence of balconies is seen; the balconies visible in B1 belong to the buildings opposite, not to this one.\n- bays: inferred. Both photographs are steeply oblique and photo B0's magenta box also contains further brick buildings behind the target, so counting window columns there is unsafe. 4 bays comes from 12.5 m frontage at ~3.1 m Ghent bay spacing, consistent with the ~1.35 m windows and ~1.8 m piers seen close up.\n- roof: fully inferred. Not visible anywhere. Form from OSM. Ridge parallel to street because a 12.5 x 5.0 m footprint gives only a 2.5 m rafter run - a gable-to-street here would be an implausibly squat 12.5 m-wide gable, and this facade reads as a cornice-topped refront rather than a gable house. If a later oblique or aerial contradicts this, the ridge orientation is the first thing to overturn.\n\nMATERIAL, and why it does not contradict the data: building:material=plaster describes the finish. I set the ray-tracing wall to ITU brick because a ~2 cm lime render over solid masonry is dielectrically brick-like (e' ~ 3.5-4.5), whereas ITU plasterboard is low-density gypsum board (e' ~ 2.94) and would materially under-predict reflection at 28 GHz. Photo B1 shows painted render with gentle undulation and no exposed joints, so roughness is 1.0 mm RMS, not the 3-8 mm of fair-faced brick - the render's function here is precisely to bury the 1-10 cm regime. Suggested scattering coefficient S ~ 0.2-0.3, near-specular. Trim=wood covers the heavy dark-painted timber upper joinery; the ground-floor frames may be metal-clad, which matters little as they are thin members against a large glass plane.\n\nGEOMETRY WORTH MESHING (>10 cm, 1.07 cm wavelength):\n- Shopfront piers between the cafe bays, roughly 0.4-0.5 m wide and standing ~0.10-0.15 m proud of the recessed glazing. These wedges are the main off-specular scatterers at pedestrian height and the ground floor is where the beam actually lands - spend budget here.\n- The full-height ground-floor glass is a large flat specular plane; keep it flat, do not fake relief into it.\n- Window sills, ~0.05-0.08 m projection, and shallow (~0.12 m) reveals on all upper openings.\n- String course / fascia band over the shopfront, and the inferred eaves cornice.\n- Projecting hardware seen in B0/B1: wall-mounted lamps, CCTV housings, a fire-service plate, window-box planters. Small but real silhouette breakers on an otherwise plain render plane.\n\nSCENE CONTEXT: Hooiaard is highway=pedestrian with car_access=none. Place NO vehicles. The correct clutter, all seen: A-board menu chalkboards on the sett, folded and open parasols, timber planters with bamboo/box hedging, leaning bicycles, cafe tables. Ground is sett paving, which is itself a 3-8 cm relief regime - roughness, not geometry.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 4,
+   "upper_height_m": 3.2,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.35,
+   "height_m": 2.5,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [
+  "wall 'brick' contradicts OSM building:material='plaster'"
+ ],
+ "facts": {
+  "osm_id": 494007850,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "retail",
+   "building:material": "plaster",
+   "building:levels": "4",
+   "roof:shape": "gabled",
+   "addr:street": "Kortemunt"
+  },
+  "frontage_width_m": 12.5,
+  "footprint_m": [
+   12.5,
+   5.0
+  ],
+  "footprint_area_m2": 61,
+  "height_m": 16.0,
+  "height_source": "confirmed",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Hooiaard",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.29,
+   "x1": 0.639,
+   "y0": 0.0,
+   "y1": 0.973
+  }
+ },
+ "plate": "renders/plates/graslei/494007850.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007850_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007850_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.5094905,
+ "model": "claude-opus-5"
+}

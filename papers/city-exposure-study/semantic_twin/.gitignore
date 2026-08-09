@@ -1,4 +1,5 @@
 data/panoramas/
+data/panorama_cohorts/
 outputs/
 *.blend
 *.blend1

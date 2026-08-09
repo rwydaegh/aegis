@@ -1,0 +1,432 @@
+{
+ "audit": {
+  "korenmarkt": {
+   "component_sum_max_relative_error": 4.440892098500626e-16,
+   "direct_transfer_seed_spread_max": 0.0,
+   "estimator_wall_seconds_per_replica_total": 66.86953134193732,
+   "nonzero_diffuse_cells_median": 3309.625,
+   "points": 13,
+   "published_median_surplus_db": 1.12153,
+   "published_median_wbsar": 0.0631297,
+   "recomputed_median_surplus_db": 1.1215299727400203,
+   "recomputed_median_wbsar": 0.06312971051750467,
+   "seeds": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+   ],
+   "specular_atom_count_median": 873.8125,
+   "specular_atom_count_min": 686.0625
+  },
+  "prague": {
+   "component_sum_max_relative_error": 3.3306690738754696e-16,
+   "direct_transfer_seed_spread_max": 0.0,
+   "estimator_wall_seconds_per_replica_total": 495.5529121437497,
+   "nonzero_diffuse_cells_median": 2926.65625,
+   "points": 68,
+   "published_median_surplus_db": 1.10519,
+   "published_median_wbsar": 0.0121379,
+   "recomputed_median_surplus_db": 1.1051877326803923,
+   "recomputed_median_wbsar": 0.01213792454680129,
+   "seeds": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+   ],
+   "specular_atom_count_median": 2051.84375,
+   "specular_atom_count_min": 456.875
+  }
+ },
+ "body_endpoints": {
+  "korenmarkt": {
+   "absorbed_power_over_mean_sab": {
+    "max_relative_deviation": 4.440892098500626e-16,
+    "value": 1.8724979396613541
+   },
+   "arriving_over_total_transfer": {
+    "max_relative_deviation": 4.440892098500626e-16,
+    "value": 15625.0
+   },
+   "body_minus_transfer_surplus_db_max_abs": 0.07727720701275653,
+   "body_minus_transfer_surplus_db_median": 0.01840120736280615,
+   "coupling_efficiency_max": 0.13353482234139752,
+   "coupling_efficiency_median": 0.11807206323733992,
+   "coupling_efficiency_min": 0.11519027949138118,
+   "peak_over_mean_max": 2.423257392732966,
+   "peak_over_mean_median": 2.193384993716168,
+   "peak_over_mean_min": 1.609437643696657,
+   "pearson_r_surplus_vs_coupling": -0.64008283990277,
+   "replica_peak_bias_db_max": 0.0010400108353295933,
+   "replica_peak_bias_db_median": 0.0,
+   "sar_over_mean_sab": {
+    "max_relative_deviation": 5.551115123125783e-16,
+    "value": 0.02586323121079219
+   }
+  },
+  "prague": {
+   "absorbed_power_over_mean_sab": {
+    "max_relative_deviation": 3.3306690738754696e-16,
+    "value": 1.8724979396613544
+   },
+   "arriving_over_total_transfer": {
+    "max_relative_deviation": 4.440892098500626e-16,
+    "value": 15625.0
+   },
+   "body_minus_transfer_surplus_db_max_abs": 0.09424867483279353,
+   "body_minus_transfer_surplus_db_median": 0.01799099064787163,
+   "coupling_efficiency_max": 0.14309865381350623,
+   "coupling_efficiency_median": 0.1337217609157365,
+   "coupling_efficiency_min": 0.12105156844738846,
+   "peak_over_mean_max": 2.3106585018312615,
+   "peak_over_mean_median": 1.6156371425117357,
+   "peak_over_mean_min": 1.2552293797352796,
+   "pearson_r_surplus_vs_coupling": 0.21916714043576258,
+   "replica_peak_bias_db_max": 0.0037851635995417117,
+   "replica_peak_bias_db_median": 0.0,
+   "sar_over_mean_sab": {
+    "max_relative_deviation": 4.440892098500626e-16,
+    "value": 0.025863231210792186
+   }
+  }
+ },
+ "convergence": {
+  "korenmarkt": {
+   "iid": {
+    "look_to_look_p90_abs_db": {
+     "12_to_16": 0.00298284174868935,
+     "4_to_8": 0.01303814057522294,
+     "8_to_12": 0.0057214118284159
+    },
+    "se_db_median_by_look": {
+     "12": 0.0024030812962635706,
+     "16": 0.0018118234014848516,
+     "4": 0.000945459281861386,
+     "8": 0.0019304138602806208
+    },
+    "se_db_p90_by_look": {
+     "12": 0.0111631957074847,
+     "16": 0.008394341056942764,
+     "4": 0.0184092729594238,
+     "8": 0.009884871511254376
+    }
+   },
+   "rotated_fibonacci": {
+    "look_to_look_p90_abs_db": {
+     "12_to_16": 0.003500768131851916,
+     "4_to_8": 0.00388179622443156,
+     "8_to_12": 0.007206617221167592
+    },
+    "se_db_median_by_look": {
+     "12": 0.0012033327023467464,
+     "16": 0.0009023603697650295,
+     "4": 0.000500097146107443,
+     "8": 0.0012602312537367422
+    },
+    "se_db_p90_by_look": {
+     "12": 0.013984963555022125,
+     "16": 0.010505448420823418,
+     "4": 0.003349307411042766,
+     "8": 0.0036063020576468947
+    }
+   }
+  },
+  "prague": {
+   "iid": {
+    "look_to_look_p90_abs_db": {
+     "12_to_16": 0.0013529623204083221,
+     "4_to_8": 0.004365211149832084,
+     "8_to_12": 0.003965820294932965
+    },
+    "se_db_median_by_look": {
+     "12": 0.0006216790975568504,
+     "16": 0.0005939458089987983,
+     "4": 0.0005543894873273964,
+     "8": 0.0005487272239156038
+    },
+    "se_db_p90_by_look": {
+     "12": 0.004713937443348259,
+     "16": 0.004441866801910863,
+     "4": 0.003419467959791433,
+     "8": 0.004193956523300171
+    }
+   },
+   "rotated_fibonacci": {
+    "look_to_look_p90_abs_db": {
+     "12_to_16": 0.0023638977932099103,
+     "4_to_8": 0.002194501135373871,
+     "8_to_12": 0.0031353273245872584
+    },
+    "se_db_median_by_look": {
+     "12": 0.000563925722695355,
+     "16": 0.0006556377283159836,
+     "4": 0.0004901493376097316,
+     "8": 0.0004212319475368658
+    },
+    "se_db_p90_by_look": {
+     "12": 0.004364768824853208,
+     "16": 0.005236911398714613,
+     "4": 0.002504038061226367,
+     "8": 0.0023684464977659233
+    }
+   }
+  }
+ },
+ "fixed_route_cdf": {
+  "korenmarkt": {
+   "multipath surplus [dB]": {
+    "max": 1.5117377153423424,
+    "median": 1.1215299727400203,
+    "min": 1.013410899834569,
+    "n_standpoints": 13,
+    "p10": 1.025479087003474,
+    "p90": 1.3460271401229462
+   },
+   "normalised wbSAR [m$^2$ kg$^{-1}$]": {
+    "max": 0.06666125382558905,
+    "median": 0.06312971051750467,
+    "min": 0.05325866806634226,
+    "n_standpoints": 13,
+    "p10": 0.05641510605288821,
+    "p90": 0.06570515553168044
+   },
+   "peak $S_{ab}$ / body-mean $S_{ab}$": {
+    "max": 2.423257392732966,
+    "median": 2.193384993716168,
+    "min": 1.609437643696657,
+    "n_standpoints": 13,
+    "p10": 1.7585543241231443,
+    "p90": 2.391715681226611
+   }
+  },
+  "prague": {
+   "multipath surplus [dB]": {
+    "max": 1.3987286079155363,
+    "median": 1.1051877326803923,
+    "min": 0.6439255936774811,
+    "n_standpoints": 68,
+    "p10": 0.8531797757117723,
+    "p90": 1.226326066735606
+   },
+   "normalised wbSAR [m$^2$ kg$^{-1}$]": {
+    "max": 0.021792273450647454,
+    "median": 0.01213792454680129,
+    "min": 0.00988058008220297,
+    "n_standpoints": 68,
+    "p10": 0.010512375810169134,
+    "p90": 0.017195250257186125
+   },
+   "peak $S_{ab}$ / body-mean $S_{ab}$": {
+    "max": 2.3106585018312615,
+    "median": 1.6156371425117357,
+    "min": 1.2552293797352796,
+    "n_standpoints": 68,
+    "p10": 1.3647608727761205,
+    "p90": 1.9560006892368202
+   }
+  }
+ },
+ "not_retained": [
+  "separate sampled-suffix transfer (only acceptance counts and a chi diagnostic survive)",
+  "per-replica body Sab fields at every look (only cumulative sums at looks 4, 8, 12, 16)",
+  "specular orders above one (production transport stops at one reflection)",
+  "corrected stage timing (the paired artefacts carry a known timing attribution defect)"
+ ],
+ "paired_deltas": {
+  "korenmarkt": {
+   "body mean $S_{ab}$": {
+    "argmax_standpoint": 11,
+    "max_abs_db": 0.034245974554816885,
+    "median_abs_db": 0.0015570066024675295,
+    "median_signed_db": 0.00020036439164314716,
+    "p90_abs_db": 0.010787134766810952
+   },
+   "diffuse transfer": {
+    "argmax_standpoint": 1,
+    "max_abs_db": 0.04193846191935775,
+    "median_abs_db": 0.014138926287708308,
+    "median_signed_db": -0.01196697819290891,
+    "p90_abs_db": 0.03492437486079873
+   },
+   "direct transfer": {
+    "max_abs_db": 0.0,
+    "note": "direct transfer is a deterministic exact atom sum, identical in both samplers"
+   },
+   "peak $S_{ab}$": {
+    "argmax_standpoint": 0,
+    "max_abs_db": 0.014638871873924663,
+    "median_abs_db": 0.0002887454489441662,
+    "median_signed_db": -0.0001660630698108683,
+    "p90_abs_db": 0.006864758332476059
+   },
+   "total transfer": {
+    "argmax_standpoint": 11,
+    "max_abs_db": 0.03241457669505008,
+    "median_abs_db": 0.0012256317305192176,
+    "median_signed_db": 1.694507878586643e-05,
+    "p90_abs_db": 0.009543884409778401
+   }
+  },
+  "prague": {
+   "body mean $S_{ab}$": {
+    "argmax_standpoint": 6,
+    "max_abs_db": 0.19152978270492046,
+    "median_abs_db": 0.0011596050826075592,
+    "median_signed_db": -8.009584551097766e-05,
+    "p90_abs_db": 0.008235515454089282
+   },
+   "diffuse transfer": {
+    "argmax_standpoint": 25,
+    "max_abs_db": 0.2117310461959614,
+    "median_abs_db": 0.04774565182098036,
+    "median_signed_db": -0.00369231802962396,
+    "p90_abs_db": 0.13745368505348105
+   },
+   "direct transfer": {
+    "max_abs_db": 0.0,
+    "note": "direct transfer is a deterministic exact atom sum, identical in both samplers"
+   },
+   "peak $S_{ab}$": {
+    "argmax_standpoint": 6,
+    "max_abs_db": 0.1773445259722223,
+    "median_abs_db": 0.0004983838264671649,
+    "median_signed_db": 2.0080088984637432e-05,
+    "p90_abs_db": 0.004383996837778727
+   },
+   "total transfer": {
+    "argmax_standpoint": 6,
+    "max_abs_db": 0.17948887576860248,
+    "median_abs_db": 0.0011025332154222926,
+    "median_signed_db": -8.119680189585408e-05,
+    "p90_abs_db": 0.007563109364371343
+   }
+  }
+ },
+ "route_budget": {
+  "korenmarkt": {
+   "diffuse_share_percent_max": 1.66641723371125,
+   "diffuse_share_percent_median": 1.118426742408058,
+   "pearson_r_shadow_vs_surplus": 0.5044222214405194,
+   "shadow_loss_argmax_standpoint": 10,
+   "shadow_loss_db_max": 1.2281928492122798,
+   "shadow_loss_db_median": 0.8826704361214885,
+   "shadow_loss_db_min": 0.5324792695093754,
+   "specular_share_percent_max": 27.832929591320088,
+   "specular_share_percent_median": 22.05628658124559,
+   "specular_share_percent_min": 20.0068985859351,
+   "surplus_argmax_standpoint": 11,
+   "surplus_argmin_standpoint": 5,
+   "surplus_db_max": 1.5117377153423424,
+   "surplus_db_median": 1.1215299727400203,
+   "surplus_db_min": 1.013410899834569
+  },
+  "prague": {
+   "diffuse_share_percent_max": 1.0940748566557936,
+   "diffuse_share_percent_median": 0.42991797778149843,
+   "pearson_r_shadow_vs_surplus": 0.12973279677599245,
+   "shadow_loss_argmax_standpoint": 65,
+   "shadow_loss_db_max": 3.5163088865874546,
+   "shadow_loss_db_median": 1.436072123450424,
+   "shadow_loss_db_min": 0.6145224800613063,
+   "specular_share_percent_max": 26.946175328330803,
+   "specular_share_percent_median": 21.94609567061049,
+   "specular_share_percent_min": 13.17771256787532,
+   "surplus_argmax_standpoint": 65,
+   "surplus_argmin_standpoint": 33,
+   "surplus_db_max": 1.3987286079155363,
+   "surplus_db_median": 1.1051877326803923,
+   "surplus_db_min": 0.6439255936774811
+  }
+ },
+ "route_profile": {
+  "korenmarkt": {
+   "diffuse_below_direct_db_median": 18.305955301811117,
+   "registered_points": 5,
+   "specular_below_direct_db_median": 5.449118371795706,
+   "total_transfer_db_max": -28.491262179560806,
+   "total_transfer_db_min": -30.057070402174997,
+   "total_transfer_db_span": 1.5658082226141907
+  },
+  "prague": {
+   "diffuse_below_direct_db_median": 22.540136568449988,
+   "registered_points": 12,
+   "specular_below_direct_db_median": 5.48730455942129,
+   "total_transfer_db_max": -33.68425507106707,
+   "total_transfer_db_min": -37.09332506137379,
+   "total_transfer_db_span": 3.409069990306719
+  }
+ },
+ "variance_ratio": {
+  "korenmarkt": {
+   "diffuse": {
+    "fraction_below_one": 0.7692307692307693,
+    "max": 1.173863718244465,
+    "median": 0.628177862247218,
+    "q10": 0.43617620610218066,
+    "q90": 1.0186632347113398
+   },
+   "specular": {
+    "fraction_below_one": 0.46153846153846156,
+    "max": 84.5156853789584,
+    "median": 1.0531413108098933,
+    "q10": 0.013447446017190532,
+    "q90": 37.12283606623696
+   },
+   "total": {
+    "fraction_below_one": 0.5384615384615384,
+    "max": 42.849029730612685,
+    "median": 0.9744396522448228,
+    "q10": 0.013946356934789347,
+    "q90": 15.210701130102509
+   }
+  },
+  "prague": {
+   "diffuse": {
+    "fraction_below_one": 0.4411764705882353,
+    "max": 6.197234241981529,
+    "median": 1.1528257489967728,
+    "q10": 0.3778398057123569,
+    "q90": 3.436959743644101
+   },
+   "specular": {
+    "fraction_below_one": 0.45588235294117646,
+    "max": 2309.5593537420204,
+    "median": 1.1897052306515885,
+    "q10": 0.007912411731454858,
+    "q90": 70.98381412876013
+   },
+   "total": {
+    "fraction_below_one": 0.45588235294117646,
+    "max": 2168.7566879961173,
+    "median": 1.2666868101621582,
+    "q10": 0.03275383922453433,
+    "q90": 51.194117956595406
+   }
+  }
+ }
+}

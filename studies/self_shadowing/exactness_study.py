@@ -19,7 +19,7 @@ Two questions, both run on the real phantom mesh (data/thelonious.stl):
    the polarization signature the gate currently ignores.
 
 Outputs results to results_exactness.json and figures to report/figures/.
-Run with the project venv: .venv-nf/bin/python studies/self_shadowing/exactness_study.py
+Run with the project venv: .venv/bin/python studies/self_shadowing/exactness_study.py
 """
 
 from __future__ import annotations

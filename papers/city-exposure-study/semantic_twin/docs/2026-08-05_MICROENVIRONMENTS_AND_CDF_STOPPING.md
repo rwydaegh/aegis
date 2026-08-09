@@ -149,6 +149,195 @@ and the missing artifacts are present, both sites remain preproduction. No CUDA
 reference or named production contract should be generated from the current
 inputs.
 
+
+## Exact next-site runnable input audit (walk-arm view, kept from the studio line at merge)
+
+Tokyo Hachiko is the first non-plaza production site. Prague Staromestske is the
+second contrast after Hachiko passes the stopping rule. Both have usable geometry
+and camera registrations. Neither has a production material atlas yet.
+
+The site configuration files still describe older 130 m mesh work and old
+single-precision defects. Those notes are stale. The exposure resolver selects
+the 250 m `_f64` mesh and requires mesh format version 3. The unsuffixed 250 m
+files are byte-identical copies of the `_f64` files at both sites.
+
+| Site | Exact exposure mesh | SHA-256 | Format and size |
+| --- | --- | --- | --- |
+| Tokyo Hachiko | `data/geometry/tokyo_hachiko/inhouse_leaf_250m_f64.ply` | `1bccad9bedd7c1764e15d06042b0340530e795396f15f6d3fc40a759f3249e71` | Version 3, 797,615 triangles, 1,034,677 vertices. Its sidecar SHA-256 is `1ecd79110351f4e8808c29272bc3375268715d18e45a5c2063a98805f8f17e03`. All 714 source objects used double precision and none used fallback placement. |
+| Prague Staromestske | `data/geometry/prague_staromestske/inhouse_leaf_250m_f64.ply` | `a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4` | Version 3, 664,619 triangles, 823,889 vertices. Its sidecar SHA-256 is `c69c5e3a6f23a412ea38946770f479eca32f354922aa23f6319b99da551e1174`. All 322 source objects used double precision and none used fallback placement. |
+
+The admission gate is the same in `build_site_semantics.py` and
+`build_surface_atlas.py`: skyline residual at most 4 degrees, sky conflict at
+most 0.5 when the median conflict range is at least 2 m, grid height 1,536, and
+128-row cast blocks.
+
+Hachiko currently admits three of four actual `pano_` stations. They are
+`pano_00_GR5jUP1WQSbKFJwS`, `pano_01_VBNtG0Y_-d3vtklg`, and
+`pano_02_yBgJrdk6yBBnvYyF`. Their residuals are 1.420, 3.700, and 3.082 degrees.
+Their sky-conflict fractions are 0.0158, 0.0749, and 0.0105. Station `pano_01`
+passes the gate but its vertical search ended at the search bound, so the atlas
+manifest should keep that warning visible. `pano_03_NCILawcpTxk3OjbQ` has no
+complete registration or semantic product. The 13 `indoor_2018-05_*` folders are
+rejected sky-fraction probes and are outside station discovery. They must stay
+out of the atlas.
+
+The current Hachiko poses record the 250 m support mesh. Its walk binding is
+therefore crop-matched to the exposure mesh. The binding covers 3.19 percent of
+faces and 8.05 percent of area, with a median of one supporting camera per seen
+face. Its exact files are:
+
+- `outputs/site_semantics/tokyo_hachiko/walk_semantic_250m.npz`, SHA-256
+  `0c5541dbcee2d94eb0e24b82946ca429cdece2e059dc8b255e726905a2637d81`
+
+- `outputs/site_semantics/tokyo_hachiko/walk_semantic_250m.json`, SHA-256
+  `bb9672208d05728f75934febb61c8c48b899ff0e8076f97a65049e9fa58cbdb6`
+
+Prague currently admits 12 of 14 actual panoramas. The admitted indices are 00,
+01, 02, 04, and 06 through 13. `pano_03` fails with a 9.330 degree residual.
+`pano_05` is inside geometry, with every tested sky direction hitting within a
+median range of 0.559 m. The extra `walk_manifest.json` refusal in the binding
+report is a discovery artifact, not a camera. The admitted residual range is
+0.481 to 1.583 degrees. The admitted sky-conflict range is 0.00437 to 0.02460,
+and no admitted vertical solution is at its search bound.
+
+Prague's pose files name the valid 130 m format-v3 mesh in their sky-conflict
+records and do not record a 250 m support mesh. Production needs one fresh 250 m
+registration pass and a rebuilt binding before the admitted material-inference
+input list is frozen. Its current binding covers 6.71 percent of faces and 9.93
+percent of area, with a median of three supporting cameras per seen face. The
+current files are:
+
+- `outputs/site_semantics/prague_staromestske/walk_semantic_250m.npz`, SHA-256
+  `fc01fdb06f51a900c3edb92f138d96abf36747b67915979ccade1166b4dd5147`
+
+- `outputs/site_semantics/prague_staromestske/walk_semantic_250m.json`, SHA-256
+  `906a79e8246bd98239957c1289d36edd9ad263bea979744df6b75930e07d6bcf`
+
+These walk bindings contain rays and entity classes. They contain no RF material
+axis. Every current admitted `semantics/semantics.json` at both sites records the
+Mask2Former backend, immutable revision
+`4772b6bf101d91f2534c106dc524d906aeb3c68a`, and provisional material hints.
+There are no `semantics_sam3_*` directories and no
+`joint_atlas_250m_r8.{npz,json}` files. `build_surface_atlas.py` will refuse both
+sites until every selected camera has a hybrid product with the required
+`rf_material` rasters.
+
+### Route preview
+
+A CPU-only LLVM preparation pass used the exact meshes above, the current
+admission files, `walk=route`, `walk_path=links`, a 90 m radius, 6 m stride, and
+seed 7. It did not trace paths or write output.
+
+| Site | Camera order | Full route | Ground datum | Point-array SHA-256 |
+| --- | --- | --- | --- | --- |
+| Tokyo Hachiko | 01, 00, 02 | 23 points, made from 3 registered cameras and 20 stride points. Link-road length is 120.199 m and camera-hop length is 112.740 m. | 51.5966796875 m | `1034b4f23f688a69e293a1df689477307c414a22eb83f698104e7ff52463ea92` |
+| Prague Staromestske | 04, 08, 12, 00, 10, 07, 01, 13, 06, 02, 09, 11 | 68 points, made from 12 registered cameras and 56 stride points. Link-road length is 339.557 m and camera-hop length is 320.882 m. | 236.650390625 m | `16c615490e53814d55d99ae859b28afb61f5782eb5338f303282046b6b8a1ed4` |
+
+These are route previews. CUDA may change the cast ground coordinates by small
+floating-point amounts. The sealed seed-7 CUDA generation is the production
+authority. Keep `--locations 0` so every 6 m route point is traced. Forcing 13
+points would discard much of each route and would no longer match the Korenmarkt
+spacing rule. Weight sites equally in a pooled comparison so Prague's longer
+route does not dominate.
+
+### Shortest matched production path
+
+Run these steps from `semantic_twin/` after the Korenmarkt campaign converges.
+First repair Prague's crop match and rebuild its admission source:
+
+```bash
+.venv/bin/python reregister_site.py \
+  --site prague_staromestske --crop-m 250
+.venv/bin/python build_site_semantics.py \
+  --site prague_staromestske --crop-m 250 --grid-height 1536 \
+  --block-rows 128 --max-residual-deg 4 \
+  --max-sky-conflict 0.5 --min-conflict-range-m 2
+```
+
+Read the admitted station list from each final binding. Run the same pinned
+hybrid model used for the Korenmarkt walk. Its production panorama resolution was
+4,096 by 2,048. The 8,192 default belongs to a different Korenmarkt plaza
+product, so pass 4,096 explicitly here.
+
+```bash
+SITE=tokyo_hachiko
+SEMANTICS_DIR=semantics_sam3_3c879f39826c281e_61id
+jq -r '.stations_admitted[].station' \
+  "outputs/site_semantics/${SITE}/walk_semantic_250m.json" |
+while read -r STATION
+do
+  .venv/bin/python -m semantic_twin.cli.panorama \
+    --panorama "data/panoramas/${SITE}/${STATION}/panorama_z5.jpg" \
+    --out "data/panoramas/${SITE}/${STATION}/${SEMANTICS_DIR}" \
+    --model facebook/mask2former-swin-large-mapillary-vistas-semantic \
+    --dense-revision 4772b6bf101d91f2534c106dc524d906aeb3c68a \
+    --backend hybrid --concepts config/semantic_concepts.json \
+    --sam-revision 3c879f39826c281e95690f02c7821c4de09afae7 \
+    --sam-repository-commit 96914d2425f90a64f45ca977c2b5165418099543 \
+    --device cuda --inference-size 1536 --view-size 1536 \
+    --concept-resolution 1008 --concept-threshold 0.35 \
+    --prompt-batch 32 --output-width 4096 --production
+done
+```
+
+Repeat that block with `SITE=prague_staromestske` after its rebuilt admission
+file is final. The reviewed concept catalogue has file SHA-256
+`75849c493f7c8f11839168875fd8f60fa569acb203750707f5703ae9b8cc3dac`
+and parsed semantic SHA-256
+`66d0dfefba87bde5081cfa82108ca60d47c79cf641df3ec44129ec20bb90453b`.
+The pinned SAM checkpoint SHA-256 is
+`9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e`.
+
+Build each atlas with the same gate and resolution:
+
+```bash
+SITE=tokyo_hachiko
+.venv/bin/python build_surface_atlas.py \
+  --site "$SITE" --crop-m 250 --grid-height 1536 --block-rows 128 \
+  --atlas-resolution 8 --max-residual-deg 4 --max-sky-conflict 0.5 \
+  --min-conflict-range-m 2 --concepts config/semantic_concepts.json \
+  --semantics-dirname semantics_sam3_3c879f39826c281e_61id
+```
+
+Repeat with `SITE=prague_staromestske`. Before tracing, check that the atlas JSON
+records the mesh SHA-256 from the table above, the expected camera IDs, the
+reviewed catalogue digest, and an empty
+`admitted_without_complete_hybrid_product` list.
+
+Generate Hachiko's sealed seed-7 reference first:
+
+```bash
+.venv/bin/python run_exposure.py \
+  --site tokyo_hachiko --crop-m 250 --materials atlas \
+  --atlas-npz outputs/site_semantics/tokyo_hachiko/joint_atlas_250m_r8.npz \
+  --walk route --walk-path links --walk-radius-m 90 --walk-stride-m 6 \
+  --locations 0 --frequency-ghz 15 --rays 1600000 --local-cells 4096 \
+  --max-bounces 3 --seed 7 --variant cuda_ad_rgb \
+  --transport-kernel drjit \
+  --tag final_tokyo_hachiko_walk_drjit_atlas_4096_v1
+```
+
+At the current source revision, the unexposed CLI fields match Korenmarkt:
+isotropic, rooftop, and street-small-cell laws, 1.5 m head height, roulette start
+4, roulette floor 0.05, 1 mm ray lift, no range weighting, 400,000-ray batches,
+and 18 exit bands. The output manifest records all of them. It also hashes the
+mesh, atlas, surface binding, locations, and spectra, and records the Duke body
+identity. The CDF loader adds exact body-mesh and IT'IS database hashes. Use a
+distinct tag for Prague and replace only the site and atlas path.
+
+The generic CDF runner can replay either sealed reference. Its named production
+contract currently hard-codes Korenmarkt's hashes, run settings, and five-camera
+plus eight-stride route. A custom contract skips those source-level Korenmarkt
+pins. Production-grade city campaigns should add one named hash contract per site
+after the seed-7 generation exists, then run `run_cdf_convergence.py --dry-run`
+before CUDA preparation. Keep the same seeds 7 through 38, looks 16, 24, and 32,
+bootstrap settings, and stopping thresholds. Run Hachiko to its stopping decision
+before starting Prague.
+
+The 4,096-cell choice transfers Korenmarkt's estimator-resolution protocol to the
+new sites. It is not a new site-specific angular convergence proof. The full
+replica stopping rule measures Monte Carlo uncertainty at that fixed resolution.
+
 ## Sequential stopping rule for a fixed walk
 
 The independent Monte Carlo unit should be one complete walk replica with a new

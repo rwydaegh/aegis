@@ -1,0 +1,98 @@
+{
+ "osm_id": 493993669,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 3,
+   "evidence": "seen"
+  },
+  "confidence": 0.78,
+  "ground_floor": {
+   "kind": "shopfront",
+   "evidence": "seen"
+  },
+  "identification": "Early-19th-century plastered neoclassical (Empire) corner mansion at Groentenmarkt/Pensmarkt in Ghent, three storeys under a slate gabled roof, upper elevation ordered by giant pilasters and a dentilled cornice, now a Europabank branch whose ground floor has been reglazed as continuous bank frontage between rusticated piers.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "concrete",
+   "roughness_mm": 0.8,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "notes": "BAY COUNT CAVEAT \u2014 this is the field most likely to be misapplied. count=3 is scoped to the 10.4 m fronting Pensmarkt frontage, where set B/0 shows exactly three window columns inside the magenta outline. The photographed long elevation is the Groentenmarkt return along the 32.7 m footprint side and carries roughly 9-10 bays. Both readings give the same ~3.4 m bay pitch; if the generator applies bays to a facade other than the 10.4 m one, rescale by pitch, do not reuse the integer.\n\nMATERIAL MAPPING \u2014 OSM says building:material=plaster and the photos confirm smooth painted lime render, but the enum has no plaster entry. wall=concrete is the closest dielectric stand-in for rendered masonry (ITU concrete eps'~5.24 sits near lime render over brick); it is a substitution, not a claim that the wall is concrete. trim=marble represents the polished grey-green stone plinth and pier bases at the ground floor, which set B/0 resolves clearly and which is the surface the street-level beam actually hits. Roughness 0.8 mm: upper walls are flat painted render (~0.5), lifted slightly because the ground-floor piers carry incised ashlar joint lines of 5-10 mm depth. Those grooves are deliberately NOT geometry \u2014 they are 1 cm regime and would produce specular garbage if meshed.\n\nGEOMETRY WORTH BUILDING (>10 cm, in priority order): the entablature/string course over the shopfront (~40-50 cm projection, strongest single horizontal scatterer at pedestrian head height); the main dentilled cornice at eaves (~50-60 cm); giant-order pilasters spanning the two upper floors (~10-15 cm projection, ~0.6-0.8 m wide, they set the vertical rhythm and are visible from every rotation angle); window reveals and the bracketed moulded sills at the piano nobile; the pedimented end bay on the Groentenmarkt elevation (visible top right in set B/1). Skip the dentil teeth as individual solids - they are ~5-8 cm, wrong regime; fold them into the cornice profile.\n\nSTOREY PROPORTION \u2014 the two upper floors are unequal: piano nobile ~4.2 m with ~3.0 m windows, top floor ~3.4 m with ~2.2 m windows. upper_height_m=3.8 is their mean. Likewise window height 2.8 m is weighted to the dominant piano nobile; the top row is nearer 2.2 m. If the generator supports per-storey override, use the split.\n\nROOF \u2014 marked inferred, not seen. Set A's mesh shows a large dark slate plane behind the cornice but dissolves its edges; set B cannot see over the cornice at all. Form and material are from the OSM record; ridge_parallel_to_street follows the footprint (ridge along the 32.7 m Groentenmarkt axis). Height 16.9 m is flagged height_source=conflict-photo: my storey stack puts eaves at ~11.9 m, leaving ~5.0 m of roof over the 14.3 m depth, i.e. ~35 degrees, which is consistent for slate. Treat the eaves line as the more reliable number.\n\nCLUTTER \u2014 fronting_street is pedestrian with car_access=none, so place NO vehicles here. Both photos show what actually occupies this pavement: leaning bicycles and a bike stand against the plinth, wheelie bins at the corner, A-boards and poster panels inside the glazing. Set B/0 shows a mature street tree roughly 1.5-2 m off the facade whose canopy screens the upper bays; at 28 GHz in leaf that is a significant seasonal attenuator directly in the near field of this facade and should be instanced, not omitted as scenery.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 4.3,
+   "upper_height_m": 3.8,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.35,
+   "height_m": 2.8,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [
+  "wall 'concrete' contradicts OSM building:material='plaster'"
+ ],
+ "facts": {
+  "osm_id": 493993669,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "name": "Europabank",
+   "building:material": "plaster",
+   "building:levels": "3",
+   "roof:shape": "gabled",
+   "roof:material": "slate",
+   "amenity": "bank",
+   "addr:street": "Groentenmarkt"
+  },
+  "frontage_width_m": 10.4,
+  "footprint_m": [
+   32.7,
+   14.3
+  ],
+  "footprint_area_m2": 307,
+  "height_m": 16.9,
+  "height_source": "conflict-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 3,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Pensmarkt",
+   "surface": null,
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.341,
+   "x1": 0.644,
+   "y0": 0.11,
+   "y1": 0.821
+  }
+ },
+ "plate": "renders/plates/graslei/493993669.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993669_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/493993669_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.40214300000000003,
+ "model": "claude-opus-5"
+}

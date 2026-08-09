@@ -1,0 +1,92 @@
+{
+ "osm_id": 514020946,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 3,
+   "evidence": "seen"
+  },
+  "confidence": 0.82,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "seen"
+  },
+  "identification": "A tall narrow brick quayside house on the Graslei/Vleeshuistragel corner in Ghent, late-Gothic/Flemish-Renaissance in idiom and restored, with a crow-stepped gable and oculus facing the Leie, natural-stone cross windows, and a tea-room occupying the quay-level ground floor.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": true,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "notes": "CORNER BUILDING - read the two faces differently. Gable front (9.3 m) faces the Leie/Graslei and carries all the ornament; the 16.5 m flank down Vleeshuistragel is plainer, large brick field with isolated cross windows, the VLEESHUIS street sign and the Callisto board. Bays and ridge orientation below are set against the GABLE FRONT: ridge_parallel_to_street=false means the ridge runs into the plot, i.e. parallel to Vleeshuistragel, perpendicular to the Graslei face. Do not flip this.\n\nROOF: stepped_gable chosen over gabled because the crow steps with projecting stone copings are the silhouette and are >10 cm relief - they must be geometry, not a painted profile. Steep tiled pitch behind, ~49 deg, derived from 5.4 m of gable above a 12.3 m eaves; B_1 shows a pitch consistent with that. Oculus/roundel and volute scrollwork in the gable head are ornament: 1-10 cm regime, roughness only, do not mesh.\n\nCORNICE: true, but it is a corbelled brick eaves band with a painted fascia and gutter along the flank plus the stone step copings on the gable - not a classical moulded cornice. Model it as a shallow projecting band, ~0.15 m, not a bracketed entablature.\n\nWINDOWS: stone mullion-and-transom cross windows (kruiskozijn) with leaded small-pane upper lights and red-painted joinery, clearly resolved in both photographs. Upper-floor openings on the gable front group into wide multi-light bands; 1.5 m is the single-cross-window module, use it as the unit and let the generator group two of them in the centre bays. reveal_class=deep is read from the oblique view in B_0, where the stone jamb sides and the set-back glazing plane are visible on the flank windows; wall is thick handmade brick, so ~0.25 m is right. This is the single most valuable geometric feature on the building at 28 GHz.\n\nBALCONIES: two distinct ones on the gable front, seen - a semicircular wrought-iron balcony with potted plants at the upper level and a red-balustraded one below, plus a canted oriel with a curved metal canopy over the ground floor. All are real projecting geometry and should be built.\n\nGROUND FLOOR: cafe_glazing. Tea-room with awning, glazed openings under segmental brick arches, and a terrace of tables and red chairs on the quay in both photographs, with a stone arch at quay level. Note the quay sits below the Graslei/tragel level - there are steps and a retaining wall; the cafe floor is the lower level.\n\nMATERIAL: trim=marble is a stand-in for Balegem-type calcareous limestone (sills, mullions, window surrounds, gable copings) - marble is the closest calcareous stone in the library and the dielectric fit is acceptable; it is not actual marble. roughness_mm=6 is an inference, not a measurement: old handmade brick with irregular courses and deep raked/eroded joints, as seen at close range in B_0. The seen mark on this block covers wall material and trim material, which are unambiguous; the number itself is derived. Same caveat on the storeys block - the count of 4 is seen, the 3.6/2.9 m heights are back-solved from the 17.7 m datum and the observed rhythm.\n\nCLUTTER, and please read this: fronting_street is a 2.4 m gravel tragel with car_access=none. No parked or moving vehicles anywhere near this building - this is exactly the square-full-of-cars failure. What belongs is cafe terrace furniture (tables, stacked chairs, parasols, A-boards, chalkboards), the steel quay railing and steps, bins, bikes leaning at the Graslei end, and moss/damp staining on the lower quay wall.\n\nDETAIL BUDGET: spend it on the gable front and the first 6-8 m of the flank nearest the corner, which is what the corridor illuminates. The far end of the 16.5 m flank and the rear can stay coarse.",
+  "roof": {
+   "form": "stepped_gable",
+   "ridge_parallel_to_street": false,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 3.6,
+   "upper_height_m": 2.9,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.5,
+   "height_m": 2.2,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 514020946,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "addr:street": "Graslei"
+  },
+  "frontage_width_m": 9.3,
+  "footprint_m": [
+   12.8,
+   16.5
+  ],
+  "footprint_area_m2": 132,
+  "height_m": 17.7,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "path",
+   "name": "Vleeshuistragel",
+   "surface": "gravel",
+   "car_access": "none",
+   "distance_m": 2.4
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.366,
+   "x1": 0.623,
+   "y0": 0.114,
+   "y1": 0.819
+  }
+ },
+ "plate": "renders/plates/graslei/514020946.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020946_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020946_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.5126664999999999,
+ "model": "claude-opus-5"
+}

@@ -1,0 +1,93 @@
+{
+ "osm_id": 494007823,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 4,
+   "evidence": "seen"
+  },
+  "confidence": 0.68,
+  "ground_floor": {
+   "kind": "shopfront",
+   "evidence": "seen"
+  },
+  "identification": "A listed mid-C18 corner house at Hooiaard/Graslei, Ghent, whose street elevation reads as a historicising rebuild in the local traditional manner: four wide bays of red brick gridded by near-flush Balegem-limestone bands and mullion strips, tall small-paned windows, and an art-gallery shopfront with leaded transom lights at street level.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": false,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 4.5,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "notes": "IDENTITY: target is the red-brick + pale-stone-lattice facade carrying the GRASLEI plate and GALERIE PONT & PLAS. In B/1 the box wraps left over the grey and olive neighbours because the camera stands 1.1 m off the wall; the target is the fabric at the right of that frame. B/0 is a near-frontal read of it and is the primary evidence.\n\nSTOREYS (inferred): photos show ground + one upper only. 14.5 m as a max height cannot accommodate four storeys plus the pitched roof visible in set A (4 x storeys ~= 14.3 m eaves, no roof left). Three storeys at 4.4 + 3.3 + 3.3 = 11.0 m eaves plus ~3.5 m of gable over the 7 m depth reaches 14.5 m. Attic is habitable-plausible; excluded from count per schema. If a survey later gives 14.5 m as EAVES rather than ridge, promote to 4 storeys and re-cut the roof.\n\nLEDGES / PHYSICS CALL: string_courses set false deliberately. The limestone lattice is the dominant visual feature but in the B/1 oblique it sits essentially flush with the brick (a few cm), which is the 1-10 cm regime: it must be carried as material contrast and roughness, not as facets. Faceting it would inject specular garbage at 1.07 cm. Real relief worth meshing: window sills (shadow line under the first-floor openings in B/0, ~6-8 cm lip), the window reveals themselves, the shop transom band, and the eaves cornice (unseen, inferred from local typology). No balconies on this elevation.\n\nMATERIAL: wall is red handform brick with slightly recessed joints, ~5 mm RMS; roughly 40 percent of the facade area is smooth dressed stone, so the single wall number is area-weighted down to 4.5. Trim enum has no stone entry: 'marble' is the closest dielectric stand-in for Balegem limestone (eps' ~7) and is preferred over concrete. Give the stone a separate low roughness (~1 mm) if the generator supports per-class values.\n\nWINDOWS: large multi-pane sashes, roughly 2.6 x 2.3 m in a 3.85 m bay pitch, glazing bars clearly resolved in B/0 (3-wide grid). Ground floor is plate display glazing with a leaded green transom band above; treat the transom as a separate shallow-recessed plane.\n\nROOF (inferred): set A shows a ridge running with the frontage but cannot resolve gable vs hip. Attached on both sides (2 neighbours), so gabled against party walls with the ridge parallel to the street is the only sensible instance. Weak evidence; do not treat as measured.\n\nCLUTTER: fronting street is a living_street with car_access=none on sett. No parked vehicles here - this is exactly the case where a blanket parking rule would be wrong. Populate instead with leaned bicycles against the plinth, an A-board or two outside the gallery, a wall-bracket lamp, the projecting PONT & PLAS hanging sign (seen in B/1, a genuine facet worth geometry), and the cast-iron downpipe at the bay division (seen in B/0) - a ~10 cm vertical cylinder hard against the wall and a meaningful scatterer at 28 GHz.\n\nBUDGET: this facade sits 1.1 m from the corridor, so it earns full opening-and-reveal detail; the return elevation on the second frontage is unseen and should be generated as a plainer mirror of the same grammar rather than invented afresh.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 4.4,
+   "upper_height_m": 3.3,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 2.6,
+   "height_m": 2.3,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494007823,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "start_date": "mid C18",
+   "heritage": "4",
+   "historic": "house",
+   "addr:street": "Hooiaard"
+  },
+  "frontage_width_m": 15.4,
+  "footprint_m": [
+   17.0,
+   7.0
+  ],
+  "footprint_area_m2": 111,
+  "height_m": 14.5,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "living_street",
+   "name": "Schuddeveestraatje",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 1.1
+  },
+  "plate_view": "oblique",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.227,
+   "x1": 0.771,
+   "y0": 0.469,
+   "y1": 0.873
+  }
+ },
+ "plate": "renders/plates/graslei/494007823.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007823_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007823_1.jpg"
+ ],
+ "view": "oblique",
+ "cost_usd": 0.4395335,
+ "model": "claude-opus-5"
+}

@@ -1,0 +1,475 @@
+% ======================================================================
+% ROOFLINE_METHODS_RESULTS_DRAFT.tex
+%
+% Draft Methods and Results for the CURRENT roofline exposure study.
+% Written 2026-08-09. Nothing else in paper/ was touched.
+%
+% WHAT THIS REPLACES
+%   The existing body.tex and the Results section inside paper.tex describe
+%   the superseded height-band / range-band illumination law and the
+%   eleven-square ranking. Neither is used here. This file is written against
+%   the current production contract and can be dropped in beside paper.tex
+%   once the author decides how much of the old method text survives.
+%
+% SOURCES, IN THE PRIORITY ORDER USED
+%   1. docs/CURRENT_PRODUCTION_CONTRACT.md  (supersedes everything below it)
+%   2. docs/FIRST_MATERIAL_INTERACTION_TRANSPORT.md
+%      docs/ROOFLINE_SOURCE_MEASURE.md
+%      docs/ROOFLINE_CAMPAIGN_OPERATIONS.md   (the D_ref and S_0 equations)
+%      docs/ROOFLINE_CAMPAIGN_RESULTS.md      ("Current first-material-...")
+%      docs/PROVIDER_CORRIDOR_INTEGRATION_REPORT.md
+%      docs/PUBLICATION_PHYSICS_DECISIONS.md
+%      docs/TEN_CITY_COHORT_MANIFEST.md
+%      docs/MODEL_PARAMETER_INVENTORY.md, docs/REFACTOR_STATUS.md
+%      docs/SOURCE_CONDITIONED_SUFFIX_PILOT.md
+%   3. docs/ROOFLINE_EXPOSURE_GRAND_PLAN.md, "What belongs in the paper"
+%
+% CONVENTIONS
+%   Matches paper.tex: IEEEtran, amsmath, cleveref, \todo{} from paper.tex,
+%   no siunitx, thin-space units (15\,GHz, 250\,m), American spelling,
+%   sentence-case headings, third person, no first person plural.
+%
+% SYMBOL CLASH, PLEASE RESOLVE BEFORE MERGING
+%   body.tex uses $S_0$ for the open-ground free-space power density in the
+%   exposure-ratio denominator. The campaign operations record uses $S_0(\x)$
+%   for the per-unit-density reference scale defined in \eqref{eq:s0}. These
+%   are different objects. One of the two has to be renamed.
+%
+% NUMBERS DELIBERATELY NOT USED
+%   Paired-campaign timing (the "about 6% slower" Fibonacci figure, the
+%   72.2126 s and 65.4395 s stage sums) and all recovery timing. The source
+%   records flag these as uncorrected or excluded from scientific claims.
+%   The historical 148.35 s and 80.86 s pilot pair is likewise excluded.
+%
+% LEFT OUT ON PURPOSE, per the grand plan
+%   Eleven-city ranking, beamforming and MIMO, bystanders, foliage and
+%   diffraction detail, Blender construction, SAM prompt experiments as a
+%   contribution of their own, and extended performance engineering.
+% ======================================================================
+
+\section{Methods}
+\label{sec:roofline-methods}
+
+\todo{decide where this section sits relative to the surviving parts of the
+old method text, and whether the exposure-ratio framing of
+Section~\ref{sec:ratio} is kept, rewritten, or dropped}
+
+The study reports a directional transport measure at pedestrian standpoints
+along a fixed street route, coupled to a human body, for sources placed on the
+observed roofline of a real city square. Every result below uses one carrier,
+15\,GHz, and one transport crop, a 250\,m radius about the site.
+\todo{confirm the main frequency statement, and say whether a 28\,GHz
+sensitivity is promised or deferred}
+
+\subsection{Co-located panorama, receiver, and body}
+\label{sec:colocation}
+
+The panorama camera, the reciprocal ray origin, the receiver position, and the
+body coupling point share one position at every standpoint. The transmitter
+does not. It lies on the declared roofline source support described in
+\cref{sec:source-measure}. Co-location is what lets a street-level photograph
+taken at the standpoint report on the surfaces the early interactions reach.
+
+Standpoints are the points of an exact cached pedestrian street route rather
+than a grid. The baseline route contract is
+\texttt{registered\_span\_street\_v1}. Its two endpoints are the furthest pair
+in the site's current admitted station report, and the route itself is the
+exact waypoint-keyed cached walking response for that pair. Route preparation
+never buys or writes a route during a run, so a missing or stale cache is a
+preflight refusal and not a straight-line fallback.
+
+An opt-in evidence route, \texttt{provider\_corridor\_v1}, restricts the walk
+to connected provider graph paths whose distance to the nearest admitted
+camera stays below 20\,m at every segment endpoint and at every exact Voronoi
+breakpoint. It leaves the baseline route and its sealed bytes unchanged. The
+verified 2026-08-07 snapshot selected endpoint spans of 49.005\,m at
+Korenmarkt, 103.781\,m at Prague, 62.437\,m at Madrid, 52.395\,m at Mexico
+City, and 72.160\,m at Tokyo Hachiko.
+\todo{state plainly which of the two route contracts each of the five
+completed campaigns ran on, and keep the two labelled as different estimands}
+
+Each standpoint carries a fixed body yaw taken from the route tangent. A grid,
+a partial walk, a uniform-yaw average, and an interpolated camera position are
+different estimands and are refused as substitutes for the declared walk. An
+exact uniform-yaw level-2 endpoint is implemented and verified, and it averages
+the body surface field analytically over all horizontal headings without extra
+tracing. \todo{decide whether the uniform-yaw endpoint appears as a sensitivity
+result or is left to the supplementary information}
+
+\subsection{Support mesh and material evidence}
+\label{sec:atlas}
+
+Geometry is a photogrammetric support mesh of the square, cropped to 250\,m.
+The panoramas do not create that geometry. They register image evidence to it.
+The collision hierarchy retains the original support faces, 617,091 at
+Korenmarkt and 664,619 at Prague, because exact transport-mesh decimation has
+no convergence evidence.
+
+Material evidence is bound through a surface atlas. A dense semantic
+segmentation names the object class, a promptable segmentation model is then
+asked for the material inside the facade regions, and the fused result is
+written to the atlas. The atlas material lookup is evaluated on the original
+support mesh. The Blender display level of detail is visual only and is never
+the transport mesh, so it changes no transport array and no transport time.
+
+A triangle takes an image-derived material only when its interface posterior is
+strictly above 0.5. An exact tie falls back to the declared geometric prior.
+Regions the panoramas never observed keep that geometric prior, and their
+coverage and fallback provenance are reported rather than hidden. A silent
+wholesale fallback to the geometry-only mode is a preflight refusal.
+
+Roughness is the finish-only model. Quadrature roughness is retained as a
+historical sensitivity. The \texttt{masonry\_two\_level} and RCWA paths are
+research models and produce no result reported here.
+
+\subsection{Roofline source measure}
+\label{sec:source-measure}
+
+The source model separates two questions that are easy to conflate. How many
+effective emitters belong to a site, and how those emitters are distributed
+along the represented roofline.
+
+The first is fixed by an areal density. With $\rho_A$ active sites per unit
+ground area and a crop area $A_{\mathrm{crop}}$, the expected active-source
+count is
+\begin{equation}
+  N_{\mathrm{site}} = \rho_A A_{\mathrm{crop}} .
+  \label{eq:nsite}
+\end{equation}
+This is the physical scaling. It is not the number of numerical source
+quadrature points, and it does not by itself place any source.
+
+The second is the source measure. Sources are constructed from the observed
+route-aligned roofline, and the retained roofline curve is the geometry the
+route provides. Every quadrature point on that curve carries the arc length it
+represents. For an edge running from $\mathbf{p}_i$ to $\mathbf{p}_{i+1}$ the
+baseline element is the physical three-dimensional length,
+\begin{equation}
+  \ell_i^{(3)} = \lVert \mathbf{p}_{i+1} - \mathbf{p}_i \rVert_2 ,
+  \qquad
+  L_3 = \sum_i \ell_i^{(3)} ,
+  \label{eq:arclength}
+\end{equation}
+and the normalized conditional source probabilities are
+$p_i = \ell_i^{(3)} / L_3$, which sum to one. The exact Korenmarkt source
+artifact holds 506 segments with $L_3 = 182.953912$\,m. The sealed Prague
+artifact has $L_3 = 654.605$\,m.
+
+Changing the measure leaves \eqref{eq:nsite} and the site-level scaling
+untouched. It changes only the conditional placement of source mass, which is
+why it can still move direct, specular, next-event, and body-coupled
+contributions. Horizontal projected roofline length is retained as an explicit
+opt-in sensitivity rather than a replacement. At Korenmarkt
+$L_{xy} = 160.509814$\,m, a ratio $L_{xy}/L_3 = 0.877324$. In a paired seed-7
+run at identical receiver positions, source-curve hash, transport
+configuration, and point seeds, in which only the normalized weights differed,
+projected weighting changed the mean pointwise raw transfer by $-0.89\%$
+direct, $-3.13\%$ one-reflection specular, $-1.17\%$ diffuse, and $-1.41\%$
+total. Mean pointwise peak $S_{ab}$ changed by $-1.23\%$, and mean $S_{ab}$,
+absorbed power, and whole-body SAR each changed by $-0.56\%$. That is a
+one-seed common-random-number comparison and not a convergence claim.
+\todo{decide whether the projected-length sensitivity belongs in the main text
+or only in the supplementary information}
+
+Exact edge endpoints, both length measures, the selected measure name, the
+normalized-weight hash, and the source-construction hash are retained for every
+edge, so the paired projection sensitivity stays auditable.
+
+\subsection{Reference transfer and reported units}
+\label{sec:normalization}
+
+Two reference quantities keep network scale, scene transfer, and visibility
+from being conflated. For receiver position $\x$ the unobstructed reference
+transfer is
+\begin{equation}
+  D_{\mathrm{ref}}(\x) = \sum_i \frac{p_i}{r_i(\x)^2} ,
+  \label{eq:dref}
+\end{equation}
+where the arc-length weights $p_i$ sum to one and no visibility test is
+applied. The directional measure reported here is the raw next-event field
+divided by $D_{\mathrm{ref}}$.
+
+Results per unit active antenna density and per unit radiated power use
+\begin{equation}
+  S_0(\x) = \frac{A_{\mathrm{crop}} D_{\mathrm{ref}}(\x)}{4\pi} .
+  \label{eq:s0}
+\end{equation}
+A physical scenario value follows by multiplying by
+$\rho_A P_{\mathrm{EIRP}}$, so neither the site density nor the transmit power
+ever has to be stated or defended. Every campaign output records
+$D_{\mathrm{ref}}$, the visible direct transfer $D_{\mathrm{vis}}$, and the
+multipath surplus separately.
+
+\subsection{Transport contract}
+\label{sec:transport}
+
+The production transport contract is
+\texttt{first\_material\_interaction\_v1}. For each source and receiver
+direction it combines exactly three terms.
+
+\begin{enumerate}
+  \item[T1] The direct source-to-receiver term, computed exactly.
+  \item[T2] The order-1 all-specular term, computed exactly.
+  \item[T3] Stochastic next-event estimation of the first diffuse interaction,
+  taken at the first blocking material vertex.
+\end{enumerate}
+
+The three classes are non-overlapping, so the campaign reports direct,
+one-bounce specular, diffuse, and total transfer without double counting.
+
+Deterministic specular candidates are found by adaptive refinement over the
+source curve and the support faces. When the candidate set reaches 20,000, a
+conservative mirrored-receiver triangle-cone broad phase is applied first. The
+certified CUDA Float64 broad phase leaves the exact host final kernel
+unchanged, uses about 96\,MiB of resident memory, and produced byte-identical
+path arrays with zero lost candidates. The adaptive candidate budget is
+normally 120 million. Tokyo uses a recorded 320 million cap because one
+standpoint has no accepted order-1 path and therefore cannot satisfy a relative
+convergence test around zero. Its 319.046 million candidate support is
+enumerated in full rather than admitting an absolute convergence epsilon.
+Candidate caps, broad-phase thresholds, and chunk sizes are computational
+guards. They are not model parameters.
+
+\subsection{A declared scope limit, no mixed suffix}
+\label{sec:no-suffix}
+
+\texttt{first\_material\_interaction\_v1} has no mixed suffix. A sampled path
+stops at its first diffuse event and is not continued into a
+diffuse-to-specular tail. Specular orders above one are absent. This is stated
+as a scope limit rather than presented as a complete model, and the historical
+\texttt{max\_bounces=3} hybrid is sensitivity evidence rather than evidence
+that a three-bounce model was ever in production.
+
+The limit is a decision with evidence behind it. A source-conditioned
+conservative-screen mixed-suffix estimator was built, verified, and then
+rejected. Its screen rejected only impossible finite image geometry and
+nonpositive diffuse cosine, so it had no false negatives against the unchanged
+suffix kernel, and an analytic test confirmed that its conditional-source
+expectation equalled the exhaustive weighted source sum. The predeclared
+promotion gates asked for at least a fourfold improvement in relative variance
+multiplied by point wall time. Measured over 64 replicas at one problematic
+standpoint in each of two campaigns, the relative variance-time gains were
+0.7755 at Mexico City and 1.1716 at Tokyo, both below the required factor of
+four. The pilot removed every zero score, from 0.703125 to 0 at Mexico City and
+from 0.515625 to 0 at Tokyo, but conditioning the source alone shifted variance
+instead of removing the dominant tail. Production code and configuration were
+not changed.
+
+\subsection{Body coupling}
+\label{sec:body}
+
+Body coupling uses the level-2 surface-field path with an anatomical phantom
+and published tissue parameters~\cite{aegis, itis}. The three directional
+measures of \cref{sec:transport} are coupled to the body separately, and their
+per-triangle $S_{ab}$ fields are then summed. That preserves linearity and
+removes a redundant fourth body solve. Direct and deterministic all-specular
+body fields are cached once per route point across replicas.
+
+Three endpoints are reduced from the summed field. The area-weighted body mean
+is the absorbed power divided by the exact float64 total triangle area,
+$p_{\mathrm{abs}} / A_{\mathrm{body}}$, in both the scalar and the batched
+coupler. The reported peak is the peak of the replica-averaged triangle field
+and not the average of the per-replica maxima. The third is whole-body specific
+absorption rate.
+
+The CUDA path uses an explicit DrJit Float64 reduction with fixed
+512-direction blocks. A NumPy backend remains an explicit alternative, and the
+selected backend is recorded in provenance. The CUDA body result is
+deterministic and agreed with the reference to a maximum relative error of
+$6.64\times10^{-16}$ in the verified benchmark.
+
+\subsection{Sampling and numerical controls}
+\label{sec:sampling}
+
+Every campaign launches 200,000 independent and identically distributed primary
+rays per standpoint and records 4,096 passive angular output cells. The cells
+are output directions. They are not 4,096 independent launch strata, and no
+result depends on reading them as such. Rotated Fibonacci launch is retained as
+a sampling diagnostic and is not the adopted baseline, for the reason given in
+\cref{sec:sampler-check}.
+
+Replicas use seeds 7 through 22, and convergence is examined at looks 4, 8, 12,
+and 16. Storage is bounded by scalar shards plus at most one full body field
+per declared look and one current field, so a look-to-look comparison uses the
+retained cumulative field rather than a retrace.
+
+The 200,000-ray and 4,096-cell values are the production contract rather than
+the result of a completed budget reduction. Candidate reductions in either
+remain diagnostic until paired convergence checks cover scalar peaks,
+whole-body SAR, and directional spectra under the current transport contract.
+
+\section{Results}
+\label{sec:roofline-results}
+
+\subsection{Five completed city campaigns}
+\label{sec:five-cities}
+
+Five city campaigns are complete under
+\texttt{first\_material\_interaction\_v1}. \Cref{tab:five-city} lists them.
+Every campaign uses seeds 7 through 22, looks 4, 8, 12, and 16, 200,000 IID
+primary rays, and 4,096 output cells, and every wall time was measured on one
+A6000.
+
+\begin{table}[!t]
+  \caption{Completed first-material-interaction campaigns at Ghent
+  Korenmarkt, Prague Staromestske, Madrid Plaza Mayor, Mexico City Zocalo, and
+  Tokyo Hachiko}
+  \label{tab:five-city}
+  \centering
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lccc}
+    \toprule
+    Site & Standpoints & Replicas & Wall time (s) \\
+    \midrule
+    Korenmarkt  & 10 & 16 & 29.79 \\
+    Prague      & 22 & 16 & 69.02 \\
+    Madrid      & 14 & 16 & 40.70 \\
+    Mexico City & 11 & 16 & 30.92 \\
+    Tokyo       & 16 & 16 & 50.11 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+These are five separate single-sampler campaigns that share one sealed
+transport contract. They are not a completed cohort. The intended
+comparable-city cohort has ten sites. Nine of the ten have panorama
+acquisitions, Krakow is pending Street View quota, and every site has to pass
+input readiness on its own before it is run. Times Square is excluded from the
+cohort because its current geometry contains mirror-glass reconstruction
+artifacts and sub-street geometry.
+\todo{fix the final cohort size and say in the abstract that five of ten
+intended sites are complete, or hold the paper until more are}
+
+\todo{figure reference: the authenticated five-city export already produces a
+PDF and a PNG under the current five-city
+first-material-interaction output directory}
+
+\subsection{Replica convergence}
+\label{sec:convergence}
+
+Total transfer is converged at 16 replicas at every site. The maximum change
+from look 12 to look 16 is 0.0000819\,dB at Korenmarkt, 0.0001559\,dB at
+Prague, 0.0004083\,dB at Madrid, 0.043625\,dB at Mexico City, and
+0.019732\,dB at Tokyo Hachiko. Every value is below 0.1\,dB.
+
+The two largest values belong to the two sites that carry shadowed standpoints
+with no direct term, which is the subject of \cref{sec:zero-direct}. Mexico
+City and Tokyo are not directly comparable with their historical 64-replica
+runs, so no look-to-look number is carried across that boundary.
+
+\subsection{Shadowed standpoints with no direct transport}
+\label{sec:zero-direct}
+
+Six standpoints have zero direct transport. They are points 0, 1, and 3 at
+Mexico City and points 13, 14, and 15 at Tokyo Hachiko. Every watt in the
+reported answer at those points arrives by reflection or by a diffuse event.
+
+They stay in the sample. A standpoint whose direct term is exactly zero is a
+shadowed pedestrian position rather than a failed calculation, and dropping it
+would delete the part of the route where the square does the most to the
+answer. Retaining them has one visible cost, described in
+\cref{sec:topology}, and one computational cost, the enumerated 319.046 million
+candidate support at the Tokyo standpoint that cannot satisfy a relative
+convergence test around zero.
+
+\subsection{Topology sensitivity against the historical hybrid}
+\label{sec:topology}
+
+Strict-authenticated common-seed reports compare the current contract with the
+historical hybrid at every site. \Cref{tab:topology} gives the route q10, q50,
+and q90 changes in total transfer, taken as first material interaction minus
+hybrid.
+
+\begin{table}[!t]
+  \caption{Total-transfer change against the historical hybrid, in dB}
+  \label{tab:topology}
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Site & q10 & q50 & q90 \\
+    \midrule
+    Korenmarkt   & $-0.00529$  & $-0.00798$ & $-0.00872$ \\
+    Prague       & $-0.000741$ & $-0.00507$ & $-0.00693$ \\
+    Madrid       & $+0.0676$   & $+0.1046$  & $+0.0881$ \\
+    Mexico City  & $-11.109$   & $-0.00174$ & $-0.00209$ \\
+    Tokyo        & $-2.125$    & $-0.00481$ & $-0.00828$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The central quantiles barely move. Three of the five sites change by less than
+0.01\,dB at q50 and q90, which says that removing the mixed suffix and the
+capped adaptive specular search leaves the middle of the route distribution
+where it was.
+
+The two large q10 values are the shadowed strata of \cref{sec:zero-direct}.
+Mexico City and Tokyo share those points with the hybrid, and a lower tail
+built on standpoints with no direct term is where a change of path topology has
+the most room to act. The q10 column is therefore a statement about six
+standpoints, not about the two routes.
+
+Madrid moves the other way, and the reason is the exact term rather than the
+missing one. Under the current contract the order-1 all-specular support is
+enumerated exactly. The historical hybrid searched it adaptively under a cap
+and did not capture all of it, so the positive shift of $+0.0676$ to
+$+0.1046$\,dB at Madrid is specular support that the earlier run missed.
+
+The same reports record estimator-stage ratios of 0.1826, 0.2068, 0.1679,
+0.2505, and 0.3154 in the order of \cref{tab:five-city}, and stochastic-stage
+ratios of 0.0283, 0.0314, 0.0310, 0.0378, and 0.0340. These are stage ratios
+against the historical hybrid and not whole-run wall-time claims, least of all
+at Mexico City and Tokyo. \todo{these belong in the supplementary information
+unless a reviewer asks for cost}
+
+\subsection{A launch sampler check that did not change the baseline}
+\label{sec:sampler-check}
+
+The IID launch was tested against a rotated Fibonacci launch in a paired
+two-city campaign under the historical hybrid contract. Both arms used the same
+geometry, the same source identity, the same 16 seeds numbered 7 through 22,
+and the same convergence looks. The comparison is retained here as a method
+check on the sampler rather than as a current transport result.
+
+The two samplers agree. At look 16 the Korenmarkt route median surplus was
+1.12153\,dB for IID and 1.12156\,dB for Fibonacci, and the whole-body SAR
+medians per unit $\rho_A P_{\mathrm{EIRP}}$ were 0.0631297 and
+0.0631174\,m$^2$/kg. The largest paired difference in total raw transfer was
+0.0324\,dB, and the largest paired difference across body mean, absorbed power,
+and whole-body SAR was 0.0343\,dB. At Prague the route median surplus was
+1.10519\,dB for IID and 1.10465\,dB for Fibonacci, with whole-body SAR medians
+of 0.0121379 and 0.0121384\,m$^2$/kg.
+
+Fibonacci does not earn adoption on variance either. The Korenmarkt
+total-transfer p90 standard errors at look 16 were 0.00839\,dB for IID against
+0.01051\,dB for Fibonacci, and the look 12 to look 16 p90 movement was
+0.00298\,dB against 0.00350\,dB. The Korenmarkt total variance ratio relative to
+IID had median 0.974 with q10 0.01395 and q90 15.21. Diffuse variance alone had
+median 0.628, so the one component that improved did not carry the total. At
+Prague the total variance-ratio q50 and q90 were 1.267 and 51.19, the diffuse
+variance-ratio q50 and q90 were 1.153 and 3.437, and the body variance-ratio
+median was 1.21171. The rotated Fibonacci launch is therefore kept as a
+diagnostic and IID remains the production baseline.
+
+\todo{decide whether this subsection stays in the main text. It is a negative
+method check under the superseded hybrid contract, and it may read better as
+supplementary information with one sentence in the sampling method}
+
+\subsection{What the completed campaigns do not cover}
+\label{sec:roofline-limits}
+
+Five sites of an intended ten are complete, and the five carry one sampler,
+one carrier, one crop, and one transport contract. No between-city ranking is
+claimed from them.
+
+Three limits are contract-level rather than statistical. Specular orders above
+one are absent by declaration, as is any diffuse-to-specular suffix. The
+reported convergence is Monte Carlo convergence over seed replicas, so it
+describes estimator uncertainty and not source-model, geometry, material, or
+pedestrian-position uncertainty. The route CDFs are conditional on the declared
+fixed routes, which makes them fixed-route distributions rather than city
+population distributions.
+
+\todo{write the uncertainty and limitations section proper. The grand plan
+asks for one, and it should also carry evidence coverage by interaction depth
+and the paired semantic-material ablation once those are regenerated under the
+current contract}

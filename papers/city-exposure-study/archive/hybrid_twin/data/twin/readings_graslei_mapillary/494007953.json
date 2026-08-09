@@ -1,0 +1,86 @@
+{
+ "osm_id": 494007953,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 3,
+   "evidence": "inferred"
+  },
+  "confidence": 0.5,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "inferred"
+  },
+  "identification": "A narrow 18th-19th century Ghent burgher house on Hooiaard, four storeys over a cafe/brasserie ground floor, eaves-to-street pitched roof, plastered or painted brick, terraced with party walls on both sides.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 3,
+   "trim": "marble",
+   "evidence": "inferred"
+  },
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 4,
+   "upper_height_m": 3,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.2,
+   "height_m": 2.1,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "inferred"
+  },
+  "notes": "EVIDENCE DISCIPLINE. Only the roof is marked seen. Set A shows a broad slope above the target with a horizontal top edge running left-right and no street-facing gable peak, which supports eaves-to-street / ridge-parallel at this resolution. Form gabled rather than hipped follows from attached_neighbours=4 (party walls at both gable ends); the visibly hipped neighbour to the left is a different, freestanding-ended mass and should not be copied onto the target. Everything on the wall is inferred: the frontage spans only ~200 px of degraded photogrammetry, window slots are visible as blobs but bays cannot honestly be counted and a reveal class cannot be resolved.\n\nHEIGHT CONSISTENCY. 4.0 ground + 3 x 3.0 upper = 13.0 m eaves; ~50 deg pitch over the 7.6 m depth adds ~4.5 m to the ridge = 17.5 m, matching the adopted-photo height. Do NOT re-derive storey heights from height_m independently or the roof volume gets absorbed into the wall and the eaves line lands too high. If the generator prefers a shallower pitch, take it out of the ridge, not out of the storeys.\n\nCLUTTER - THE IMPORTANT ONE. fronting_street is pedestrian, sett, car_access=none, distance 0.0 m. NO parked or moving vehicles anywhere on Hooiaard. This is the exact case that previously filled a pedestrian square with individually-plausible cars. Correct clutter for this frontage: cafe terrace tables and chairs against the facade, parasols, A-boards, bike clusters, waste bins at the corners. Terrace furniture is 0.7-1.1 m tall scattering geometry directly in the street-level beam and is worth explicit facets; it matters more here than any facade ornament.\n\nGROUND FLOOR. cafe_glazing chosen over generic shopfront because Hooiaard at the head of the Graslei is a brasserie strip, not a retail run. Expect a large glazed opening nearly filling the bay width with a recessed entrance door, a fascia/signage band above, and the glass plane set back 0.3-0.5 m from the upper-storey wall plane. That setback is a real wedge at 28 GHz and should be geometry, not texture.\n\nPHYSICS SPLIT. Explicit geometry (>10 cm): window reveals at the shallow class (~0.12 m), stone sills, the plat band string course between ground and first floor, the eaves cornice with its overhang, the ground-floor glazing setback, chimney stacks on the ridge. NOT geometry (1-10 cm): brick coursing, mortar joints, painted-render texture, any moulding profile detail. Those are carried entirely by roughness_mm = 3.0. If the facade is stucco rather than painted brick, drop roughness to ~0.5; 3.0 is a deliberate hedge between the two, since the uniform pink in the plate is equally consistent with red brick and with painted render and set A cannot separate them.\n\nTRIM. marble is used as the natural-stone dielectric proxy for Belgian blue limestone (arduin), which is the near-universal sill, plinth and surround material in Ghent. Expect a stone plinth 0.4-0.8 m at pavement level. If the generator has a distinct limestone entry, prefer it over marble.\n\nVERTICAL RHYTHM. Windows should diminish upward in the Flemish manner: first floor at the stated 2.1 m, second ~1.9 m, third ~1.6 m, widths held constant at 1.2 m so the bay centrelines stay aligned. Uniform window heights on all four storeys is the tell of a generic template. Glazing bars true: a T-division or small-pane pattern, but render this as material and fine relief, never as meshed muntins at 28 GHz.\n\nDETAIL BUDGET. distance_m = 0.0 on a pedestrian street means this facade is at eye level and in the beam; spend on the ground floor, the openings and the silhouette edges (cornice, ridge, chimneys). street_frontages = 2 with an 18.7 m depth implies a rear elevation, plausibly toward the Leie quay: give it the same grammar at reduced budget, plainer, fewer ledges, no cafe glazing.\n\nCONFIDENCE. 0.5 reflects a solid roof reading, a height-corroborated storey count, and a bay count plus full wall grammar that rest on Ghent building stock rather than on this image."
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494007953,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "addr:street": "Hooiaard"
+  },
+  "frontage_width_m": 7.2,
+  "footprint_m": [
+   18.7,
+   7.6
+  ],
+  "footprint_area_m2": 136,
+  "height_m": 17.5,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 4,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Hooiaard",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "oblique",
+  "target_box_normalised": {
+   "x0": 0.396,
+   "x1": 0.607,
+   "y0": 0.59,
+   "y1": 1.0
+  }
+ },
+ "plate": "renders/plates/graslei/494007953.png",
+ "photos": [],
+ "view": "oblique",
+ "cost_usd": 0.25549299999999997,
+ "model": "claude-opus-5"
+}

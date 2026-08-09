@@ -95,6 +95,7 @@ def test_fishnet_runner_builds_package_config(monkeypatch) -> None:
             "45",
             "135",
             "--baseline",
+            "--include-non-surface-classes",
         ]
     )
 
@@ -103,6 +104,7 @@ def test_fishnet_runner_builds_package_config(monkeypatch) -> None:
     assert config.depth_compare == pathlib.Path("comparison")
     assert config.yaws == (45, 135)
     assert config.baseline
+    assert config.include_non_surface_classes
 
 
 def test_fused_crop_runner_builds_package_config(monkeypatch) -> None:
