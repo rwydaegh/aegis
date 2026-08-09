@@ -41,3 +41,87 @@ The same bug existed in papers/TAP_paper/paper.tex and has been fixed there
 Action required: replace the \bibitem{Bamba2014} block in monograph_v2.tex
 with the corrected entry above. No body-text claims need to change; the
 quantitative content already matches the PMB 2014 paper.
+
+
+Erratum 2: Approximation 2 error is understated ~6x (alpha-beta swap)
+---------------------------------------------------------------------
+
+Discovered 2026-08-08 during round-2 review of the TWC coherent-exposure
+paper (see papers/coherent-exposure-operator, WOUT_RESPONSE.md round 2 and
+versions_and_reviews/v1/approximations_deep_dive.md for the full analysis).
+
+Location: prop:approx2 and its figure (0.44 % / 0.17 % at 28 GHz), the
+App. 2 column of tab:approx-accuracy, the trend sentence below it, and
+the summary paragraph near line 1175 ("exact to 0.44 %").
+
+Cause: in theory/scripts/validate_approx2.py the helper alpha_beta()
+returns (beta, alpha) -- its own comment says so -- but Gamma() unpacks
+the tuple as (alpha, beta). The roles of attenuation and phase constant
+are therefore swapped. The swapped computation reproduces the printed
+0.44 % / 0.17 % exactly; the monograph's algebra (eq:Lambda, eq:Gamma)
+is correct and unaffected.
+
+Correct values, |1 - Gamma| max/mean over (theta, theta') in [0, 85] deg^2,
+skin dielectrics from tab:skin-data:
+
+    f (GHz)   correct max/mean (%)   printed
+       6          4.14 / 1.65          --
+      10          3.28 / 1.31        <= 0.30
+      20          2.55 / 1.02          --
+      28          2.54 / 1.01        <= 0.44
+      40          2.81 / 1.12        <= 0.55
+      60          3.56 / 1.42        <= 0.75
+     100          5.53 / 2.21        <= 1.1
+
+The frequency trend is also wrong: the correct error is U-shaped with a
+minimum near 20-28 GHz, not monotone increasing. Toward low frequency
+the loss tangent drops, alpha shrinks relative to beta, and the 1/(2 alpha)
+normalisation amplifies the phase spread; toward high frequency |n|
+drops and the refraction-angle spread grows.
+
+The error is a first-order pure-phase term, (beta_n' - beta_n)/(2 alpha).
+It cancels to second order by referencing each path's phase at the mean
+absorption depth zbar = 1/(2 alpha) instead of the surface (per-path
+weight sqrt(Lambda_nn) exp(-i beta_n zbar), one common zbar). Residual
+error is below 0.05 % at 28 GHz and below 0.2 % up to 100 GHz, at no
+structural cost. Full derivation and an approximation ladder (including
+a universal rank-2 scheme exact to 1e-5) in
+papers/coherent-exposure-operator/versions_and_reviews/v1/approximations_deep_dive.md.
+
+Action required: fix the unpack in validate_approx2.py (done in the same
+commit as this erratum), regenerate the figure, update prop:approx2, the
+figure caption, tab:approx-accuracy, and the trend sentence. Consider
+adopting the mean-depth phase referencing as the definition, as the TWC
+paper now does.
+
+
+Erratum 3: Approximation 1 cross-term bound is unsound
+------------------------------------------------------
+
+Discovered 2026-05-11 by the multi-agent physics audit of jsac2_v3.tex
+(JSAC2/paper/agent_reports/: audit_theory_2026-05-11.md Issue 3,
+AUDIT_SYNTHESIS_2026-05-11.md T3, agent_C_physics.md, audit_approx1b.py).
+Recorded here 2026-08-09; the monograph was never updated after the audit.
+
+Location: prop:approx1 ("O(1/|n|^2) <= 4 % on TM-TM cross-terms"), the
+App. 1 column of tab:approx-accuracy, and the summary paragraph near
+line 1175.
+
+Cause: the proof argues sin(theta_t) sin(theta_t') = O(1/|n|^2) and
+asserts the substitution error inherits that scaling. But the
+substitution error is sin(theta) sin(theta') (1 - 1/|n|^2), which is
+O(1) because the incident product is O(1). Measured: inner-product
+mismatch up to 90 % at (0, 85) deg, depth-integrated TM-TM cross-term
+error up to 35 % at (0, 75) deg.
+
+The rescue lives on the regulated observable, not the per-pair bound:
+theory/scripts/validate_approx1.py (committed 2026-06-18, 70b4ee46)
+measures the error on the surface-integrated operator Q, where the
+surface phase integral decorrelates the widely separated pairs. Result:
+point median 48.7 % / max 110.5 %, 4 cm^2 patch median 5.7 % / max
+15.0 %, whole body below 0.1 %.
+
+Action required: either restate prop:approx1 on the integrated operator
+with the measured numbers, or drop the approximation and use the exact
+refracted direction e'_p (free, since the channel entries are complex
+either way). The TWC paper does the latter.

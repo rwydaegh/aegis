@@ -50,7 +50,7 @@ def compute_xi(theta_deg, n_tilde):
 
 def alpha_beta(theta_deg, n_tilde):
     xi = compute_xi(theta_deg, n_tilde)
-    return np.real(xi), -np.imag(xi)   # (β, α)  — β=Re(ξ), α=-Im(ξ)
+    return -np.imag(xi), np.real(xi)   # (α, β) — α=-Im(ξ), β=Re(ξ)
 
 
 def Gamma(theta_n_deg, theta_np_deg, n_tilde):

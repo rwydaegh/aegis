@@ -100,6 +100,7 @@
 % ---------------------------------------------------------------
 \usepackage{enumitem}          % fine-grained list control
 \usepackage{xcolor}
+\usepackage{soul}              % \hl{} for inline erratum todos
 \usepackage{xspace}            % smart spacing after macro names
 \usepackage{todonotes}[disable]% \todo{} comments — set [disable] for final version
 \usepackage{fancyhdr}          % running headers
@@ -1175,6 +1176,11 @@ cross-terms, with self-terms exact; Approximation~2 (setting all
 normalised depth couplings $\Gamma_{nn'}=1$) is exact to $0.44\,\%$
 at 28\,GHz.  Both affect only cross-terms; the combined error is
 $\lesssim5\,\%$.
+\hl{todo: both numbers in this paragraph are wrong. See the todos at
+prop approx1 (bound unsound, O(1) per pair, rescued only on the
+integrated operator) and prop approx2 (alpha-beta swap in
+validate\_approx2.py, true error 2.5 percent at 28 GHz, up to 4
+percent in band).}
 
 Under these approximations, with exposure channel matrix
 $\tilde{\mathbf{G}}(\rr)\in\mathbb{C}^{3\times M}$ collecting the
@@ -4220,6 +4226,15 @@ We replace $\hat{e}'_{p,n}$ by $\hat{e}_{p,n}$.  Self-terms are
 unaffected ($|\hat{e}_{p,n}|^2 = |\hat{e}'_{p,n}|^2 = 1$).  The
 error on TM--TM cross-terms is $O(1/|\tilde{n}|^2) \lesssim 4\,\%$
 for skin at 28\,GHz; see \cref{tab:approx-accuracy}.
+\hl{todo: this bound is unsound as stated. The substitution error on
+the inner product is O(1), not O(1/n2): up to 90 percent per pair, up
+to 35 percent on a depth-integrated TM-TM cross-term (JSAC2
+agent-report audit of 2026-05-11, Issue 3 / T3). The honest statement
+lives on the integrated operator Q, where the surface phase integral
+decorrelates the bad pairs: error below 0.1 percent whole-body, about
+6 percent median on a 4 cm2 patch (theory/scripts/validate\_approx1.py).
+Either adopt that framing or drop the approximation and use the exact
+refracted direction, as the TWC paper now does.}
 \end{proposition}
 
 Under Approximation~1 the transmitted field of path $n$ at depth $z$
@@ -4358,6 +4373,13 @@ $|\tilde{n}| \approx 4.83$ compresses all refraction angles to within
 $\sim\!10^\circ$ of normal, making $\alpha_n$ and $\beta_n$ nearly
 angle-independent.  This is a non-conservative error of $\leq 0.5\,\%$
 on any cross-term.
+\hl{todo: 0.44 / 0.17 percent came from an alpha-beta unpack swap in
+validate\_approx2.py (the helper returns beta first, the caller reads
+alpha first). Correct values at 28 GHz: max 2.5 percent, mean 1.0
+percent. The error is a first-order phase term and can be cancelled by
+referencing each path's phase at the mean absorption depth 1/(2 alpha),
+which brings it below 0.05 percent at no cost. See erratum 2 in
+errata\_monograph.txt.}
 \end{proposition}
 
 \begin{figure}[!htbp]
@@ -4371,7 +4393,9 @@ on any cross-term.
     Panel~(b): two representative 1-D slices confirming the
     approximation is uniform.  Skin's high refractive index
     compresses all refraction angles below $\sim\!10^\circ$, making
-    $\alpha_n$ and $\beta_n$ nearly angle-independent.}
+    $\alpha_n$ and $\beta_n$ nearly angle-independent.
+    \hl{todo: figure shows the swapped computation. Regenerate with
+    the fixed validate\_approx2.py, colorbar tops near 2.6 percent.}}
   \label{fig:approx2-validation}
 \end{figure}
 
@@ -5543,6 +5567,13 @@ decreases, enlarging the refracted angle $\theta_t = \arcsin(\sin\theta/|\tilde{
 Approximation~2 error follows the same trend.  Both remain within
 the $\sim\!20\,\%$ tissue dielectric uncertainty across the full
 frequency range.
+\hl{todo: the App 2 column of the table above and this trend sentence
+are wrong (same alpha-beta swap). Correct App 2 max errors: 3.3
+percent at 10 GHz, 2.5 at 28, 2.8 at 40, 3.6 at 60, 5.5 at 100. The
+correct error is U-shaped with a minimum near 20 to 28 GHz, not
+monotone increasing: toward low frequency the loss tangent drops and
+the 1/(2 alpha) normalisation amplifies the phase spread. The App 1
+column carries the unsound bound, see the todo at prop approx1.}
 
 % ============================================================
 \section{Computational cost of the coherent pipeline}\label{app:coherent-cost}
