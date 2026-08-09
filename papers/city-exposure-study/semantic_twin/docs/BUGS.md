@@ -10,9 +10,47 @@ legible instead of being buried in a rename.
 
 Ranked by whether a published number moves.
 
+## Status pass 2026-08-09
+
+Every finding below was re-checked against the production tree, the branch that
+carries the `first_material_interaction_v1` contract. Original text is kept as
+written. Status lines are added under each heading and nothing else was edited.
+
+Two things changed the ground under this file since 2026-08-04. Production
+transport is now `first_material_interaction_v1`, described in
+[the current production contract](CURRENT_PRODUCTION_CONTRACT.md), so findings
+about deep multi-bounce gathers and the mixed suffix are sensitivity-only. And
+production roughness is now `finish_only`, so finding 2 no longer describes the
+active rule. See finding 2 for what replaced it, which is not what finding 2
+asked for.
+
+Line numbers in status lines are from the production tree and are relative to
+the package, so `semantic_twin/transport/next_event.py:617` rather than the old
+`propagation/sources.py:382`.
+
 ## Moves a published number
 
 ### 1. Next event throws away the specular lobe
+
+Status 2026-08-09: fixed on the production contract, still open on the bare
+gather. Under `first_material_interaction_v1` the order-one all-specular term is
+exact and is credited `reflectance * share` at
+`semantic_twin/transport/specular.py:908`, which is the exact complement of the
+diffuse `throughput * (1 - share) / pi` the gather still credits at
+`semantic_twin/transport/next_event.py:584`. The partition is enforced at run
+time by `_validate_first_material_interaction`,
+`semantic_twin/exposure/roofline_campaign.py:1822`, which refuses the field
+unless the direct atoms are exact, the all-specular support is complete at order
+one, and the mixed suffix mass is exactly zero. The bounce-two discard is moot
+because the contract has no second bounce.
+
+Still open where no specular transport is attached, which is the legacy hybrid
+gather. That is what the two strict xfails at
+`tests/test_invariant_reciprocity.py:236` and `:256` pin, and their `measure()`
+helper builds a `NextEventGather` with no `specular_transport` and
+`max_bounces=2`. Nothing in the invariant suite yet asserts the closed partition
+on the production estimator, so the fix is enforced by the campaign validator and
+not by an invariant.
 
 `propagation/sources.py:382`. The connection is credited
 `throughput * (1 - share) / pi`, so only the diffuse part of the reflection is
@@ -37,6 +75,41 @@ regime where the defect cannot appear.
 
 ### 2. The facade roughness drops the term that matters
 
+Status 2026-08-09: the quadrature defect is superseded, the substance is still
+open, and the production answer moved the other way. Production now reduces a
+two scale surface with `finish_only`, the default at
+`semantic_twin/materials/catalogue.py:240` and passed explicitly at
+`semantic_twin/exposure/execution.py:351` and `:473`. Quadrature is retained as
+a named historical sensitivity and `masonry_two_level` as research only,
+`semantic_twin/materials/roughness.py:241-248`.
+
+`finish_only` drops the mortar relief, which is what this finding asked for, and
+also drops `unit_scatter_mm`, which is what this finding said was the term that
+matters. Measured on the shipped config at 15 GHz and normal incidence, the
+brick facade class:
+
+```
+rule                 s (m)      specular share
+finish_only          3e-05      0.9996   <- production today
+quadrature           1.155e-03  0.5901   <- what every published number ran through
+masonry_two_level    3.119e-03  0.0213   <- the route that reads unit_scatter_mm
+```
+
+The ground class moves the other way, 0.0035 quadrature to 0.0285 finish only.
+Roof and soffit are Gaussian classes and do not move.
+
+So the production facade is now very nearly a mirror, against 0.59 before and
+0.02 under the reading this finding argued for. Facades are 44 percent of crop
+area, and under `first_material_interaction_v1` the `share` is exactly the split
+between the exact specular channel and the stochastic diffuse one, so this sets
+which of the two carries the facade term.
+[The publication physics decisions](PUBLICATION_PHYSICS_DECISIONS.md) records
+the decision and quotes 0.59053 and 0.0214631, but does not state the 0.9996
+that production actually uses, and no campaign-level before and after was found
+for the rule change. `semantic_twin/materials/roughness.py:323-325` still says
+switching the default to the route that reads `unit_scatter_mm` is the fix this
+finding asks for.
+
 `propagation/scene.py:113-134`. The finish RMS is folded in quadrature with the
 deterministic mortar joint relief, and `unit_scatter_mm` is ignored. The config's
 own note says `unit_scatter_mm` "is the random part of a brick wall that actually
@@ -53,26 +126,52 @@ Coupled to finding 1: at the larger roughness the discarded specular fraction
 falls from 0.544 to 0.400 and the gap closed rises to 56 percent, so finding 1
 survives either reading. Settle this one first, then re-measure that one.
 
-### 3. The absorbed density mean is unweighted over unequal triangles
+### 3. The absorbed density mean was unweighted over unequal triangles
 
-`propagation/exposure.py:93`. `mean_sab_w_m2` is a plain mean over Duke's 56,024
-triangles, whose areas vary by a factor of 9,300 with a coefficient of variation
-of 1.02.
+Status 2026-08-09: confirmed fixed. In the production tree the weighted mean is
+written at `semantic_twin/exposure/coupler.py:229`, `:290`, `:361` and `:642`,
+and the uniform-yaw endpoint carries it as `yaw_mean_area_mean_sab_w_m2` at
+`:517`. The line references in the 2026-08-06 note below have shifted since.
 
-Against the published spectra, area weighting raises it by a median of 5.18
-percent, or +0.219 dB, varying 2.3 to 6.1 percent across standpoints. The p95 over
-p05 spread moves from 3.827 to 3.869 dB.
+Status: fixed on 2026-08-06. Scalar and batched couplers now report the
+area-weighted body mean as `p_abs / body.total_area`. Checkpoint identity binds
+the exact float64 triangle areas. Legacy monolithic checkpoints retain full
+`Sab`, so the weighted mean can be recomputed without retracing. Independent
+verification passed 247 tests, skipped 4, marked 10 as expected failures, and
+deselected 1. See [the publication physics decisions](PUBLICATION_PHYSICS_DECISIONS.md)
+for the corrected result medians.
 
-Published at `run_exposure.py:675`, `propagation/report.py:244` and
+Historical evidence: `propagation/exposure.py:93` used `mean_sab_w_m2` as a plain
+mean over Duke's 56,024 triangles, whose areas varied by a factor of 9,300 with
+a coefficient of variation of 1.02. The current scalar and batched couplers are
+in `semantic_twin/exposure/coupler.py:89-95` and
+`semantic_twin/exposure/coupler.py:194-204`, where they compute
+`p_abs / body.total_area`.
+
+Pre-fix measurements: against the published spectra, area weighting raised it by
+a median of 5.18 percent, or +0.219 dB, varying 2.3 to 6.1 percent across
+standpoints. The p95 over p05 spread moved from 3.827 to 3.869 dB.
+
+The pre-fix values were published at `run_exposure.py:675`,
+`propagation/report.py:244` and
 `FIGURES/make_walk_exposure_cdf.py:186`.
 
-One line to fix. The correct value is already computed as
-`result.p_abs / total_area`.
+The audit identified a one-line correction, `result.p_abs / total_area`. The
+current couplers apply it as `p_abs / body.total_area`.
 
-Why no test caught it: `tests/test_propagation.py:650` asserts the isotropic case
-equals `T0/4`, which is exactly unbiased by symmetry.
+Why no test caught the pre-fix behavior: `tests/test_propagation.py:650` asserts
+the isotropic case equals `T0/4`, which is exactly unbiased by symmetry.
 
 ### 4. Foliage converts nepers to decibels with the wrong factor
+
+Status 2026-08-09: confirmed fixed, and the stale constant is gone too.
+`POWER_DB_PER_NEPER` is `10 / ln 10` at `semantic_twin/materials/foliage.py:92`
+and is used at `:247`. The two routes agree to 1.3e-15 across 1.3, 11.2, 28.8
+and 61.5 GHz at 1.0 and 4.5 m. The invariant at
+`tests/test_invariant_foliage.py:124-141` is a plain parametrized assertion, not
+an xfail. No `sensitivity.json` survives and neither 2.078 nor 4.157 appears
+anywhere, because `semantic_twin/materials/foliage_study.py:156` and `:260` now
+derive the reference optical depth from `sigma_tau_per_m` in nepers at run time.
 
 Status: fixed in the current refactor. The direct conversion and
 `slab_transmission` now agree at `10/ln10`, and the former expected-failure
@@ -93,6 +192,22 @@ medium-versus-cut 0.5 dB crossing moves from 6.0 to 4.6 percent.
 
 ### 5. The masonry grating solver uses the wrong Fourier factorisation
 
+Status 2026-08-09: still open, and off every production path. The Laurent form
+is now at `semantic_twin/materials/masonry/rcwa.py:298-316`, fed by `:338`,
+which inverts the Toeplitz of eps rather than building the Toeplitz of 1/eps.
+The module docstring names it at `rcwa.py:31-41` and the strict xfails at
+`tests/test_invariant_rcwa_limit.py:138` and `:157` still pin it. Reproduced on
+a lamellar grating at period lambda/400: TE is exact to six digits at every
+truncation, TM converges slowly to the analytic effective-medium answer, 42
+percent off at M=2 and 0.74 percent off at M=128. The sign of the TM bias came
+out high on this referee rather than low, but the defect is unambiguous.
+
+Cannot reach a campaign number. Nothing under `semantic_twin/exposure/`,
+`semantic_twin/transport/` or `semantic_twin/cli/` references masonry, and the
+only production-adjacent link is `semantic_twin/materials/roughness.py:340`,
+which imports wall geometry and never `rcwa` or `kirchhoff`. That route is
+`MASONRY_RULE`, status `research_only`.
+
 `rcwa.py:188-206` uses Laurent's rule where Li's inverse rule is required for the
 TM case. This is the classic RCWA error and it converges to the right answer
 slowly rather than failing loudly.
@@ -107,6 +222,14 @@ cannot see it. R moves 2.4 percent while R+T stays at 1e-15.
 
 ### 6. Kirchhoff compares an angle against a direction cosine width
 
+Status 2026-08-09: still open, and off every production path.
+`semantic_twin/materials/masonry/kirchhoff.py:623` still sets
+`beam_width = radians(receiver_resolution_deg)` and `:624` compares it against
+quantities on the direction cosine grid. The same defect is at `:657`, where
+`beam_width / step` is a sigma in grid units. No cosine appears in that block.
+Three strict xfails at `tests/test_invariant_audit.py:1040-1042` pin it. Same
+scope argument as finding 5.
+
 `kirchhoff.py:622-624`. A receiver beam of R degrees at scattering angle theta
 covers `radians(R) * cos(theta)`, not `radians(R)`. Off by exactly one over
 cosine, which is 11.5 times at the sweep's 85 degree row.
@@ -116,6 +239,18 @@ cosine, which is 11.5 times at the sweep's 85 degree row.
 paper's own 2 dB instrumental floor.
 
 ### 7. The range diagnostic charges from the wrong centre
+
+Status 2026-08-09: still open, and it cannot fire in a campaign. The shell
+radius is still the largest vertex norm measured from the world origin at
+`semantic_twin/transport/tracer.py:312`, and the sphere is still solved about
+the origin at `semantic_twin/transport/trace_kernel.py:589-592`, duplicated at
+`semantic_twin/transport/device_tracer.py:61`. No recentring on the mesh
+centroid or bounds anywhere. The diagnostic only runs when
+`range_weighted_escape` is true, and that is false at
+`semantic_twin/runconfig.py:212` and `:331`,
+`semantic_twin/exposure/execution.py:525` and
+`semantic_twin/cli/exposure.py:131`, and is never set by the roofline setup or
+campaign. So this taints the quoted `NEXT_EVENT.md` numbers and nothing else.
 
 `tracer.py:449` puts the source shell on a sphere centred at the world origin,
 which sits 35 to 45 m below the lowest mesh point.
@@ -130,6 +265,16 @@ to 25 percent too large.
 
 ### 8. The validation gate compares a band average to a band centre
 
+Status 2026-08-09: still open, and it still carries the paper's agreement claim.
+`semantic_twin/exposure/validation.py:11` imports only
+`ground_plane_susceptibility` and `:60` evaluates it at band centres.
+`ground_plane_band_average` is never called from the package, only from tests.
+Reproduced on the production tree: lowest band above the horizon, centre
+1.7320287 against band average 1.7478202, maximum absolute difference 0.01579,
+still larger than the quoted 0.0122 `max_abs_error`. Off the roofline path,
+since `validate()` is the exposure-study gate and the campaign does not call it,
+but the one percent agreement statement in the methods rests on it.
+
 `run_exposure.validate()`. `closed_form.ground_plane_band_average` exists for
 exactly this and is not called. The mismatch is 0.0158 in the lowest band against
 a reported `max_abs_error` of 0.0122.
@@ -138,6 +283,23 @@ So the headline "1 percent agreement" is mostly quadrature, and the gate cannot
 resolve an estimator error below about 1 percent.
 
 ### 8b. Korenmarkt's material binding runs through a cross-mesh join
+
+Status 2026-08-09: moot on the production path, still live on the legacy branch.
+Three things moved. The comparable-city cohort is at 250 m with
+`primary_material_mode` set to `atlas` in `config/city_cohort_manifest.json`, so
+the 130 m fishnet is not what production reads. Korenmarkt carries only
+`inhouse_leaf_250m_f64.ply` at 250 m, so the two-build ambiguity does not exist
+there. And the atlas is now bound by exact support-mesh hash:
+`semantic_twin/exposure/execution.py:373-385` computes the mesh SHA-256 and
+passes `expected_mesh_sha256`, which `semantic_twin/materials/atlas.py:466`
+enforces by raising rather than joining. `semantic_twin/scene/site_fishnets.py:246`
+also resolves the cut mesh through `paths.site_mesh`, preferring the `_f64`
+build. The centroid join survives only under `--materials walk` or
+`--materials semantic`.
+
+Not fully verifiable here: `outputs/site_semantics/` is absent from this
+worktree, so the configs, the hash gate and the mesh inventory were read but the
+built Korenmarkt 250 m atlas artefact was not.
 
 Found during the golden capture, not by the audit.
 
@@ -162,6 +324,12 @@ what would settle that.
 
 ### 8c. The coverage ladder test was checking nothing
 
+Status 2026-08-09: fixed, and the guard survived the refactor. `Case.clear()` at
+`tests/golden/cases.py:68-85` deletes only `clears` globs under `outputs/` and
+raises on any path whose name lacks `golden`. Called from
+`tests/golden/capture.py:236` and `tests/test_golden_regression.py:480`, with
+`tests/golden/coverage_ladder_korenmarkt_130m.json` present.
+
 `run_exposure.reusable()` lets `--coverage-ladder` accept a rung already on disk
 whose settings match. That is right for a sweep that has to survive being stopped
 and wrong for a test, which re-read three runs instead of making them. The golden
@@ -176,6 +344,14 @@ last bit, so nothing was wrong with the values. The test was simply not testing.
 
 ### 9. Foliage never initialises the inside-canopy flag
 
+Status 2026-08-09: still open, and pinned. `inside` is still initialised to all
+false at `semantic_twin/materials/foliage.py:808`, with the defect written into
+the code at `:799-807` so the fix carries its own before and after number.
+Parity only toggles on a canopy face crossing at `:885`. The target invariant is
+a strict xfail at `tests/test_invariant_foliage.py:149-171`. Cannot reach a
+campaign number: nothing under `semantic_twin/exposure/`,
+`semantic_twin/transport/` or `semantic_twin/cli/` imports `FoliageTracer`.
+
 `foliage.py:775`. An observer starting inside the canopy hull inverts the parity
 flag for the whole trace, and the ray then collides in vacuum forever.
 
@@ -187,7 +363,25 @@ Does not fire in `run_foliage_study.py`, where the observer is at 1.5 m and the
 canopy base at 4.0 m. `FOLIAGE.md` part 5 proposes exactly the sweep that
 triggers it.
 
-### 10. A passive grating returns more power than it receives
+### 10. A passive grating returns more power than it receives (fixed)
+
+Status 2026-08-09: confirmed fixed, reproduced independently. Ran the passivity
+ladder directly over period-to-wavelength ratios 3.75, 20, 100 and 400, both
+polarisations, truncations 4, 8, 16, 24 and 32. All 40 reflectances land in
+[0, 1] with no violation and none of the 54, 56.7 or 58 values. The fix is
+`_normal_flux` at `semantic_twin/materials/masonry/rcwa.py:226-234` and
+`_numerical_mode_branches` at `:236-295`, wired at `:345-356`. The xfail is gone
+and `tests/test_invariant_audit.py:994` is a plain strict test.
+
+Fixed on 2026-08-06. The numerical eigensystem now removes each candidate mode's
+local eigenvalue residual with a biorthogonal Rayleigh quotient. A local
+roundoff bound separates lossless propagating modes from lossy modes without
+letting deeply evanescent orders set their tolerance. Propagating modes are
+directed by their normal Poynting flux. Evanescent and lossy modes are directed
+by decay. The strict passivity witness now covers both polarisations, five
+truncations and periods from the masonry pitch down to one four hundredth of a
+wavelength. It passes under Haswell, SkylakeX, Prescott and Zen OpenBLAS
+dispatch.
 
 `rcwa.py`, the same solver as finding 5 and a separate failure from it. A lossless
 passive grating on a semi-infinite substrate returns total reflectance far above
@@ -222,10 +416,24 @@ on the tracer's live path. It is recorded here because anyone who wires it in wi
 hit this before they hit finding 5.
 
 Found independently by two agents. Pinned by
-`tests/test_invariant_audit.py::test_a_passive_grating_never_reflects_more_than_it_receives`,
-which was the only xfail in the invariant suite not tied to a number here.
+`tests/test_invariant_audit.py::test_a_passive_grating_never_reflects_more_than_it_receives`.
 
 ### 11. An empty walk wins the walk contest
+
+Status 2026-08-09: first half fixed, second half still open, and neither can
+reach a campaign. The nan comparison is gone: an empty candidate is scored
+`float("inf")` and skipped at `semantic_twin/walk/site.py:224-229`, and
+`:235-236` raises when every candidate is empty, so no nan reaches
+`path_candidates_m`. The silent empty walk is unchanged.
+`semantic_twin/walk/site.py:262-269` still only writes a `note` when no camera
+is within `max(stride_m, 5)`, `:538-541` still returns the zero-point walk at
+zero stride, and the `site_walk` docstring at `:444-446` still claims it raises.
+Every stride default is still 6.0, at `semantic_twin/runconfig.py:183` and
+`:323`, `semantic_twin/cli/exposure.py:123` and
+`semantic_twin/cli/next_event.py:46`. The roofline campaign is pinned to
+`walk_path="street"` at `semantic_twin/exposure/roofline_setup.py:248` and
+raises on an empty walk at `semantic_twin/exposure/roofline_campaign.py:272-273`
+before any trace.
 
 `walk/site.py:194`, in `_nearest_of`, reached by `--walk-path closest`. Each
 candidate walk is scored by the mean distance from a standpoint to the nearest
@@ -276,6 +484,23 @@ locked.
 
 ### 12. Only one half of the surplus refuses a site that is too close
 
+Status 2026-08-09: still open, deliberately, and it is on the production path.
+The gather still refuses a site nearer than `min_connect_m` at
+`semantic_twin/transport/next_event.py:617`, and `direct_from_sites` still keeps
+every site with `distance > 0.0` at `semantic_twin/illumination/sources.py:212`.
+The estimator docstring at `semantic_twin/transport/next_event.py:942-944` names
+the mismatch and says it is preserved until it can be changed and measured in
+its own commit. The production direct term runs through that function, called at
+`semantic_twin/transport/next_event.py:1848`. The roofline connection has the
+same shape, `distance > 0.0` at `semantic_twin/illumination/roofline.py:339`,
+and `floor_m` still defaults to 0.0 at
+`semantic_twin/illumination/sources.py:151` and `:368`.
+
+The exposure changed with the source model. Roofline sources sit on the observed
+route-aligned roofline rather than on lifted facade tips, so a source a few tens
+of centimetres from a 1.5 m standpoint is much less likely than it was. No guard
+was added, so it is not impossible.
+
 Found on 2026-08-04 while moving the illumination code into
 `semantic_twin/illumination/`, not by the audit.
 
@@ -315,6 +540,20 @@ the singularity. Either way it lands as its own commit with its own before and
 after number, per the rule at the top of this file.
 
 ### 13. The two depth conflict tables disagree on every code
+
+Status 2026-08-09: still open, and still not wired, which was the thing worth
+re-checking. Both tables are unchanged, at
+`semantic_twin/vision/depth_comparison.py:119-126` and
+`semantic_twin/vision/conflict.py:36-42`, and the `conflict.py` docstring at
+`:17-21` says so. `SparseAtlasLedger` at `semantic_twin/vision/ledger.py:82` is
+still constructed only in `tests/test_ledger.py`. The surface atlas builder added
+by the refactor did not join them: `semantic_twin/scene/surface_atlas_builder.py`
+carries only `max_sky_conflict` and `min_conflict_range_m`, which feed the
+registration gate rather than the ledger. Every other consumer uses the 0 to 6
+`DECISIONS` convention consistently, at
+`semantic_twin/vision/body_placement.py:40` and `:92` and
+`semantic_twin/scene/fishnet/regions.py:81` and `:118`. The collision becomes
+real the first time a `DECISIONS` raster is routed into the ledger.
 
 Found on 2026-08-04 while moving the image evidence into `semantic_twin/vision/`,
 not by the audit.
@@ -369,6 +608,20 @@ its own commit.
 
 ### 14. The default tree species is decided by the order of a source tuple
 
+Status 2026-08-09: still open at source, routed around by every current caller.
+The tie-breaking `min` is at `semantic_twin/materials/foliage.py:297`. Verified
+in a throwaway process: `ret_parameters(15e9).species` is `ginkgo` at sigma 0.74,
+seven rows tie exactly at the 12.5 GHz column, and reversing `_RET_ROWS` in
+memory returns `dawn_redwood` at sigma 0.44. No raise, no envelope, first wins.
+
+No caller hits the tie today. `ret_parameter_candidates` at
+`semantic_twin/materials/foliage.py:331` keeps every species and is what
+`evaluate_p833_segments` uses at
+`semantic_twin/materials/vegetation_transport.py:558`, and
+`semantic_twin/materials/foliage_study.py:156` pins `species="london_plane"`.
+`evaluate_p833_segments` itself has no caller outside its tests. So the defect is
+mitigated in the shim, not fixed at source.
+
 Found on 2026-08-04 while moving `foliage.py` into `semantic_twin/materials/`,
 not by the audit.
 
@@ -421,6 +674,20 @@ species, or the default has to return the envelope rather than one row.
 
 ### 11. The ground under a camera is bounded from above and not from below, and neither bound is the one that fires
 
+Status 2026-08-09: still open, unchanged. `search_up_m` is still 5.0 at
+`semantic_twin/scene/camera_ground.py:139`, the ceiling is still
+`ground_z + search_up_m` at `:158`, and `:84` still takes the topmost surface at
+or below it. No floor, and no spread or peak-to-peak rejection anywhere in
+`ground_elevation` or `camera_altitude`. `semantic_twin/vision/align.py:148-155`
+has the same one-sided form. The quality fields are still emitted at
+`camera_ground.py:51-53` and still read by exactly one consumer,
+`semantic_twin/report/panorama_registration.py:54`, which copies
+`ground_spread_m` into a table row and gates nothing. The production callers at
+`semantic_twin/acquire/streetview.py:257` and
+`semantic_twin/acquire/mapillary.py:429` ignore them. Effect on a campaign is
+indirect: it perturbs panorama pose height, so it reaches the atlas material
+labelling rather than the transport kernel.
+
 Found during the geometry refactor, not by the audit.
 
 `support_mesh.camera_altitude`, now `scene/camera_ground.py`. The downward cast
@@ -463,6 +730,35 @@ and at the same site.
 
 ## Smaller, verified, low impact
 
+Status 2026-08-09, bullet by bullet:
+
+- `floquet.py:147` still open at
+  `semantic_twin/materials/masonry/floquet.py:147-150`. The auto limit takes
+  `min(|b1|, |b2|)` and then a square index box, which does not cover the k
+  circle for a sheared basis. Reproduced at 15 GHz, 45 degrees, 225 by 75 mm
+  cell: rectangular matches the reference at 129 orders, centred drops 14 of
+  133. Different operating point from the 118 recorded below, same defect.
+  Production still uses the rectangular cell only.
+- `kirchhoff.py:274` still open at
+  `semantic_twin/materials/masonry/kirchhoff.py:274`, and still numerically
+  inert. Flipping the recess sign moves every efficiency by at most 2.8e-17
+  against peak efficiencies of 0.046 to 0.807, because the efficiencies are
+  conjugation invariant.
+- `rcwa.py:172` still open, now at
+  `semantic_twin/materials/masonry/rcwa.py:210` with the indexing at `:215`. The
+  guard admits `|delta_m| <= n_x // 2` where an even grid tops out at
+  `n_x / 2 - 1`, so an 8 by 8 profile with `delta_m = 4` passes the guard and
+  dies with an `IndexError` instead of the intended message.
+- `run_next_event.py:174` is moot. The call is now
+  `semantic_twin/exposure/next_event_study.py:161-176` and still passes no
+  `rng`, but `build_source_set` at
+  `semantic_twin/illumination/sources.py:648-676` no longer calls `thin()`, so
+  there is no sub-cell z bias left to have. The one remaining `thin()` caller,
+  `semantic_twin/illumination/source_silhouette_study.py:162`, passes a
+  generator.
+- `run_next_event.py:117` is fixed. The variant is written into the payload at
+  `semantic_twin/exposure/next_event_study.py:272`.
+
 - `floquet.py:147` under-covers non-orthogonal lattices silently. 118 propagating
   orders are dropped on the running bond primitive cell. Production only uses the
   rectangular cell.
@@ -481,6 +777,31 @@ and at the same site.
 ## Checked and cleared
 
 On the record so nobody reopens them.
+
+Status 2026-08-09: these were not re-derived. Each was checked only for whether
+the code it describes moved or changed, which is what would put a clearance back
+in doubt.
+
+- The CUDA versus LLVM divergence: moved, substance unchanged. `connections` is
+  incremented at `semantic_twin/transport/next_event.py:618`, before the shadow
+  ray at `:629`, and `cleared` is at `:634`. Clearance holds.
+- The connection start offset: unchanged. `lift_m` is 1.0e-2 at
+  `semantic_twin/transport/next_event.py:477` and `:956`.
+- The bounce rays: moved to
+  `semantic_twin/transport/trace_kernel.py:376`, same epsilon geometry.
+  Clearance holds.
+- The diffuse albedo asymmetry: moot under `first_material_interaction_v1`,
+  which has one diffuse event and so no chained albedo.
+- Russian roulette: now inert by construction rather than by coincidence.
+  `roulette_start` is `DEFAULT_MAX_BOUNCES + 1` at
+  `semantic_twin/transport/tracer.py:85`. Also moot under the current contract.
+- The polarisation reduction: unchanged at
+  `semantic_twin/transport/tracer.py:223-235`.
+- The material binding fallback and the 0 percent coverage: the literal moved to
+  `semantic_twin/exposure/execution.py:353`, but the premise is stale. The
+  semantic-route cohort now forbids geometric materials at
+  `semantic_twin/exposure/roofline_campaign.py:182`, so the headline no longer
+  runs through that branch at all.
 
 **The CUDA versus LLVM divergence is benign, and not for the reason it looked
 like.** `connections` cannot report a blocked-or-clear verdict: `sources.py:395`
@@ -523,6 +844,11 @@ power and the diffuse lobes randomise the plane, so the real effect is at most
 about +0.3 dB on the multipath term.
 
 ## Modules that came back correct
+
+Status 2026-08-09: not re-derived. The 2026-08-04 clearances below stand as
+written, with one correction of scope. `masonry.py` in that list means the wall
+geometry module, not the RCWA or Kirchhoff solvers, which carry findings 5, 6
+and the two bullets above.
 
 `directions.py` is the strongest thing in the package. The band law's elevation
 marginal matches an independent four million sample Monte Carlo over the real site
