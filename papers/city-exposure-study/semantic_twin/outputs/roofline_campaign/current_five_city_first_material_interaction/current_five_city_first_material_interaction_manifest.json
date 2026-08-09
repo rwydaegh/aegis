@@ -1,0 +1,79 @@
+{
+  "artifacts": {
+    "current_five_city_first_material_interaction.csv": {
+      "bytes": 30142,
+      "sha256": "7461aa4bb5960c5de6a2f21e4ed4156c023698c2d7e312f8e0997fc7d1af7c87"
+    },
+    "current_five_city_first_material_interaction.json": {
+      "bytes": 437125,
+      "sha256": "d530a056bfa7be9cf1966a7169cea58b0fcae48dc9cab89ab62ae4577aa765bd"
+    },
+    "current_five_city_first_material_interaction.pdf": {
+      "bytes": 36553,
+      "sha256": "3f24c0fcf53822bb59748860498b182466f340bc59d09586267acbfa235e4cfc"
+    },
+    "current_five_city_first_material_interaction.png": {
+      "bytes": 234472,
+      "sha256": "7a90308fdb6b6ee132342f7a3b2a5e4e2e73238931ff54726dc46ee61a565cab"
+    }
+  },
+  "result_schema_version": "roofline_multicity_results_v1",
+  "schema_version": "roofline_multicity_artifacts_v1",
+  "sources": {
+    "Korenmarkt": {
+      "campaign_identity_sha256": "4b701e0a107c1de9acb960d927b973011a09ec4bb0f85faf8dd605ba6f98523d",
+      "campaign_manifest_sha256": "577be79ead6aeacda1488e47ffd59e0b90887a9f96d26444f737d94b47be871d",
+      "components": [
+        "direct",
+        "all_specular",
+        "first_diffuse",
+        "total"
+      ],
+      "transport_topology": "first_material_interaction_v1"
+    },
+    "Madrid": {
+      "campaign_identity_sha256": "bdfb59e1b8be8712261d1b9acd2ea52ff6236b4b4d76253d070d70bfe38236d0",
+      "campaign_manifest_sha256": "28c63ddb2c6c9b0874009f8158e41357de815abdcc3a13058c602c7267ad8c90",
+      "components": [
+        "direct",
+        "all_specular",
+        "first_diffuse",
+        "total"
+      ],
+      "transport_topology": "first_material_interaction_v1"
+    },
+    "Mexico": {
+      "campaign_identity_sha256": "f5c16e6aa08df356a96a480f99fb44ef704be6634b956ea4524c0092857bf7a5",
+      "campaign_manifest_sha256": "72e4991b02dc90d45f7a665679b274492be258143b7876ca49ad4eef44ba3d63",
+      "components": [
+        "direct",
+        "all_specular",
+        "first_diffuse",
+        "total"
+      ],
+      "transport_topology": "first_material_interaction_v1"
+    },
+    "Prague": {
+      "campaign_identity_sha256": "68cbbd269af2e2bc29681ba9b82510a5a046ba5fe991ac221823b2971617e206",
+      "campaign_manifest_sha256": "c9b86446239221eb150555403f352cc8b8054fb035a92d159610c83174668243",
+      "components": [
+        "direct",
+        "all_specular",
+        "first_diffuse",
+        "total"
+      ],
+      "transport_topology": "first_material_interaction_v1"
+    },
+    "Tokyo": {
+      "campaign_identity_sha256": "a2cc7a7372aa00192ba852932d7ee7605f2ae41bbeefeae3c880eb4b28ab842d",
+      "campaign_manifest_sha256": "1d2555b2c406b7d8c57c2fccd45d8497eb75cd1e549f0c9fa3f4cb187bddcc89",
+      "components": [
+        "direct",
+        "all_specular",
+        "first_diffuse",
+        "total"
+      ],
+      "transport_topology": "first_material_interaction_v1"
+    }
+  }
+}
