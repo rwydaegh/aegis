@@ -200,6 +200,29 @@ def _synthetic_tx_phase(k_hat_tx, tx_offsets, freq_hz: float):
     return np.exp(1j * (2.0 * np.pi * freq_hz / C_0) * (offsets @ directions.T))
 
 
+def _validate_center_valid_shape(valid, synthetic_array: bool) -> int:
+    """Validate the solver metadata shape for a single center antenna."""
+    expected_prefix = (1, 1) if synthetic_array else (1, 2, 1, 1)
+    shape = tuple(valid.shape)
+    if len(shape) != len(expected_prefix) + 1 or shape[:-1] != expected_prefix:
+        raise ValueError(f"center-trace valid has shape {shape}, expected {expected_prefix + ('C',)}")
+    return shape[-1]
+
+
+def _validate_center_cir_shapes(a_raw, tau_raw, angle_arrays, n_paths: int, synthetic_array: bool) -> None:
+    """Reject CIR metadata that does not describe one common-center trace."""
+    expected_a = (1, 2, 1, 1, n_paths, 1)
+    if tuple(a_raw.shape) != expected_a:
+        raise ValueError(f"center-trace CIR has shape {tuple(a_raw.shape)}, expected {expected_a}")
+
+    expected_metadata = (1, 1, n_paths) if synthetic_array else (1, 2, 1, 1, n_paths)
+    if tuple(tau_raw.shape) != expected_metadata:
+        raise ValueError(f"center-trace delays have shape {tuple(tau_raw.shape)}, expected {expected_metadata}")
+    for name, values in angle_arrays.items():
+        if tuple(values.shape) != expected_metadata:
+            raise ValueError(f"center-trace {name} has shape {tuple(values.shape)}, expected {expected_metadata}")
+
+
 def _paths_from_sionna_jax(
     paths,
     valid_np,
@@ -233,13 +256,26 @@ def _paths_from_sionna_jax(
     # False bakes the full carrier phase into a and returns true delays (the
     # default keeps only first-arrival-relative phase); see the NumPy branch.
     a_raw, tau_raw = paths.cir(out_type="jax", normalize_delays=False)
-    a_raw = a_raw[..., 0]  # drop time_steps -> (num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths)
 
     # Angles as JAX arrays
     theta_r_raw = jnp.asarray(paths.theta_r)  # (num_rx, num_tx, num_paths)
     phi_r_raw = jnp.asarray(paths.phi_r)
     theta_t_raw = jnp.asarray(paths.theta_t)
     phi_t_raw = jnp.asarray(paths.phi_t)
+    n_paths_per_elem = valid_np.shape[-1]
+    _validate_center_cir_shapes(
+        a_raw,
+        tau_raw,
+        {
+            "theta_r": theta_r_raw,
+            "phi_r": phi_r_raw,
+            "theta_t": theta_t_raw,
+            "phi_t": phi_t_raw,
+        },
+        n_paths_per_elem,
+        synthetic_array,
+    )
+    a_raw = a_raw[..., 0]
     if not synthetic_array:
         tau_raw = tau_raw[:, 0, :, 0, :]
         theta_r_raw = theta_r_raw[:, 0, :, 0, :]
@@ -249,7 +285,16 @@ def _paths_from_sionna_jax(
 
     rx_idx, tx_idx = 0, 0
     n_elements = len(tx_offsets)
-    n_paths_per_elem = a_raw.shape[-1]
+    if n_paths_per_elem == 0:
+        return PropagationPaths(
+            k_hat=jnp.empty((0, 3), dtype=jnp.float64),
+            psi=jnp.empty((0, 3), dtype=jnp.complex128),
+            element_index=jnp.empty((0,), dtype=jnp.int32),
+            delay=jnp.empty((0,), dtype=jnp.float64),
+            is_los=jnp.empty((0,), dtype=bool),
+            polarised=True,
+            k_hat_tx=jnp.empty((0, 3), dtype=jnp.float64),
+        )
 
     # The physical path is traced once at the phase center. Tile its center
     # coefficient, then apply the exact departure-direction phase below.
@@ -424,6 +469,14 @@ def paths_from_sionna_scene(
     scene.add(Transmitter("tx", position=tx_phase_center.tolist()))
     scene.add(Receiver("rx", position=rx_position.tolist()))
 
+    if not synthetic_array and n_elements > 1:
+        raise NotImplementedError(
+            "synthetic_array=False with multiple TX elements is not supported. "
+            "The AEGIS Sionna bridge assumes synthetic_array=True for "
+            "multi-element arrays (shared angles/delays across elements). "
+            "Use synthetic_array=True (default) or a single TX element."
+        )
+
     # Compute paths
     solver = PathSolver()
     paths = solver(
@@ -443,21 +496,12 @@ def paths_from_sionna_scene(
     )
 
     # Extract path visualization before CIR (vertices are lazily computed)
-    valid_raw = np.array(paths.valid)
+    valid_solver = np.array(paths.valid)
+    _validate_center_valid_shape(valid_solver, synthetic_array)
+    valid_raw = valid_solver
     if not synthetic_array:
         valid_raw = valid_raw[:, 0, :, 0, :]
     path_viz = _extract_path_viz(paths, valid_raw, synthetic_array) if return_viz else []
-
-    # Multiple caller elements are represented by one phase-center trace and a
-    # far-field phase expansion. Reject an explicit request for non-synthetic
-    # multi-element tracing instead of silently changing that requested model.
-    if not synthetic_array and n_elements > 1:
-        raise NotImplementedError(
-            "synthetic_array=False with multiple TX elements is not supported. "
-            "The AEGIS Sionna bridge assumes synthetic_array=True for "
-            "multi-element arrays (shared angles/delays across elements). "
-            "Use synthetic_array=True (default) or a single TX element."
-        )
 
     # --- Differentiable JAX path ---
     if differentiable:
@@ -485,12 +529,24 @@ def paths_from_sionna_scene(
     # phases). Empirically pinned for sionna-rt 2.0.1 by the coherent-phase
     # regression tests in tests/test_sionna.py.
     a_raw, tau_raw = paths.cir(out_type="numpy", normalize_delays=False)
-    a_raw = a_raw[..., 0]  # drop time_steps dim -> (num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths)
 
     theta_r_raw = np.array(paths.theta_r)  # (num_rx, num_tx, num_paths)
     phi_r_raw = np.array(paths.phi_r)
     theta_t_raw = np.array(paths.theta_t)  # departure angles at the source
     phi_t_raw = np.array(paths.phi_t)
+    _validate_center_cir_shapes(
+        a_raw,
+        tau_raw,
+        {
+            "theta_r": theta_r_raw,
+            "phi_r": phi_r_raw,
+            "theta_t": theta_t_raw,
+            "phi_t": phi_t_raw,
+        },
+        valid_raw.shape[-1],
+        synthetic_array,
+    )
+    a_raw = a_raw[..., 0]
     if not synthetic_array:
         tau_raw = tau_raw[:, 0, :, 0, :]
         theta_r_raw = theta_r_raw[:, 0, :, 0, :]

@@ -97,6 +97,24 @@ def test_specular_synthetic_phase_uses_departure_not_arrival_direction():
     np.testing.assert_allclose(wrong_arrival_phase[0, 0], 1.0 + 0.0j, atol=1e-14)
 
 
+def test_center_trace_shape_contract_rejects_extra_tx_antenna_axis():
+    """The bridge must never silently select antenna zero from a wider CIR."""
+    from aegis.integration.sionna import _validate_center_cir_shapes, _validate_center_valid_shape
+
+    with pytest.raises(ValueError, match="center-trace valid"):
+        _validate_center_valid_shape(np.ones((1, 2, 1, 2, 3), dtype=bool), False)
+
+    angles = {name: np.zeros((1, 1, 3)) for name in ("theta_r", "phi_r", "theta_t", "phi_t")}
+    with pytest.raises(ValueError, match="center-trace CIR"):
+        _validate_center_cir_shapes(
+            np.zeros((1, 2, 1, 2, 3, 1), dtype=complex),
+            np.zeros((1, 1, 3)),
+            angles,
+            3,
+            True,
+        )
+
+
 class TestUnitConversion:
     """Test the Sionna a -> AEGIS psi conversion formula.
 
@@ -362,6 +380,39 @@ class TestJAXConversion:
         assert bool(result.is_los[0])  # elem 0, path 0 (tau=0.01, lowest)
         assert bool(result.is_los[n_paths])  # elem 1, path 0 (tau=0.01, lowest)
 
+    def test_paths_from_sionna_jax_empty_trace_is_shape_safe(self):
+        """A differentiable no-path result returns typed empty arrays."""
+        import jax.numpy as jnp
+
+        from aegis.integration.sionna import _paths_from_sionna_jax
+
+        class EmptyPaths:
+            def __init__(self):
+                self._a = jnp.empty((1, 2, 1, 1, 0, 1), dtype=complex)
+                self._tau = jnp.empty((1, 1, 0))
+                self.theta_r = jnp.empty((1, 1, 0))
+                self.phi_r = jnp.empty((1, 1, 0))
+                self.theta_t = jnp.empty((1, 1, 0))
+                self.phi_t = jnp.empty((1, 1, 0))
+
+            def cir(self, out_type="jax", normalize_delays=False):
+                return self._a, self._tau
+
+        result = _paths_from_sionna_jax(
+            EmptyPaths(),
+            np.empty((1, 1, 0), dtype=bool),
+            np.array([[-0.01, 0.0, 0.0], [0.01, 0.0, 0.0]]),
+            28e9,
+            1.0,
+            np.array([4.0, 2.0, 1.0]),
+        )
+
+        assert result.n_paths == 0
+        assert result.k_hat.shape == (0, 3)
+        assert result.k_hat_tx.shape == (0, 3)
+        assert result.psi.shape == (0, 3)
+        assert result.element_index.shape == (0,)
+
     def test_differentiable_flag_exists(self):
         """paths_from_sionna_scene accepts differentiable parameter."""
         import inspect
@@ -594,6 +645,28 @@ def test_single_element_non_synthetic_matches_synthetic_trace():
     np.testing.assert_allclose(explicit.k_hat_tx, synthetic.k_hat_tx, atol=1e-7)
     np.testing.assert_allclose(explicit.delay, synthetic.delay, rtol=1e-7)
     np.testing.assert_allclose(explicit.psi, synthetic.psi, rtol=1e-6, atol=1e-9)
+
+
+def test_multi_element_non_synthetic_rejected_before_path_solver(monkeypatch):
+    """Unsupported explicit M>1 requests fail before solver construction."""
+    srt = pytest.importorskip("sionna.rt")
+
+    from aegis.integration.sionna import paths_from_sionna_scene
+
+    class UnexpectedSolver:
+        def __init__(self):
+            raise AssertionError("PathSolver must not be constructed")
+
+    monkeypatch.setattr(srt, "PathSolver", UnexpectedSolver)
+    with pytest.raises(NotImplementedError, match="synthetic_array=False"):
+        paths_from_sionna_scene(
+            srt.load_scene(),
+            tx_positions=np.array([[4.0, 2.0, 3.0], [4.0, 2.01, 3.0]]),
+            rx_position=np.array([17.0, 9.0, 1.0]),
+            freq_hz=28e9,
+            max_bounces=0,
+            synthetic_array=False,
+        )
 
 
 def test_specular_array_expansion_uses_departure_not_arrival_direction():
