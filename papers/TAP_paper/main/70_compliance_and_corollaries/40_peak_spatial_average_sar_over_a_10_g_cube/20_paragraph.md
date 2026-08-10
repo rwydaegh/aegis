@@ -8,11 +8,10 @@
 % NEXT: axes and body normal. Section~\ref{si:apd-bound} of the SI derives the bound,
 % NEXT: gives the cube-intersection geometry under the IEC mass rule, and
 % NEXT: confirms it on Thelonious to within a median ratio of $1.30$. The same
-% NEXT: surface integral that delivers $\APDAvg$ therefore controls
+% NEXT: surface integral that gives $\APDAvg$ therefore controls
 % NEXT: $\mathrm{psSAR}_{10\mathrm{g}}$.
-The following bound links the cube quantity to APD.
-\begin{theorem}\label{thm:apd-bound}
-For an axis-aligned $10$~g cube placed per IEC/IEEE~62704-1 on a planar
+The following bound links the cube quantity to APD. For an axis-aligned
+$10$~g cube placed per IEC/IEEE~62704-1 on a planar
 three-layer body, the peak spatial-average SAR satisfies
 \begin{equation}\label{eq:apd-bound}
   \mathrm{psSAR}_{10\mathrm{g}}
@@ -24,7 +23,6 @@ $\APDAvg \le 10$~W/m$^2$, this implies
 $\mathrm{psSAR}_{10\mathrm{g}} \le 0.66$~W/kg, a factor of three below
 the head and trunk basic restriction of $2$~W/kg and a factor of six
 below the limb restriction of $4$~W/kg.
-\end{theorem}
 
 ## reviews (paragraph)
 
@@ -42,4 +40,3 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
     - _dismissed_ `latex.substitutions.units_math_mode_consistent`: The paper's consistent house style is $<number>$~<unit> with text-mode units and a tilde (hundreds of instances: $28$~GHz, $0.08$~W/kg); this matches the tilde_number_unit positive example 100~mW, no siunitx is used, and switching one leaf to math-mode units would break paper-wide consistency.
     - _dismissed_ `latex.math.thin_space_units`: Same house-style convention: the number sits in math mode and the unit follows in text mode with a tilde, applied uniformly across the paper rather than the \,\mathrm{} math-mode form.
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

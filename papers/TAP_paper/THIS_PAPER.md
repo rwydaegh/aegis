@@ -9,9 +9,9 @@ process and is not an action source for this review pass.
 - **Working title**: Closed-Form Absorbed-Power Dosimetry from 1 to 100 GHz
 - **Author**: Robin Wydaeghe (Ghent University and imec)
 - **Target journal**: IEEE Transactions on Antennas and Propagation
-- **Source draft for this intake**: `v1_to_coauthors/paper.tex`
-- **Current phase**: v1 coauthor feedback intake
-- **Active external review**: `reviews/2026-05-11_wout_joseph`
+- **Historical source draft for the PaperMaker intake**: `v1_to_coauthors/paper.tex`
+- **Canonical current source**: `main/`
+- **Current phase**: v4 coauthor feedback follow-up
 
 ## PaperMaker state
 

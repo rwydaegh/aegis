@@ -4,7 +4,8 @@
 <!-- AUTO_BEGIN: assembled -->
 \subsection{Polarization-aware exact law}\label{subsec:exact-law}
 
-A plane wave is fully polarized. At a surface point
+Any incident plane wave is fully polarized, so the exact \gls{APD}
+law must be polarization-aware. At a surface point
 $\rr$, decompose the incident electric field into local TE and TM
 components by projecting on the unit vectors
 $\hat{e}_s(\rr) = \khat \times \nhat / |\khat \times \nhat|$ and
@@ -20,11 +21,14 @@ The exact \gls{APD} at a visible point is therefore
 \begin{equation}\label{eq:Sab-exact}
   \APD(\rr) = \IPD \, \Teff(\rr) \, \pospart{\mu(\rr)} \,.
 \end{equation}
+Here $\pospart{x} = \max(x, 0)$ is the positive part: it keeps the
+front-facing surface and sets the back-facing surface ($\mu \le 0$, no
+incident power) to zero.
 \Cref{eq:Sab-exact} holds for any polarization, any frequency where
 the body is opaque, and any locally flat surface. The self-shadowing
 factor $\Vis(\rr,\khat)$ of the geometric law in \cref{sec:pB} is
 suppressed in this subsection because the Fresnel calculation
-operates at a point already taken to be visible. Visibility re-enters
+operates at a point already taken to be visible. Visibility returns
 with the multi-source matrix form in \cref{subsec:matrix}.
 
 To proceed, write
@@ -34,9 +38,9 @@ To proceed, write
 with $\Tavg = \tfrac{1}{2}(T_s + T_p)$ the unpolarized baseline,
 $\Delta T = T_p - T_s$ the polarization splitting, and $q = |e_p|^2 -
 |e_s|^2 \in [-1, 1]$ the local TM excess. The polarization correction
-vanishes pointwise for circular illumination, in expectation for
-random-orientation linear illumination, and to within $2.5\%$ for
-multipath averaging above 20 paths. First, for circular polarization
+vanishes pointwise for circularly polarized illumination, in expectation
+for randomly oriented linearly polarized illumination, and to within
+$2.5\%$ under multipath averaging with at least 20 paths. First, for circular polarization
 the TE and TM intensities are equal at every point on every body, so
 $q \equiv 0$ pointwise. Second, for linear polarization with random
 ensemble orientation either in space or time, the ensemble average
@@ -54,6 +58,7 @@ The angular dependence is now confined to the scalar function
 $\Tavg(\theta)$. The next section shows that this function is nearly
 constant for biological tissue.
 <!-- AUTO_END: assembled -->
+
 
 
 

@@ -36,7 +36,8 @@ R.~Wydaeghe, B.~Stroobandt, S.~Gallucci, M.~Parazzini, G.~Tognola,
   J.~Wiart, G.~Vermeeren, M.~Guxens, E.~Tanghe, and W.~Joseph,
   ``Environmental and auto-induced RF-EMF adult and children far-field
   exposure simulations between 450\,MHz and 26\,GHz,''
-  \emph{Phys. Med. Biol.}, 2026, under review.
+  \emph{Phys. Med. Biol.}, accepted for publication, 2026,
+  doi: \doi{10.1088/1361-6560/ae97ac}.
 
 \bibitem{Bamba2014}
 A.~Bamba, W.~Joseph, G.~Vermeeren, A.~Thielens, E.~Tanghe, and L.~Martens,
@@ -221,6 +222,12 @@ R.~Wydaeghe, S.~Shikhantsov, G.~Vermeeren, L.~Martens, E.~Tanghe,
   environments,'' \emph{npj Wireless Technol.}, vol.~2, no.~1,
   art.~no.~13, Apr. 2026, doi: \doi{10.1038/s44459-026-00031-4}.
 
+\bibitem{Goliat}
+GOLIAT Consortium, ``5G expOsure, causaL effects, and rIsk perception
+  through citizen engAgemenT (GOLIAT),'' Horizon Europe research and
+  innovation programme, grant agreement no.~101057262, 2022--2027.
+  [Online]. Available: \url{https://cordis.europa.eu/project/id/101057262}.
+
 \bibitem{Durney1986}
 C.~H. Durney, H.~Massoudi, and M.~F. Iskander, \emph{Radiofrequency
   Radiation Dosimetry Handbook}, 4th~ed. Brooks Air Force Base,
@@ -321,6 +328,7 @@ experience.
 
 \end{document}
 <!-- AUTO_END: assembled -->
+
 
 
 

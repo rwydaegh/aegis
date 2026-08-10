@@ -14,7 +14,7 @@ for TE and TM polarizations, respectively. The corresponding
 power-absorption
 coefficients are $T_s(\theta) = 1 - |r_s|^2$ and
 $T_p(\theta) = 1 - |r_p|^2$. At normal incidence, $\mu = 1$ and
-$\xi = \ntilde$, giving the polarization-degenerate value
+$\xi = \ntilde$, giving the polarization-independent normal-incidence value
 \begin{equation}\label{eq:T0}
   T_0 \equiv T_s(0) = T_p(0) = \frac{4\,\RE(\ntilde)}{|1+\ntilde|^2}\, .
 \end{equation}
@@ -33,4 +33,3 @@ _PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (41 rules cleared).
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

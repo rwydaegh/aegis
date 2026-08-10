@@ -32,7 +32,8 @@ R.~Wydaeghe, B.~Stroobandt, S.~Gallucci, M.~Parazzini, G.~Tognola,
   J.~Wiart, G.~Vermeeren, M.~Guxens, E.~Tanghe, and W.~Joseph,
   ``Environmental and auto-induced RF-EMF adult and children far-field
   exposure simulations between 450\,MHz and 26\,GHz,''
-  \emph{Phys. Med. Biol.}, 2026, under review.
+  \emph{Phys. Med. Biol.}, accepted for publication, 2026,
+  doi: \doi{10.1088/1361-6560/ae97ac}.
 
 \bibitem{Bamba2014}
 A.~Bamba, W.~Joseph, G.~Vermeeren, A.~Thielens, E.~Tanghe, and L.~Martens,

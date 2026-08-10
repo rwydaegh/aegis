@@ -9,33 +9,35 @@
 % PREV: differ between studies, and they provide no gradients for design. No
 % PREV: study writes them as one expression, and none treats a nonconvex body
 % PREV: in closed form.
-% NEXT: To the best of the authors' knowledge, this paper makes the following
-% NEXT: contributions.
+% NEXT: To the best of the authors' knowledge, this is the first closed-form
+% NEXT: \gls{APD} law for the human body, validated in four independent ways. The
+% NEXT: contributions are as follows.
 % NEXT: \begin{enumerate}
 % NEXT:   \item We derive closed-form \gls{APD} laws from Fresnel transmission
 % NEXT:   on lossy biological tissue and integrate them over nonconvex
 % NEXT:   anatomical meshes with a generalized Cauchy formula. Whole-body
-% NEXT:   absorbed power reduces to a flux-weighted transmission scalar and an
-% NEXT:   ambient-occlusion geometry scalar.
-% NEXT: 
+% NEXT:   absorbed power reduces to a flux-weighted transmission scalar and a
+% NEXT:   single ambient-occlusion scalar.
+% NEXT:
 % NEXT:   \item Pseudo-Brewster compensation simplifies the law further for
 % NEXT:   unpolarized incidence. \gls{TE}/\gls{TM} cancellation keeps the
 % NEXT:   geometric approximation within a few percent over the relevant
 % NEXT:   angular range.
-% NEXT: 
-% NEXT:   \item The computation is differentiable end-to-end. For a body mesh
-% NEXT:   under many incident paths, the absorbed-power map is one $10$~ms
-% NEXT:   matrix-vector multiply.
-% NEXT: 
+% NEXT:
+% NEXT:   \item The computation is differentiable end-to-end, the first
+% NEXT:   \gls{APD} map to provide closed-form gradients. For a body mesh
+% NEXT:   under many incident paths, the absorbed-power map is a single
+% NEXT:   matrix-vector multiplication, evaluated in under $10$~ms.
+% NEXT:
 % NEXT:   \item Higher-order correction terms extend and delimit the closed
 % NEXT:   form. A layered transmission term covers the sub-6~GHz whole-body
-% NEXT:   comparison, while curvature, diffraction, and inter-body reflection
+% NEXT:   comparison, whereas curvature, diffraction, and inter-body reflection
 % NEXT:   terms bound the main higher-order errors.
-% NEXT: 
+% NEXT:
 % NEXT:   \item The theory is validated in four independent ways: Mie theory
 % NEXT:   on lossy spheres, full polarization-aware Fresnel calculations on
 % NEXT:   the Thelonious phantom, Sim4Life FDTD, and dosimetry literature
-% NEXT:   across $168$ volunteers and $5$ FDTD phantoms.
+% NEXT:   across $108$ volunteers and $5$ FDTD phantoms.
 % NEXT: \end{enumerate}
 This work derives the closed form behind these coefficients. On
 high-index tissue, the unpolarized Fresnel transmission becomes a
@@ -61,4 +63,3 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (41 rules cleared).
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

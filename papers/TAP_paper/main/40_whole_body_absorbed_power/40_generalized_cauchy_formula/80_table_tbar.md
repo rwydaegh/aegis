@@ -1,12 +1,21 @@
+% PREV: The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
+% PREV: $5\%$ root-mean-square across $0.3$--$100$~GHz, but it is not
+% PREV: exact. The same direction-averaged identity becomes exact when $T_0$
+% PREV: is replaced by the angle-dependent $\Tavg(\theta)$. The
+% PREV: cosine-weighted angular integral becomes $\Tbar$
+% PREV: via~\eqref{eq:R-of-f}, so for any body opaque at the wavelength
+% PREV: \begin{equation}\label{eq:cauchy-exact}
+% PREV:   \langle P_{\mathrm{abs}} \rangle = \IPD\,\Tbar(f)\,\Aab/4 \,.
+% PREV: \end{equation}
 % PREV: \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
-% PREV: condition met above approximately $1$~GHz on a torso and above approximately $6$~GHz
-% PREV: on a finger. \Cref{tab:Tbar} lists $T_0$, $\Tbar$, and the ratio
-% PREV: $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
+% PREV: condition met above approximately $1$~GHz on a torso and above
+% PREV: approximately $6$~GHz on a finger. \Cref{tab:Tbar} lists $T_0$,
+% PREV: $\Tbar$, and the ratio $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
 % NEXT: The reverberation-chamber literature has been measuring $\Tbar$
-% NEXT: directly. Bamba's empirical efficiency $\eta(f)$ for diffuse-field
-% NEXT: exposure on four FDTD ellipsoid phantoms~\cite{Bamba2014}
-% NEXT: coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz. It diverges below
-% NEXT: $3$~GHz, where the body-Mie contribution to absorption on a finite
+% NEXT: directly. Bamba's empirical efficiency $\eta(f)$
+% NEXT: coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz on four FDTD ellipsoid
+% NEXT: phantoms under diffuse-field exposure~\cite{Bamba2014}. It diverges below
+% NEXT: $3$~GHz, where the Mie contribution to absorption on a finite
 % NEXT: ellipsoid becomes non-negligible (\cref{tab:bands}). The framework
 % NEXT: is mainly a mmWave method.
 % NEXT: Flintoft's plateau $\langle Q^a\rangle/\gamma_s = 0.47$--$0.49$

@@ -5,24 +5,24 @@
 % PREV: % Author: Robin Wydaeghe
 % PREV: % Target: IEEE Transactions on Antennas and Propagation
 % PREV: % =====================================================================
-% PREV: 
+% PREV:
 % PREV: \documentclass[journal,twocolumn,10pt]{IEEEtran}
-% PREV: 
+% PREV:
 % PREV: \usepackage[utf8]{inputenc}
 % PREV: \usepackage[T1]{fontenc}
 % PREV: \usepackage{lmodern}
 % PREV: \usepackage{microtype}
-% PREV: 
-% PREV: \usepackage{amsmath,amssymb,amsthm,mathtools}
+% PREV:
+% PREV: \usepackage{amsmath,amssymb,mathtools}
 % PREV: \usepackage{bm}
-% PREV: 
+% PREV:
 % PREV: \usepackage{graphicx}
 % PREV: \graphicspath{{figures/}{authors/}}
 % PREV: \usepackage{booktabs}
 % PREV: \usepackage{array}
 % PREV: \usepackage{caption}
 % PREV: \usepackage{subcaption}
-% PREV: 
+% PREV:
 % PREV: \usepackage{cite}
 % PREV: \usepackage{xcolor}
 % PREV: \usepackage{tikz}
@@ -36,9 +36,9 @@
 % PREV: % Suppress hyperlinks on \gls expansions so they render as plain black text
 % PREV: % rather than picking up the blue linkcolor from hyperref.
 % PREV: \glsdisablehyper
-% PREV: 
+% PREV:
 % PREV: \newcommand*{\doi}[1]{\href{https://doi.org/#1}{#1}}
-% PREV: 
+% PREV:
 % PREV: \newacronym{APD}{APD}{Absorbed Power Density}
 % PREV: \newacronym{IPD}{IPD}{Incident Power Density}
 % PREV: \newacronym{ACS}{ACS}{Absorption Cross-Section}
@@ -52,10 +52,7 @@
 % PREV: \newacronym{GELU}{GELU}{Gaussian Error Linear Unit}
 % PREV: \newacronym{ReLU}{ReLU}{Rectified Linear Unit}
 % PREV: \newacronym{BSA}{BSA}{body surface area}
-% PREV: 
-% PREV: \theoremstyle{plain}
-% PREV: \newtheorem{theorem}{Theorem}
-% PREV: 
+% PREV:
 % PREV: % --- math macros ---
 % PREV: \newcommand{\khat}{\hat{\bm{k}}}
 % PREV: \newcommand{\nhat}{\hat{\bm{n}}}
@@ -75,12 +72,12 @@
 % PREV: \newcommand{\Vis}{V}
 % PREV: \newcommand{\APDAvg}{\langle\mathrm{APD}\rangle_{1\,/\,4\,\mathrm{cm}^2}}
 % PREV: \DeclareMathOperator{\RE}{Re}
-% PREV: 
+% PREV:
 % PREV: % Flowchart output-box colors
 % PREV: \definecolor{outA}{RGB}{216,234,251}
 % PREV: \definecolor{outB}{RGB}{251,234,216}
 % PREV: \definecolor{outC}{RGB}{226,247,217}
-% PREV: 
+% PREV:
 % PREV: % Black censor rectangles over eyes and genitals on Thelonious phantom views.
 % PREV: % Rectangle positions are in normalized image coordinates (0,0)=SW, (1,1)=NE.
 % PREV: % Args: [width]{file}{eyes_LL}{eyes_UR}{gen_LL}{gen_UR}, each corner as "x,y".
@@ -100,19 +97,19 @@
 % NEXT: high mmWave frequencies. From 1 to 100~GHz, we replace these
 % NEXT: simulations with closed-form Fresnel surface laws for opaque
 % NEXT: biological tissue. Locally, Absorbed Power Density (APD) is Incident
-% NEXT: Power Density (IPD) multiplied by normal-incidence transmission, an
-% NEXT: ambient-occlusion factor, and the positive incidence cosine. For
+% NEXT: Power Density (IPD) multiplied by normal-incidence transmission, the positive
+% NEXT: incidence cosine, and an ambient-occlusion factor. For
 % NEXT: unpolarized skin at 28~GHz, pseudo-Brewster compensation keeps
 % NEXT: angular transmission within 5.6\% of normal incidence up to
 % NEXT: $75^\circ$. Integrating the local law over the visible nonconvex body
-% NEXT: surface yields a generalized Cauchy whole-body identity with one
-% NEXT: geometry scalar. A layered transmission term captures the sub-6~GHz
+% NEXT: surface yields a generalized Cauchy whole-body identity governed by a
+% NEXT: single geometry-dependent scalar. A layered transmission term captures the sub-6~GHz
 % NEXT: whole-body dip. On a $10^4$-triangle mesh under $10^2$ incident
 % NEXT: paths, this turns the absorbed-power map into one differentiable
 % NEXT: matrix-vector multiply, evaluated in under $10$~ms on a GPU. The
 % NEXT: closed form is validated in four ways: Mie theory on lossy spheres,
 % NEXT: full polarization-aware Fresnel calculations on the Thelonious
-% NEXT: phantom, Sim4Life FDTD, and dosimetry literature across 168
+% NEXT: phantom, Sim4Life FDTD, and dosimetry literature across 108
 % NEXT: volunteers and 5 FDTD phantoms. In the high-frequency regime, the
 % NEXT: error is below 5\%, within the reported uncertainty in human-skin
 % NEXT: dielectric parameters. Whole-body compliance reduces to three
