@@ -329,7 +329,7 @@ def main(argv: List[str] | None = None):
     c_ref = "#7F7F7F"  # neutral gray for T_0 references
 
     # Theoretical curves
-    theta_deg = np.linspace(0, 85, 400)
+    theta_deg = np.linspace(0, 90, 400)
     mu = np.cos(np.radians(theta_deg))
     T_s, T_p = fresnel_transmission(mu, n_complex)
     T_avg = 0.5 * (T_s + T_p)
@@ -344,9 +344,9 @@ def main(argv: List[str] | None = None):
     )
     ax5.set_xlabel(r"Incidence angle $\theta$ [deg]")
     ax5.set_ylabel(r"Transmission $T(\theta)$ $[\,]$")
-    ax5.set_xlim(0, 85)
+    ax5.set_xlim(0, 90)
     ax5.set_ylim(0, 1.05)
-    ax5.set_xticks([0, 15, 30, 45, 60, 75])
+    ax5.set_xticks([0, 15, 30, 45, 60, 75, 90])
     ax5.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
 
     # In-panel label for the T_0 reference (no legend entry, no overlap).
@@ -396,9 +396,9 @@ def main(argv: List[str] | None = None):
     ax6.plot(theta_deg, apd_avg, "-.", color=c_avg, linewidth=1.4, label=r"$T_{\mathrm{avg}}\cos\theta$")
     ax6.set_xlabel(r"Incidence angle $\theta$ [deg]")
     ax6.set_ylabel(r"$\mathrm{APD}/\mathrm{IPD}$ $[\,]$")
-    ax6.set_xlim(0, 85)
+    ax6.set_xlim(0, 90)
     ax6.set_ylim(0, 0.62)
-    ax6.set_xticks([0, 15, 30, 45, 60, 75])
+    ax6.set_xticks([0, 15, 30, 45, 60, 75, 90])
     ax6.set_yticks([0.0, 0.2, 0.4, 0.6])
     leg6 = ax6.legend(loc="upper right", frameon=True, fancybox=False,
                       edgecolor="black", framealpha=1.0,
