@@ -1,7 +1,8 @@
 % =====================================================================
 % Working note
 % Is the signal channel free-space, and how to add the body to h
-% Companion to the coherent-exposure-operator paper (paper C)
+% Companion to the coherent-exposure-operator paper (paper C),
+% q_complement.tex, and unified_physics.tex
 % =====================================================================
 
 \documentclass[11pt]{article}
@@ -18,7 +19,7 @@
 \usepackage[colorlinks=true,allcolors=blue!50!black]{hyperref}
 \usepackage[capitalize]{cleveref}
 
-% Macros matching paper C (build/main.tex)
+% Macros matching paper C (build/main.tex) and q_complement.tex
 \newcommand{\khat}{\hat{\bm{k}}}
 \newcommand{\nhat}{\hat{\bm{n}}}
 \newcommand{\rr}{\mathbf{r}}
@@ -26,11 +27,13 @@
 \newcommand{\hh}{\mathbf{h}}
 \newcommand{\GG}{\mathbf{G}}
 \newcommand{\Gtil}{\tilde{\mathbf{G}}}
+\newcommand{\Gre}{\Gtil^{\mathrm{re}}}
 \newcommand{\Qmat}{\mathbf{Q}}
+\newcommand{\Qabs}{\mathbf{Q}_{\mathrm{ab}}}
+\newcommand{\Qref}{\mathbf{Q}_{\mathrm{re}}}
 \newcommand{\Jmat}{\mathbf{J}}
 \newcommand{\Phimat}{\mathbf{\Phi}}
 \newcommand{\Psimat}{\bm{\Psi}}
-\newcommand{\Psitil}{\tilde{\bm{\Psi}}}
 \newcommand{\Fn}{\mathbf{F}_n}
 \newcommand{\Rn}{\mathbf{R}_n}
 \newcommand{\psin}{\bm{\psi}_n}
@@ -40,6 +43,8 @@
 \newcommand{\Vis}{V}
 \newcommand{\rue}{\rr_{\mathrm{UE}}}
 \newcommand{\hb}{\hh_{\mathrm{b}}}
+\newcommand{\uue}{\mathbf{u}_{\mathrm{UE}}}
+\newcommand{\mfock}{m_{\mathrm{F}}}
 \DeclareMathOperator{\RE}{Re}
 \DeclareMathOperator{\diag}{diag}
 
@@ -47,7 +52,7 @@
 \newtheorem{remark}{Remark}
 
 \title{Is the signal channel free-space, and how to add the body to $\hh$}
-\author{Working note, companion to paper C}
+\author{Working note, companion to paper C and \texttt{q\_complement}}
 \date{2026-08-10}
 
 \begin{document}
@@ -59,15 +64,22 @@ The signal channel $\hh$ of paper C is the free-space channel of a
 scene that does not contain the body. The body enters the model only
 through the exposure branch. This note makes that statement precise,
 argues why it matters for the MRT baseline and for the small
-device-to-body separations of the sweep, and derives a body-perturbed
-signal channel $\hb$ from the machinery the paper already has. The
-perturbation has two terms, a shadowing diagonal built from the same
-visibility function that gates the exposure channel, and a
-physical-optics scattering term built from the Fresnel reflection
-operator, the mirror image of the transmission operator $\Fn$. To
-first order in the body interaction the exposure operator $\Qmat$ is
-unchanged, so the consistent upgrade is: replace $\hh$ by $\hb$ in the
-precoder design, keep $\Qmat$ as it is.
+device-to-body separations of the sweep, and then assembles a
+body-perturbed channel $\hb$ without introducing any new physics
+object. The scattering correction is the emitted-field channel of
+\texttt{q\_complement}, the same $\Rn$-built channel whose Gram is
+$\Qref$, sampled at the device instead of integrated over exit
+directions: $\Qref$ is what the body emits in total, $\Delta\hh$ is
+what the device hears of that emission. Lorentz reciprocity turns the
+sample into a reaction integral on the body surface between the
+reflected channel and the UE antenna's spherical-wave field, so no
+specular-point search and no far-field assumption on the body are
+needed. The shadowing correction is the visibility gate of the
+exposure branch evaluated at the device, with the Fock transition
+function of the unified-physics note as its matched refinement. To
+first order in the body interaction $\Qmat$ is unchanged, so the
+consistent upgrade is: replace $\hh$ by $\hb$ in the precoder design,
+keep $\Qmat$.
 \end{abstract}
 
 \section{Where the body enters the model, and where it does not}
@@ -84,7 +96,7 @@ Free-space field & $\mathbf{E}(\rr) = \GG(\rr)\,\xx$,
 Signal & $y = \hh^T \xx$,
   \ $\hh^T = \bm{\alpha}^T\,\Phimat(\rue)\,\Jmat$ & $\bm{\alpha}^T$ & no \\
 Exposure & $S_{\mathrm{ab}}(\rr) = \|\Gtil(\rr)\,\xx\|^2$,
-  \ $\Gtil = \Psitil(\rr)\,\Phimat(\rr)\,\Jmat$ & $\Psitil(\rr)$ & yes \\
+  \ $\Gtil = \tilde{\bm{\Psi}}(\rr)\,\Phimat(\rr)\,\Jmat$ & $\tilde{\bm{\Psi}}(\rr)$ & yes \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -131,7 +143,7 @@ device, so environment paths that bounce off the far half of the hall
 arrive at $\rue$ through the torso. Free-space MRT co-phases those
 paths and spends transmit power on them. That power is wasted for the
 link, and it is precisely the power that terminates in the trunk,
-since the body is what blocks it. A body-aware $\hh$ zeroes these
+since the body is what blocks it. A body-aware $\hh$ suppresses these
 paths, and MRT on it stops illuminating the body from behind. Some of
 the exposure reduction that paper C attributes to ECBF may already be
 delivered by matched filtering on the correct channel. That is a
@@ -151,161 +163,197 @@ patch is small and $D$ is close to one, so several dB of ripple in
 $|\hh|$ across the separation sweep is the expectation, not the
 exception. The current model shows none of it.
 
-\section{The body-perturbed signal channel}
+\section{The body as an emitter, and the device in its field}
+\label{sec:emitter}
 
-Both corrections are assembled from objects paper C already defines.
-Write $c_n(\rr, \xx) = x_{j(n)}\, e^{-i k_0 \khat_n \cdot \rr}$ for
-the per-path excitation, and let $\Sigma$ be the body surface with
-outward normal $\nhat$, incidence cosine
-$\mu_n = \nhat \cdot (-\khat_n)$, and
-$\xi_n = \sqrt{\ntilde^2 - 1 + \mu_n^2}$, all as in the paper.
+The elegant route does not build a new scattering model. It reuses
+the emitted-field channel that \texttt{q\_complement} already defines
+for power bookkeeping, and evaluates it at one more point.
 
-\subsection{Shadowing diagonal}
+\subsection{The outgoing channel, recalled}
 
-The exposure channel already carries the binary visibility
-$\Vis(\rr, \khat_n) \in \{0,1\}$, one when an unobstructed ray reaches
-$\rr$ from direction $\khat_n$. Evaluate the same function at the
-device, with the phantom mesh as the occluder, and collect it into
-\begin{equation}\label{eq:Vue}
-  \mathbf{V}_{\mathrm{UE}}
-  = \diag\bigl(\Vis(\rue, \khat_1), \ldots, \Vis(\rue, \khat_N)\bigr).
-\end{equation}
-The shadowed signal channel is
-\begin{equation}\label{eq:h-shadow}
-  \hh_{\mathrm{sh}}^T
-  = \bm{\alpha}^T\, \mathbf{V}_{\mathrm{UE}}\, \Phimat(\rue)\, \Jmat .
-\end{equation}
-This is one ray-mesh query per path against the phantom BVH, the
-identical primitive that computes the ambient-occlusion gate on the
-body. The binary gate overstates the shadow edge. The refinement is
-the same one the exposure branch plans for its own shadow boundaries,
-replace the Heaviside by a diffraction taper, knife-edge as the first
-cut and the creeping-wave (Fock) coefficient where the occluding limb
-is convex on the wavelength scale, since limbs sit in the Fock regime
-rather than the knife-edge regime at these frequencies.
-
-\subsection{Fresnel reflection operator}
-
-The transmission operator $\Fn(\rr)$ of paper C has a mirror image
-that the paper never needs. For a front-facing path at
-$\rr \in \Sigma$, with TE and TM bases
-$\hat{e}_{s,n}, \hat{e}_{p,n}$ as in the paper, the reflected
-direction and the reflected TM basis are
-\begin{equation}
-  \khat_n^{\mathrm{r}} = \khat_n + 2 \mu_n \nhat,
-  \qquad
-  \hat{e}_{p,n}^{\mathrm{r}} = \hat{e}_{s,n} \times \khat_n^{\mathrm{r}},
-\end{equation}
-and the Fresnel amplitude reflection coefficients for the
-air-to-tissue interface are
+\texttt{q\_complement} introduces the Fresnel reflection operator,
+sibling of $\Fn$, with coefficients
 \begin{equation}\label{eq:r-coef}
   r_{s,n} = \frac{\mu_n - \xi_n}{\mu_n + \xi_n},
   \qquad
   r_{p,n} = \frac{\ntilde^2 \mu_n - \xi_n}{\ntilde^2 \mu_n + \xi_n},
 \end{equation}
-the exact companions of the transmission coefficients
-$t_{s,n}, t_{p,n}$ of the paper, satisfying $t_{s,n} = 1 + r_{s,n}$
-and $\ntilde\, t_{p,n} = 1 + r_{p,n}$. The per-path reflection
-operator is then
+linked to the transmission coefficients by $t_{s} = 1 + r_{s}$ and
+$\ntilde\, t_{p} = 1 + r_{p}$. At the field level, for a front-facing
+path at $\rr \in \Sigma$, the operator that maps the incident
+polarization to the outgoing surface field is
 \begin{equation}\label{eq:Rn}
   \Rn(\rr) =
   \bigl(r_{s,n}\, \hat{e}_{s,n} \hat{e}_{s,n}^{T}
   + r_{p,n}\, \hat{e}_{p,n}^{\mathrm{r}} \hat{e}_{p,n}^{T}\bigr)\,
   \Vis(\rr, \khat_n)\, H(\mu_n),
-\end{equation}
-rank two, zero on back-facing and self-shadowed paths, exactly the
-structure of $\Fn$ with $(t_s, t_p, \hat{e}'_p)$ replaced by
-$(r_s, r_p, \hat{e}^{\mathrm{r}}_p)$. Every geometric quantity in
-\cref{eq:Rn} is already computed per surface point when the exposure
-kernel is assembled.
-
-\subsection{Physical-optics scattering term}
-
-The reflected surface field of path $n$ at $\rr' \in \Sigma$ is
-$\Rn(\rr')\, \psin\, c_n(\rr', \xx)$. In the tangent-plane
-(Kirchhoff) approximation each lit surface element re-radiates this
-field, and the body-scattered field at the device is the surface
-integral
-\begin{equation}\label{eq:PO}
-  \mathbf{E}_{\mathrm{sc}}(\rue)
-  = \sum_n \int_{\Sigma}
-  \mathbf{K}(\rue, \rr')\,
-  \Rn(\rr')\, \psin\,
-  e^{-i k_0 \khat_n \cdot \rr'}\, \diff A' \;
-  x_{j(n)},
-\end{equation}
-with $\mathbf{K}$ the free-space Kirchhoff propagation kernel carrying
-the spherical phase $e^{-i k_0 |\rue - \rr'|}$. The integral is
-linear in $\xx$ through $x_{j(n)}$, which is the only property the
-precoder design needs.
-
-The phase along $\Sigma$ is
-$\varphi_n(\rr') = -k_0 \khat_n \cdot \rr' - k_0 |\rue - \rr'|$, and
-stationary phase collapses \cref{eq:PO} onto the specular points, the
-surface points where $\khat_n$ reflects into the direction of the
-device. With $\rr^{\star}_n$ the specular point of path $n$,
-$s_n = |\rue - \rr^{\star}_n|$, and
-$D_n = \sqrt{\rho_1 \rho_2 / ((\rho_1 + s_n)(\rho_2 + s_n))}$ the
-divergence factor of the principal curvature radii at
-$\rr^{\star}_n$, the geometrical-optics evaluation is
-\begin{equation}\label{eq:GO-scatter}
-  \mathbf{E}_{\mathrm{sc}, n}(\rue)
-  \approx D_n\, \Rn(\rr^{\star}_n)\, \psin\,
-  e^{-i k_0 (\khat_n \cdot \rr^{\star}_n + s_n)}\, x_{j(n)} .
-\end{equation}
-Projecting on the UE antenna response and collecting per element
-through the dispatch gives the scattering correction
-\begin{equation}\label{eq:dh}
-  \Delta\hh^{T} = \bm{\alpha}_{\mathrm{sc}}^{T}\, \Jmat,
   \qquad
-  \alpha_{\mathrm{sc}, n}
-  = D_n\,
-  \mathbf{C}_R(\hat{\bm{s}}_n)^{H}\, \Rn(\rr^{\star}_n)\, \psin\,
-  e^{-i k_0 (\khat_n \cdot \rr^{\star}_n + s_n)},
+  \hat{e}_{p,n}^{\mathrm{r}} = \hat{e}_{s,n} \times \khat_n^{\mathrm{r}},
 \end{equation}
-with $\hat{\bm{s}}_n$ the unit vector from $\rr^{\star}_n$ to the
-device. The body-perturbed signal channel is
+with $\khat_n^{\mathrm{r}} = \khat_n + 2 \mu_n \nhat$ the specular
+direction. One refinement relative to \texttt{q\_complement}: its
+$\Rn$ keeps the incident TM basis because only $|\Rn \psin|^2$ enters
+the power operator $\Qref$. For a field evaluated off the surface the
+outgoing polarization direction matters, hence the rotated basis
+$\hat{e}_{p,n}^{\mathrm{r}}$, and the visibility gate that
+\texttt{q\_complement} leaves implicit is written out.
+
+The reflected surface field under precoder $\xx$ is then the outgoing
+channel
+\begin{equation}\label{eq:Gre}
+  \mathbf{E}^{\mathrm{re}}(\rr) = \Gre(\rr)\,\xx,
+  \qquad
+  \Gre(\rr) = \bigl[\Rn(\rr)\psin\, e^{-i k_0 \khat_n \cdot \rr}\bigr]_{n}
+  \, \Jmat \in \Complex^{3 \times M},
+\end{equation}
+the exact parallel of $\Gtil$ with $\Rn$ in place of $\Fn$. This is
+the field the body emits back into the environment. It is one object
+with three readings, and the third is the new one:
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Reading & Operation on $\Gre$ & Object \\
+\midrule
+Total re-emission & Gram, integrated over $\Sigma$ & $\Qref$ \\
+Thermal dual & reciprocity, array as receiver & Kirchhoff identity of \texttt{q\_complement} \\
+Device coupling & Huygens sample at $\rue$ & $\Delta\hh$, this note \\
+\bottomrule
+\end{tabular}
+\end{center}
+$\Qref$ answers ``how much does the body emit in total''. The
+correction to the signal channel answers ``how much of that emission
+does the device hear''. Same surface response, read at a point
+instead of in aggregate.
+
+\subsection{The device sample, in reaction form}
+
+The Huygens continuation of the aperture field \cref{eq:Gre} to an
+exterior point gives the body-scattered field at the device,
+schematically
+$\mathbf{E}_{\mathrm{sc}}(\rue) = \int_\Sigma \mathbf{K}(\rue, \rr)\,
+\Gre(\rr)\,\xx\, \diff A$ with $\mathbf{K}$ the free-space propagation
+kernel. Projecting on the UE antenna and applying Lorentz reciprocity
+folds the kernel and the antenna response into a single physical
+object, the field the UE antenna itself radiates on the body surface.
+Let $\uue(\rr) \in \Complex^3$ be that field under unit port
+excitation, the exact spherical wave of the device antenna, all
+$1/(k_0 s)$ orders retained. The coupling is the reaction integral
+\begin{equation}\label{eq:reaction}
+  \Delta\hh^{T} = \mathbf{a}^{T} \Jmat,
+  \qquad
+  a_n = \kappa \int_{\Sigma}
+  \uue(\rr)^{T}\, \Rn(\rr)\, \psin\,
+  e^{-i k_0 \khat_n \cdot \rr}\, \diff A,
+\end{equation}
+with $\kappa$ a reciprocity constant fixed by the port normalization
+conventions, to be pinned at implementation time. The structure is
+the point: $\Delta\hh$ is a bilinear overlap on $\Sigma$ between the
+array-side outgoing channel and the device-side illumination. The
+body-perturbed signal channel is
 \begin{equation}\label{eq:hb}
   \boxed{\;
   \hb^{T}
   = \bm{\alpha}^{T}\, \mathbf{V}_{\mathrm{UE}}\, \Phimat(\rue)\, \Jmat
-  \;+\; \bm{\alpha}_{\mathrm{sc}}^{T}\, \Jmat .
+  \;+\; \mathbf{a}^{T} \Jmat ,
   \;}
 \end{equation}
-The first term keeps the factorization of the paper with one extra
-diagonal. The second term still has the amplitude-times-dispatch
-shape, but its phase is referenced at the specular point rather than
-at $\rue$, so it does not factor through $\Phimat(\rue)$. That is the
-only structural casualty, and it is harmless, since the precoder
-design consumes $\hb$ as a single $M$-vector.
+with $\mathbf{V}_{\mathrm{UE}}$ the device-side shadowing gate of
+\cref{sec:shadow}. Three properties make \cref{eq:reaction} the right
+form.
+
+\emph{No stationary-phase machinery.} The integral is evaluated by
+the same triangle quadrature that assembles $\Qmat$, on the same
+per-triangle quantities: incidence bases, Fresnel coefficients,
+visibility, plus one new spherical-wave evaluation per triangle per
+device position. No specular-point search on the mesh, no curvature
+radii, no divergence factor. Geometrical optics reappears only as
+the asymptotic evaluation: the phase of \cref{eq:reaction} is
+$-k_0(\khat_n \cdot \rr + s)$ with $s = |\rue - \rr|$, its stationary
+point is the specular point of path $n$, and the stationary-phase
+value is the GO reflected ray with the divergence factor of the local
+curvature. That is the sanity check, not the method.
+
+\emph{No far-field assumption on the body.} The question of whether
+the device is in the far field of the body never arises, because the
+body is never treated as a single radiator. Each surface element
+couples to the device through the exact $\uue$, which is valid from
+the radiating near field outward. The regime boundaries of the
+unified-physics note apply on the device side only: the reactive
+boundary $\lambda/2\pi \approx 1.7$\,mm at 28\,GHz sits far below the
+1\,cm separation grid, so every nonzero separation of the sweep is in
+the spherical-wave regime, and the spherical wave costs nothing. The
+single excluded case is contact, $d = 0$, where reactive coupling and
+antenna detuning dominate and no surface method applies.
+
+\emph{Linear in $\xx$, factorization-compatible.} Equation
+\cref{eq:reaction} keeps the amplitude-times-dispatch shape of every
+channel in paper C. The phase is referenced on $\Sigma$ rather than
+at $\rue$, so the term does not factor through $\Phimat(\rue)$, which
+is harmless since the precoder design consumes $\hb$ as one
+$M$-vector.
 
 \paragraph{Two-ray sanity check.}
 For the dominant path at normal incidence on the chest and the device
-on the chest normal at separation $d$, the specular point sits
-directly behind the device, $s_n = d$,
-$\khat_n \cdot \rr^{\star}_n = \khat_n \cdot \rue + d$, and
-\cref{eq:dh} reduces to
-$\alpha_{\mathrm{sc}, n} = D_n\, \Gamma\, e^{-2 i k_0 d}\, \alpha_n
-e^{-i k_0 \khat_n \cdot \rue}$, the textbook two-ray term with
-$\Gamma$ from \cref{eq:r-coef} at $\mu_n = 1$. The separation sweep
-of paper C acquires exactly the ripple of \cref{eq:PO} evaluated this
-way.
+on the chest normal at separation $d$, the stationary point of
+\cref{eq:reaction} sits directly behind the device, and the
+stationary-phase evaluation gives
+$a_n = D\, \Gamma\, e^{-2 i k_0 d}\, \alpha_n\,
+e^{-i k_0 \khat_n \cdot \rue}$ with $\Gamma$ from \cref{eq:r-coef} at
+$\mu_n = 1$ and $D$ the chest divergence factor. The separation sweep
+of paper C acquires exactly the textbook two-ray ripple.
+
+\section{Device-side shadowing, with the Fock gate}
+\label{sec:shadow}
+
+The exposure channel gates each path by the binary visibility
+$\Vis(\rr, \khat_n)$. The same function, evaluated at the device with
+the phantom as occluder, gives
+\begin{equation}\label{eq:Vue}
+  \mathbf{V}_{\mathrm{UE}}
+  = \diag\bigl(g_1, \ldots, g_N\bigr),
+  \qquad
+  g_n = \Vis(\rue, \khat_n) \in \{0, 1\},
+\end{equation}
+one BVH ray query per path, the identical primitive the
+ambient-occlusion bake uses. The binary gate is the level-consistent
+default, matching the fidelity at which the exposure branch runs.
+
+The refinement is not knife-edge diffraction. The occluders are
+limbs and the torso, convex on the wavelength scale, and the
+unified-physics note shows that the correct shadow-boundary physics
+on a convex body is Fock theory: the binary gate is replaced by the
+complex transition function $g(\xi_n)$ of the Fock boundary layer,
+with detour parameter $\xi_n = \mfock\,\theta_n$,
+$\mfock = (k_0 R_{\mathrm{F}}/2)^{1/3}$, $R_{\mathrm{F}}$ the
+in-plane curvature radius of the occluding contour, and $\theta_n$
+the signed grazing angle of the blocked ray past that contour. The
+soft and hard polarization split and the lossy-skin impedance
+correction carry over unchanged, since the gate is the same object
+the exposure branch uses at its own shadow edges. The penumbra width
+scales as $(k_0 R_{\mathrm{F}})^{-1/3}$, a few degrees for an arm at
+28\,GHz, which is exactly the angular scale the separation and
+position sweeps of paper C step through, so the smooth gate matters
+for the gradient of $\hb$ along the sweep even where the binary gate
+gets the mean right. Fidelity pairing is the rule: binary with
+binary, Fock with Fock, on both branches.
 
 \section{What happens to the exposure operator}
 
 Nothing, to first order, and that is the point. Order the model by
-powers of the body interaction. The exposure branch is already first
-order, each path interacts with the surface once, through $\Fn$. The
-signal branch of paper C is zeroth order, the body absent. The
-corrections of \cref{eq:hb} promote the signal branch to first order,
-one shadowing or one reflection event per path. A body correction to
-$\Qmat$ itself would require a path to interact with the body twice,
-reflect off one body part and then illuminate another, before being
-absorbed. On a mostly convex body that inter-reflection term is
-geometrically starved, active only in concavities such as the chin
-and chest, the underarm, and between the legs, and it belongs on the
-same refinement list as multilayer skin and shadow-edge diffraction.
-The consistent first-order theory is therefore
+powers of the surface interaction. The exposure branch is first
+order, one $\Fn$ per path. The signal branch of paper C is zeroth
+order, the body absent. The two corrections of \cref{eq:hb} promote
+the signal branch to first order, one $\Rn$ or one occlusion event
+per path. A body correction to $\Qmat$ itself requires two surface
+interactions, reflect off one body part and absorb on another, which
+is the inter-body recapture of the unified-physics note and the first
+term of the Neumann cascade of \texttt{q\_complement}. On a mostly
+convex body it is geometrically starved, active in the concavities,
+and the unified-physics note already keeps it off by default because
+the body-averaged enhancement sits inside the diffraction and
+tissue-property error bars. The consistent first-order theory is
+therefore
 \begin{equation}
   \xx^{\star}
   \propto (\lambda \Qmat + \nu \mathbf{I})^{-1} \hb^{*},
@@ -316,43 +364,48 @@ quantity of paper C, the Pareto sweep, the binding-restriction
 analysis, the concentration statistics, is a function of
 $(\hh, \Qmat)$ and runs unmodified on $(\hb, \Qmat)$.
 
-\section{Implementation routes}
+\begin{remark}[One quadrature, three operators]
+After this note the model evaluates three surface functionals on the
+same mesh quadrature: $\int \Gtil^H \Gtil$ for $\Qabs$,
+$\int (\Gre)^H \Gre$ for $\Qref$ when the bookkeeping is wanted, and
+$\int \uue^T \Rn \psin\, e^{-i k_0 \khat_n \cdot \rr}$ for
+$\Delta\hh$. The per-triangle geometry, Fresnel bases, and
+visibility are shared. The marginal cost of the body-aware channel
+is one spherical-wave evaluation per triangle per device position,
+$O(N_\triangle)$, negligible against the exposure kernel.
+\end{remark}
+
+\section{Implementation routes and first measurements}
 
 \paragraph{Closed form, from existing machinery.}
-The shadowing diagonal is $N$ ray queries against the phantom BVH per
-device position, the same call the ambient-occlusion gate makes. The
-reflection operator \cref{eq:Rn} reuses the per-point Fresnel bases.
-The specular point of path $n$ is a mirror-point search on the mesh,
-cheap because the plane-wave direction is fixed, and the curvature
-radii for $D_n$ come from the mesh's principal curvatures, which the
-curvature refinement of the paper already estimates. Cost is
-$O(N)$ per device position, negligible against the exposure kernel.
+Shadowing: $N$ BVH queries per device position. Scattering: the
+reaction quadrature above. The only genuinely new code is $\uue$,
+the exact field of the device dipole on the mesh, and the reciprocity
+constant $\kappa$, which should be pinned by one validation case, for
+example a flat phantom slab against the analytical two-ray answer.
 
 \paragraph{Body-in-scene trace, as the oracle.}
-Sionna RT accepts the phantom mesh with an ITU tissue material, and a
+Sionna RT accepts the phantom mesh with a tissue material, and a
 trace of that scene returns a body-inclusive channel directly,
-including multi-bounce body-environment interactions that
+including the multi-bounce body-environment interactions that
 \cref{eq:hb} truncates. Two cautions. First, double counting: the
 exposure operator must keep being fed by the body-free trace, since
-$\Fn$ models the surface interaction analytically. The clean protocol
-is two traces of the same scene, body-in for $\hh$, body-out for
-$\Qmat$. Second, cost: the body-in trace must be repeated per posture
-and position, which is precisely the per-configuration expense the
-closed-form operator exists to avoid. The oracle validates
-\cref{eq:hb} on a few configurations, it does not replace it in the
-sweep.
+$\Fn$ models the surface interaction analytically. The clean
+protocol is two traces of the same scene, body-in for $\hh$, body-out
+for $\Qmat$. Second, cost: the body-in trace repeats per posture and
+position, which is the per-configuration expense the closed-form
+operator exists to avoid. The oracle validates \cref{eq:reaction} on
+a few configurations, it does not replace it in the sweep.
 
 \paragraph{What to measure first.}
 Three numbers decide whether this matters. One, the fraction of
-$\|\hh\|^2$ carried by torso-blocked paths across the sweep, which is
-the shadowing budget, computable from
+$\|\hh\|^2$ carried by torso-blocked paths across the sweep, from
 $\mathbf{V}_{\mathrm{UE}}$ alone with no scattering machinery. Two,
-the ripple of $\|\hb\|$ over the 0 to 3\,cm separations, which is the
-two-ray budget. Three, the change in
-$\xx^H \Qmat\, \xx$ at fixed received signal power when MRT switches
-from $\hh^{*}$ to $\hb^{*}$, which is the exposure consequence, and
-whose sign is genuinely open, since shadowing steers power away from
-the trunk while the chest reflection rewards paths that bounce off
-the chest into the device.
+the ripple of $\|\hb\|$ over the 1 to 3\,cm separations, from the
+reaction quadrature, checked against the two-ray formula. Three, the
+change in $\xx^H \Qmat\, \xx$ at fixed received signal power when MRT
+switches from $\hh^{*}$ to $\hb^{*}$, whose sign is genuinely open,
+since shadowing steers power away from the trunk while the chest
+reflection rewards paths that bounce off the chest into the device.
 
 \end{document}
