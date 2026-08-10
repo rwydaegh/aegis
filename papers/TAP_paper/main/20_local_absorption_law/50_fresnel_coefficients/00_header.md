@@ -13,7 +13,7 @@
 % NEXT: power-absorption
 % NEXT: coefficients are $T_s(\theta) = 1 - |r_s|^2$ and
 % NEXT: $T_p(\theta) = 1 - |r_p|^2$. At normal incidence, $\mu = 1$ and
-% NEXT: $\xi = \ntilde$, giving the polarization-degenerate value
+% NEXT: $\xi = \ntilde$, giving the polarization-independent normal-incidence value
 % NEXT: \begin{equation}\label{eq:T0}
 % NEXT:   T_0 \equiv T_s(0) = T_p(0) = \frac{4\,\RE(\ntilde)}{|1+\ntilde|^2}\, .
 % NEXT: \end{equation}

@@ -4,9 +4,9 @@
 <!-- AUTO_BEGIN: assembled -->
 \section{Method: pseudo-Brewster compensation}\label{sec:pB}
 
-The flowchart now moves from the exact local law to its unpolarized
-form. This section shows why the Fresnel factor can be replaced by a
-nearly constant scalar for mmWave tissue. The reason is
+As described in the flowchart of~\cref{fig:flowchart}, this section reduces
+the exact local law to its unpolarized form. A nearly constant scalar
+can replace the Fresnel factor for mmWave tissue, and the reason is
 pseudo-Brewster compensation.
 
 \subsection{Mechanism}\label{subsec:pB-mech}
@@ -14,11 +14,11 @@ pseudo-Brewster compensation.
 The Brewster angle of a lossless dielectric is $\theta_{\mathrm{B}} =
 \arctan(n_2/n_1)$, at which the TM reflection coefficient
 vanishes~\cite{BornWolf1999}. For a lossy dielectric the reflection
-minimum is finite but small. The angle at which $|r_p|^2$ is
-minimized is the \textit{pseudo-Brewster angle} and satisfies
+minimum is finite but small. The angle that minimizes $|r_p|^2$ is
+the \textit{pseudo-Brewster angle} and satisfies
 $\theta_{\mathrm{pB}} \approx \arctan|\ntilde|$ to within $1^\circ$ for
 $|\ntilde| > 3$~\cite{Potter1970,Ohman1977}. At this angle, $T_p$
-peaks near $0.95$, while $T_s$ has fallen below $0.20$. Their
+peaks near $0.95$, whereas $T_s$ has fallen below $0.20$. Their
 average $\Tavg(\theta_{\mathrm{pB}}) \approx 0.5$ is close to the
 normal-incidence value $T_0 \approx 0.5$--$0.6$ for biological
 tissue at mmWave.
@@ -31,8 +31,8 @@ below the strict Azzam threshold. The SI evaluates this extension on
 the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Biological tissue at the wireless mmWave
 band has $|\ntilde| \in [3, 6]$, putting it in the high-index
 regime. This connection between the Azzam criterion and biological dosimetry
-has not appeared in the optics or bioelectromagnetics literature,
-where prior work has evaluated the angular and polarization
+has not appeared in the antenna propagation or bioelectromagnetics literature;
+prior work has evaluated the angular and polarization
 dependence of body transmission above $6$~GHz
 numerically~\cite{Samaras2019} without the high-index reduction.
 
@@ -40,11 +40,13 @@ numerically~\cite{Samaras2019} without the high-index reduction.
 
 \Cref{fig:apd-angle} illustrates the compensation for skin at
 28~GHz. \Cref{fig:apd-angle:T} shows $T_s$, $T_p$, and $\Tavg$ versus
-incidence angle. \Cref{fig:apd-angle:APD} shows the \gls{APD}
+incidence angle. \Cref{fig:apd-angle:APD} shows the normalized absorbed power
 $\APD/\IPD = T(\theta)\cos\theta$ for each polarization and for the
 simplified product $T_0\cos\theta$. The unpolarized curve closely
 tracks the simplified prediction, and the small gap is the Fresnel
-approximation error.
+approximation error. $\Tavg/T_0$ is at most $1.056$ across
+$[0^\circ,90^\circ]$ on skin at 28~GHz. Below $20^\circ$, the
+deviation stays below $0.2\%$.
 
 \begin{figure}[!t]
   \centering
@@ -64,37 +66,12 @@ approximation error.
   ($\ntilde = 4.49 - 1.79i$, $T_0 = 0.539$). (a)~Fresnel
   power-absorption coefficients $T_s$ (TE), $T_p$ (TM), and
   $\Tavg = \tfrac{1}{2}(T_s + T_p)$ versus incidence angle $\theta$.
-  $\Tavg$ stays within $5.6\%$ of $T_0$ up to $75^\circ$.
+  $\Tavg/T_0$ is at most $1.056$ over $[0^\circ,90^\circ]$.
   (b)~Normalized absorbed power $\APD/\IPD = T(\theta)\cos\theta$
   for the same three states. The dotted reference is the simplified
   $T_0\cos\theta$ prediction.}
   \label{fig:apd-angle}
 \end{figure}
-
-\Cref{tab:fresnel-skin} quantifies the deviation of $\Tavg$ from
-$T_0$ across $[0^\circ, 75^\circ]$ on skin at 28~GHz. The maximum
-deviation is $5.6\%$ at $70$--$75^\circ$. Below $30^\circ$ the agreement
-is at the fourth significant figure.
-
-\begin{table}[!t]
-\centering
-\caption{Fresnel transmission for skin at 28~GHz. Here $T_0 =
-\Tavg(0)$ is the normal-incidence value, and $\Tavg/T_0$ stays
-within $5.6\%$ of unity over $[0^\circ, 75^\circ]$.}
-\label{tab:fresnel-skin}
-\begin{tabular}{ccccc}
-\toprule
-$\theta$ & $T_s$ (TE) & $T_p$ (TM) & $\Tavg$ & $\Tavg/T_0$ \\
-\midrule
-$0^\circ$  & 0.539 & 0.539 & 0.539 & 1.000 \\
-$30^\circ$ & 0.489 & 0.591 & 0.540 & 1.002 \\
-$45^\circ$ & 0.422 & 0.666 & 0.544 & 1.010 \\
-$60^\circ$ & 0.321 & 0.791 & 0.556 & 1.032 \\
-$70^\circ$ & 0.233 & 0.902 & 0.568 & 1.054 \\
-$75^\circ$ & 0.182 & 0.952 & 0.567 & 1.053 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsection{Tissue universality}\label{subsec:pB-tissues}
 
@@ -107,7 +84,7 @@ $5.6\%$. Water has $|\ntilde| > 6$ and a variation below $4\%$.
 Fat is the outlier, with $|\ntilde| \approx 2$ and an $8.2\%$
 variation, but fat is rarely the outermost tissue at exposure sites
 of regulatory interest. Above $6$~GHz, the relevant outermost
-tissues are skin, subcutaneous fat, and vitreous humor.
+tissues are skin and vitreous humor.
 
 \begin{table}[!t]
 \centering
@@ -131,7 +108,7 @@ Water  & 25.0 & 55.0 & 6.62 & 0.45 & $3.9\%$ \\
 \subsection{Frequency dependence}\label{subsec:pB-freq}
 
 The accuracy of the constant-$T_0$ approximation has a clean
-frequency dependence. Define the sphere ratio $R(f)$
+frequency dependence. Define the \emph{sphere ratio} $R(f)$
 \begin{equation}\label{eq:R-of-f}
   R(f) \equiv T_0(f) / \Tbar(f),
   \qquad
@@ -167,31 +144,31 @@ Table~\ref{tab:itis-fvs} and Fig.~\ref{fig:si-angle-family} of the SI.
 \subsection{Geometric absorption law}\label{subsec:pB-geom}
 
 Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
-First, we apply the polarization reduction~\eqref{eq:Sab-Tavg}.
-Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
+First, the polarization reduction~\eqref{eq:Sab-Tavg} removes the
+angular dependence. Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
 self-shadowing through the binary visibility
 $\Vis(\rr,\khat) \in \{0,1\}$. The exact law reduces to the
 \textit{geometric absorption law}
 \begin{equation}\label{eq:geom-law}
   \boxed{%
-    \APD(\rr) \approx \IPD \cdot T_0 \cdot \Vis(\rr,\khat) \cdot
-    \pospart{\nhat(\rr) \cdot (-\khat)}
+    \APD(\rr) \approx \IPD \cdot T_0 \cdot \pospart{\nhat(\rr) \cdot (-\khat)} \cdot
+    \Vis(\rr,\khat)
   }\, .
 \end{equation}
-The tissue physics enters through the scalar $T_0$. All spatial
+The tissue physics enters through the scalar $T_0$. The transmission
+coefficient $T_{\mathrm{tr}}$ fitted
+in~\cite{Kodera2024,Diao2024,Funahashi2018} is identified with $T_0$,
+the normal-incidence transmission. All spatial
 variation depends on the body shape through the surface-normal field
 $\nhat(\rr)$ and the visibility field $\Vis(\rr,\khat)$. For a convex
-body $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces to the classical
+body, $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces to the classical
 convex form $\IPD\,T_0 \pospart{\nhat\cdot(-\khat)}$.
 \Cref{fig:phantom} shows how visibility enters the geometric law on
 the Thelonious phantom. Panel~(a) shows the frontal APD map.
 Panels~(b) and~(c) show the direction-isotropic exposure fraction
-$\eta(\rr)$ from the front and side. Under frontal illumination the medial
-thighs, the inside of the wrists, and the underside of the chin
-become self-shadowed and drop to zero through $\Vis$. The transmission coefficient
-$T_{\mathrm{tr}}$ fitted in
-\cite{Kodera2024,Diao2024,Funahashi2018} is identified with $T_0$,
-the normal-incidence transmission.
+$\eta(\rr)$ from the front and side. Under frontal illumination,
+$\Vis$ drops three regions to zero: the medial thighs, the sides of
+the torso beneath the arms, and the underside of the jaw.
 
 \begin{figure*}[!t]
   \centering
@@ -245,11 +222,12 @@ Equation~\eqref{eq:geom-law} extends to a triangle mesh under
 multiple incident waves. Discretize the body into $M$ triangles. Row $j$ of
 $\mathbf{N} \in \mathbb{R}^{M\times 3}$ holds the outward unit
 normal $\nhat_j$. Let $N$ plane waves arrive with unit directions
-$\khat_1, \ldots, \khat_N$ and power densities $S_1, \ldots, S_N$.
+$\khat_1, \ldots, \khat_N$ and incident power densities
+$\IPD_1, \ldots, \IPD_N$.
 Stack the directions column-wise into
 $\mathbf{K} \in \mathbb{R}^{3\times N}$, with column $i$ equal to
-$-\khat_i$. Stack the powers into
-$\mathbf{s} = [S_1,\ldots,S_N]^\top \in \mathbb{R}^N$. Let
+$-\khat_i$. Stack the incident power densities into
+$\bm{\mathrm{IPD}} = [\IPD_1,\ldots,\IPD_N]^\top \in \mathbb{R}^N$. Let
 $\mathbf{V} \in \{0,1\}^{M\times N}$ be the visibility matrix, with
 $V_{ji} = 1$ when direction $\khat_i$ reaches triangle $j$, and
 $V_{ji} = 0$ otherwise. Collect the per-triangle APD values into
@@ -258,14 +236,14 @@ $\bm{\mathrm{APD}} \in \mathbb{R}^{M}$.
 The geometric law on the mesh then reads
 \begin{equation}\label{eq:mat-multi}
   \bm{\mathrm{APD}} = T_0\,\bigl(\pospart{\mathbf{N}\,\mathbf{K}}
-  \odot \mathbf{V}\bigr)\,\mathbf{s}\, .
+  \odot \mathbf{V}\bigr)\,\bm{\mathrm{IPD}}\, .
 \end{equation}
 The cosine matrix $\mathbf{N}\,\mathbf{K} \in \mathbb{R}^{M\times N}$
 has entry $(j,i)$ equal to $\nhat_j\cdot(-\khat_i)$. The operator
 $\pospart{\cdot} \equiv \max(\cdot,0)$ acts componentwise, and clamps
 back-facing entries to zero. The Hadamard product $\odot$ with
 $\mathbf{V}$ gates self-shadowed entries. The product with
-$\mathbf{s}$ sums the contributions of the $N$ incident waves.
+$\bm{\mathrm{IPD}}$ sums the contributions of the $N$ incident waves.
 
 Each step is differentiable. The operator $\pospart{\cdot}$ is the
 rectified linear unit (ReLU). Replacing it with the smooth
@@ -280,6 +258,9 @@ and $\mathbf{V}$ as ambient occlusion. For $M \approx 10^4$ and
 $N \approx 10^2$, the spatial map is one matrix-vector multiply on
 the GPU.
 <!-- AUTO_END: assembled -->
+
+
+
 
 
 

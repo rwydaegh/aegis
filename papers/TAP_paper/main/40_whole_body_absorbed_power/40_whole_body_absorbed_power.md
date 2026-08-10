@@ -4,24 +4,23 @@
 <!-- AUTO_BEGIN: assembled -->
 \section{Method: whole-body absorbed power}\label{sec:cauchy}
 
-The flowchart next integrates the geometric local law over the body.
-This section turns surface \gls{APD} into direction-averaged
-whole-body absorbed power. The needed new ingredient is visibility:
+Next, as shown in the flowchart~(\cref{fig:flowchart}), this section
+turns surface \gls{APD} into direction-averaged whole-body absorbed
+power. The needed new ingredient is visibility:
 nonconvex body parts can shadow one another.
 
 \subsection{Self-shadowing and ambient occlusion}\label{sec:self-shadow}
 
-The human body is not convex. Concavities such as the armpits, the
-gap between the legs, and the neck region cause one part of the body
+The human body is not convex. Concavities, e.g., the armpits, the
+gap between the legs, and the neck region, cause one part of the body
 to shadow another. The binary visibility $\Vis(\rr,\khat) \in \{0,1\}$
 in~\eqref{eq:geom-law} is the ambient-occlusion primitive of computer
-graphics introduced by Zhukov \textit{et~al.}~\cite{Zhukov1998} and brought
-into production rendering by Landis~\cite{Landis2002}. Modern GPUs
-evaluate $\Vis(\rr,\khat)$ at interactive frame
-rates~\cite{AkenineMoller2018}.
-
-The \textit{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
-fraction of the upper hemisphere from which $\rr$ is unobstructed,
+graphics that Zhukov \textit{et~al.}~\cite{Zhukov1998} introduced and
+Landis~\cite{Landis2002} brought into production rendering. Modern GPUs
+evaluate $\Vis(\rr,\khat)$ as a standard ambient-occlusion
+pass~\cite{AkenineMoller2018}. The \emph{exposure fraction} $\eta$ at
+a surface point $\rr$ is the cosine-weighted fraction of the upper
+hemisphere from which $\rr$ is unobstructed,
 \begin{equation}\label{eq:eta-def}
   \eta(\rr) = \frac{1}{\pi}\int_{S^2}
   \pospart{\nhat(\rr)\cdot(-\khat)}\,\Vis(\rr,\khat)\,\diff\Omega\, .
@@ -39,19 +38,18 @@ posture-dependent. The construction here is computational and
 posture-resolved. For the Thelonious phantom, an ambient-occlusion
 solver returns the area-weighted mean
 $\bar{\eta} = \Aab/A = 0.865$. This is near the upper end of
-Flintoft's band $[0.75, 0.85]$~\cite{Tomita1999}, and is rendered
-on the phantom in \cref{fig:phantom}\subref{fig:phantom:eta-front}
-and \cref{fig:phantom}\subref{fig:phantom:eta-side}. Most of the
+Flintoft's band $[0.75, 0.85]$~\cite{Tomita1999}.
+\Cref{fig:phantom}\subref{fig:phantom:eta-front} and
+\subref{fig:phantom:eta-side} render it on the phantom. Most of the
 body has $\eta \approx 1$. Reductions occur in concavities. The
-medial sides of the legs and arms, the armpits, the underside of
-the chin, and the soles of the feet are the dominant such regions.
-On a $10^4$--$10^5$ triangle mesh the solver evaluates $\eta$ in
-tens of milliseconds on commodity hardware.
+medial sides of the legs and arms, the armpits, and the underside of
+the jaw are the dominant such regions.
+Because $\eta$ depends only on body shape, the solver precomputes it
+once per posture.
 
 \subsection{Generalized Cauchy formula}\label{subsec:cauchy-thm}
 
 The generalized Cauchy formula is the central whole-body identity.
-\begin{theorem}\label{thm:cauchy}
 Let a body $\Sigma$ have surface area $A$, exposure fraction
 $\eta(\rr)$, and absorption area
 $\Aab \equiv \int_\Sigma \eta(\rr)\,\diff A$. Under isotropic,
@@ -61,10 +59,8 @@ whole-body absorbed power is
 \begin{equation}\label{eq:cauchy}
   \langle P_{\mathrm{abs}} \rangle = \IPD\,T_0\,\Aab/4\, .
 \end{equation}
-\end{theorem}
 
-\begin{proof}
-Apply Fubini's theorem to exchange the surface and direction
+To see why, apply Fubini's theorem to exchange the surface and direction
 integrals. The local law~\eqref{eq:geom-law} gives
 $\APD(\rr,\khat) = \IPD\,T_0\,\Vis(\rr,\khat)\,
 \pospart{\nhat\cdot(-\khat)}$. The direction average of the integrand
@@ -73,43 +69,37 @@ is
   \frac{1}{4\pi}\int_{S^2}
   \IPD\,T_0\,\Vis(\rr,\khat)\,\pospart{\nhat\cdot(-\khat)}\,
   \diff\Omega
-  = \frac{\IPD\,T_0}{4}\,\eta(\rr),
+  = \frac{\IPD\,T_0}{4}\,\eta(\rr)\,,
 \]
 using the definition of $\eta$ and the identity $\int_{S^2}
 \pospart{\nhat\cdot(-\khat)}\,\diff\Omega = \pi$ for any unit
 $\nhat$. Integration over $\Sigma$ gives~\eqref{eq:cauchy}.
-\end{proof}
 
-The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
-special case $\eta \equiv 1$, valid for any convex body. The
+The classical Cauchy formula from 1841~\cite{Cauchy1841},
+$\langle\Aperp\rangle = A/4$, is the special case $\eta \equiv 1$,
+valid for any convex body. The
 absorption area $\Aab$ reduces all geometric complexity of
-self-shadowing to a single scalar.
-
-Let $A_{\mathrm{CH}}$ be the surface area of the convex hull of the
-body. Energy conservation under isotropic illumination implies
-$\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$,
-because the power entering the convex hull bounds the absorbed power.
-For the Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the
-hull bound brackets the true absorbed power within a few percent.
+self-shadowing to a single scalar. Let $A_{\mathrm{CH}}$ be the
+surface area of the convex hull of the body. Energy conservation under
+isotropic illumination implies
+$\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$, because
+the power entering the convex hull bounds the absorbed power. For the
+Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the hull bound
+brackets the true absorbed power within that factor.
 
 The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
 $5\%$ root-mean-square across $0.3$--$100$~GHz, but it is not
-exact. Replacing $T_0$ with the flux-weighted transmission $\Tbar(f)$
-defined in~\eqref{eq:R-of-f} removes the approximation.
-
-The same direction-averaged identity becomes exact when $T_0$ is
-replaced by the angle-dependent
-$\Tavg(\theta)$. The cosine-weighted angular integral collapses to
-$\Tbar$ via~\eqref{eq:R-of-f}, so for any body opaque at the
-wavelength
+exact. The same direction-averaged identity becomes exact when $T_0$
+is replaced by the angle-dependent $\Tavg(\theta)$. The
+cosine-weighted angular integral becomes $\Tbar$
+via~\eqref{eq:R-of-f}, so for any body opaque at the wavelength
 \begin{equation}\label{eq:cauchy-exact}
   \langle P_{\mathrm{abs}} \rangle = \IPD\,\Tbar(f)\,\Aab/4 \,.
 \end{equation}
-
 \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
-condition met above approximately $1$~GHz on a torso and above approximately $6$~GHz
-on a finger. \Cref{tab:Tbar} lists $T_0$, $\Tbar$, and the ratio
-$R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
+condition met above approximately $1$~GHz on a torso and above
+approximately $6$~GHz on a finger. \Cref{tab:Tbar} lists $T_0$,
+$\Tbar$, and the ratio $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
 
 \begin{table}[!t]
 \centering
@@ -134,10 +124,10 @@ $f$\,[GHz] & $|\ntilde|$ & $T_0$ & $\Tbar$ & $R$ \\
 \end{table}
 
 The reverberation-chamber literature has been measuring $\Tbar$
-directly. Bamba's empirical efficiency $\eta(f)$ for diffuse-field
-exposure on four FDTD ellipsoid phantoms~\cite{Bamba2014}
-coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz. It diverges below
-$3$~GHz, where the body-Mie contribution to absorption on a finite
+directly. Bamba's empirical efficiency $\eta(f)$
+coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz on four FDTD ellipsoid
+phantoms under diffuse-field exposure~\cite{Bamba2014}. It diverges below
+$3$~GHz, where the Mie contribution to absorption on a finite
 ellipsoid becomes non-negligible (\cref{tab:bands}). The framework
 is mainly a mmWave method.
 Flintoft's plateau $\langle Q^a\rangle/\gamma_s = 0.47$--$0.49$
@@ -151,9 +141,9 @@ Above $6$~GHz, \eqref{eq:cauchy-exact} matches the plateau values
 reported by Bamba, Flintoft, and Zhang. Below $6$~GHz, Flintoft and
 Zhang observe a structured dip near $3$~GHz that the homogeneous
 half-space model does not reproduce~\cite{Flintoft2014,Zhang2017thesis}. The
-dip is anatomical. Flintoft's negative
-correlation of $\langle Q^a\rangle$ with mean subcutaneous fat
-thickness $d_{\mathrm{SF}}$ is steepest at $3$~GHz
+dip is anatomical. Flintoft's data show $\langle Q^a\rangle$
+correlating negatively with mean subcutaneous fat
+thickness $d_{\mathrm{SF}}$, steepest at $3$~GHz
 ($-0.0061\,\mathrm{mm}^{-1}$, $R^2 = 0.40$,~\cite[Table~6]{Flintoft2014}),
 with the slope falling to $-0.0030\,\mathrm{mm}^{-1}$ at $7$--$11$~GHz.
 
@@ -163,9 +153,8 @@ $70$~mm, against fat thicknesses of $2$--$20$~mm in the Flintoft
 cohort~\cite[Table~1]{Flintoft2014}. The wave passes through the fat
 layer with little attenuation and reflects from the fat-muscle
 interface. Constructive interference enhances absorption, and destructive
-interference suppresses it. A three-layer transfer-matrix model with
-skin, fat, and a semi-infinite muscle half-space gives the layered
-transmission
+interference suppresses it. A three-layer transfer-matrix model gives the layered transmission,
+stacking skin, fat, and a semi-infinite muscle half-space,
 \begin{equation}\label{eq:T-lay}
   \Tlay(f, d_{\mathrm{SF}})
   = 1 - \bigl|\widetilde{\Gamma}_1(f, d_{\mathrm{SF}})\bigr|^2\, ,
@@ -203,6 +192,8 @@ meaning below $6$~GHz, where the SAR penetration depth exceeds the
 surface layer thickness. Total power remains valid via $\Tlay$
 throughout.
 <!-- AUTO_END: assembled -->
+
+
 
 
 

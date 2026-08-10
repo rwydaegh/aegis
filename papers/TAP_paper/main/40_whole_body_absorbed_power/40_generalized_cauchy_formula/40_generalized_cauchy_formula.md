@@ -6,7 +6,6 @@
 \subsection{Generalized Cauchy formula}\label{subsec:cauchy-thm}
 
 The generalized Cauchy formula is the central whole-body identity.
-\begin{theorem}\label{thm:cauchy}
 Let a body $\Sigma$ have surface area $A$, exposure fraction
 $\eta(\rr)$, and absorption area
 $\Aab \equiv \int_\Sigma \eta(\rr)\,\diff A$. Under isotropic,
@@ -16,10 +15,8 @@ whole-body absorbed power is
 \begin{equation}\label{eq:cauchy}
   \langle P_{\mathrm{abs}} \rangle = \IPD\,T_0\,\Aab/4\, .
 \end{equation}
-\end{theorem}
 
-\begin{proof}
-Apply Fubini's theorem to exchange the surface and direction
+To see why, apply Fubini's theorem to exchange the surface and direction
 integrals. The local law~\eqref{eq:geom-law} gives
 $\APD(\rr,\khat) = \IPD\,T_0\,\Vis(\rr,\khat)\,
 \pospart{\nhat\cdot(-\khat)}$. The direction average of the integrand
@@ -28,43 +25,37 @@ is
   \frac{1}{4\pi}\int_{S^2}
   \IPD\,T_0\,\Vis(\rr,\khat)\,\pospart{\nhat\cdot(-\khat)}\,
   \diff\Omega
-  = \frac{\IPD\,T_0}{4}\,\eta(\rr),
+  = \frac{\IPD\,T_0}{4}\,\eta(\rr)\,,
 \]
 using the definition of $\eta$ and the identity $\int_{S^2}
 \pospart{\nhat\cdot(-\khat)}\,\diff\Omega = \pi$ for any unit
 $\nhat$. Integration over $\Sigma$ gives~\eqref{eq:cauchy}.
-\end{proof}
 
-The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
-special case $\eta \equiv 1$, valid for any convex body. The
+The classical Cauchy formula from 1841~\cite{Cauchy1841},
+$\langle\Aperp\rangle = A/4$, is the special case $\eta \equiv 1$,
+valid for any convex body. The
 absorption area $\Aab$ reduces all geometric complexity of
-self-shadowing to a single scalar.
-
-Let $A_{\mathrm{CH}}$ be the surface area of the convex hull of the
-body. Energy conservation under isotropic illumination implies
-$\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$,
-because the power entering the convex hull bounds the absorbed power.
-For the Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the
-hull bound brackets the true absorbed power within a few percent.
+self-shadowing to a single scalar. Let $A_{\mathrm{CH}}$ be the
+surface area of the convex hull of the body. Energy conservation under
+isotropic illumination implies
+$\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$, because
+the power entering the convex hull bounds the absorbed power. For the
+Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the hull bound
+brackets the true absorbed power within that factor.
 
 The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
 $5\%$ root-mean-square across $0.3$--$100$~GHz, but it is not
-exact. Replacing $T_0$ with the flux-weighted transmission $\Tbar(f)$
-defined in~\eqref{eq:R-of-f} removes the approximation.
-
-The same direction-averaged identity becomes exact when $T_0$ is
-replaced by the angle-dependent
-$\Tavg(\theta)$. The cosine-weighted angular integral collapses to
-$\Tbar$ via~\eqref{eq:R-of-f}, so for any body opaque at the
-wavelength
+exact. The same direction-averaged identity becomes exact when $T_0$
+is replaced by the angle-dependent $\Tavg(\theta)$. The
+cosine-weighted angular integral becomes $\Tbar$
+via~\eqref{eq:R-of-f}, so for any body opaque at the wavelength
 \begin{equation}\label{eq:cauchy-exact}
   \langle P_{\mathrm{abs}} \rangle = \IPD\,\Tbar(f)\,\Aab/4 \,.
 \end{equation}
-
 \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
-condition met above approximately $1$~GHz on a torso and above approximately $6$~GHz
-on a finger. \Cref{tab:Tbar} lists $T_0$, $\Tbar$, and the ratio
-$R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
+condition met above approximately $1$~GHz on a torso and above
+approximately $6$~GHz on a finger. \Cref{tab:Tbar} lists $T_0$,
+$\Tbar$, and the ratio $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
 
 \begin{table}[!t]
 \centering
@@ -89,10 +80,10 @@ $f$\,[GHz] & $|\ntilde|$ & $T_0$ & $\Tbar$ & $R$ \\
 \end{table}
 
 The reverberation-chamber literature has been measuring $\Tbar$
-directly. Bamba's empirical efficiency $\eta(f)$ for diffuse-field
-exposure on four FDTD ellipsoid phantoms~\cite{Bamba2014}
-coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz. It diverges below
-$3$~GHz, where the body-Mie contribution to absorption on a finite
+directly. Bamba's empirical efficiency $\eta(f)$
+coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz on four FDTD ellipsoid
+phantoms under diffuse-field exposure~\cite{Bamba2014}. It diverges below
+$3$~GHz, where the Mie contribution to absorption on a finite
 ellipsoid becomes non-negligible (\cref{tab:bands}). The framework
 is mainly a mmWave method.
 Flintoft's plateau $\langle Q^a\rangle/\gamma_s = 0.47$--$0.49$
@@ -100,6 +91,8 @@ at $7$--$11$~GHz matches $\Tbar$ at the same frequencies to $2\%$~\cite{Flintoft
 Zhang's plateau $\xi = 0.45$--$0.65$ above $6$~GHz brackets
 $\Tbar\cdot\Aab/A$~\cite{Zhang2017thesis}.
 <!-- AUTO_END: assembled -->
+
+
 
 
 

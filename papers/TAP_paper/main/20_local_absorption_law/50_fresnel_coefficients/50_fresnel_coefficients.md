@@ -19,13 +19,14 @@ for TE and TM polarizations, respectively. The corresponding
 power-absorption
 coefficients are $T_s(\theta) = 1 - |r_s|^2$ and
 $T_p(\theta) = 1 - |r_p|^2$. At normal incidence, $\mu = 1$ and
-$\xi = \ntilde$, giving the polarization-degenerate value
+$\xi = \ntilde$, giving the polarization-independent normal-incidence value
 \begin{equation}\label{eq:T0}
   T_0 \equiv T_s(0) = T_p(0) = \frac{4\,\RE(\ntilde)}{|1+\ntilde|^2}\, .
 \end{equation}
 For skin at 28~GHz with $\varepsilon_r = 16.55$ and
 $\sigma = 25.8$~S/m, $\ntilde = 4.49 - 1.79i$ and $T_0 = 0.539$.
 <!-- AUTO_END: assembled -->
+
 
 
 

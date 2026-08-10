@@ -1,4 +1,4 @@
-% PREV: Flowchart \ref{fig:flowchart} shows the exact local law, the
+% PREV: Flowchart~\ref{fig:flowchart} shows the exact local law, the
 % PREV: reductions to whole-body absorbed power, the higher-order
 % PREV: corrections, and the regulatory outputs. This section derives the top
 % PREV: box: the local law at one visible surface point.

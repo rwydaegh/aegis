@@ -7,10 +7,10 @@ main: paper.pdf
 si: paper_SI.pdf
 
 pm-assemble:
-	PYTHONPATH=/home/user/PaperMaker9000 python3 -m papermaker.cli roundtrip main --render
+	uv run --project /home/user/PaperMaker9000 papermaker assemble main --out paper.tex
 
 pm-roundtrip:
-	PYTHONPATH=/home/user/PaperMaker9000 python3 -m papermaker.cli roundtrip main --source v1_to_coauthors/paper.tex
+	uv run --project /home/user/PaperMaker9000 papermaker roundtrip main --source paper.tex
 
 paper.pdf: paper.tex $(wildcard figures/*.pdf) $(wildcard figures/*.png)
 	pdflatex -interaction=nonstopmode paper.tex

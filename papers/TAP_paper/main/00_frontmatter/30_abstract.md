@@ -1,7 +1,7 @@
 % PREV: \begin{document}
-% PREV: 
+% PREV:
 % PREV: \title{Closed-Form Absorbed-Power Dosimetry from~1~to~100\,GHz}
-% PREV: 
+% PREV:
 % PREV: \author{Robin~Wydaeghe$^{*}$~\orcidlink{0000-0002-1374-0118},
 % PREV:   Luc~Martens~\orcidlink{0000-0001-9948-9157},~\IEEEmembership{Member,~IEEE},
 % PREV:   G\"unter~Vermeeren~\orcidlink{0000-0002-5309-3808},~\IEEEmembership{Member,~IEEE},
@@ -11,12 +11,12 @@
 % PREV:   Information Technology, Ghent University--imec, Technologiepark-Zwijnaarde
 % PREV:   126, 9052 Ghent, Belgium.}%
 % PREV:   \thanks{$^{*}$Corresponding author. E-mail: robin.wydaeghe@ugent.be.}}
-% PREV: 
+% PREV:
 % PREV: \markboth{IEEE Transactions on Antennas and Propagation,
 % PREV: Vol.~XX, No.~X, Month~Year}%
 % PREV: {Wydaeghe \MakeLowercase{\textit{et~al.}}: Closed-Form
 % PREV: Absorbed-Power Dosimetry}
-% PREV: 
+% PREV:
 % PREV: \maketitle
 % NEXT: \begin{IEEEkeywords}
 % NEXT: APD, dosimetry, FDTD, Fresnel transmission, ICNIRP, mmWave, SAR.
@@ -32,8 +32,8 @@ incidence cosine, and an ambient-occlusion factor. For
 unpolarized skin at 28~GHz, pseudo-Brewster compensation keeps
 angular transmission within 5.6\% of normal incidence up to
 $75^\circ$. Integrating the local law over the visible nonconvex body
-surface yields a generalized Cauchy whole-body identity with one
-geometry scalar. A layered transmission term captures the sub-6~GHz
+surface yields a generalized Cauchy whole-body identity governed by a
+single geometry-dependent scalar. A layered transmission term captures the sub-6~GHz
 whole-body dip. On a $10^4$-triangle mesh under $10^2$ incident
 paths, this turns the absorbed-power map into one differentiable
 matrix-vector multiply, evaluated in under $10$~ms on a GPU. The
@@ -57,4 +57,3 @@ _PaperMaker9000 sweep — 2 flag(s) across 1 lens(es)._
     - `structural.abstract.word_count_and_content` (high): `evaluated in under $10$~ms on a GPU` -> Spell out GPU on first use in the abstract: "on a graphics processing unit (GPU)".
     - `style.abstract_keywords.abstract_word_count_and_acronyms` (high): `evaluated in under $10$~ms on a GPU` -> Expand GPU on its first abstract appearance, e.g. "graphics processing unit (GPU)".
 - **incremental (2026-05-22)** — pass (1 new/edited rules cleared).
-

@@ -4,7 +4,8 @@ Submission package for *Closed-Form Absorbed-Power Dosimetry on the Human Body, 
 
 ## Layout
 
-- `paper.tex` — main manuscript (15 pages, IEEEtran journal class)
+- `main/` — canonical PaperMaker manuscript tree and source of truth
+- `paper.tex` — generated manuscript snapshot (IEEEtran journal class)
 - `paper_SI.tex` — supplementary information (10 pages, single-column 11pt)
 - `figures/` — every PDF/PNG used by the two LaTeX files
 - `authors/` — author photos for the IEEEbiography blocks
@@ -15,6 +16,7 @@ Submission package for *Closed-Form Absorbed-Power Dosimetry on the Human Body, 
 The bibliography lives inline as `thebibliography` with manual `\bibitem` entries; no `.bib` file is needed. Glossary entries (`relu`, `gelu`) expand inline through the `glossaries` package.
 
 ```bash
+make pm-assemble
 pdflatex paper.tex
 pdflatex paper.tex   # second pass for cross-references
 pdflatex paper_SI.tex

@@ -17,7 +17,7 @@
 % NEXT:   ($\ntilde = 4.49 - 1.79i$, $T_0 = 0.539$). (a)~Fresnel
 % NEXT:   power-absorption coefficients $T_s$ (TE), $T_p$ (TM), and
 % NEXT:   $\Tavg = \tfrac{1}{2}(T_s + T_p)$ versus incidence angle $\theta$.
-% NEXT:   $\Tavg$ stays within $5.6\%$ of $T_0$ up to $75^\circ$.
+% NEXT:   $\Tavg/T_0$ is at most $1.056$ over $[0^\circ,90^\circ]$.
 % NEXT:   (b)~Normalized absorbed power $\APD/\IPD = T(\theta)\cos\theta$
 % NEXT:   for the same three states. The dotted reference is the simplified
 % NEXT:   $T_0\cos\theta$ prediction.}
@@ -29,10 +29,9 @@ incidence angle. \Cref{fig:apd-angle:APD} shows the normalized absorbed power
 $\APD/\IPD = T(\theta)\cos\theta$ for each polarization and for the
 simplified product $T_0\cos\theta$. The unpolarized curve closely
 tracks the simplified prediction, and the small gap is the Fresnel
-approximation error. \Cref{tab:fresnel-skin} quantifies the deviation
-of $\Tavg$ from $T_0$ across $[0^\circ, 75^\circ]$ on skin at 28~GHz.
-The maximum deviation is $5.6\%$ at $70$--$75^\circ$. Below $30^\circ$
-the deviation stays below $0.2\%$.
+approximation error. $\Tavg/T_0$ is at most $1.056$ across
+$[0^\circ,90^\circ]$ on skin at 28~GHz. Below $20^\circ$, the
+deviation stays below $0.2\%$.
 
 ## reviews (paragraph)
 
@@ -45,4 +44,3 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (41 rules cleared).
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

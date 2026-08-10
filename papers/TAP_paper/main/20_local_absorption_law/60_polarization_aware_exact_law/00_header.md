@@ -1,4 +1,5 @@
-% NEXT: A plane wave is fully polarized. At a surface point
+% NEXT: Any incident plane wave is fully polarized, so the exact \gls{APD}
+% NEXT: law must be polarization-aware. At a surface point
 % NEXT: $\rr$, decompose the incident electric field into local TE and TM
 % NEXT: components by projecting on the unit vectors
 % NEXT: $\hat{e}_s(\rr) = \khat \times \nhat / |\khat \times \nhat|$ and
@@ -14,11 +15,14 @@
 % NEXT: \begin{equation}\label{eq:Sab-exact}
 % NEXT:   \APD(\rr) = \IPD \, \Teff(\rr) \, \pospart{\mu(\rr)} \,.
 % NEXT: \end{equation}
+% NEXT: Here $\pospart{x} = \max(x, 0)$ is the positive part: it keeps the
+% NEXT: front-facing surface and sets the back-facing surface ($\mu \le 0$, no
+% NEXT: incident power) to zero.
 % NEXT: \Cref{eq:Sab-exact} holds for any polarization, any frequency where
 % NEXT: the body is opaque, and any locally flat surface. The self-shadowing
 % NEXT: factor $\Vis(\rr,\khat)$ of the geometric law in \cref{sec:pB} is
 % NEXT: suppressed in this subsection because the Fresnel calculation
-% NEXT: operates at a point already taken to be visible. Visibility re-enters
+% NEXT: operates at a point already taken to be visible. Visibility returns
 % NEXT: with the multi-source matrix form in \cref{subsec:matrix}.
 \subsection{Polarization-aware exact law}\label{subsec:exact-law}
 

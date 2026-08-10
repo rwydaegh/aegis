@@ -6,9 +6,9 @@
 % NEXT: with $\Tavg = \tfrac{1}{2}(T_s + T_p)$ the unpolarized baseline,
 % NEXT: $\Delta T = T_p - T_s$ the polarization splitting, and $q = |e_p|^2 -
 % NEXT: |e_s|^2 \in [-1, 1]$ the local TM excess. The polarization correction
-% NEXT: vanishes pointwise for circular illumination, in expectation for
-% NEXT: random-orientation linear illumination, and to within $2.5\%$ for
-% NEXT: multipath averaging above 20 paths. First, for circular polarization
+% NEXT: vanishes pointwise for circularly polarized illumination, in expectation
+% NEXT: for randomly oriented linearly polarized illumination, and to within
+% NEXT: $2.5\%$ under multipath averaging with at least 20 paths. First, for circular polarization
 % NEXT: the TE and TM intensities are equal at every point on every body, so
 % NEXT: $q \equiv 0$ pointwise. Second, for linear polarization with random
 % NEXT: ensemble orientation either in space or time, the ensemble average
@@ -66,4 +66,3 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
 - **latex-micro** — pass (40 rules cleared).
     - _dismissed_ `latex.substitutions.vector_bold_convention_documented`: The leaf does mix two bold macros for unit vectors (\khat/\nhat expand to \hat{\bm{k}}/\hat{\bm{n}}, bold; \hat{e}_s/\hat{e}_p are non-bold), but this is a deliberate paper-wide split (geometry/propagation unit vectors bold, polarization-basis unit vectors light) applied consistently, and the corrective (adding a notation block) is a document-level fix not local to this leaf; scalar magnitudes |e_s|, |e_p| correctly stay italic.
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

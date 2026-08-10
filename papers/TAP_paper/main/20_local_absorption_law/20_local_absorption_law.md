@@ -3,7 +3,7 @@
 <!-- AUTO_BEGIN: assembled -->
 \section{Method: local absorption law}\label{sec:law}
 
-Flowchart \ref{fig:flowchart} shows the exact local law, the
+Flowchart~\ref{fig:flowchart} shows the exact local law, the
 reductions to whole-body absorbed power, the higher-order
 corrections, and the regulatory outputs. This section derives the top
 box: the local law at one visible surface point.
@@ -135,9 +135,9 @@ box: the local law at one visible surface point.
 plane wave with intensity $\IPD$ and direction $\khat$ illuminates
 the body, and we evaluate $\APD(\rr)$ at each visible surface point.
 
-A harmonic plane wave with time-averaged Poynting vector
-$\mathbf{S}_{\mathrm{inc}} = \IPD\,\khat$ (units W/m$^2$) illuminates
-a body. Three working assumptions hold throughout. First, the
+A harmonic plane wave illuminates a body, with time-averaged Poynting
+vector $\mathbf{S}_{\mathrm{inc}} = \IPD\,\khat$ (units W/m$^2$). Three
+working assumptions hold throughout. First, the
 surface $\Sigma$ is locally flat on the wavelength scale. Second, the
 skin depth at every frequency of interest is much smaller than any
 body dimension, so all power transmitted through the surface is
@@ -147,7 +147,7 @@ neglected at this stage and re-enter as bounded corrections in
 \cref{sec:cauchy,subsec:corr-residuals}. At a surface point $\rr$ with
 outward unit normal $\nhat(\rr)$, the incidence cosine is
 $\mu(\rr) \equiv \nhat(\rr)\cdot(-\khat) = \cos\theta_i(\rr)$. A
-front-facing point has $\mu > 0$; a point facing away from the
+front-facing point has $\mu > 0$. A point facing away from the
 source has $\mu \le 0$.
 
 \subsection{Power flux through the surface}
@@ -181,7 +181,7 @@ for TE and TM polarizations, respectively. The corresponding
 power-absorption
 coefficients are $T_s(\theta) = 1 - |r_s|^2$ and
 $T_p(\theta) = 1 - |r_p|^2$. At normal incidence, $\mu = 1$ and
-$\xi = \ntilde$, giving the polarization-degenerate value
+$\xi = \ntilde$, giving the polarization-independent normal-incidence value
 \begin{equation}\label{eq:T0}
   T_0 \equiv T_s(0) = T_p(0) = \frac{4\,\RE(\ntilde)}{|1+\ntilde|^2}\, .
 \end{equation}
@@ -190,7 +190,8 @@ $\sigma = 25.8$~S/m, $\ntilde = 4.49 - 1.79i$ and $T_0 = 0.539$.
 
 \subsection{Polarization-aware exact law}\label{subsec:exact-law}
 
-A plane wave is fully polarized. At a surface point
+Any incident plane wave is fully polarized, so the exact \gls{APD}
+law must be polarization-aware. At a surface point
 $\rr$, decompose the incident electric field into local TE and TM
 components by projecting on the unit vectors
 $\hat{e}_s(\rr) = \khat \times \nhat / |\khat \times \nhat|$ and
@@ -206,11 +207,14 @@ The exact \gls{APD} at a visible point is therefore
 \begin{equation}\label{eq:Sab-exact}
   \APD(\rr) = \IPD \, \Teff(\rr) \, \pospart{\mu(\rr)} \,.
 \end{equation}
+Here $\pospart{x} = \max(x, 0)$ is the positive part: it keeps the
+front-facing surface and sets the back-facing surface ($\mu \le 0$, no
+incident power) to zero.
 \Cref{eq:Sab-exact} holds for any polarization, any frequency where
 the body is opaque, and any locally flat surface. The self-shadowing
 factor $\Vis(\rr,\khat)$ of the geometric law in \cref{sec:pB} is
 suppressed in this subsection because the Fresnel calculation
-operates at a point already taken to be visible. Visibility re-enters
+operates at a point already taken to be visible. Visibility returns
 with the multi-source matrix form in \cref{subsec:matrix}.
 
 To proceed, write
@@ -220,9 +224,9 @@ To proceed, write
 with $\Tavg = \tfrac{1}{2}(T_s + T_p)$ the unpolarized baseline,
 $\Delta T = T_p - T_s$ the polarization splitting, and $q = |e_p|^2 -
 |e_s|^2 \in [-1, 1]$ the local TM excess. The polarization correction
-vanishes pointwise for circular illumination, in expectation for
-random-orientation linear illumination, and to within $2.5\%$ for
-multipath averaging above 20 paths. First, for circular polarization
+vanishes pointwise for circularly polarized illumination, in expectation
+for randomly oriented linearly polarized illumination, and to within
+$2.5\%$ under multipath averaging with at least 20 paths. First, for circular polarization
 the TE and TM intensities are equal at every point on every body, so
 $q \equiv 0$ pointwise. Second, for linear polarization with random
 ensemble orientation either in space or time, the ensemble average
@@ -240,6 +244,8 @@ The angular dependence is now confined to the scalar function
 $\Tavg(\theta)$. The next section shows that this function is nearly
 constant for biological tissue.
 <!-- AUTO_END: assembled -->
+
+
 
 
 

@@ -1,4 +1,5 @@
-% PREV: A plane wave is fully polarized. At a surface point
+% PREV: Any incident plane wave is fully polarized, so the exact \gls{APD}
+% PREV: law must be polarization-aware. At a surface point
 % PREV: $\rr$, decompose the incident electric field into local TE and TM
 % PREV: components by projecting on the unit vectors
 % PREV: $\hat{e}_s(\rr) = \khat \times \nhat / |\khat \times \nhat|$ and
@@ -14,11 +15,14 @@
 % PREV: \begin{equation}\label{eq:Sab-exact}
 % PREV:   \APD(\rr) = \IPD \, \Teff(\rr) \, \pospart{\mu(\rr)} \,.
 % PREV: \end{equation}
+% PREV: Here $\pospart{x} = \max(x, 0)$ is the positive part: it keeps the
+% PREV: front-facing surface and sets the back-facing surface ($\mu \le 0$, no
+% PREV: incident power) to zero.
 % PREV: \Cref{eq:Sab-exact} holds for any polarization, any frequency where
 % PREV: the body is opaque, and any locally flat surface. The self-shadowing
 % PREV: factor $\Vis(\rr,\khat)$ of the geometric law in \cref{sec:pB} is
 % PREV: suppressed in this subsection because the Fresnel calculation
-% PREV: operates at a point already taken to be visible. Visibility re-enters
+% PREV: operates at a point already taken to be visible. Visibility returns
 % PREV: with the multi-source matrix form in \cref{subsec:matrix}.
 To proceed, write
 \begin{equation}\label{eq:Teff-decomp}
@@ -27,9 +31,9 @@ To proceed, write
 with $\Tavg = \tfrac{1}{2}(T_s + T_p)$ the unpolarized baseline,
 $\Delta T = T_p - T_s$ the polarization splitting, and $q = |e_p|^2 -
 |e_s|^2 \in [-1, 1]$ the local TM excess. The polarization correction
-vanishes pointwise for circular illumination, in expectation for
-random-orientation linear illumination, and to within $2.5\%$ for
-multipath averaging above~20 paths. First, for circular polarization
+vanishes pointwise for circularly polarized illumination, in expectation
+for randomly oriented linearly polarized illumination, and to within
+$2.5\%$ under multipath averaging with at least 20 paths. First, for circular polarization
 the TE and TM intensities are equal at every point on every body, so
 $q \equiv 0$ pointwise. Second, for linear polarization with random
 ensemble orientation either in space or time, the ensemble average
@@ -63,4 +67,3 @@ _PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
     - _dismissed_ `latex.math.subscript_labels_upright`: The s/p polarization subscripts on $T_s$, $T_p$, $e_p$, $e_s$ are universally italic in Fresnel notation and the B on $D_B$ is a conventional identifier; forcing \mathrm here would diverge from the paper-wide convention, a notation-block decision not fixable at leaf scope.
     - _dismissed_ `latex.substitutions.cref_capitalized`: Manual "Section~\ref" is standard IEEE cross-referencing; the paper need not adopt cleveref, so \Cref is not required.
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

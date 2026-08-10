@@ -25,7 +25,7 @@ nog één korte vraag.
 | Gemarkeerde tussentitels zonder commentaar | Je markeerde `Method: pseudo-Brewster compensation` en `Generalized Cauchy formula`, maar ik zag daar geen commentaar bij. Bedoelde je nog een aanpassing aan een van die titels? |
 | Resultaten als theorem formuleren | Mee eens dat dit wat zwaar was. Ik heb beide theorem-omgevingen verwijderd en de resultaten rechtstreeks in de gewone tekst gezet. Ook de proof-titels en QED-vakjes zijn weg. De zin over de 10 g-kubus sluit nu meteen aan op de inleidende zin. |
 | Intuïtie achter de integraal over $S^2$ | Hier heb ik de tekst niet uitgebreid. $S^2$ is de bol van alle invalrichtingen, niet het lichaamsoppervlak. Als je de lokale normaal als poolas kiest, wordt dit gewoon de cosinusintegraal over één hemisfeer, met waarde $\pi$. |
-| Referentie van Wydaeghe et al. | Aangepast naar `accepted for publication, 2026`. |
+| Referentie van Wydaeghe et al. | Aangepast naar `accepted for publication, 2026`, met DOI `10.1088/1361-6560/ae97ac`. |
 
 Merci nog!
 

@@ -10,7 +10,7 @@
 % NEXT: differ between studies, and they provide no gradients for design. No
 % NEXT: study writes them as one expression, and none treats a nonconvex body
 % NEXT: in closed form.
-\IEEEPARstart{W}{ireless} exposure on the human body is regulated
+\IEEEPARstart{W}{ireless} exposure of the human body is regulated
 through two basic restrictions in the \gls{ICNIRP} 2020
 guidelines~\cite{ICNIRP2020}, IEC/IEEE~63195, and IEEE~C95.1: the
 mass-averaged \gls{SAR} below 6~GHz, with peak values evaluated as
@@ -41,4 +41,3 @@ _PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (41 rules cleared).
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

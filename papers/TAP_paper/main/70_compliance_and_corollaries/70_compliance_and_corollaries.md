@@ -13,7 +13,7 @@ $10$~g cube.
 \subsection{Whole-body SAR threshold}\label{subsec:compl-wb}
 
 The ICNIRP 2020 guidelines~\cite{ICNIRP2020} specify a whole-body
-average SAR limit of $0.08$~W/kg for the general public. The bound
+average SAR limit of $0.08\,\mathrm{W/kg}$ for the general public. The bound
 $\Aperp(\khat) \le A/2$ on closed surfaces gives
 $D(\khat) \le 2A/\Aab$. With $\mathrm{SAR}_{\mathrm{wb}} =
 P_{\mathrm{abs}}/m$ and the conservative replacement $\Aab \le A$,
@@ -25,7 +25,7 @@ a closed-form function of body mass $m$, body surface area $A$,
 and tissue transmission $\Tbar$, none of which requires an FDTD
 solve on the specific exposure scenario.
 
-Body surface area follows the Du Bois formula~\cite{DuBois1916} $A
+The body surface area follows the Du Bois formula~\cite{DuBois1916} $A
 \approx 0.007184\,m^{0.425}\,h^{0.725}$ with mass in kg and height in
 cm, so $\IPD_{\mathrm{max}}$ scales as $m/A \propto
 \mathrm{BMI}^{0.575}\,h^{0.425}$. \Cref{tab:anthro} evaluates
@@ -33,13 +33,12 @@ cm, so $\IPD_{\mathrm{max}}$ scales as $m/A \propto
 $28$~GHz with $\Tbar = 0.543$. The scaling
 matches the observation in the dosimetry
 literature~\cite{Hirata2007corr,Dimbylow2002} that absorption
-cross-section scales with surface area while mass scales with
+cross-section scales with surface area, whereas mass scales with
 volume. Section~\ref{si:anthro} of the SI derives the Du Bois
 scaling and bounds the linearly polarized worst-case correction to
 \eqref{eq:Sinc-max-worst} via the body polarization directivity.
-
-Implications for the existing ICNIRP general-public reference level
-above $6$~GHz are stated in \cref{subsec:disc-regulatory}.
+\Cref{subsec:disc-regulatory} states the implications for the existing
+ICNIRP general-public reference level above~$6$~GHz.
 
 \begin{table}[!t]
 \centering
@@ -70,9 +69,8 @@ energy-conservation argument on the cube footprint bounds this
 restriction by the absorbed power density, so no explicit cube search
 is needed.
 
-The following bound links the cube quantity to APD.
-\begin{theorem}\label{thm:apd-bound}
-For an axis-aligned $10$~g cube placed per IEC/IEEE~62704-1 on a planar
+The following bound links the cube quantity to APD. For an axis-aligned
+$10$~g cube placed per IEC/IEEE~62704-1 on a planar
 three-layer body, the peak spatial-average SAR satisfies
 \begin{equation}\label{eq:apd-bound}
   \mathrm{psSAR}_{10\mathrm{g}}
@@ -84,16 +82,16 @@ $\APDAvg \le 10$~W/m$^2$, this implies
 $\mathrm{psSAR}_{10\mathrm{g}} \le 0.66$~W/kg, a factor of three below
 the head and trunk basic restriction of $2$~W/kg and a factor of six
 below the limb restriction of $4$~W/kg.
-\end{theorem}
 
 The bound follows from energy conservation on the cube footprint,
 with the $\sqrt{2}$ factor covering the worst-case tilt between cube
 axes and body normal. Section~\ref{si:apd-bound} of the SI derives the bound,
 gives the cube-intersection geometry under the IEC mass rule, and
 confirms it on Thelonious to within a median ratio of $1.30$. The same
-surface integral that delivers $\APDAvg$ therefore controls
+surface integral that gives $\APDAvg$ therefore controls
 $\mathrm{psSAR}_{10\mathrm{g}}$.
 <!-- AUTO_END: assembled -->
+
 
 
 
