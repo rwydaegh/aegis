@@ -12,6 +12,91 @@ from aegis._array_backend import JAX_AVAILABLE
 from aegis.constants import C_0, Z_0
 
 
+class _FakePlanarArray:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.normalized_positions = None
+
+
+@pytest.mark.parametrize("side", [4, 8, 16])
+def test_synthetic_array_retains_square_upa_geometry_and_phase_center(side):
+    """M16/M64/M256 arrays keep their physical coordinates and center."""
+    from aegis.integration.sionna import _build_sionna_tx_array
+
+    freq_hz = 28e9
+    spacing = 0.5 * C_0 / freq_hz
+    center = np.array([-13.0, 1.25, 3.0])
+    tilt = np.deg2rad(10.0)
+    horizontal = np.array([0.0, 1.0, 0.0])
+    panel_up = np.array([np.sin(tilt), 0.0, np.cos(tilt)])
+    row, col = np.meshgrid(np.arange(side), np.arange(side), indexing="ij")
+    positions = (
+        center
+        + (col.reshape(-1, 1) - (side - 1) / 2) * spacing * horizontal
+        + (row.reshape(-1, 1) - (side - 1) / 2) * spacing * panel_up
+    )
+
+    array, phase_center, offsets = _build_sionna_tx_array(
+        _FakePlanarArray,
+        positions,
+        "iso",
+    )
+
+    assert array.kwargs == {
+        "num_rows": 1,
+        "num_cols": 1,
+        "pattern": "iso",
+        "polarization": "V",
+    }
+    np.testing.assert_allclose(phase_center, center, atol=1e-14)
+    np.testing.assert_allclose(phase_center + offsets, positions, atol=1e-14)
+    np.testing.assert_allclose(np.mean(offsets, axis=0), 0.0, atol=5e-14)
+
+
+def test_synthetic_array_phase_supports_arbitrary_nonplanar_positions():
+    """Synthetic expansion is not restricted to square or planar layouts."""
+    from aegis.integration.sionna import _build_sionna_tx_array
+
+    positions = np.array(
+        [[1.0, 2.0, 3.0], [1.02, 1.99, 3.03], [0.97, 2.04, 2.98]],
+    )
+    _, phase_center, offsets = _build_sionna_tx_array(_FakePlanarArray, positions, "iso")
+    np.testing.assert_allclose(phase_center + offsets, positions, atol=1e-15)
+    np.testing.assert_allclose(np.mean(offsets, axis=0), 0.0, atol=1e-15)
+
+
+def test_off_axis_los_synthetic_phase_has_positive_departure_sign():
+    """Moving an element toward the receiver advances the carrier phase."""
+    from aegis.integration.sionna import _synthetic_tx_phase
+
+    wavelength = 0.03
+    freq_hz = C_0 / wavelength
+    k_hat_tx = np.array([[0.6, 0.8, 0.0]])
+    offsets = np.array([[0.0, 0.0, 0.0], [wavelength / 4, 0.0, 0.0]])
+
+    phase = _synthetic_tx_phase(k_hat_tx, offsets, freq_hz)
+
+    np.testing.assert_allclose(phase[0, 0], 1.0 + 0.0j, atol=1e-14)
+    np.testing.assert_allclose(phase[1, 0], np.exp(1j * 0.3 * np.pi), atol=1e-14)
+
+
+def test_specular_synthetic_phase_uses_departure_not_arrival_direction():
+    """A reflected path expands along its outgoing segment at the source."""
+    from aegis.integration.sionna import _synthetic_tx_phase
+
+    wavelength = 0.02
+    freq_hz = C_0 / wavelength
+    k_hat_tx = np.array([[1.0, 0.0, 0.0]])
+    k_hat_arrival = np.array([[0.0, 1.0, 0.0]])
+    offsets = np.array([[wavelength / 4, 0.0, 0.0]])
+
+    phase = _synthetic_tx_phase(k_hat_tx, offsets, freq_hz)
+    wrong_arrival_phase = _synthetic_tx_phase(k_hat_arrival, offsets, freq_hz)
+
+    np.testing.assert_allclose(phase[0, 0], 1j, atol=1e-14)
+    np.testing.assert_allclose(wrong_arrival_phase[0, 0], 1.0 + 0.0j, atol=1e-14)
+
+
 class TestUnitConversion:
     """Test the Sionna a -> AEGIS psi conversion formula.
 
@@ -226,21 +311,31 @@ class TestJAXConversion:
         # Mock Sionna Paths object
         class MockPaths:
             def __init__(self):
-                # (num_rx=1, num_rx_ant=2, num_tx=1, num_tx_ant=M, num_paths=N, num_time=1)
-                a = np.zeros((1, 2, 1, n_elements, n_paths, 1), dtype=complex)
+                # One center-traced TX antenna is expanded analytically to M.
+                a = np.zeros((1, 2, 1, 1, n_paths, 1), dtype=complex)
                 # Put signal in theta component for paths 0,1,2 (path 3 invalid)
-                a[0, 0, 0, :, :3, 0] = 0.001 + 0j
+                a[0, 0, 0, 0, :3, 0] = 0.001 + 0j
                 self._a = jnp.array(a)
                 self._tau = jnp.array(np.array([[[0.01, 0.02, 0.03, 0.0]]]))
                 self.theta_r = jnp.array([[[1.0, 0.5, 1.5, 0.0]]])
                 self.phi_r = jnp.array([[[0.3, 0.7, 1.2, 0.0]]])
+                self.theta_t = jnp.array([[[1.1, 0.6, 1.4, 0.0]]])
+                self.phi_t = jnp.array([[[0.2, 0.8, 1.0, 0.0]]])
 
-            def cir(self, out_type="numpy"):
+            def cir(self, out_type="numpy", normalize_delays=False):
                 return self._a, self._tau
 
         valid_np = np.array([[[True, True, True, False]]])
 
-        result = _paths_from_sionna_jax(MockPaths(), valid_np, n_elements, freq_hz, tx_power_w)
+        tx_offsets = np.array([[-0.01, 0.0, 0.0], [0.01, 0.0, 0.0]])
+        result = _paths_from_sionna_jax(
+            MockPaths(),
+            valid_np,
+            tx_offsets,
+            freq_hz,
+            tx_power_w,
+            np.array([4.0, 2.0, 1.0]),
+        )
 
         # Total paths = n_elements * n_paths_per_elem
         assert result.n_paths == n_elements * n_paths
@@ -427,6 +522,120 @@ def test_coherent_psi_carries_propagation_phase_away_from_origin():
     rx2 = rx + paths.k_hat[0] * delta
     ph_kernel2 = _wrap(np.angle(psi[comp]) - k0 * float(paths.k_hat[0] @ rx2))
     assert abs(_wrap(ph_kernel2 - (ph_kernel - k0 * delta))) < 1e-4
+
+
+def test_off_axis_los_array_expansion_matches_physical_element_offsets():
+    """A center trace expands to arbitrary elements with the analytic AoD phase."""
+    srt = pytest.importorskip("sionna.rt")
+
+    from aegis.integration.sionna import paths_from_sionna_scene
+
+    scene = srt.load_scene()
+    freq_hz = 28e9
+    k0 = 2 * np.pi * freq_hz / C_0
+    center = np.array([5.0, -3.0, 2.0])
+    offsets = np.array(
+        [[-0.004, 0.001, 0.002], [0.003, -0.002, 0.001], [0.001, 0.001, -0.003]],
+    )
+    assert np.allclose(np.mean(offsets, axis=0), 0.0)
+    rx = np.array([17.0, 9.0, 5.0])
+
+    paths = paths_from_sionna_scene(
+        scene,
+        tx_positions=center + offsets,
+        rx_position=rx,
+        freq_hz=freq_hz,
+        max_bounces=0,
+        tx_power_dbm=30.0,
+        samples_per_src=100_000,
+    )
+
+    assert paths.n_paths == 3
+    np.testing.assert_array_equal(paths.element_index, [0, 1, 2])
+    expected_direction = (rx - center) / np.linalg.norm(rx - center)
+    np.testing.assert_allclose(paths.k_hat_tx, np.tile(expected_direction, (3, 1)), atol=1e-6)
+    component = int(np.argmax(np.abs(paths.psi[0])))
+    measured = paths.psi[:, component] / paths.psi[0, component]
+    expected = np.exp(1j * k0 * ((offsets - offsets[0]) @ expected_direction))
+    np.testing.assert_allclose(measured, expected, atol=2e-5)
+
+
+def test_single_element_non_synthetic_matches_synthetic_trace():
+    """M1 explicit-array singleton axes collapse to the synthetic contract."""
+    srt = pytest.importorskip("sionna.rt")
+
+    from aegis.integration.sionna import paths_from_sionna_scene
+
+    scene = srt.load_scene()
+    tx = np.array([[4.0, 2.0, 3.0]])
+    rx = np.array([17.0, 9.0, 1.0])
+    kwargs = {
+        "scene": scene,
+        "tx_positions": tx,
+        "rx_position": rx,
+        "freq_hz": 28e9,
+        "max_bounces": 0,
+        "tx_power_dbm": 30.0,
+        "samples_per_src": 100_000,
+    }
+
+    synthetic = paths_from_sionna_scene(**kwargs, synthetic_array=True)
+    explicit, path_viz = paths_from_sionna_scene(
+        **kwargs,
+        synthetic_array=False,
+        return_viz=True,
+    )
+
+    assert explicit.n_paths == 1
+    assert len(path_viz) == 1
+    np.testing.assert_array_equal(explicit.element_index, synthetic.element_index)
+    np.testing.assert_array_equal(explicit.is_los, synthetic.is_los)
+    np.testing.assert_allclose(explicit.k_hat, synthetic.k_hat, atol=1e-7)
+    np.testing.assert_allclose(explicit.k_hat_tx, synthetic.k_hat_tx, atol=1e-7)
+    np.testing.assert_allclose(explicit.delay, synthetic.delay, rtol=1e-7)
+    np.testing.assert_allclose(explicit.psi, synthetic.psi, rtol=1e-6, atol=1e-9)
+
+
+def test_specular_array_expansion_uses_departure_not_arrival_direction():
+    """Reflected center paths expand by AoD even when AoD and AoA differ."""
+    srt = pytest.importorskip("sionna.rt")
+
+    from aegis.integration.sionna import paths_from_sionna_scene
+
+    scene = srt.load_scene(srt.scene.simple_street_canyon)
+    freq_hz = 28e9
+    k0 = 2 * np.pi * freq_hz / C_0
+    center = np.array([12.0, 4.0, 18.0])
+    delta = np.array([0.003, -0.002, 0.001])
+    positions = np.stack([center - delta / 2, center + delta / 2])
+    rx = np.array([-9.0, -3.0, 1.5])
+
+    paths = paths_from_sionna_scene(
+        scene,
+        tx_positions=positions,
+        rx_position=rx,
+        freq_hz=freq_hz,
+        max_bounces=1,
+        tx_power_dbm=30.0,
+        samples_per_src=2_000_000,
+        seed=7,
+    )
+
+    center_paths = paths.n_paths // 2
+    assert center_paths >= 2
+    np.testing.assert_array_equal(paths.element_index[:center_paths], 0)
+    np.testing.assert_array_equal(paths.element_index[center_paths:], 1)
+    departure = paths.k_hat_tx[:center_paths]
+    arrival = paths.k_hat[:center_paths]
+    reflected = int(np.argmin(np.sum(departure * arrival, axis=1)))
+    assert float(departure[reflected] @ arrival[reflected]) < 0.9
+
+    component = int(np.argmax(np.abs(paths.psi[reflected])))
+    measured = paths.psi[center_paths + reflected, component] / paths.psi[reflected, component]
+    expected = np.exp(1j * k0 * float(departure[reflected] @ delta))
+    arrival_based = np.exp(1j * k0 * float(arrival[reflected] @ delta))
+    np.testing.assert_allclose(measured, expected, atol=2e-5)
+    assert abs(expected - arrival_based) > 0.1
 
 
 def test_coherent_interpath_phase_advances_with_rx_translation():

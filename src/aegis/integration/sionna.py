@@ -105,7 +105,7 @@ def _convert_a_to_psi(a_theta, a_phi, theta_r, phi_r, freq_hz, tx_power_w):
     return psi.astype(complex)
 
 
-def _extract_path_viz(paths, valid: np.ndarray) -> list[dict]:
+def _extract_path_viz(paths, valid: np.ndarray, synthetic_array: bool = True) -> list[dict]:
     """Extract path visualization data from Sionna Paths object.
 
     Parameters
@@ -120,6 +120,9 @@ def _extract_path_viz(paths, valid: np.ndarray) -> list[dict]:
     try:
         verts = np.array(paths.vertices)  # (max_depth, num_rx, num_tx, num_paths, 3)
         interactions = np.array(paths.interactions)  # (max_depth, num_rx, num_tx, num_paths)
+        if not synthetic_array:
+            verts = verts[:, :, 0, :, 0, :, :]
+            interactions = interactions[:, :, 0, :, 0, :]
         # mi.Point3f stores as (3, N), transpose to (N, 3)
         sources = np.array(paths.sources).T  # (num_tx, 3)
         targets = np.array(paths.targets).T  # (num_rx, 3)
@@ -161,7 +164,51 @@ def _extract_path_viz(paths, valid: np.ndarray) -> list[dict]:
     return path_viz
 
 
-def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w, rx_position):
+def _build_sionna_tx_array(
+    planar_array_cls,
+    tx_positions: np.ndarray,
+    pattern: str,
+):
+    """Build the phase-center antenna used for synthetic-array tracing.
+
+    Ray paths are traced once at the centroid. The caller expands the center
+    coefficient analytically with each path's departure direction, retaining
+    arbitrary world-space element coordinates without imposing a Sionna array
+    orientation or layout convention.
+    """
+    phase_center = np.mean(tx_positions, axis=0)
+    tx_offsets = tx_positions - phase_center
+    tx_array = planar_array_cls(
+        num_rows=1,
+        num_cols=1,
+        pattern=pattern,
+        polarization="V",
+    )
+    return tx_array, phase_center, tx_offsets
+
+
+def _synthetic_tx_phase(k_hat_tx, tx_offsets, freq_hz: float):
+    """Return the element-by-path phase for a center-traced channel."""
+    if _is_jax_array(k_hat_tx):
+        import jax.numpy as jnp
+
+        offsets = jnp.asarray(tx_offsets, dtype=jnp.float64)
+        return jnp.exp(1j * (2.0 * jnp.pi * freq_hz / C_0) * (offsets @ k_hat_tx.T))
+
+    directions = np.asarray(k_hat_tx, dtype=np.float64)
+    offsets = np.asarray(tx_offsets, dtype=np.float64)
+    return np.exp(1j * (2.0 * np.pi * freq_hz / C_0) * (offsets @ directions.T))
+
+
+def _paths_from_sionna_jax(
+    paths,
+    valid_np,
+    tx_offsets,
+    freq_hz,
+    tx_power_w,
+    rx_position,
+    synthetic_array=True,
+):
     """JAX-preserving extraction from Sionna Paths object.
 
     Uses ``paths.cir(out_type="jax")`` to get JAX arrays with Dr.Jit
@@ -172,7 +219,7 @@ def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w, rx_
     ----------
     paths : sionna.rt Paths object (from PathSolver)
     valid_np : (num_rx, num_tx, num_paths) bool mask (NumPy)
-    n_elements : number of TX antenna elements
+    tx_offsets : (M_ant, 3) element offsets from the traced phase center
     freq_hz : carrier frequency [Hz]
     tx_power_w : TX power per element [W]
 
@@ -193,13 +240,21 @@ def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w, rx_
     phi_r_raw = jnp.asarray(paths.phi_r)
     theta_t_raw = jnp.asarray(paths.theta_t)
     phi_t_raw = jnp.asarray(paths.phi_t)
+    if not synthetic_array:
+        tau_raw = tau_raw[:, 0, :, 0, :]
+        theta_r_raw = theta_r_raw[:, 0, :, 0, :]
+        phi_r_raw = phi_r_raw[:, 0, :, 0, :]
+        theta_t_raw = theta_t_raw[:, 0, :, 0, :]
+        phi_t_raw = phi_t_raw[:, 0, :, 0, :]
 
     rx_idx, tx_idx = 0, 0
+    n_elements = len(tx_offsets)
     n_paths_per_elem = a_raw.shape[-1]
 
-    # Flatten across all elements: (n_elements * n_paths_per_elem,)
-    a_theta_all = a_raw[rx_idx, 0, tx_idx, :, :].reshape(-1)  # (M*N,)
-    a_phi_all = a_raw[rx_idx, 1, tx_idx, :, :].reshape(-1)  # (M*N,)
+    # The physical path is traced once at the phase center. Tile its center
+    # coefficient, then apply the exact departure-direction phase below.
+    a_theta_all = jnp.tile(a_raw[rx_idx, 0, tx_idx, 0, :], n_elements)
+    a_phi_all = jnp.tile(a_raw[rx_idx, 1, tx_idx, 0, :], n_elements)
 
     # Angles are shared across elements (synthetic array), tile them
     theta_r = jnp.tile(theta_r_raw[rx_idx, tx_idx, :], n_elements)  # (M*N,)
@@ -232,6 +287,13 @@ def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w, rx_
     spt, cpt = jnp.sin(phi_t), jnp.cos(phi_t)
     k_hat_tx_raw = jnp.column_stack([stt * cpt, stt * spt, ctt])
     k_hat_tx = jnp.where(valid_all[:, None], k_hat_tx_raw, default_k[None, :])
+
+    # Moving the source by delta shortens the path by k_tx . delta, hence
+    # exp(+i k0 k_tx . delta). Use departure, not arrival, directions so
+    # reflected paths expand with the correct outgoing segment.
+    k_hat_tx_center = k_hat_tx_raw[:n_paths_per_elem]
+    tx_phase = _synthetic_tx_phase(k_hat_tx_center, tx_offsets, freq_hz).reshape(-1)
+    psi = psi * tx_phase[:, None]
 
     # Re-reference psi to the world origin (see the NumPy branch).
     k0 = 2.0 * jnp.pi * freq_hz / C_0
@@ -316,15 +378,18 @@ def paths_from_sionna_scene(
     rx_position = np.asarray(rx_position, dtype=np.float64)
     if tx_positions.ndim == 1:
         tx_positions = tx_positions[np.newaxis, :]
+    if tx_positions.ndim != 2 or tx_positions.shape[1] != 3 or len(tx_positions) == 0:
+        raise ValueError("tx_positions must have shape (M_ant, 3) with at least one element")
+    if not np.all(np.isfinite(tx_positions)):
+        raise ValueError("tx_positions must contain only finite coordinates")
 
     tx_power_w = 10 ** ((tx_power_dbm - 30) / 10)
     n_elements = tx_positions.shape[0]
 
     # Set the carrier on the scene before building arrays or solving. Sionna
     # defaults a loaded scene to 3.5 GHz, and the frequency drives the radio
-    # material coefficients, the synthetic-array element spacing (lambda/2), and
-    # the path-loss wavelength. Leaving the default silently traces the wrong
-    # band (at 28 GHz the field power is ~5000x lower than at 3.5 GHz).
+    # material coefficients and path-loss wavelength. Leaving the default
+    # silently traces the wrong band.
     scene.frequency = float(freq_hz)
 
     # Map common pattern names to Sionna v2 registry names
@@ -339,12 +404,12 @@ def paths_from_sionna_scene(
         polarization="cross",
     )
 
-    # Configure TX array
-    scene.tx_array = PlanarArray(
-        num_rows=1,
-        num_cols=n_elements,
-        pattern=sionna_tx_pattern,
-        polarization="V",
+    # Trace one antenna at the physical phase center. After CIR extraction, the
+    # center coefficient is expanded analytically to the requested positions.
+    scene.tx_array, tx_phase_center, tx_offsets = _build_sionna_tx_array(
+        PlanarArray,
+        tx_positions,
+        sionna_tx_pattern,
     )
 
     # Set TX and RX positions (Sionna v2 API)
@@ -356,7 +421,7 @@ def paths_from_sionna_scene(
     for name in ("tx", "rx"):
         with contextlib.suppress(ValueError, KeyError):
             scene.remove(name)
-    scene.add(Transmitter("tx", position=tx_positions[0].tolist()))
+    scene.add(Transmitter("tx", position=tx_phase_center.tolist()))
     scene.add(Receiver("rx", position=rx_position.tolist()))
 
     # Compute paths
@@ -378,16 +443,14 @@ def paths_from_sionna_scene(
     )
 
     # Extract path visualization before CIR (vertices are lazily computed)
-    valid_raw = np.array(paths.valid)  # (num_rx, num_tx, num_paths)
-    path_viz = _extract_path_viz(paths, valid_raw) if return_viz else []
+    valid_raw = np.array(paths.valid)
+    if not synthetic_array:
+        valid_raw = valid_raw[:, 0, :, 0, :]
+    path_viz = _extract_path_viz(paths, valid_raw, synthetic_array) if return_viz else []
 
-    # Validate synthetic_array assumption: both the JAX and NumPy paths
-    # index angles/delays as (num_rx, 1, num_paths) and CIR coefficients
-    # as (num_rx, 2, 1, n_elements, num_paths, 1). With synthetic_array=False,
-    # Sionna moves elements into the num_tx axis instead of num_tx_ant,
-    # producing (num_rx, n_elements, num_paths) angles and
-    # (num_rx, 2, n_elements, 1, num_paths, 1) CIR, which silently gives
-    # wrong results or crashes on multi-element arrays.
+    # Multiple caller elements are represented by one phase-center trace and a
+    # far-field phase expansion. Reject an explicit request for non-synthetic
+    # multi-element tracing instead of silently changing that requested model.
     if not synthetic_array and n_elements > 1:
         raise NotImplementedError(
             "synthetic_array=False with multiple TX elements is not supported. "
@@ -400,7 +463,15 @@ def paths_from_sionna_scene(
     if differentiable:
         if not JAX_AVAILABLE:
             raise RuntimeError("differentiable=True requires JAX. Install with: pip install jax")
-        result = _paths_from_sionna_jax(paths, valid_raw, n_elements, freq_hz, tx_power_w, rx_position)
+        result = _paths_from_sionna_jax(
+            paths,
+            valid_raw,
+            tx_offsets,
+            freq_hz,
+            tx_power_w,
+            rx_position,
+            synthetic_array,
+        )
         return (result, path_viz) if return_viz else result
 
     # --- Original NumPy path (unchanged) ---
@@ -420,6 +491,12 @@ def paths_from_sionna_scene(
     phi_r_raw = np.array(paths.phi_r)
     theta_t_raw = np.array(paths.theta_t)  # departure angles at the source
     phi_t_raw = np.array(paths.phi_t)
+    if not synthetic_array:
+        tau_raw = tau_raw[:, 0, :, 0, :]
+        theta_r_raw = theta_r_raw[:, 0, :, 0, :]
+        phi_r_raw = phi_r_raw[:, 0, :, 0, :]
+        theta_t_raw = theta_t_raw[:, 0, :, 0, :]
+        phi_t_raw = phi_t_raw[:, 0, :, 0, :]
     valid = valid_raw
 
     all_k_hat = []
@@ -434,8 +511,8 @@ def paths_from_sionna_scene(
     tx_idx = 0  # single TX device
     for elem in range(n_elements):
         # Extract per-element data. rx_ant=0 is theta, rx_ant=1 is phi.
-        a_theta = a_raw[rx_idx, 0, tx_idx, elem, :]  # (n_paths,) complex
-        a_phi = a_raw[rx_idx, 1, tx_idx, elem, :]
+        a_theta = a_raw[rx_idx, 0, tx_idx, 0, :]  # center-traced (n_paths,)
+        a_phi = a_raw[rx_idx, 1, tx_idx, 0, :]
         theta_r = theta_r_raw[rx_idx, tx_idx, :]
         phi_r = phi_r_raw[rx_idx, tx_idx, :]
         theta_t = theta_t_raw[rx_idx, tx_idx, :]
@@ -478,6 +555,12 @@ def paths_from_sionna_scene(
                 np.cos(theta_t),
             ]
         )
+
+        # Analytically move the center-traced source to this element. This is
+        # exact under Sionna's synthetic-array far-field model and works for
+        # arbitrary element layouts without a square-array assumption.
+        tx_phase = _synthetic_tx_phase(k_hat_tx, tx_offsets[elem : elem + 1], freq_hz)[0]
+        psi = psi * tx_phase[:, None]
 
         # a (and so psi) is the field AT the rx point, but every coherent
         # kernel phases at absolute coordinates, exp(-i k0 k_n . r). Re-reference
