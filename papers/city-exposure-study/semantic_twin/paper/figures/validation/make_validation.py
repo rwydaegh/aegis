@@ -7,7 +7,7 @@ checked before any figure is written.
 
 Run from any directory with:
 
-    uv run --project /home/user/tools/devpc-python python \
+    uv run --with scienceplots --project /home/user/tools/devpc-python python \
         semantic_twin/paper/figures/validation/make_validation.py
 """
 
@@ -25,6 +25,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+import scienceplots  # noqa: E402, F401  # Registers the SciencePlots styles.
 from PIL import Image  # noqa: E402
 
 
@@ -261,21 +262,13 @@ def load_and_validate() -> tuple[dict[str, np.ndarray], dict[str, Any]]:
 
 
 def _configure_style() -> None:
-    plt.style.use("default")
+    plt.style.use(["science", "ieee", "no-latex"])
     matplotlib.rcParams.update(
         {
-            "text.usetex": True,
-            "text.latex.preamble": (
-                r"\usepackage[T1]{fontenc}"
-                r"\usepackage{lmodern}"
-                r"\usepackage{microtype}"
-                r"\usepackage{amsmath}"
-            ),
             "font.family": "serif",
-            "font.serif": ["Latin Modern Roman"],
+            "font.serif": ["STIXGeneral"],
             "font.size": 8.0,
             "axes.labelsize": 8.0,
-            "axes.titlesize": 8.0,
             "xtick.labelsize": 7.3,
             "ytick.labelsize": 7.3,
             "legend.fontsize": 7.2,
@@ -288,6 +281,7 @@ def _configure_style() -> None:
             "ytick.major.size": 3.0,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
+            "savefig.bbox": None,
             "savefig.facecolor": "white",
         }
     )
@@ -299,18 +293,19 @@ def draw(values: dict[str, np.ndarray]) -> None:
     figure, axes = plt.subplots(1, 2, figsize=(7.16, 2.58))
     x = np.arange(RECEIVERS, dtype=np.float64)
 
-    axes[0].plot(
-        x,
+    (quadrature_artist,) = axes[0].plot(
+        x - 0.13,
         1.0e4 * values["quadrature"],
         color="black",
         marker="o",
         markerfacecolor="white",
         markeredgecolor="black",
-        label="Deterministic quadrature",
+        linestyle="none",
+        label="Surface quadrature",
         zorder=4,
     )
-    axes[0].errorbar(
-        x - 0.07,
+    adjoint_artist = axes[0].errorbar(
+        x,
         1.0e4 * values["adjoint"],
         yerr=1.0e4 * values["adjoint_standard_error"],
         color="#0065BD",
@@ -318,11 +313,12 @@ def draw(values: dict[str, np.ndarray]) -> None:
         markerfacecolor="white",
         capsize=2.0,
         elinewidth=0.8,
-        label="Adjoint first-diffuse estimate",
+        linestyle="none",
+        label="Adjoint estimator",
         zorder=3,
     )
-    axes[0].errorbar(
-        x + 0.07,
+    forward_artist = axes[0].errorbar(
+        x + 0.13,
         1.0e4 * values["sionna"],
         yerr=1.0e4 * values["sionna_standard_error"],
         color="#D62728",
@@ -330,30 +326,28 @@ def draw(values: dict[str, np.ndarray]) -> None:
         markerfacecolor="white",
         capsize=2.0,
         elinewidth=0.8,
-        label="Independent forward tracer",
+        linestyle="none",
+        label="Independent forward",
         zorder=2,
     )
     axes[0].set_xticks(x)
     axes[0].set_xticklabels(RECEIVER_LABELS)
     axes[0].set_xlim(-0.35, RECEIVERS - 0.65)
     axes[0].set_ylim(0.0, 9.8)
-    axes[0].set_xlabel("Receiver in controlled square")
-    axes[0].set_ylabel(r"One-reflection transfer [$10^{-4}\,\mathrm{m}^{-2}$]")
-    axes[0].set_title(r"\textbf{(a)}\quad Common depth-1 transfer", loc="left")
-    axes[0].grid(axis="y", color="0.86", linewidth=0.5)
-    axes[0].legend(
-        loc="upper center",
-        bbox_to_anchor=(0.5, 1.0),
-        frameon=True,
-        fancybox=False,
-        framealpha=0.94,
-        borderpad=0.3,
-        handlelength=1.6,
+    axes[0].set_xlabel("Receiver")
+    axes[0].set_ylabel(r"Reflected transfer [$10^{-4}\,\mathrm{m}^{-2}$]")
+    axes[0].text(
+        0.0,
+        1.015,
+        "(a)",
+        transform=axes[0].transAxes,
+        va="bottom",
+        fontweight="bold",
     )
+    axes[0].grid(axis="y", color="0.86", linewidth=0.5)
 
     adjoint_db_se = 10.0 / np.log(10.0) * values["adjoint_standard_error"] / values["adjoint"]
     sionna_db_se = 10.0 / np.log(10.0) * values["sionna_standard_error"] / values["sionna"]
-    axes[1].axhspan(-0.1, 0.1, color="0.94", zorder=0)
     axes[1].axhline(0.0, color="0.35", linewidth=0.7, zorder=1)
     axes[1].errorbar(
         x - 0.07,
@@ -364,7 +358,7 @@ def draw(values: dict[str, np.ndarray]) -> None:
         markerfacecolor="white",
         capsize=2.0,
         elinewidth=0.8,
-        label="Adjoint first-diffuse estimate",
+        linestyle="none",
         zorder=3,
     )
     axes[1].errorbar(
@@ -376,7 +370,7 @@ def draw(values: dict[str, np.ndarray]) -> None:
         markerfacecolor="white",
         capsize=2.0,
         elinewidth=0.8,
-        label="Independent forward tracer",
+        linestyle="none",
         zorder=2,
     )
     axes[1].set_xticks(x)
@@ -384,16 +378,41 @@ def draw(values: dict[str, np.ndarray]) -> None:
     axes[1].set_xlim(-0.35, RECEIVERS - 0.65)
     axes[1].set_ylim(-0.105, 0.105)
     axes[1].set_yticks((-0.1, -0.05, 0.0, 0.05, 0.1))
-    axes[1].set_xlabel("Receiver in controlled square")
-    axes[1].set_ylabel("Estimate minus quadrature [dB]")
-    axes[1].set_title(r"\textbf{(b)}\quad Error against surface quadrature", loc="left")
+    axes[1].set_yticklabels((r"$-0.10$", r"$-0.05$", r"$0.00$", r"$0.05$", r"$0.10$"))
+    axes[1].set_xlabel("Receiver")
+    axes[1].set_ylabel("Difference from quadrature [dB]")
+    axes[1].text(
+        0.0,
+        1.015,
+        "(b)",
+        transform=axes[1].transAxes,
+        va="bottom",
+        fontweight="bold",
+    )
     axes[1].grid(axis="y", color="0.86", linewidth=0.5)
 
     for axis in axes:
         axis.spines["top"].set_visible(False)
         axis.spines["right"].set_visible(False)
+        axis.tick_params(which="both", top=False, right=False)
 
-    figure.subplots_adjust(left=0.095, right=0.985, bottom=0.20, top=0.92, wspace=0.34)
+    figure.suptitle(
+        r"Controlled diffuse-reflection scene, 15 GHz, depth 1",
+        x=0.5,
+        y=0.985,
+        fontsize=8.0,
+    )
+    figure.legend(
+        [quadrature_artist, adjoint_artist, forward_artist],
+        ["Surface quadrature", "Adjoint estimator", "Independent forward"],
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.925),
+        ncol=3,
+        frameon=False,
+        handletextpad=0.45,
+        columnspacing=1.4,
+    )
+    figure.subplots_adjust(left=0.088, right=0.985, bottom=0.20, top=0.76, wspace=0.32)
     pdf_path = HERE / "validation.pdf"
     png_path = HERE / "validation.png"
     figure.savefig(
@@ -433,6 +452,9 @@ def audit_outputs(audit: dict[str, Any]) -> None:
     embedded = all(len(row) >= 4 and row[3].split()[0] == "yes" for row in font_rows)
     if not embedded:
         raise ValueError("validation.pdf contains a non-embedded font")
+    font_types = sorted({row[1] for row in font_rows})
+    if "Type 3" in font_types:
+        raise ValueError("validation.pdf contains a Type 3 font")
     image_rows = [line for line in images_output.splitlines()[2:] if line.strip()]
     if image_rows:
         raise ValueError("validation.pdf unexpectedly contains a raster image")
@@ -442,6 +464,8 @@ def audit_outputs(audit: dict[str, Any]) -> None:
     page_match = re.search(r"^Page size:\s+(.+)$", pdf_info, flags=re.MULTILINE)
     if page_match is None:
         raise ValueError("pdfinfo did not report a page size")
+    if not page_match.group(1).startswith("515.52 x "):
+        raise ValueError(f"validation.pdf is not exactly 7.16 in wide: {page_match.group(1)}")
 
     audit["outputs"] = {
         "pdf": {
@@ -450,6 +474,8 @@ def audit_outputs(audit: dict[str, Any]) -> None:
             "page_size": page_match.group(1),
             "contains_raster_images": False,
             "fonts_embedded": embedded,
+            "contains_type3_fonts": False,
+            "font_types": font_types,
             "fonts": sorted({row[0] for row in font_rows}),
         },
         "png": {
@@ -458,6 +484,12 @@ def audit_outputs(audit: dict[str, Any]) -> None:
             "dimensions_pixels": list(image.size),
             "rasterization_dpi": 300,
         },
+    }
+    audit["generator"] = {
+        "path": Path(__file__).name,
+        "sha256": _sha256(Path(__file__)),
+        "style": ["science", "ieee", "no-latex"],
+        "width_inches": 7.16,
     }
     (HERE / "validation.audit.json").write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
 

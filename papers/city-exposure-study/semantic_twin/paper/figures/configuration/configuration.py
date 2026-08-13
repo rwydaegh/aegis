@@ -2,7 +2,7 @@
 
 Run from any directory with::
 
-    uv run --project /home/user/tools/devpc-python \
+    uvx --from SciencePlots --with matplotlib --with numpy \
         semantic_twin/paper/figures/configuration/configuration.py
 
 The script refuses changed source bytes before writing ``configuration.pdf``,
@@ -23,9 +23,8 @@ import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+import scienceplots  # noqa: E402, F401
 from matplotlib.collections import LineCollection, PolyCollection  # noqa: E402
-from matplotlib.lines import Line2D  # noqa: E402
-from matplotlib.patches import Patch  # noqa: E402
 
 
 HERE = Path(__file__).resolve().parent
@@ -44,6 +43,7 @@ BODY_PATH = REPOSITORY_ROOT.parents[1] / "data" / "duke.stl"
 PHOTO_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_registered_photograph.png"
 SUPPORT_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_full_traced_support.png"
 MATERIAL_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_rf_material_atlas_(posterior_display).png"
+TRANSPORT_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_final_transport_state.png"
 CURTAIN_MANIFEST = PIPELINE_DIRECTORY / "prague_360_publication_curtain.json"
 CAMPAIGN_IDENTITY = CAMPAIGN_DIRECTORY / "campaign_identity.json"
 LOCATIONS_PATH = CAMPAIGN_DIRECTORY / "locations.jsonl"
@@ -54,6 +54,7 @@ EXPECTED_SHA256 = {
     PHOTO_PATH: "059a3bde49239a8bcbc5cd2cb881b9b89fe69fd4bcc894f06dda7494b26d59b3",
     SUPPORT_PATH: "c1db560d268789b7268434f527e63f8afed32bed9446a6c0024de2693cc199da",
     MATERIAL_PATH: "b94ed326ded0c85f0a8bda5ecc896878470fbe473f4d4e42f4d2279ba724ff53",
+    TRANSPORT_PATH: "f431244ff9c16118366d775f2415d8f74e26b75d3536f2079e20114f0184e7ec",
     MESH_PATH: "a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4",
     BODY_PATH: "781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b",
     LOCATIONS_PATH: "dfe271c4e099e87eb8f2b32af25baafbe140a2967fc4d72b724e43ffe958ad34",
@@ -65,6 +66,26 @@ EXPECTED_SOURCE_CURVE = "9805ef88d174edbe0ef57facf8cf17ea915f570ea2c7191d65a3e99
 OUTPUT_PDF = HERE / "configuration.pdf"
 OUTPUT_PNG = HERE / "configuration.png"
 ASSET_MANIFEST = HERE / "configuration_assets.json"
+
+TRANSPORT_SOURCE_RGB = (
+    np.asarray(
+        (
+            (89, 229, 253),
+            (129, 239, 153),
+            (250, 191, 97),
+        ),
+        dtype=np.float64,
+    )
+    / 255.0
+)
+TRANSPORT_DISPLAY_RGB = np.asarray(
+    (
+        mpl.colors.to_rgb("#9CCBE8"),
+        mpl.colors.to_rgb("#257A5C"),
+        mpl.colors.to_rgb("#33234D"),
+    ),
+    dtype=np.float64,
+)
 
 
 def _sha256(path: Path) -> str:
@@ -88,7 +109,7 @@ def _authenticate_inputs() -> tuple[dict[str, Any], dict[str, Any]]:
 
     curtain = json.loads(CURTAIN_MANIFEST.read_text(encoding="utf-8"))
     curtain_panels = {Path(panel["path"]).name: panel for panel in curtain["panels"]}
-    for path in (PHOTO_PATH, SUPPORT_PATH, MATERIAL_PATH):
+    for path in (PHOTO_PATH, SUPPORT_PATH, MATERIAL_PATH, TRANSPORT_PATH):
         panel = curtain_panels[path.name]
         assert panel["sha256"] == EXPECTED_SHA256[path]
         assert panel["status"] == "available"
@@ -184,31 +205,42 @@ def _load_binary_stl() -> np.ndarray:
 
 
 def _configure_style() -> None:
+    plt.style.use("science")
     mpl.rcParams.update(
         {
             "font.family": "serif",
-            "font.serif": ["Latin Modern Roman", "Computer Modern Roman", "DejaVu Serif"],
-            "font.size": 8.5,
-            "axes.titlesize": 8.5,
-            "axes.labelsize": 8.5,
-            "xtick.labelsize": 7.5,
-            "ytick.labelsize": 7.5,
-            "legend.fontsize": 7.5,
+            "font.size": 8.0,
+            "axes.titlesize": 8.0,
+            "axes.labelsize": 8.0,
+            "xtick.labelsize": 7.0,
+            "ytick.labelsize": 7.0,
+            "legend.fontsize": 6.8,
             "axes.linewidth": 0.6,
             "xtick.major.width": 0.6,
             "ytick.major.width": 0.6,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
             "savefig.facecolor": "white",
+            "savefig.bbox": None,
         }
     )
 
 
-def _plot_panorama_panel(ax: plt.Axes, path: Path, title: str) -> None:
+def _plot_panorama_panel(ax: plt.Axes, path: Path, label: str) -> None:
     image = plt.imread(path)
     assert image.shape[:2] == (832, 1664)
     ax.imshow(image, interpolation="lanczos")
-    ax.set_title(title, loc="left", fontweight="bold", pad=3.0)
+    ax.text(
+        0.012,
+        0.96,
+        label,
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=5,
+    )
     ax.set_xticks([])
     ax.set_yticks([])
     for spine in ax.spines.values():
@@ -216,15 +248,75 @@ def _plot_panorama_panel(ax: plt.Axes, path: Path, title: str) -> None:
         spine.set_linewidth(0.5)
 
 
+def _transport_display_image(path: Path) -> tuple[np.ndarray, tuple[int, int, int]]:
+    """Remap exact state colours to redundant print-safe display encodings."""
+    image = np.asarray(plt.imread(path), dtype=np.float64).copy()
+    assert image.shape[:2] == (832, 1664)
+    rgb = image[..., :3]
+    distance = np.linalg.norm(rgb[..., None, :] - TRANSPORT_SOURCE_RGB, axis=-1)
+    winner = np.argmin(distance, axis=-1)
+    classified = np.min(distance, axis=-1) < (30.0 / 255.0)
+    masks = tuple(classified & (winner == state) for state in range(3))
+    counts = tuple(int(np.count_nonzero(mask)) for mask in masks)
+    assert counts[0] > 450_000 and counts[1] > 20_000 and counts[2] > 35_000
+
+    for state, mask in enumerate(masks):
+        rgb[mask] = TRANSPORT_DISPLAY_RGB[state]
+
+    yy, xx = np.indices(classified.shape)
+    diagonal = ((xx + yy) % 18) < 3
+    cross = (((xx + yy) % 18) < 2) | (((xx - yy) % 18) < 2)
+    rgb[masks[1] & diagonal] = 0.92
+    rgb[masks[2] & cross] = 0.78
+
+    # A dark one-pixel interior boundary remains visible when color is removed.
+    for mask in masks:
+        interior_edge = mask & (
+            ~np.roll(mask, 1, axis=0)
+            | ~np.roll(mask, -1, axis=0)
+            | ~np.roll(mask, 1, axis=1)
+            | ~np.roll(mask, -1, axis=1)
+        )
+        rgb[interior_edge] = 0.08
+    return image, counts
+
+
+def _plot_transport_panel(ax: plt.Axes) -> tuple[int, int, int]:
+    image, counts = _transport_display_image(TRANSPORT_PATH)
+    ax.imshow(image, interpolation="lanczos")
+    ax.text(
+        0.012,
+        0.96,
+        "(c)",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=5,
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.5)
+    return counts
+
+
 def _plot_body_panel(ax: plt.Axes, body_triangles: np.ndarray) -> None:
     projected = body_triangles[:, :, (0, 2)]
     depth = body_triangles[:, :, 1].mean(axis=1)
     order = np.argsort(depth)
-    # A fixed stride preserves the exact outline while keeping the PDF compact.
-    chosen = order[::2]
-    norm = mpl.colors.Normalize(vmin=float(depth.min()), vmax=float(depth.max()))
-    colours = mpl.colormaps["Oranges"](0.35 + 0.55 * norm(depth[chosen]))
-    ax.add_collection(PolyCollection(projected[chosen], facecolors=colours, edgecolors="none", rasterized=True))
+    # Rasterization keeps the PDF compact while retaining every surface element.
+    chosen = order
+    ax.add_collection(
+        PolyCollection(
+            projected[chosen],
+            facecolors="#777777",
+            edgecolors="none",
+            rasterized=True,
+        )
+    )
     lower = projected.reshape(-1, 2).min(axis=0)
     upper = projected.reshape(-1, 2).max(axis=0)
     padding = 0.04 * (upper - lower)
@@ -233,17 +325,15 @@ def _plot_body_panel(ax: plt.Axes, body_triangles: np.ndarray) -> None:
     ax.set_aspect("equal")
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_title("(e) Body coupling", loc="left", fontweight="bold", pad=4.0)
     ax.text(
-        0.5,
-        0.025,
-        "56,024 elements  |  Level 2\nat every standpoint\nroute-tangent yaw",
+        0.04,
+        0.96,
+        "(e)",
         transform=ax.transAxes,
-        ha="center",
-        va="bottom",
-        fontsize=7.3,
-        linespacing=1.25,
-        bbox={"facecolor": "white", "edgecolor": "0.7", "linewidth": 0.45, "pad": 3.0},
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
         zorder=5,
     )
     for spine in ax.spines.values():
@@ -260,23 +350,24 @@ def _plot_configuration(
     vertices: np.ndarray,
     faces: np.ndarray,
     body_triangles: np.ndarray,
-) -> None:
+) -> tuple[int, int, int]:
     _configure_style()
-    fig = plt.figure(figsize=(7.16, 4.55), constrained_layout=False)
+    fig = plt.figure(figsize=(7.16, 4.15), constrained_layout=False)
     grid = fig.add_gridspec(
         2,
         12,
-        height_ratios=(1.0, 2.72),
-        left=0.065,
-        right=0.985,
-        bottom=0.095,
-        top=0.975,
-        hspace=0.08,
-        wspace=0.055,
+        height_ratios=(1.0, 2.15),
+        left=0.068,
+        right=0.992,
+        bottom=0.105,
+        top=0.988,
+        hspace=0.07,
+        wspace=0.08,
     )
-    _plot_panorama_panel(fig.add_subplot(grid[0, 0:4]), PHOTO_PATH, "(a) Registered panorama")
-    _plot_panorama_panel(fig.add_subplot(grid[0, 4:8]), SUPPORT_PATH, "(b) Traced support")
-    _plot_panorama_panel(fig.add_subplot(grid[0, 8:12]), MATERIAL_PATH, "(c) Material field")
+    _plot_panorama_panel(fig.add_subplot(grid[0, 0:4]), PHOTO_PATH, "(a)")
+    _plot_panorama_panel(fig.add_subplot(grid[0, 4:8]), SUPPORT_PATH, "(b)")
+    transport_ax = fig.add_subplot(grid[0, 8:12])
+    transport_counts = _plot_transport_panel(transport_ax)
 
     ax = fig.add_subplot(grid[1, 0:9])
     body_ax = fig.add_subplot(grid[1, 9:12])
@@ -297,16 +388,13 @@ def _plot_configuration(
         & (face_centres[:, 1] <= upper[1])
     )
     candidate_indices = np.flatnonzero(inside)
-    stride = max(1, int(np.ceil(candidate_indices.size / 55000)))
+    stride = max(1, int(np.ceil(candidate_indices.size / 22000)))
     selected = candidate_indices[::stride]
     plan_triangles = vertices[faces[selected]][:, :, :2]
-    height = face_centres[selected, 2]
-    height_norm = mpl.colors.Normalize(vmin=233.0, vmax=290.0, clip=True)
-    geometry_colours = mpl.colormaps["Greys"](0.18 + 0.48 * height_norm(height))
     ax.add_collection(
         PolyCollection(
             plan_triangles,
-            facecolors=geometry_colours,
+            facecolors="#E8E8E8",
             edgecolors="none",
             rasterized=True,
             zorder=1,
@@ -318,7 +406,7 @@ def _plot_configuration(
         LineCollection(
             source_segments,
             colors="#D55E00",
-            linewidths=1.15,
+            linewidths=1.05,
             alpha=0.94,
             capstyle="round",
             zorder=3,
@@ -328,7 +416,7 @@ def _plot_configuration(
         positions[:, 0],
         positions[:, 1],
         color="#0072B2",
-        linewidth=1.45,
+        linewidth=1.35,
         zorder=4,
     )
     ax.scatter(
@@ -364,36 +452,19 @@ def _plot_configuration(
         zorder=7,
     )
 
-    handles = [
-        Patch(facecolor="0.78", edgecolor="none", label="250 m support mesh"),
-        Line2D([0], [0], color="#D55E00", linewidth=1.6, label="Roofline source curve (502 elements)"),
-        Line2D(
-            [0],
-            [0],
-            color="#0072B2",
-            linewidth=1.4,
-            marker="o",
-            markerfacecolor="white",
-            markeredgecolor="#0072B2",
-            markersize=4.0,
-            label="Fixed pedestrian route (22 standpoints)",
-        ),
-    ]
-    ax.legend(handles=handles, loc="upper left", frameon=True, framealpha=0.96, edgecolor="0.6")
-    ax.text(
-        0.012,
-        0.018,
-        f"Route length {distance[-1]:.1f} m  |  Source support 267.2 m",
-        transform=ax.transAxes,
-        ha="left",
-        va="bottom",
-        fontsize=7.1,
-        bbox={"facecolor": "white", "edgecolor": "0.65", "linewidth": 0.45, "pad": 2.5},
-        zorder=10,
-    )
     _plot_body_panel(body_ax, body_triangles)
 
-    ax.set_title("(d) Simulation configuration", loc="left", fontweight="bold", pad=4.0)
+    ax.text(
+        0.012,
+        0.975,
+        "(d)",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=12,
+    )
     ax.set_xlabel("East relative to site anchor (m)")
     ax.set_ylabel("North relative to site anchor (m)")
     ax.set_xlim(lower[0], upper[0])
@@ -407,8 +478,7 @@ def _plot_configuration(
 
     fig.savefig(
         OUTPUT_PDF,
-        bbox_inches="tight",
-        pad_inches=0.02,
+        dpi=300,
         metadata={
             "Title": "Prague city-exposure simulation configuration",
             "Creator": "configuration.py",
@@ -419,11 +489,10 @@ def _plot_configuration(
     fig.savefig(
         OUTPUT_PNG,
         dpi=300,
-        bbox_inches="tight",
-        pad_inches=0.02,
         metadata={"Title": "Prague city-exposure simulation configuration"},
     )
     plt.close(fig)
+    return transport_counts
 
 
 def _write_manifest(
@@ -432,11 +501,13 @@ def _write_manifest(
     positions: np.ndarray,
     distance: np.ndarray,
     source_summary: dict[str, Any],
+    transport_counts: tuple[int, int, int],
 ) -> None:
     roles = {
         PHOTO_PATH: "registered source panorama, exact publication-pipeline panel",
         SUPPORT_PATH: "exact traced-support publication-pipeline panel",
-        MATERIAL_PATH: "projection-aligned all-camera material-posterior display panel",
+        MATERIAL_PATH: "authenticated upstream material-posterior display; not shown after transport-state replacement",
+        TRANSPORT_PATH: "exact final host-gated transport state shown in panel (c)",
         MESH_PATH: "current 250 m Prague transport support mesh, with visual-only plan-view subsampling",
         BODY_PATH: "current campaign anatomical body surface",
         LOCATIONS_PATH: "current sealed fixed-route positions, body yaws, and route distances",
@@ -456,7 +527,7 @@ def _write_manifest(
         "schema_version": "prague_configuration_figure_assets_v1",
         "figure_scope": (
             "early physical configuration: registered image evidence, transport support and "
-            "material field, roofline source support, fixed pedestrian route, and body coupling"
+            "transport state, roofline source support, fixed pedestrian route, and body coupling"
         ),
         "site": "prague_staromestske",
         "source_assets": source_assets,
@@ -502,7 +573,16 @@ def _write_manifest(
                 "visible in panel (b) and transport uses all 664619 faces"
             ),
             "roofline_and_route": "all coordinates shown without smoothing in local ENU metres",
-            "body_inset": "orthographic x-z projection of the exact surface, every second triangle for compact PDF",
+            "body_inset": "orthographic x-z projection of all surface elements; rasterized for compact PDF",
+            "transport_state_print_encoding": {
+                "source_pixel_counts": list(transport_counts),
+                "classification_rule": "nearest exact render state colour within Euclidean RGB distance 30/255",
+                "atlas_interface": "light blue solid fill",
+                "nonblocking_woody_vegetation": "dark green fill with diagonal light stripes",
+                "geometric_fallback": "dark purple fill with light crosshatch",
+                "boundaries": "dark one-pixel interior edge",
+                "role": "display-only redundant colour, luminance, pattern, and edge encoding; categorical state is unchanged",
+            },
         },
         "excluded_assets": [
             {
@@ -528,7 +608,7 @@ def main() -> None:
     source_starts, source_ends, source_summary = _load_source_curve()
     vertices, faces = _load_binary_triangle_ply()
     body_triangles = _load_binary_stl()
-    _plot_configuration(
+    transport_counts = _plot_configuration(
         positions,
         distance,
         yaws,
@@ -538,7 +618,7 @@ def main() -> None:
         faces,
         body_triangles,
     )
-    _write_manifest(contract, authentication, positions, distance, source_summary)
+    _write_manifest(contract, authentication, positions, distance, source_summary, transport_counts)
 
 
 if __name__ == "__main__":

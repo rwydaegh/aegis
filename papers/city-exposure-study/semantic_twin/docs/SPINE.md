@@ -40,7 +40,7 @@ normalized per unit active-source density and per unit EIRP. Across the five
 selected routes, the median normalized whole-body SAR differs by a factor of
 13.34. The median finite multipath surplus is 0.721 to 1.534 dB. Six standpoints
 have no direct or order-1 specular contribution. First-diffuse transport carries
-the complete retained result at those points. Central route statistics are
+the only nonzero modeled contribution at those points. Central route statistics are
 stable at 16 replicas, but the lower tails in Mexico City and Tokyo remain less
 stable.
 
@@ -50,14 +50,14 @@ stable.
 - Sites: Korenmarkt, Prague, Madrid, Mexico City, and Tokyo Hachiko
 - Empirical unit: one standpoint on a fixed `provider_corridor_v1` route
 - Total standpoints: 73
-- Geometry: 250 m photogrammetric support mesh
+- Geometry: 250 m-radius photogrammetric support mesh
 - Materials: panorama-derived atlas on the original support mesh
 - Source support: observed route-aligned roofline
 - Source scaling: per unit \(\rho_A P_{\mathrm{EIRP}}\)
 - Source weights: physical three-dimensional roofline arc length
 - Transport: exact direct, exact order-1 specular, and first-diffuse next-event
   estimation
-- Sampling: 200,000 IID primary rays and 4,096 passive output directions
+- Sampling: 200,000 IID primary rays and 4,096 fixed first-diffuse output cells
 - Replicas: seeds 7 through 22, with looks at 4, 8, 12, and 16
 - Body: Duke, 56,024 surface elements, fixed route-tangent yaw
 - Route statistic: empirical distribution over each fixed route
@@ -67,28 +67,19 @@ deployment exposure, or regulatory compliance. It does not solve higher
 specular orders or a diffuse-to-specular suffix. It does not propagate geometry,
 material, route, source, or body uncertainty.
 
-## OJCOMS special-issue fit
+## IEEE Access fit
 
-The paper fits the special issue through **multi-modal sensor fusion for wireless
-perception** and a **human-centric physical endpoint**. Frozen vision models
-extract entity and material evidence from street panoramas. Registration binds
-that evidence to city geometry. The resulting scene supports directional
-propagation and body coupling along a pedestrian route.
+The paper is a regular IEEE Access Research Article. Its scope combines urban
+wireless propagation, image-informed scene construction, and radio-frequency
+dosimetry. Street imagery supplies material evidence, city geometry supplies the
+transport surface, and the route calculation supplies body endpoints. This is a
+multidisciplinary engineering method with a five-site application.
 
-The paper does not contain agentic AI. It must not pretend otherwise. It also
-does not claim a real-time or distributed digital twin. The scope statement is
-therefore narrow: AI-based visual evidence and geometric data are fused to form
-an auditable wireless scene, and that scene is used to compute route-conditioned
-body exposure.
-
-The [official special-issue call](https://www.comsoc.org/publications/journals/ieee-ojcoms/cfp/orchestrating-computing-communication-and-agentic-ai-human)
-lists “Multi-Modal Sensor Fusion and Knowledge Distillation for Robust Wireless
-Perception” among its topics. The manuscript submission deadline is 15 August
-2026. The [OJCOMS author policy](https://www.comsoc.org/publications/journals/ieee-ojcoms/policies-guidelines)
-has no page limit, but manuscripts of 25 pages or fewer are classified as
-original manuscripts. A graphical abstract is also required for peer review.
-The working target remains 11 to 13 main-text pages, plus references and
-supplementary material, because a shorter paper serves this result better.
+The paper does not contain agentic AI and does not need an AI theme. It also does
+not claim a real-time or distributed digital twin. The manuscript uses the
+official IEEE Access template. The abstract remains between 150 and 250 words,
+and the working paper remains below the journal's recommended 20-page length.
+A graphical abstract is prepared with the final files.
 
 ## Abstract plan
 
@@ -156,11 +147,10 @@ of the authors’ knowledge, this is the first route-level body-exposure study t
 combine registered street imagery with a roofline source measure and an explicit
 first-material transport decomposition.”
 
-### I5. Paper map
+### I5. Introduction close
 
-Use one short paragraph. Configuration defines the data and routes. Method
-defines the source, transport, and body endpoints. Results report validation and
-the five campaigns. Discussion states the interpretation and limits.
+Close after the contributions. Do not add a paper-map paragraph. This follows
+the author's recent BioEM-derived style while keeping the Introduction short.
 
 ## II. Configuration and evidence
 
@@ -258,7 +248,7 @@ of the replica-mean body field. Direction remains explicit until body coupling.
 
 ### M5. Sampling and route statistics
 
-State 200,000 IID primary rays, 4,096 passive output directions, seeds 7 through
+State 200,000 IID primary rays, 4,096 fixed first-diffuse output cells, seeds 7 through
 22, and looks at 4, 8, 12, and 16. Explain that the 4,096 cells are outputs, not
 launch strata. Define each route curve as an empirical distribution over its
 fixed standpoints with plotting positions \((\mathrm{rank}-0.5)/n\). Explain in
@@ -293,10 +283,10 @@ within-route spread at Mexico City and Tokyo.
 
 ### R4. Transport components
 
-Introduce Fig. 5. Direct transport is largest at 67 nonshadowed points. Exact
+Use Fig. 4(b). Direct transport is largest at 67 nonshadowed points. Exact
 order-1 specular is never the largest component. First diffuse carries the
-complete retained result at all six shadowed points. Across all 73 points, the
-pooled median shares are 77.79% direct, 20.73% order-1 specular, and 0.451%
+only nonzero modeled contribution at all six shadowed points. Across all 73 points, the
+pooled median whole-body-SAR shares are 77.662% direct, 21.391% order-1 specular, and 0.419%
 first diffuse. State clearly that the diffuse median does not describe the six
 shadowed points.
 
@@ -320,7 +310,7 @@ For Madrid, the atlas changes the route-median normalized whole-body SAR by
 +0.249 dB. Its q10 and q90 changes are +0.233 and +0.269 dB. For Mexico City,
 the corresponding changes are -0.158, +24.84, and +0.104 dB. The very large
 Mexico City q10 change comes from the three shadowed points, where first-diffuse
-transport is the complete retained result and both alternatives are near zero.
+transport is the only nonzero modeled contribution and both alternatives are near zero.
 The direct term is identical in every paired run. The component split changes
 much more than the central total. In Madrid, the route-median specular term is
 1.89 dB higher and the first-diffuse term is 12.43 dB lower with the atlas.

@@ -1,0 +1,16 @@
+paper_id: "city-exposure-study"
+journal: "IEEE Access"
+papermaker_version: "0.1.0"
+
+overrides:
+  abstract_word_count: [150, 250]
+  acronyms_redefine_in_intro: true
+  bib_style: manual_bibitem
+  section_case: sentence
+  paragraph_topic_sentence_required: false
+
+litreview:
+  budgets:
+    medium_max_papers: 30
+    high_max_papers: 15
+    highest_max_papers: 10

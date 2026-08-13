@@ -138,28 +138,41 @@
   "outputs": {
     "pdf": {
       "path": "validation.pdf",
-      "sha256": "06dd8bcee47f2c74b0ba4e171935c8c3804f66299b32bca35ee7d901944b86a4",
+      "sha256": "bea214ff29b6f2d3bbb0812bbcbffc7a3904048a013cf7e55b6cca4c37429f25",
       "page_size": "515.52 x 185.76 pts",
       "contains_raster_images": false,
       "fonts_embedded": true,
+      "contains_type3_fonts": false,
+      "font_types": [
+        "CID TrueType"
+      ],
       "fonts": [
-        "BQAMIS+LMMathItalic7-Regular",
-        "BQAMIS+LMMathSymbols7-Regular",
-        "BQAMIS+LMRoman6-Regular",
-        "BQAMIS+LMRoman7-Regular",
-        "BQAMIS+LMRoman8-Regular",
-        "BQAMIT+LMRoman8-Bold",
-        "BQAMIZ+LMMathSymbols6-Regular"
+        "CJTTVH+STIXGeneral-Bold",
+        "DBVCNN+Cmr10",
+        "DGROAQ+STIXGeneral-Regular",
+        "DOIIOB+Cmmi10",
+        "FPYHOW+Cmsy10",
+        "GHVTJQ+STIXGeneral-Regular"
       ]
     },
     "png": {
       "path": "validation.png",
-      "sha256": "1344c1477a562c21b8b51523c1964d592bb02e2fa9b702876005e80820a10431",
+      "sha256": "05331dece4855dcd3852bc22690d0fcfa9c6dc589d229e672ea00c8989e9aed4",
       "dimensions_pixels": [
         2148,
         774
       ],
       "rasterization_dpi": 300
     }
+  },
+  "generator": {
+    "path": "make_validation.py",
+    "sha256": "352e771cc41d545706292bb8b6cfeddafbadd22bc4a6931e4eca26529826e94a",
+    "style": [
+      "science",
+      "ieee",
+      "no-latex"
+    ],
+    "width_inches": 7.16
   }
 }

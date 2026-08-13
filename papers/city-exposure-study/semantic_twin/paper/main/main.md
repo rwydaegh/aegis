@@ -1,0 +1,561 @@
+<!-- AUTO_BEGIN: assembled -->
+\documentclass{ieeeaccess}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{url}
+
+\vol{16}
+\year{2026}
+
+\graphicspath{{../figures/}{figures/}}
+
+\newcommand{\rhoA}{\rho_{\mathrm{A}}}
+\newcommand{\Peirp}{P_{\mathrm{EIRP}}}
+\newcommand{\wbsar}{\mathrm{SAR}_{\mathrm{wb}}}
+
+\begin{document}
+
+% PROVISIONAL AUTHOR METADATA: Robin-only draft pending final author confirmation.
+% Publication history and DOI are supplied after acceptance.
+% FUNDING: insert the confirmed sponsor statement with \tfootnote before submission.
+\history{}
+\doi{}
+
+\title{Image-Informed Urban Propagation and Route-Level Body Exposure at 15 GHz}
+
+\author{\uppercase{Robin Wydaeghe}\authorrefmark{1}}
+
+\address[1]{WAVES Research Group, Department of Information Technology,
+Ghent University--imec, Technologiepark-Zwijnaarde 126, 9052 Ghent, Belgium
+(e-mail: robin.wydaeghe@ugent.be)}
+
+\markboth
+{R. Wydaeghe: Image-Informed Urban Propagation and Route-Level Body Exposure}
+{R. Wydaeghe: Image-Informed Urban Propagation and Route-Level Body Exposure}
+
+\corresp{Corresponding author: Robin Wydaeghe
+(e-mail: robin.wydaeghe@ugent.be).}
+
+\begin{abstract}
+Street-level radiofrequency exposure at 15 GHz depends on the route geometry,
+surface materials, source support, and body orientation. This study uses
+registered street panoramas and a 250 m-radius photogrammetric support mesh to assign
+material evidence around five selected pedestrian routes. A common source
+measure sets the expected source count from areal density and weights the
+observed route-aligned roofline by physical arc length. All exposure values are
+normalized per unit areal density times effective isotropic radiated power.
+Transport has exact direct, exact first-order specular, and stochastic
+first-diffuse terms. Each stochastic first-diffuse path ends at that
+interaction.
+The directional fields are coupled to a 56,024-element Duke body surface. The
+five routes contain 73 standpoints. Each standpoint uses 16 independent
+replicas, 200,000 primary rays per replica, and 4,096 fixed first-diffuse angular cells. In
+a controlled open-square case, the maximum bounced-term difference between the
+adjoint estimator and deterministic quadrature is 0.0616 dB, and the maximum
+total-transport difference between the adjoint and forward tracers is 0.0344
+dB. The route medians of normalized whole-body specific
+absorption rate differ by a factor of 13.34. Direct transport is the largest
+term at all 67 nonshadowed standpoints. First-diffuse transport gives the only
+nonzero modeled contribution at six shadowed standpoints. The maximum 12-to-16-replica change
+in total transfer is 0.0436 dB across the five sites, although lower-tail
+estimates in Mexico City and Tokyo are less stable. The result is a conditional
+comparison of five selected routes, not a city ranking or a deployed-network
+estimate.
+\end{abstract}
+
+\begin{keywords}
+Body dosimetry, image-informed propagation, ray tracing, street imagery, urban
+propagation, whole-body specific absorption rate.
+\end{keywords}
+
+\titlepgskip=-21pt
+\maketitle
+
+\section{Introduction}\label{sec:introduction}
+
+\IEEEPARstart{U}{rban} propagation can change over a few meters along a
+pedestrian route. A person can move from direct visibility of a roofline to a
+region where buildings block the direct field and reflected power arrives from
+another direction. The surface materials then affect how much power is returned
+to the street~\cite{itu2040,vitucci}. This local variation also matters after propagation.
+Whole-body absorption depends on the arrival direction and on the orientation of
+the body, so one incident-power value at one receiver position does not describe
+exposure along a route. A route calculation must retain position and direction
+until the field is coupled to the body~\cite{icnirp}.
+
+Urban radio ray tracing provides detailed paths between specified transmitters
+and receivers~\cite{sionna}. It has been used for city-scale downlink exposure
+with base-station locations from public deployment records~\cite{leeman}, and in
+hybrid propagation and anatomical dosimetry calculations along an outdoor user
+path~\cite{wydaeghe2026}. Stochastic site models provide a different description
+when individual transmitters are not fixed~\cite{wiame}, while normalized body
+coefficients separate incident fields from later exposure
+calculations~\cite{varsier}. Together, these studies include deterministic urban
+transport, spatial source models, and body coupling. Because these studies use
+different source assumptions, their reported quantities are not directly
+comparable without a common source law.
+
+Street imagery and semantic scene models can supply attributes that are absent
+from an untextured city mesh. The Vistas dataset provides a street-scene
+taxonomy for dense semantic segmentation~\cite{vistas}. Kamari \emph{et al.}
+segment street-level images, project the resulting material classes onto city
+geometry, and use that geometry in millimeter-wave ray tracing~\cite{mmsv}.
+Xia \emph{et al.} use semantic point-cloud classification and detailed scene
+reconstruction for outdoor urban ray tracing at 2.8~GHz~\cite{xia2024}.
+Image-informed wireless scene construction is therefore established. The
+present work does not claim semantic segmentation, material classification, or
+image-to-geometry projection as new. It uses these operations to form a
+traceable material surface around fixed pedestrian routes, with an explicit
+fallback where the image evidence is absent or refused.
+
+The calculation considered here requires the established parts in one declared
+model. Registered panoramas must refer to the same city geometry that supports
+the propagation calculation. A source model must remain fixed across sites, and
+its physical scale must be separate from the numerical source quadrature.
+Direct, specular, and diffuse power must remain separate until their arrival
+directions are coupled to the body. The method in this paper meets these
+requirements with a panorama-derived material surface, a route-aligned roofline
+source measure, and a transport model that stops after the first diffuse material
+interaction. This combination defines a conditional comparison of local scenes
+without treating the available standpoints as a population sample or the
+roofline sources as a measured deployment. To the best of the authors'
+knowledge, prior work has not combined registered street panoramas, a common roofline source law, component-resolved
+first-material transport, and directional body coupling along fixed routes.
+
+The study applies this method at 15~GHz to five selected routes with 73 fixed
+standpoints. Each result is normalized per unit active-source areal density and
+per unit equivalent isotropically radiated power. The retained transport contains
+the exact direct term, exact one-reflection specular term, and the first diffuse
+interaction evaluated by next-event estimation. It contains no higher specular
+order and no path continuation after a diffuse interaction. The reported route
+distributions are therefore results for five fixed routes under this source and
+transport model. They are not estimates of population exposure, deployed-network
+exposure, or a ranking of the five cities.
+
+The contributions are as follows.
+\begin{enumerate}
+  \item A scene-construction method binds registered panorama
+  evidence to the transport mesh. Every image-derived assignment retains its
+  provenance, and unobserved or refused regions retain a declared geometric
+  fallback.
+
+  \item A normalized roofline source model and transport calculation preserve
+  direct, one-reflection specular, and first-diffuse power and
+  direction until whole-body coupling.
+
+  \item A five-site application reports fixed-route exposure distributions,
+  controlled first-diffuse validation, component closure, replica convergence,
+  and the retained transport at the six standpoints with no direct or
+  one-reflection specular contribution.
+\end{enumerate}
+
+\section{Configuration and Scene Evidence}
+\label{sec:configuration}
+
+The study configuration is shown in Fig.~\ref{fig:configuration}. Registered street panoramas supply surface evidence to a photogrammetric support mesh cropped to a 250\,m radius. They do not create or alter its geometry. The original mesh remains the transport surface, while the image evidence supplies the surface classes queried on that mesh. A route-visible roofline defines the source support. Fixed positions along a pedestrian route define the receiver locations. At each position, the anatomical body has a horizontal orientation set by the local route tangent.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/configuration/configuration.pdf}
+  \caption{Study configuration at Prague Old Town Square. The registered panorama in (a) is aligned with the traced support in (b). Panel (c) shows the surface classes supplied to transport: atlas interfaces, nonblocking woody vegetation, and the geometric fallback. In (d), orange marks roofline source support, filled squares mark registered panorama endpoints, and the arrow gives one route-tangent yaw. The calculation uses a 250\,m-radius support mesh, 502 roofline source elements, and 22 fixed standpoints. Panel (e) shows the anatomical body in neutral gray.}
+  \label{fig:configuration}
+\end{figure*}
+
+Table~\ref{tab:routes} lists the five selected routes. The standpoint counts and spans come from the sealed route records used for the five-site data set. Each route follows a connected corridor supported by registered panoramas, and the calculation samples fixed positions along that corridor. A panorama center constrains the route but is not, in general, an exposure standpoint. Therefore, panorama and standpoint counts need not agree. The 73 standpoints are fixed observations, not a random sample of pedestrians or places. Route distributions in this study are conditional on these five paths. The local route tangent also fixes body yaw, so a change in route definition would change both receiver position and orientation.
+
+\begin{table}[!t]
+  \caption{Five fixed routes and prepared-scene numerical campaign times}
+  \label{tab:routes}
+  \centering
+  \begin{tabular}{lrrr}
+    \hline
+    Site & Standpoints & Route span (m) & Wall time (s) \\
+    \hline
+    Korenmarkt & 10 & 49.04 & 29.79 \\
+    Prague & 22 & 119.39 & 69.02 \\
+    Madrid & 14 & 73.47 & 40.70 \\
+    Mexico City & 11 & 60.79 & 30.92 \\
+    Tokyo Hachiko & 16 & 87.38 & 50.11 \\
+    \hline
+    Total & 73 & 390.07 & 220.54 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+The two image models have separate roles. A dense Mask2Former model uses the Vistas street-scene taxonomy to assign one object class to every image pixel~\cite{mask2former,vistas}. This pass distinguishes, for example, buildings, road surfaces, people, vehicles, and vegetation. A promptable SAM 3 pass then tests radio-frequency material and vegetation concepts within object regions that can support them~\cite{sam3}. Thus, the dense pass supplies the object partition, while the promptable pass resolves compatible parts of that partition along the material axis. Registered camera locations and orientations project both forms of evidence onto the visible support surface. The projected observations are fused in a surface atlas and remain linked to the original support mesh. Image evidence changes a structural surface only when its object and material evidence is compatible and decisive. Evidence that is absent or does not pass these conditions leaves the declared geometry-based fallback unchanged. The prompt catalogue, registration gates, refusal categories, and fusion rules are given in the supplementary material.
+
+Figure~\ref{fig:flowchart} shows the computation and its audit boundary. A sealed manifest binds the registered evidence, material surface, transport mesh, route, source curve, body, sampler, and transport model before execution. The transport calculation keeps direct, first-order specular, and first-diffuse contributions separate until body coupling. Only matching files enter the five-site data set. The five manifests contain 210 verified entries. Across the resulting 1,168 directional body fields, the largest additive-closure residual is $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/flowchart/flowchart.pdf}
+  \caption{Computation and audit boundary. Registered panorama evidence and the support mesh give the fused material surface. The fixed route and its visible roofline give receiver positions and source support. Transport retains the exact direct term, the exact first-order specular term, and the first-diffuse term. Direction-aware body coupling then gives fixed-route exposure distributions. A sealed manifest binds the inputs before any result enters the five-site data set.}
+  \label{fig:flowchart}
+\end{figure*}
+
+\section{Route-Conditioned Exposure Method}
+\label{sec:method}
+
+The calculation is conditioned on a fixed route, support mesh, material surface, and roofline source curve. Every standpoint uses 15~GHz and a crop with radius $R_{\mathrm{crop}}=250$~m, which gives $A_{\mathrm{crop}}=\pi R_{\mathrm{crop}}^2=196{,}349.54$~m$^2$. The receiver position $\mathbf{x}$ is also the reciprocal ray origin and body reference point. The body yaw follows the local route tangent. Index $i$ denotes a numerical roofline element, $r_i(\mathbf{x})$ is its range to the receiver, and $\mathbf{r}$ denotes a body surface element. These assumptions remain fixed across replicas and sites.
+
+The source model separates physical source scale from numerical placement. Let $\rho_A$ be the expected active-site density and let $A_{\mathrm{crop}}$ be the crop area. For a roofline element with endpoints $\mathbf{p}_i$ and $\mathbf{p}_{i+1}$, $\ell_i$ is its physical three-dimensional arc length. The expected site count and the conditional source weights are
+\begin{equation}
+N_{\mathrm{site}}=\rho_A A_{\mathrm{crop}},
+\qquad
+p_i=\frac{\ell_i}{\sum_j \ell_j},
+\qquad
+\ell_i=\left\lVert\mathbf{p}_{i+1}-\mathbf{p}_i\right\rVert_2 .
+\label{eq:source-measure}
+\end{equation}
+Thus, $N_{\mathrm{site}}$ sets the physical scale, whereas $p_i$ distributes that scale over the observed route-aligned roofline. The number of numerical elements is not a source count. Horizontal projected length is an explicit sensitivity option and is not used in the baseline.
+
+An unobstructed reference keeps network scale separate from scene visibility. The reference includes the inverse-square geometry of the complete source curve:
+\begin{equation}
+D_{\mathrm{ref}}(\mathbf{x})=
+\sum_i\frac{p_i}{r_i(\mathbf{x})^2},
+\qquad
+S_{\mathrm{ref}}(\mathbf{x})=
+\frac{A_{\mathrm{crop}}D_{\mathrm{ref}}(\mathbf{x})}{4\pi} .
+\label{eq:reference-scale}
+\end{equation}
+No visibility test enters $D_{\mathrm{ref}}$. The reported transfer and body endpoints are normalized per unit $\rho_A P_{\mathrm{EIRP}}$. Multiplication by $\rho_A P_{\mathrm{EIRP}}$ gives a physical scale only for a deployment that follows the same conditional roofline source measure. Sources and interactions outside the crop are absent.
+
+The retained directional transfer has three nonoverlapping parts. Let $\mathcal{D}$ contain the visible direct paths, and let $\mathcal{S}_1$ contain the accepted order-1 all-specular paths. Their normalized masses are $\alpha_a=m_a^{(\mathrm{d})}/D_{\mathrm{ref}}$ and $\beta_b=m_b^{(\mathrm{s})}/D_{\mathrm{ref}}$. The first-diffuse estimate uses normalized cell masses $\widehat{\gamma}_q=\widehat{m}_q^{(\mathrm{f})}/D_{\mathrm{ref}}$. With $\delta_{\widehat{\mathbf{k}}}$ denoting a unit point mass in physical arrival direction $\widehat{\mathbf{k}}$, the directional measure is
+\begin{equation}
+\begin{aligned}
+\mu_{\mathbf{x}}={}&
+\sum_{a\in\mathcal{D}}\alpha_a\delta_{\widehat{\mathbf{k}}_a^{(\mathrm{d})}} \\
+&+\sum_{b\in\mathcal{S}_1}\beta_b\delta_{\widehat{\mathbf{k}}_b^{(\mathrm{s})}} \\
+&+\sum_{q=1}^{Q}\widehat{\gamma}_q\delta_{\widehat{\mathbf{k}}_q^{(\mathrm{f})}},
+\qquad Q=4096 .
+\end{aligned}
+\label{eq:first-material-transfer}
+\end{equation}
+The first two sums retain the exact directions and masses of the direct and order-1 specular paths. They are not projected onto the angular grid. Only first-diffuse power is accumulated in the $Q$ Fibonacci cells. This term uses next-event estimation at the first blocking material vertex~\cite{veach}. The material model combines unpolarized Fresnel power with a Rayleigh roughness factor. The remaining power enters a Lambertian diffuse term, and the components add incoherently. A sampled first-diffuse path stops at that interaction, and specular orders above one are absent. Nonblocking woody atlas cells pass rays without attenuation. The full laws and evaluated parameters are given in the supplementary material.
+
+Direction remains explicit until body coupling. For outward body-surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, define $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot(-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
+\begin{equation}
+\begin{aligned}
+\widetilde{S}_{\mathrm{ab}}(\mathbf{r},\mathbf{x})
+&\equiv\frac{S_{\mathrm{ab}}(\mathbf{r},\mathbf{x})}
+{\rho_A P_{\mathrm{EIRP}}}
+\\
+&=T_0S_{\mathrm{ref}}(\mathbf{x})\Bigg[
+\sum_{a\in\mathcal{D}}\alpha_a g(\mathbf{r},\widehat{\mathbf{k}}_a^{(\mathrm{d})}) \\
+&\hspace{5.8em}+\sum_{b\in\mathcal{S}_1}\beta_b g(\mathbf{r},\widehat{\mathbf{k}}_b^{(\mathrm{s})}) \\
+&\hspace{5.8em}+\sum_{q=1}^{Q}\widehat{\gamma}_q g(\mathbf{r},\widehat{\mathbf{k}}_q^{(\mathrm{f})})
+\Bigg] .
+\end{aligned}
+\label{eq:body-coupling}
+\end{equation}
+Here, $T_0$ is the normal-incidence power-transmission coefficient obtained from the IT'IS tissue parameters at 15~GHz~\cite{itis}. The AEGIS level-2 implementation applies this one-sided local-incidence coupling to the Duke anatomical mesh~\cite{christ2010,aegis}. Thus, $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For body-element area $A_{\mathbf{r}}$ and body mass $m_{\mathrm{body}}$, the normalized integrated endpoints are
+\begin{equation}
+\begin{aligned}
+\widetilde{P}_{\mathrm{abs}}(\mathbf{x})
+&\equiv\frac{P_{\mathrm{abs}}(\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
+\\
+&=\sum_{\mathbf{r}}A_{\mathbf{r}}\widetilde{S}_{\mathrm{ab}}(\mathbf{r},\mathbf{x}), \\
+\widetilde{\mathrm{SAR}}_{\mathrm{wb}}(\mathbf{x})
+&\equiv\frac{\mathrm{SAR}_{\mathrm{wb}}(\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
+\\
+&=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} .
+\end{aligned}
+\label{eq:body-endpoints}
+\end{equation}
+$\widetilde{P}_{\mathrm{abs}}$ has units m$^2$, and $\widetilde{\mathrm{SAR}}_{\mathrm{wb}}$ has units m$^2$~kg$^{-1}$.
+
+Each replica launches 200,000 independent and identically distributed primary rays per standpoint and accumulates first-diffuse power in 4,096 fixed Fibonacci output cells. The exact direct and specular atoms bypass this grid. The cells are not ray-launch strata. The calculations use 16 replicas with seeds 7 through 22 and retain cumulative looks after 4, 8, 12, and 16 replicas. Only the first-diffuse estimate varies between replicas. Scalar endpoints and body fields are averaged before route statistics are computed. Route quantiles use NumPy linear interpolation over equally weighted fixed standpoints. The plotted empirical distributions use positions $(\operatorname{rank}-0.5)/n$. These quantities describe a selected route and do not estimate a pedestrian population. Multipath surplus is computed only where direct transfer is positive. A zero-direct standpoint remains in the whole-body SAR distribution but has no finite surplus value.
+
+\section{Validation and Results}
+\label{sec:results}
+
+Table~\ref{tab:routes} defines the five fixed registered routes and their 73 standpoints. Every site uses the same 15~GHz frequency, 250~m-radius photogrammetric support mesh, and Duke body model with 56,024 surface elements, 72.4~kg mass, and route-tangent yaw. Each standpoint has 16 independent replicas with seeds 7 through 22. Each replica uses 200,000 IID primary rays and 4,096 fixed output directions for the first-diffuse term. The resulting 1,168 standpoint-replica fields contain 233.6 million primary rays. Numerical calculation time after scene preparation ranges from 29.79 to 69.02~s on one A6000 GPU. These times exclude acquisition, registration, depth estimation, and material-surface construction because the cold-stage timing record is incomplete.
+
+The campaign manifests bind 42 files per site, and all 210 recorded file hashes pass verification. The direct, exact order-1 specular, and first-diffuse fields sum to the stored total with a maximum absolute residual of $1.735\times10^{-18}$~m$^{-2}$ across all 1,168 fields. The GPU body-coupling result also agrees with the double-precision CPU reference to a maximum relative difference of $6.64\times10^{-16}$ in the verified benchmark. These checks establish artifact identity, additive closure, and numerical parity. They do not provide an external validation of the complete city model.
+
+The controlled comparison in Fig.~\ref{fig:controlled-validation} isolates the first-diffuse estimator before the city results. The open-square scene has 27 sources, six receivers, eight triangles, and one diffuse reflection. Specular reflection, refraction, and diffraction are absent. Deterministic surface quadrature uses 2,097,152 samples. The adjoint estimate uses 50,000 primary rays for each of four seeds, and Sionna RT provides an independent forward calculation with 50,000 samples per source for each of three seeds. The maximum bounced-transfer difference between the adjoint estimate and quadrature is 0.0616~dB. A separate audit of total transport gives a maximum adjoint-to-Sionna difference of 0.0344~dB. This total-transport value is not plotted in Fig.~\ref{fig:controlled-validation}, which shows one-reflection transfer and its error relative to quadrature. The comparison checks first-diffuse normalization, visibility, inverse-square loss, and cosine factors in this depth-1 scene. It does not cover the panorama-derived material surface, the exact specular term, or their combination in a city.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/validation/validation.pdf}
+\caption{Controlled validation of the first-diffuse transfer. (a) Deterministic surface quadrature, the adjoint estimate, and the independent Sionna RT forward calculation at six receivers. (b) Signed error relative to quadrature. Error bars give the standard error across four adjoint seeds and three Sionna seeds.}
+\label{fig:controlled-validation}
+\end{figure*}
+
+Figure~\ref{fig:route-distributions} contains the fixed-route empirical distributions and route-mean component shares, while Table~\ref{tab:route-results} gives the central summaries and finite multipath surplus. Normalized whole-body SAR is reported in m$^2$~kg$^{-1}$ per unit $\rho_A P_{\mathrm{EIRP}}$. A physical deployment value therefore requires multiplication by its areal source density and EIRP. Panel (a) includes all 73 standpoints and marks the six points with zero direct and zero order-1 specular transfer. Across the five selected routes, the ratio between the largest and smallest route medians is 13.34. This comparison is conditional on the selected routes and does not define a city ranking. Mexico City and Tokyo Hachiko have the widest within-route ranges and contain the deep lower tails.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/route_results/route_results.pdf}
+\caption{Normalized whole-body SAR on the five fixed routes. (a) Midpoint empirical CDFs include all 73 registered standpoints. Hollow triangles mark the six standpoints with zero direct and order-1 specular transfer. (b) Additive contributions to route-mean whole-body SAR. The routes are fixed case studies, not city or population samples.}
+\label{fig:route-distributions}
+\end{figure*}
+
+\begin{table*}[!t]
+\caption{Fixed-route exposure summary. Whole-body SAR quantiles are normalized per unit $\rho_A P_{\mathrm{EIRP}}$ and have units m$^2$~kg$^{-1}$. Surplus uses finite-direct points only. The last column is the maximum pointwise total-transfer change from 12 to 16 replicas.}
+\label{tab:route-results}
+\centering
+\begin{tabular}{lrrrrrr}
+\toprule
+Site & $q_{10}$ & $q_{50}$ & $q_{90}$ & Median surplus [dB] & \shortstack{Zero direct and\\order-1 specular} & \shortstack{Max total-transfer\\change [dB]} \\
+\midrule
+Korenmarkt & 0.057833 & 0.062045 & 0.068672 & 1.108 & 0 & 0.0000819 \\
+Prague & 0.012157 & 0.013073 & 0.014594 & 1.061 & 0 & 0.0001559 \\
+Madrid & 0.020913 & 0.022381 & 0.023171 & 1.534 & 0 & 0.0004083 \\
+Mexico City & $9.92\times10^{-7}$ & 0.129062 & 0.295798 & 0.721 & 3 & 0.043625 \\
+Tokyo Hachiko & $3.66\times10^{-5}$ & 0.009674 & 0.025200 & 0.828 & 3 & 0.019732 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+The component shares in Fig.~\ref{fig:route-distributions}(b) are additive shares of route-mean whole-body SAR. Direct transport is the largest body contribution at all 67 nonshadowed points. Exact order-1 specular transport is never the largest body contribution. Mexico City points 0, 1, and 3 and Tokyo Hachiko points 13, 14, and 15 have zero direct and zero order-1 specular transport. First-diffuse transport is the only nonzero modeled contribution at these six points. Across all 73 points, the componentwise pooled median whole-body SAR shares are 77.662\% direct, 21.391\% exact order-1 specular, and 0.419\% first diffuse. The three medians need not sum to 100\% because each is taken separately over the pooled standpoint set. The small first-diffuse median therefore does not describe the six shadowed points.
+
+The nested 12-to-16-replica comparison separates the central route statistic from the lower tail. Every route-median whole-body SAR changes by at most $5.90\times10^{-5}$~dB. The largest lower-decile point changes are 0.032226~dB in Mexico City and 0.017636~dB in Tokyo Hachiko. The maximum pointwise total-transfer changes in Table~\ref{tab:route-results} reach 0.043625 and 0.019732~dB at these two sites. At 16 replicas, their 90th-percentile total-transfer standard errors are 0.1461 and 0.0310~dB, respectively. Central route statistics are stable under the retained estimator. Individual lower-tail points in these two routes have greater relative uncertainty, so convergence is not established for every standpoint or for the complete lower tail. The complete convergence figure is provided in the supplementary material.
+
+A paired material-evidence control was completed for Madrid and Mexico City. The control replaces the panorama-derived atlas with the declared geometric fallback while retaining the mesh, route, roofline source measure, body, seeds, sampling budget, and transport topology. Each reported change is $10\log_{10}(x_{\mathrm{atlas}}/x_{\mathrm{fallback}})$. The atlas-to-fallback changes in normalized whole-body SAR at Madrid are $+0.233$, $+0.249$, and $+0.269$~dB for $q_{10}$, $q_{50}$, and $q_{90}$. The corresponding changes at Mexico City are $+24.84$, $-0.158$, and $+0.104$~dB. The large Mexico City $q_{10}$ change is set by its three shadowed points, where both paired totals are near zero and first diffuse is the only nonzero modeled contribution. The direct term is identical in every pair. At Madrid, the atlas changes the route-median specular component by $+1.89$~dB and the first-diffuse component by $-12.43$~dB, while the total median changes by only $+0.249$~dB. The control therefore measures sensitivity to the complete evidence layer, including its material parameters and nonblocking semantic state. It does not measure material accuracy or isolate reflectance alone. Pointwise and component-level comparisons are provided in the supplementary material.
+
+\section{Discussion}
+\label{sec:discussion}
+
+The factor of $13.34$ between the largest and smallest route medians shows that
+body exposure differs among the selected routes after the same source-density
+and EIRP normalization. This contrast includes the geometry, roofline support,
+surface evidence, and visibility conditions of each selected route. The empirical
+distribution for each site therefore describes only that fixed route and its
+declared standpoints. It does not estimate a city distribution or define a
+ranking of the five cities. This conditional analysis reports changes at
+pedestrian scale while keeping the statistical unit clear.
+
+The three modeled components explain the local changes within the route
+distributions. A direct path is present at 67 standpoints. The exact order-1
+specular term adds one surface reflection. The first-diffuse term connects the
+receiver to a source at the first blocking diffuse interaction. After body
+coupling, the first-diffuse contribution is small at most nonshadowed
+standpoints. However, the six remaining standpoints have zero direct and zero
+order-1 specular contributions. The first-diffuse contribution is the only
+nonzero modeled contribution at those points. Therefore, its small contribution
+at most nonshadowed positions does not make it dispensable at shadowed positions.
+
+The paired material control tests the effect of panorama evidence on the body
+results. The direct term is identical between the atlas and geometric
+cases, so the observed changes arise from the surface state used by the
+reflected and diffuse terms. In Madrid, the specular and first-diffuse component
+changes have opposite signs, while the route-median normalized
+whole-body SAR changes by $0.249$~dB. The Mexico City route median changes by
+$-0.158$~dB. Its much larger lower-tail ratio comes from three shadowed
+standpoints where both estimates are close to zero, and it is not a stable
+central effect. The paired cases differ in their material binding and in their
+treatment of woody canopy. The atlas case treats identified woody canopy as
+pass-through without attenuation because the scene has no registered canopy
+volumes. The comparison therefore measures sensitivity to both choices and does
+not establish the accuracy of the assigned materials.
+
+Several limits restrict the interpretation. The study covers five selected
+routes at 15~GHz, one body model, and one route-tangent body orientation. The
+reported scale is per unit areal source density and EIRP. Scaling to a specific
+deployment is valid only if its source positions follow the assumed conditional
+roofline measure. The transport model contains exact direct transport, exact
+order-1 specular transport, and one first-diffuse event. It stops at that
+diffuse event and omits all later interactions as well as higher-order specular
+paths. The controlled comparison validates the first-diffuse component in a
+depth-1 case. It does not validate the city calculations that also contain
+atlas materials and specular transport. The 16 replicas quantify estimator
+randomness. They do not propagate uncertainty in panorama registration,
+geometry, surface evidence, route choice, source placement, body shape, or body
+orientation. Finally, the repeated five-site computation takes less than
+70~s per prepared site on the tested GPU, but scene acquisition and
+construction take longer and do not yet have one complete timing record.
+
+The first priority is source calibration and validation of the city
+calculation. Calibration should use a measured site source distribution.
+Outdoor field measurements should then test the directional field before body
+coupling. Second, higher specular orders and paths after a diffuse event
+can be added through paired studies that report their change in the endpoints,
+variance, and computation time. Third, several routes at the same site can
+quantify route-selection variation before the site set is enlarged. Other
+frequencies, body models, and orientations can then test the remaining range of
+validity. Each extension should also report panorama evidence coverage on the
+surfaces reached by the modeled paths.
+
+\section{Conclusion}\label{sec:conclusion}
+
+This study combined registered street panoramas, a photogrammetric support mesh,
+roofline-conditioned source weights, and direction-aware body coupling to
+estimate normalized whole-body SAR along fixed pedestrian routes. Each result
+was normalized by $\rho_A P_{\mathrm{EIRP}}$. The transport model retained exact
+direct paths, exact order-1 specular paths, and the first diffuse event. In a
+controlled depth-1 case, the adjoint first-diffuse estimate had maximum
+bounced-transport errors of 0.0616\,dB against deterministic surface quadrature
+and 0.0621\,dB against Sionna RT forward tracing. The five scenes contained 73
+standpoints. Their route-median values differed by a factor of 13.34. Direct
+transport was largest at 67 nonshadowed points, while first-diffuse transport
+was the only nonzero modeled contribution at all six shadowed points.
+
+These results describe five selected routes at 15\,GHz per unit active-source
+density and EIRP. They do not rank cities or predict deployed-network exposure.
+The comparison is conditional on the fixed source law, scene evidence, Duke
+body, route-tangent yaw, and first-material transport boundary. The 16-replica
+checks showed stable central route statistics, although the shadowed lower tails
+remained less stable. The distributions have no population weighting across
+each urban area and have greater estimator uncertainty at locally shadowed
+positions.
+
+\section*{Data and Code Availability}
+
+The verified five-site data, manifests, analysis scripts, and figure
+scripts are retained with the study repository. A stable public archive with a
+versioned digital object identifier will be deposited before publication.
+Street panoramas and commercial photogrammetric tiles are governed by their
+providers' terms and are not redistributed. Their identifiers and the
+transformation manifests are retained to support reacquisition where the
+licenses permit it.
+
+\section*{Acknowledgment}
+
+OpenAI Codex~\cite{openai_codex} was used to draft and edit text in all
+manuscript sections and to assist with plotting code and manuscript checks. The author reviewed the
+generated text and code and verified the scientific claims, numerical values,
+references, and final text.
+
+\begin{thebibliography}{99}
+
+\bibitem{itu2040}
+International Telecommunication Union, ``Effects of building materials and
+structures on radio-wave propagation in the range of 1 MHz to 450 GHz,''
+Recommendation ITU-R P.2040-4, 2025.
+
+\bibitem{sionna}
+J.~Hoydis, F.~A\"it~Aoudia, S.~Cammerer, M.~Nimier-David, N.~Binder,
+G.~Marcus, and A.~Keller, ``Sionna RT: Differentiable ray tracing for radio
+propagation modeling,'' in \emph{Proc. IEEE Globecom Workshops}, 2023,
+pp. 317--321, doi: 10.1109/GCWkshps58843.2023.10465179.
+
+\bibitem{leeman}
+M.~Leeman, R.~Wydaeghe, J.~Van~der~Straeten, S.~Goegebeur, G.~Vermeeren, and
+W.~Joseph, ``City-scale spatio-temporal modeling of 5G downlink exposure of
+users and non-users by ray-tracing in a real urban environment,'' \emph{IEEE
+Access}, vol. 13, pp. 30894--30906, 2025,
+doi: 10.1109/ACCESS.2025.3541352.
+
+\bibitem{wydaeghe2026}
+R.~Wydaeghe, S.~Shikhantsov, G.~Vermeeren, L.~Martens, E.~Tanghe, and W.~Joseph,
+``Hybrid ray-tracing-QuaDRiGa/FDTD method for realistic 28 GHz exposure with 6G
+CF-MaMIMO in 3D outdoor environments,'' \emph{npj Wireless Technol.}, vol. 2,
+no. 1, Art. no. 13, 2026, doi: 10.1038/s44459-026-00031-4.
+
+\bibitem{wiame}
+C.~Wiame, S.~Demey, L.~Vandendorpe, P.~De~Doncker, and C.~Oestges, ``Joint data
+rate and EMF exposure analysis in Manhattan environments: Stochastic geometry
+and ray tracing approaches,'' \emph{IEEE Trans. Veh. Technol.}, vol. 73, no. 1,
+pp. 894--908, 2024, doi: 10.1109/TVT.2023.3307226.
+
+\bibitem{varsier}
+N.~Varsier, D.~Plets, Y.~Corre, G.~Vermeeren, W.~Joseph, S.~Aerts, L.~Martens,
+and J.~Wiart, ``A novel method to assess human population exposure induced by a
+wireless cellular network,'' \emph{Bioelectromagnetics}, vol. 36, no. 6,
+pp. 451--463, 2015, doi: 10.1002/bem.21928.
+
+\bibitem{mmsv}
+A.~Kamari, Y.~Chae, and P.~Pathak, ``mmSV: mmWave vehicular networking using
+Street View imagery in urban environments,'' in \emph{Proc. 29th Annu. Int.
+Conf. Mobile Comput. Netw.}, 2023, pp. 1--16,
+doi: 10.1145/3570361.3613291.
+
+\bibitem{mask2former}
+B.~Cheng, I.~Misra, A.~G.~Schwing, A.~Kirillov, and R.~Girdhar,
+``Masked-attention mask transformer for universal image segmentation,'' in
+\emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit.}, 2022,
+pp. 1290--1299.
+
+\bibitem{vistas}
+G.~Neuhold, T.~Ollmann, S.~Rota~Bul\`o, and P.~Kontschieder,
+``The Mapillary Vistas dataset for semantic understanding of street scenes,''
+in \emph{Proc. IEEE Int. Conf. Comput. Vis.}, 2017, pp. 5000--5009,
+doi: 10.1109/ICCV.2017.534.
+
+\bibitem{sam3}
+N.~Carion \emph{et al.}, ``SAM 3: Segment anything with concepts,''
+arXiv:2511.16719, 2025, doi: 10.48550/arXiv.2511.16719.
+
+\bibitem{xia2024}
+G.~Xia, C.~Zhou, F.~Zhang, Z.~Cui, C.~Liu, H.~Ji, X.~Zhang, Z.~Zhao, and
+Y.~Xiao, ``Path loss prediction in urban environments with Sionna-RT based on
+accurate propagation scene models at 2.8 GHz,'' \emph{IEEE Trans. Antennas
+Propag.}, vol. 72, no. 10, pp. 7986--7997, 2024,
+doi: 10.1109/TAP.2024.3451214.
+
+\bibitem{vitucci}
+E.~M.~Vitucci, V.~Degli-Esposti, F.~Mani \emph{et al.}, ``Tuning ray tracing for
+mm-wave coverage prediction in outdoor urban scenarios,'' \emph{Radio Sci.},
+vol. 54, no. 11, pp. 1112--1128, 2019,
+doi: 10.1029/2019RS006869.
+
+\bibitem{icnirp}
+International Commission on Non-Ionizing Radiation Protection, ``Guidelines for
+limiting exposure to electromagnetic fields (100 kHz to 300 GHz),'' \emph{Health
+Phys.}, vol. 118, no. 5, pp. 483--524, 2020,
+doi: 10.1097/HP.0000000000001210.
+
+\bibitem{christ2010}
+A.~Christ \emph{et al.}, ``The Virtual Family: Development of surface-based
+anatomical models of two adults and two children for dosimetric simulations,''
+\emph{Phys. Med. Biol.}, vol. 55, no. 2, pp. N23--N38, 2010,
+doi: 10.1088/0031-9155/55/2/N01.
+
+\bibitem{veach}
+E.~Veach, \emph{Robust Monte Carlo Methods for Light Transport Simulation}.
+Stanford, CA, USA: Stanford Univ., Ph.D. dissertation, 1997.
+
+\bibitem{aegis}
+R.~Wydaeghe, ``AEGIS: Absorbed power density on human bodies in wireless
+environments,'' Version 0.39.1, software, 2026.
+
+\bibitem{itis}
+P.~A.~Hasgall \emph{et al.}, ``IT'IS database for thermal and electromagnetic
+parameters of biological tissues,'' Version 4.2, 2024,
+doi: 10.13099/VIP21000-04-2.
+
+\bibitem{openai_codex}
+OpenAI, ``Codex CLI,'' \emph{OpenAI Documentation}, 2026. [Online]. Available:
+\url{https://learn.chatgpt.com/docs/codex/cli}. Accessed: Aug. 13, 2026.
+
+\end{thebibliography}
+
+% PROVISIONAL BIOGRAPHY: replace or extend after the final author list is set.
+\begin{IEEEbiographynophoto}{Robin Wydaeghe}
+received the B.Sc. and M.Sc. degrees in engineering physics from Ghent
+University, Ghent, Belgium, in 2019 and 2021, respectively. He is currently
+pursuing the Ph.D. degree in engineering physics with Ghent University. His
+research interests include computational electromagnetics, numerical assessment
+of human radiofrequency electromagnetic-field exposure, and propagation
+modeling for next-generation wireless networks.
+\end{IEEEbiographynophoto}
+
+\EOD
+
+\end{document}
+<!-- AUTO_END: assembled -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Aggregation notes (AI-owned)

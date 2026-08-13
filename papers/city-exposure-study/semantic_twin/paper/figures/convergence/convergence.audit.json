@@ -8,6 +8,11 @@
       "lower_tail_to_route_q50_ratio": 0.8959934266252744,
       "p90_standard_error_db_at_16": 0.00025817147731677683,
       "route_q50_abs_change_db_12_to_16": 5.903060058470832e-05,
+      "route_q50_abs_change_db_by_transition": {
+        "12_to_16": 5.903060058470832e-05,
+        "4_to_8": 0.00031198835294642726,
+        "8_to_12": 9.295574830852465e-05
+      },
       "standpoints": 10,
       "tail_status": "finite_direct_support",
       "zero_direct_standpoints": []
@@ -21,6 +26,11 @@
       "lower_tail_to_route_q50_ratio": 17.136629468238155,
       "p90_standard_error_db_at_16": 0.00034434383770933153,
       "route_q50_abs_change_db_12_to_16": 1.129869503847132e-05,
+      "route_q50_abs_change_db_by_transition": {
+        "12_to_16": 1.129869503847132e-05,
+        "4_to_8": 0.00046671106680986295,
+        "8_to_12": 0.00018910575196226986
+      },
       "standpoints": 14,
       "tail_status": "finite_direct_support",
       "zero_direct_standpoints": []
@@ -34,6 +44,11 @@
       "lower_tail_to_route_q50_ratio": 657.9810075081886,
       "p90_standard_error_db_at_16": 0.146098927284293,
       "route_q50_abs_change_db_12_to_16": 4.8977160445773606e-05,
+      "route_q50_abs_change_db_by_transition": {
+        "12_to_16": 4.8977160445773606e-05,
+        "4_to_8": 0.00012507908143741844,
+        "8_to_12": 0.00013098840811752275
+      },
       "standpoints": 11,
       "tail_status": "structural_zero_direct_present",
       "zero_direct_standpoints": [
@@ -52,6 +67,11 @@
       "lower_tail_to_route_q50_ratio": 18.603498486141284,
       "p90_standard_error_db_at_16": 0.00024392918841562519,
       "route_q50_abs_change_db_12_to_16": 9.08967708114676e-06,
+      "route_q50_abs_change_db_by_transition": {
+        "12_to_16": 9.08967708114676e-06,
+        "4_to_8": 6.851099812472489e-05,
+        "8_to_12": 2.936969446169013e-05
+      },
       "standpoints": 22,
       "tail_status": "finite_direct_support",
       "zero_direct_standpoints": []
@@ -65,6 +85,11 @@
       "lower_tail_to_route_q50_ratio": 317.1954876349487,
       "p90_standard_error_db_at_16": 0.030982958084244054,
       "route_q50_abs_change_db_12_to_16": 5.560101508359477e-05,
+      "route_q50_abs_change_db_by_transition": {
+        "12_to_16": 5.560101508359477e-05,
+        "4_to_8": 0.00018635651681189562,
+        "8_to_12": 0.00011544589950708126
+      },
       "standpoints": 16,
       "tail_status": "structural_zero_direct_present",
       "zero_direct_standpoints": [
@@ -88,6 +113,22 @@
       "Tokyo"
     ],
     "city_count": 5,
+    "figure_height_in": 2.62,
+    "figure_transitions": [
+      [
+        4,
+        8
+      ],
+      [
+        8,
+        12
+      ],
+      [
+        12,
+        16
+      ]
+    ],
+    "figure_width_in": 7.16,
     "launch_sampling": "iid",
     "looks": [
       4,
@@ -95,6 +136,7 @@
       12,
       16
     ],
+    "png_dpi": 300,
     "replicas": 16,
     "route_contract": "provider_corridor_v1",
     "seeds": [
@@ -115,6 +157,7 @@
       21,
       22
     ],
+    "style": "SciencePlots science with TeX-rendered embedded Latin Modern fonts",
     "transition_shown": [
       12,
       16
@@ -126,24 +169,42 @@
     "route_q50_abs_change_db_12_to_16": "absolute change in the fixed-route q50 whole-body SAR between the nested 12- and 16-replica means, expressed in dB",
     "scope": "finite-replica uncertainty conditional on each fixed registered route; excludes route-selection and city-sampling uncertainty"
   },
+  "output_qa": {
+    "all_fonts_embedded": true,
+    "font_types": [
+      "Type 1"
+    ],
+    "pdf_page_inches": [
+      7.16,
+      2.62
+    ],
+    "pdf_page_points": [
+      515.52,
+      188.64
+    ],
+    "png_pixels": [
+      2148,
+      786
+    ],
+    "type_3_fonts": 0
+  },
   "outputs": {
     "pdf": {
-      "bytes": 114953,
-      "path": "convergence.pdf",
-      "sha256": "0e32135438f4c530ed2f9f8e92590ca7ffbd17d482baff8c4523b102ef084766"
+      "bytes": 167656,
+      "path": "convergence.pdf"
     },
     "png": {
-      "bytes": 79246,
+      "bytes": 161200,
       "path": "convergence.png",
-      "sha256": "9b31f8720fd169525b51edf47309cb7c11bf7eb61e4ee79d4a4cae3d2e47fe9e"
+      "sha256": "1779a9021e82e8f8db74e9bf54522e846a64f7435951974d770a02fc95496fae"
     }
   },
-  "schema_version": "five_city_convergence_figure_audit_v1",
+  "schema_version": "five_city_convergence_figure_audit_v2",
   "source": {
     "aggregate_schema_version": "roofline_multicity_results_v1",
     "numeric_source_count": 1,
     "path": "outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json",
     "sha256": "d530a056bfa7be9cf1966a7169cea58b0fcae48dc9cab89ab62ae4577aa765bd"
   },
-  "suggested_caption": "Route-median exposure is stable by the 12-to-16-replica step, while shadow tails remain less stable in Mexico City and Tokyo Hachiko. Circles show the absolute change in fixed-route median whole-body SAR; triangles show the largest change among standpoints in the final lower decile. Values are in dB and conditional on each registered route. Each affected route contains three zero-direct standpoints."
+  "suggested_caption": "Convergence over nested replica means. (a) The absolute change in fixed-route median whole-body SAR is at most 5.91e-5 dB in the 12-to-16-replica check. (b) Circles show that final central change. Triangles show the largest change among standpoints in the final lower decile. The Mexico City and Tokyo Hachiko lower tails remain less stable, and each route contains three zero-direct standpoints. Values are conditional on each fixed registered route."
 }

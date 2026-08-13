@@ -1,0 +1,244 @@
+{
+  "claims": {
+    "controlled_depth1_validation": {
+      "docstring": "Controlled depth-1 validation values are recomputed from authenticated sidecars.",
+      "error": null,
+      "output": {
+        "adjoint_vs_forward_abs_error_db": {
+          "bounced_maximum": 0.06213970570928458,
+          "total_maximum": 0.03443936192255103
+        },
+        "adjoint_vs_quadrature_bounced_abs_error_db": {
+          "maximum": 0.061565053096781466,
+          "median": 0.024039060615950708
+        },
+        "forward_vs_quadrature_bounced_abs_error_db": {
+          "maximum": 0.022231233245833853,
+          "median": 0.0008604960835487314
+        },
+        "scope": "controlled open-square first-diffuse component validation"
+      },
+      "verified": true
+    },
+    "current_campaign_contract": {
+      "docstring": "The paper result is five authenticated 15 GHz fixed-route campaigns.",
+      "error": null,
+      "output": {
+        "authenticated_campaign_files": 210,
+        "body_surface_elements": 56024,
+        "cities": 5,
+        "city_replica_runs": 80,
+        "frequency_hz": 15000000000.0,
+        "normalization": "per unit rho_A P_EIRP",
+        "passive_output_cells": 4096,
+        "primary_rays": 233600000,
+        "standpoint_replica_fields": 1168,
+        "standpoints": 73
+      },
+      "verified": true
+    },
+    "directional_component_representation": {
+      "docstring": "Sealed shards distinguish direct/specular atoms from passive diffuse cells.",
+      "error": null,
+      "output": {
+        "all_specular": {
+          "atom_count_range": [
+            0,
+            1107
+          ],
+          "representation": "exact order-1 directional atoms"
+        },
+        "direct": {
+          "atom_count_range": [
+            0,
+            447
+          ],
+          "representation": "exact directional atoms"
+        },
+        "first_diffuse": {
+          "cell_capacity": 4096,
+          "nonzero_cell_count_range": [
+            542,
+            3471
+          ],
+          "representation": "nonzero passive angular output cells"
+        },
+        "launch_cells": false,
+        "standpoint_replica_rows": 1168
+      },
+      "verified": true
+    },
+    "five_city_wbsar_route_quantiles": {
+      "docstring": "Route q10, q50, and q90 values are recomputed from all 73 standpoints.",
+      "error": null,
+      "output": {
+        "cities": {
+          "Korenmarkt": {
+            "q10": 0.0578327438321708,
+            "q50": 0.06204518535491678,
+            "q90": 0.0686717408320388
+          },
+          "Madrid": {
+            "q10": 0.020913294077888667,
+            "q50": 0.02238105138497516,
+            "q90": 0.02317093976407998
+          },
+          "Mexico": {
+            "q10": 9.92187947769122e-07,
+            "q50": 0.12906154022429828,
+            "q90": 0.2957983257792987
+          },
+          "Prague": {
+            "q10": 0.012157461907945675,
+            "q50": 0.0130731658075402,
+            "q90": 0.014593757806466821
+          },
+          "Tokyo": {
+            "q10": 3.656217959315326e-05,
+            "q50": 0.009673886624732418,
+            "q90": 0.025200369144298053
+          }
+        },
+        "unit": "m^2 kg^-1 per unit rho_A P_EIRP"
+      },
+      "verified": true
+    },
+    "paired_material_evidence_control": {
+      "docstring": "Madrid and Mexico controls preserve the campaign except for the material layer.",
+      "error": null,
+      "output": {
+        "change_definition": "10 log10(atlas/geometric)",
+        "interpretation": "paired evidence-layer sensitivity, not a reflectance-only or accuracy test",
+        "madrid_component_q50_change_db": {
+          "all_specular": 1.888528380371959,
+          "first_diffuse": -12.431544270210049
+        },
+        "wbsar_route_quantile_change_db": {
+          "Madrid": {
+            "q10": 0.2333611403423212,
+            "q50": 0.24866405147308124,
+            "q90": 0.2686331876751526
+          },
+          "Mexico": {
+            "q10": 24.83505022714946,
+            "q50": -0.15810883480369037,
+            "q90": 0.10387367330083924
+          }
+        }
+      },
+      "verified": true
+    },
+    "pooled_median_wbsar_component_shares": {
+      "docstring": "Pooled component medians are rebuilt from all body-metric replica shards.",
+      "error": null,
+      "output": {
+        "note": "componentwise medians need not sum to 100 percent",
+        "reported_share_percent": {
+          "all_specular": 21.391,
+          "direct": 77.662,
+          "first_diffuse": 0.419
+        },
+        "share_percent": {
+          "all_specular": 21.390850539012177,
+          "direct": 77.66194473787252,
+          "first_diffuse": 0.41895042544439237
+        },
+        "standpoints": 73,
+        "statistic": "componentwise median of the 73 standpoint shares"
+      },
+      "verified": true
+    },
+    "raw_component_closure": {
+      "docstring": "Direct, specular, and diffuse fields close to total across all 1,168 fields.",
+      "error": null,
+      "output": {
+        "fields": 1168,
+        "maximum_absolute_residual_m_inv2": 1.734723475976807e-18
+      },
+      "verified": true
+    },
+    "replica_convergence_12_to_16": {
+      "docstring": "The final nested-replica change is authenticated for every fixed route.",
+      "error": null,
+      "output": {
+        "cities": {
+          "Korenmarkt": {
+            "lower_decile_worst_change_db": 5.2891030093640733e-05,
+            "maximum_total_transfer_change_db": 8.19350556661845e-05,
+            "p90_standard_error_db": 0.00025817147731677683,
+            "route_median_wbsar_change_db": 5.903060058470832e-05
+          },
+          "Madrid": {
+            "lower_decile_worst_change_db": 0.00019362155034890387,
+            "maximum_total_transfer_change_db": 0.000408320201322325,
+            "p90_standard_error_db": 0.00034434383770933153,
+            "route_median_wbsar_change_db": 1.129869503847132e-05
+          },
+          "Mexico": {
+            "lower_decile_worst_change_db": 0.03222604137500032,
+            "maximum_total_transfer_change_db": 0.04362524009941786,
+            "p90_standard_error_db": 0.146098927284293,
+            "route_median_wbsar_change_db": 4.8977160445773606e-05
+          },
+          "Prague": {
+            "lower_decile_worst_change_db": 0.00016909979381862688,
+            "maximum_total_transfer_change_db": 0.00015589567357771397,
+            "p90_standard_error_db": 0.00024392918841562519,
+            "route_median_wbsar_change_db": 9.08967708114676e-06
+          },
+          "Tokyo": {
+            "lower_decile_worst_change_db": 0.01763639109243898,
+            "maximum_total_transfer_change_db": 0.019731518973211258,
+            "p90_standard_error_db": 0.030982958084244054,
+            "route_median_wbsar_change_db": 5.560101508359477e-05
+          }
+        },
+        "transition": [
+          12,
+          16
+        ]
+      },
+      "verified": true
+    },
+    "route_median_contrast_factor": {
+      "docstring": "The largest and smallest selected-route medians differ by a factor of 13.34.",
+      "error": null,
+      "output": {
+        "factor": 13.341229355979571,
+        "largest_route_median": "Mexico",
+        "reported_factor": 13.34,
+        "scope": "contrast among five selected routes, not a city ranking",
+        "smallest_route_median": "Tokyo"
+      },
+      "verified": true
+    },
+    "six_shadowed_standpoints": {
+      "docstring": "Six points have zero direct and order-1 specular transport but positive diffuse transport.",
+      "error": null,
+      "output": {
+        "count": 6,
+        "finite_multipath_surplus_points": 67,
+        "largest_component_counts": {
+          "direct": 67,
+          "first_diffuse": 6
+        },
+        "standpoints": {
+          "Mexico": [
+            0,
+            1,
+            3
+          ],
+          "Tokyo": [
+            13,
+            14,
+            15
+          ]
+        }
+      },
+      "verified": true
+    }
+  },
+  "generated_at": "2026-08-13T23:28:30Z",
+  "git_sha": "e65df37d752d42dffac72075dfed2513ff2b7b1b",
+  "schema_version": 1
+}

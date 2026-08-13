@@ -1,6 +1,6 @@
 {
   "schema_version": "prague_configuration_figure_assets_v1",
-  "figure_scope": "early physical configuration: registered image evidence, transport support and material field, roofline source support, fixed pedestrian route, and body coupling",
+  "figure_scope": "early physical configuration: registered image evidence, transport support and transport state, roofline source support, fixed pedestrian route, and body coupling",
   "site": "prague_staromestske",
   "source_assets": [
     {
@@ -16,7 +16,12 @@
     {
       "path": "semantic_twin/outputs/propagation_viz/prague_360_pipeline_v2/panorama_pipeline_rf_material_atlas_(posterior_display).png",
       "sha256": "b94ed326ded0c85f0a8bda5ecc896878470fbe473f4d4e42f4d2279ba724ff53",
-      "role": "projection-aligned all-camera material-posterior display panel"
+      "role": "authenticated upstream material-posterior display; not shown after transport-state replacement"
+    },
+    {
+      "path": "semantic_twin/outputs/propagation_viz/prague_360_pipeline_v2/panorama_pipeline_final_transport_state.png",
+      "sha256": "f431244ff9c16118366d775f2415d8f74e26b75d3536f2079e20114f0184e7ec",
+      "role": "exact final host-gated transport state shown in panel (c)"
     },
     {
       "path": "semantic_twin/data/geometry/prague_staromestske/inhouse_leaf_250m_f64.ply",
@@ -81,7 +86,20 @@
     "panorama_panels": "exact 1664 x 832 source panels, uniformly resampled for layout only",
     "plan_view_mesh": "deterministic display-only face stride after spatial clipping. Exact support remains visible in panel (b) and transport uses all 664619 faces",
     "roofline_and_route": "all coordinates shown without smoothing in local ENU metres",
-    "body_inset": "orthographic x-z projection of the exact surface, every second triangle for compact PDF"
+    "body_inset": "orthographic x-z projection of all surface elements; rasterized for compact PDF",
+    "transport_state_print_encoding": {
+      "source_pixel_counts": [
+        494830,
+        23919,
+        41191
+      ],
+      "classification_rule": "nearest exact render state colour within Euclidean RGB distance 30/255",
+      "atlas_interface": "light blue solid fill",
+      "nonblocking_woody_vegetation": "dark green fill with diagonal light stripes",
+      "geometric_fallback": "dark purple fill with light crosshatch",
+      "boundaries": "dark one-pixel interior edge",
+      "role": "display-only redundant colour, luminance, pattern, and edge encoding; categorical state is unchanged"
+    }
   },
   "excluded_assets": [
     {
@@ -95,12 +113,12 @@
   ],
   "outputs": {
     "configuration.pdf": {
-      "sha256": "1017ff419006e5f756c6caa69822a58cfadd2774c136fb9a575adedf49d70dbc",
-      "bytes": 304089
+      "sha256": "7be65109c2568891c88fe8915b50cc4c970656393e418ff7bd0c9040e5b6a935",
+      "bytes": 1322081
     },
     "configuration.png": {
-      "sha256": "a438367c97d1b60fa3a893948e0183b88ef52352f53c38fe6387d3e1c676667e",
-      "bytes": 2096642
+      "sha256": "f64929034f5cc7c527d9f88ef0e8abcad904f5d8db43163a7dc9a63c6af4556c",
+      "bytes": 1627657
     }
   }
 }

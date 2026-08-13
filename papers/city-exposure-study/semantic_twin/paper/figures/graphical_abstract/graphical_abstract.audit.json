@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "figure": "IEEE Access graphical abstract",
+  "source_campaign": "semantic_twin/outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json",
+  "source_contract": "current_five_city_first_material_interaction",
+  "route_quantiles": [
+    {
+      "source_key": "Korenmarkt",
+      "label": "Korenmarkt",
+      "color": "#000000",
+      "standpoints": 10,
+      "q10": 0.0578327438321708,
+      "q50": 0.06204518535491678,
+      "q90": 0.0686717408320388
+    },
+    {
+      "source_key": "Prague",
+      "label": "Prague",
+      "color": "#E31A1C",
+      "standpoints": 22,
+      "q10": 0.012157461907945675,
+      "q50": 0.0130731658075402,
+      "q90": 0.014593757806466821
+    },
+    {
+      "source_key": "Madrid",
+      "label": "Madrid",
+      "color": "#00A600",
+      "standpoints": 14,
+      "q10": 0.020913294077888663,
+      "q50": 0.02238105138497516,
+      "q90": 0.02317093976407998
+    },
+    {
+      "source_key": "Mexico",
+      "label": "Mexico",
+      "color": "#0066B3",
+      "standpoints": 11,
+      "q10": 9.92187947769122e-07,
+      "q50": 0.12906154022429828,
+      "q90": 0.2957983257792987
+    },
+    {
+      "source_key": "Tokyo",
+      "label": "Tokyo",
+      "color": "#E66100",
+      "standpoints": 16,
+      "q10": 3.656217959315326e-05,
+      "q50": 0.009673886624732418,
+      "q90": 0.025200369144298053
+    }
+  ],
+  "output": {
+    "png": "graphical_abstract.png",
+    "pdf": "graphical_abstract.pdf",
+    "width_px": 660,
+    "height_px": 295,
+    "requested_dpi": 300,
+    "stored_dpi": [
+      299.9994,
+      299.9994
+    ],
+    "png_mode": "P",
+    "png_bytes": 14437,
+    "pdf_bytes": 35279,
+    "png_sha256": "3b7a5efffcd5c535add647524db1b7b21f9fd781a80aef197557b0bc13ec8ac8",
+    "pdf_sha256": "56fb9ac2da08521ea3302be6dbe4941a441c69b98ce7dbecb4e4a717ec21aa0a"
+  },
+  "checks": {
+    "exact_660_by_295_px": true,
+    "stored_dpi_within_one_percent": true,
+    "png_under_45_kib": true,
+    "quantized_palette": true,
+    "no_unsupported_data": true
+  },
+  "rendering": {
+    "style": [
+      "science",
+      "no-latex"
+    ],
+    "font": "STIXGeneral",
+    "palette_colors": 64
+  }
+}

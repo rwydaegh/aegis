@@ -1,0 +1,1 @@
+Registered panoramas provide material evidence for a common city surface. A fixed pedestrian route and roofline source support define the propagation problem. Direct, first-order specular, and first-diffuse fields are coupled to a directional body model. The five-site result reports the 10th, 50th, and 90th percentiles of normalized whole-body SAR.

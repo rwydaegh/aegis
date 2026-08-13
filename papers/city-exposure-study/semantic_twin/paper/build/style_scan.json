@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "n_leaves_scanned": 51,
+    "n_leaves_with_hits": 0,
+    "n_hits_total": 0,
+    "tier_counts": {
+      "A": 0,
+      "B": 0,
+      "C": 0,
+      "D": 0
+    },
+    "n_exempt_by_allowlist": 12,
+    "top_words_by_tier": {
+      "A": {},
+      "B": {},
+      "C": {},
+      "D": {}
+    },
+    "leaves_with_tier_ab": []
+  },
+  "leaves": []
+}

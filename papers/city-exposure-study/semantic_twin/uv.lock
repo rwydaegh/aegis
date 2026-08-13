@@ -33,6 +33,10 @@ baseline = [
     { name = "torchvision" },
     { name = "transformers" },
 ]
+paper = [
+    { name = "matplotlib" },
+    { name = "scienceplots" },
+]
 raycast = [
     { name = "embreex" },
     { name = "trimesh" },
@@ -55,6 +59,7 @@ requires-dist = [
     { name = "fast-simplification", specifier = "==0.1.13" },
     { name = "huggingface-hub", marker = "extra == 'baseline'", specifier = ">=0.34,<1" },
     { name = "mapbox-earcut", specifier = ">=1.0" },
+    { name = "matplotlib", marker = "extra == 'paper'", specifier = ">=3.10" },
     { name = "matplotlib", marker = "extra == 'test'", specifier = ">=3.10" },
     { name = "mcp", marker = "extra == 'agent'", specifier = ">=1.29,<2" },
     { name = "mitsuba", marker = "extra == 'test'", specifier = ">=3.8,<4" },
@@ -64,6 +69,7 @@ requires-dist = [
     { name = "rtree", marker = "extra == 'test'", specifier = ">=1.4" },
     { name = "ruff", marker = "extra == 'test'", specifier = "==0.15.16" },
     { name = "safetensors", marker = "extra == 'baseline'", specifier = ">=0.7" },
+    { name = "scienceplots", marker = "extra == 'paper'", specifier = ">=2.2" },
     { name = "scikit-image", specifier = ">=0.24" },
     { name = "scipy", specifier = ">=1.14" },
     { name = "shapely", specifier = ">=2.0" },
@@ -74,7 +80,7 @@ requires-dist = [
     { name = "trimesh", marker = "extra == 'raycast'", specifier = ">=4" },
     { name = "trimesh", marker = "extra == 'test'", specifier = ">=4" },
 ]
-provides-extras = ["baseline", "test", "raycast", "agent"]
+provides-extras = ["baseline", "test", "raycast", "agent", "paper"]
 
 [[package]]
 name = "annotated-types"
@@ -2238,6 +2244,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/3f/73ccf82579412b4a71c4ca673f10b5f1f888d7cf5af7fe24f27d30307be4/safetensors-0.8.0-cp310-abi3-win32.whl", hash = "sha256:2ddf52eac562eda224f99acfa7889d02968c1fd59a5b011ae7d8137c37e9c02d", size = 342401, upload-time = "2026-06-09T07:52:28.895Z" },
     { url = "https://files.pythonhosted.org/packages/1b/6d/3fba214c1e5e0f69991677ec3bc17023f0421776975e1de0c682dca475e2/safetensors-0.8.0-cp310-abi3-win_amd64.whl", hash = "sha256:096ec1a98435df7beb08853bb5aa9081a84f23d0adc67ed1a0a10550f608373f", size = 355540, upload-time = "2026-06-09T07:52:27.832Z" },
     { url = "https://files.pythonhosted.org/packages/8d/fc/7eedc3510d97878876e32774eebbeb61c43f148a96e915c84229a3e967aa/safetensors-0.8.0-cp310-abi3-win_arm64.whl", hash = "sha256:f7838e5135a406ad3e02efdcb8cf2e5397d368b0154537c4fec682dbc544d452", size = 340500, upload-time = "2026-06-09T07:52:26.745Z" },
+]
+
+[[package]]
+name = "scienceplots"
+version = "2.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/50/05/73a19270d548caadf145b0fc8ab94a8c716faeca528c254a4192676e048b/scienceplots-2.2.2.tar.gz", hash = "sha256:d46ce7170b4160265c777a48f73a0db1fdff8460f59a0ded0e364acb139ab115", size = 19692, upload-time = "2026-06-23T07:32:50.693Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5d/ff/6469a5cabf230ebc94f927246874136098dde1aacc9328bc40dceb24ba13/scienceplots-2.2.2-py3-none-any.whl", hash = "sha256:f63d04e6ec11fe2036ec120feb6c2f1d84b7c38e96cc7edcde7208064653af98", size = 33394, upload-time = "2026-06-23T07:32:49.594Z" },
 ]
 
 [[package]]
