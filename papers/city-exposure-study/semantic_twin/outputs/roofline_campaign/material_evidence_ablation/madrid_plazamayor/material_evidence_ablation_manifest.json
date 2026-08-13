@@ -1,0 +1,36 @@
+{
+  "ablation": "atlas evidence layer versus geometric fallback",
+  "files": [
+    {
+      "bytes": 25480,
+      "path": "material_evidence_ablation.json",
+      "sha256": "39c061071a81950affec6d5f172f329d52e1c57ab3cac673be743feb442d87a1"
+    },
+    {
+      "bytes": 2795,
+      "path": "material_evidence_ablation.csv",
+      "sha256": "31ef48e4a3feb199f0ecf0e2d0092ee33576d1ba7b0b1167a4c9fa1b8c7c0f8b"
+    },
+    {
+      "bytes": 19853,
+      "path": "material_evidence_ablation.pdf",
+      "sha256": "93cba690dbd04f39a8fa0113b626fe9d1b7390e01f2aaec7455535ae1a84e564"
+    },
+    {
+      "bytes": 164375,
+      "path": "material_evidence_ablation.png",
+      "sha256": "66ead2d2ef1b3ca327f2757c244794eba46c9fe022c9135392f3c03de78fee7d"
+    }
+  ],
+  "inputs": {
+    "atlas": {
+      "directory": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/roofline_campaign/madrid_plazamayor_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid",
+      "identity_sha256": "bdfb59e1b8be8712261d1b9acd2ea52ff6236b4b4d76253d070d70bfe38236d0"
+    },
+    "geometric": {
+      "directory": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/roofline_campaign/madrid_plazamayor_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid_geometric_control",
+      "identity_sha256": "4a6b0db6a1bcbe42641e80b57ae37a39cca0444dd6a2691a6e94afc4f8760f42"
+    }
+  },
+  "schema": "material_evidence_ablation_artifacts_v1"
+}

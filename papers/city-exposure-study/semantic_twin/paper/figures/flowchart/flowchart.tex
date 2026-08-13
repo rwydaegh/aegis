@@ -1,0 +1,53 @@
+\documentclass[tikz,border=3pt]{standalone}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\begin{document}
+
+\begin{tikzpicture}[
+  every node/.style={font=\footnotesize},
+  block/.style={
+    draw=black,
+    line width=0.5pt,
+    rectangle,
+    fill=white,
+    align=center,
+    inner sep=2.2mm,
+    minimum height=11mm,
+    text width=32mm
+  },
+  source/.style={block, text width=39mm},
+  transport/.style={block, text width=45mm},
+  body/.style={block, text width=38mm},
+  output/.style={block, text width=32mm},
+  arrow/.style={
+    ->,
+    draw=black,
+    line width=0.5pt,
+    >=Latex
+  }
+]
+  \node[block] (inputs) {Registered panorama\\+ 250\,m support mesh};
+  \node[block, right=7mm of inputs] (atlas)
+    {Fused material surface};
+  \node[source, right=7mm of atlas] (source)
+    {Roofline source curve\\+ fixed pedestrian route};
+
+  \node[transport, below=11mm of source] (transport)
+    {Exact direct\\+ exact order-1 specular\\+ first diffuse contribution};
+  \node[body, right=7mm of transport] (coupling)
+    {Direction-aware\\body coupling};
+  \node[output, right=7mm of coupling] (ecdfs)
+    {Fixed-route\\distributions};
+
+  \draw[arrow] (inputs) -- (atlas);
+  \draw[arrow] (atlas) -- (source);
+  \draw[arrow] (source) -- (transport);
+  \draw[arrow] (transport) -- (coupling);
+  \draw[arrow] (coupling) -- (ecdfs);
+\end{tikzpicture}
+
+\end{document}

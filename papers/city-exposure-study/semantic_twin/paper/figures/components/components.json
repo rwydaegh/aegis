@@ -1,0 +1,166 @@
+{
+  "cities": {
+    "Korenmarkt": {
+      "dominant_component_counts": {
+        "all_specular": 0,
+        "direct": 10,
+        "first_diffuse": 0
+      },
+      "median_component_share_percent": {
+        "all_specular": 21.604125100230114,
+        "direct": 77.47403774316612,
+        "first_diffuse": 0.952572092422635
+      },
+      "route_span_m": 49.03656157739815,
+      "standpoints": 10,
+      "zero_direct_standpoints": []
+    },
+    "Madrid": {
+      "dominant_component_counts": {
+        "all_specular": 0,
+        "direct": 14,
+        "first_diffuse": 0
+      },
+      "median_component_share_percent": {
+        "all_specular": 29.397872422021965,
+        "direct": 70.24460566762644,
+        "first_diffuse": 0.3222021183697919
+      },
+      "route_span_m": 73.46908355996881,
+      "standpoints": 14,
+      "zero_direct_standpoints": []
+    },
+    "Mexico": {
+      "dominant_component_counts": {
+        "all_specular": 0,
+        "direct": 8,
+        "first_diffuse": 3
+      },
+      "median_component_share_percent": {
+        "all_specular": 10.575875249539715,
+        "direct": 81.62242530737048,
+        "first_diffuse": 1.5978430501438847
+      },
+      "route_span_m": 60.785024847729545,
+      "standpoints": 11,
+      "zero_direct_standpoints": [
+        0,
+        1,
+        3
+      ]
+    },
+    "Prague": {
+      "dominant_component_counts": {
+        "all_specular": 0,
+        "direct": 22,
+        "first_diffuse": 0
+      },
+      "median_component_share_percent": {
+        "all_specular": 21.172221956713578,
+        "direct": 78.32090518277445,
+        "first_diffuse": 0.32184870686748845
+      },
+      "route_span_m": 119.39435362708055,
+      "standpoints": 22,
+      "zero_direct_standpoints": []
+    },
+    "Tokyo": {
+      "dominant_component_counts": {
+        "all_specular": 0,
+        "direct": 13,
+        "first_diffuse": 3
+      },
+      "median_component_share_percent": {
+        "all_specular": 16.118866021975336,
+        "direct": 82.31739235659907,
+        "first_diffuse": 0.5648042045385598
+      },
+      "route_span_m": 87.37579404500725,
+      "standpoints": 16,
+      "zero_direct_standpoints": [
+        13,
+        14,
+        15
+      ]
+    }
+  },
+  "component_conservation": {
+    "absolute_tolerance_m_inv2": 1e-18,
+    "assertion": "direct + exact order-1 specular + first diffuse = total",
+    "maximum_absolute_residual_m_inv2": 1.734723475976807e-18,
+    "passed": true,
+    "relative_tolerance": 5e-13
+  },
+  "computed_claims": {
+    "dominant_component_counts": {
+      "all_specular": 0,
+      "direct": 67,
+      "first_diffuse": 6
+    },
+    "first_diffuse_share_at_zero_direct_points_percent": 100.0,
+    "interpretation": "Direct transfer is largest at all 67 nonshadowed standpoints. First diffuse transfer alone carries the six zero-direct standpoints. Exact order-1 specular transfer is not the largest component at any standpoint.",
+    "pooled_median_component_share_percent": {
+      "all_specular": 20.730695041907328,
+      "direct": 77.7933296696705,
+      "first_diffuse": 0.45118660987809867
+    },
+    "standpoints_total": 73
+  },
+  "figure": {
+    "artifacts": {
+      "components.pdf": {
+        "bytes": 69741,
+        "sha256": "961ba581e3a3ec1fc4d8e63ced383b0b62420839bb93e5fb8cd7bbd4d5f99f0c"
+      },
+      "components.png": {
+        "bytes": 178455,
+        "height_px": 858,
+        "sha256": "3f2a95d61c4fca52c6e76c13193a463fb665307c9658eae28ae430ed52aedb22",
+        "width_px": 2896
+      }
+    },
+    "visual_encoding": {
+      "order": [
+        "direct",
+        "all_specular",
+        "first_diffuse"
+      ],
+      "quantity": "per-standpoint component share of total raw transfer",
+      "zero_direct_marker": "hollow downward triangle"
+    }
+  },
+  "input": {
+    "aggregate": "outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json",
+    "authenticated_against_manifest": true,
+    "components": [
+      "direct",
+      "all_specular",
+      "first_diffuse",
+      "total"
+    ],
+    "manifest": "outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction_manifest.json",
+    "result_schema_version": "roofline_multicity_results_v1",
+    "sha256": "d530a056bfa7be9cf1966a7169cea58b0fcae48dc9cab89ab62ae4577aa765bd",
+    "transport_topology": "first_material_interaction_v1"
+  },
+  "schema_version": "five_city_component_figure_audit_v1",
+  "zero_direct_assertion": {
+    "count": 6,
+    "expected_and_observed": {
+      "Korenmarkt": [],
+      "Madrid": [],
+      "Mexico": [
+        0,
+        1,
+        3
+      ],
+      "Prague": [],
+      "Tokyo": [
+        13,
+        14,
+        15
+      ]
+    },
+    "passed": true
+  }
+}

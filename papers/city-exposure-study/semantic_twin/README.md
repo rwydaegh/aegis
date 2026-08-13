@@ -1,9 +1,17 @@
 # Semantic twin
 
+> **Current paper authority, 2026-08-13.** This README retains historical
+> pipeline context and contains superseded eleven-city statements below. Start
+> with [the current paper spine](docs/SPINE.md),
+> [the current results inventory](docs/RESULTS_INVENTORY.md), and
+> [the production contract](docs/CURRENT_PRODUCTION_CONTRACT.md). The current
+> paper result has five sites, 73 fixed-route standpoints, and the
+> `first_material_interaction_v1` transport contract.
+
 A scene reconstruction for millimetre-wave exposure assessment, built from street
 level panoramas and aerial photogrammetry, plus the adjoint SBR estimator that
-consumes it. It feeds the city exposure study in the parent directory, which is
-now eleven squares rather than the ten the older documents name.
+consumes it. It feeds the current five-site fixed-route exposure study. Older
+eleven-square records remain in this directory as historical material.
 
 The premise is that a panorama already carries, at centimetre scale, most of what
 a ray tracer needs and a building footprint does not: which surface is brick and
@@ -73,10 +81,12 @@ band law of 2026-08-02 is the one the current results use.
 The notes below all live in `docs/`, which has its own index sorting them by
 kind and saying which ones are current.
 
-- `docs/SPINE.md` is the argument and the current numbers. Start here.
-- `docs/PAPER_METHODS.md` is the older method and results writeup, and it is
-  where the eleven site table and its caveats live. Its own first lines now
-  defer to `SPINE.md`, so read it for the derivations rather than the numbers.
+- `docs/SPINE.md` is the current OJCOMS argument and writing plan. Start here.
+- `docs/RESULTS_INVENTORY.md` states exactly which current results exist and
+  which historical outputs must not enter the paper.
+- `docs/CURRENT_PRODUCTION_CONTRACT.md` is the authority for the active method.
+- The timestamped `PAPER_METHODS` and old eleven-site files are historical
+  derivation and provenance records. They are not sources for current numbers.
 - `docs/DECISIONS.md` is the running record of every call and the measurement behind
   it. Start here if you want to know why anything is the way it is. It is a log,
   so it carries superseded numbers on purpose, labelled where they are

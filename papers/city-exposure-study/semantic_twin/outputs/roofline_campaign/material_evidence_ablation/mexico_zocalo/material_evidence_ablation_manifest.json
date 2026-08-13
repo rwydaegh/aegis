@@ -1,0 +1,36 @@
+{
+  "ablation": "atlas evidence layer versus geometric fallback",
+  "files": [
+    {
+      "bytes": 25567,
+      "path": "material_evidence_ablation.json",
+      "sha256": "52efef12cb12c8583d44068ba0b33f203edb17860a75b33ea263e5f2c20b6b4b"
+    },
+    {
+      "bytes": 2162,
+      "path": "material_evidence_ablation.csv",
+      "sha256": "23b58d1aaecad4d8037edab4c0b8117a688667410e25ada4827183b779d88302"
+    },
+    {
+      "bytes": 19388,
+      "path": "material_evidence_ablation.pdf",
+      "sha256": "74b3f2698603e5c55f16627d65d6c504f907db88da74d74212df2a63eedced8a"
+    },
+    {
+      "bytes": 158969,
+      "path": "material_evidence_ablation.png",
+      "sha256": "eca79f8e1cb12c00848a7182501e8617f211478f21eaee7a33fb4f0a715f95cf"
+    }
+  ],
+  "inputs": {
+    "atlas": {
+      "directory": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/roofline_campaign/mexico_zocalo_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid",
+      "identity_sha256": "f5c16e6aa08df356a96a480f99fb44ef704be6634b956ea4524c0092857bf7a5"
+    },
+    "geometric": {
+      "directory": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/roofline_campaign/mexico_zocalo_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid_geometric_control",
+      "identity_sha256": "a427a77b8954fc2e455e09330296e89d589bf8f27cc0e3332885f91fd74fe0dc"
+    }
+  },
+  "schema": "material_evidence_ablation_artifacts_v1"
+}
