@@ -26,6 +26,11 @@ Two sources define the current paper result.
 Older eleven-city, height-band, range-band, three-bounce, masonry, RCWA, and
 agentic-AI records are not current result sources.
 
+Three authenticated diagnostics now accompany the retained 16-replica result.
+They are the exact ray-reached evidence audit, the current-contract extension
+through 64 replicas, and the paired ray/cell budget sensitivity. These
+diagnostics do not alter the sealed campaign directories.
+
 ## Exact result count
 
 | Site | Standpoints | Route span | Replicas | Wall time on one A6000 |
@@ -114,11 +119,65 @@ uncertainty than the central route results.
 | Mexico City | 0.043625 dB | 0.1461 dB |
 | Tokyo Hachiko | 0.019732 dB | 0.0310 dB |
 
-The route medians are stable at 16 replicas. The individual lower-tail points
-in Mexico City and Tokyo are less stable. The correct paper claim is therefore
-that central fixed-route statistics are stable under the retained estimator.
-The paper must not claim that every standpoint or the full lower tail has
-converged.
+The retained table above gives the diagnostic available inside the canonical
+16-replica result. A separate current-contract extension uses seeds 7 through
+70 and nested looks at 16, 24, 32, 48, and 64 replicas. Its first 16 replicas
+match the sealed scientific arrays exactly.
+
+| Site | wbSAR q10 change, 48 to 64 | Look-64 bootstrap width | Shadow-point maximum |
+| --- | ---: | ---: | ---: |
+| Korenmarkt | 0.0000723 dB | 0.000222 dB | -- |
+| Prague | 0.0000203 dB | 0.000218 dB | -- |
+| Madrid | 0.00000615 dB | 0.000378 dB | -- |
+| Mexico City | 0.00344 dB | 0.364 dB | 0.0125 dB |
+| Tokyo Hachiko | 0.00491 dB | 0.0538 dB | 0.0104 dB |
+
+Mexico City and Tokyo satisfy all declared 48-to-64 lower-tail criteria. The
+paper can therefore state numerical stability for the central fixed-route
+statistics and the explicit six-point shadowed stratum through 64 replicas.
+This remains conditional on the selected routes and does not cover route or
+city sampling.
+
+The authenticated report is under
+`outputs/experiments/current_topology_convergence64_v1/report/`.
+
+## Ray-reached evidence coverage
+
+The exact replay classifies retained order-1 specular reflection points and
+accepted first-diffuse blocking vertices into seven mutually exclusive atlas
+and fallback states. All five source manifests authenticate, all 73 standpoint
+records close by category, and the replay matches the sealed transfer, body,
+and cumulative fields.
+
+Pooled over the five routes and 16 seeds, panorama-informed interfaces account
+for 75.903% of the non-direct body-coupled whole-body SAR contribution. The
+fraction is 80.643% for order-1 specular transport and 13.337% for first
+diffuse. In the first-diffuse component, 44.345% comes from geometry with no
+panorama evidence and 42.314% from evidence refused by the host-material gate.
+These are contribution-weighted coverage values, not semantic-accuracy scores.
+
+The authenticated report is under
+`outputs/experiments/ray_reached_evidence_coverage_v1/report/`.
+
+## Ray and angular-cell budget sensitivity
+
+The paired budget diagnostic uses Madrid, Mexico City, and Prague with seeds 7
+through 22. It compares 25,000, 50,000, and 100,000 rays with the 200,000-ray
+baseline at 4,096 cells. It also compares 1,024 and 2,048 cells with the
+4,096-cell baseline at 200,000 rays. Exact direct and order-1 specular terms are
+invariant, and every baseline replay check passes.
+
+All five cheaper settings exceed the declared 0.1 threshold for the paired
+q90 normalized first-diffuse directional difference. The maximum values across
+the three sites are 0.877, 0.679, and 0.400 for the three ray settings and
+0.491 and 0.455 for the two cell settings. Mexico City shadowed-point
+whole-body SAR changes by up to 0.707, 0.564, and 0.217 dB under the ray cuts.
+The cell reductions preserve this scalar stratum more closely, but still fail
+the directional gate. The production setting therefore remains 200,000 rays
+and 4,096 cells.
+
+The authenticated report is under
+`outputs/experiments/roofline_budget_sensitivity_v1/`.
 
 ## Verification and validation that applies now
 
@@ -156,8 +215,9 @@ single cold end-to-end time is currently defensible.
 
 - The old eleven-city manuscript and its figures use a superseded source law.
 - The sibling `current_five_city` package uses the historical hybrid topology.
-- The retained 16-versus-64 comparison uses that historical topology. It does
-  not validate the current first-material campaign.
+- The older 16-versus-64 comparison uses the historical hybrid topology. It
+  remains non-comparable even though a separate current-contract 64-replica
+  extension is now complete.
 - Rotated Fibonacci sampling remains a historical diagnostic. IID sampling is
   the current baseline.
 - Masonry scattering and RCWA are not in production.
@@ -173,14 +233,13 @@ The five-city result is sufficient for a focused paper. It does not need ten
 cities to support the fixed-route claim. The following gaps matter more than
 additional city count.
 
-1. Quantify evidence coverage on the ray-reached surfaces, not only on the full
-   support mesh.
-2. Use the controlled three-way validation in the main paper and state its
+1. Use the controlled three-way validation in the main paper and state its
    component-level scope.
-3. Keep the Mexico City and Tokyo tail caveat visible in the main results.
-4. Record a complete cold-stage timing ledger only if end-to-end speed becomes a
+2. Keep the fixed-route and finite-replica scope of the Mexico City and Tokyo
+   lower-tail result visible in the main results.
+3. Record a complete cold-stage timing ledger only if end-to-end speed becomes a
    paper claim.
-5. Complete a literature check before making any “for the first time” claim.
+4. Complete a literature check before making any “for the first time” claim.
 
 Additional cities, frequencies, body models, routes, and higher interaction
 orders belong to follow-up work or supplementary sensitivity studies. They are

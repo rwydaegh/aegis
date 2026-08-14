@@ -9,10 +9,12 @@ import pytest
 from semantic_twin.illumination.sources import SourceSet
 from semantic_twin.illumination.sphere import nearest_cell
 from semantic_twin.materials.atlas_binding import AtlasMaterialBinding
+from semantic_twin.materials.evidence_audit import EvidenceAuditCategoryMap
 from semantic_twin.propagation.geometry import DeviceIntersection, MitsubaGeometry
 from semantic_twin.transport.device_kernel import DeviceSbrKernel
 from semantic_twin.transport.device_next_event import (
     BoundDeviceSpecularFaceProposal,
+    DeviceFirstDiffuseAuditCategories,
     DeviceNextEventGather,
     DeviceSpecularFaceProposal,
     device_source_sample,
@@ -37,6 +39,22 @@ def _source_set(positions: np.ndarray, weights: np.ndarray | None = None) -> Sou
         azimuths=0,
         builders=0,
         source_weights=weights,
+    )
+
+
+def _first_diffuse_categories(face_count: int) -> DeviceFirstDiffuseAuditCategories:
+    category = np.full((face_count, 2, 2), 6, dtype=np.uint8)
+    category[0] = 0
+    if face_count > 1:
+        category[1] = 2
+    fallback = np.full(face_count, 6, dtype=np.uint8)
+    fallback[0] = 0
+    if face_count > 1:
+        fallback[1] = 2
+    return DeviceFirstDiffuseAuditCategories(
+        face_to_category_row=np.arange(face_count, dtype=np.int32),
+        category_by_texel=category,
+        fallback_category_by_face=fallback,
     )
 
 
@@ -315,6 +333,89 @@ def test_compact_resident_reduction_matches_rich_host_reduction(
     )
     assert compact_gather.connections == rich_gather.connections
     assert compact_gather.cleared == rich_gather.cleared
+
+
+def test_first_diffuse_audit_rich_and_compact_reductions_close_and_preserve_production(
+    tmp_path: Path,
+) -> None:
+    _set_variant("llvm_ad_rgb")
+    geometry = MitsubaGeometry(_write_plane(tmp_path / "audit_plane.ply"), variant="llvm_ad_rgb")
+    config = TraceConfig(
+        rays=4096,
+        local_cells=64,
+        max_bounces=1,
+        roulette_start=2,
+        batch=4096,
+        seed=917,
+    )
+    tracer = DeviceEscapeTracer(
+        geometry,
+        np.zeros(geometry.face_count, dtype=np.int64),
+        np.array([4.2 - 0.15j]),
+        np.array([1.0]),
+        config,
+    )
+    sources = _sources(np.array([[0.0, 0.0, 3.0]]))
+    categories = _first_diffuse_categories(geometry.face_count)
+    origin = np.array([0.0, 0.0, 1.0])
+
+    baseline = DeviceNextEventGather(
+        sources,
+        max_order=1,
+        collect_field=True,
+        first_material_interaction_only=True,
+    )
+    tracer.trace(origin, {}, next_event=baseline)
+
+    rich = DeviceNextEventGather(
+        sources,
+        max_order=1,
+        collect_field=True,
+        first_material_interaction_only=True,
+        first_diffuse_audit=categories,
+    )
+    rich.begin_trace(config.rays, tracer.local_grid)
+    records = tracer.kernel.trace_escape_records(origin, seed=config.seed, next_event=rich)
+    assert records.next_event is not None
+    launch_cells = nearest_cell(records.all_launch_direction, tracer.local_grid)
+    rich.consume(records.next_event, records.all_launch_direction, launch_cells=launch_cells)
+    rich.end_trace()
+
+    compact = DeviceNextEventGather(
+        sources,
+        max_order=1,
+        collect_field=True,
+        first_material_interaction_only=True,
+        first_diffuse_audit=categories,
+    )
+    tracer.trace(origin, {}, next_event=compact)
+
+    np.testing.assert_array_equal(compact.chi_by_order(), baseline.chi_by_order())
+    np.testing.assert_array_equal(compact.bounced_mass(), baseline.bounced_mass())
+    assert compact.connections == baseline.connections
+    assert compact.cleared == baseline.cleared
+
+    rich_audit = rich.first_diffuse_audit_result()
+    compact_audit = compact.first_diffuse_audit_result()
+    np.testing.assert_array_equal(compact_audit.accepted_event_count, rich_audit.accepted_event_count)
+    np.testing.assert_allclose(
+        compact_audit.contribution_transfer,
+        rich_audit.contribution_transfer,
+        rtol=2.0e-6,
+        atol=1.0e-12,
+    )
+    np.testing.assert_allclose(
+        compact_audit.local_cell_mass,
+        rich_audit.local_cell_mass,
+        rtol=2.0e-6,
+        atol=1.0e-12,
+    )
+    assert compact_audit.total_accepted_events == compact.cleared
+    assert compact_audit.total_contribution_transfer == pytest.approx(compact.chi_bounce(), rel=2.0e-12)
+    np.testing.assert_allclose(compact_audit.local_cell_mass.sum(axis=0), compact.bounced_mass())
+    assert compact_audit.accepted_event_count[1] == 0
+    assert compact_audit.contribution_transfer[1] == 0.0
+    assert not compact_audit.local_cell_mass[1].any()
 
 
 def test_distinct_gathers_share_one_immutable_specular_face_binding(tmp_path: Path) -> None:
@@ -652,6 +753,58 @@ def test_production_estimator_preserves_weighted_direct_atoms_exactly(tmp_path: 
     np.testing.assert_allclose(field.direct_k_hat, expected_directions, rtol=1.0e-12, atol=1.0e-12)
     assert field.direct_atoms == pytest.approx(result.direct, rel=1.0e-12)
     assert field.direct_mass.sum() == pytest.approx(result.direct, rel=1.0e-12)
+
+
+def test_first_diffuse_audit_estimator_is_opt_in_and_serializes_closed_result(tmp_path: Path) -> None:
+    _set_variant("llvm_ad_rgb")
+    geometry = MitsubaGeometry(_write_plane(tmp_path / "audit_estimator_plane.ply"), variant="llvm_ad_rgb")
+    config = TraceConfig(rays=4096, local_cells=64, max_bounces=1, roulette_start=2, seed=919)
+    tracer = DeviceEscapeTracer(
+        geometry,
+        np.zeros(geometry.face_count, dtype=np.int64),
+        np.array([4.2 - 0.15j]),
+        np.array([1.0]),
+        config,
+    )
+    common = {
+        "tracer": tracer,
+        "geometry": geometry,
+        "sources": _source_set(np.array([[0.0, 0.0, 3.0]])),
+        "max_order": 1,
+        "specular_order": 1,
+        "specular_suffix_mode": "disabled",
+        "transport_topology": "first_material_interaction_v1",
+    }
+    baseline = NextEventEstimator(**common)
+    device_categories = _first_diffuse_categories(geometry.face_count)
+    host_categories = EvidenceAuditCategoryMap(
+        names=device_categories.category_names,
+        face_to_category_row=device_categories.face_to_category_row,
+        category_by_texel=device_categories.category_by_texel,
+        fallback_category_by_face=device_categories.fallback_category_by_face,
+    )
+    audited = NextEventEstimator(
+        **common,
+        first_diffuse_audit=device_categories,
+        ray_reached_evidence_classifier=host_categories,
+    )
+    origin = np.array([0.0, 0.0, 1.0])
+
+    baseline_result, baseline_field = baseline.estimate_field(origin, seed=919)
+    audit_result, tally = audited.estimate_first_diffuse_audit(origin, seed=919)
+
+    assert "first_diffuse_audit" not in baseline_result.detail
+    assert audit_result.direct == baseline_result.direct
+    assert audit_result.total == baseline_result.total
+    assert audit_result.detail["by_order"] == baseline_result.detail["by_order"]
+    assert tally.total_contribution_transfer == pytest.approx(baseline_field.bounced_mass.sum(), rel=2.0e-12)
+    assert audit_result.detail["first_diffuse_audit"] == tally.as_dict()
+    assert audit_result.detail["order_one_specular_audit"]["category_names"] == list(device_categories.category_names)
+    assert tally.as_dict()["closure"] == {
+        "accepted_events": True,
+        "contribution_transfer": True,
+        "local_cell_mass": True,
+    }
 
 
 def test_production_estimator_refuses_implicit_specular_omission(tmp_path: Path) -> None:

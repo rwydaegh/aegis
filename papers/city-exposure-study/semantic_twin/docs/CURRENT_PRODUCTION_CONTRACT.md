@@ -56,10 +56,12 @@ Those pages retain historical evidence and are not rewritten as archives.
   with the reference to \(6.64\times10^{-16}\) maximum relative error in the
   verified benchmark.
 
-The current 200,000-ray and 4,096-cell values are the production contract, not
-the result of a completed budget reduction. Candidate ray and cell reductions
-remain diagnostic until paired convergence checks cover scalar peaks, whole-body
-SAR, and directional spectra under `first_material_interaction_v1`.
+The current 200,000-ray and 4,096-cell values remain the production contract
+after a paired three-route budget diagnostic. Every tested cheaper setting
+exceeded the declared first-diffuse directional-error gate. Ray reductions also
+changed Mexico City shadowed-point whole-body SAR by up to 0.707 dB. The
+diagnostic supports retaining the present setting. It does not prove that this
+setting is globally optimal for every scene or future topology.
 
 ## Comparable-city cohort
 
@@ -146,8 +148,24 @@ for Madrid, 0.043625 dB for Mexico City, and 0.019732 dB for Tokyo Hachiko.
 Every value is below 0.1 dB. Mexico and Tokyo are not directly comparable with
 their historical 64-replica timings.
 
+A separate current-contract convergence extension preserves the exact sealed
+16-replica scientific prefix and continues every site through seed 70, with
+looks at 16, 24, 32, 48, and 64. From 48 to 64 replicas, the whole-body SAR
+q10 changes by 0.00344 dB in Mexico and 0.00491 dB in Tokyo. The maximum change
+among their three shadowed points is 0.0125 and 0.0104 dB. Both sites pass the
+declared lower-tail criteria. This extension is a convergence diagnostic and
+does not rewrite the retained 16-replica campaign package.
+
 Mexico points 0, 1, and 3, and Tokyo points 13, 14, and 15 have zero direct
 transport. They remain meaningful shadowed points and are not excluded.
+
+The ray-reached audit replays the retained interactions without changing the
+production topology. Panorama-informed interfaces account for 75.903% of the
+pooled non-direct body-coupled whole-body SAR contribution. The corresponding
+shares are 80.643% for order-1 specular transport and 13.337% for first
+diffuse. The remainder uses declared geometric fallback states. These values
+measure where the recorded evidence acts, not whether its material labels are
+correct.
 
 Strict-authenticated common-seed topology reports compare this contract with
 the historical hybrid. Their central q50 and q90 total-transfer differences are

@@ -13,11 +13,11 @@ preserve within-triangle material variation, but it cannot recover geometry
 that is absent from the photogrammetric mesh. The two-site material control
 tests downstream sensitivity and supplies no semantic ground truth. Coverage
 on all support-mesh area also differs from coverage on the subset reached by
-propagation paths. A ray-reached evidence-coverage report is therefore a useful
-future diagnostic. The current claims are conditional on the recorded atlas
-and fallback rule. The diagnostic would show where that rule acts in the
-reported transport.
+propagation paths. The ray-reached audit now reports where the recorded atlas
+and fallback rule act in retained order-1 specular and first-diffuse transport.
+It does not test whether the panorama labels or fallback material are correct.
+The current claims therefore remain conditional on those recorded surfaces.
 
 ## AI notes
 
-- Places the remaining evidence-coverage gap in the SI.
+- Separates measured ray-reached coverage from unresolved semantic accuracy.

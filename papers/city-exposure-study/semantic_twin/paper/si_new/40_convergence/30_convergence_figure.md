@@ -1,27 +1,30 @@
-% PREV: The route medians are stable at 16 replicas under the retained estimator.
-% PREV: Mexico City standpoints 0, 1, and 3 and Tokyo Hachiko standpoints 13, 14, and 15
-% PREV: have zero direct and zero order-1 all-specular transport. The first-diffuse
-% PREV: estimate is their only nonzero modeled contribution. These six points form the long
-% PREV: lower tails and have greater relative uncertainty than the central route
-% PREV: results. The finite-replica bootstrap resamples complete replicas jointly over
-% PREV: all standpoints, so it preserves spatial dependence within one replica. Its
-% PREV: 2,000 draws use NumPy PCG64 with a seed derived from the sealed calculation
-% PREV: manifest. Reported route quantiles use NumPy's linear interpolation rule.
-% PREV: Pointwise linear standard errors are the sample standard deviation divided by
-% PREV: the square root of the replica count. Their decibel values use the delta-method
-% PREV: factor $10/[\ln(10)\,\bar{x}]$.
-% PREV: The intervals are conditional on the fixed registered route. They do not include
-% PREV: route-selection or city-sampling uncertainty. The study therefore claims
-% PREV: stability of the central fixed-route statistics and does not claim convergence
-% PREV: of every lower-tail standpoint.
+% PREV: The 64-replica extension uses seeds 7 through 70 and nested looks of 16, 24,
+% PREV: 32, 48, and 64. Its first 16 replicas are exactly equal to the sealed campaign
+% PREV: arrays after timing fields are removed. Mexico City standpoints 0, 1, and 3
+% PREV: and Tokyo Hachiko standpoints 13, 14, and 15 remain the explicit shadowed
+% PREV: stratum. The first-diffuse estimate is their only nonzero modeled contribution.
+% PREV: From 48 to 64 replicas, their largest pointwise whole-body SAR changes are
+% PREV: 0.0125 and 0.0104~dB. The route $q_{10}$ changes are 0.00344 and 0.00491~dB,
+% PREV: and their whole-replica bootstrap widths are 0.364 and 0.0538~dB.
+% PREV:
+% PREV: The bootstrap resamples complete replicas jointly over all standpoints, so it
+% PREV: preserves spatial dependence within one replica. Its 2,000 draws use PCG64 with
+% PREV: the authenticated analysis seed 20260814. All five identities, manifests,
+% PREV: component closures, and common inputs pass, and both lower tails meet the
+% PREV: declared 48-to-64 aggregate criteria. Mexico City nevertheless retains
+% PREV: rare-event first-diffuse behavior: its maximum positive replica contribution
+% PREV: is 5738 times its positive-replica median, compared with 2.38 for Tokyo
+% PREV: Hachiko. These intervals remain conditional on each fixed registered route.
+% PREV: They do not include route-selection or city-sampling uncertainty.
 \begin{figure*}[!t]
   \centering
-  \includegraphics[width=\textwidth]{figures/convergence/convergence.pdf}
-  \caption{Replica convergence for the five fixed routes. Panel (a) shows changes in
-  the route median between nested replica looks. Panel (b) shows that the lower-tail
-  changes in Mexico City and Tokyo Hachiko remain larger than the route-median
-  changes. The calculation therefore supports central route statistics but not full
-  pointwise lower-tail convergence.}
+  \includegraphics[width=\textwidth]{figures/convergence64/convergence64.pdf}
+  \caption{Current-contract convergence through 64 replicas. Panel (a) shows
+  route $q_{10}$ whole-body SAR changes from the sealed 16-replica value. Panel
+  (b) shows the largest stepwise change among the three shadowed standpoints in
+  each of Mexico City and Tokyo Hachiko. The final 48-to-64 changes satisfy the
+  declared aggregate lower-tail criteria. Mexico City retains rare-event
+  first-diffuse behavior.}
   \label{fig:si-convergence}
 \end{figure*}
 

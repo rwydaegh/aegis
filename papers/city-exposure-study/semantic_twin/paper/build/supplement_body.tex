@@ -91,6 +91,56 @@ the code describes why that image-space piece was not accepted as observed
 semantic evidence. Rejected pieces do not replace or remove the original
 transport geometry.
 
+% claim: ray_reached_evidence_coverage
+\subsection{Ray-reached evidence coverage}
+\label{sec:si-ray-reached-coverage}
+
+The audit replays all five sealed routes and 16 seeds with the production
+geometry, source curve, atlas, body, 200,000 primary rays, and 4,096 output
+cells. It classifies the exact reflection point of every retained order-1
+specular path and the first blocking material vertex of every accepted
+first-diffuse event. Category counts, transport contribution, body-coupled
+fields, and the complete replay all close to the sealed arrays. Direct
+transport is not assigned a category because it has no material interaction.
+
+\begin{table}[!t]
+  \caption{Share of pooled body-coupled whole-body SAR within each retained non-direct component. Other fallback combines insufficient structural mass, atlas-state refusal, and the residual fallback category.}
+  \label{tab:si-ray-reached-coverage}
+  \centering
+  \resizebox{\columnwidth}{!}{%
+  \begin{tabular}{lrrrr}
+    \toprule
+    Component & \shortstack{Panorama\\informed} & \shortstack{No panorama\\evidence} & \shortstack{Host\\incompatible} & \shortstack{Other\\fallback} \\
+    \midrule
+    Order-1 specular & 80.643\% & 8.774\% & 10.530\% & 0.052\% \\
+    First diffuse & 13.337\% & 44.345\% & 42.314\% & 0.004\% \\
+    Combined non-direct & 75.903\% & 11.280\% & 12.769\% & 0.049\% \\
+    \bottomrule
+  \end{tabular}
+  }
+\end{table}
+
+Panorama evidence informs most of the pooled non-direct body contribution
+because the exact specular term is both larger and more often atlas-bound. The
+first-diffuse component has a different support pattern. Most of its
+body-coupled contribution reaches geometry with no panorama evidence or with
+evidence refused by the host-material compatibility gate. The nonblocking
+woody category is zero for retained terminal interactions because a
+nonblocking crossing cannot be the first blocking material vertex. This zero
+does not imply that woody canopy evidence is absent from the routes.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/ray_reached_evidence/ray_reached_evidence.pdf}
+  \caption{Ray-reached semantic-evidence coverage. Panel (a) partitions the
+  pooled non-direct body-coupled whole-body SAR contribution between
+  panorama-informed interfaces and declared geometric fallback states. Panel
+  (b) gives accepted retained interaction counts for all seven audit
+  categories. Direct transport is not applicable because it has no material
+  interaction.}
+  \label{fig:si-ray-reached-coverage}
+\end{figure*}
+
 \section{Panorama registration and admission}
 \label{sec:si-registration}
 
@@ -246,49 +296,68 @@ source weights, route arrays, material tables, and executable configuration.
 \section{Replica convergence and lower tails}
 \label{sec:si-convergence}
 
+% claim: replica_convergence_48_to_64
 \begin{table}[!t]
-  \caption{Finite-replica diagnostics at the retained 16-replica look.}
+  \caption{Current-contract convergence from 48 to 64 replicas. Bootstrap width is the 95\% interval width for route $q_{10}$ whole-body SAR. Shadow change is the largest stepwise change among the six declared shadowed standpoints.}
   \label{tab:si-convergence}
   \centering
-  \begin{tabular}{lrr}
+  \begin{tabular}{lrrr}
     \toprule
-    Site & \shortstack{Max. 12-to-16\\change (dB)} & \shortstack{p90 pointwise total-transfer\\s.e. (dB)} \\
+    Site & \shortstack{$q_{10}$ change\\(dB)} & \shortstack{Bootstrap width\\(dB)} & \shortstack{Shadow change\\(dB)} \\
     \midrule
-    Korenmarkt & 0.0000819 & 0.000258 \\
-    Prague & 0.0001559 & 0.000244 \\
-    Madrid & 0.0004083 & 0.000344 \\
-    Mexico City & 0.043625 & 0.1461 \\
-    Tokyo Hachiko & 0.019732 & 0.0310 \\
+    Korenmarkt & 0.0000723 & 0.000222 & -- \\
+    Prague & 0.0000203 & 0.000218 & -- \\
+    Madrid & 0.00000615 & 0.000378 & -- \\
+    Mexico City & 0.00344 & 0.364 & 0.0125 \\
+    Tokyo Hachiko & 0.00491 & 0.0538 & 0.0104 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The route medians are stable at 16 replicas under the retained estimator.
-Mexico City standpoints 0, 1, and 3 and Tokyo Hachiko standpoints 13, 14, and 15
-have zero direct and zero order-1 all-specular transport. The first-diffuse
-estimate is their only nonzero modeled contribution. These six points form the long
-lower tails and have greater relative uncertainty than the central route
-results. The finite-replica bootstrap resamples complete replicas jointly over
-all standpoints, so it preserves spatial dependence within one replica. Its
-2,000 draws use NumPy PCG64 with a seed derived from the sealed calculation
-manifest. Reported route quantiles use NumPy's linear interpolation rule.
-Pointwise linear standard errors are the sample standard deviation divided by
-the square root of the replica count. Their decibel values use the delta-method
-factor $10/[\ln(10)\,\bar{x}]$.
-The intervals are conditional on the fixed registered route. They do not include
-route-selection or city-sampling uncertainty. The study therefore claims
-stability of the central fixed-route statistics and does not claim convergence
-of every lower-tail standpoint.
+The 64-replica extension uses seeds 7 through 70 and nested looks of 16, 24,
+32, 48, and 64. Its first 16 replicas are exactly equal to the sealed campaign
+arrays after timing fields are removed. Mexico City standpoints 0, 1, and 3
+and Tokyo Hachiko standpoints 13, 14, and 15 remain the explicit shadowed
+stratum. The first-diffuse estimate is their only nonzero modeled contribution.
+From 48 to 64 replicas, their largest pointwise whole-body SAR changes are
+0.0125 and 0.0104~dB. The route $q_{10}$ changes are 0.00344 and 0.00491~dB,
+and their whole-replica bootstrap widths are 0.364 and 0.0538~dB.
+
+The bootstrap resamples complete replicas jointly over all standpoints, so it
+preserves spatial dependence within one replica. Its 2,000 draws use PCG64 with
+the authenticated analysis seed 20260814. All five identities, manifests,
+component closures, and common inputs pass, and both lower tails meet the
+declared 48-to-64 aggregate criteria. Mexico City nevertheless retains
+rare-event first-diffuse behavior: its maximum positive replica contribution
+is 5738 times its positive-replica median, compared with 2.38 for Tokyo
+Hachiko. These intervals remain conditional on each fixed registered route.
+They do not include route-selection or city-sampling uncertainty.
 
 \begin{figure*}[!t]
   \centering
-  \includegraphics[width=\textwidth]{figures/convergence/convergence.pdf}
-  \caption{Replica convergence for the five fixed routes. Panel (a) shows changes in
-  the route median between nested replica looks. Panel (b) shows that the lower-tail
-  changes in Mexico City and Tokyo Hachiko remain larger than the route-median
-  changes. The calculation therefore supports central route statistics but not full
-  pointwise lower-tail convergence.}
+  \includegraphics[width=\textwidth]{figures/convergence64/convergence64.pdf}
+  \caption{Current-contract convergence through 64 replicas. Panel (a) shows
+  route $q_{10}$ whole-body SAR changes from the sealed 16-replica value. Panel
+  (b) shows the largest stepwise change among the three shadowed standpoints in
+  each of Mexico City and Tokyo Hachiko. The final 48-to-64 changes satisfy the
+  declared aggregate lower-tail criteria. Mexico City retains rare-event
+  first-diffuse behavior.}
   \label{fig:si-convergence}
+\end{figure*}
+
+\section{Primary-ray and angular-cell budgets}
+\label{sec:si-budget-sensitivity}
+
+% claim: roofline_budget_sensitivity
+The budget diagnostic used paired seeds and common random numbers at the Madrid, Mexico City, and Prague routes. Exact direct and all-specular components were byte identical in every paired comparison, and the 200,000-ray, 4,096-cell replay matched the sealed baseline. The route-median normalized whole-body-SAR changes were small, with a maximum absolute $q_{50}$ difference of 0.000797345~dB among the five cheaper settings. Directional first-diffuse fields did not meet the stated gate. The largest site $q_{90}$ normalized-$L_{1}$ differences were 0.877498, 0.678942, and 0.400218 at 25,000, 50,000, and 100,000 rays, respectively. At 1,024 and 2,048 cells, they were 0.491265 and 0.455431. Each value exceeds the 0.1 gate. Mexico City shadowed-point maximum absolute whole-body-SAR changes were 0.707362, 0.563841, and 0.217259~dB for the three ray settings, compared with 0.00206975 and 0.00088674~dB for the two cell settings.
+
+Ray cuts also do not give a defensible end-to-end speedup. At 25,000 rays, estimator-wall-time ratios relative to the baseline range from 0.991 to 1.064 across the three routes. Exact all-specular work takes 8.06 to 23.79~s in the baseline, whereas stochastic tracing takes 1.15 to 2.40~s. The $q_{90}$ variance-time ratios for every ray-reduced arm exceed one, with a minimum of 3.16. The reported timing therefore leaves the exact specular stage dominant while the reduced ray settings increase first-diffuse variance. Figure~\ref{fig:si-budget-sensitivity} retains the 200,000-ray, 4,096-cell setting as the production baseline.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/budget_sensitivity/budget_sensitivity.pdf}
+  \caption{Primary-ray and angular-cell budget sensitivity under the current first-material transport contract. All five cheaper settings leave route-median whole-body SAR nearly unchanged, but each exceeds the directional first-diffuse gate. Exact direct and order-1 specular components remain invariant. The diagnostic retains 200,000 rays and 4,096 cells.}
+  \label{fig:si-budget-sensitivity}
 \end{figure*}
 
 \section{Paired material-evidence control}
@@ -383,10 +452,10 @@ preserve within-triangle material variation, but it cannot recover geometry
 that is absent from the photogrammetric mesh. The two-site material control
 tests downstream sensitivity and supplies no semantic ground truth. Coverage
 on all support-mesh area also differs from coverage on the subset reached by
-propagation paths. A ray-reached evidence-coverage report is therefore a useful
-future diagnostic. The current claims are conditional on the recorded atlas
-and fallback rule. The diagnostic would show where that rule acts in the
-reported transport.
+propagation paths. The ray-reached audit now reports where the recorded atlas
+and fallback rule act in retained order-1 specular and first-diffuse transport.
+It does not test whether the panorama labels or fallback material are correct.
+The current claims therefore remain conditional on those recorded surfaces.
 
 \clearpage
 

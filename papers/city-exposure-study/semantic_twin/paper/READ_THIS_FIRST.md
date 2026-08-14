@@ -14,7 +14,7 @@ deployed-network estimate, a compliance assessment, or a complete multipath
 solution.
 
 The main manuscript is eight pages in the current Access build. The separate
-supplement is four pages. The graphical abstract meets the 660 by 295 pixel,
+supplement is six pages. The graphical abstract meets the 660 by 295 pixel,
 300 dpi, and file-size requirements. The scientific plots are generated from
 the sealed current result package. No fake or placeholder result data are used.
 

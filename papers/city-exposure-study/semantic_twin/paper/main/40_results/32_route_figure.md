@@ -1,4 +1,6 @@
+% PREV: % claim: route_median_contrast_factor
 % PREV: Figure~\ref{fig:route-distributions} contains the fixed-route empirical distributions and route-mean component shares, while Table~\ref{tab:route-results} gives the central summaries and finite multipath surplus. Normalized whole-body SAR is reported in m$^2$~kg$^{-1}$ per unit $\rho_A P_{\mathrm{EIRP}}$. A physical deployment value therefore requires multiplication by its areal source density and EIRP. Panel (a) includes all 73 standpoints and marks the six points with zero direct and zero order-1 specular transfer. Across the five selected routes, the ratio between the largest and smallest route medians is 13.34. This comparison is conditional on the selected routes and does not define a city ranking. Mexico City and Tokyo Hachiko have the widest within-route ranges and contain the deep lower tails.
+% NEXT: % claim: five_city_wbsar_route_quantiles
 % NEXT: \begin{table*}[!t]
 % NEXT: \caption{Fixed-route exposure summary. Whole-body SAR quantiles are normalized per unit $\rho_A P_{\mathrm{EIRP}}$ and have units m$^2$~kg$^{-1}$. Surplus uses finite-direct points only. The last column is the maximum pointwise total-transfer change from 12 to 16 replicas.}
 % NEXT: \label{tab:route-results}

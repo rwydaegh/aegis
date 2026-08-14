@@ -157,6 +157,42 @@
       },
       "verified": true
     },
+    "ray_reached_evidence_coverage": {
+      "docstring": "Pooled retained non-direct transport is partitioned by exact evidence state.",
+      "error": null,
+      "output": {
+        "accepted_events": {
+          "first_diffuse": 95389603,
+          "order_1_specular": 689888
+        },
+        "denominator": "retained modeled non-direct body-coupled contribution",
+        "non_direct_wbsar_fraction": {
+          "geometric_fallback": 0.24097223009850738,
+          "panorama_informed": 0.7590277699014926
+        },
+        "table_rows": {
+          "combined_non_direct": {
+            "host_incompatible": 0.12768980746784794,
+            "no_panorama_evidence": 0.11279507119363207,
+            "other_fallback": 0.0004873514370273951,
+            "panorama_informed": 0.7590277699014926
+          },
+          "first_diffuse": {
+            "host_incompatible": 0.42313964955266,
+            "no_panorama_evidence": 0.44345147385166056,
+            "other_fallback": 4.169249224817807e-05,
+            "panorama_informed": 0.13336718410343135
+          },
+          "order_1_specular": {
+            "host_incompatible": 0.10530373486292556,
+            "no_panorama_evidence": 0.08774141679005237,
+            "other_fallback": 0.0005211187710170229,
+            "panorama_informed": 0.806433729576005
+          }
+        }
+      },
+      "verified": true
+    },
     "replica_convergence_12_to_16": {
       "docstring": "The final nested-replica change is authenticated for every fixed route.",
       "error": null,
@@ -200,6 +236,94 @@
       },
       "verified": true
     },
+    "replica_convergence_48_to_64": {
+      "docstring": "The current-contract 64-replica extension authenticates the two lower tails.",
+      "error": null,
+      "output": {
+        "lower_tail_status": {
+          "Korenmarkt": {
+            "q10_bootstrap_95_width_db": 0.00022232758404101718,
+            "q10_change_db": 7.229028053766959e-05,
+            "shadow_point_max_change_db": null
+          },
+          "Madrid": {
+            "q10_bootstrap_95_width_db": 0.00037805244663012116,
+            "q10_change_db": 6.147006725693227e-06,
+            "shadow_point_max_change_db": null
+          },
+          "Mexico": {
+            "q10_bootstrap_95_width_db": 0.3638279391681467,
+            "q10_change_db": 0.0034408407908050015,
+            "shadow_point_max_change_db": 0.012484950417289281
+          },
+          "Prague": {
+            "q10_bootstrap_95_width_db": 0.00021814219482941877,
+            "q10_change_db": 2.027887149130285e-05,
+            "shadow_point_max_change_db": null
+          },
+          "Tokyo": {
+            "q10_bootstrap_95_width_db": 0.05379368852716219,
+            "q10_change_db": 0.004914586580220958,
+            "shadow_point_max_change_db": 0.010443295223947286
+          }
+        },
+        "scope": "finite-replica uncertainty conditional on the fixed registered routes",
+        "sealed_prefix_exact": true,
+        "transition": [
+          48,
+          64
+        ]
+      },
+      "verified": true
+    },
+    "roofline_budget_sensitivity": {
+      "docstring": "Every cheaper current-contract budget arm fails the directional gate.",
+      "error": null,
+      "output": {
+        "baseline_specular_seconds_range": {
+          "maximum": 23.785232650004218,
+          "minimum": 8.058428761999494
+        },
+        "baseline_stochastic_trace_seconds_range": {
+          "maximum": 2.3965218109888156,
+          "minimum": 1.1504173969979092
+        },
+        "cheaper_arms": {
+          "rays_100000_cells_4096": {
+            "directional_q90_normalized_l1_max": 0.40021795550889805,
+            "mexico_shadow_wbsar_maximum_abs_db": 0.21725892861448737
+          },
+          "rays_200000_cells_1024": {
+            "directional_q90_normalized_l1_max": 0.49126480809041534,
+            "mexico_shadow_wbsar_maximum_abs_db": 0.0020697456764675313
+          },
+          "rays_200000_cells_2048": {
+            "directional_q90_normalized_l1_max": 0.45543106112995413,
+            "mexico_shadow_wbsar_maximum_abs_db": 0.0008867400199698488
+          },
+          "rays_25000_cells_4096": {
+            "directional_q90_normalized_l1_max": 0.8774980143368515,
+            "mexico_shadow_wbsar_maximum_abs_db": 0.7073621561957917
+          },
+          "rays_50000_cells_4096": {
+            "directional_q90_normalized_l1_max": 0.6789419645795945,
+            "mexico_shadow_wbsar_maximum_abs_db": 0.5638407601543206
+          }
+        },
+        "maximum_abs_route_q50_wbsar_difference_db": 0.0007973445109199489,
+        "migration_recommended": false,
+        "minimum_ray_reduced_q90_variance_time_ratio": 3.1598358725295483,
+        "production_budget": {
+          "cells": 4096,
+          "rays": 200000
+        },
+        "ray_25000_estimator_wall_time_ratio_range": {
+          "maximum": 1.0638558906935487,
+          "minimum": 0.9912406567927025
+        }
+      },
+      "verified": true
+    },
     "route_median_contrast_factor": {
       "docstring": "The largest and smallest selected-route medians differ by a factor of 13.34.",
       "error": null,
@@ -238,7 +362,7 @@
       "verified": true
     }
   },
-  "generated_at": "2026-08-13T23:28:30Z",
-  "git_sha": "e65df37d752d42dffac72075dfed2513ff2b7b1b",
+  "generated_at": "2026-08-14T02:18:48Z",
+  "git_sha": "eb9a9a2b0fd8f89835f528701fffdf26d38bce61",
   "schema_version": 1
 }

@@ -1,3 +1,4 @@
+% NEXT: % claim: current_campaign_contract
 % NEXT: Table~\ref{tab:routes} defines the five fixed registered routes and their 73 standpoints. Every site uses the same 15~GHz frequency, 250~m-radius photogrammetric support mesh, and Duke body model with 56,024 surface elements, 72.4~kg mass, and route-tangent yaw. Each standpoint has 16 independent replicas with seeds 7 through 22. Each replica uses 200,000 IID primary rays and 4,096 fixed output directions for the first-diffuse term. The resulting 1,168 standpoint-replica fields contain 233.6 million primary rays. Numerical calculation time after scene preparation ranges from 29.79 to 69.02~s on one A6000 GPU. These times exclude acquisition, registration, depth estimation, and material-surface construction because the cold-stage timing record is incomplete.
 \section{Validation and Results}
 \label{sec:results}

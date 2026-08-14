@@ -100,6 +100,36 @@ standpoints in the final lower decile. Every route median changes by at most
 \(5.91\times10^{-5}\) dB, while the Mexico City and Tokyo lower tails remain
 less stable.”
 
+The current-topology 64-replica extension used in the revised supplement is in
+`convergence64/`. Its authenticated figure reports the 48-to-64-replica step
+and keeps the sealed 16-replica paper result unchanged.
+
+## Supplementary figure. Ray-reached evidence coverage
+
+Files:
+
+- `ray_reached_evidence/make_ray_reached_evidence.py`
+- `ray_reached_evidence/ray_reached_evidence.pdf`
+- `ray_reached_evidence/ray_reached_evidence.png`
+- `ray_reached_evidence/ray_reached_evidence.audit.json`
+
+This figure separates panorama-informed and geometric-fallback categories for
+the exact order-1 specular and first-diffuse terms. The wrapper authenticates
+the complete 73-record audit replay before it stages the paper assets.
+
+## Supplementary figure. Ray and angular-cell budget sensitivity
+
+Files:
+
+- `budget_sensitivity/make_budget_sensitivity.py`
+- `budget_sensitivity/budget_sensitivity.pdf`
+- `budget_sensitivity/budget_sensitivity.png`
+- `budget_sensitivity/budget_sensitivity.audit.json`
+
+This figure reports route-median, Mexico City shadow-point, first-diffuse
+directional, and observed estimator-time changes for the paired three-route
+budget study. The diagnostic retains 200,000 rays and 4,096 cells.
+
 ## Supplementary figures. Material-evidence control
 
 Files:
@@ -128,6 +158,9 @@ uv run --extra paper python paper/figures/route_results/make_route_results.py
 uv run --extra paper python paper/figures/convergence/make_convergence.py
 uv run --extra paper python paper/figures/validation/make_validation.py
 uv run --extra paper python paper/figures/configuration/configuration.py
+uv run python paper/figures/convergence64/make_convergence64.py
+uv run python paper/figures/ray_reached_evidence/make_ray_reached_evidence.py
+uv run python paper/figures/budget_sensitivity/make_budget_sensitivity.py
 ```
 
 Compile the standalone TikZ flowchart from its directory:

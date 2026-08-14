@@ -16,10 +16,10 @@
 % NEXT: that is absent from the photogrammetric mesh. The two-site material control
 % NEXT: tests downstream sensitivity and supplies no semantic ground truth. Coverage
 % NEXT: on all support-mesh area also differs from coverage on the subset reached by
-% NEXT: propagation paths. A ray-reached evidence-coverage report is therefore a useful
-% NEXT: future diagnostic. The current claims are conditional on the recorded atlas
-% NEXT: and fallback rule. The diagnostic would show where that rule acts in the
-% NEXT: reported transport.
+% NEXT: propagation paths. The ray-reached audit now reports where the recorded atlas
+% NEXT: and fallback rule act in retained order-1 specular and first-diffuse transport.
+% NEXT: It does not test whether the panorama labels or fallback material are correct.
+% NEXT: The current claims therefore remain conditional on those recorded surfaces.
 The five routes are selected case studies. Their differences do not rank the
 five cities and do not estimate population exposure. Each result is normalized
 per unit $\rho_A P_{\mathrm{EIRP}}$, so it is not an absolute prediction for an

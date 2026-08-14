@@ -1,0 +1,146 @@
+{
+  "artifacts": {
+    "roofline_budget_sensitivity_v1.csv": {
+      "bytes": 5492,
+      "sha256": "09ec742e0a921bc3089bc11d8dd349523d07d855e5437847b0ffb0869194217a"
+    },
+    "roofline_budget_sensitivity_v1.json": {
+      "bytes": 923496,
+      "sha256": "f85235b309b0d22bfafed3666d291fdb31dad6e782ca33bb64882c92ab2576f2"
+    },
+    "roofline_budget_sensitivity_v1.pdf": {
+      "bytes": 26795,
+      "sha256": "5f99448ea1c541b08ca177344097c8d3cc2196ad91d85ffe77f8a94a1395ab2c"
+    },
+    "roofline_budget_sensitivity_v1.png": {
+      "bytes": 219042,
+      "sha256": "64db37c1823ec233202a333c2c9828d1c869c1cc303c09bc99813f2fb9c74ac0"
+    }
+  },
+  "report_schema": "aegis.roofline-budget-sensitivity-report.v1",
+  "schedule_identity_sha256": "fd699f5693c69ce0c85d1b3ad823eb0450bddac546ea11abc62c9e4cb90933d5",
+  "schema": "aegis.roofline-budget-sensitivity-artifacts.v1",
+  "sources": {
+    "base_config:madrid_plazamayor": {
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/config/roofline_campaign_madrid_plazamayor_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid.json",
+      "sha256": "bb1dc27a78041ed2b19c093231e2e3dea7d1ac6dbe225af45e376fd6ecd81b1b"
+    },
+    "base_config:mexico_zocalo": {
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/config/roofline_campaign_mexico_zocalo_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid.json",
+      "sha256": "e8dd232835709ad0d3198358216db7041175e7663671307cb6d1ac820c42db27"
+    },
+    "base_config:prague_staromestske": {
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/config/roofline_campaign_prague_staromestske_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid.json",
+      "sha256": "c9bcaf80cfc513507b820a76001fa612687d2894243f3e9c58ae0dc241ed6c3e"
+    },
+    "campaign:madrid_plazamayor:rays_100000:cells_4096": {
+      "campaign_identity_sha256": "7876c53e2aa7e2251daf1a20c9a3669656817c2ad902740c7ae044e4df9d0ff7",
+      "directional_capture_manifest_sha256": "cc3bcded537c15da38667b180c5fcd9b51a924ecc17562634c46bf5e57b85048",
+      "manifest_sha256": "0eb71fb6ea90af8167377813078c5b259219ad1139d8f610b6aca2f868a79ec6"
+    },
+    "campaign:madrid_plazamayor:rays_200000:cells_1024": {
+      "campaign_identity_sha256": "50a6e0697d49041b4f8827d04a6aa95c7652e814282e18ec161f6baee1bca006",
+      "directional_capture_manifest_sha256": "da97c7c0929803e99a5409bdd63fcb1d37d669faf4e8da410f25c0d7e620806d",
+      "manifest_sha256": "e43f25357ef813d02b720e8ebce05c5d8a684803f875e8ec5f34d73092fb202b"
+    },
+    "campaign:madrid_plazamayor:rays_200000:cells_2048": {
+      "campaign_identity_sha256": "ed0fe60db8f45faad140ab9fe638d6ae671a497f98537efb34dac8b3063916e7",
+      "directional_capture_manifest_sha256": "5f8014c0a6121a2568cbd640bd95fe44c059eeb41a2ae169d8a6d04e142bacc4",
+      "manifest_sha256": "02e29de3d92d10ce06d8d7735ca0dbb9446e5d59e54c9cd422cc99efedadfd22"
+    },
+    "campaign:madrid_plazamayor:rays_200000:cells_4096": {
+      "campaign_identity_sha256": "8cb060946f58f00e5df1cccc71e1f1331177a04cee3d829fb735b80155521347",
+      "directional_capture_manifest_sha256": "d1dbbde224e3ac2321a4cb9c2ff00650ee882796062964f2ea8951774f243200",
+      "manifest_sha256": "9ff0058a85c07f1dd5f0d9f06f8e1fd6b7fb15a64acf1c821bac1618284af26b"
+    },
+    "campaign:madrid_plazamayor:rays_25000:cells_4096": {
+      "campaign_identity_sha256": "e5cacae1eafc6f63540f7f7a7725ec1dae49366c96dd09e99deb58033f4ca3c9",
+      "directional_capture_manifest_sha256": "adc8c26a5ce1a1b3c9a6edb6797f3a1a9f4ebb7840c4c55b7dc35907201b78e4",
+      "manifest_sha256": "98af3e443c7fd6165cf66d399ee6f2ea7490694dbb7be401e167bc74c9aca67c"
+    },
+    "campaign:madrid_plazamayor:rays_50000:cells_4096": {
+      "campaign_identity_sha256": "f3d0f3e698fd1839dc05668a0b89a3c19da5200038600a2e3b0277b5ab47cae6",
+      "directional_capture_manifest_sha256": "ed61ebb2f7f311332d8f4ff9b8d444202a34d32f7990a542f67873d2638bf0a5",
+      "manifest_sha256": "fd3e3de24f082beec003def02b7d34f482c1a329347f1b389e74b20206b416d5"
+    },
+    "campaign:mexico_zocalo:rays_100000:cells_4096": {
+      "campaign_identity_sha256": "9c07703c3ed75364ca7e16de308a8ec675fba5f97a76d8d32cc819646ed3da75",
+      "directional_capture_manifest_sha256": "fe25264344a1d0259d9e30bbaeba11c495467ff0c96cb9dd84fba2aaa701591e",
+      "manifest_sha256": "f673621135a22d328d48687cb7e94eaac504e1f0ade61dc25c5903c83931ea25"
+    },
+    "campaign:mexico_zocalo:rays_200000:cells_1024": {
+      "campaign_identity_sha256": "f0849fe7a19651504581b29c9399b0f49ae658d02b05573e306107ec7db735f8",
+      "directional_capture_manifest_sha256": "acc700932e947127b29c849d93c7da25cc91977462fbb0b828d447f76838d53c",
+      "manifest_sha256": "b1f35753c4710442a8b0b291c0497d69e1fc14de7100fdd407f6f7ced3df06a7"
+    },
+    "campaign:mexico_zocalo:rays_200000:cells_2048": {
+      "campaign_identity_sha256": "75298dc0dc19888e4dbeb79a39f0f877b6aa3ca67f9d7d9e27c65dc59d33d641",
+      "directional_capture_manifest_sha256": "2792fc200f925b319a30ecfad31b72326732b3812939acfe734859727e5f2f28",
+      "manifest_sha256": "388d56502de18db53c7807f25b99feaeeda237f2b1aeb17d4e0f3352f8c21049"
+    },
+    "campaign:mexico_zocalo:rays_200000:cells_4096": {
+      "campaign_identity_sha256": "f133e4010fd130fd6d14d2c70b8097bbef6f79e43c39aea9e2c33414f2198dd7",
+      "directional_capture_manifest_sha256": "80352902a93054ea621d218eb2289eac2ad90af5a4dd3a086d9f30da3d4f8e57",
+      "manifest_sha256": "3c3ea70e385abc625b941ceae0c13e098a5dc009e70e134025ad028a90f35d74"
+    },
+    "campaign:mexico_zocalo:rays_25000:cells_4096": {
+      "campaign_identity_sha256": "5b659441a7579074b66e4a2e50e14db5f6c85bde66b1aa169861fed5d47bd082",
+      "directional_capture_manifest_sha256": "3928d55270480f75473a6c16de2bab17bcea54d9019b25f661966acb7cd9ae5c",
+      "manifest_sha256": "778f9a6ff8edf5823a172da09cafc424311011a65aeb512b17c1f846fc1a3f0e"
+    },
+    "campaign:mexico_zocalo:rays_50000:cells_4096": {
+      "campaign_identity_sha256": "95639d569eb954b42c55065ecf5a0b1ab7b9413425be6784cf6bd9c4dd69790b",
+      "directional_capture_manifest_sha256": "81df1a44cb2e9b829c4eaafa116fbea98f5c5552ab1c064e5f46e244d4eb65b9",
+      "manifest_sha256": "9a2b873f5ab2cac8bbddaa4e78ff912413ebc5dc6f42ad0eb2b44316cdcf460d"
+    },
+    "campaign:prague_staromestske:rays_100000:cells_4096": {
+      "campaign_identity_sha256": "bed17cb9fd07f4ae245b18ef574f487588dcbaa373bda9baf579d3eab572452d",
+      "directional_capture_manifest_sha256": "1777ebb2244bdb5ea49c61e749e1086642548527ddaa792aa07dda9f61785f79",
+      "manifest_sha256": "8c2403db46f1c60319b23f34750d69ec569bfd123b27a55725c2b002c66187d9"
+    },
+    "campaign:prague_staromestske:rays_200000:cells_1024": {
+      "campaign_identity_sha256": "aa9c1c4fce43840a9de392fd260619b8f59eab927e4411d7a97158beb28a1d21",
+      "directional_capture_manifest_sha256": "355ded8dd394c532411783f1cd8e042d4802461e222433955d0f41d1b19bfa78",
+      "manifest_sha256": "b1fe98fe3f09beb852754267e337991bb4af74dbfaaa5d91a4793adf8751ba80"
+    },
+    "campaign:prague_staromestske:rays_200000:cells_2048": {
+      "campaign_identity_sha256": "9c3a69b739187fedf984fd1936e9c8321c648495fbc16c28f6c70963f701d416",
+      "directional_capture_manifest_sha256": "2aa51497c1444e3b632f027b3c60f944e8697caa95dd15400101aa4a2aa48c0b",
+      "manifest_sha256": "45a8a9f45d387705c04b53a5f8bef5677cd01ee4219bf38f4e49d20cc71a2e9b"
+    },
+    "campaign:prague_staromestske:rays_200000:cells_4096": {
+      "campaign_identity_sha256": "9732b0958872086efe1fca45d49bfdd92de18eb20b54a71018a34f6d68bb7798",
+      "directional_capture_manifest_sha256": "c04282aaab056e55e435f940cc0c134650edbde68f3a4eb088375fc2a2925afd",
+      "manifest_sha256": "c65c8ae170c11c91b3e300558a275d873415531265391975f0510e820ee27b49"
+    },
+    "campaign:prague_staromestske:rays_25000:cells_4096": {
+      "campaign_identity_sha256": "29062d67a86f5e520d5c58a9e6fe029c28d7682be7b8586d8a35d4e9b84e2b5b",
+      "directional_capture_manifest_sha256": "a4855d89cb53c8a8c5160ebbe80ef6a73573fd84195f607d2a9f8b8d46fa7538",
+      "manifest_sha256": "1028059ab33a2eb867e91c2aa8e3ca674f911f94a1d18f5f37b88af8d959d06c"
+    },
+    "campaign:prague_staromestske:rays_50000:cells_4096": {
+      "campaign_identity_sha256": "6f8c875fbd20d13047cdf4390166c0098ca8ebdca77ebd8492170f10b1b09ed1",
+      "directional_capture_manifest_sha256": "acd2c6c19cccfb42dc6c79e6f98241bd31e608e93d723244664fb8b6c0319449",
+      "manifest_sha256": "0799f869e14facd2bdd7d3ae04a426b2895d6580b41937d8a7ea136d6f4d5c0b"
+    },
+    "schedule": {
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/config/roofline_budget_sensitivity_v1.json",
+      "sha256": "8ef72fd53e56d2082ea7a3270dfc54c50550122552e586f3bfa8dac13cded0de"
+    },
+    "sealed_baseline:madrid_plazamayor": {
+      "campaign_identity_sha256": "bdfb59e1b8be8712261d1b9acd2ea52ff6236b4b4d76253d070d70bfe38236d0",
+      "manifest_sha256": "28c63ddb2c6c9b0874009f8158e41357de815abdcc3a13058c602c7267ad8c90",
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/roofline_campaign/madrid_plazamayor_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid"
+    },
+    "sealed_baseline:mexico_zocalo": {
+      "campaign_identity_sha256": "f5c16e6aa08df356a96a480f99fb44ef704be6634b956ea4524c0092857bf7a5",
+      "manifest_sha256": "72e4991b02dc90d45f7a665679b274492be258143b7876ca49ad4eef44ba3d63",
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/roofline_campaign/mexico_zocalo_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid"
+    },
+    "sealed_baseline:prague_staromestske": {
+      "campaign_identity_sha256": "68cbbd269af2e2bc29681ba9b82510a5a046ba5fe991ac221823b2971617e206",
+      "manifest_sha256": "c9b86446239221eb150555403f352cc8b8054fb035a92d159610c83174668243",
+      "path": "/home/user/aegis/papers/city-exposure-study/semantic_twin/outputs/roofline_campaign/prague_staromestske_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid"
+    }
+  }
+}

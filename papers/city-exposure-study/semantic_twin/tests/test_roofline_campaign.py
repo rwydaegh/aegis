@@ -351,6 +351,35 @@ def test_first_material_interaction_campaign_persists_closed_named_components(tm
     ]
 
 
+def test_point_capture_is_opt_in_complete_and_fresh_only(tmp_path):
+    config = RooflineCampaignConfig(
+        site="test_square",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "captured-first-material",
+        planned_seeds=(1,),
+        minimum_completed_specular_order=1,
+        specular_acceptance="first_material_interaction_exact_order_1",
+        transport_topology="first_material_interaction_v1",
+    )
+    campaign = prepared(
+        tmp_path,
+        estimator=FirstMaterialInteractionFakeEstimator(),
+        seeds=(1,),
+        config=config,
+    )
+    captured = []
+
+    run_roofline_campaign(campaign, point_capture=lambda **point: captured.append(point))
+
+    assert [(point["seed"], point["point_index"]) for point in captured] == [(1, 0), (1, 1)]
+    assert all(point["point_seed"] == derive_point_seed(1, point["point_index"]) for point in captured)
+    assert all(point["body_metrics"].shape == (4, 6) for point in captured)
+    assert all(point["total_sab"].shape == (2,) for point in captured)
+    with pytest.raises(ValueError, match="fresh campaign output"):
+        run_roofline_campaign(campaign, point_capture=lambda **point: None)
+
+
 def test_first_material_interaction_measure_rejects_mixed_suffix(tmp_path):
     _, exact = FirstMaterialInteractionFakeEstimator().estimate_field(np.zeros(3), seed=1)
     scale = reference_scale(FirstMaterialInteractionFakeEstimator().sources, np.zeros(3), "per_density_eirp")

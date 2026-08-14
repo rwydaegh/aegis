@@ -25,3 +25,6 @@ Authoritative numerical sources are:
 - `semantic_twin/docs/MATERIAL_EVIDENCE_ABLATION.md`
 - `semantic_twin/outputs/roofline_campaign/current_five_city_first_material_interaction/`
 - `semantic_twin/outputs/roofline_campaign/material_evidence_ablation/`
+- `semantic_twin/outputs/experiments/ray_reached_evidence_coverage_v1/`
+- `semantic_twin/outputs/experiments/current_topology_convergence64_v1/`
+- `semantic_twin/outputs/experiments/roofline_budget_sensitivity_v1/`

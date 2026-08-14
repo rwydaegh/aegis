@@ -15,7 +15,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Any, Callable, Literal, Protocol
 
 import numpy as np
 
@@ -1538,6 +1538,8 @@ def _run_replica(
     prepared: PreparedRooflineCampaign,
     seed: int,
     invariant_body_cache: _InvariantBodyCache | None = None,
+    *,
+    point_capture: Callable[..., None] | None = None,
 ) -> ReplicaData:
     points = len(prepared.walk)
     surfaces = int(np.asarray(prepared.coupler.body.areas).size)
@@ -1580,11 +1582,30 @@ def _run_replica(
         )
         body_seconds = time.perf_counter() - body_started
         detail = surplus.detail
+        timing_row = _point_timing_row(estimator_seconds, body_seconds, field, detail)
+        diagnostic = _point_diagnostic(point_seed, field, detail, body_cache_hits)
         buffers.body_metrics[point_index] = point_metrics
         buffers.total_sab[point_index] = point_sab
-        buffers.timings[point_index] = _point_timing_row(estimator_seconds, body_seconds, field, detail)
+        buffers.timings[point_index] = timing_row
         buffers.field_meta[point_index] = _point_field_meta(field)
-        buffers.diagnostics.append(_point_diagnostic(point_seed, field, detail, body_cache_hits))
+        buffers.diagnostics.append(diagnostic)
+        if point_capture is not None:
+            point_capture(
+                prepared=prepared,
+                seed=seed,
+                point_index=point_index,
+                point_seed=point_seed,
+                origin=origin,
+                ground_z_m=float(ground_z),
+                field=field,
+                scale=scale,
+                measures=measures,
+                body_metrics=point_metrics,
+                total_sab=point_sab,
+                timings=timing_row,
+                diagnostic=diagnostic,
+                detail=detail,
+            )
     return buffers.replica_data()
 
 
@@ -2158,7 +2179,11 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     os.replace(temporary, path)
 
 
-def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]:
+def run_roofline_campaign(
+    prepared: PreparedRooflineCampaign,
+    *,
+    point_capture: Callable[..., None] | None = None,
+) -> dict[str, Path]:
     """Run or resume all declared seeds, then write compact CDF-ready outputs."""
     identity = campaign_identity(prepared)
     output = prepared.config.output_dir
@@ -2191,9 +2216,14 @@ def run_roofline_campaign(prepared: PreparedRooflineCampaign) -> dict[str, Path]
     planned_prefix = prepared.config.planned_seeds[: len(committed)]
     if committed != planned_prefix:
         raise ValueError("checkpoint seeds are not a complete prefix of the planned campaign")
+    if point_capture is not None and committed:
+        raise ValueError("point capture requires a fresh campaign output with no committed replicas")
     invariant_body_cache = _InvariantBodyCache.for_walk(len(prepared.walk))
     for seed in prepared.config.planned_seeds[len(committed) :]:
-        checkpoint.commit(seed, _run_replica(prepared, seed, invariant_body_cache))
+        checkpoint.commit(
+            seed,
+            _run_replica(prepared, seed, invariant_body_cache, point_capture=point_capture),
+        )
     result = _summarize(prepared, checkpoint)
     locations_path = output / LOCATIONS_FILENAME
     summary_path = output / SUMMARY_FILENAME

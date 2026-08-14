@@ -1,0 +1,12 @@
+% PREV: \section{Primary-ray and angular-cell budgets}
+% PREV: \label{sec:si-budget-sensitivity}
+% NEXT: \begin{figure*}[!t]
+% NEXT:   \centering
+% NEXT:   \includegraphics[width=\textwidth]{figures/budget_sensitivity/budget_sensitivity.pdf}
+% NEXT:   \caption{Primary-ray and angular-cell budget sensitivity under the current first-material transport contract. All five cheaper settings leave route-median whole-body SAR nearly unchanged, but each exceeds the directional first-diffuse gate. Exact direct and order-1 specular components remain invariant. The diagnostic retains 200,000 rays and 4,096 cells.}
+% NEXT:   \label{fig:si-budget-sensitivity}
+% NEXT: \end{figure*}
+% claim: roofline_budget_sensitivity
+The budget diagnostic used paired seeds and common random numbers at the Madrid, Mexico City, and Prague routes. Exact direct and all-specular components were byte identical in every paired comparison, and the 200,000-ray, 4,096-cell replay matched the sealed baseline. The route-median normalized whole-body-SAR changes were small, with a maximum absolute $q_{50}$ difference of 0.000797345~dB among the five cheaper settings. Directional first-diffuse fields did not meet the stated gate. The largest site $q_{90}$ normalized-$L_{1}$ differences were 0.877498, 0.678942, and 0.400218 at 25,000, 50,000, and 100,000 rays, respectively. At 1,024 and 2,048 cells, they were 0.491265 and 0.455431. Each value exceeds the 0.1 gate. Mexico City shadowed-point maximum absolute whole-body-SAR changes were 0.707362, 0.563841, and 0.217259~dB for the three ray settings, compared with 0.00206975 and 0.00088674~dB for the two cell settings.
+
+Ray cuts also do not give a defensible end-to-end speedup. At 25,000 rays, estimator-wall-time ratios relative to the baseline range from 0.991 to 1.064 across the three routes. Exact all-specular work takes 8.06 to 23.79~s in the baseline, whereas stochastic tracing takes 1.15 to 2.40~s. The $q_{90}$ variance-time ratios for every ray-reduced arm exceed one, with a minimum of 3.16. The reported timing therefore leaves the exact specular stage dominant while the reduced ray settings increase first-diffuse variance. Figure~\ref{fig:si-budget-sensitivity} retains the 200,000-ray, 4,096-cell setting as the production baseline.

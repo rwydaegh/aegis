@@ -625,6 +625,8 @@ class DeviceSbrKernel:
                             depth,
                             sample,
                         ),
+                        interface_face,
+                        interface_uv,
                     )
 
                 take_specular = _counter_random(mi, ray_index, used_seed, depth, 0) < share

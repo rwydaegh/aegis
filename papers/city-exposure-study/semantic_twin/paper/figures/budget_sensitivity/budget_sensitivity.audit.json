@@ -1,0 +1,40 @@
+{
+  "baseline_replay_parity": "pass",
+  "directional_q90_normalized_l1_max": {
+    "rays_100000_cells_4096": 0.40021795550889805,
+    "rays_200000_cells_1024": 0.49126480809041534,
+    "rays_200000_cells_2048": 0.45543106112995413,
+    "rays_25000_cells_4096": 0.8774980143368515,
+    "rays_50000_cells_4096": 0.6789419645795945
+  },
+  "outputs": {
+    "pdf": {
+      "bytes": 26795,
+      "path": "budget_sensitivity.pdf",
+      "sha256": "5f99448ea1c541b08ca177344097c8d3cc2196ad91d85ffe77f8a94a1395ab2c"
+    },
+    "png": {
+      "bytes": 219042,
+      "path": "budget_sensitivity.png",
+      "sha256": "64db37c1823ec233202a333c2c9828d1c869c1cc303c09bc99813f2fb9c74ac0"
+    }
+  },
+  "schedule_identity_sha256": "fd699f5693c69ce0c85d1b3ad823eb0450bddac546ea11abc62c9e4cb90933d5",
+  "schema_version": "roofline_budget_sensitivity_figure_audit_v1",
+  "source_artifacts": {
+    "roofline_budget_sensitivity_v1.json": {
+      "bytes": 923496,
+      "sha256": "f85235b309b0d22bfafed3666d291fdb31dad6e782ca33bb64882c92ab2576f2"
+    },
+    "roofline_budget_sensitivity_v1.pdf": {
+      "bytes": 26795,
+      "sha256": "5f99448ea1c541b08ca177344097c8d3cc2196ad91d85ffe77f8a94a1395ab2c"
+    },
+    "roofline_budget_sensitivity_v1.png": {
+      "bytes": 219042,
+      "sha256": "64db37c1823ec233202a333c2c9828d1c869c1cc303c09bc99813f2fb9c74ac0"
+    }
+  },
+  "source_manifest_sha256": "8d4c793064d8b827f4cf8229df382499b30b97edb5f0d247aa7a4834791a1082",
+  "source_report_sha256": "f85235b309b0d22bfafed3666d291fdb31dad6e782ca33bb64882c92ab2576f2"
+}

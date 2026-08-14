@@ -37,8 +37,80 @@ def test_all_claim_functions_pass_against_authenticated_outputs() -> None:
         CLAIMS.pooled_median_wbsar_component_shares,
         CLAIMS.directional_component_representation,
         CLAIMS.replica_convergence_12_to_16,
+        CLAIMS.replica_convergence_48_to_64,
         CLAIMS.controlled_depth1_validation,
         CLAIMS.paired_material_evidence_control,
+        CLAIMS.ray_reached_evidence_coverage,
+        CLAIMS.roofline_budget_sensitivity,
     )
     for function in functions:
         assert function()
+
+
+def test_budget_sensitivity_claim_passes_against_authenticated_report() -> None:
+    result = CLAIMS.roofline_budget_sensitivity()
+    assert result["production_budget"] == {"rays": 200_000, "cells": 4096}
+    assert result["migration_recommended"] is False
+    assert result["ray_25000_estimator_wall_time_ratio_range"] == {
+        "minimum": 0.9912406567927025,
+        "maximum": 1.0638558906935487,
+    }
+    assert result["baseline_specular_seconds_range"] == {
+        "minimum": 8.058428761999494,
+        "maximum": 23.785232650004218,
+    }
+    assert result["baseline_stochastic_trace_seconds_range"] == {
+        "minimum": 1.1504173969979092,
+        "maximum": 2.3965218109888156,
+    }
+    assert result["minimum_ray_reduced_q90_variance_time_ratio"] == 3.1598358725295483
+
+
+def test_si_table_claims_return_every_published_cell() -> None:
+    coverage = CLAIMS.ray_reached_evidence_coverage()
+    assert coverage["table_rows"] == {
+        "order_1_specular": {
+            "panorama_informed": 0.806433729576005,
+            "no_panorama_evidence": 0.08774141679005237,
+            "host_incompatible": 0.10530373486292556,
+            "other_fallback": 0.0005211187710170229,
+        },
+        "first_diffuse": {
+            "panorama_informed": 0.13336718410343135,
+            "no_panorama_evidence": 0.44345147385166056,
+            "host_incompatible": 0.42313964955266,
+            "other_fallback": 0.00004169249224817807,
+        },
+        "combined_non_direct": {
+            "panorama_informed": 0.7590277699014926,
+            "no_panorama_evidence": 0.11279507119363207,
+            "host_incompatible": 0.12768980746784794,
+            "other_fallback": 0.0004873514370273951,
+        },
+    }
+    convergence = CLAIMS.replica_convergence_48_to_64()
+    assert convergence["lower_tail_status"]["Korenmarkt"] == {
+        "q10_change_db": 0.00007229028053766959,
+        "shadow_point_max_change_db": None,
+        "q10_bootstrap_95_width_db": 0.00022232758404101718,
+    }
+    assert convergence["lower_tail_status"]["Prague"] == {
+        "q10_change_db": 0.00002027887149130285,
+        "shadow_point_max_change_db": None,
+        "q10_bootstrap_95_width_db": 0.00021814219482941877,
+    }
+    assert convergence["lower_tail_status"]["Madrid"] == {
+        "q10_change_db": 0.000006147006725693227,
+        "shadow_point_max_change_db": None,
+        "q10_bootstrap_95_width_db": 0.00037805244663012116,
+    }
+    assert convergence["lower_tail_status"]["Mexico"] == {
+        "q10_change_db": 0.0034408407908050015,
+        "shadow_point_max_change_db": 0.012484950417289281,
+        "q10_bootstrap_95_width_db": 0.3638279391681467,
+    }
+    assert convergence["lower_tail_status"]["Tokyo"] == {
+        "q10_change_db": 0.004914586580220958,
+        "shadow_point_max_change_db": 0.010443295223947286,
+        "q10_bootstrap_95_width_db": 0.05379368852716219,
+    }
