@@ -1,6 +1,6 @@
-% PREV: \section{Semantic evidence and surface fusion}
+% PREV: \section{Image labels and material mapping}
 % PREV: \label{sec:si-semantics}
-% NEXT: The four rectilinear crops of each panorama use yaw angles of $0^\circ$,
+% NEXT: The four rectilinear crops of each 360-degree street image face $0^\circ$,
 % NEXT: $90^\circ$, $180^\circ$, and $270^\circ$, zero pitch, a $90^\circ$ field of
 % NEXT: view, and $1536$ pixels per side. Mask2Former runs at $1536$ pixels. SAM~3 uses
 % NEXT: its trained $1008$-pixel input, a score threshold of 0.35, and prompt batches of
@@ -9,7 +9,7 @@
 % NEXT: change, even if the number of prompts remains the same.
 % NEXT:
 % NEXT: \begin{table*}[!t]
-% NEXT:   \caption{Immutable semantic identities used by the production atlas.}
+% NEXT:   \caption{Fixed model identities used by the production material map.}
 % NEXT:   \label{tab:si-semantic-identity}
 % NEXT:   \centering
 % NEXT:   \scriptsize
@@ -24,19 +24,19 @@
 % NEXT:     \bottomrule
 % NEXT:   \end{tabular}
 % NEXT: \end{table*}
-The semantic pass uses two models with separate roles. Mask2Former with the
-65-class Mapillary Vistas vocabulary assigns one street-scene entity to every pixel. It
-therefore supplies the complete entity layer and identifies small objects such
+The image-labeling pass uses two models with separate roles. Mask2Former with the
+65-class Mapillary Vistas vocabulary assigns one street-scene object class to every pixel. It
+therefore supplies the complete object map and identifies small objects such
 as poles, signs, curbs, and bicycle racks. One Vistas building label can contain
 brick, stone, render, glass, and metal. SAM~3 supplies the open-vocabulary
-material evidence needed inside such broad entity classes. The production
+material labels needed inside such broad object classes. The production
 catalog contains 60 text prompts and 61 raster identifiers including the
 unlabeled identifier. Examples include ``brick facade'', ``glass window'',
 ``metal cladding panel'', and separate ground, grass, shrub,
 tree, and forest concepts. The prompts are also gated by the Vistas classes. A class
 must occupy at least 256 pixels in a $1536\times1536$ crop before its related
 prompts are sent to SAM~3. The gate reduces work and removes prompts that have no
-entity support in the view. The complete prompt list and its entity, material,
+matching object in the view. The complete prompt list and its object, material,
 attribute, and vegetation mappings are stored in
 \texttt{config/semantic\_concepts.json}.
 

@@ -1,17 +1,22 @@
-% PREV: % claim: directional_component_representation
-% PREV: The retained directional transfer has three nonoverlapping parts. Let $\mathcal{D}$ contain the visible direct paths, and let $\mathcal{S}_1$ contain the accepted order-1 all-specular paths. Their normalized masses are $\alpha_a=m_a^{(\mathrm{d})}/D_{\mathrm{ref}}$ and $\beta_b=m_b^{(\mathrm{s})}/D_{\mathrm{ref}}$. The first-diffuse estimate uses normalized cell masses $\widehat{\gamma}_q=\widehat{m}_q^{(\mathrm{f})}/D_{\mathrm{ref}}$. With $\delta_{\widehat{\mathbf{k}}}$ denoting a unit point mass in physical arrival direction $\widehat{\mathbf{k}}$, the directional measure is
-% PREV: \begin{equation}
-% PREV: \begin{aligned}
-% PREV: \mu_{\mathbf{x}}={}&
-% PREV: \sum_{a\in\mathcal{D}}\alpha_a\delta_{\widehat{\mathbf{k}}_a^{(\mathrm{d})}} \\
-% PREV: &+\sum_{b\in\mathcal{S}_1}\beta_b\delta_{\widehat{\mathbf{k}}_b^{(\mathrm{s})}} \\
-% PREV: &+\sum_{q=1}^{Q}\widehat{\gamma}_q\delta_{\widehat{\mathbf{k}}_q^{(\mathrm{f})}},
-% PREV: \qquad Q=4096 .
-% PREV: \end{aligned}
-% PREV: \label{eq:first-material-transfer}
-% PREV: \end{equation}
-% PREV: The first two sums retain the exact directions and masses of the direct and order-1 specular paths. They are not projected onto the angular grid. Only first-diffuse power is accumulated in the $Q$ Fibonacci cells. This term uses next-event estimation at the first blocking material vertex~\cite{veach}. The material model combines unpolarized Fresnel power with a Rayleigh roughness factor. The remaining power enters a Lambertian diffuse term, and the components add incoherently. A sampled first-diffuse path stops at that interaction, and specular orders above one are absent. Nonblocking woody atlas cells pass rays without attenuation. The full laws and evaluated parameters are given in the supplementary material.
-% NEXT: Each replica launches 200,000 independent and identically distributed primary rays per standpoint and accumulates first-diffuse power in 4,096 fixed Fibonacci output cells. The exact direct and specular atoms bypass this grid. The cells are not ray-launch strata. The calculations use 16 replicas with seeds 7 through 22 and retain cumulative looks after 4, 8, 12, and 16 replicas. Only the first-diffuse estimate varies between replicas. Scalar endpoints and body fields are averaged before route statistics are computed. Route quantiles use NumPy linear interpolation over equally weighted fixed standpoints. The plotted empirical distributions use positions $(\operatorname{rank}-0.5)/n$. These quantities describe a selected route and do not estimate a pedestrian population. Multipath surplus is computed only where direct transfer is positive. A zero-direct standpoint remains in the whole-body SAR distribution but has no finite surplus value.
+% PREV: \begin{figure*}[!t]
+% PREV:   \centering
+% PREV:   \includegraphics[width=\textwidth]{figures/adjoint/adjoint.pdf}
+% PREV:   \caption{Forward and adjoint sampling for the first-diffuse term. (a) A forward calculation launches rays from every roofline segment toward the route point. (b) The adjoint calculation launches rays once from the route point. At the first blocking surface, next-event estimation tests connections to the roofline.}
+% PREV:   \label{fig:adjoint}
+% PREV: \end{figure*}
+% NEXT: Each replica launches 200,000 independent and identically distributed primary
+% NEXT: rays per route point and accumulates first-diffuse power in 4,096 fixed
+% NEXT: Fibonacci output cells. Exact direct and specular paths bypass this grid. The
+% NEXT: output cells do not control the launch directions. The calculations use 16
+% NEXT: replicas with seeds 7 through 22 and retain cumulative results after 4, 8, 12,
+% NEXT: and 16 replicas. Only the first-diffuse estimate varies between replicas.
+% NEXT: Scalar quantities and body fields are averaged before route statistics are
+% NEXT: computed. Route quantiles use NumPy linear interpolation over equally weighted
+% NEXT: route points. The plotted empirical distributions use positions
+% NEXT: $(\operatorname{rank}-0.5)/n$. These quantities describe a selected route and
+% NEXT: do not estimate a pedestrian population. Multipath surplus is computed only
+% NEXT: where direct transfer is positive. A zero-direct route point remains in the
+% NEXT: whole-body SAR distribution but has no finite surplus value.
 Direction remains explicit until body coupling. For outward body-surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, define $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot(-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
 \begin{equation}
 \begin{aligned}
@@ -27,7 +32,13 @@ Direction remains explicit until body coupling. For outward body-surface normal 
 \end{aligned}
 \label{eq:body-coupling}
 \end{equation}
-Here, $T_0$ is the normal-incidence power-transmission coefficient obtained from the IT'IS tissue parameters at 15~GHz~\cite{itis}. The AEGIS level-2 implementation applies this one-sided local-incidence coupling to the Duke anatomical mesh~\cite{christ2010,aegis}. Thus, $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For body-element area $A_{\mathbf{r}}$ and body mass $m_{\mathrm{body}}$, the normalized integrated endpoints are
+Here, $T_0$ is the normal-incidence power-transmission coefficient obtained from
+the IT'IS tissue parameters at 15~GHz~\cite{itis}. The implementation applies
+this one-sided local-incidence coupling to the Duke anatomical mesh with the
+published level-2 dosimetry kernel~\cite{christ2010,aegis}. Thus,
+$\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the area
+$A_{\mathbf{r}}$ at position $\mathbf{r}$ and body mass
+$m_{\mathrm{body}}$, the normalized integrated quantities are
 \begin{equation}
 \begin{aligned}
 \widetilde{P}_{\mathrm{abs}}(\mathbf{x})

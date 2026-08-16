@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-
 MODULE_PATH = Path(__file__).resolve().parents[1] / "claims" / "current_results.py"
 SPEC = importlib.util.spec_from_file_location("paper_current_results_claims", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
@@ -42,9 +41,20 @@ def test_all_claim_functions_pass_against_authenticated_outputs() -> None:
         CLAIMS.paired_material_evidence_control,
         CLAIMS.ray_reached_evidence_coverage,
         CLAIMS.roofline_budget_sensitivity,
+        CLAIMS.geometric_fixed_grid_diagnostic,
     )
     for function in functions:
         assert function()
+
+
+def test_geometric_fixed_grid_claim_uses_authenticated_report() -> None:
+    result = CLAIMS.geometric_fixed_grid_diagnostic()
+    assert result["contract"]["site_count"] == 10
+    assert {name: round(value, 2) for name, value in result["quantile_span_factors"].items()} == {
+        "q10": 2.09,
+        "q50": 2.10,
+        "q90": 2.60,
+    }
 
 
 def test_budget_sensitivity_claim_passes_against_authenticated_report() -> None:

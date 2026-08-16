@@ -1,6 +1,22 @@
 % PREV: \section{Validation and Results}
 % PREV: \label{sec:results}
 % NEXT: % claim: raw_component_closure
-% NEXT: The campaign manifests bind 42 files per site, and all 210 recorded file hashes pass verification. The direct, exact order-1 specular, and first-diffuse fields sum to the stored total with a maximum absolute residual of $1.735\times10^{-18}$~m$^{-2}$ across all 1,168 fields. The GPU body-coupling result also agrees with the double-precision CPU reference to a maximum relative difference of $6.64\times10^{-16}$ in the verified benchmark. These checks establish artifact identity, additive closure, and numerical parity. They do not provide an external validation of the complete city model.
+% NEXT: The calculation manifests list 42 files per site, and all 210 file hashes pass
+% NEXT: verification. The direct, exact order-1 specular, and first-diffuse fields sum
+% NEXT: to the stored total with a maximum absolute residual of
+% NEXT: $1.735\times10^{-18}$~m$^{-2}$ across all 1,168 fields. The GPU body-coupling
+% NEXT: result also agrees with the double-precision CPU reference to a maximum relative
+% NEXT: difference of $6.64\times10^{-16}$ in the verified benchmark. These checks
+% NEXT: confirm the input files, addition of components, and agreement between CPU and
+% NEXT: GPU calculations. They do not externally validate the complete city model.
 % claim: current_campaign_contract
-Table~\ref{tab:routes} defines the five fixed registered routes and their 73 standpoints. Every site uses the same 15~GHz frequency, 250~m-radius photogrammetric support mesh, and Duke body model with 56,024 surface elements, 72.4~kg mass, and route-tangent yaw. Each standpoint has 16 independent replicas with seeds 7 through 22. Each replica uses 200,000 IID primary rays and 4,096 fixed output directions for the first-diffuse term. The resulting 1,168 standpoint-replica fields contain 233.6 million primary rays. Numerical calculation time after scene preparation ranges from 29.79 to 69.02~s on one A6000 GPU. These times exclude acquisition, registration, depth estimation, and material-surface construction because the cold-stage timing record is incomplete.
+Table~\ref{tab:routes} defines the five fixed routes and their 73 calculation
+points. Every site uses 15~GHz, a photogrammetric city mesh cropped to a
+250~m radius, and the Duke body model with 56,024 surface elements and a
+72.4~kg mass. The phantom faces along the walk. Each point has 16 independent
+replicas with seeds 7 through 22, and each replica uses 200,000 IID primary rays
+and 4,096 fixed output directions for the first-diffuse term. The resulting
+1,168 fields contain 233.6 million primary rays. Calculation time for a prepared
+site ranges from 29.79 to 69.02~s on one A6000 GPU. These times exclude image
+acquisition, image-to-mesh alignment, depth estimation, and material mapping
+because the full preparation time was not recorded.

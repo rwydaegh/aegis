@@ -1,5 +1,13 @@
 % PREV: % claim: route_median_contrast_factor
-% PREV: Figure~\ref{fig:route-distributions} contains the fixed-route empirical distributions and route-mean component shares, while Table~\ref{tab:route-results} gives the central summaries and finite multipath surplus. Normalized whole-body SAR is reported in m$^2$~kg$^{-1}$ per unit $\rho_A P_{\mathrm{EIRP}}$. A physical deployment value therefore requires multiplication by its areal source density and EIRP. Panel (a) includes all 73 standpoints and marks the six points with zero direct and zero order-1 specular transfer. Across the five selected routes, the ratio between the largest and smallest route medians is 13.34. This comparison is conditional on the selected routes and does not define a city ranking. Mexico City and Tokyo Hachiko have the widest within-route ranges and contain the deep lower tails.
+% PREV: Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions
+% PREV: and route-mean component shares. Table~\ref{tab:route-results} gives the central
+% PREV: summaries and finite multipath surplus. Normalized whole-body SAR is reported in
+% PREV: m$^2$~kg$^{-1}$ per unit $\rho_A P_{\mathrm{EIRP}}$. A physical deployment
+% PREV: value therefore requires multiplication by its areal source density and EIRP.
+% PREV: Panel (a) includes all 73 route points and marks the six points with zero direct
+% PREV: and zero order-1 specular transfer. The largest route median is 13.34 times the
+% PREV: smallest. The selected routes do not define a city ranking. Mexico City and
+% PREV: Tokyo Hachiko have the widest ranges along a route and the lowest tails.
 % NEXT: % claim: five_city_wbsar_route_quantiles
 % NEXT: \begin{table*}[!t]
 % NEXT: \caption{Fixed-route exposure summary. Whole-body SAR quantiles are normalized per unit $\rho_A P_{\mathrm{EIRP}}$ and have units m$^2$~kg$^{-1}$. Surplus uses finite-direct points only. The last column is the maximum pointwise total-transfer change from 12 to 16 replicas.}
@@ -20,6 +28,6 @@
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{figures/route_results/route_results.pdf}
-\caption{Normalized whole-body SAR on the five fixed routes. (a) Midpoint empirical CDFs include all 73 registered standpoints. Hollow triangles mark the six standpoints with zero direct and order-1 specular transfer. (b) Additive contributions to route-mean whole-body SAR. The routes are fixed case studies, not city or population samples.}
+\caption{Normalized whole-body SAR on the five fixed routes. (a) Midpoint empirical CDFs include all 73 route points. Hollow triangles mark the six points with zero direct and order-1 specular transfer. (b) Additive contributions to route-mean whole-body SAR. The routes are fixed case studies rather than city or population samples.}
 \label{fig:route-distributions}
 \end{figure*}

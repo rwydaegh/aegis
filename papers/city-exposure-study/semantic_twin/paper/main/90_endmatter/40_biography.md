@@ -5,6 +5,18 @@
 % PREV: structures on radio-wave propagation in the range of 1 MHz to 450 GHz,''
 % PREV: Recommendation ITU-R P.2040-4, 2025.
 % PREV:
+% PREV: \bibitem{vitucci}
+% PREV: E.~M.~Vitucci, V.~Degli-Esposti, F.~Mani \emph{et al.}, ``Tuning ray tracing for
+% PREV: mm-wave coverage prediction in outdoor urban scenarios,'' \emph{Radio Sci.},
+% PREV: vol. 54, no. 11, pp. 1112--1128, 2019,
+% PREV: doi: 10.1029/2019RS006869.
+% PREV:
+% PREV: \bibitem{icnirp}
+% PREV: International Commission on Non-Ionizing Radiation Protection, ``Guidelines for
+% PREV: limiting exposure to electromagnetic fields (100 kHz to 300 GHz),'' \emph{Health
+% PREV: Phys.}, vol. 118, no. 5, pp. 483--524, 2020,
+% PREV: doi: 10.1097/HP.0000000000001210.
+% PREV:
 % PREV: \bibitem{sionna}
 % PREV: J.~Hoydis, F.~A\"it~Aoudia, S.~Cammerer, M.~Nimier-David, N.~Binder,
 % PREV: G.~Marcus, and A.~Keller, ``Sionna RT: Differentiable ray tracing for radio
@@ -36,27 +48,17 @@
 % PREV: wireless cellular network,'' \emph{Bioelectromagnetics}, vol. 36, no. 6,
 % PREV: pp. 451--463, 2015, doi: 10.1002/bem.21928.
 % PREV:
-% PREV: \bibitem{mmsv}
-% PREV: A.~Kamari, Y.~Chae, and P.~Pathak, ``mmSV: mmWave vehicular networking using
-% PREV: Street View imagery in urban environments,'' in \emph{Proc. 29th Annu. Int.
-% PREV: Conf. Mobile Comput. Netw.}, 2023, pp. 1--16,
-% PREV: doi: 10.1145/3570361.3613291.
-% PREV:
-% PREV: \bibitem{mask2former}
-% PREV: B.~Cheng, I.~Misra, A.~G.~Schwing, A.~Kirillov, and R.~Girdhar,
-% PREV: ``Masked-attention mask transformer for universal image segmentation,'' in
-% PREV: \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit.}, 2022,
-% PREV: pp. 1290--1299.
-% PREV:
 % PREV: \bibitem{vistas}
 % PREV: G.~Neuhold, T.~Ollmann, S.~Rota~Bul\`o, and P.~Kontschieder,
 % PREV: ``The Mapillary Vistas dataset for semantic understanding of street scenes,''
 % PREV: in \emph{Proc. IEEE Int. Conf. Comput. Vis.}, 2017, pp. 5000--5009,
 % PREV: doi: 10.1109/ICCV.2017.534.
 % PREV:
-% PREV: \bibitem{sam3}
-% PREV: N.~Carion \emph{et al.}, ``SAM 3: Segment anything with concepts,''
-% PREV: arXiv:2511.16719, 2025, doi: 10.48550/arXiv.2511.16719.
+% PREV: \bibitem{mmsv}
+% PREV: A.~Kamari, Y.~Chae, and P.~Pathak, ``mmSV: mmWave vehicular networking using
+% PREV: Street View imagery in urban environments,'' in \emph{Proc. 29th Annu. Int.
+% PREV: Conf. Mobile Comput. Netw.}, 2023, pp. 1--16,
+% PREV: doi: 10.1145/3570361.3613291.
 % PREV:
 % PREV: \bibitem{xia2024}
 % PREV: G.~Xia, C.~Zhou, F.~Zhang, Z.~Cui, C.~Liu, H.~Ji, X.~Zhang, Z.~Zhao, and
@@ -65,17 +67,24 @@
 % PREV: Propag.}, vol. 72, no. 10, pp. 7986--7997, 2024,
 % PREV: doi: 10.1109/TAP.2024.3451214.
 % PREV:
-% PREV: \bibitem{vitucci}
-% PREV: E.~M.~Vitucci, V.~Degli-Esposti, F.~Mani \emph{et al.}, ``Tuning ray tracing for
-% PREV: mm-wave coverage prediction in outdoor urban scenarios,'' \emph{Radio Sci.},
-% PREV: vol. 54, no. 11, pp. 1112--1128, 2019,
-% PREV: doi: 10.1029/2019RS006869.
+% PREV: \bibitem{mask2former}
+% PREV: B.~Cheng, I.~Misra, A.~G.~Schwing, A.~Kirillov, and R.~Girdhar,
+% PREV: ``Masked-attention mask transformer for universal image segmentation,'' in
+% PREV: \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit.}, 2022,
+% PREV: pp. 1290--1299.
 % PREV:
-% PREV: \bibitem{icnirp}
-% PREV: International Commission on Non-Ionizing Radiation Protection, ``Guidelines for
-% PREV: limiting exposure to electromagnetic fields (100 kHz to 300 GHz),'' \emph{Health
-% PREV: Phys.}, vol. 118, no. 5, pp. 483--524, 2020,
-% PREV: doi: 10.1097/HP.0000000000001210.
+% PREV: \bibitem{sam3}
+% PREV: N.~Carion \emph{et al.}, ``SAM 3: Segment anything with concepts,''
+% PREV: arXiv:2511.16719, 2025, doi: 10.48550/arXiv.2511.16719.
+% PREV:
+% PREV: \bibitem{veach}
+% PREV: E.~Veach, \emph{Robust Monte Carlo Methods for Light Transport Simulation}.
+% PREV: Stanford, CA, USA: Stanford Univ., Ph.D. dissertation, 1997.
+% PREV:
+% PREV: \bibitem{itis}
+% PREV: P.~A.~Hasgall \emph{et al.}, ``IT'IS database for thermal and electromagnetic
+% PREV: parameters of biological tissues,'' Version 4.2, 2024,
+% PREV: doi: 10.13099/VIP21000-04-2.
 % PREV:
 % PREV: \bibitem{christ2010}
 % PREV: A.~Christ \emph{et al.}, ``The Virtual Family: Development of surface-based
@@ -83,18 +92,9 @@
 % PREV: \emph{Phys. Med. Biol.}, vol. 55, no. 2, pp. N23--N38, 2010,
 % PREV: doi: 10.1088/0031-9155/55/2/N01.
 % PREV:
-% PREV: \bibitem{veach}
-% PREV: E.~Veach, \emph{Robust Monte Carlo Methods for Light Transport Simulation}.
-% PREV: Stanford, CA, USA: Stanford Univ., Ph.D. dissertation, 1997.
-% PREV:
 % PREV: \bibitem{aegis}
 % PREV: R.~Wydaeghe, ``AEGIS: Absorbed power density on human bodies in wireless
 % PREV: environments,'' Version 0.39.1, software, 2026.
-% PREV:
-% PREV: \bibitem{itis}
-% PREV: P.~A.~Hasgall \emph{et al.}, ``IT'IS database for thermal and electromagnetic
-% PREV: parameters of biological tissues,'' Version 4.2, 2024,
-% PREV: doi: 10.13099/VIP21000-04-2.
 % PREV:
 % PREV: \bibitem{openai_codex}
 % PREV: OpenAI, ``Codex CLI,'' \emph{OpenAI Documentation}, 2026. [Online]. Available:

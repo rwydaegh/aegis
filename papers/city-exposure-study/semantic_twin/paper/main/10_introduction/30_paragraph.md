@@ -9,31 +9,31 @@
 % PREV: transport, spatial source models, and body coupling. Because these studies use
 % PREV: different source assumptions, their reported quantities are not directly
 % PREV: comparable without a common source law.
-% NEXT: The calculation considered here requires the established parts in one declared
-% NEXT: model. Registered panoramas must refer to the same city geometry that supports
-% NEXT: the propagation calculation. A source model must remain fixed across sites, and
-% NEXT: its physical scale must be separate from the numerical source quadrature.
-% NEXT: Direct, specular, and diffuse power must remain separate until their arrival
-% NEXT: directions are coupled to the body. The method in this paper meets these
-% NEXT: requirements with a panorama-derived material surface, a route-aligned roofline
-% NEXT: source measure, and a transport model that stops after the first diffuse material
-% NEXT: interaction. This combination defines a conditional comparison of local scenes
-% NEXT: without treating the available standpoints as a population sample or the
-% NEXT: roofline sources as a measured deployment. To the best of the authors'
-% NEXT: knowledge, prior work has not combined registered street panoramas, a common roofline source law, component-resolved
-% NEXT: first-material transport, and directional body coupling along fixed routes.
-Street imagery and semantic scene models can supply attributes that are absent
+% NEXT: The calculation combines these established parts in one fixed model. First, each
+% NEXT: 360-degree street image is aligned with the same city mesh used for ray tracing.
+% NEXT: The image labels are then projected onto that mesh to make a material map.
+% NEXT: Second, the same transmitter model is used at every site, with the number of
+% NEXT: transmitters set independently of how finely the roofline is divided. Third,
+% NEXT: direct, specular, and diffuse power stays separate until its arrival direction
+% NEXT: is coupled to the body. The transport calculation treats direct paths and one
+% NEXT: specular reflection exactly, estimates one diffuse reflection, and then stops.
+% NEXT: The route points are fixed case studies rather than a population sample, and the
+% NEXT: roofline transmitters are a model rather than a measured deployment. To the best
+% NEXT: of the authors' knowledge, prior work has not combined aligned 360-degree street
+% NEXT: images, a common roofline transmitter model, these separate transport components,
+% NEXT: and directional body coupling along fixed routes.
+Street images can supply surface information that is absent
 from an untextured city mesh. The Vistas dataset provides a street-scene
 taxonomy for dense semantic segmentation~\cite{vistas}. Kamari \emph{et al.}
 segment street-level images, project the resulting material classes onto city
 geometry, and use that geometry in millimeter-wave ray tracing~\cite{mmsv}.
 Xia \emph{et al.} use semantic point-cloud classification and detailed scene
 reconstruction for outdoor urban ray tracing at 2.8~GHz~\cite{xia2024}.
-Image-informed wireless scene construction is therefore established. The
+Image-informed city modeling is therefore established. The
 present work does not claim semantic segmentation, material classification, or
 image-to-geometry projection as new. It uses these operations to form a
-traceable material surface around fixed pedestrian routes, with an explicit
-fallback where the image evidence is absent or refused.
+traceable material map around fixed pedestrian routes. The map keeps the
+geometry-based material wherever the images give no reliable label.
 
 ## reviews (paragraph)
 

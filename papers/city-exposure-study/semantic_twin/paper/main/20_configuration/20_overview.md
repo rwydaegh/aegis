@@ -1,9 +1,15 @@
-% PREV: \section{Configuration and Scene Evidence}
+% PREV: \section{Configuration and Surface Mapping}
 % PREV: \label{sec:configuration}
 % NEXT: \begin{figure*}[!t]
 % NEXT:   \centering
 % NEXT:   \includegraphics[width=\textwidth]{figures/configuration/configuration.pdf}
-% NEXT:   \caption{Study configuration at Prague Old Town Square. The registered panorama in (a) is aligned with the traced support in (b). Panel (c) shows the surface classes supplied to transport: atlas interfaces, nonblocking woody vegetation, and the geometric fallback. In (d), orange marks roofline source support, filled squares mark registered panorama endpoints, and the arrow gives one route-tangent yaw. The calculation uses a 250\,m-radius support mesh, 502 roofline source elements, and 22 fixed standpoints. Panel (e) shows the anatomical body in neutral gray.}
+% NEXT:   \caption{Study configuration at Prague Old Town Square. Panel (a) follows a 360-degree street image through object segmentation, projection onto the city mesh, and conversion to the material map used by the tracer. Panel (b) shows the 22 route points and the visible roofline on a plan view of the city. Panel (c) enlarges the route. The arrow gives the phantom's direction along the walk.}
 % NEXT:   \label{fig:configuration}
 % NEXT: \end{figure*}
-The study configuration is shown in Fig.~\ref{fig:configuration}. Registered street panoramas supply surface evidence to a photogrammetric support mesh cropped to a 250\,m radius. They do not create or alter its geometry. The original mesh remains the transport surface, while the image evidence supplies the surface classes queried on that mesh. A route-visible roofline defines the source support. Fixed positions along a pedestrian route define the receiver locations. At each position, the anatomical body has a horizontal orientation set by the local route tangent.
+The study configuration is shown in Fig.~\ref{fig:configuration}. A
+360-degree street image is aligned with a photogrammetric city mesh cropped to a
+250\,m radius. Object and material labels from the image are projected onto the
+visible mesh triangles without changing their geometry. The roofline visible
+from the route gives the possible transmitter locations. Fixed points along the
+pedestrian route give the receiver locations, and the anatomical phantom faces
+along the direction of travel at each point.

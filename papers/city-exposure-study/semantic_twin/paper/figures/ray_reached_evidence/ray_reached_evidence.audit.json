@@ -15,16 +15,17 @@
     ],
     "panorama_informed_sar_fraction": 0.7590277699014926
   },
+  "label_policy": "reader-facing image and material terms; report keys remain unchanged",
   "outputs": {
     "pdf": {
-      "bytes": 25243,
+      "bytes": 78092,
       "path": "ray_reached_evidence.pdf",
-      "sha256": "232a096202dccb822debdb3277118e7488f5eac35b92e1275f4c2f1993d80d65"
+      "sha256": "0a5afbfa6dd85b063f14c5e62b476bd0305a6eb483666a9d0fe2398392c1c327"
     },
     "png": {
-      "bytes": 115141,
+      "bytes": 121594,
       "path": "ray_reached_evidence.png",
-      "sha256": "7f7c935f82f1cb24ce5543570559cd9ba26dc0a596c558ed3cee2e2a3d41b76d"
+      "sha256": "a6dbfe6487f541e1fbba5ba74dec9474ceb7c6f1072c5c486bc601b58835f452"
     }
   },
   "schema": "paper_ray_reached_evidence_figure_v1",

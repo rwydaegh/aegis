@@ -10,15 +10,16 @@
 % NEXT: transport, spatial source models, and body coupling. Because these studies use
 % NEXT: different source assumptions, their reported quantities are not directly
 % NEXT: comparable without a common source law.
-\IEEEPARstart{U}{rban} propagation can change over a few meters along a
-pedestrian route. A person can move from direct visibility of a roofline to a
+\IEEEPARstart{U}{rban} wireless systems operate in a built environment that
+strongly shapes radio propagation~\cite{itu2040}. Propagation can change over a
+few meters along a pedestrian route. A person can move from direct visibility of a roofline to a
 region where buildings block the direct field and reflected power arrives from
 another direction. The surface materials then affect how much power is returned
 to the street~\cite{itu2040,vitucci}. This local variation also matters after propagation.
 Whole-body absorption depends on the arrival direction and on the orientation of
 the body, so one incident-power value at one receiver position does not describe
-exposure along a route. A route calculation must retain position and direction
-until the field is coupled to the body~\cite{icnirp}.
+exposure along a route. A route calculation must retain position and arrival
+direction until the field is coupled to the body~\cite{icnirp}.
 
 ## reviews (paragraph)
 

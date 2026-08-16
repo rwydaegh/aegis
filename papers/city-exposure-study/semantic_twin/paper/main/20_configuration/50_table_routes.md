@@ -1,12 +1,29 @@
-% PREV: Table~\ref{tab:routes} lists the five selected routes. The standpoint counts and spans come from the sealed route records used for the five-site data set. Each route follows a connected corridor supported by registered panoramas, and the calculation samples fixed positions along that corridor. A panorama center constrains the route but is not, in general, an exposure standpoint. Therefore, panorama and standpoint counts need not agree. The 73 standpoints are fixed observations, not a random sample of pedestrians or places. Route distributions in this study are conditional on these five paths. The local route tangent also fixes body yaw, so a change in route definition would change both receiver position and orientation.
-% NEXT: The two image models have separate roles. A dense Mask2Former model uses the Vistas street-scene taxonomy to assign one object class to every image pixel~\cite{mask2former,vistas}. This pass distinguishes, for example, buildings, road surfaces, people, vehicles, and vegetation. A promptable SAM 3 pass then tests radio-frequency material and vegetation concepts within object regions that can support them~\cite{sam3}. Thus, the dense pass supplies the object partition, while the promptable pass resolves compatible parts of that partition along the material axis. Registered camera locations and orientations project both forms of evidence onto the visible support surface. The projected observations are fused in a surface atlas and remain linked to the original support mesh. Image evidence changes a structural surface only when its object and material evidence is compatible and decisive. Evidence that is absent or does not pass these conditions leaves the declared geometry-based fallback unchanged. The prompt catalogue, registration gates, refusal categories, and fusion rules are given in the supplementary material.
+% PREV: Table~\ref{tab:routes} lists the five selected routes. The point counts and spans
+% PREV: come from the verified route files used for the five-site data set. Each route
+% PREV: follows a connected corridor covered by aligned 360-degree street images. The
+% PREV: calculation samples fixed points along that corridor, including interpolated
+% PREV: points between image locations. The image count and route-point count can
+% PREV: therefore differ. The 73 route points are fixed observations rather than a
+% PREV: random sample of pedestrians or places. The phantom faces along the walk, so a
+% PREV: different route would change both its position and orientation.
+% NEXT: The two image models have separate roles. Mask2Former assigns a Vistas object
+% NEXT: class to every image pixel~\cite{mask2former,vistas}. These classes include
+% NEXT: buildings, roads, people, vehicles, and vegetation. SAM 3 then tests relevant
+% NEXT: material and vegetation labels inside compatible object regions~\cite{sam3}.
+% NEXT: The known camera position and viewing direction project both sets of labels onto
+% NEXT: the visible city mesh. Repeated observations are combined into one material
+% NEXT: map, and every mapped triangle stays linked to its original image. A mesh
+% NEXT: triangle changes material only when the object and material labels agree and
+% NEXT: pass the acceptance tests. All other triangles keep their geometry-based
+% NEXT: material. The prompts, image-alignment tests, rejected labels, and mapping rules
+% NEXT: are given in the supplementary material.
 \begin{table}[!t]
   \caption{Five fixed routes and prepared-scene numerical campaign times}
   \label{tab:routes}
   \centering
   \begin{tabular}{lrrr}
     \hline
-    Site & Standpoints & Route span (m) & Wall time (s) \\
+    Site & Route points & Route span (m) & Wall time (s) \\
     \hline
     Korenmarkt & 10 & 49.04 & 29.79 \\
     Prague & 22 & 119.39 & 69.02 \\

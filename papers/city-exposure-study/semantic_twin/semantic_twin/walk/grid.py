@@ -1,7 +1,7 @@
 """A lattice over the walkable ground of a square.
 
 This is the rule every published number in the study was computed under, and it
-is not a walk. It lays a three metre grid over a disc, keeps the squares whose
+is not a walk. It lays a configurable regular grid over a disc, keeps the squares whose
 ground passes the gates in :mod:`~semantic_twin.walk.ground`, and joins the
 survivors nearest neighbour first. That is a flood fill of the open ground. It
 gives an ordering, which is what :func:`~semantic_twin.walk.model.stratified_subset`

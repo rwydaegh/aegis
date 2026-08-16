@@ -1,22 +1,43 @@
 {
   "summary": {
-    "n_leaves_scanned": 51,
-    "n_leaves_with_hits": 0,
-    "n_hits_total": 0,
+    "n_leaves_scanned": 52,
+    "n_leaves_with_hits": 1,
+    "n_hits_total": 1,
     "tier_counts": {
       "A": 0,
       "B": 0,
       "C": 0,
-      "D": 0
+      "D": 1
     },
-    "n_exempt_by_allowlist": 12,
+    "n_exempt_by_allowlist": 8,
     "top_words_by_tier": {
       "A": {},
       "B": {},
       "C": {},
-      "D": {}
+      "D": {
+        "broader": 1
+      }
     },
     "leaves_with_tier_ab": []
   },
-  "leaves": []
+  "leaves": [
+    {
+      "leaf_path": "50_discussion/40_paragraph.md",
+      "n_tokens": 190,
+      "n_hits": 1,
+      "tier_counts": {
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 1
+      },
+      "hits": [
+        {
+          "word": "broader",
+          "tier": "D",
+          "leaf_path": "50_discussion/40_paragraph.md"
+        }
+      ]
+    }
+  ]
 }

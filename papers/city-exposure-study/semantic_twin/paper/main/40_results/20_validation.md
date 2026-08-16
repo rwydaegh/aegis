@@ -1,5 +1,12 @@
 % PREV: % claim: raw_component_closure
-% PREV: The campaign manifests bind 42 files per site, and all 210 recorded file hashes pass verification. The direct, exact order-1 specular, and first-diffuse fields sum to the stored total with a maximum absolute residual of $1.735\times10^{-18}$~m$^{-2}$ across all 1,168 fields. The GPU body-coupling result also agrees with the double-precision CPU reference to a maximum relative difference of $6.64\times10^{-16}$ in the verified benchmark. These checks establish artifact identity, additive closure, and numerical parity. They do not provide an external validation of the complete city model.
+% PREV: The calculation manifests list 42 files per site, and all 210 file hashes pass
+% PREV: verification. The direct, exact order-1 specular, and first-diffuse fields sum
+% PREV: to the stored total with a maximum absolute residual of
+% PREV: $1.735\times10^{-18}$~m$^{-2}$ across all 1,168 fields. The GPU body-coupling
+% PREV: result also agrees with the double-precision CPU reference to a maximum relative
+% PREV: difference of $6.64\times10^{-16}$ in the verified benchmark. These checks
+% PREV: confirm the input files, addition of components, and agreement between CPU and
+% PREV: GPU calculations. They do not externally validate the complete city model.
 % NEXT: \begin{figure*}[!t]
 % NEXT: \centering
 % NEXT: \includegraphics[width=\textwidth]{figures/validation/validation.pdf}
@@ -7,4 +14,18 @@
 % NEXT: \label{fig:controlled-validation}
 % NEXT: \end{figure*}
 % claim: controlled_depth1_validation
-The controlled comparison in Fig.~\ref{fig:controlled-validation} isolates the first-diffuse estimator before the city results. The open-square scene has 27 sources, six receivers, eight triangles, and one diffuse reflection. Specular reflection, refraction, and diffraction are absent. Deterministic surface quadrature uses 2,097,152 samples. The adjoint estimate uses 50,000 primary rays for each of four seeds, and Sionna RT provides an independent forward calculation with 50,000 samples per source for each of three seeds. The maximum bounced-transfer difference between the adjoint estimate and quadrature is 0.0616~dB. A separate audit of total transport gives a maximum adjoint-to-Sionna difference of 0.0344~dB. This total-transport value is not plotted in Fig.~\ref{fig:controlled-validation}, which shows one-reflection transfer and its error relative to quadrature. The comparison checks first-diffuse normalization, visibility, inverse-square loss, and cosine factors in this depth-1 scene. It does not cover the panorama-derived material surface, the exact specular term, or their combination in a city.
+The controlled comparison in Fig.~\ref{fig:controlled-validation} tests the
+first-diffuse estimator before the city results. The open-square scene has 27
+sources, six receivers, eight triangles, and one diffuse reflection. It has no
+specular reflection, refraction, or diffraction. Deterministic surface
+quadrature uses 2,097,152 samples. The adjoint estimate uses 50,000 primary rays
+for each of four seeds. An independent Sionna RT forward calculation uses
+50,000 samples per source for each of three seeds. The maximum difference
+between the adjoint estimate and quadrature is 0.0616~dB for the reflected term.
+A separate test of total transport gives a maximum adjoint-to-Sionna difference
+of 0.0344~dB. Fig.~\ref{fig:controlled-validation} plots the one-reflection
+transfer and its error relative to quadrature, not the total-transport test. The
+comparison checks first-diffuse normalization, visibility, inverse-square loss,
+and cosine terms in this one-reflection scene. It does not cover the
+image-derived material map, exact specular transport, or their combination in a
+city.

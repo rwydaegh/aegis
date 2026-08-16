@@ -1,6 +1,6 @@
 % PREV: % claim: replica_convergence_48_to_64
 % PREV: \begin{table}[!t]
-% PREV:   \caption{Current-contract convergence from 48 to 64 replicas. Bootstrap width is the 95\% interval width for route $q_{10}$ whole-body SAR. Shadow change is the largest stepwise change among the six declared shadowed standpoints.}
+% PREV:   \caption{Convergence from 48 to 64 replicas. Bootstrap width is the 95\% interval width for route $q_{10}$ whole-body SAR. Shadow change is the largest stepwise change among the six shadowed route points.}
 % PREV:   \label{tab:si-convergence}
 % PREV:   \centering
 % PREV:   \begin{tabular}{lrrr}
@@ -18,31 +18,31 @@
 % NEXT: \begin{figure*}[!t]
 % NEXT:   \centering
 % NEXT:   \includegraphics[width=\textwidth]{figures/convergence64/convergence64.pdf}
-% NEXT:   \caption{Current-contract convergence through 64 replicas. Panel (a) shows
-% NEXT:   route $q_{10}$ whole-body SAR changes from the sealed 16-replica value. Panel
-% NEXT:   (b) shows the largest stepwise change among the three shadowed standpoints in
+% NEXT:   \caption{Convergence through 64 replicas. Panel (a) shows
+% NEXT:   route $q_{10}$ whole-body SAR changes from the verified 16-replica value. Panel
+% NEXT:   (b) shows the largest stepwise change among the three shadowed route points in
 % NEXT:   each of Mexico City and Tokyo Hachiko. The final 48-to-64 changes satisfy the
-% NEXT:   declared aggregate lower-tail criteria. Mexico City retains rare-event
+% NEXT:   stated aggregate lower-tail criteria. Mexico City retains rare-event
 % NEXT:   first-diffuse behavior.}
 % NEXT:   \label{fig:si-convergence}
 % NEXT: \end{figure*}
 The 64-replica extension uses seeds 7 through 70 and nested looks of 16, 24,
-32, 48, and 64. Its first 16 replicas are exactly equal to the sealed campaign
-arrays after timing fields are removed. Mexico City standpoints 0, 1, and 3
-and Tokyo Hachiko standpoints 13, 14, and 15 remain the explicit shadowed
-stratum. The first-diffuse estimate is their only nonzero modeled contribution.
+32, 48, and 64. Its first 16 replicas exactly match the verified campaign
+arrays after timing fields are removed. Mexico City route points 0, 1, and 3
+and Tokyo Hachiko route points 13, 14, and 15 remain the six shadowed points.
+The first-diffuse estimate is their only nonzero modeled contribution.
 From 48 to 64 replicas, their largest pointwise whole-body SAR changes are
 0.0125 and 0.0104~dB. The route $q_{10}$ changes are 0.00344 and 0.00491~dB,
 and their whole-replica bootstrap widths are 0.364 and 0.0538~dB.
 
-The bootstrap resamples complete replicas jointly over all standpoints, so it
+The bootstrap resamples complete replicas jointly over all route points, so it
 preserves spatial dependence within one replica. Its 2,000 draws use PCG64 with
 the authenticated analysis seed 20260814. All five identities, manifests,
 component closures, and common inputs pass, and both lower tails meet the
-declared 48-to-64 aggregate criteria. Mexico City nevertheless retains
+stated 48-to-64 aggregate criteria. Mexico City nevertheless retains
 rare-event first-diffuse behavior: its maximum positive replica contribution
 is 5738 times its positive-replica median, compared with 2.38 for Tokyo
-Hachiko. These intervals remain conditional on each fixed registered route.
+Hachiko. These intervals apply to each fixed route.
 They do not include route-selection or city-sampling uncertainty.
 
 ## AI notes

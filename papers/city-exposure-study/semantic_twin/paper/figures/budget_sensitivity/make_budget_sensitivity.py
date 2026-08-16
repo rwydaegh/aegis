@@ -11,13 +11,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
+import sys
 from pathlib import Path
 from typing import Any
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 SEMANTIC_TWIN_ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
+PAPER_ROOT = HERE.parents[1]
 REPORT_DIR = SEMANTIC_TWIN_ROOT / "outputs" / "experiments" / "roofline_budget_sensitivity_v1"
 REPORT = REPORT_DIR / "roofline_budget_sensitivity_v1.json"
 MANIFEST = REPORT_DIR / "roofline_budget_sensitivity_v1_manifest.json"
@@ -37,6 +41,9 @@ EXPECTED_DIRECTIONAL_Q90 = {
     (200_000, 1024): 0.49126480809041534,
     (200_000, 2048): 0.45543106112995413,
 }
+
+sys.path.insert(0, str(PAPER_ROOT / "figures"))
+from _style.paper_style import paper_style, save_figure  # noqa: E402
 
 
 def _sha256(path: Path) -> str:
@@ -86,8 +93,7 @@ def authenticate() -> dict[str, Any]:
     for arm, expected in EXPECTED_DIRECTIONAL_Q90.items():
         row = arms[arm]
         values = [
-            float(site["directional_first_diffuse"]["normalized_l1_quantiles"]["q90"])
-            for site in row["sites"].values()
+            float(site["directional_first_diffuse"]["normalized_l1_quantiles"]["q90"]) for site in row["sites"].values()
         ]
         maximum = max(values)
         if abs(maximum - expected) > 1.0e-12 or maximum <= 0.1:
@@ -111,12 +117,52 @@ def authenticate() -> dict[str, Any]:
     }
 
 
+def _plot_report(report: dict[str, Any]) -> None:
+    sites = (
+        ("madrid_plazamayor", "Madrid", "#0072B2"),
+        ("mexico_zocalo", "Mexico City", "#D55E00"),
+        ("prague_staromestske", "Prague", "#009E73"),
+    )
+    rows = report["budgets"]
+    labels = [f"{row['rays'] // 1000}k/{row['cells'] // 1024}k" for row in rows]
+    x = np.arange(len(rows))
+
+    with paper_style("double", height_ratio=0.55, use_tex=True):
+        figure, axes = plt.subplots(2, 2)
+        for site, label, color in sites:
+            q50 = [row["sites"][site]["normalized_wbSAR"]["route_quantile_difference_db"]["q50"] for row in rows]
+            shadow = [row["sites"][site]["normalized_wbSAR"]["maximum_absolute_db"] for row in rows]
+            directional = [
+                row["sites"][site]["directional_first_diffuse"]["normalized_l1_quantiles"]["q90"] for row in rows
+            ]
+            timing = [row["sites"][site]["timing"]["estimator_wall_seconds"]["ratio"] for row in rows]
+            for axis, values in zip(axes.flat, (q50, shadow, directional, timing), strict=True):
+                axis.plot(x, values, marker="o", markersize=3.0, color=color, label=label)
+
+        axes[0, 0].set_title("(a) Route median", loc="left")
+        axes[0, 0].set_ylabel("q50 wbSAR change (dB)")
+        axes[0, 1].set_title("(b) Maximum route-point change", loc="left")
+        axes[0, 1].set_ylabel("Maximum wbSAR change (dB)")
+        axes[1, 0].set_title("(c) First-diffuse directionality", loc="left")
+        axes[1, 0].set_ylabel("Paired q90 normalized L1")
+        axes[1, 1].set_title("(d) Observed timing", loc="left")
+        axes[1, 1].set_ylabel("Estimator wall time / baseline")
+        for axis in axes.flat:
+            axis.set_xticks(x, labels, rotation=28, ha="right")
+            axis.grid(color="0.86", linewidth=0.45)
+        for axis in axes[0, :]:
+            axis.tick_params(labelbottom=False)
+        axes[0, 0].legend(ncol=3, bbox_to_anchor=(0.92, 1.35), loc="lower center")
+        save_figure(figure, OUTPUT_PDF)
+        save_figure(figure, OUTPUT_PNG, dpi=300)
+        plt.close(figure)
+
+
 def stage() -> dict[str, Any]:
-    """Copy authenticated figure assets and write their paper-facing audit."""
+    """Plot authenticated report values and write their paper-facing audit."""
     audit = authenticate()
     HERE.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(SOURCE_PDF, OUTPUT_PDF)
-    shutil.copyfile(SOURCE_PNG, OUTPUT_PNG)
+    _plot_report(_read_json(REPORT))
     audit["schema_version"] = "roofline_budget_sensitivity_figure_audit_v1"
     audit["outputs"] = {
         "pdf": {"path": OUTPUT_PDF.name, "bytes": OUTPUT_PDF.stat().st_size, "sha256": _sha256(OUTPUT_PDF)},

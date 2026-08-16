@@ -13,7 +13,13 @@
 % PREV: \end{aligned}
 % PREV: \label{eq:body-coupling}
 % PREV: \end{equation}
-% PREV: Here, $T_0$ is the normal-incidence power-transmission coefficient obtained from the IT'IS tissue parameters at 15~GHz~\cite{itis}. The AEGIS level-2 implementation applies this one-sided local-incidence coupling to the Duke anatomical mesh~\cite{christ2010,aegis}. Thus, $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For body-element area $A_{\mathbf{r}}$ and body mass $m_{\mathrm{body}}$, the normalized integrated endpoints are
+% PREV: Here, $T_0$ is the normal-incidence power-transmission coefficient obtained from
+% PREV: the IT'IS tissue parameters at 15~GHz~\cite{itis}. The implementation applies
+% PREV: this one-sided local-incidence coupling to the Duke anatomical mesh with the
+% PREV: published level-2 dosimetry kernel~\cite{christ2010,aegis}. Thus,
+% PREV: $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the area
+% PREV: $A_{\mathbf{r}}$ at position $\mathbf{r}$ and body mass
+% PREV: $m_{\mathrm{body}}$, the normalized integrated quantities are
 % PREV: \begin{equation}
 % PREV: \begin{aligned}
 % PREV: \widetilde{P}_{\mathrm{abs}}(\mathbf{x})
@@ -28,7 +34,19 @@
 % PREV: \label{eq:body-endpoints}
 % PREV: \end{equation}
 % PREV: $\widetilde{P}_{\mathrm{abs}}$ has units m$^2$, and $\widetilde{\mathrm{SAR}}_{\mathrm{wb}}$ has units m$^2$~kg$^{-1}$.
-Each replica launches 200,000 independent and identically distributed primary rays per standpoint and accumulates first-diffuse power in 4,096 fixed Fibonacci output cells. The exact direct and specular atoms bypass this grid. The cells are not ray-launch strata. The calculations use 16 replicas with seeds 7 through 22 and retain cumulative looks after 4, 8, 12, and 16 replicas. Only the first-diffuse estimate varies between replicas. Scalar endpoints and body fields are averaged before route statistics are computed. Route quantiles use NumPy linear interpolation over equally weighted fixed standpoints. The plotted empirical distributions use positions $(\operatorname{rank}-0.5)/n$. These quantities describe a selected route and do not estimate a pedestrian population. Multipath surplus is computed only where direct transfer is positive. A zero-direct standpoint remains in the whole-body SAR distribution but has no finite surplus value.
+Each replica launches 200,000 independent and identically distributed primary
+rays per route point and accumulates first-diffuse power in 4,096 fixed
+Fibonacci output cells. Exact direct and specular paths bypass this grid. The
+output cells do not control the launch directions. The calculations use 16
+replicas with seeds 7 through 22 and retain cumulative results after 4, 8, 12,
+and 16 replicas. Only the first-diffuse estimate varies between replicas.
+Scalar quantities and body fields are averaged before route statistics are
+computed. Route quantiles use NumPy linear interpolation over equally weighted
+route points. The plotted empirical distributions use positions
+$(\operatorname{rank}-0.5)/n$. These quantities describe a selected route and
+do not estimate a pedestrian population. Multipath surplus is computed only
+where direct transfer is positive. A zero-direct route point remains in the
+whole-body SAR distribution but has no finite surplus value.
 
 ## reviews (paragraph)
 

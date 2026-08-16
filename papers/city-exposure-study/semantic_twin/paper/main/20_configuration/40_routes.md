@@ -1,7 +1,7 @@
 % PREV: \begin{figure*}[!t]
 % PREV:   \centering
 % PREV:   \includegraphics[width=\textwidth]{figures/configuration/configuration.pdf}
-% PREV:   \caption{Study configuration at Prague Old Town Square. The registered panorama in (a) is aligned with the traced support in (b). Panel (c) shows the surface classes supplied to transport: atlas interfaces, nonblocking woody vegetation, and the geometric fallback. In (d), orange marks roofline source support, filled squares mark registered panorama endpoints, and the arrow gives one route-tangent yaw. The calculation uses a 250\,m-radius support mesh, 502 roofline source elements, and 22 fixed standpoints. Panel (e) shows the anatomical body in neutral gray.}
+% PREV:   \caption{Study configuration at Prague Old Town Square. Panel (a) follows a 360-degree street image through object segmentation, projection onto the city mesh, and conversion to the material map used by the tracer. Panel (b) shows the 22 route points and the visible roofline on a plan view of the city. Panel (c) enlarges the route. The arrow gives the phantom's direction along the walk.}
 % PREV:   \label{fig:configuration}
 % PREV: \end{figure*}
 % NEXT: \begin{table}[!t]
@@ -10,7 +10,7 @@
 % NEXT:   \centering
 % NEXT:   \begin{tabular}{lrrr}
 % NEXT:     \hline
-% NEXT:     Site & Standpoints & Route span (m) & Wall time (s) \\
+% NEXT:     Site & Route points & Route span (m) & Wall time (s) \\
 % NEXT:     \hline
 % NEXT:     Korenmarkt & 10 & 49.04 & 29.79 \\
 % NEXT:     Prague & 22 & 119.39 & 69.02 \\
@@ -22,4 +22,11 @@
 % NEXT:     \hline
 % NEXT:   \end{tabular}
 % NEXT: \end{table}
-Table~\ref{tab:routes} lists the five selected routes. The standpoint counts and spans come from the sealed route records used for the five-site data set. Each route follows a connected corridor supported by registered panoramas, and the calculation samples fixed positions along that corridor. A panorama center constrains the route but is not, in general, an exposure standpoint. Therefore, panorama and standpoint counts need not agree. The 73 standpoints are fixed observations, not a random sample of pedestrians or places. Route distributions in this study are conditional on these five paths. The local route tangent also fixes body yaw, so a change in route definition would change both receiver position and orientation.
+Table~\ref{tab:routes} lists the five selected routes. The point counts and spans
+come from the verified route files used for the five-site data set. Each route
+follows a connected corridor covered by aligned 360-degree street images. The
+calculation samples fixed points along that corridor, including interpolated
+points between image locations. The image count and route-point count can
+therefore differ. The 73 route points are fixed observations rather than a
+random sample of pedestrians or places. The phantom faces along the walk, so a
+different route would change both its position and orientation.

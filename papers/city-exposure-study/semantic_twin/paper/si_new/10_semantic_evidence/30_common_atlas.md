@@ -1,4 +1,4 @@
-% PREV: The four rectilinear crops of each panorama use yaw angles of $0^\circ$,
+% PREV: The four rectilinear crops of each 360-degree street image face $0^\circ$,
 % PREV: $90^\circ$, $180^\circ$, and $270^\circ$, zero pitch, a $90^\circ$ field of
 % PREV: view, and $1536$ pixels per side. Mask2Former runs at $1536$ pixels. SAM~3 uses
 % PREV: its trained $1008$-pixel input, a score threshold of 0.35, and prompt batches of
@@ -7,7 +7,7 @@
 % PREV: change, even if the number of prompts remains the same.
 % PREV:
 % PREV: \begin{table*}[!t]
-% PREV:   \caption{Immutable semantic identities used by the production atlas.}
+% PREV:   \caption{Fixed model identities used by the production material map.}
 % PREV:   \label{tab:si-semantic-identity}
 % PREV:   \centering
 % PREV:   \scriptsize
@@ -22,29 +22,29 @@
 % PREV:     \bottomrule
 % PREV:   \end{tabular}
 % PREV: \end{table*}
-% NEXT: Material evidence remains probabilistic through fusion. Vistas-backed pixels
+% NEXT: Material labels remain probabilistic when observations are combined. Vistas-backed pixels
 % NEXT: use the declared full $p(\text{material}\mid\text{entity})$ table. Concept-backed
 % NEXT: pixels use the full material distribution of the detected prompt. Transport
 % NEXT: removes probability assigned to air, unknown material, people, vehicles, and
-% NEXT: participating volumes. It binds an image-derived structural interface only when
-% NEXT: the remaining compatible structural mass is strictly greater than 0.5. An
-% NEXT: exact tie and any unsupported atlas cell use the geometric face material.
+% NEXT: participating volumes. It assigns an image-derived structural material only when
+% NEXT: the remaining compatible structural probability is strictly greater than 0.5.
+% NEXT: An exact tie and any unsupported material-map cell use the geometric face material.
 % NEXT: Reflected power uses the posterior-weighted material coefficients. The
 % NEXT: specular sampling probability uses the posterior-weighted reflected specular
-% NEXT: share. Grass keeps the geometric ground interface. Woody canopy evidence is
-% NEXT: nonblocking until registered closed canopy geometry can supply path chords for
+% NEXT: share. Grass keeps the geometric ground interface. Woody canopy labels are
+% NEXT: nonblocking until a closed canopy volume can supply path lengths for
 % NEXT: volume attenuation.
-Panorama rays intersect the original support mesh. A common $8\times8$
-barycentric atlas is defined on each observed support triangle. Its coordinate
-system is fixed to the triangle and is independent of the camera. Each camera
-first reduces all of its rays in one atlas cell to at most one
+Rays from each 360-degree street image intersect the original city mesh. Each
+observed mesh triangle has a common $8\times8$ barycentric material grid. Its
+coordinates are fixed to the triangle and do not depend on the camera. Each
+camera first reduces all of its rays in one grid cell to at most one
 confidence-weighted contribution. Camera
 means are then added across views. Range and raw pixel density give no extra
-weight. Therefore, two panoramas can place a material boundary at different
-positions on one large support triangle. Both observations are accumulated in
+weight. Two images can therefore place a material boundary at different
+positions on one large mesh triangle. Both observations are accumulated in
 the same barycentric cells and remain a distribution. The transport lookup uses the
 original triangle identifier and the barycentric coordinates of each ray hit.
-The highly tessellated mesh shown for atlas inspection is a display object and
+The highly tessellated mesh shown for inspection is a display object and
 is not the transport mesh.
 
 ## AI notes

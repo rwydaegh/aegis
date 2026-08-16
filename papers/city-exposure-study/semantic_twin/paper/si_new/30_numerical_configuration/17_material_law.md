@@ -1,19 +1,19 @@
-% PREV: The receiver is $1.5\,$m above the support surface. Route points are placed at
-% PREV: approximately $6\,$m arc-length intervals, with registered panorama positions
-% PREV: retained as route anchors. The route-visible skyline extraction finds boundary
+% PREV: The receiver is $1.5\,$m above the city surface. Route points are placed at
+% PREV: approximately $6\,$m intervals along the route, with aligned street-image
+% PREV: positions retained as route anchors. The visible-roofline calculation finds boundary
 % PREV: and crease edges that separate the first visible mesh hit from sky. Duplicate
 % PREV: mesh-edge contacts are combined. The resulting three-dimensional edge
-% PREV: lengths are the quadrature weights. Each source site is shifted vertically by
+% PREV: lengths are the numerical weights. Each possible transmitter position is shifted vertically by
 % PREV: $0.5\,$m to avoid self-occlusion. Table~\ref{tab:si-source-quadrature} gives the
 % PREV: retained counts.
 % PREV:
 % PREV: \begin{table}[!t]
-% PREV:   \caption{Route and roofline quadrature sizes.}
+% PREV:   \caption{Number of route points and roofline segments.}
 % PREV:   \label{tab:si-source-quadrature}
 % PREV:   \centering
 % PREV:   \begin{tabular}{lrrr}
 % PREV:     \toprule
-% PREV:     Site & Route points & Quadrature sites & Length (m) \\
+% PREV:     Site & Route points & Roofline segments & Length (m) \\
 % PREV:     \midrule
 % PREV:     Korenmarkt & 10 & 457 & 157.54 \\
 % PREV:     Prague & 22 & 502 & 267.15 \\
@@ -26,7 +26,7 @@
 % PREV:
 % PREV: The first-diffuse term uses a reciprocal next-event estimator. For each
 % PREV: primary direction $\mathbf u_n$ drawn uniformly over $4\pi$, the tracer keeps
-% PREV: the first blocking material vertex. It then draws one roofline site from the
+% PREV: the first blocking surface. It then draws one roofline segment from the
 % PREV: arc-length weights and tests the connecting segment. If the connection is
 % PREV: visible, its unscaled contribution is
 % PREV: \begin{equation}
@@ -34,21 +34,21 @@
 % PREV:   \frac{[\mathbf n_n\!\cdot\!\mathbf d_n]_+}{r_n^2}.
 % PREV: \end{equation}
 % PREV: Here $R_n$ is the unpolarized Fresnel power reflectance, $\kappa_n$ is the
-% PREV: coherent specular share, $\mathbf d_n$ points from the vertex to the sampled
-% PREV: source, and $r_n$ is the connecting distance. Occluded connections contribute
+% PREV: coherent specular share, $\mathbf d_n$ points from the surface to the sampled
+% PREV: transmitter position, and $r_n$ is the connecting distance. Occluded connections contribute
 % PREV: zero. The estimate is $(4\pi/N)\sum_n w_n$. The launch direction determines the
 % PREV: physical arrival direction by reciprocity. Only these sampled first-diffuse
 % PREV: contributions are accumulated in the 4,096-cell Fibonacci grid. Direct sources
-% PREV: and accepted order-1 specular paths are stored as exact directional atoms.
+% PREV: and accepted one-reflection specular paths retain their exact arrival directions.
 % NEXT: The deterministic order-1 search uses a conservative mirrored-receiver
 % NEXT: triangle-cone broad phase when the candidate set reaches 20,000. Its CUDA
 % NEXT: Float64 implementation leaves the host exact final test unchanged. The normal
-% NEXT: adaptive candidate budget is 120 million. One Tokyo standpoint has zero
+% NEXT: adaptive candidate budget is 120 million. One Tokyo route point has zero
 % NEXT: accepted order-1 paths, so a relative stopping rule cannot close around zero.
 % NEXT: That case records and fully enumerates a 320 million candidate cap. Body
 % NEXT: coupling uses fixed blocks of 512 directions. Candidate caps, broad-phase
 % NEXT: thresholds, chunks, and block sizes control computation. They do not change the
-% NEXT: declared physical model.
+% NEXT: stated physical model.
 For incidence cosine $c$, complex relative permittivity $\epsilon_r$, surface
 root $q=\sqrt{\epsilon_r-(1-c^2)}$, and wavelength $\lambda$, the production
 law is

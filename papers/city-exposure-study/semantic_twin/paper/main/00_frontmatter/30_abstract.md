@@ -29,29 +29,28 @@
 % NEXT: \maketitle
 \begin{abstract}
 Street-level radiofrequency exposure at 15 GHz depends on the route geometry,
-surface materials, source support, and body orientation. This study uses
-registered street panoramas and a 250 m-radius photogrammetric support mesh to assign
-material evidence around five selected pedestrian routes. A common source
-measure sets the expected source count from areal density and weights the
-observed route-aligned roofline by physical arc length. All exposure values are
+surface materials, transmitter locations, and body orientation. This study maps
+360-degree street images onto a photogrammetric city mesh and assigns surface materials
+around five selected pedestrian routes. A common source model sets the expected
+number of transmitters from their areal density and distributes them along the
+visible roofline in proportion to its physical length. All exposure values are
 normalized per unit areal density times effective isotropic radiated power.
-Transport has exact direct, exact first-order specular, and stochastic
-first-diffuse terms. Each stochastic first-diffuse path ends at that
-interaction.
+The calculation treats direct paths and one specular reflection exactly. It
+estimates one diffuse reflection and then stops the path.
 The directional fields are coupled to a 56,024-element Duke body surface. The
-five routes contain 73 standpoints. Each standpoint uses 16 independent
+five routes contain 73 route points. Each point uses 16 independent
 replicas, 200,000 primary rays per replica, and 4,096 fixed first-diffuse angular cells. In
 a controlled open-square case, the maximum bounced-term difference between the
 adjoint estimator and deterministic quadrature is 0.0616 dB, and the maximum
 total-transport difference between the adjoint and forward tracers is 0.0344
 dB. The route medians of normalized whole-body specific
 absorption rate differ by a factor of 13.34. Direct transport is the largest
-term at all 67 nonshadowed standpoints. First-diffuse transport gives the only
-nonzero modeled contribution at six shadowed standpoints. The maximum 12-to-16-replica change
+term at all 67 nonshadowed points. First-diffuse transport gives the only
+nonzero modeled contribution at six shadowed points. The maximum 12-to-16-replica change
 in total transfer is 0.0436 dB across the five sites, although lower-tail
-estimates in Mexico City and Tokyo are less stable. The result is a conditional
-comparison of five selected routes, not a city ranking or a deployed-network
-estimate.
+estimates in Mexico City and Tokyo are less stable. The result applies to five
+selected routes under the fixed model and does not estimate city-wide or
+deployed-network exposure.
 \end{abstract}
 
 ## reviews (abstract)

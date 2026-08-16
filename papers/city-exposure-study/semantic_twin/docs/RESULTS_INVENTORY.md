@@ -31,6 +31,36 @@ They are the exact ray-reached evidence audit, the current-contract extension
 through 64 replicas, and the paired ray/cell budget sensitivity. These
 diagnostics do not alter the sealed campaign directories.
 
+## Ten-site geometry-only screening diagnostic
+
+A separate fixed-grid screen covers Ghent/Korenmarkt, Prague, Brussels, Madrid,
+Mexico City, Tokyo, London, Milan, Krakow, and Toulouse. It is a diagnostic,
+not a production result. Each site uses 16 deterministic points selected from a
+6 m walkable-ground grid within 90 m, a fixed north-facing Duke body,
+geometric material priors, four seeds (7 through 10), 200,000 IID primary rays,
+and 4,096 passive angular cells. The transport is
+`first_material_interaction_v1`: exact direct and order-1 specular terms plus
+first diffuse transport. The screen contains 640 seed-point fields and 128
+million primary rays.
+
+Across sites, the normalized whole-body-SAR q10, q50, and q90 span factors are
+2.09, 2.10, and 2.60. Component shares range from 74.2% to 83.4% for direct
+transport, 10.5% to 20.0% for order-1 specular transport, and 4.1% to 7.4% for
+first diffuse transport. Aggregate observed compute time is 271.515 s, excluding
+scene preparation and report generation. All ten site manifests authenticate,
+and component and body closures pass. The report manifest SHA-256 is
+`7c1d5834b1a672c72d519d603d06f3002eaec20a19b350a1b67ed578eec4061a`.
+The report is [ten_city_geometry_screen_v1](../outputs/experiments/ten_city_geometry_screen_v1/report/ten_city_geometry_screen_v1.json).
+
+This screen does not support population, route, or city-ranking inference. It
+uses fixed yaw, geometric priors, and the same 16 selected points for the source
+curve. The four-seed standard error measures conditional Monte Carlo variation
+only. It does not measure grid, material, yaw, or source-design uncertainty.
+An initial run was quarantined because its legacy manifest prose incorrectly
+described a three-metre grid. The corrected run reproduces the scientific
+arrays bit for bit for the eight overlapping completed sites. Only identity and
+timing fields changed. The production result remains the five-route result.
+
 ## Exact result count
 
 | Site | Standpoints | Route span | Replicas | Wall time on one A6000 |

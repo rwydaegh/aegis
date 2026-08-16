@@ -9,7 +9,7 @@
 The verified five-site data, manifests, analysis scripts, and figure
 scripts are retained with the study repository. A stable public archive with a
 versioned digital object identifier will be deposited before publication.
-Street panoramas and commercial photogrammetric tiles are governed by their
+The 360-degree street images and commercial photogrammetric tiles are governed by their
 providers' terms and are not redistributed. Their identifiers and the
 transformation manifests are retained to support reacquisition where the
 licenses permit it.

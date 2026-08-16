@@ -1,15 +1,16 @@
 <!-- AUTO_BEGIN: assembled -->
 \section{Introduction}\label{sec:introduction}
 
-\IEEEPARstart{U}{rban} propagation can change over a few meters along a
-pedestrian route. A person can move from direct visibility of a roofline to a
+\IEEEPARstart{U}{rban} wireless systems operate in a built environment that
+strongly shapes radio propagation~\cite{itu2040}. Propagation can change over a
+few meters along a pedestrian route. A person can move from direct visibility of a roofline to a
 region where buildings block the direct field and reflected power arrives from
 another direction. The surface materials then affect how much power is returned
 to the street~\cite{itu2040,vitucci}. This local variation also matters after propagation.
 Whole-body absorption depends on the arrival direction and on the orientation of
 the body, so one incident-power value at one receiver position does not describe
-exposure along a route. A route calculation must retain position and direction
-until the field is coupled to the body~\cite{icnirp}.
+exposure along a route. A route calculation must retain position and arrival
+direction until the field is coupled to the body~\cite{icnirp}.
 
 Urban radio ray tracing provides detailed paths between specified transmitters
 and receivers~\cite{sionna}. It has been used for city-scale downlink exposure
@@ -23,60 +24,66 @@ transport, spatial source models, and body coupling. Because these studies use
 different source assumptions, their reported quantities are not directly
 comparable without a common source law.
 
-Street imagery and semantic scene models can supply attributes that are absent
+Street images can supply surface information that is absent
 from an untextured city mesh. The Vistas dataset provides a street-scene
 taxonomy for dense semantic segmentation~\cite{vistas}. Kamari \emph{et al.}
 segment street-level images, project the resulting material classes onto city
 geometry, and use that geometry in millimeter-wave ray tracing~\cite{mmsv}.
 Xia \emph{et al.} use semantic point-cloud classification and detailed scene
 reconstruction for outdoor urban ray tracing at 2.8~GHz~\cite{xia2024}.
-Image-informed wireless scene construction is therefore established. The
+Image-informed city modeling is therefore established. The
 present work does not claim semantic segmentation, material classification, or
 image-to-geometry projection as new. It uses these operations to form a
-traceable material surface around fixed pedestrian routes, with an explicit
-fallback where the image evidence is absent or refused.
+traceable material map around fixed pedestrian routes. The map keeps the
+geometry-based material wherever the images give no reliable label.
 
-The calculation considered here requires the established parts in one declared
-model. Registered panoramas must refer to the same city geometry that supports
-the propagation calculation. A source model must remain fixed across sites, and
-its physical scale must be separate from the numerical source quadrature.
-Direct, specular, and diffuse power must remain separate until their arrival
-directions are coupled to the body. The method in this paper meets these
-requirements with a panorama-derived material surface, a route-aligned roofline
-source measure, and a transport model that stops after the first diffuse material
-interaction. This combination defines a conditional comparison of local scenes
-without treating the available standpoints as a population sample or the
-roofline sources as a measured deployment. To the best of the authors'
-knowledge, prior work has not combined registered street panoramas, a common roofline source law, component-resolved
-first-material transport, and directional body coupling along fixed routes.
+The calculation combines these established parts in one fixed model. First, each
+360-degree street image is aligned with the same city mesh used for ray tracing.
+The image labels are then projected onto that mesh to make a material map.
+Second, the same transmitter model is used at every site, with the number of
+transmitters set independently of how finely the roofline is divided. Third,
+direct, specular, and diffuse power stays separate until its arrival direction
+is coupled to the body. The transport calculation treats direct paths and one
+specular reflection exactly, estimates one diffuse reflection, and then stops.
+The route points are fixed case studies rather than a population sample, and the
+roofline transmitters are a model rather than a measured deployment. To the best
+of the authors' knowledge, prior work has not combined aligned 360-degree street
+images, a common roofline transmitter model, these separate transport components,
+and directional body coupling along fixed routes.
 
 The study applies this method at 15~GHz to five selected routes with 73 fixed
-standpoints. Each result is normalized per unit active-source areal density and
-per unit equivalent isotropically radiated power. The retained transport contains
-the exact direct term, exact one-reflection specular term, and the first diffuse
-interaction evaluated by next-event estimation. It contains no higher specular
-order and no path continuation after a diffuse interaction. The reported route
+route points. Each result is normalized per unit active-source areal density and
+per unit equivalent isotropically radiated power. The calculation treats direct
+paths and one specular reflection exactly, then estimates one diffuse reflection
+by next-event estimation. It omits further reflections. The reported route
 distributions are therefore results for five fixed routes under this source and
-transport model. They are not estimates of population exposure, deployed-network
-exposure, or a ranking of the five cities.
+transport model. They do not estimate population exposure or deployed-network
+exposure, and they do not rank the five cities.
 
-The contributions are as follows.
+For the first time, one fixed-route calculation combines the following three
+contributions.
 \begin{enumerate}
-  \item A scene-construction method binds registered panorama
-  evidence to the transport mesh. Every image-derived assignment retains its
-  provenance, and unobserved or refused regions retain a declared geometric
-  fallback.
+  \item Aligned 360-degree street images supply traceable
+  material labels to the same city mesh used for the propagation calculation.
+  Surfaces without a reliable image label keep their geometry-based material.
 
-  \item A normalized roofline source model and transport calculation preserve
+  \item A normalized roofline transmitter model and transport calculation preserve
   direct, one-reflection specular, and first-diffuse power and
   direction until whole-body coupling.
 
   \item A five-site application reports fixed-route exposure distributions,
   controlled first-diffuse validation, component closure, replica convergence,
-  and the retained transport at the six standpoints with no direct or
+  and the retained transport at the six route points with no direct or
   one-reflection specular contribution.
 \end{enumerate}
 <!-- AUTO_END: assembled -->
+
+
+
+
+
+
+
 
 
 

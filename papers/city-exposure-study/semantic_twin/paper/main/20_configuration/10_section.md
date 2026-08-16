@@ -1,3 +1,9 @@
-% NEXT: The study configuration is shown in Fig.~\ref{fig:configuration}. Registered street panoramas supply surface evidence to a photogrammetric support mesh cropped to a 250\,m radius. They do not create or alter its geometry. The original mesh remains the transport surface, while the image evidence supplies the surface classes queried on that mesh. A route-visible roofline defines the source support. Fixed positions along a pedestrian route define the receiver locations. At each position, the anatomical body has a horizontal orientation set by the local route tangent.
-\section{Configuration and Scene Evidence}
+% NEXT: The study configuration is shown in Fig.~\ref{fig:configuration}. A
+% NEXT: 360-degree street image is aligned with a photogrammetric city mesh cropped to a
+% NEXT: 250\,m radius. Object and material labels from the image are projected onto the
+% NEXT: visible mesh triangles without changing their geometry. The roofline visible
+% NEXT: from the route gives the possible transmitter locations. Fixed points along the
+% NEXT: pedestrian route give the receiver locations, and the anatomical phantom faces
+% NEXT: along the direction of travel at each point.
+\section{Configuration and Surface Mapping}
 \label{sec:configuration}

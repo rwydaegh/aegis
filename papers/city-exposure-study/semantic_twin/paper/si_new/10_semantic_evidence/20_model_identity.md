@@ -1,31 +1,31 @@
-% PREV: The semantic pass uses two models with separate roles. Mask2Former with the
-% PREV: 65-class Mapillary Vistas vocabulary assigns one street-scene entity to every pixel. It
-% PREV: therefore supplies the complete entity layer and identifies small objects such
+% PREV: The image-labeling pass uses two models with separate roles. Mask2Former with the
+% PREV: 65-class Mapillary Vistas vocabulary assigns one street-scene object class to every pixel. It
+% PREV: therefore supplies the complete object map and identifies small objects such
 % PREV: as poles, signs, curbs, and bicycle racks. One Vistas building label can contain
 % PREV: brick, stone, render, glass, and metal. SAM~3 supplies the open-vocabulary
-% PREV: material evidence needed inside such broad entity classes. The production
+% PREV: material labels needed inside such broad object classes. The production
 % PREV: catalog contains 60 text prompts and 61 raster identifiers including the
 % PREV: unlabeled identifier. Examples include ``brick facade'', ``glass window'',
 % PREV: ``metal cladding panel'', and separate ground, grass, shrub,
 % PREV: tree, and forest concepts. The prompts are also gated by the Vistas classes. A class
 % PREV: must occupy at least 256 pixels in a $1536\times1536$ crop before its related
 % PREV: prompts are sent to SAM~3. The gate reduces work and removes prompts that have no
-% PREV: entity support in the view. The complete prompt list and its entity, material,
+% PREV: matching object in the view. The complete prompt list and its object, material,
 % PREV: attribute, and vegetation mappings are stored in
 % PREV: \texttt{config/semantic\_concepts.json}.
-% NEXT: Panorama rays intersect the original support mesh. A common $8\times8$
-% NEXT: barycentric atlas is defined on each observed support triangle. Its coordinate
-% NEXT: system is fixed to the triangle and is independent of the camera. Each camera
-% NEXT: first reduces all of its rays in one atlas cell to at most one
+% NEXT: Rays from each 360-degree street image intersect the original city mesh. Each
+% NEXT: observed mesh triangle has a common $8\times8$ barycentric material grid. Its
+% NEXT: coordinates are fixed to the triangle and do not depend on the camera. Each
+% NEXT: camera first reduces all of its rays in one grid cell to at most one
 % NEXT: confidence-weighted contribution. Camera
 % NEXT: means are then added across views. Range and raw pixel density give no extra
-% NEXT: weight. Therefore, two panoramas can place a material boundary at different
-% NEXT: positions on one large support triangle. Both observations are accumulated in
+% NEXT: weight. Two images can therefore place a material boundary at different
+% NEXT: positions on one large mesh triangle. Both observations are accumulated in
 % NEXT: the same barycentric cells and remain a distribution. The transport lookup uses the
 % NEXT: original triangle identifier and the barycentric coordinates of each ray hit.
-% NEXT: The highly tessellated mesh shown for atlas inspection is a display object and
+% NEXT: The highly tessellated mesh shown for inspection is a display object and
 % NEXT: is not the transport mesh.
-The four rectilinear crops of each panorama use yaw angles of $0^\circ$,
+The four rectilinear crops of each 360-degree street image face $0^\circ$,
 $90^\circ$, $180^\circ$, and $270^\circ$, zero pitch, a $90^\circ$ field of
 view, and $1536$ pixels per side. Mask2Former runs at $1536$ pixels. SAM~3 uses
 its trained $1008$-pixel input, a score threshold of 0.35, and prompt batches of
@@ -34,7 +34,7 @@ Table~\ref{tab:si-semantic-identity}. It refuses another model pair or a catalog
 change, even if the number of prompts remains the same.
 
 \begin{table*}[!t]
-  \caption{Immutable semantic identities used by the production atlas.}
+  \caption{Fixed model identities used by the production material map.}
   \label{tab:si-semantic-identity}
   \centering
   \scriptsize

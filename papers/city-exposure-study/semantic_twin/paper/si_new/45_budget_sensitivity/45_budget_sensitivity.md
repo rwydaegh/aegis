@@ -3,7 +3,18 @@
 \label{sec:si-budget-sensitivity}
 
 % claim: roofline_budget_sensitivity
-The budget diagnostic used paired seeds and common random numbers at the Madrid, Mexico City, and Prague routes. Exact direct and all-specular components were byte identical in every paired comparison, and the 200,000-ray, 4,096-cell replay matched the sealed baseline. The route-median normalized whole-body-SAR changes were small, with a maximum absolute $q_{50}$ difference of 0.000797345~dB among the five cheaper settings. Directional first-diffuse fields did not meet the stated gate. The largest site $q_{90}$ normalized-$L_{1}$ differences were 0.877498, 0.678942, and 0.400218 at 25,000, 50,000, and 100,000 rays, respectively. At 1,024 and 2,048 cells, they were 0.491265 and 0.455431. Each value exceeds the 0.1 gate. Mexico City shadowed-point maximum absolute whole-body-SAR changes were 0.707362, 0.563841, and 0.217259~dB for the three ray settings, compared with 0.00206975 and 0.00088674~dB for the two cell settings.
+The budget test used paired seeds and common random numbers at the Madrid,
+Mexico City, and Prague routes. Exact direct and all-specular components were
+byte identical in every paired comparison, and the 200,000-ray, 4,096-cell
+replay matched the verified baseline. The largest route-median whole-body-SAR
+change among the five cheaper settings was 0.000797345~dB. The directional
+first-diffuse fields did not pass the stated test. The largest site $q_{90}$
+normalized-$L_{1}$ differences were 0.877498, 0.678942, and 0.400218 at 25,000,
+50,000, and 100,000 rays, respectively. At 1,024 and 2,048 cells, they were
+0.491265 and 0.455431. Each value exceeds the 0.1 limit. The largest absolute
+whole-body-SAR changes at a shadowed Mexico City point were 0.707362, 0.563841,
+and 0.217259~dB for the three ray settings. They were 0.00206975 and
+0.00088674~dB for the two cell settings.
 
 Ray cuts also do not give a defensible end-to-end speedup. At 25,000 rays, estimator-wall-time ratios relative to the baseline range from 0.991 to 1.064 across the three routes. Exact all-specular work takes 8.06 to 23.79~s in the baseline, whereas stochastic tracing takes 1.15 to 2.40~s. The $q_{90}$ variance-time ratios for every ray-reduced arm exceed one, with a minimum of 3.16. The reported timing therefore leaves the exact specular stage dominant while the reduced ray settings increase first-diffuse variance. Figure~\ref{fig:si-budget-sensitivity} retains the 200,000-ray, 4,096-cell setting as the production baseline.
 
@@ -14,6 +25,14 @@ Ray cuts also do not give a defensible end-to-end speedup. At 25,000 rays, estim
   \label{fig:si-budget-sensitivity}
 \end{figure*}
 <!-- AUTO_END: assembled -->
+
+
+
+
+
+
+
+
 
 
 

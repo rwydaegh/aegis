@@ -30,7 +30,7 @@ from ..cohort import COMPARABLE_COHORT, REGISTERED_SPAN_STREET
 from ..transport.directional import DirectionalMeasure
 from ..transport.next_event import NextEventField
 from ..transport.specular_sampling import SampledOneBounceSpecularEstimator
-from ..walk.model import PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE, Walk
+from ..walk.model import GRID, PANORAMA_LINKS, PROVIDER_CORRIDOR, STREET_ROUTE, Walk
 from ..walk.provider_corridor import PROVIDER_CORRIDOR_V1
 from .coupler import BodyExposure
 
@@ -76,6 +76,11 @@ MANIFEST_FILENAME = "manifest.json"
 SOURCE_CURVE_AUDIT_JSON = "source_curve_audit.json"
 SOURCE_CURVE_AUDIT_NPZ = "source_curve_audit.npz"
 SOURCE_CURVE_AUDIT_SCHEMA = "source_curve_audit_v1"
+GEOMETRIC_FIXED_GRID_COHORT = "geometric_fixed_grid_screening"
+GEOMETRIC_FIXED_GRID_SAMPLING_CLAIM = "geometric_fixed_grid_screening_v1"
+FIXED_GROUND_GRID_CONTRACT = "fixed_ground_grid_v1"
+FIXED_GROUND_GRID_POINT_KIND = "fixed_ground_grid"
+FIXED_GROUND_GRID_POINTS = 16
 
 
 class FieldEstimator(Protocol):
@@ -108,7 +113,12 @@ class SurfaceBodyCoupler(Protocol):
 
 
 def _validate_campaign_names(config: RooflineCampaignConfig) -> None:
-    if config.cohort not in ("primary_semantic_route", "geometric_transfer_extension", COMPARABLE_COHORT):
+    if config.cohort not in (
+        "primary_semantic_route",
+        "geometric_transfer_extension",
+        COMPARABLE_COHORT,
+        GEOMETRIC_FIXED_GRID_COHORT,
+    ):
         raise ValueError(f"unknown cohort {config.cohort!r}")
     if config.material_mode not in ("walk", "semantic", "atlas", "geometric"):
         raise ValueError(f"unknown material mode {config.material_mode!r}")
@@ -124,6 +134,15 @@ def _validate_campaign_names(config: RooflineCampaignConfig) -> None:
             )
     elif config.route_contract is not None:
         raise ValueError("route_contract is an opt-in field reserved for manifest-backed comparable campaigns")
+    if config.cohort == GEOMETRIC_FIXED_GRID_COHORT:
+        if config.sampling_claim != GEOMETRIC_FIXED_GRID_SAMPLING_CLAIM:
+            raise ValueError(
+                f"{GEOMETRIC_FIXED_GRID_COHORT} requires sampling_claim={GEOMETRIC_FIXED_GRID_SAMPLING_CLAIM!r}"
+            )
+        if config.grid_contract != FIXED_GROUND_GRID_CONTRACT:
+            raise ValueError(f"{GEOMETRIC_FIXED_GRID_COHORT} requires grid_contract={FIXED_GROUND_GRID_CONTRACT!r}")
+    elif config.grid_contract is not None:
+        raise ValueError("grid_contract is reserved for the disclosed geometric fixed-grid screening cohort")
     if config.source_measure_rule is not None and config.source_measure_rule not in SOURCE_MEASURE_RULES:
         raise ValueError(f"unknown source measure rule {config.source_measure_rule!r}")
 
@@ -182,6 +201,8 @@ def _validate_campaign_looks_and_cohort(config: RooflineCampaignConfig) -> None:
         raise ValueError("the primary semantic-route cohort cannot use geometric materials")
     if config.cohort == "geometric_transfer_extension" and config.material_mode != "geometric":
         raise ValueError("the geometric transfer extension must be explicitly geometric")
+    if config.cohort == GEOMETRIC_FIXED_GRID_COHORT and config.material_mode != "geometric":
+        raise ValueError("the geometric fixed-grid screening cohort must be explicitly geometric")
     if config.cohort == COMPARABLE_COHORT and config.material_mode not in ("atlas", "geometric"):
         raise ValueError("the comparable cohort supports atlas primary runs and explicit geometric controls")
 
@@ -191,7 +212,12 @@ class RooflineCampaignConfig:
     """Decisions that define one resumable production campaign."""
 
     site: str
-    cohort: Literal["primary_semantic_route", "geometric_transfer_extension", "comparable_city"]
+    cohort: Literal[
+        "primary_semantic_route",
+        "geometric_transfer_extension",
+        "comparable_city",
+        "geometric_fixed_grid_screening",
+    ]
     material_mode: Literal["walk", "semantic", "atlas", "geometric"]
     output_dir: Path
     planned_seeds: tuple[int, ...]
@@ -209,6 +235,7 @@ class RooflineCampaignConfig:
     ] = "exact_complete"
     transport_topology: Literal["hybrid_max_bounces_v1", "first_material_interaction_v1"] = "hybrid_max_bounces_v1"
     route_contract: Literal["registered_span_street_v1", "provider_corridor_v1"] | None = None
+    grid_contract: Literal["fixed_ground_grid_v1"] | None = None
     source_measure_rule: Literal["physical_3d_edge_length", "horizontal_projected_edge_length"] | None = None
 
     def __post_init__(self) -> None:
@@ -261,6 +288,8 @@ class RooflineCampaignConfig:
             identity["components"] = list(self.components)
         if self.route_contract is not None:
             identity["route_contract"] = self.route_contract
+        if self.grid_contract is not None:
+            identity["grid_contract"] = self.grid_contract
         if self.source_measure_rule is not None:
             identity["source_measure_rule"] = self.source_measure_rule
         return identity
@@ -294,8 +323,20 @@ def _validate_prepared_contract(prepared: PreparedRooflineCampaign, points: int)
         raise ValueError("production roofline campaigns require a positive body mass for wbSAR")
     if prepared.walk.site is not None and prepared.walk.site != prepared.config.site:
         raise ValueError(f"walk site {prepared.walk.site!r} does not match campaign site {prepared.config.site!r}")
-    if prepared.config.sampling_claim != "full_declared_walk":
-        raise ValueError("this runner only supports the full declared walk")
+    if prepared.config.cohort == GEOMETRIC_FIXED_GRID_COHORT:
+        if prepared.config.sampling_claim != GEOMETRIC_FIXED_GRID_SAMPLING_CLAIM:
+            raise ValueError("geometric fixed-grid screening has the wrong sampling claim")
+        if prepared.walk.kind != GRID or points != FIXED_GROUND_GRID_POINTS:
+            raise ValueError("geometric fixed-grid screening requires exactly 16 grid standpoints")
+        if set(point_kind) != {FIXED_GROUND_GRID_POINT_KIND}:
+            raise ValueError("geometric fixed-grid screening point kinds are not closed")
+        yaw = np.asarray(prepared.walk.body_yaw_deg, dtype=np.float64)
+        if not np.array_equal(yaw, np.zeros(points, dtype=np.float64)):
+            raise ValueError("geometric fixed-grid screening requires fixed north-facing body yaw")
+        if prepared.walk.provenance.get("grid_contract") != FIXED_GROUND_GRID_CONTRACT:
+            raise ValueError("geometric fixed-grid screening walk provenance has the wrong grid contract")
+    elif prepared.config.sampling_claim != "full_declared_walk":
+        raise ValueError("this runner only supports the full declared walk outside the screening cohort")
     live_rule = getattr(prepared.estimator.sources, "source_measure_rule", None)
     if live_rule != prepared.config.source_measure_rule:
         raise ValueError("prepared source measure rule does not match campaign configuration")
@@ -345,7 +386,9 @@ def _validate_prepared_seeds_and_cohort(prepared: PreparedRooflineCampaign) -> N
         raise ValueError("derived 64-bit point seeds collide within the planned campaign")
     if prepared.material_provenance.get("material_mode") != prepared.config.material_mode:
         raise ValueError("material provenance mode does not match campaign material_mode")
-    if prepared.config.cohort == "primary_semantic_route":
+    if prepared.config.cohort == GEOMETRIC_FIXED_GRID_COHORT:
+        expected_kind = GRID
+    elif prepared.config.cohort == "primary_semantic_route":
         expected_kind = PANORAMA_LINKS
     elif prepared.config.route_contract == PROVIDER_CORRIDOR_V1:
         expected_kind = PROVIDER_CORRIDOR

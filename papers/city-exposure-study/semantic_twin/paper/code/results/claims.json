@@ -103,6 +103,64 @@
       },
       "verified": true
     },
+    "geometric_fixed_grid_diagnostic": {
+      "docstring": "",
+      "error": null,
+      "output": {
+        "component_share_ranges": {
+          "all_specular": {
+            "maximum": 0.20040237223894086,
+            "minimum": 0.10475899960358911
+          },
+          "direct": {
+            "maximum": 0.8342516971667144,
+            "minimum": 0.7420357505232383
+          },
+          "first_diffuse": {
+            "maximum": 0.07371151310169906,
+            "minimum": 0.04055174709983998
+          }
+        },
+        "contract": {
+          "body_yaw": "fixed north, 0 degrees ENU",
+          "first_diffuse_output_cells": 4096,
+          "frequency_hz": 15000000000,
+          "grid_contract": "fixed_ground_grid_v1",
+          "grid_points_per_site": 16,
+          "material_mode": "geometric",
+          "name": "geometric_fixed_grid_screening_v1",
+          "normalization": "per unit rho_A P_EIRP",
+          "primary_rays_per_seed_point": 200000,
+          "seeds": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "site_count": 10,
+          "sites": [
+            "korenmarkt",
+            "prague_staromestske",
+            "brussels_grandplace",
+            "madrid_plazamayor",
+            "mexico_zocalo",
+            "tokyo_hachiko",
+            "london_trafalgar",
+            "milan_duomo",
+            "krakow_rynek",
+            "toulouse_capitole"
+          ],
+          "transport_topology": "first_material_interaction_v1"
+        },
+        "quantile_span_factors": {
+          "q10": 2.0886428629837486,
+          "q50": 2.102518289517535,
+          "q90": 2.6018195095429704
+        },
+        "uncertainty_definition": "For each spatial quantile, seed_standard_error is the sample standard deviation of the four within-seed 16-point quantiles divided by sqrt(4). It is conditional on the fixed grid and does not include spatial-design, material-model, source-model, or orientation uncertainty."
+      },
+      "verified": true
+    },
     "paired_material_evidence_control": {
       "docstring": "Madrid and Mexico controls preserve the campaign except for the material layer.",
       "error": null,
@@ -362,7 +420,7 @@
       "verified": true
     }
   },
-  "generated_at": "2026-08-14T02:18:48Z",
-  "git_sha": "eb9a9a2b0fd8f89835f528701fffdf26d38bce61",
+  "generated_at": "2026-08-16T21:59:55Z",
+  "git_sha": "4b27dd41fa5609ce75f60c7bffd06ca84a4491c2",
   "schema_version": 1
 }

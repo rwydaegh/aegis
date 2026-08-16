@@ -1,0 +1,38 @@
+{
+  "component_share_ranges": {
+    "all_specular": [
+      0.10475899960358911,
+      0.20040237223894086
+    ],
+    "direct": [
+      0.7420357505232383,
+      0.8342516971667144
+    ],
+    "first_diffuse": [
+      0.04055174709983998,
+      0.07371151310169906
+    ]
+  },
+  "outputs": {
+    "geometric_screening.pdf": {
+      "bytes": 99269,
+      "sha256": "df78ea41c881b5a815d683c401c2a6d43c7080fd159dbe0829456bb33f713e21"
+    },
+    "geometric_screening.png": {
+      "bytes": 130214,
+      "sha256": "c7efbf0d4fe0da57092426607feadc3c6e2e728e245c9f8e271bf3fba924b560"
+    }
+  },
+  "quantile_span_factors": {
+    "q10": 2.0886428629837486,
+    "q50": 2.102518289517535,
+    "q90": 2.6018195095429704
+  },
+  "schema": "paper_geometric_fixed_grid_figure_v1",
+  "source": {
+    "manifest": "outputs/experiments/ten_city_geometry_screen_v1/report/ten_city_geometry_screen_v1_manifest.json",
+    "manifest_sha256": "7c1d5834b1a672c72d519d603d06f3002eaec20a19b350a1b67ed578eec4061a",
+    "report": "outputs/experiments/ten_city_geometry_screen_v1/report/ten_city_geometry_screen_v1.json",
+    "report_sha256": "efc945960dca8f69cb0b5830497ca79dc7b5a61293a21dac55c6ed364c4d9360"
+  }
+}

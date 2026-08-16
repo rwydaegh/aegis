@@ -18,7 +18,6 @@ from typing import Any
 
 from papermaker.claims import claim
 
-
 SEMANTIC_TWIN_ROOT = Path(__file__).resolve().parents[3]
 PAPER_ROOT = SEMANTIC_TWIN_ROOT / "paper"
 OUTPUT_ROOT = SEMANTIC_TWIN_ROOT / "outputs"
@@ -30,6 +29,11 @@ AGGREGATE_PATH = AGGREGATE_DIR / "current_five_city_first_material_interaction.j
 AGGREGATE_MANIFEST_PATH = AGGREGATE_DIR / "current_five_city_first_material_interaction_manifest.json"
 RAY_REACHED_REPORT_DIR = EXPERIMENT_ROOT / "ray_reached_evidence_coverage_v1" / "report"
 CONVERGENCE64_REPORT_DIR = EXPERIMENT_ROOT / "current_topology_convergence64_v1" / "report"
+GEOMETRIC_SCREEN_ROOT = EXPERIMENT_ROOT / "ten_city_geometry_screen_v1"
+GEOMETRIC_SCREEN_REPORT_DIR = GEOMETRIC_SCREEN_ROOT / "report"
+GEOMETRIC_SCREEN_REPORT_PATH = GEOMETRIC_SCREEN_REPORT_DIR / "ten_city_geometry_screen_v1.json"
+GEOMETRIC_SCREEN_MANIFEST_PATH = GEOMETRIC_SCREEN_REPORT_DIR / "ten_city_geometry_screen_v1_manifest.json"
+EXPECTED_GEOMETRIC_SCREEN_MANIFEST_SHA256 = "7c1d5834b1a672c72d519d603d06f3002eaec20a19b350a1b67ed578eec4061a"
 
 CITY_SLUGS = {
     "Korenmarkt": "korenmarkt",
@@ -411,8 +415,8 @@ def pooled_median_wbsar_component_shares() -> dict[str, Any]:
                     float(aggregate_row[component]["sar_wb_w_kg"]),
                     atol=1e-14,
                 )
-            for component in shares:
-                shares[component].append(100.0 * values[component] / values["total"])
+            for component, component_shares in shares.items():
+                component_shares.append(100.0 * values[component] / values["total"])
 
     assert all(len(values) == 73 for values in shares.values())
     medians = {component: _quantile(values, 0.5) for component, values in shares.items()}
@@ -946,4 +950,119 @@ def roofline_budget_sensitivity() -> dict[str, Any]:
         "baseline_stochastic_trace_seconds_range": baseline_stochastic_trace_seconds_range,
         "minimum_ray_reduced_q90_variance_time_ratio": minimum_ray_reduced_q90_variance_time_ratio,
         "cheaper_arms": results,
+    }
+
+
+@claim("geometric_fixed_grid_diagnostic")
+def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
+    assert _sha256(GEOMETRIC_SCREEN_MANIFEST_PATH) == EXPECTED_GEOMETRIC_SCREEN_MANIFEST_SHA256
+    manifest = _read_json(GEOMETRIC_SCREEN_MANIFEST_PATH)
+    assert manifest["schema_version"] == "geometric_fixed_grid_screening_artifacts_v1"
+    assert manifest["report_schema_version"] == "geometric_fixed_grid_screening_report_v1"
+    assert manifest["screening_contract"] == "geometric_fixed_grid_screening_v1"
+    assert manifest["authenticated"] is True
+    for name, record in manifest["artifacts"].items():
+        path = GEOMETRIC_SCREEN_REPORT_DIR / name
+        assert path.is_file(), f"fixed-grid report artifact is missing: {path}"
+        assert path.stat().st_size == int(record["bytes"])
+        assert _sha256(path) == record["sha256"], f"fixed-grid artifact hash mismatch: {path}"
+
+    report = _read_json(GEOMETRIC_SCREEN_REPORT_PATH)
+    assert report["schema_version"] == "geometric_fixed_grid_screening_report_v1"
+    contract = report["screening_contract"]
+    assert contract["name"] == "geometric_fixed_grid_screening_v1"
+    assert contract["site_count"] == 10
+    assert contract["grid_points_per_site"] == 16
+    assert contract["grid_contract"] == "fixed_ground_grid_v1"
+    assert contract["material_mode"] == "geometric"
+    assert contract["body_yaw"] == "fixed north, 0 degrees ENU"
+    assert contract["seeds"] == [7, 8, 9, 10]
+    assert contract["primary_rays_per_seed_point"] == 200_000
+    assert contract["first_diffuse_output_cells"] == 4096
+    assert contract["transport_topology"] == "first_material_interaction_v1"
+    assert set(contract["sites"]) == set(report["sites"]) == set(manifest["sources"])
+    assert len(contract["sites"]) == 10
+
+    curve_hash_version = "facade_tip_curve_canonical_ascii_v1"
+    quantile_probabilities = {"q10": 0.1, "q50": 0.5, "q90": 0.9}
+    for site in contract["sites"]:
+        campaign_root = GEOMETRIC_SCREEN_ROOT / site
+        identity = _read_json(campaign_root / "campaign_identity.json")
+        data = identity["data"]
+        site_report = report["sites"][site]
+        assert site_report["authentication"]["status"] == "pass"
+        assert identity["sha256"] == site_report["authentication"]["campaign_identity_sha256"]
+        assert _sha256(campaign_root / "manifest.json") == site_report["authentication"]["campaign_manifest_sha256"]
+        assert manifest["sources"][site]["campaign_identity_sha256"] == identity["sha256"]
+        assert manifest["sources"][site]["campaign_manifest_sha256"] == _sha256(campaign_root / "manifest.json")
+
+        walk = data["walk"]
+        provenance = walk["provenance"]
+        assert walk["standpoints"] == provenance["selection_count"] == 16
+        assert provenance["spacing_m"] == 6
+        assert provenance["radius_m"] == 90
+        assert provenance["body_yaw_rule"] == "fixed_north_v1"
+        assert provenance["body_yaw_deg"] == [0.0] * 16
+        locations = _read_jsonl(campaign_root / "locations.jsonl")
+        positions = [row["position_m"] for row in locations]
+        assert len(positions) == 16
+        chunks = [curve_hash_version, str((16, 3))]
+        chunks.extend(format(float(value), ".15g") for position in positions for value in position)
+        builder_hash = hashlib.sha256("\n".join(chunks).encode("ascii")).hexdigest()
+        source = data["sources"]["provenance"]
+        assert source["builders"] == 16
+        assert source["builder_standpoints_sha256"] == builder_hash
+        assert data["materials"]["material_mode"] == "geometric"
+        assert data["body"]["phantom"] == "duke"
+        for quantile, probability in quantile_probabilities.items():
+            summary = site_report["normalized_wbsar_quantiles"][quantile]
+            assert summary["probability"] == probability
+            seed_values = [float(value) for value in summary["seed_quantile_values"]]
+            assert len(seed_values) == 4
+            mean = sum(seed_values) / 4.0
+            standard_error = math.sqrt(sum((value - mean) ** 2 for value in seed_values) / 3.0) / math.sqrt(4.0)
+            _assert_close(standard_error, float(summary["seed_standard_error"]))
+
+    site_rows = list(report["sites"].values())
+    quantile_spans = {
+        quantile: max(float(site["normalized_wbsar_quantiles"][quantile]["estimate"]) for site in site_rows)
+        / min(float(site["normalized_wbsar_quantiles"][quantile]["estimate"]) for site in site_rows)
+        for quantile in quantile_probabilities
+    }
+    component_ranges = {
+        component: {
+            "minimum": min(float(site["normalized_wbsar_component_shares"][component]) for site in site_rows),
+            "maximum": max(float(site["normalized_wbsar_component_shares"][component]) for site in site_rows),
+        }
+        for component in ("direct", "all_specular", "first_diffuse")
+    }
+    expected_spans = {"q10": 2.0886428629837486, "q50": 2.102518289517535, "q90": 2.6018195095429704}
+    expected_ranges = {
+        "direct": {"minimum": 0.7420357505232383, "maximum": 0.8342516971667144},
+        "all_specular": {"minimum": 0.10475899960358911, "maximum": 0.20040237223894086},
+        "first_diffuse": {"minimum": 0.04055174709983998, "maximum": 0.07371151310169906},
+    }
+    for quantile, expected in expected_spans.items():
+        _assert_close(quantile_spans[quantile], expected)
+    for component, expected in expected_ranges.items():
+        _assert_close(component_ranges[component]["minimum"], expected["minimum"])
+        _assert_close(component_ranges[component]["maximum"], expected["maximum"])
+    assert {quantile: round(value, 2) for quantile, value in quantile_spans.items()} == {
+        "q10": 2.09,
+        "q50": 2.10,
+        "q90": 2.60,
+    }
+    assert {
+        component: {bound: round(100.0 * value, 1) for bound, value in bounds.items()}
+        for component, bounds in component_ranges.items()
+    } == {
+        "direct": {"minimum": 74.2, "maximum": 83.4},
+        "all_specular": {"minimum": 10.5, "maximum": 20.0},
+        "first_diffuse": {"minimum": 4.1, "maximum": 7.4},
+    }
+    return {
+        "contract": contract,
+        "quantile_span_factors": quantile_spans,
+        "component_share_ranges": component_ranges,
+        "uncertainty_definition": report["uncertainty_definition"],
     }

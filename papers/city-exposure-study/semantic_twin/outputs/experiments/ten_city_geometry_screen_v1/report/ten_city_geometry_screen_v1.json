@@ -1,0 +1,2891 @@
+{
+  "authentication": {
+    "campaigns_authenticated": 10,
+    "method": "identity wrapper, manifest, checkpoint, shard hash, schema, seed, grid, yaw, material, transport, and additive component-closure checks",
+    "status": "pass"
+  },
+  "component_share_definition": "Each share is the pooled seed-point mean normalized wbSAR for one additive first-interaction component divided by the corresponding pooled total mean.",
+  "disclosures": [
+    "Geometry-only material priors were used; no panorama-derived semantic evidence was used.",
+    "Each site is represented by 16 deterministic points selected from a fixed walkable-ground grid.",
+    "The body faces north at every point, so exposure is conditional on a fixed 0 degree ENU yaw.",
+    "Four IID seeds quantify screening-scale stochastic variation and do not establish convergence.",
+    "Values are normalized per unit rho_A P_EIRP and are not deployment-absolute exposures.",
+    "The point sets do not support pedestrian-path, population, prevalence, or site-ranking inference."
+  ],
+  "schema_version": "geometric_fixed_grid_screening_report_v1",
+  "screening_contract": {
+    "body_yaw": "fixed north, 0 degrees ENU",
+    "first_diffuse_output_cells": 4096,
+    "frequency_hz": 15000000000,
+    "grid_contract": "fixed_ground_grid_v1",
+    "grid_points_per_site": 16,
+    "material_mode": "geometric",
+    "name": "geometric_fixed_grid_screening_v1",
+    "normalization": "per unit rho_A P_EIRP",
+    "primary_rays_per_seed_point": 200000,
+    "seeds": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "site_count": 10,
+    "sites": [
+      "korenmarkt",
+      "prague_staromestske",
+      "brussels_grandplace",
+      "madrid_plazamayor",
+      "mexico_zocalo",
+      "tokyo_hachiko",
+      "london_trafalgar",
+      "milan_duomo",
+      "krakow_rynek",
+      "toulouse_capitole"
+    ],
+    "transport_topology": "first_material_interaction_v1"
+  },
+  "sites": {
+    "brussels_grandplace": {
+      "authentication": {
+        "campaign_identity_sha256": "1174db49a72b8ee1ab1b457395bc669711578a5a4d1ef8d802468959d24bab97",
+        "campaign_manifest_sha256": "5a6128921ddb993f50a6a2b2b9be0d87ae74e4af418f92b53e874852ee39dd06",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 2.220446049250313e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 1.0842021724855044e-19,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.0109489172595949,
+          "normalized_wbsar_seed_standard_error": 1.4601981736709022e-06,
+          "position_m": [
+            -54.0,
+            -72.0,
+            66.505859375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.008801578984688616,
+          "normalized_wbsar_seed_standard_error": 9.14991118971133e-06,
+          "position_m": [
+            -66.0,
+            -60.0,
+            66.0537109375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.005038367297842215,
+          "normalized_wbsar_seed_standard_error": 8.703861185073853e-06,
+          "position_m": [
+            -60.0,
+            -24.0,
+            66.1435546875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.007336300336850749,
+          "normalized_wbsar_seed_standard_error": 1.2424891751022862e-06,
+          "position_m": [
+            -12.0,
+            -30.0,
+            67.00390625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.012870139729348492,
+          "normalized_wbsar_seed_standard_error": 2.264256885804721e-06,
+          "position_m": [
+            -12.0,
+            -12.0,
+            67.009765625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.013005246039053637,
+          "normalized_wbsar_seed_standard_error": 3.5589830013072313e-06,
+          "position_m": [
+            -18.0,
+            -6.0,
+            66.81640625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.009898708495818094,
+          "normalized_wbsar_seed_standard_error": 2.6658934919738193e-06,
+          "position_m": [
+            -36.0,
+            0.0,
+            66.3818359375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.012706059379241205,
+          "normalized_wbsar_seed_standard_error": 4.9519444206750765e-06,
+          "position_m": [
+            30.0,
+            -36.0,
+            68.95703125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.014710458715472451,
+          "normalized_wbsar_seed_standard_error": 3.618991846372914e-06,
+          "position_m": [
+            -18.0,
+            6.0,
+            66.705078125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.0031144836159190076,
+          "normalized_wbsar_seed_standard_error": 2.4721234437532834e-06,
+          "position_m": [
+            -66.0,
+            12.0,
+            66.9375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.015782876951141764,
+          "normalized_wbsar_seed_standard_error": 4.620653745590861e-06,
+          "position_m": [
+            -6.0,
+            18.0,
+            66.8828125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.01385679728860349,
+          "normalized_wbsar_seed_standard_error": 4.141472320358215e-06,
+          "position_m": [
+            -24.0,
+            30.0,
+            66.3193359375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.007001705185329245,
+          "normalized_wbsar_seed_standard_error": 3.111470345092466e-06,
+          "position_m": [
+            60.0,
+            -18.0,
+            69.4150390625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.0032319371866031755,
+          "normalized_wbsar_seed_standard_error": 3.7248111934474474e-06,
+          "position_m": [
+            30.0,
+            42.0,
+            66.703125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.007861990464722152,
+          "normalized_wbsar_seed_standard_error": 5.32421637347909e-06,
+          "position_m": [
+            48.0,
+            60.0,
+            66.3154296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.004685214755394341,
+          "normalized_wbsar_seed_standard_error": 1.031340904270965e-05,
+          "position_m": [
+            54.0,
+            66.0,
+            66.3544921875
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.0016164528890169158,
+        "direct": 0.007116756005670718,
+        "first_diffuse": 0.0006949649606638365,
+        "total": 0.009428173855351472
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.1714492025515005,
+        "direct": 0.7548392843468004,
+        "first_diffuse": 0.07371151310169906
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.003958575970998758,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.003970007046843918,
+            0.003954249972614629,
+            0.003950848718316934,
+            0.003959198146219552
+          ],
+          "seed_standard_error": 4.1781304931294015e-06
+        },
+        "q50": {
+          "estimate": 0.009350143740253355,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.009346756291652648,
+            0.009358929881322876,
+            0.009342808476433368,
+            0.009352080311604529
+          ],
+          "seed_standard_error": 3.4907913002517474e-06
+        },
+        "q90": {
+          "estimate": 0.01428362800203797,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.014285026308613662,
+            0.01429344924912522,
+            0.014275854903886075,
+            0.01428018154652692
+          ],
+          "seed_standard_error": 3.771728892885047e-06
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "brussels_grandplace",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.011669583078258938,
+            "observations": 64,
+            "total_seconds": 0.746853317008572
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0021359188436917975,
+            "observations": 64,
+            "total_seconds": 0.13669880599627504
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.47270387156260085,
+            "observations": 64,
+            "total_seconds": 30.253047780006455
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.4619097055312409,
+            "observations": 64,
+            "total_seconds": 29.562221153999417
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.004946300249940805,
+            "observations": 64,
+            "total_seconds": 0.3165632159962115
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 30.999901097015027,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "korenmarkt": {
+      "authentication": {
+        "campaign_identity_sha256": "b3960a55fcaab5fd79485544d4e1b2441eab9dd1d0f7310a29f0be5b5b8f5466",
+        "campaign_manifest_sha256": "13fe62cb8912a3242000794f6683fb684459bb08a58b5a884d5c8ecd50a082bc",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 2.220446049250313e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 1.0842021724855044e-19,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.0069276977879250325,
+          "normalized_wbsar_seed_standard_error": 1.9841920382108804e-06,
+          "position_m": [
+            -60.0,
+            -60.0,
+            52.017578125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.015925225543049325,
+          "normalized_wbsar_seed_standard_error": 1.1618893238949377e-05,
+          "position_m": [
+            -18.0,
+            -48.0,
+            52.181640625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.005064736301421179,
+          "normalized_wbsar_seed_standard_error": 2.4604032524912775e-06,
+          "position_m": [
+            -84.0,
+            -18.0,
+            51.529296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.012858302377523147,
+          "normalized_wbsar_seed_standard_error": 7.311297134804782e-06,
+          "position_m": [
+            -6.0,
+            -54.0,
+            52.1630859375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.0092650021959469,
+          "normalized_wbsar_seed_standard_error": 1.049070575623165e-05,
+          "position_m": [
+            12.0,
+            -78.0,
+            52.3046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.019970068655027443,
+          "normalized_wbsar_seed_standard_error": 1.610751028602301e-05,
+          "position_m": [
+            -18.0,
+            -18.0,
+            54.595703125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.008528450350269346,
+          "normalized_wbsar_seed_standard_error": 7.065694220991228e-06,
+          "position_m": [
+            -78.0,
+            6.0,
+            51.9052734375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.021894051624205865,
+          "normalized_wbsar_seed_standard_error": 2.3040449519047277e-06,
+          "position_m": [
+            0.0,
+            -6.0,
+            52.3740234375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.009014292376371861,
+          "normalized_wbsar_seed_standard_error": 2.780298515462079e-06,
+          "position_m": [
+            -78.0,
+            24.0,
+            51.1279296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.017172568919888394,
+          "normalized_wbsar_seed_standard_error": 8.797977802238618e-06,
+          "position_m": [
+            -6.0,
+            12.0,
+            52.349609375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.01548791874611083,
+          "normalized_wbsar_seed_standard_error": 1.1760160097490508e-05,
+          "position_m": [
+            18.0,
+            -12.0,
+            53.1826171875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.011449716612013324,
+          "normalized_wbsar_seed_standard_error": 3.76130807778852e-06,
+          "position_m": [
+            -72.0,
+            48.0,
+            53.3955078125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.0133613965587583,
+          "normalized_wbsar_seed_standard_error": 5.4824974554502965e-06,
+          "position_m": [
+            -18.0,
+            48.0,
+            52.5361328125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.01453101336619528,
+          "normalized_wbsar_seed_standard_error": 1.2526363367397007e-05,
+          "position_m": [
+            -30.0,
+            60.0,
+            52.345703125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.012764823033166214,
+          "normalized_wbsar_seed_standard_error": 8.271914852868235e-06,
+          "position_m": [
+            18.0,
+            66.0,
+            53.162109375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.010559200555657844,
+          "normalized_wbsar_seed_standard_error": 1.364973592226322e-05,
+          "position_m": [
+            0.0,
+            90.0,
+            52.962890625
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.001640433591885366,
+        "direct": 0.010332135636422213,
+        "first_diffuse": 0.0008258348344130655,
+        "total": 0.012798404062720644
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.12817485554028116,
+        "direct": 0.8072987527029085,
+        "first_diffuse": 0.06452639175681035
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.0077280740690971895,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.00772435522578053,
+            0.00772585970774129,
+            0.007736417311943458,
+            0.007725664030923481
+          ],
+          "seed_standard_error": 2.8010589815714253e-06
+        },
+        "q50": {
+          "estimate": 0.01281156270534468,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.012821344809445686,
+            0.012802560017789271,
+            0.012822830797767682,
+            0.012799515196376086
+          ],
+          "seed_standard_error": 6.115896793499794e-06
+        },
+        "q90": {
+          "estimate": 0.018571318787457918,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.01855513097515188,
+            0.018564999233864815,
+            0.01858484002540992,
+            0.018580304915405056
+          ],
+          "seed_standard_error": 6.865107404528959e-06
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "korenmarkt",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.011047828718830033,
+            "observations": 64,
+            "total_seconds": 0.7070610380051221
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0021745116094109562,
+            "observations": 64,
+            "total_seconds": 0.1391687430023012
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.38888732215627897,
+            "observations": 64,
+            "total_seconds": 24.888788618001854
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.3784346669999934,
+            "observations": 64,
+            "total_seconds": 24.219818687999577
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.004621491999955651,
+            "observations": 64,
+            "total_seconds": 0.2957754879971617
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 25.595849656006976,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "krakow_rynek": {
+      "authentication": {
+        "campaign_identity_sha256": "ae47eaa9fd326ca40e7fb7bbf6293a593a69399b5ac6413a1ccd59a34ab9ccbf",
+        "campaign_manifest_sha256": "c4fbbe9fda24d109ce47834fcc0c2dfc745aa59036f942a1cbe2ec17509ad977",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 2.220446049250313e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 1.0842021724855044e-19,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.004877934731627122,
+          "normalized_wbsar_seed_standard_error": 1.4817618231232997e-06,
+          "position_m": [
+            -54.0,
+            -72.0,
+            252.21875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.01938572185096336,
+          "normalized_wbsar_seed_standard_error": 2.3879106053468524e-05,
+          "position_m": [
+            6.0,
+            -84.0,
+            252.1181640625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.005154261020593468,
+          "normalized_wbsar_seed_standard_error": 7.1079042239747544e-06,
+          "position_m": [
+            30.0,
+            -78.0,
+            252.3251953125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.007995561172907145,
+          "normalized_wbsar_seed_standard_error": 1.9914198380624694e-06,
+          "position_m": [
+            42.0,
+            -66.0,
+            252.23828125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.008620807435908255,
+          "normalized_wbsar_seed_standard_error": 3.2399072354546472e-06,
+          "position_m": [
+            -36.0,
+            -12.0,
+            252.4326171875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.011240161676953412,
+          "normalized_wbsar_seed_standard_error": 1.8908245416843822e-05,
+          "position_m": [
+            -66.0,
+            24.0,
+            251.6123046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.008127147328440634,
+          "normalized_wbsar_seed_standard_error": 4.474814543310815e-06,
+          "position_m": [
+            -84.0,
+            12.0,
+            251.6689453125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.008527503140321935,
+          "normalized_wbsar_seed_standard_error": 2.2557525130979395e-05,
+          "position_m": [
+            36.0,
+            -24.0,
+            252.5595703125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.011106663608310021,
+          "normalized_wbsar_seed_standard_error": 1.1951760455409878e-05,
+          "position_m": [
+            -6.0,
+            30.0,
+            252.62109375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.005436896254285344,
+          "normalized_wbsar_seed_standard_error": 4.056575737938787e-06,
+          "position_m": [
+            84.0,
+            -24.0,
+            252.607421875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.014678621292912671,
+          "normalized_wbsar_seed_standard_error": 8.951586247137723e-06,
+          "position_m": [
+            -6.0,
+            36.0,
+            252.623046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.010600075079265777,
+          "normalized_wbsar_seed_standard_error": 3.2765204173628657e-06,
+          "position_m": [
+            0.0,
+            54.0,
+            252.623046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.010916130625155028,
+          "normalized_wbsar_seed_standard_error": 4.69482474398073e-06,
+          "position_m": [
+            18.0,
+            66.0,
+            252.8193359375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.011874163285668416,
+          "normalized_wbsar_seed_standard_error": 5.819764662650708e-06,
+          "position_m": [
+            42.0,
+            66.0,
+            252.8193359375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.010806972311576589,
+          "normalized_wbsar_seed_standard_error": 4.096148490405602e-06,
+          "position_m": [
+            30.0,
+            78.0,
+            252.6220703125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.010294696054253039,
+          "normalized_wbsar_seed_standard_error": 3.9850681196329134e-06,
+          "position_m": [
+            54.0,
+            72.0,
+            253.0205078125
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.0012480177840733984,
+        "direct": 0.008138295321122924,
+        "first_diffuse": 0.0005913941991250663,
+        "total": 0.00997770730432139
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.12508061681994584,
+        "direct": 0.8156478310000326,
+        "first_diffuse": 0.05927155218002144
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.0052955786374394055,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.005309767846500172,
+            0.005294363762355543,
+            0.005284925605440627,
+            0.005293257335461284
+          ],
+          "seed_standard_error": 5.177556605840293e-06
+        },
+        "q50": {
+          "estimate": 0.010447385566759407,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.010453463707109565,
+            0.010447334699750064,
+            0.010450482023762229,
+            0.010438261836415772
+          ],
+          "seed_standard_error": 3.28857718629374e-06
+        },
+        "q90": {
+          "estimate": 0.013276392289290544,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.013264762247008947,
+            0.013287710532328842,
+            0.01327915210426223,
+            0.013273944273562151
+          ],
+          "seed_standard_error": 4.8042504499496925e-06
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "krakow_rynek",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.01029320128117206,
+            "observations": 64,
+            "total_seconds": 0.6587648819950118
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0017994905780938097,
+            "observations": 64,
+            "total_seconds": 0.11516739699800382
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.2921550588905575,
+            "observations": 64,
+            "total_seconds": 18.69792376899568
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.2824900072188541,
+            "observations": 64,
+            "total_seconds": 18.07936046200666
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.004447847875127309,
+            "observations": 64,
+            "total_seconds": 0.28466226400814776
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 19.35668865099069,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "london_trafalgar": {
+      "authentication": {
+        "campaign_identity_sha256": "639d1ab4fcb47717acc04fb1772e7368bcb7f6ccb880ae80b3b89f471e3e1dda",
+        "campaign_manifest_sha256": "3a3f6bf67e931cee6969578429254fd3e6afb09942070c44eaf31dc5457578bf",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 2.220446049250313e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 1.0842021724855044e-19,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.006027531879479581,
+          "normalized_wbsar_seed_standard_error": 4.331799746396704e-06,
+          "position_m": [
+            -60.0,
+            -66.0,
+            56.1953125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.007642698164016097,
+          "normalized_wbsar_seed_standard_error": 4.396200777214536e-06,
+          "position_m": [
+            -36.0,
+            -54.0,
+            56.11328125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.007063690377331179,
+          "normalized_wbsar_seed_standard_error": 4.267185871414597e-06,
+          "position_m": [
+            0.0,
+            -78.0,
+            54.7080078125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.008658322082704764,
+          "normalized_wbsar_seed_standard_error": 4.176008717417572e-06,
+          "position_m": [
+            42.0,
+            -66.0,
+            54.7021484375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.008363489291352898,
+          "normalized_wbsar_seed_standard_error": 5.679853216714944e-07,
+          "position_m": [
+            -18.0,
+            -36.0,
+            56.333984375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.009440554284488055,
+          "normalized_wbsar_seed_standard_error": 1.0103890740494174e-05,
+          "position_m": [
+            -60.0,
+            0.0,
+            57.6962890625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.009468444417900708,
+          "normalized_wbsar_seed_standard_error": 3.2286354743289957e-06,
+          "position_m": [
+            -18.0,
+            -12.0,
+            57.12890625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.013477003982505375,
+          "normalized_wbsar_seed_standard_error": 1.1697713676524055e-05,
+          "position_m": [
+            -30.0,
+            0.0,
+            56.9267578125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.021589728579642496,
+          "normalized_wbsar_seed_standard_error": 0.00013780443694960844,
+          "position_m": [
+            24.0,
+            -30.0,
+            56.138671875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.008209004606741857,
+          "normalized_wbsar_seed_standard_error": 2.1313367285202528e-06,
+          "position_m": [
+            72.0,
+            -36.0,
+            55.6962890625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.012224223402748053,
+          "normalized_wbsar_seed_standard_error": 7.5321600587644864e-06,
+          "position_m": [
+            60.0,
+            -24.0,
+            55.9365234375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.013911666914982747,
+          "normalized_wbsar_seed_standard_error": 1.1489555384888679e-05,
+          "position_m": [
+            78.0,
+            -12.0,
+            56.4404296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.010002540057975729,
+          "normalized_wbsar_seed_standard_error": 2.8835787165495987e-06,
+          "position_m": [
+            36.0,
+            0.0,
+            56.3212890625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.0076723019995893725,
+          "normalized_wbsar_seed_standard_error": 1.3533067289261906e-06,
+          "position_m": [
+            6.0,
+            24.0,
+            56.333984375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.02112017903732011,
+          "normalized_wbsar_seed_standard_error": 5.926683541009081e-06,
+          "position_m": [
+            30.0,
+            12.0,
+            56.900390625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.010141696305378738,
+          "normalized_wbsar_seed_standard_error": 5.233123044590141e-06,
+          "position_m": [
+            90.0,
+            0.0,
+            56.85546875
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.001284355920841803,
+        "direct": 0.009031182497218217,
+        "first_diffuse": 0.0006227787934498407,
+        "total": 0.01093831721150986
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.11741805398460539,
+        "direct": 0.8256464246360622,
+        "first_diffuse": 0.05693552137933254
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.007353194270673638,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.007354752128100852,
+            0.007354638376106268,
+            0.007345714644343932,
+            0.0073576719341435035
+          ],
+          "seed_standard_error": 2.590151868865908e-06
+        },
+        "q50": {
+          "estimate": 0.00945449935119438,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.009457533195185878,
+            0.009445230061353444,
+            0.009466057816908967,
+            0.009449176331329237
+          ],
+          "seed_standard_error": 4.628324153874337e-06
+        },
+        "q90": {
+          "estimate": 0.01751592297615143,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.01749627824195335,
+            0.017536573213591332,
+            0.017511526248525436,
+            0.017519314200535593
+          ],
+          "seed_standard_error": 8.382419622233434e-06
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "london_trafalgar",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.010623222390705678,
+            "observations": 64,
+            "total_seconds": 0.6798862330051634
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0019261222343516238,
+            "observations": 64,
+            "total_seconds": 0.12327182299850392
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.39568567803129895,
+            "observations": 64,
+            "total_seconds": 25.323883394003133
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.3859844071406542,
+            "observations": 64,
+            "total_seconds": 24.703002057001868
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.004379541781077023,
+            "observations": 64,
+            "total_seconds": 0.2802906739889295
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 26.003769627008296,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "madrid_plazamayor": {
+      "authentication": {
+        "campaign_identity_sha256": "501820255f1a3f4058433672784a9f478371e4ad06191d8666559704c5e450ea",
+        "campaign_manifest_sha256": "d3fe9e6aaaa1714bd23778c23a0996642d6ba8b33d1d08f60412a7c82204af7b",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 2.220446049250313e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 5.421010862427522e-20,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.005606138823489865,
+          "normalized_wbsar_seed_standard_error": 3.7465170880875538e-06,
+          "position_m": [
+            -66.0,
+            -48.0,
+            702.4169921875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.014026476861640328,
+          "normalized_wbsar_seed_standard_error": 9.30347830495409e-06,
+          "position_m": [
+            0.0,
+            -42.0,
+            704.3203125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.010894436992168709,
+          "normalized_wbsar_seed_standard_error": 5.058599588759763e-06,
+          "position_m": [
+            24.0,
+            -48.0,
+            704.3232421875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.011689066724771689,
+          "normalized_wbsar_seed_standard_error": 1.2417231792521537e-05,
+          "position_m": [
+            -42.0,
+            -18.0,
+            704.380859375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.014488220428493709,
+          "normalized_wbsar_seed_standard_error": 5.125849690377005e-06,
+          "position_m": [
+            18.0,
+            -30.0,
+            704.0
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.014784200750936054,
+          "normalized_wbsar_seed_standard_error": 1.8353332431708616e-06,
+          "position_m": [
+            -18.0,
+            -12.0,
+            704.1181640625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.00549501730832219,
+          "normalized_wbsar_seed_standard_error": 2.9486811380414883e-06,
+          "position_m": [
+            -54.0,
+            12.0,
+            704.4755859375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.01537757961230754,
+          "normalized_wbsar_seed_standard_error": 3.4075474062760372e-06,
+          "position_m": [
+            30.0,
+            -30.0,
+            704.048828125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.014952790800099244,
+          "normalized_wbsar_seed_standard_error": 5.73676283704161e-06,
+          "position_m": [
+            18.0,
+            -12.0,
+            703.822265625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.01609944904370025,
+          "normalized_wbsar_seed_standard_error": 7.413845837948948e-06,
+          "position_m": [
+            30.0,
+            0.0,
+            704.0126953125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.01450138766787993,
+          "normalized_wbsar_seed_standard_error": 2.9716665261138097e-06,
+          "position_m": [
+            18.0,
+            6.0,
+            704.0458984375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.011594014590473985,
+          "normalized_wbsar_seed_standard_error": 3.704711742540501e-06,
+          "position_m": [
+            -12.0,
+            18.0,
+            704.2587890625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.007139603678545373,
+          "normalized_wbsar_seed_standard_error": 4.866924250682327e-06,
+          "position_m": [
+            54.0,
+            24.0,
+            704.2373046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.006976164464856175,
+          "normalized_wbsar_seed_standard_error": 5.836216779122679e-06,
+          "position_m": [
+            -66.0,
+            60.0,
+            702.3701171875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.009430252657204046,
+          "normalized_wbsar_seed_standard_error": 7.81735895009284e-06,
+          "position_m": [
+            -30.0,
+            72.0,
+            701.69140625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.004987202294601753,
+          "normalized_wbsar_seed_standard_error": 7.162710612423127e-06,
+          "position_m": [
+            84.0,
+            24.0,
+            704.19921875
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.002230002481196867,
+        "direct": 0.008257095693611069,
+        "first_diffuse": 0.000640526993910241,
+        "total": 0.011127625168718177
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.20040237223894086,
+        "direct": 0.7420357505232383,
+        "first_diffuse": 0.05756187723782083
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.005550578065906028,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.005545664031100761,
+            0.005557099046175498,
+            0.005551166227069084,
+            0.0055483829592787685
+          ],
+          "seed_standard_error": 2.4466873591475775e-06
+        },
+        "q50": {
+          "estimate": 0.011641540657622837,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.011629029515417045,
+            0.011635148396395654,
+            0.011652963184168683,
+            0.011649021534509967
+          ],
+          "seed_standard_error": 5.655582158223838e-06
+        },
+        "q90": {
+          "estimate": 0.015165185206203392,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.015162086811035773,
+            0.015172239125624529,
+            0.015161083303646874,
+            0.015165331584506395
+          ],
+          "seed_standard_error": 2.5200010417552975e-06
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "madrid_plazamayor",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.011562592843688435,
+            "observations": 64,
+            "total_seconds": 0.7400059419960598
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.00200982328121313,
+            "observations": 64,
+            "total_seconds": 0.12862868999764032
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.4733275227499689,
+            "observations": 64,
+            "total_seconds": 30.29296145599801
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.4628771265312537,
+            "observations": 64,
+            "total_seconds": 29.624136098000236
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.004639568593660215,
+            "observations": 64,
+            "total_seconds": 0.29693238999425375
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 31.03296739799407,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "mexico_zocalo": {
+      "authentication": {
+        "campaign_identity_sha256": "177219e26a355ea2ce209302f647bcc036db4b94d0dfd976428a794921b61682",
+        "campaign_manifest_sha256": "08d431b04a2def46f687895d457be5e54cd91ab64c56645ac20fb1f5c43135a4",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 4.440892098500626e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 1.0842021724855044e-19,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.006541310861238207,
+          "normalized_wbsar_seed_standard_error": 3.0449059640514173e-06,
+          "position_m": [
+            -54.0,
+            -72.0,
+            2226.58544921875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.008462971034914541,
+          "normalized_wbsar_seed_standard_error": 4.104935375628685e-06,
+          "position_m": [
+            -24.0,
+            -84.0,
+            2224.57177734375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.019934805564431734,
+          "normalized_wbsar_seed_standard_error": 2.5926761404519663e-05,
+          "position_m": [
+            24.0,
+            -84.0,
+            2224.67529296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.01012796016881692,
+          "normalized_wbsar_seed_standard_error": 4.105838614239998e-06,
+          "position_m": [
+            18.0,
+            -66.0,
+            2224.55029296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.018375245907738067,
+          "normalized_wbsar_seed_standard_error": 6.37167806589577e-06,
+          "position_m": [
+            12.0,
+            -30.0,
+            2224.61376953125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.023971142865129212,
+          "normalized_wbsar_seed_standard_error": 2.005461781219165e-05,
+          "position_m": [
+            12.0,
+            -12.0,
+            2224.724609375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.0026328601668662746,
+          "normalized_wbsar_seed_standard_error": 2.882400376965766e-06,
+          "position_m": [
+            -84.0,
+            12.0,
+            2225.16357421875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.016585019438080856,
+          "normalized_wbsar_seed_standard_error": 6.049438086389391e-06,
+          "position_m": [
+            54.0,
+            -66.0,
+            2227.1474609375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.012707862029155081,
+          "normalized_wbsar_seed_standard_error": 1.3447240146813693e-05,
+          "position_m": [
+            60.0,
+            -42.0,
+            2224.79248046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.010312304568777006,
+          "normalized_wbsar_seed_standard_error": 4.326538583457954e-06,
+          "position_m": [
+            54.0,
+            -48.0,
+            2224.77978515625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.016548373786282242,
+          "normalized_wbsar_seed_standard_error": 9.55386683480502e-06,
+          "position_m": [
+            72.0,
+            -36.0,
+            2224.90380859375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.005149674715921038,
+          "normalized_wbsar_seed_standard_error": 8.801077780165174e-07,
+          "position_m": [
+            -18.0,
+            66.0,
+            2227.19970703125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.005086852374902293,
+          "normalized_wbsar_seed_standard_error": 1.253703954603306e-06,
+          "position_m": [
+            0.0,
+            72.0,
+            2225.2177734375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.028210278531793267,
+          "normalized_wbsar_seed_standard_error": 1.340619891432981e-05,
+          "position_m": [
+            60.0,
+            24.0,
+            2224.85400390625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.005548663487160724,
+          "normalized_wbsar_seed_standard_error": 2.4016378040740035e-06,
+          "position_m": [
+            6.0,
+            84.0,
+            2225.5390625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.00529208743051089,
+          "normalized_wbsar_seed_standard_error": 2.2786169142065687e-06,
+          "position_m": [
+            30.0,
+            84.0,
+            2225.42138671875
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.0015296469242683125,
+        "direct": 0.010192856625813521,
+        "first_diffuse": 0.0004954597581505644,
+        "total": 0.012217963308232396
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.12519655573344576,
+        "direct": 0.8342516971667144,
+        "first_diffuse": 0.04055174709983998
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.005118263545411665,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.005116112998336072,
+            0.005119025416445116,
+            0.005117750674695703,
+            0.005120165092169768
+          ],
+          "seed_standard_error": 8.70067844121836e-07
+        },
+        "q50": {
+          "estimate": 0.010220132368796963,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.010222312629080011,
+            0.010230421051152027,
+            0.010217158306678744,
+            0.010210637488277075
+          ],
+          "seed_standard_error": 4.179397096424526e-06
+        },
+        "q90": {
+          "estimate": 0.02195297421478047,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.021967725597271885,
+            0.021982097246066888,
+            0.021948031926365807,
+            0.02191404208941731
+          ],
+          "seed_standard_error": 1.4736267157324125e-05
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "mexico_zocalo",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.010074883468831786,
+            "observations": 64,
+            "total_seconds": 0.6447925420052343
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0015499939061953683,
+            "observations": 64,
+            "total_seconds": 0.09919960999650357
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.3397039965469162,
+            "observations": 64,
+            "total_seconds": 21.741055779002636
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.3303098242031979,
+            "observations": 64,
+            "total_seconds": 21.139828749004664
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.004601528546942291,
+            "observations": 64,
+            "total_seconds": 0.2944978270043066
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 22.38584832100787,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "milan_duomo": {
+      "authentication": {
+        "campaign_identity_sha256": "4c339b989ad5aced354814bb79800ef46bf3e4dff1e5cfadbba655fe9a202911",
+        "campaign_manifest_sha256": "a2e409846502d7d4f5b278307623fc5313c1a214c81d9f59a8958e72772507e5",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 2.220446049250313e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 5.421010862427522e-20,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.004568351129963807,
+          "normalized_wbsar_seed_standard_error": 1.022124874169887e-06,
+          "position_m": [
+            -66.0,
+            -60.0,
+            167.1005859375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.005740151111274277,
+          "normalized_wbsar_seed_standard_error": 2.484990250316402e-06,
+          "position_m": [
+            -42.0,
+            -48.0,
+            164.48046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.003997943402758072,
+          "normalized_wbsar_seed_standard_error": 1.287421827011451e-06,
+          "position_m": [
+            6.0,
+            -84.0,
+            164.3447265625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.015655631849537863,
+          "normalized_wbsar_seed_standard_error": 2.8979775349086846e-05,
+          "position_m": [
+            -84.0,
+            -12.0,
+            164.9248046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.007246543948420805,
+          "normalized_wbsar_seed_standard_error": 1.4351887993631338e-06,
+          "position_m": [
+            0.0,
+            -18.0,
+            164.462890625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.008039069649615115,
+          "normalized_wbsar_seed_standard_error": 1.1243690754064586e-05,
+          "position_m": [
+            -54.0,
+            -6.0,
+            167.083984375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.00536733596653914,
+          "normalized_wbsar_seed_standard_error": 4.1748790857008426e-06,
+          "position_m": [
+            42.0,
+            -66.0,
+            164.1142578125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.006176843589280307,
+          "normalized_wbsar_seed_standard_error": 3.888205763205536e-06,
+          "position_m": [
+            42.0,
+            -48.0,
+            164.5068359375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.006274435697008368,
+          "normalized_wbsar_seed_standard_error": 3.5861544728158986e-06,
+          "position_m": [
+            42.0,
+            -30.0,
+            165.1865234375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.0059572121021833424,
+          "normalized_wbsar_seed_standard_error": 2.1143870526907656e-06,
+          "position_m": [
+            36.0,
+            6.0,
+            165.3505859375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.007205699307000218,
+          "normalized_wbsar_seed_standard_error": 2.227435154610823e-06,
+          "position_m": [
+            -18.0,
+            24.0,
+            164.5537109375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.007832668361019484,
+          "normalized_wbsar_seed_standard_error": 3.412817509575684e-06,
+          "position_m": [
+            18.0,
+            30.0,
+            164.416015625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.008836024210094379,
+          "normalized_wbsar_seed_standard_error": 4.629786741651783e-06,
+          "position_m": [
+            48.0,
+            36.0,
+            164.4228515625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.003745003909877552,
+          "normalized_wbsar_seed_standard_error": 1.8261193339990928e-06,
+          "position_m": [
+            -66.0,
+            54.0,
+            164.75
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.006010030379159271,
+          "normalized_wbsar_seed_standard_error": 1.3002968761577145e-06,
+          "position_m": [
+            24.0,
+            54.0,
+            164.5732421875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.005333257499976681,
+          "normalized_wbsar_seed_standard_error": 2.807044725135105e-06,
+          "position_m": [
+            66.0,
+            60.0,
+            164.4345703125
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.001035640286969094,
+        "direct": 0.005294343330988935,
+        "first_diffuse": 0.0004191540141487635,
+        "total": 0.006749137632106793
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.15344779487713772,
+        "direct": 0.78444737973676,
+        "first_diffuse": 0.06210482538610218
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.0042831472663609396,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.004283210913371907,
+            0.004281524932810828,
+            0.004282259296404257,
+            0.0042855939228567674
+          ],
+          "seed_standard_error": 8.855617681435626e-07
+        },
+        "q50": {
+          "estimate": 0.00609343698421979,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.006094420974388042,
+            0.006099903614805617,
+            0.006090760341165531,
+            0.006088663006519968
+          ],
+          "seed_standard_error": 2.462059248256139e-06
+        },
+        "q90": {
+          "estimate": 0.008437546929854746,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.008427996599341132,
+            0.00843377031627042,
+            0.008439410424034444,
+            0.008449010379772994
+          ],
+          "seed_standard_error": 4.475441483534803e-06
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "milan_duomo",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.011595721109614487,
+            "observations": 64,
+            "total_seconds": 0.7421261510153272
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0016989396563076298,
+            "observations": 64,
+            "total_seconds": 0.1087321380036883
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.3426761891406329,
+            "observations": 64,
+            "total_seconds": 21.931276105000507
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.3332354015469434,
+            "observations": 64,
+            "total_seconds": 21.32706569900438
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.004488103765623919,
+            "observations": 64,
+            "total_seconds": 0.2872386409999308
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 22.673402256015834,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "prague_staromestske": {
+      "authentication": {
+        "campaign_identity_sha256": "a96f06459b88ae1b326a9c197929a2315f4b0093ada231a0d652f6a0182eb420",
+        "campaign_manifest_sha256": "a88c0fdcfad4bbcc35ec657eff0c34ef9f34beaf01bdd208e65d1c8f61c5f6b6",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 2.220446049250313e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 5.421010862427522e-20,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.005087908441631487,
+          "normalized_wbsar_seed_standard_error": 2.5705009043636e-06,
+          "position_m": [
+            -54.0,
+            -72.0,
+            238.36328125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.012110126681768028,
+          "normalized_wbsar_seed_standard_error": 3.7307779132128193e-06,
+          "position_m": [
+            -18.0,
+            -54.0,
+            238.3583984375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.012235264427012503,
+          "normalized_wbsar_seed_standard_error": 4.209920957248687e-06,
+          "position_m": [
+            0.0,
+            -42.0,
+            238.658203125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.013565516962490917,
+          "normalized_wbsar_seed_standard_error": 1.7167247129231792e-05,
+          "position_m": [
+            30.0,
+            -42.0,
+            239.6015625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.013755881899689659,
+          "normalized_wbsar_seed_standard_error": 4.392386227858031e-06,
+          "position_m": [
+            -48.0,
+            -18.0,
+            238.02734375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.007650745230872687,
+          "normalized_wbsar_seed_standard_error": 4.9022548994560345e-06,
+          "position_m": [
+            54.0,
+            -30.0,
+            239.119140625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.013431112615462305,
+          "normalized_wbsar_seed_standard_error": 1.1057795327872222e-06,
+          "position_m": [
+            -54.0,
+            0.0,
+            237.5654296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.012910486141545496,
+          "normalized_wbsar_seed_standard_error": 5.379303432831727e-06,
+          "position_m": [
+            -84.0,
+            0.0,
+            237.88671875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.013324604556784251,
+          "normalized_wbsar_seed_standard_error": 6.063498740640761e-06,
+          "position_m": [
+            -18.0,
+            6.0,
+            238.4267578125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.011712371909627855,
+          "normalized_wbsar_seed_standard_error": 1.6272923248550535e-06,
+          "position_m": [
+            -30.0,
+            12.0,
+            237.94921875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.009141461908322442,
+          "normalized_wbsar_seed_standard_error": 2.5195283919620295e-06,
+          "position_m": [
+            -60.0,
+            30.0,
+            236.984375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.021632700346404604,
+          "normalized_wbsar_seed_standard_error": 6.700504607729374e-06,
+          "position_m": [
+            -12.0,
+            24.0,
+            239.154296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.011307327863715348,
+          "normalized_wbsar_seed_standard_error": 4.058022196349911e-06,
+          "position_m": [
+            -18.0,
+            42.0,
+            237.4404296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.00649474814111758,
+          "normalized_wbsar_seed_standard_error": 2.431296458902901e-06,
+          "position_m": [
+            -36.0,
+            54.0,
+            237.1767578125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.009658111570400914,
+          "normalized_wbsar_seed_standard_error": 2.0436813234338737e-06,
+          "position_m": [
+            0.0,
+            66.0,
+            236.873046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.0064892193177589355,
+          "normalized_wbsar_seed_standard_error": 9.712073996888767e-06,
+          "position_m": [
+            66.0,
+            60.0,
+            237.7451171875
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.0017348780525281065,
+        "direct": 0.008901656846675833,
+        "first_diffuse": 0.0006451893517088744,
+        "total": 0.011281724250912811
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.15377773946103465,
+        "direct": 0.7890333648205942,
+        "first_diffuse": 0.057188895718371394
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.006491983729438258,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.006502707286203217,
+            0.006480335162528356,
+            0.006501013547749283,
+            0.006483878921272175
+          ],
+          "seed_standard_error": 5.758394704580656e-06
+        },
+        "q50": {
+          "estimate": 0.01191124929569794,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.011916287543345422,
+            0.01191465309076467,
+            0.011906038316869648,
+            0.011908018231812024
+          ],
+          "seed_standard_error": 2.4927199735336153e-06
+        },
+        "q90": {
+          "estimate": 0.013660699431090287,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.013671956515871268,
+            0.013659952927210832,
+            0.01363101878137196,
+            0.013679869499907089
+          ],
+          "seed_standard_error": 1.0707130536668744e-05
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "prague_staromestske",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.011054320531229678,
+            "observations": 64,
+            "total_seconds": 0.7074765139986994
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0019539972811912776,
+            "observations": 64,
+            "total_seconds": 0.12505582599624177
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.3908602867031732,
+            "observations": 64,
+            "total_seconds": 25.015058349003084
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.38089082540619756,
+            "observations": 64,
+            "total_seconds": 24.377012825996644
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.004492224093667119,
+            "observations": 64,
+            "total_seconds": 0.2875023419946956
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 25.722534863001783,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "tokyo_hachiko": {
+      "authentication": {
+        "campaign_identity_sha256": "504a21bbd6dc1b2713a492df80599e1605f90e911fc8154902ba4f03f5bf9d71",
+        "campaign_manifest_sha256": "d1d8159e18b61450d7a0090ee433dcf24dde9f50b50cdca235696928e251b353",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 8.881784197001252e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 3.2526065174565133e-19,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.0033103846651095217,
+          "normalized_wbsar_seed_standard_error": 2.880981905084187e-06,
+          "position_m": [
+            -60.0,
+            -60.0,
+            53.6796875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.0016837128796271862,
+          "normalized_wbsar_seed_standard_error": 2.845954152920307e-06,
+          "position_m": [
+            -66.0,
+            -30.0,
+            53.6474609375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.006536872819994391,
+          "normalized_wbsar_seed_standard_error": 4.392599257347228e-06,
+          "position_m": [
+            -36.0,
+            -12.0,
+            52.978515625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.004939992919165733,
+          "normalized_wbsar_seed_standard_error": 1.1990074805289489e-06,
+          "position_m": [
+            -12.0,
+            -18.0,
+            53.1064453125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.02990038210435482,
+          "normalized_wbsar_seed_standard_error": 4.269852706494389e-05,
+          "position_m": [
+            18.0,
+            -42.0,
+            53.0849609375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.0053556889218044695,
+          "normalized_wbsar_seed_standard_error": 2.579444742233096e-06,
+          "position_m": [
+            -72.0,
+            12.0,
+            53.4111328125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.006792807534716703,
+          "normalized_wbsar_seed_standard_error": 3.6757964042811155e-06,
+          "position_m": [
+            -36.0,
+            12.0,
+            52.8515625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.010538834630508906,
+          "normalized_wbsar_seed_standard_error": 8.50841096483447e-06,
+          "position_m": [
+            24.0,
+            -36.0,
+            52.994140625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.005195109731997306,
+          "normalized_wbsar_seed_standard_error": 3.4251572230458298e-06,
+          "position_m": [
+            -66.0,
+            18.0,
+            53.0439453125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.007007505990662409,
+          "normalized_wbsar_seed_standard_error": 3.9603736219729335e-06,
+          "position_m": [
+            30.0,
+            -6.0,
+            52.626953125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.00716493066941594,
+          "normalized_wbsar_seed_standard_error": 4.175790958067323e-06,
+          "position_m": [
+            24.0,
+            0.0,
+            52.720703125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.0067413496160626096,
+          "normalized_wbsar_seed_standard_error": 3.3111494071277077e-06,
+          "position_m": [
+            18.0,
+            18.0,
+            52.9033203125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.006191471098608622,
+          "normalized_wbsar_seed_standard_error": 1.5156193359216814e-06,
+          "position_m": [
+            12.0,
+            30.0,
+            52.8955078125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.005071374607429909,
+          "normalized_wbsar_seed_standard_error": 2.6486083366542733e-06,
+          "position_m": [
+            24.0,
+            36.0,
+            53.048828125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.007098767713571431,
+          "normalized_wbsar_seed_standard_error": 8.698288201696546e-06,
+          "position_m": [
+            -60.0,
+            66.0,
+            54.0439453125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.042469466688439796,
+          "normalized_wbsar_seed_standard_error": 2.0372649781453155e-05,
+          "position_m": [
+            60.0,
+            66.0,
+            53.85546875
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.0010213914240618884,
+        "direct": 0.008090207226034412,
+        "first_diffuse": 0.00063831713687056,
+        "total": 0.00974991578696686
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.10475899960358911,
+        "direct": 0.8297720106309993,
+        "first_diffuse": 0.06546898976541178
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.004125188792137627,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.00412763484287147,
+            0.004122104428259763,
+            0.004128907096198432,
+            0.004122108801220844
+          ],
+          "seed_standard_error": 1.7983463204583157e-06
+        },
+        "q50": {
+          "estimate": 0.0066391112180285,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.006643601937417104,
+            0.006642175356338943,
+            0.006634777593802602,
+            0.006635889984555353
+          ],
+          "seed_standard_error": 2.2119401030264044e-06
+        },
+        "q90": {
+          "estimate": 0.020219608367431863,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.020283855507543747,
+            0.020196654790598217,
+            0.020224478123263306,
+            0.020173445048322178
+          ],
+          "seed_standard_error": 2.3821083545000292e-05
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "tokyo_hachiko",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.011375002280999524,
+            "observations": 64,
+            "total_seconds": 0.7280001459839696
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0020624633438046658,
+            "observations": 64,
+            "total_seconds": 0.1319976540034986
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.42192180342192387,
+            "observations": 64,
+            "total_seconds": 27.002995419003128
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.41005043537495567,
+            "observations": 64,
+            "total_seconds": 26.243227863997163
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.0064566293125949414,
+            "observations": 64,
+            "total_seconds": 0.41322427600607625
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 27.730995564987097,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    },
+    "toulouse_capitole": {
+      "authentication": {
+        "campaign_identity_sha256": "7ea58c4e498f891f8f49f1bdabca5b66116b0a0ff176f13044186a29f7e082da",
+        "campaign_manifest_sha256": "582a748c1ac4b7c2cafbeb7ed2837658d9522e7c85c365da082826e4f364e0fe",
+        "status": "pass"
+      },
+      "closure": {
+        "additive_body_metrics_checked": [
+          "arriving_power_density_w_m2",
+          "susceptibility",
+          "mean_sab_w_m2",
+          "absorbed_power_w",
+          "sar_wb_w_kg"
+        ],
+        "body_metric_max_abs_residual": 2.220446049250313e-16,
+        "nonadditive_body_metrics_excluded": {
+          "peak_sab_w_m2": "the peak of a summed body field is not the sum of component-field peaks"
+        },
+        "raw_transfer_max_abs_residual": 8.131516293641283e-20,
+        "status": "pass"
+      },
+      "grid_points": [
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 0,
+          "normalized_wbsar_mean": 0.011999050864581338,
+          "normalized_wbsar_seed_standard_error": 6.523853761351326e-06,
+          "position_m": [
+            -60.0,
+            -66.0,
+            193.046875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 1,
+          "normalized_wbsar_mean": 0.009836398004839843,
+          "normalized_wbsar_seed_standard_error": 1.1046485956338006e-06,
+          "position_m": [
+            -60.0,
+            -36.0,
+            193.029296875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 2,
+          "normalized_wbsar_mean": 0.010092671759167818,
+          "normalized_wbsar_seed_standard_error": 4.448214819482706e-06,
+          "position_m": [
+            -36.0,
+            -36.0,
+            192.8125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 3,
+          "normalized_wbsar_mean": 0.010007565789764484,
+          "normalized_wbsar_seed_standard_error": 8.674151534984061e-06,
+          "position_m": [
+            18.0,
+            -66.0,
+            193.3525390625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 4,
+          "normalized_wbsar_mean": 0.011008960276631313,
+          "normalized_wbsar_seed_standard_error": 1.2997909340316311e-06,
+          "position_m": [
+            -84.0,
+            -18.0,
+            193.1142578125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 5,
+          "normalized_wbsar_mean": 0.021001847880690233,
+          "normalized_wbsar_seed_standard_error": 1.5731990327245206e-05,
+          "position_m": [
+            -90.0,
+            0.0,
+            193.041015625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 6,
+          "normalized_wbsar_mean": 0.011915001065372641,
+          "normalized_wbsar_seed_standard_error": 5.059266641537805e-06,
+          "position_m": [
+            -48.0,
+            6.0,
+            192.57421875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 7,
+          "normalized_wbsar_mean": 0.011673440197284914,
+          "normalized_wbsar_seed_standard_error": 3.843616817789461e-06,
+          "position_m": [
+            -54.0,
+            18.0,
+            192.587890625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 8,
+          "normalized_wbsar_mean": 0.01159184263101953,
+          "normalized_wbsar_seed_standard_error": 3.1207216437205687e-06,
+          "position_m": [
+            42.0,
+            -54.0,
+            193.2353515625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 9,
+          "normalized_wbsar_mean": 0.005492094991281492,
+          "normalized_wbsar_seed_standard_error": 9.168137538814957e-07,
+          "position_m": [
+            0.0,
+            24.0,
+            192.3232421875
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 10,
+          "normalized_wbsar_mean": 0.01371305481995079,
+          "normalized_wbsar_seed_standard_error": 1.540881032835631e-05,
+          "position_m": [
+            48.0,
+            -42.0,
+            193.01953125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 11,
+          "normalized_wbsar_mean": 0.006699704893971193,
+          "normalized_wbsar_seed_standard_error": 5.016598266214193e-06,
+          "position_m": [
+            60.0,
+            0.0,
+            192.400390625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 12,
+          "normalized_wbsar_mean": 0.0143637689117251,
+          "normalized_wbsar_seed_standard_error": 8.296063501202013e-06,
+          "position_m": [
+            -42.0,
+            54.0,
+            192.3603515625
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 13,
+          "normalized_wbsar_mean": 0.012275554592764852,
+          "normalized_wbsar_seed_standard_error": 7.300059920164907e-06,
+          "position_m": [
+            -36.0,
+            72.0,
+            192.65234375
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 14,
+          "normalized_wbsar_mean": 0.012206892197127932,
+          "normalized_wbsar_seed_standard_error": 1.359495997639437e-05,
+          "position_m": [
+            84.0,
+            -30.0,
+            192.9033203125
+          ]
+        },
+        {
+          "body_yaw_deg": 0.0,
+          "grid_point": 15,
+          "normalized_wbsar_mean": 0.010509981771175476,
+          "normalized_wbsar_seed_standard_error": 1.2310987456941313e-05,
+          "position_m": [
+            78.0,
+            30.0,
+            194.21875
+          ]
+        }
+      ],
+      "normalized_wbsar_component_means": {
+        "all_specular": 0.001471336417885861,
+        "direct": 0.009270954093837736,
+        "first_diffuse": 0.0007819489037357117,
+        "total": 0.01152423941545931
+      },
+      "normalized_wbsar_component_shares": {
+        "all_specular": 0.12767319081484213,
+        "direct": 0.8044742702413071,
+        "first_diffuse": 0.06785253894385067
+      },
+      "normalized_wbsar_quantiles": {
+        "q10": {
+          "estimate": 0.008268051449405518,
+          "probability": 0.1,
+          "seed_quantile_values": [
+            0.00826258263680938,
+            0.008270576311205157,
+            0.008273874113711156,
+            0.008265172735896376
+          ],
+          "seed_standard_error": 2.5572323809607492e-06
+        },
+        "q50": {
+          "estimate": 0.011632641414152222,
+          "probability": 0.5,
+          "seed_quantile_values": [
+            0.011626803762758852,
+            0.011632409824779297,
+            0.01162920276161803,
+            0.011642149307452708
+          ],
+          "seed_standard_error": 3.3709070699701245e-06
+        },
+        "q90": {
+          "estimate": 0.014038411865837945,
+          "probability": 0.9,
+          "seed_quantile_values": [
+            0.014045531999288421,
+            0.014046598748777027,
+            0.014030439339327565,
+            0.01403107737595877
+          ],
+          "seed_standard_error": 4.42603352673369e-06
+        }
+      },
+      "seeds": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "site": "toulouse_capitole",
+      "timing": {
+        "fields": {
+          "body_coupling_seconds": {
+            "mean_seconds_per_seed_point": 0.010754748343799747,
+            "observations": 64,
+            "total_seconds": 0.6883038940031838
+          },
+          "direct_shadow_seconds": {
+            "mean_seconds_per_seed_point": 0.0028525162499590806,
+            "observations": 64,
+            "total_seconds": 0.18256103999738116
+          },
+          "estimator_wall_seconds": {
+            "mean_seconds_per_seed_point": 0.6144472650782404,
+            "observations": 64,
+            "total_seconds": 39.32462496500739
+          },
+          "specular_seconds": {
+            "mean_seconds_per_seed_point": 0.597577378609401,
+            "observations": 64,
+            "total_seconds": 38.24495223100166
+          },
+          "stochastic_trace_seconds": {
+            "mean_seconds_per_seed_point": 0.010323587562481862,
+            "observations": 64,
+            "total_seconds": 0.6607096039988392
+          }
+        },
+        "nonoverlapping_observed_compute_seconds": 40.01292885901057,
+        "scope": "persisted seed-point timings; scene preparation and report generation excluded"
+      }
+    }
+  },
+  "uncertainty_definition": "For each spatial quantile, seed_standard_error is the sample standard deviation of the four within-seed 16-point quantiles divided by sqrt(4). It is conditional on the fixed grid and does not include spatial-design, material-model, source-model, or orientation uncertainty."
+}

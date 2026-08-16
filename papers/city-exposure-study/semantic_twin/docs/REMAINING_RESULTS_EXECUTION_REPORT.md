@@ -14,6 +14,38 @@ All listed diagnostic inputs, replay artifacts, and reports are authenticated.
 Their manifests bind the route, source measure, mesh, material atlas, body,
 seeds, topology, and code/input hashes used by the associated replay.
 
+### Ten-site geometry-only screening
+
+The fixed-grid screen covers Ghent/Korenmarkt, Prague, Brussels, Madrid, Mexico
+City, Tokyo, London, Milan, Krakow, and Toulouse. It uses 16 deterministic
+points per site from a 6 m walkable-ground grid within 90 m, a fixed
+north-facing Duke body, geometric material priors, seeds 7 through 10, 200,000
+IID primary rays, and 4,096 passive angular cells. Its
+`first_material_interaction_v1` transport keeps exact direct and order-1
+specular terms and first diffuse transport. The run contains 640 seed-point
+fields and 128 million primary rays.
+
+The normalized whole-body-SAR q10, q50, and q90 site-span factors are 2.09,
+2.10, and 2.60. Direct, order-1 specular, and first-diffuse component shares
+range from 74.2% to 83.4%,
+10.5% to 20.0%, and 4.1% to 7.4%, respectively. Aggregate observed compute
+time is 271.515 s, excluding scene preparation and report generation. All ten
+site manifests authenticate and component and body closures pass. The report
+manifest SHA-256 is
+`7c1d5834b1a672c72d519d603d06f3002eaec20a19b350a1b67ed578eec4061a`.
+
+This is not a population sample, route result, or city ranking. It describes
+the exact selected grid points only. The fixed yaw and geometric priors limit
+transfer. The source curve is conditioned on the same 16 selected points. The
+four-seed standard error measures conditional Monte Carlo variation only. No
+grid, material, yaw, or source-design uncertainty was estimated.
+
+An initial run was quarantined because legacy manifest prose incorrectly said
+that the grid spacing was three metres. The corrected run reproduces the
+scientific arrays bit for bit for the eight overlapping completed sites. Only
+identity and timing fields changed. This diagnostic does not replace the
+canonical five-route production result.
+
 ## Completed diagnostic evidence
 
 ### Ray-reached semantic evidence coverage

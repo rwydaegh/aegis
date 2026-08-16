@@ -1,6 +1,6 @@
 % NEXT: % claim: replica_convergence_48_to_64
 % NEXT: \begin{table}[!t]
-% NEXT:   \caption{Current-contract convergence from 48 to 64 replicas. Bootstrap width is the 95\% interval width for route $q_{10}$ whole-body SAR. Shadow change is the largest stepwise change among the six declared shadowed standpoints.}
+% NEXT:   \caption{Convergence from 48 to 64 replicas. Bootstrap width is the 95\% interval width for route $q_{10}$ whole-body SAR. Shadow change is the largest stepwise change among the six shadowed route points.}
 % NEXT:   \label{tab:si-convergence}
 % NEXT:   \centering
 % NEXT:   \begin{tabular}{lrrr}

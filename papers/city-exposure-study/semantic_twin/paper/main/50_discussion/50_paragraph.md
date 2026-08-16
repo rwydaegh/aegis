@@ -1,28 +1,31 @@
 % PREV: Several limits restrict the interpretation. The study covers five selected
-% PREV: routes at 15~GHz, one body model, and one route-tangent body orientation. The
+% PREV: routes at 15~GHz and one body model that faces along each walk. The
 % PREV: reported scale is per unit areal source density and EIRP. Scaling to a specific
-% PREV: deployment is valid only if its source positions follow the assumed conditional
-% PREV: roofline measure. The transport model contains exact direct transport, exact
+% PREV: deployment is valid only if its transmitter positions follow the assumed
+% PREV: roofline model. The transport model contains exact direct transport, exact
 % PREV: order-1 specular transport, and one first-diffuse event. It stops at that
 % PREV: diffuse event and omits all later interactions as well as higher-order specular
 % PREV: paths. The controlled comparison validates the first-diffuse component in a
 % PREV: depth-1 case. It does not validate the city calculations that also contain
-% PREV: atlas materials and specular transport. The 16 replicas quantify estimator
-% PREV: randomness. They do not propagate uncertainty in panorama registration,
-% PREV: geometry, surface evidence, route choice, source placement, body shape, or body
-% PREV: orientation. Finally, the repeated five-site computation takes less than
-% PREV: 70~s per prepared site on the tested GPU, but scene acquisition and
-% PREV: construction take longer and do not yet have one complete timing record.
+% PREV: image-derived materials and specular transport. The 16 replicas quantify
+% PREV: estimator randomness. They do not include uncertainty in image-to-mesh
+% PREV: alignment, geometry, material labels, route choice, transmitter placement, body
+% PREV: shape, or body orientation. The repeated five-site computation takes less than
+% PREV: 70~s per prepared site on the tested GPU, but image acquisition and material
+% PREV: mapping take longer and do not yet have one complete timing record.
+% PREV: A separate geometric fixed-grid diagnostic in the supplementary material
+% PREV: provides a broader configuration check and remains separate from these
+% PREV: fixed-route results.
 The first priority is source calibration and validation of the city
 calculation. Calibration should use a measured site source distribution.
 Outdoor field measurements should then test the directional field before body
 coupling. Second, higher specular orders and paths after a diffuse event
-can be added through paired studies that report their change in the endpoints,
+can be added through paired studies that report their change in whole-body SAR,
 variance, and computation time. Third, several routes at the same site can
 quantify route-selection variation before the site set is enlarged. Other
 frequencies, body models, and orientations can then test the remaining range of
-validity. Each extension should also report panorama evidence coverage on the
-surfaces reached by the modeled paths.
+validity. Each extension should also report how much of the surface reached by
+the modeled paths has an image-derived material.
 
 ## AI notes
 - Orders future work by the present evidential gaps.

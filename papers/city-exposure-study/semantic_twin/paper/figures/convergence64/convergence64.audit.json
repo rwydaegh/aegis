@@ -65,14 +65,14 @@
   },
   "outputs": {
     "pdf": {
-      "bytes": 22063,
+      "bytes": 93720,
       "path": "convergence64.pdf",
-      "sha256": "3a6ec3fa4200efe58e433c9b011d7839008126c9c3de60ee9141a7b5fc886103"
+      "sha256": "12623cc7a7e738f3e235e46cf8878554978bcb7d72af3d1de7544416dcced910"
     },
     "png": {
-      "bytes": 188874,
+      "bytes": 198663,
       "path": "convergence64.png",
-      "sha256": "359d4ebfcccb16085935688bbf0e5efb87b90c11b818e344ecdab2328175cf98"
+      "sha256": "0b063d7dee28f7f8f23e2a4202bacceaeca97be2b7e728905cb5d26f21efdb81"
     }
   },
   "schema": "paper_current_topology_convergence64_figure_v1",

@@ -14,7 +14,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import struct
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +24,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import scienceplots  # noqa: E402, F401
 from matplotlib.collections import LineCollection, PolyCollection  # noqa: E402
+from matplotlib.patches import Rectangle  # noqa: E402
 
 
 HERE = Path(__file__).resolve().parent
@@ -45,6 +45,7 @@ SUPPORT_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_full_traced_support.png"
 MATERIAL_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_rf_material_atlas_(posterior_display).png"
 TRANSPORT_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_final_transport_state.png"
 CURTAIN_MANIFEST = PIPELINE_DIRECTORY / "prague_360_publication_curtain.json"
+CURTAIN_PATH = PIPELINE_DIRECTORY / "prague_360_publication_curtain.png"
 CAMPAIGN_IDENTITY = CAMPAIGN_DIRECTORY / "campaign_identity.json"
 LOCATIONS_PATH = CAMPAIGN_DIRECTORY / "locations.jsonl"
 SOURCE_CURVE_JSON = CAMPAIGN_DIRECTORY / "source_curve_audit.json"
@@ -55,6 +56,7 @@ EXPECTED_SHA256 = {
     SUPPORT_PATH: "c1db560d268789b7268434f527e63f8afed32bed9446a6c0024de2693cc199da",
     MATERIAL_PATH: "b94ed326ded0c85f0a8bda5ecc896878470fbe473f4d4e42f4d2279ba724ff53",
     TRANSPORT_PATH: "f431244ff9c16118366d775f2415d8f74e26b75d3536f2079e20114f0184e7ec",
+    CURTAIN_PATH: "7d0ddfe59a0c85552788fd8ab66dc8f3221b3c6ee2de646d3a47dde03997b676",
     MESH_PATH: "a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4",
     BODY_PATH: "781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b",
     LOCATIONS_PATH: "dfe271c4e099e87eb8f2b32af25baafbe140a2967fc4d72b724e43ffe958ad34",
@@ -114,6 +116,7 @@ def _authenticate_inputs() -> tuple[dict[str, Any], dict[str, Any]]:
         assert panel["sha256"] == EXPECTED_SHA256[path]
         assert panel["status"] == "available"
     assert curtain["render_dimensions"] == [1664, 832]
+    assert curtain["output_sha256"] == EXPECTED_SHA256[CURTAIN_PATH]
 
     identity = json.loads(CAMPAIGN_IDENTITY.read_text(encoding="utf-8"))
     assert identity["sha256"] == EXPECTED_CAMPAIGN_IDENTITY
@@ -194,16 +197,6 @@ def _load_binary_triangle_ply() -> tuple[np.ndarray, np.ndarray]:
     return vertices, faces["indices"]
 
 
-def _load_binary_stl() -> np.ndarray:
-    with BODY_PATH.open("rb") as stream:
-        stream.seek(80)
-        triangle_count = struct.unpack("<I", stream.read(4))[0]
-    dtype = np.dtype([("normal", "<f4", (3,)), ("vertices", "<f4", (3, 3)), ("attr", "<u2")])
-    records = np.fromfile(BODY_PATH, dtype=dtype, count=triangle_count, offset=84)
-    assert triangle_count == records.shape[0] == 56024
-    return np.asarray(records["vertices"], dtype=np.float64)
-
-
 def _configure_style() -> None:
     plt.style.use("science")
     mpl.rcParams.update(
@@ -239,6 +232,77 @@ def _plot_panorama_panel(ax: plt.Axes, path: Path, label: str) -> None:
         va="top",
         fontweight="bold",
         bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=5,
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.5)
+
+
+def _plot_curtain_panel(ax: plt.Axes) -> None:
+    image = plt.imread(CURTAIN_PATH)
+    assert image.shape[:2] == (832, 1664)
+    ax.imshow(image, interpolation="lanczos")
+    cuts = np.asarray([0, 330, 550, 815, 1100, 1385, 1664], dtype=np.float64) / 1664.0
+    headers = (
+        ("Street image", "source photograph"),
+        ("Object labels", "single image"),
+        ("City mesh", "aligned geometry"),
+        ("Combined objects", "all images"),
+        ("Material labels", "accepted surfaces"),
+        ("Tracer input", "final surface state"),
+    )
+    for panel, (title, detail) in enumerate(headers):
+        left = cuts[panel] + 0.004
+        width = cuts[panel + 1] - cuts[panel] - 0.008
+        rectangle = Rectangle(
+            (left, 0.895),
+            width,
+            0.088,
+            transform=ax.transAxes,
+            facecolor="#151B22",
+            edgecolor="white",
+            linewidth=0.25,
+            alpha=1.0,
+            zorder=4,
+        )
+        ax.add_patch(rectangle)
+        text_left = left + (0.026 if panel == 0 else 0.008)
+        ax.text(
+            text_left,
+            0.960,
+            title,
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=7.0,
+            fontweight="bold",
+            color="white",
+            zorder=5,
+        )
+        ax.text(
+            text_left,
+            0.918,
+            detail,
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=5.5,
+            color="0.82",
+            zorder=5,
+        )
+    ax.text(
+        0.006,
+        0.985,
+        "(a)",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        color="white",
+        bbox={"facecolor": "black", "edgecolor": "none", "alpha": 0.78, "pad": 1.2},
         zorder=5,
     )
     ax.set_xticks([])
@@ -349,28 +413,24 @@ def _plot_configuration(
     source_ends: np.ndarray,
     vertices: np.ndarray,
     faces: np.ndarray,
-    body_triangles: np.ndarray,
 ) -> tuple[int, int, int]:
     _configure_style()
-    fig = plt.figure(figsize=(7.16, 4.15), constrained_layout=False)
+    fig = plt.figure(figsize=(7.16, 5.55), constrained_layout=False)
     grid = fig.add_gridspec(
         2,
         12,
-        height_ratios=(1.0, 2.15),
-        left=0.068,
-        right=0.992,
-        bottom=0.105,
-        top=0.988,
-        hspace=0.07,
+        height_ratios=(1.95, 1.15),
+        left=0.065,
+        right=0.985,
+        bottom=0.085,
+        top=0.985,
+        hspace=0.10,
         wspace=0.08,
     )
-    _plot_panorama_panel(fig.add_subplot(grid[0, 0:4]), PHOTO_PATH, "(a)")
-    _plot_panorama_panel(fig.add_subplot(grid[0, 4:8]), SUPPORT_PATH, "(b)")
-    transport_ax = fig.add_subplot(grid[0, 8:12])
-    transport_counts = _plot_transport_panel(transport_ax)
+    _plot_curtain_panel(fig.add_subplot(grid[0, :]))
+    _, transport_counts = _transport_display_image(TRANSPORT_PATH)
 
-    ax = fig.add_subplot(grid[1, 0:9])
-    body_ax = fig.add_subplot(grid[1, 9:12])
+    ax = fig.add_subplot(grid[1, :6])
     all_xy = np.vstack((source_starts[:, :2], source_ends[:, :2], positions[:, :2]))
     lower = all_xy.min(axis=0) - np.array([12.0, 12.0])
     upper = all_xy.max(axis=0) + np.array([12.0, 12.0])
@@ -387,15 +447,23 @@ def _plot_configuration(
         & (face_centres[:, 1] >= lower[1])
         & (face_centres[:, 1] <= upper[1])
     )
-    candidate_indices = np.flatnonzero(inside)
-    stride = max(1, int(np.ceil(candidate_indices.size / 22000)))
-    selected = candidate_indices[::stride]
+    triangles = vertices[faces]
+    edge_a = triangles[:, 1] - triangles[:, 0]
+    edge_b = triangles[:, 2] - triangles[:, 0]
+    normals = np.cross(edge_a, edge_b)
+    normal_length = np.linalg.norm(normals, axis=1)
+    vertical_fraction = np.abs(normals[:, 2]) / np.maximum(normal_length, 1.0e-12)
+    local_ground = float(np.median(positions[:, 2]))
+    roofs = (face_centres[:, 2] > local_ground + 3.0) & (vertical_fraction > 0.55)
+    selected = np.flatnonzero(inside & roofs)
     plan_triangles = vertices[faces[selected]][:, :, :2]
+    ax.set_facecolor("#F6F4EF")
     ax.add_collection(
         PolyCollection(
             plan_triangles,
-            facecolors="#E8E8E8",
-            edgecolors="none",
+            facecolors="#D8D3CA",
+            edgecolors="#B7B1A6",
+            linewidths=0.08,
             rasterized=True,
             zorder=1,
         )
@@ -405,8 +473,8 @@ def _plot_configuration(
     ax.add_collection(
         LineCollection(
             source_segments,
-            colors="#D55E00",
-            linewidths=1.05,
+            colors="#D62728",
+            linewidths=1.15,
             alpha=0.94,
             capstyle="round",
             zorder=3,
@@ -415,8 +483,8 @@ def _plot_configuration(
     ax.plot(
         positions[:, 0],
         positions[:, 1],
-        color="#0072B2",
-        linewidth=1.35,
+        color="#0057B8",
+        linewidth=1.55,
         zorder=4,
     )
     ax.scatter(
@@ -424,7 +492,7 @@ def _plot_configuration(
         positions[:, 1],
         s=13.0,
         facecolor="white",
-        edgecolor="#0072B2",
+        edgecolor="#0057B8",
         linewidth=0.65,
         zorder=5,
     )
@@ -434,7 +502,7 @@ def _plot_configuration(
         positions[endpoint_mask, 1],
         s=25.0,
         marker="s",
-        facecolor="#0072B2",
+        facecolor="#0057B8",
         edgecolor="white",
         linewidth=0.6,
         zorder=6,
@@ -448,16 +516,20 @@ def _plot_configuration(
         "",
         xy=arrow_start + arrow_delta,
         xytext=arrow_start,
-        arrowprops={"arrowstyle": "-|>", "color": "#0072B2", "lw": 0.9},
+        arrowprops={"arrowstyle": "-|>", "color": "#0057B8", "lw": 1.0},
         zorder=7,
     )
 
-    _plot_body_panel(body_ax, body_triangles)
+    ax.plot([], [], color="#0057B8", linewidth=1.55, marker="o", markerfacecolor="white", label="Route points")
+    ax.plot([], [], color="#D62728", linewidth=1.15, label="Visible roofline")
+    legend = ax.legend(loc="upper right", frameon=True, fancybox=False, borderpad=0.25, handlelength=1.5)
+    legend.get_frame().set_edgecolor("black")
+    legend.get_frame().set_linewidth(0.6)
 
     ax.text(
         0.012,
         0.975,
-        "(d)",
+        "(b)",
         transform=ax.transAxes,
         ha="left",
         va="top",
@@ -465,14 +537,96 @@ def _plot_configuration(
         bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
         zorder=12,
     )
-    ax.set_xlabel("East relative to site anchor (m)")
-    ax.set_ylabel("North relative to site anchor (m)")
+    ax.set_xlabel("East of site center (m)")
+    ax.set_ylabel("North of site center (m)")
     ax.set_xlim(lower[0], upper[0])
     ax.set_ylim(lower[1], upper[1])
     ax.set_aspect("equal", adjustable="box")
     ax.tick_params(direction="out", length=3.0)
     ax.grid(False)
     for spine in ax.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.55)
+
+    detail = fig.add_subplot(grid[1, 6:])
+    detail.set_facecolor("#F6F4EF")
+    detail.add_collection(
+        PolyCollection(
+            plan_triangles,
+            facecolors="#D8D3CA",
+            edgecolors="#B7B1A6",
+            linewidths=0.08,
+            rasterized=True,
+            zorder=1,
+        )
+    )
+    detail.add_collection(
+        LineCollection(
+            source_segments,
+            colors="#D62728",
+            linewidths=1.15,
+            alpha=0.94,
+            capstyle="round",
+            zorder=3,
+        )
+    )
+    detail.plot(positions[:, 0], positions[:, 1], color="#0057B8", linewidth=1.55, zorder=4)
+    detail.scatter(
+        positions[:, 0],
+        positions[:, 1],
+        s=13.0,
+        facecolor="white",
+        edgecolor="#0057B8",
+        linewidth=0.65,
+        zorder=5,
+    )
+    detail.scatter(
+        positions[endpoint_mask, 0],
+        positions[endpoint_mask, 1],
+        s=25.0,
+        marker="s",
+        facecolor="#0057B8",
+        edgecolor="white",
+        linewidth=0.6,
+        zorder=6,
+    )
+    detail.annotate(
+        "",
+        xy=arrow_start + arrow_delta,
+        xytext=arrow_start,
+        arrowprops={"arrowstyle": "-|>", "color": "#0057B8", "lw": 1.0},
+        zorder=7,
+    )
+    detail_lower = positions[:, :2].min(axis=0) - np.array([20.0, 20.0])
+    detail_upper = positions[:, :2].max(axis=0) + np.array([20.0, 20.0])
+    detail_span = detail_upper - detail_lower
+    if detail_span[0] < detail_span[1]:
+        padding = 0.5 * (detail_span[1] - detail_span[0])
+        detail_lower[0] -= padding
+        detail_upper[0] += padding
+    else:
+        padding = 0.5 * (detail_span[0] - detail_span[1])
+        detail_lower[1] -= padding
+        detail_upper[1] += padding
+    detail.text(
+        0.012,
+        0.975,
+        "(c) Route detail",
+        transform=detail.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=12,
+    )
+    detail.set_xlabel("East of site center (m)")
+    detail.set_ylabel("North of site center (m)")
+    detail.set_xlim(detail_lower[0], detail_upper[0])
+    detail.set_ylim(detail_lower[1], detail_upper[1])
+    detail.set_aspect("equal", adjustable="box")
+    detail.tick_params(direction="out", length=3.0)
+    detail.grid(False)
+    for spine in detail.spines.values():
         spine.set_color("0.2")
         spine.set_linewidth(0.55)
 
@@ -509,6 +663,7 @@ def _write_manifest(
         MATERIAL_PATH: "authenticated upstream material-posterior display; not shown after transport-state replacement",
         TRANSPORT_PATH: "exact final host-gated transport state shown in panel (c)",
         MESH_PATH: "current 250 m Prague transport support mesh, with visual-only plan-view subsampling",
+        CURTAIN_PATH: "authenticated six-stage street-image-to-transport curtain shown in panel (a)",
         BODY_PATH: "current campaign anatomical body surface",
         LOCATIONS_PATH: "current sealed fixed-route positions, body yaws, and route distances",
         SOURCE_CURVE_NPZ: "current sealed roofline segment endpoints and physical-length measure",
@@ -526,8 +681,8 @@ def _write_manifest(
     payload = {
         "schema_version": "prague_configuration_figure_assets_v1",
         "figure_scope": (
-            "early physical configuration: registered image evidence, transport support and "
-            "transport state, roofline source support, fixed pedestrian route, and body coupling"
+            "early physical configuration: street image, semantic labels, city-mesh projection, "
+            "material map, visible roofline, and fixed pedestrian route"
         ),
         "site": "prague_staromestske",
         "source_assets": source_assets,
@@ -567,13 +722,12 @@ def _write_manifest(
             "roofline_physical_3d_total_m": source_summary["physical_3d_total_m"],
         },
         "visual_transforms": {
-            "panorama_panels": "exact 1664 x 832 source panels, uniformly resampled for layout only",
+            "panorama_panels": "authenticated six-stage 1664 x 832 curtain, uniformly resampled for layout only",
             "plan_view_mesh": (
-                "deterministic display-only face stride after spatial clipping. Exact support remains "
-                "visible in panel (b) and transport uses all 664619 faces"
+                "roof-like triangles above local street level, projected to an OSM-style display. "
+                "Transport still uses all 664619 faces"
             ),
             "roofline_and_route": "all coordinates shown without smoothing in local ENU metres",
-            "body_inset": "orthographic x-z projection of all surface elements; rasterized for compact PDF",
             "transport_state_print_encoding": {
                 "source_pixel_counts": list(transport_counts),
                 "classification_rule": "nearest exact render state colour within Euclidean RGB distance 30/255",
@@ -607,7 +761,6 @@ def main() -> None:
     positions, distance, yaws, _kinds = _load_locations()
     source_starts, source_ends, source_summary = _load_source_curve()
     vertices, faces = _load_binary_triangle_ply()
-    body_triangles = _load_binary_stl()
     transport_counts = _plot_configuration(
         positions,
         distance,
@@ -616,7 +769,6 @@ def main() -> None:
         source_ends,
         vertices,
         faces,
-        body_triangles,
     )
     _write_manifest(contract, authentication, positions, distance, source_summary, transport_counts)
 
