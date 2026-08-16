@@ -1,38 +1,38 @@
 {
   "component_share_ranges": {
     "all_specular": [
-      0.10475899960358911,
-      0.20040237223894086
+      0.1306266392835586,
+      0.19577978360481438
     ],
     "direct": [
-      0.7420357505232383,
-      0.8342516971667144
+      0.7520459432721975,
+      0.8058015588681106
     ],
     "first_diffuse": [
-      0.04055174709983998,
-      0.07371151310169906
+      0.04124693650095795,
+      0.07067826624204315
     ]
   },
   "outputs": {
     "geometric_screening.pdf": {
-      "bytes": 99269,
-      "sha256": "df78ea41c881b5a815d683c401c2a6d43c7080fd159dbe0829456bb33f713e21"
+      "bytes": 99246,
+      "sha256": "ff00eb1b5d2ad0f93de7e9254616256ae69b2538e05a3101a8685271292a53e1"
     },
     "geometric_screening.png": {
-      "bytes": 130214,
-      "sha256": "c7efbf0d4fe0da57092426607feadc3c6e2e728e245c9f8e271bf3fba924b560"
+      "bytes": 130093,
+      "sha256": "3a3e24fd1d4bb1dcd5d71129389c0d84f2f5f498ee5e7ffbc3dd29d2ba9c642b"
     }
   },
   "quantile_span_factors": {
-    "q10": 2.0886428629837486,
-    "q50": 2.102518289517535,
-    "q90": 2.6018195095429704
+    "q10": 2.0167694246184023,
+    "q50": 2.0124924604157717,
+    "q90": 2.2341348244066093
   },
-  "schema": "paper_geometric_fixed_grid_figure_v1",
+  "schema": "paper_geometric_fixed_grid_figure_v2",
   "source": {
-    "manifest": "outputs/experiments/ten_city_geometry_screen_v1/report/ten_city_geometry_screen_v1_manifest.json",
-    "manifest_sha256": "7c1d5834b1a672c72d519d603d06f3002eaec20a19b350a1b67ed578eec4061a",
-    "report": "outputs/experiments/ten_city_geometry_screen_v1/report/ten_city_geometry_screen_v1.json",
-    "report_sha256": "efc945960dca8f69cb0b5830497ca79dc7b5a61293a21dac55c6ed364c4d9360"
+    "manifest": "outputs/experiments/ten_city_geometry_screen_64_v1/report/ten_city_geometry_screen_64_v1_manifest.json",
+    "manifest_sha256": "3e29d721e77de435da54a8881cf81ecf1a9ed6f8ee2b7df025caca2c9417dbb9",
+    "report": "outputs/experiments/ten_city_geometry_screen_64_v1/report/ten_city_geometry_screen_64_v1.json",
+    "report_sha256": "fa4cce06ebdb4a0d102b5c7bbe3f9352ab3010c0234eb0d490eea3c341b47614"
   }
 }

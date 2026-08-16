@@ -7,4 +7,4 @@ uv run --project .. --extra paper python figures/geometric_screening/geometric_s
 ```
 
 The script authenticates the report manifest and every report artifact before
-plotting the fixed-point quantiles and component shares.
+plotting the 64-point quantiles and component shares.

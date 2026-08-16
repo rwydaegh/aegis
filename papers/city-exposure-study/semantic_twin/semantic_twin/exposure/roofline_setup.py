@@ -42,7 +42,7 @@ from .roofline_campaign import (
     FIXED_GROUND_GRID_CONTRACT,
     FIXED_GROUND_GRID_POINT_KIND,
     FIXED_GROUND_GRID_POINTS,
-    GEOMETRIC_FIXED_GRID_COHORT,
+    GEOMETRIC_FIXED_GRID_SPECS,
     GEOMETRIC_FIXED_GRID_SAMPLING_CLAIM,
     PreparedRooflineCampaign,
     RooflineCampaignConfig,
@@ -169,11 +169,12 @@ def _validate_setup_run_contract(setup: RooflineSetupConfig) -> None:
         raise ValueError(
             "campaign preparation uses every declared route point; builders=held_out=1 are locked legacy sentinels"
         )
-    if setup.campaign.cohort == GEOMETRIC_FIXED_GRID_COHORT:
+    if setup.campaign.cohort in GEOMETRIC_FIXED_GRID_SPECS:
+        _sampling_claim, _grid_contract, expected_points = GEOMETRIC_FIXED_GRID_SPECS[setup.campaign.cohort]
         if run.walk != "grid":
             raise ValueError("geometric fixed-grid screening requires walk='grid'")
-        if run.locations != FIXED_GROUND_GRID_POINTS:
-            raise ValueError("geometric fixed-grid screening requires locations=16")
+        if run.locations != expected_points:
+            raise ValueError(f"geometric fixed-grid screening requires locations={expected_points}")
         if run.walk_spacing_m != 6.0 or run.walk_radius_m != 90.0:
             raise ValueError("geometric fixed-grid screening requires the fixed 6 m, 90 m lattice")
         if run.seed != 7:
@@ -185,7 +186,7 @@ def _validate_setup_run_contract(setup: RooflineSetupConfig) -> None:
 
 
 def _validate_fixed_grid_screening_contract(setup: RooflineSetupConfig) -> None:
-    if setup.campaign.cohort != GEOMETRIC_FIXED_GRID_COHORT:
+    if setup.campaign.cohort not in GEOMETRIC_FIXED_GRID_SPECS:
         return
     run = setup.run
     campaign = setup.campaign
@@ -230,15 +231,18 @@ def _validate_fixed_grid_screening_contract(setup: RooflineSetupConfig) -> None:
     }
     if changed_next_event:
         raise ValueError(f"geometric fixed-grid screening next-event contract changed: {changed_next_event}")
+    sampling_claim, grid_contract, expected_points = GEOMETRIC_FIXED_GRID_SPECS[setup.campaign.cohort]
+    expected_seeds = tuple(range(7, 23)) if expected_points == 64 else (7, 8, 9, 10)
+    expected_looks = (4, 8, 16) if expected_points == 64 else (4,)
     expected_campaign = {
-        "planned_seeds": (7, 8, 9, 10),
-        "convergence_looks": (4,),
+        "planned_seeds": expected_seeds,
+        "convergence_looks": expected_looks,
         "reference_mode": "per_density_eirp",
-        "sampling_claim": GEOMETRIC_FIXED_GRID_SAMPLING_CLAIM,
+        "sampling_claim": sampling_claim,
         "minimum_completed_specular_order": 1,
         "specular_acceptance": "first_material_interaction_exact_order_1",
         "transport_topology": "first_material_interaction_v1",
-        "grid_contract": FIXED_GROUND_GRID_CONTRACT,
+        "grid_contract": grid_contract,
     }
     changed_campaign = {
         name: getattr(campaign, name)
@@ -324,10 +328,10 @@ def _validate_comparable_setup(setup: RooflineSetupConfig, manifest: dict[str, A
 def _validate_setup_cohort_contract(setup: RooflineSetupConfig) -> None:
     manifest = _setup_manifest(setup)
     membership_cohort = (
-        COMPARABLE_COHORT if setup.campaign.cohort == GEOMETRIC_FIXED_GRID_COHORT else setup.campaign.cohort
+        COMPARABLE_COHORT if setup.campaign.cohort in GEOMETRIC_FIXED_GRID_SPECS else setup.campaign.cohort
     )
     entry = validate_study_membership(setup.run.site, membership_cohort, manifest)
-    if setup.campaign.cohort == GEOMETRIC_FIXED_GRID_COHORT:
+    if setup.campaign.cohort in GEOMETRIC_FIXED_GRID_SPECS:
         if setup.run.crop_m != 250:
             raise ValueError("geometric fixed-grid screening requires the common 250 m crop")
     elif setup.campaign.cohort == "primary_semantic_route":
@@ -538,7 +542,7 @@ def _automatic_input_paths(
         candidates.add(manifest_path)
         candidates.update(root / relative for relative in readiness.route.evidence)
         candidates.update(root / relative for relative in readiness.materials.evidence)
-    elif setup.campaign.cohort == GEOMETRIC_FIXED_GRID_COHORT:
+    elif setup.campaign.cohort in GEOMETRIC_FIXED_GRID_SPECS:
         candidates.add(root / "config" / COHORT_MANIFEST_FILENAME)
     elif run.walk_path == "street":
         candidates.update((root / "data" / "street_routes").glob(f"{run.site}_*{JSON_SUFFIX}"))
@@ -562,37 +566,42 @@ def _material_provenance(run: RunConfig, material: Any) -> dict[str, Any]:
     }
 
 
-def _fixed_ground_grid_screening_walk(walk: Walk, *, site: str) -> Walk:
-    """Seal the disclosed 16-point subset of an existing 6 m ground lattice."""
+def _fixed_ground_grid_screening_walk(
+    walk: Walk,
+    *,
+    site: str,
+    sampling_claim: str = GEOMETRIC_FIXED_GRID_SAMPLING_CLAIM,
+    grid_contract: str = FIXED_GROUND_GRID_CONTRACT,
+    points_count: int = FIXED_GROUND_GRID_POINTS,
+) -> Walk:
+    """Seal a disclosed subset of an existing 6 m ground lattice."""
     if walk.kind != GRID:
         raise ValueError(f"fixed ground-grid screening requires a grid walk, got {walk.kind!r}")
-    if len(walk) < FIXED_GROUND_GRID_POINTS:
-        raise ValueError(
-            f"fixed ground-grid screening needs at least {FIXED_GROUND_GRID_POINTS} walkable lattice points"
-        )
-    picks = stratified_subset(walk, FIXED_GROUND_GRID_POINTS)
-    if picks.shape != (FIXED_GROUND_GRID_POINTS,):
-        raise ValueError("fixed ground-grid stratification did not produce exactly 16 unique points")
+    if len(walk) < points_count:
+        raise ValueError(f"fixed ground-grid screening needs at least {points_count} walkable lattice points")
+    picks = stratified_subset(walk, points_count)
+    if picks.shape != (points_count,):
+        raise ValueError(f"fixed ground-grid stratification did not produce exactly {points_count} unique points")
     points = np.asarray(walk.points, dtype=np.float64)[picks]
     ground = np.asarray(walk.ground_z_m, dtype=np.float64)[picks]
-    step = np.zeros(FIXED_GROUND_GRID_POINTS, dtype=np.float64)
+    step = np.zeros(points_count, dtype=np.float64)
     step[1:] = np.linalg.norm(np.diff(points[:, :2], axis=0), axis=1)
-    yaw = np.zeros(FIXED_GROUND_GRID_POINTS, dtype=np.float64)
+    yaw = np.zeros(points_count, dtype=np.float64)
     provenance = {
         **walk.provenance,
-        "sampling_claim": GEOMETRIC_FIXED_GRID_SAMPLING_CLAIM,
-        "grid_contract": FIXED_GROUND_GRID_CONTRACT,
+        "sampling_claim": sampling_claim,
+        "grid_contract": grid_contract,
         "grid_contract_rule": (
             "build the complete seeded 6 m walkable-ground lattice inside 90 m, order it with the existing "
-            "nearest-neighbour grid rule, and retain 16 indices evenly stratified over that order"
+            f"nearest-neighbour grid rule, and retain {points_count} indices evenly stratified over that order"
         ),
         "full_grid_standpoints": len(walk),
         "full_grid_points_sha256": _array_sha256(np.asarray(walk.points, dtype=np.float64)),
         "selection_indices": [int(index) for index in picks],
-        "selection_count": FIXED_GROUND_GRID_POINTS,
+        "selection_count": points_count,
         "selected_points_sha256": _array_sha256(points),
-        "point_kind": [FIXED_GROUND_GRID_POINT_KIND] * FIXED_GROUND_GRID_POINTS,
-        "body_yaw_deg": [0.0] * FIXED_GROUND_GRID_POINTS,
+        "point_kind": [FIXED_GROUND_GRID_POINT_KIND] * points_count,
+        "body_yaw_deg": [0.0] * points_count,
         "body_yaw_convention": BODY_YAW_CONVENTION,
         "body_yaw_rule": "fixed_north_v1",
         "body_yaw_route_order_hash": route_order_hash(points),
@@ -631,8 +640,15 @@ def prepare_roofline_campaign(
     finally:
         if route_key is not None:
             os.environ["GOOGLE_API_KEY"] = route_key
-    if setup.campaign.cohort == GEOMETRIC_FIXED_GRID_COHORT:
-        walk = _fixed_ground_grid_screening_walk(walk, site=setup.run.site)
+    if setup.campaign.cohort in GEOMETRIC_FIXED_GRID_SPECS:
+        sampling_claim, grid_contract, points_count = GEOMETRIC_FIXED_GRID_SPECS[setup.campaign.cohort]
+        walk = _fixed_ground_grid_screening_walk(
+            walk,
+            site=setup.run.site,
+            sampling_claim=sampling_claim,
+            grid_contract=grid_contract,
+            points_count=points_count,
+        )
         expected_kind = GRID
     elif setup.campaign.cohort == "primary_semantic_route":
         expected_kind = PANORAMA_LINKS
@@ -734,8 +750,8 @@ def prepare_roofline_campaign(
         "code_snapshot_contract": "separate immutable staged code tree; source files are not runtime-data inputs",
         "source_standpoint_contract": {
             "rule": (
-                "all 16 disclosed fixed-grid screening points build the fixed facade-tip curve"
-                if setup.campaign.cohort == GEOMETRIC_FIXED_GRID_COHORT
+                f"all {len(walk)} disclosed fixed-grid screening points build the fixed facade-tip curve"
+                if setup.campaign.cohort in GEOMETRIC_FIXED_GRID_SPECS
                 else "every point of the full declared walk builds the fixed facade-tip curve"
             ),
             "standpoints": len(walk),

@@ -29,11 +29,15 @@ AGGREGATE_PATH = AGGREGATE_DIR / "current_five_city_first_material_interaction.j
 AGGREGATE_MANIFEST_PATH = AGGREGATE_DIR / "current_five_city_first_material_interaction_manifest.json"
 RAY_REACHED_REPORT_DIR = EXPERIMENT_ROOT / "ray_reached_evidence_coverage_v1" / "report"
 CONVERGENCE64_REPORT_DIR = EXPERIMENT_ROOT / "current_topology_convergence64_v1" / "report"
-GEOMETRIC_SCREEN_ROOT = EXPERIMENT_ROOT / "ten_city_geometry_screen_v1"
+GEOMETRIC_PILOT_ROOT = EXPERIMENT_ROOT / "ten_city_geometry_screen_v1"
+GEOMETRIC_PILOT_REPORT_PATH = GEOMETRIC_PILOT_ROOT / "report" / "ten_city_geometry_screen_v1.json"
+GEOMETRIC_PILOT_MANIFEST_PATH = GEOMETRIC_PILOT_ROOT / "report" / "ten_city_geometry_screen_v1_manifest.json"
+EXPECTED_GEOMETRIC_PILOT_MANIFEST_SHA256 = "7c1d5834b1a672c72d519d603d06f3002eaec20a19b350a1b67ed578eec4061a"
+GEOMETRIC_SCREEN_ROOT = EXPERIMENT_ROOT / "ten_city_geometry_screen_64_v1"
 GEOMETRIC_SCREEN_REPORT_DIR = GEOMETRIC_SCREEN_ROOT / "report"
-GEOMETRIC_SCREEN_REPORT_PATH = GEOMETRIC_SCREEN_REPORT_DIR / "ten_city_geometry_screen_v1.json"
-GEOMETRIC_SCREEN_MANIFEST_PATH = GEOMETRIC_SCREEN_REPORT_DIR / "ten_city_geometry_screen_v1_manifest.json"
-EXPECTED_GEOMETRIC_SCREEN_MANIFEST_SHA256 = "7c1d5834b1a672c72d519d603d06f3002eaec20a19b350a1b67ed578eec4061a"
+GEOMETRIC_SCREEN_REPORT_PATH = GEOMETRIC_SCREEN_REPORT_DIR / "ten_city_geometry_screen_64_v1.json"
+GEOMETRIC_SCREEN_MANIFEST_PATH = GEOMETRIC_SCREEN_REPORT_DIR / "ten_city_geometry_screen_64_v1_manifest.json"
+EXPECTED_GEOMETRIC_SCREEN_MANIFEST_SHA256 = "3e29d721e77de435da54a8881cf81ecf1a9ed6f8ee2b7df025caca2c9417dbb9"
 
 CITY_SLUGS = {
     "Korenmarkt": "korenmarkt",
@@ -957,9 +961,9 @@ def roofline_budget_sensitivity() -> dict[str, Any]:
 def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
     assert _sha256(GEOMETRIC_SCREEN_MANIFEST_PATH) == EXPECTED_GEOMETRIC_SCREEN_MANIFEST_SHA256
     manifest = _read_json(GEOMETRIC_SCREEN_MANIFEST_PATH)
-    assert manifest["schema_version"] == "geometric_fixed_grid_screening_artifacts_v1"
-    assert manifest["report_schema_version"] == "geometric_fixed_grid_screening_report_v1"
-    assert manifest["screening_contract"] == "geometric_fixed_grid_screening_v1"
+    assert manifest["schema_version"] == "geometric_fixed_grid_screening_64_artifacts_v1"
+    assert manifest["report_schema_version"] == "geometric_fixed_grid_screening_64_report_v1"
+    assert manifest["screening_contract"] == "geometric_fixed_grid_screening_64_v1"
     assert manifest["authenticated"] is True
     for name, record in manifest["artifacts"].items():
         path = GEOMETRIC_SCREEN_REPORT_DIR / name
@@ -968,15 +972,16 @@ def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
         assert _sha256(path) == record["sha256"], f"fixed-grid artifact hash mismatch: {path}"
 
     report = _read_json(GEOMETRIC_SCREEN_REPORT_PATH)
-    assert report["schema_version"] == "geometric_fixed_grid_screening_report_v1"
+    assert report["schema_version"] == "geometric_fixed_grid_screening_64_report_v1"
     contract = report["screening_contract"]
-    assert contract["name"] == "geometric_fixed_grid_screening_v1"
+    assert contract["name"] == "geometric_fixed_grid_screening_64_v1"
     assert contract["site_count"] == 10
-    assert contract["grid_points_per_site"] == 16
-    assert contract["grid_contract"] == "fixed_ground_grid_v1"
+    assert contract["grid_points_per_site"] == 64
+    assert contract["grid_contract"] == "fixed_ground_grid_64_v1"
+    assert contract["spatial_sensitivity_looks"] == [16, 32, 64]
     assert contract["material_mode"] == "geometric"
     assert contract["body_yaw"] == "fixed north, 0 degrees ENU"
-    assert contract["seeds"] == [7, 8, 9, 10]
+    assert contract["seeds"] == list(range(7, 23))
     assert contract["primary_rays_per_seed_point"] == 200_000
     assert contract["first_diffuse_output_cells"] == 4096
     assert contract["transport_topology"] == "first_material_interaction_v1"
@@ -998,19 +1003,19 @@ def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
 
         walk = data["walk"]
         provenance = walk["provenance"]
-        assert walk["standpoints"] == provenance["selection_count"] == 16
+        assert walk["standpoints"] == provenance["selection_count"] == 64
         assert provenance["spacing_m"] == 6
         assert provenance["radius_m"] == 90
         assert provenance["body_yaw_rule"] == "fixed_north_v1"
-        assert provenance["body_yaw_deg"] == [0.0] * 16
+        assert provenance["body_yaw_deg"] == [0.0] * 64
         locations = _read_jsonl(campaign_root / "locations.jsonl")
         positions = [row["position_m"] for row in locations]
-        assert len(positions) == 16
-        chunks = [curve_hash_version, str((16, 3))]
+        assert len(positions) == 64
+        chunks = [curve_hash_version, str((64, 3))]
         chunks.extend(format(float(value), ".15g") for position in positions for value in position)
         builder_hash = hashlib.sha256("\n".join(chunks).encode("ascii")).hexdigest()
         source = data["sources"]["provenance"]
-        assert source["builders"] == 16
+        assert source["builders"] == 64
         assert source["builder_standpoints_sha256"] == builder_hash
         assert data["materials"]["material_mode"] == "geometric"
         assert data["body"]["phantom"] == "duke"
@@ -1018,9 +1023,9 @@ def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
             summary = site_report["normalized_wbsar_quantiles"][quantile]
             assert summary["probability"] == probability
             seed_values = [float(value) for value in summary["seed_quantile_values"]]
-            assert len(seed_values) == 4
-            mean = sum(seed_values) / 4.0
-            standard_error = math.sqrt(sum((value - mean) ** 2 for value in seed_values) / 3.0) / math.sqrt(4.0)
+            assert len(seed_values) == 16
+            mean = sum(seed_values) / 16.0
+            standard_error = math.sqrt(sum((value - mean) ** 2 for value in seed_values) / 15.0) / math.sqrt(16.0)
             _assert_close(standard_error, float(summary["seed_standard_error"]))
 
     site_rows = list(report["sites"].values())
@@ -1036,11 +1041,11 @@ def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
         }
         for component in ("direct", "all_specular", "first_diffuse")
     }
-    expected_spans = {"q10": 2.0886428629837486, "q50": 2.102518289517535, "q90": 2.6018195095429704}
+    expected_spans = {"q10": 2.0167694246184023, "q50": 2.0124924604157717, "q90": 2.2341348244066093}
     expected_ranges = {
-        "direct": {"minimum": 0.7420357505232383, "maximum": 0.8342516971667144},
-        "all_specular": {"minimum": 0.10475899960358911, "maximum": 0.20040237223894086},
-        "first_diffuse": {"minimum": 0.04055174709983998, "maximum": 0.07371151310169906},
+        "direct": {"minimum": 0.7520459432721975, "maximum": 0.8058015588681106},
+        "all_specular": {"minimum": 0.1306266392835586, "maximum": 0.19577978360481438},
+        "first_diffuse": {"minimum": 0.04124693650095795, "maximum": 0.07067826624204315},
     }
     for quantile, expected in expected_spans.items():
         _assert_close(quantile_spans[quantile], expected)
@@ -1048,21 +1053,65 @@ def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
         _assert_close(component_ranges[component]["minimum"], expected["minimum"])
         _assert_close(component_ranges[component]["maximum"], expected["maximum"])
     assert {quantile: round(value, 2) for quantile, value in quantile_spans.items()} == {
-        "q10": 2.09,
-        "q50": 2.10,
-        "q90": 2.60,
+        "q10": 2.02,
+        "q50": 2.01,
+        "q90": 2.23,
     }
     assert {
         component: {bound: round(100.0 * value, 1) for bound, value in bounds.items()}
         for component, bounds in component_ranges.items()
     } == {
-        "direct": {"minimum": 74.2, "maximum": 83.4},
-        "all_specular": {"minimum": 10.5, "maximum": 20.0},
-        "first_diffuse": {"minimum": 4.1, "maximum": 7.4},
+        "direct": {"minimum": 75.2, "maximum": 80.6},
+        "all_specular": {"minimum": 13.1, "maximum": 19.6},
+        "first_diffuse": {"minimum": 4.1, "maximum": 7.1},
     }
+    assert _sha256(GEOMETRIC_PILOT_MANIFEST_PATH) == EXPECTED_GEOMETRIC_PILOT_MANIFEST_SHA256
+    pilot_manifest = _read_json(GEOMETRIC_PILOT_MANIFEST_PATH)
+    pilot_record = pilot_manifest["artifacts"][GEOMETRIC_PILOT_REPORT_PATH.name]
+    assert GEOMETRIC_PILOT_REPORT_PATH.stat().st_size == int(pilot_record["bytes"])
+    assert _sha256(GEOMETRIC_PILOT_REPORT_PATH) == pilot_record["sha256"]
+    pilot = _read_json(GEOMETRIC_PILOT_REPORT_PATH)
+    pilot_to_refined_max_abs_db = {
+        quantile: max(
+            abs(
+                10.0
+                * math.log10(
+                    report["sites"][site]["convergence_looks"]["4"][quantile]
+                    / pilot["sites"][site]["normalized_wbsar_quantiles"][quantile]["estimate"]
+                )
+            )
+            for site in contract["sites"]
+        )
+        for quantile in quantile_probabilities
+    }
+    expected_pilot_to_refined = {
+        "q10": 2.2614799022091288,
+        "q50": 1.3752057884880788,
+        "q90": 3.474511643812586,
+    }
+    for quantile, expected in expected_pilot_to_refined.items():
+        _assert_close(pilot_to_refined_max_abs_db[quantile], expected)
+    seed_transition = report["cohort_max_convergence_transition_abs_db"]["8_to_16"]
+    spatial_transition = report["cohort_max_spatial_transition_abs_db"]["32_to_64"]
+    expected_seed_transition = {
+        "q10": 0.003592734291160407,
+        "q50": 0.0017410981482074341,
+        "q90": 0.0020251301056516966,
+    }
+    expected_spatial_transition = {
+        "q10": 1.3584171587991913,
+        "q50": 0.2193239532639744,
+        "q90": 0.6363006599695421,
+    }
+    for quantile in quantile_probabilities:
+        _assert_close(float(seed_transition[quantile]), expected_seed_transition[quantile])
+        _assert_close(float(spatial_transition[quantile]), expected_spatial_transition[quantile])
     return {
         "contract": contract,
         "quantile_span_factors": quantile_spans,
         "component_share_ranges": component_ranges,
+        "pilot_to_refined_max_abs_db": pilot_to_refined_max_abs_db,
+        "eight_to_sixteen_seed_max_abs_db": seed_transition,
+        "thirty_two_to_sixty_four_point_max_abs_db": spatial_transition,
         "uncertainty_definition": report["uncertainty_definition"],
     }

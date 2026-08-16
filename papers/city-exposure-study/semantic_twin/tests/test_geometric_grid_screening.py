@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from semantic_twin.cli.geometric_grid_screening import arguments
+from semantic_twin.cli.geometric_grid64_screening import arguments as grid64_arguments
 from semantic_twin.exposure.roofline_campaign import (
     BODY_METRICS,
     FIELD_META,
@@ -22,6 +23,7 @@ from semantic_twin.report.geometric_grid_screening import (
     CampaignInput,
     EXPECTED_SITES,
     GeometricGridScreeningError,
+    write_geometric_grid64_screening,
     write_geometric_grid_screening,
 )
 from semantic_twin.report.roofline_campaign_comparison import CampaignComparisonError
@@ -53,9 +55,14 @@ def _write_campaign(
     fixed_yaw: float = 0.0,
     grid_spacing_m: float = 6.0,
     body_closure_drift: bool = False,
+    grid64: bool = False,
 ) -> None:
-    seeds = (7, 8, 9, 10)
-    points = 16
+    seeds = tuple(range(7, 23)) if grid64 else (7, 8, 9, 10)
+    points = 64 if grid64 else 16
+    cohort = "geometric_fixed_grid_screening_64" if grid64 else "geometric_fixed_grid_screening"
+    sampling_contract = "geometric_fixed_grid_screening_64_v1" if grid64 else "geometric_fixed_grid_screening_v1"
+    grid_contract = "fixed_ground_grid_64_v1" if grid64 else "fixed_ground_grid_v1"
+    convergence_looks = [4, 8, 16] if grid64 else [4]
     components = tuple(FIRST_MATERIAL_INTERACTION_COMPONENTS)
     positions = np.column_stack(
         (
@@ -69,13 +76,13 @@ def _write_campaign(
         "configuration": {
             "schema_version": FIRST_MATERIAL_INTERACTION_SCHEMA_VERSION,
             "site": site,
-            "cohort": "geometric_fixed_grid_screening",
+            "cohort": cohort,
             "material_mode": material_mode,
             "planned_seeds": list(seeds),
             "reference_mode": "per_density_eirp",
-            "sampling_claim": "geometric_fixed_grid_screening_v1",
-            "grid_contract": "fixed_ground_grid_v1",
-            "convergence_looks": [4],
+            "sampling_claim": sampling_contract,
+            "grid_contract": grid_contract,
+            "convergence_looks": convergence_looks,
             "minimum_completed_specular_order": 1,
             "specular_acceptance": "first_material_interaction_exact_order_1",
             "transport_topology": "first_material_interaction_v1",
@@ -92,8 +99,8 @@ def _write_campaign(
             "step_m_sha256": "2" * 64,
             "body_yaw_sha256": _array_digest(yaws),
             "provenance": {
-                "sampling_claim": "geometric_fixed_grid_screening_v1",
-                "grid_contract": "fixed_ground_grid_v1",
+                "sampling_claim": sampling_contract,
+                "grid_contract": grid_contract,
                 "spacing_m": grid_spacing_m,
                 "radius_m": 90.0,
                 "full_grid_standpoints": 64,
@@ -185,14 +192,14 @@ def _write_campaign(
         "body_metrics": list(BODY_METRICS),
         "reference_fields": list(REFERENCE_FIELDS),
         "timing_fields": list(TIMING_FIELDS),
-        "convergence_looks": [4],
+        "convergence_looks": convergence_looks,
         "committed": committed,
     }
     (root / "checkpoint" / "index.json").write_text(json.dumps(checkpoint), encoding="utf-8")
     locations = [
         {
             "site": site,
-            "cohort": "geometric_fixed_grid_screening",
+            "cohort": cohort,
             "standpoint": index,
             "point_kind": "fixed_ground_grid",
             "position_m": [float(value) for value in positions[index]],
@@ -233,11 +240,11 @@ def _write_campaign(
     )
 
 
-def _campaign_set(tmp_path: Path, **site_options: dict[str, object]) -> list[CampaignInput]:
+def _campaign_set(tmp_path: Path, *, grid64: bool = False, **site_options: dict[str, object]) -> list[CampaignInput]:
     inputs = []
     for site in EXPECTED_SITES:
         root = tmp_path / site
-        _write_campaign(root, site, **site_options.get(site, {}))
+        _write_campaign(root, site, grid64=grid64, **site_options.get(site, {}))
         inputs.append(CampaignInput(site, root))
     return inputs
 
@@ -279,6 +286,25 @@ def test_writer_emits_compact_authenticated_screening_artifacts(tmp_path: Path) 
         == site["authentication"]["campaign_identity_sha256"]
     )
     assert manifest["artifacts"][artifacts.json.name]["sha256"] == _sha256(artifacts.json)
+
+
+def test_grid64_writer_uses_distinct_closed_contract(tmp_path: Path) -> None:
+    artifacts = write_geometric_grid64_screening(_campaign_set(tmp_path, grid64=True), tmp_path / "report" / "screen64")
+
+    report = json.loads(artifacts.json.read_text(encoding="utf-8"))
+    assert report["schema_version"] == "geometric_fixed_grid_screening_64_report_v1"
+    assert report["screening_contract"]["name"] == "geometric_fixed_grid_screening_64_v1"
+    assert report["screening_contract"]["grid_points_per_site"] == 64
+    assert report["screening_contract"]["seeds"] == list(range(7, 23))
+    assert len(report["sites"]["korenmarkt"]["grid_points"]) == 64
+    assert len(report["sites"]["korenmarkt"]["normalized_wbsar_quantiles"]["q90"]["seed_quantile_values"]) == 16
+    assert set(report["sites"]["korenmarkt"]["convergence_looks"]) == {"4", "8", "16"}
+    assert set(report["cohort_max_convergence_transition_abs_db"]) == {"4_to_8", "8_to_16"}
+    assert set(report["sites"]["korenmarkt"]["spatial_looks"]) == {"16", "32", "64"}
+    assert set(report["cohort_max_spatial_transition_abs_db"]) == {"16_to_32", "32_to_64"}
+    assert report["sites"]["korenmarkt"]["timing"]["nonoverlapping_observed_compute_seconds"] == pytest.approx(17_408.0)
+    manifest = json.loads(artifacts.manifest.read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == "geometric_fixed_grid_screening_64_artifacts_v1"
 
 
 def test_writer_rejects_mutation_before_reporting(tmp_path: Path) -> None:
@@ -329,3 +355,7 @@ def test_cli_parses_repeated_site_campaigns() -> None:
     assert parsed.campaign[0] == ["korenmarkt", "outputs/korenmarkt"]
     assert parsed.campaign[-1] == ["toulouse_capitole", "outputs/toulouse_capitole"]
     assert parsed.output == Path("outputs/screening/geometric_grid")
+
+    parsed64 = grid64_arguments(argv)
+    assert parsed64.campaign == parsed.campaign
+    assert parsed64.output == parsed.output

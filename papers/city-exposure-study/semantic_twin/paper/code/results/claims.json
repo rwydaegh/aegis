@@ -109,33 +109,45 @@
       "output": {
         "component_share_ranges": {
           "all_specular": {
-            "maximum": 0.20040237223894086,
-            "minimum": 0.10475899960358911
+            "maximum": 0.19577978360481438,
+            "minimum": 0.1306266392835586
           },
           "direct": {
-            "maximum": 0.8342516971667144,
-            "minimum": 0.7420357505232383
+            "maximum": 0.8058015588681106,
+            "minimum": 0.7520459432721975
           },
           "first_diffuse": {
-            "maximum": 0.07371151310169906,
-            "minimum": 0.04055174709983998
+            "maximum": 0.07067826624204315,
+            "minimum": 0.04124693650095795
           }
         },
         "contract": {
           "body_yaw": "fixed north, 0 degrees ENU",
           "first_diffuse_output_cells": 4096,
           "frequency_hz": 15000000000,
-          "grid_contract": "fixed_ground_grid_v1",
-          "grid_points_per_site": 16,
+          "grid_contract": "fixed_ground_grid_64_v1",
+          "grid_points_per_site": 64,
           "material_mode": "geometric",
-          "name": "geometric_fixed_grid_screening_v1",
+          "name": "geometric_fixed_grid_screening_64_v1",
           "normalization": "per unit rho_A P_EIRP",
           "primary_rays_per_seed_point": 200000,
           "seeds": [
             7,
             8,
             9,
-            10
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22
           ],
           "site_count": 10,
           "sites": [
@@ -150,14 +162,34 @@
             "krakow_rynek",
             "toulouse_capitole"
           ],
+          "spatial_sensitivity_looks": [
+            16,
+            32,
+            64
+          ],
           "transport_topology": "first_material_interaction_v1"
         },
-        "quantile_span_factors": {
-          "q10": 2.0886428629837486,
-          "q50": 2.102518289517535,
-          "q90": 2.6018195095429704
+        "eight_to_sixteen_seed_max_abs_db": {
+          "q10": 0.003592734291160407,
+          "q50": 0.0017410981482074341,
+          "q90": 0.0020251301056516966
         },
-        "uncertainty_definition": "For each spatial quantile, seed_standard_error is the sample standard deviation of the four within-seed 16-point quantiles divided by sqrt(4). It is conditional on the fixed grid and does not include spatial-design, material-model, source-model, or orientation uncertainty."
+        "pilot_to_refined_max_abs_db": {
+          "q10": 2.2614799022091288,
+          "q50": 1.3752057884880788,
+          "q90": 3.474511643812586
+        },
+        "quantile_span_factors": {
+          "q10": 2.0167694246184023,
+          "q50": 2.0124924604157717,
+          "q90": 2.2341348244066093
+        },
+        "thirty_two_to_sixty_four_point_max_abs_db": {
+          "q10": 1.3584171587991913,
+          "q50": 0.2193239532639744,
+          "q90": 0.6363006599695421
+        },
+        "uncertainty_definition": "For each spatial quantile, seed_standard_error is the sample standard deviation of the 16 within-seed 64-point quantiles divided by sqrt(16). It is conditional on the fixed grid and does not include spatial-design, material-model, source-model, or orientation uncertainty."
       },
       "verified": true
     },
@@ -420,7 +452,7 @@
       "verified": true
     }
   },
-  "generated_at": "2026-08-16T21:59:55Z",
-  "git_sha": "4b27dd41fa5609ce75f60c7bffd06ca84a4491c2",
+  "generated_at": "2026-08-16T23:33:43Z",
+  "git_sha": "23b8df33c640f1f4e91fc1b5a9778f0dc9342558",
   "schema_version": 1
 }

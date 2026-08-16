@@ -51,10 +51,12 @@ def test_geometric_fixed_grid_claim_uses_authenticated_report() -> None:
     result = CLAIMS.geometric_fixed_grid_diagnostic()
     assert result["contract"]["site_count"] == 10
     assert {name: round(value, 2) for name, value in result["quantile_span_factors"].items()} == {
-        "q10": 2.09,
-        "q50": 2.10,
-        "q90": 2.60,
+        "q10": 2.02,
+        "q50": 2.01,
+        "q90": 2.23,
     }
+    assert max(result["eight_to_sixteen_seed_max_abs_db"].values()) < 0.004
+    assert max(result["thirty_two_to_sixty_four_point_max_abs_db"].values()) > 1.3
 
 
 def test_budget_sensitivity_claim_passes_against_authenticated_report() -> None:

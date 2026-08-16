@@ -13,16 +13,16 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 SEMANTIC_TWIN_ROOT = HERE.parents[2]
 PAPER_ROOT = HERE.parents[1]
-REPORT_DIR = SEMANTIC_TWIN_ROOT / "outputs" / "experiments" / "ten_city_geometry_screen_v1" / "report"
-REPORT_PATH = REPORT_DIR / "ten_city_geometry_screen_v1.json"
-MANIFEST_PATH = REPORT_DIR / "ten_city_geometry_screen_v1_manifest.json"
-EXPECTED_MANIFEST_SHA256 = "7c1d5834b1a672c72d519d603d06f3002eaec20a19b350a1b67ed578eec4061a"
+REPORT_DIR = SEMANTIC_TWIN_ROOT / "outputs" / "experiments" / "ten_city_geometry_screen_64_v1" / "report"
+REPORT_PATH = REPORT_DIR / "ten_city_geometry_screen_64_v1.json"
+MANIFEST_PATH = REPORT_DIR / "ten_city_geometry_screen_64_v1_manifest.json"
+EXPECTED_MANIFEST_SHA256 = "3e29d721e77de435da54a8881cf81ecf1a9ed6f8ee2b7df025caca2c9417dbb9"
 OUTPUT_PDF = HERE / "geometric_screening.pdf"
 OUTPUT_PNG = HERE / "geometric_screening.png"
 AUDIT_PATH = HERE / "geometric_screening.audit.json"
 
 sys.path.insert(0, str(PAPER_ROOT / "figures"))
-from _style.paper_style import paper_style, save_figure
+from _style.paper_style import paper_style, save_figure  # noqa: E402
 
 DISPLAY_NAMES = {
     "korenmarkt": "Korenmarkt",
@@ -52,7 +52,7 @@ def _load_report() -> dict:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     if (
         not manifest.get("authenticated")
-        or manifest.get("schema_version") != "geometric_fixed_grid_screening_artifacts_v1"
+        or manifest.get("schema_version") != "geometric_fixed_grid_screening_64_artifacts_v1"
     ):
         raise ValueError("fixed-grid artifact manifest is not authenticated")
     for name, record in manifest["artifacts"].items():
@@ -60,7 +60,7 @@ def _load_report() -> dict:
         if path.stat().st_size != record["bytes"] or _sha256(path) != record["sha256"]:
             raise ValueError(f"fixed-grid artifact failed authentication: {path}")
     report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
-    if report.get("schema_version") != "geometric_fixed_grid_screening_report_v1":
+    if report.get("schema_version") != "geometric_fixed_grid_screening_64_report_v1":
         raise ValueError("unexpected fixed-grid report schema")
     return report
 
@@ -127,7 +127,7 @@ def main() -> None:
         for component in ("direct", "all_specular", "first_diffuse")
     }
     audit = {
-        "schema": "paper_geometric_fixed_grid_figure_v1",
+        "schema": "paper_geometric_fixed_grid_figure_v2",
         "source": {
             "report": str(REPORT_PATH.relative_to(SEMANTIC_TWIN_ROOT)),
             "report_sha256": _sha256(REPORT_PATH),
