@@ -53,21 +53,21 @@
 
 %% Font definitions
 
-\def\timesfont{ptm}%
+\def\timesfont{times}%
 
-% FormataOTF substituted by Helvetica (phv) - proprietary fonts not installed
+% FormataOTF et al
 \DeclareFontFamily{T1}{formata}{}
-\DeclareFontShape{T1}{formata}{n}{n}{<->   phvr8t}{}
-\DeclareFontShape{T1}{formata}{n}{it}{<->  phvro8t}{}
-\DeclareFontShape{T1}{formata}{m}{n}{<->   phvr8t}{}
-\DeclareFontShape{T1}{formata}{m}{it}{<->  phvro8t}{}
-\DeclareFontShape{T1}{formata}{l}{n}{<->   phvr8t}{}
-\DeclareFontShape{T1}{formata}{l}{it}{<->  phvro8t}{}
-\DeclareFontShape{T1}{formata}{b}{n}{<->   phvb8t}{}
-\DeclareFontShape{T1}{formata}{b}{it}{<->  phvbo8t}{}
-\DeclareFontShape{T1}{formata}{cm}{n}{<->  phvr8t}{}
-\DeclareFontShape{T1}{formata}{cm}{it}{<-> phvro8t}{}
-\DeclareFontShape{T1}{formata}{X}{n}{<->   phvr8t}{}
+\DeclareFontShape{T1}{formata}{n}{n}{<->   t1-formata-regular}{}
+\DeclareFontShape{T1}{formata}{n}{it}{<->  t1-formata-italic}{}
+\DeclareFontShape{T1}{formata}{m}{n}{<->   t1-formata-medium}{}
+\DeclareFontShape{T1}{formata}{m}{it}{<->  t1-formata-mediumitalic}{}
+\DeclareFontShape{T1}{formata}{l}{n}{<->   t1-formata-light}{}
+\DeclareFontShape{T1}{formata}{l}{it}{<->  t1-formata-lightitalic}{}
+\DeclareFontShape{T1}{formata}{b}{n}{<->   t1-formata-bold}{}
+\DeclareFontShape{T1}{formata}{b}{it}{<->  t1-formata-bolditalic}{}
+\DeclareFontShape{T1}{formata}{cm}{n}{<->  t1-formata-condmedium}{}
+\DeclareFontShape{T1}{formata}{cm}{it}{<-> t1-formata-condmediumital}{}
+\DeclareFontShape{T1}{formata}{X}{n}{<->   t1-formata-regsymb}{}
 
 \def\biosc#1{{\fontsize{5.5}{8}\selectfont\MakeUppercase{#1}}}
 
@@ -185,14 +185,14 @@
 \newcommand\blackmath{\@nomath\blackmath\mathversion{black}}
 }
 
-% GiovanniStd substituted by Times (ptm) - proprietary font not installed
+% GiovanniStd
 \DeclareFontFamily{T1}{giovannistd}{}
-\DeclareFontShape{T1}{giovannistd}{n}{it}{<->   ptmri8t}{}
+\DeclareFontShape{T1}{giovannistd}{n}{it}{<->   t1-giovannistd-bookitalic}{}
 
 \def\putfont#1#2#3#4#5#6{\usefont{#1}{#2}{#3}{#4}\fontsize{#5}{#6}\selectfont}
 
-\font\symbfont=phvr8t at 6pt
-\AtBeginDocument{\gdef\copyright{\textcopyright}}
+\font\symbfont=t1-formata-regsymb at 6pt
+\AtBeginDocument{\gdef\copyright{{\symbfont\char'012}}}
 \def\putfont#1#2#3#4#5#6{\usefont{#1}{#2}{#3}{#4}\fontsize{#5}{#6}\selectfont}
 
 \def\textit#1{{\it #1}}%
