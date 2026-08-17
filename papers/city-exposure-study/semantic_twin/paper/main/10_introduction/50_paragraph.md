@@ -27,14 +27,12 @@
 % NEXT:   and the retained transport at the six route points with no direct or
 % NEXT:   one-reflection specular contribution.
 % NEXT: \end{enumerate}
-The study applies this method at 15~GHz to five selected routes with 73 fixed
-route points. Each result is normalized per unit active-source areal density and
-per unit equivalent isotropically radiated power. The calculation treats direct
-paths and one specular reflection exactly, then estimates one diffuse reflection
-by next-event estimation. It omits further reflections. The reported route
-distributions are therefore results for five fixed routes under this source and
-transport model. They do not estimate population exposure or deployed-network
-exposure, and they do not rank the five cities.
+This study applies the method at 15~GHz to five selected routes containing 73
+fixed observation points. Every result is normalized per unit active-source areal
+density and per unit effective isotropic radiated power (EIRP). The route-median
+whole-body SAR values differ by a factor of 13.34 across the five routes. These
+results describe fixed routes under one source and transport model. They do not
+estimate population exposure or deployed-network exposure.
 
 ## reviews (paragraph)
 

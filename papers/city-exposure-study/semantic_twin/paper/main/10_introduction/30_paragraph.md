@@ -22,18 +22,18 @@
 % NEXT: of the authors' knowledge, prior work has not combined aligned 360-degree street
 % NEXT: images, a common roofline transmitter model, these separate transport components,
 % NEXT: and directional body coupling along fixed routes.
-Street images can supply surface information that is absent
-from an untextured city mesh. The Vistas dataset provides a street-scene
-taxonomy for dense semantic segmentation~\cite{vistas}. Kamari \emph{et al.}
-segment street-level images, project the resulting material classes onto city
-geometry, and use that geometry in millimeter-wave ray tracing~\cite{mmsv}.
-Xia \emph{et al.} use semantic point-cloud classification and detailed scene
-reconstruction for outdoor urban ray tracing at 2.8~GHz~\cite{xia2024}.
-Image-informed city modeling is therefore established. The
-present work does not claim semantic segmentation, material classification, or
-image-to-geometry projection as new. It uses these operations to form a
-traceable material map around fixed pedestrian routes. The map keeps the
-geometry-based material wherever the images give no reliable label.
+A photogrammetric city mesh gives accurate building geometry, but its triangles
+carry no material information. Street-level images can fill that gap. The
+Mapillary Vistas dataset provides a taxonomy for dense segmentation of street
+scenes~\cite{vistas}. Kamari \emph{et al.} segment street-level images, project
+the resulting material classes onto city geometry, and use that geometry in
+millimeter-wave ray tracing~\cite{mmsv}. Xia \emph{et al.} use semantic
+point-cloud classification and detailed scene reconstruction for outdoor ray
+tracing at 2.8~GHz~\cite{xia2024}. Projecting image-derived materials onto
+city geometry is therefore established. This study does not claim any of these
+operations as new. It uses them to build a material map around fixed pedestrian
+routes, keeping the default geometry-based material wherever the images give no
+reliable label.
 
 ## reviews (paragraph)
 

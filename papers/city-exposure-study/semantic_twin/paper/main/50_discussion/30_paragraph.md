@@ -26,18 +26,18 @@
 % NEXT: provides a broader configuration check and remains separate from these
 % NEXT: fixed-route results.
 The paired material control tests the effect of image-derived materials on the
-body results. The direct term is identical between the image-derived and
-geometry-based cases, so the observed changes arise from the materials used by the
-reflected and diffuse terms. In Madrid, the specular and first-diffuse component
-changes have opposite signs, while the route-median normalized
-whole-body SAR changes by $0.249$~dB. The Mexico City route median changes by
-$-0.158$~dB. Its much larger lower-tail ratio comes from three shadowed
-route points where both estimates are close to zero, and it is not a stable
-central effect. The paired cases differ in their assigned materials and in their
-treatment of woody canopy. The image-derived case treats identified woody
-canopy as pass-through without attenuation because the city mesh has no canopy
-volume. The comparison therefore measures sensitivity to both choices and does
-not establish the accuracy of the assigned materials.
+body results. The direct term is identical in both cases, so all observed
+changes come from the materials used by the reflected and diffuse terms. In
+Madrid, the specular and first-diffuse component changes have opposite signs,
+while the route-median normalized whole-body SAR changes by only $0.249$~dB.
+The Mexico City route median changes by $-0.158$~dB. Its much larger lower-tail
+ratio comes from the three fully shadowed route points where both estimates are
+close to zero, not from a central effect. The paired cases differ in their
+assigned materials and in their treatment of woody canopy. The image-derived
+case treats identified canopy as transparent because the city mesh has no canopy
+volume. The comparison therefore measures sensitivity to both the material
+assignment and the vegetation rule together, and does not establish material
+accuracy on its own.
 
 ## AI notes
 - Uses only the current Madrid and Mexico City paired controls.

@@ -52,20 +52,20 @@
 % NEXT: calculation omits further specular reflections. Woody vegetation identified in
 % NEXT: the material map does not block rays because the city mesh has no canopy
 % NEXT: volume. The supplementary material gives the full laws and parameter values.
-An unobstructed reference keeps network scale separate from scene visibility. The reference includes the inverse-square geometry of the complete source curve:
+An unobstructed reference separates the source density from the scene geometry. The reference sums the inverse-square contribution of every roofline segment:
 \begin{equation}
 D_{\mathrm{ref}}(\mathbf{x})=
 \sum_i\frac{p_i}{r_i(\mathbf{x})^2},
 \qquad
 S_{\mathrm{ref}}(\mathbf{x})=
-\frac{A_{\mathrm{crop}}D_{\mathrm{ref}}(\mathbf{x})}{4\pi} .
+\frac{A_{\mathrm{crop}}D_{\mathrm{ref}}(\mathbf{x})}{4\pi} \, .
 \label{eq:reference-scale}
 \end{equation}
-No visibility test enters $D_{\mathrm{ref}}$. The reported transfer and body
-endpoints are normalized per unit $\rho_A P_{\mathrm{EIRP}}$. Multiplication by
-$\rho_A P_{\mathrm{EIRP}}$ gives a physical scale only for a deployment that
-follows the same roofline transmitter model. The calculation omits transmitters
-and interactions outside the crop.
+No visibility test enters $D_{\mathrm{ref}}$. All reported quantities are
+normalized per unit $\rho_A P_{\mathrm{EIRP}}$. Multiplication by
+$\rho_A P_{\mathrm{EIRP}}$ recovers physical units, but only for a deployment
+that follows the same roofline transmitter model. The calculation omits
+transmitters and interactions outside the crop.
 
 ## reviews (paragraph)
 

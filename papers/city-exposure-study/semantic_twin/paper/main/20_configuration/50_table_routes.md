@@ -18,20 +18,20 @@
 % NEXT: material. The prompts, image-alignment tests, rejected labels, and mapping rules
 % NEXT: are given in the supplementary material.
 \begin{table}[!t]
-  \caption{Five fixed routes and prepared-scene numerical campaign times}
+  \caption{Five fixed routes with observation-point counts, route spans, and computation times}
   \label{tab:routes}
   \centering
   \begin{tabular}{lrrr}
-    \hline
+    \toprule
     Site & Route points & Route span (m) & Wall time (s) \\
-    \hline
+    \midrule
     Korenmarkt & 10 & 49.04 & 29.79 \\
     Prague & 22 & 119.39 & 69.02 \\
     Madrid & 14 & 73.47 & 40.70 \\
     Mexico City & 11 & 60.79 & 30.92 \\
     Tokyo Hachiko & 16 & 87.38 & 50.11 \\
-    \hline
+    \midrule
     Total & 73 & 390.07 & 220.54 \\
-    \hline
+    \bottomrule
   \end{tabular}
 \end{table}

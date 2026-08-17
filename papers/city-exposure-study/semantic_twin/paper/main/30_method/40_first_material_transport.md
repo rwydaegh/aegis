@@ -19,8 +19,8 @@
 % NEXT:   \label{fig:adjoint}
 % NEXT: \end{figure*}
 % claim: directional_component_representation
-The directional transfer has direct, one-reflection specular, and
-one-reflection diffuse parts. Let $\mathcal{D}$ contain the visible direct
+The propagation result at each observation point has direct, one-reflection
+specular, and one-reflection diffuse parts. Let $\mathcal{D}$ contain the visible direct
 paths, and let $\mathcal{S}_1$ contain the accepted one-reflection specular
 paths. Their normalized powers are
 $\alpha_a=m_a^{(\mathrm{d})}/D_{\mathrm{ref}}$ and
@@ -35,7 +35,7 @@ direction $\widehat{\mathbf{k}}$, the directional distribution is
 \sum_{a\in\mathcal{D}}\alpha_a\delta_{\widehat{\mathbf{k}}_a^{(\mathrm{d})}} \\
 &+\sum_{b\in\mathcal{S}_1}\beta_b\delta_{\widehat{\mathbf{k}}_b^{(\mathrm{s})}} \\
 &+\sum_{q=1}^{Q}\widehat{\gamma}_q\delta_{\widehat{\mathbf{k}}_q^{(\mathrm{f})}},
-\qquad Q=4096 .
+\qquad Q=4096 \, .
 \end{aligned}
 \label{eq:first-material-transfer}
 \end{equation}
@@ -43,8 +43,8 @@ The first two sums retain the exact directions and powers of the direct and
 specular paths. They are not projected onto the angular grid. Only diffuse
 power is accumulated in the $Q$ Fibonacci cells. Rays start at the receiver and
 travel outward to the first blocking surface, as shown in
-Fig.~\ref{fig:adjoint}. Next-event estimation then tests
-a connection from that surface to every roofline segment~\cite{veach}. The
+Fig.~\ref{fig:adjoint}. Next-event estimation then tests visibility from that surface to every roofline
+segment~\cite{veach}. The
 material model combines unpolarized Fresnel power with a Rayleigh roughness
 term. The remaining power enters a Lambertian diffuse term, and the components
 add incoherently. The sampled path ends after this diffuse reflection, and the

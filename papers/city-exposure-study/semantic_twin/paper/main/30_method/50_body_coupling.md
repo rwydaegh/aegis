@@ -17,7 +17,7 @@
 % NEXT: do not estimate a pedestrian population. Multipath surplus is computed only
 % NEXT: where direct transfer is positive. A zero-direct route point remains in the
 % NEXT: whole-body SAR distribution but has no finite surplus value.
-Direction remains explicit until body coupling. For outward body-surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, define $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot(-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
+The arrival directions are carried through to the body. For outward body-surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, define $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot(-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
 \begin{equation}
 \begin{aligned}
 \widetilde{S}_{\mathrm{ab}}(\mathbf{r},\mathbf{x})
@@ -28,15 +28,17 @@ Direction remains explicit until body coupling. For outward body-surface normal 
 \sum_{a\in\mathcal{D}}\alpha_a g(\mathbf{r},\widehat{\mathbf{k}}_a^{(\mathrm{d})}) \\
 &\hspace{5.8em}+\sum_{b\in\mathcal{S}_1}\beta_b g(\mathbf{r},\widehat{\mathbf{k}}_b^{(\mathrm{s})}) \\
 &\hspace{5.8em}+\sum_{q=1}^{Q}\widehat{\gamma}_q g(\mathbf{r},\widehat{\mathbf{k}}_q^{(\mathrm{f})})
-\Bigg] .
+\Bigg] \, .
 \end{aligned}
 \label{eq:body-coupling}
 \end{equation}
-Here, $T_0$ is the normal-incidence power-transmission coefficient obtained from
-the IT'IS tissue parameters at 15~GHz~\cite{itis}. The implementation applies
-this one-sided local-incidence coupling to the Duke anatomical mesh with the
-published level-2 dosimetry kernel~\cite{christ2010,aegis}. Thus,
-$\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the area
+Here, $T_0$ is the normal-incidence power-transmission coefficient from
+the IT'IS tissue database at 15~GHz~\cite{itis}. The function $g$ sets the
+absorbed fraction to zero where the surface faces away from the incoming
+direction. The calculation applies this directional absorption to the Duke anatomical mesh
+using the published surface-field method~\cite{christ2010,aegis}.
+Because all quantities are normalized by $\rho_A P_{\mathrm{EIRP}}$,
+$\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the triangle area
 $A_{\mathbf{r}}$ at position $\mathbf{r}$ and body mass
 $m_{\mathrm{body}}$, the normalized integrated quantities are
 \begin{equation}
@@ -48,7 +50,7 @@ $m_{\mathrm{body}}$, the normalized integrated quantities are
 \widetilde{\mathrm{SAR}}_{\mathrm{wb}}(\mathbf{x})
 &\equiv\frac{\mathrm{SAR}_{\mathrm{wb}}(\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
 \\
-&=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} .
+&=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} \, .
 \end{aligned}
 \label{eq:body-endpoints}
 \end{equation}

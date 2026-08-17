@@ -1,95 +1,81 @@
 <!-- AUTO_BEGIN: assembled -->
 \section{Introduction}\label{sec:introduction}
 
-\IEEEPARstart{U}{rban} wireless systems operate in a built environment that
-strongly shapes radio propagation~\cite{itu2040}. Propagation can change over a
-few meters along a pedestrian route. A person can move from direct visibility of a roofline to a
-region where buildings block the direct field and reflected power arrives from
-another direction. The surface materials then affect how much power is returned
-to the street~\cite{itu2040,vitucci}. This local variation also matters after propagation.
-Whole-body absorption depends on the arrival direction and on the orientation of
-the body, so one incident-power value at one receiver position does not describe
-exposure along a route. A route calculation must retain position and arrival
-direction until the field is coupled to the body~\cite{icnirp}.
+\IEEEPARstart{A}{s} wireless networks expand into higher frequency bands,
+the built environment plays a larger role in determining the radiofrequency
+field that reaches a pedestrian~\cite{itu2040}. Along a city street, received
+power can change over a few meters. A person walking past a row of buildings
+can move from a clear view of a rooftop transmitter into a shadow where
+buildings block the direct field and only reflected power reaches the
+street. The facade materials then determine how much power returns to the
+street~\cite{itu2040,vitucci}. This variation also matters after the field
+arrives: whole-body absorption depends on the direction of arrival and on how
+the body is oriented, so a single power value at a single point does not
+describe exposure along a walking route. A route-level calculation must keep
+the arrival direction until the field is applied to the
+body~\cite{icnirp}.
 
-Urban radio ray tracing provides detailed paths between specified transmitters
-and receivers~\cite{sionna}. It has been used for city-scale downlink exposure
-with base-station locations from public deployment records~\cite{leeman}, and in
-hybrid propagation and anatomical dosimetry calculations along an outdoor user
-path~\cite{wydaeghe2026}. Stochastic site models provide a different description
-when individual transmitters are not fixed~\cite{wiame}, while normalized body
-coefficients separate incident fields from later exposure
-calculations~\cite{varsier}. Together, these studies include deterministic urban
-transport, spatial source models, and body coupling. Because these studies use
-different source assumptions, their reported quantities are not directly
-comparable without a common source law.
+Ray tracing computes detailed propagation paths between transmitters and
+receivers in a three-dimensional city model~\cite{sionna}. It has been used for
+city-scale downlink exposure using published base-station
+locations~\cite{leeman}, and to compute propagation and body exposure along an
+outdoor pedestrian path~\cite{wydaeghe2026}. Stochastic geometry models
+describe exposure when individual transmitter locations are not
+known~\cite{wiame}, while precomputed body coefficients separate the incident
+field from the absorption calculation~\cite{varsier}. Together, these studies
+cover deterministic urban propagation, spatial source models, and the
+directional absorption step that converts the arriving field into absorbed power
+on the body. Because they use different source assumptions, their reported
+exposure values are not directly comparable without a common source
+normalization.
 
-Street images can supply surface information that is absent
-from an untextured city mesh. The Vistas dataset provides a street-scene
-taxonomy for dense semantic segmentation~\cite{vistas}. Kamari \emph{et al.}
-segment street-level images, project the resulting material classes onto city
-geometry, and use that geometry in millimeter-wave ray tracing~\cite{mmsv}.
-Xia \emph{et al.} use semantic point-cloud classification and detailed scene
-reconstruction for outdoor urban ray tracing at 2.8~GHz~\cite{xia2024}.
-Image-informed city modeling is therefore established. The
-present work does not claim semantic segmentation, material classification, or
-image-to-geometry projection as new. It uses these operations to form a
-traceable material map around fixed pedestrian routes. The map keeps the
-geometry-based material wherever the images give no reliable label.
+A photogrammetric city mesh gives accurate building geometry, but its triangles
+carry no material information. Street-level images can fill that gap. The
+Mapillary Vistas dataset provides a taxonomy for dense segmentation of street
+scenes~\cite{vistas}. Kamari \emph{et al.} segment street-level images, project
+the resulting material classes onto city geometry, and use that geometry in
+millimeter-wave ray tracing~\cite{mmsv}. Xia \emph{et al.} use semantic
+point-cloud classification and detailed scene reconstruction for outdoor ray
+tracing at 2.8~GHz~\cite{xia2024}. Projecting image-derived materials onto
+city geometry is therefore established. This study does not claim any of these
+operations as new. It uses them to build a material map around fixed pedestrian
+routes, keeping the default geometry-based material wherever the images give no
+reliable label.
 
-The calculation combines these established parts in one fixed model. First, each
-360-degree street image is aligned with the same city mesh used for ray tracing.
-The image labels are then projected onto that mesh to make a material map.
-Second, the same transmitter model is used at every site, with the number of
-transmitters set independently of how finely the roofline is divided. Third,
-direct, specular, and diffuse power stays separate until its arrival direction
-is coupled to the body. The transport calculation treats direct paths and one
-specular reflection exactly, estimates one diffuse reflection, and then stops.
-The route points are fixed case studies rather than a population sample, and the
-roofline transmitters are a model rather than a measured deployment. To the best
-of the authors' knowledge, prior work has not combined aligned 360-degree street
-images, a common roofline transmitter model, these separate transport components,
-and directional body coupling along fixed routes.
+This study combines these established parts in one fixed model. Each 360-degree
+street image is aligned with the same photogrammetric city mesh used for ray
+tracing, and the image labels are projected onto that mesh to produce a material map. A common transmitter model distributes sources along the visible
+roofline at every site. Rooflines are a natural choice: they are elevated, street-facing, and visible
+from the route. Distributing transmitters in proportion to roofline length
+avoids tying the result to any particular deployment. The ray tracer keeps the direct, specular, and diffuse components separate,
+preserving their arrival directions, until the field is applied to the body. The transport model treats direct paths and one
+specular reflection exactly, estimates one diffuse reflection, and stops there.
+The route points are fixed case studies, not a population sample, and the
+roofline transmitters are a model, not a measured deployment. To the best of the author's knowledge, prior work has not combined aligned
+360-degree street images, a common roofline transmitter model, and separate
+transport components with their arrival directions in a single route-level body
+exposure calculation.
 
-The study applies this method at 15~GHz to five selected routes with 73 fixed
-route points. Each result is normalized per unit active-source areal density and
-per unit equivalent isotropically radiated power. The calculation treats direct
-paths and one specular reflection exactly, then estimates one diffuse reflection
-by next-event estimation. It omits further reflections. The reported route
-distributions are therefore results for five fixed routes under this source and
-transport model. They do not estimate population exposure or deployed-network
-exposure, and they do not rank the five cities.
+This study applies the method at 15~GHz to five selected routes containing 73
+fixed observation points. Every result is normalized per unit active-source areal
+density and per unit effective isotropic radiated power (EIRP). The route-median
+whole-body SAR values differ by a factor of 13.34 across the five routes. These
+results describe fixed routes under one source and transport model. They do not
+estimate population exposure or deployed-network exposure.
 
-For the first time, one fixed-route calculation combines the following three
-contributions.
+This work makes the following three contributions.
 \begin{enumerate}
-  \item Aligned 360-degree street images supply traceable
-  material labels to the same city mesh used for the propagation calculation.
-  Surfaces without a reliable image label keep their geometry-based material.
+  \item Aligned 360-degree street images supply traceable material labels to
+  the same city mesh used for ray tracing. Surfaces without a reliable image
+  label keep their geometry-based material.
 
-  \item A normalized roofline transmitter model and transport calculation preserve
-  direct, one-reflection specular, and first-diffuse power and
-  direction until whole-body coupling.
+  \item A roofline transmitter model and transport calculation keep direct,
+  specular, and diffuse power separate, with arrival directions, until the
+  field is applied to the body.
 
-  \item A five-site application reports fixed-route exposure distributions,
-  controlled first-diffuse validation, component closure, replica convergence,
-  and the retained transport at the six route points with no direct or
-  one-reflection specular contribution.
+  \item A five-route application reports fixed-route exposure distributions,
+  controlled first-diffuse validation, replica convergence, and the retained
+  transport at the six observation points where buildings block all direct and
+  specular paths.
 \end{enumerate}
 <!-- AUTO_END: assembled -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Aggregation notes (AI-owned)

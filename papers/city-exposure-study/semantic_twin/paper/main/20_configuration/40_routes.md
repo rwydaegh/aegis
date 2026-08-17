@@ -22,11 +22,11 @@
 % NEXT:     \hline
 % NEXT:   \end{tabular}
 % NEXT: \end{table}
-Table~\ref{tab:routes} lists the five selected routes. The point counts and spans
-come from the verified route files used for the five-site data set. Each route
-follows a connected corridor covered by aligned 360-degree street images. The
-calculation samples fixed points along that corridor, including interpolated
-points between image locations. The image count and route-point count can
-therefore differ. The 73 route points are fixed observations rather than a
-random sample of pedestrians or places. The phantom faces along the walk, so a
-different route would change both its position and orientation.
+Table~\ref{tab:routes} lists the five selected routes. Each route follows a
+connected street corridor covered by aligned 360-degree street images. The
+calculation places fixed observation points along that corridor, including
+interpolated positions between image locations, so the number of images and
+the number of observation points can differ. The 73 route points are fixed
+observations, not a random sample of pedestrians or places. The body model
+faces along the direction of travel, so a different route would change both
+position and orientation.

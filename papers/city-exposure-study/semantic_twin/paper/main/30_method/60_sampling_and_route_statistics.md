@@ -36,17 +36,15 @@
 % PREV: $\widetilde{P}_{\mathrm{abs}}$ has units m$^2$, and $\widetilde{\mathrm{SAR}}_{\mathrm{wb}}$ has units m$^2$~kg$^{-1}$.
 Each replica launches 200,000 independent and identically distributed primary
 rays per route point and accumulates first-diffuse power in 4,096 fixed
-Fibonacci output cells. Exact direct and specular paths bypass this grid. The
-output cells do not control the launch directions. The calculations use 16
-replicas with seeds 7 through 22 and retain cumulative results after 4, 8, 12,
-and 16 replicas. Only the first-diffuse estimate varies between replicas.
-Scalar quantities and body fields are averaged before route statistics are
-computed. Route quantiles use NumPy linear interpolation over equally weighted
-route points. The plotted empirical distributions use positions
-$(\operatorname{rank}-0.5)/n$. These quantities describe a selected route and
-do not estimate a pedestrian population. Multipath surplus is computed only
-where direct transfer is positive. A zero-direct route point remains in the
-whole-body SAR distribution but has no finite surplus value.
+Fibonacci output cells. Exact direct and specular paths bypass this grid. The output cells do not control the launch directions.
+The calculations use 16 replicas with seeds 7 through 22 and retain cumulative
+results after 4, 8, 12, and 16 replicas. Only the first-diffuse estimate varies
+between replicas. Scalar quantities and body fields are averaged across replicas
+before route statistics are computed. Route quantiles use linear interpolation
+over equally weighted route points, and the plotted empirical distributions use
+positions $(\operatorname{rank}-0.5)/n$. Multipath surplus is computed
+only where direct transfer is positive. A route point with zero direct transfer
+remains in the whole-body SAR distribution but has no finite surplus value.
 
 ## reviews (paragraph)
 

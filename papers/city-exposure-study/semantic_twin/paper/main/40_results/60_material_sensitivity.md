@@ -14,20 +14,20 @@
 % PREV: city-sampling uncertainty. The complete nested comparison is provided in the
 % PREV: supplementary material.
 % claim: paired_material_evidence_control
-A paired material-map control was completed for Madrid and Mexico City. The
-control replaces all image-mapped materials with the geometry-based materials
-while retaining the mesh, route, roofline transmitter model, body, seeds,
-sampling budget, and transport steps. Each reported change is
-$10\log_{10}(x_{\mathrm{image}}/x_{\mathrm{geometry}})$. The image-to-geometry
-changes in normalized whole-body SAR at Madrid are $+0.233$, $+0.249$, and
-$+0.269$~dB for $q_{10}$, $q_{50}$, and $q_{90}$. The corresponding changes at
-Mexico City are $+24.84$, $-0.158$, and $+0.104$~dB. The large Mexico City
-$q_{10}$ change comes from its three shadowed points, where both totals are near
-zero and first diffuse is the only nonzero modeled contribution. The direct
-term is identical in every pair. At Madrid, the image-derived map changes the
-route-median specular component by $+1.89$~dB and the first-diffuse component by
-$-12.43$~dB, although the total median changes by $+0.249$~dB. The control tests
-the complete material map, including its material parameters and the treatment
-of woody vegetation as nonblocking. It does not measure material accuracy or
-isolate reflectance alone. The supplementary material gives pointwise and
-component-level comparisons.
+A paired control for Madrid and Mexico City replaces all image-mapped materials
+with the default geometry-based materials while keeping the mesh, route,
+roofline model, body, seeds, sampling budget, and transport steps identical.
+Each reported change is
+$10\log_{10}(x_{\mathrm{image}}/x_{\mathrm{geometry}})$. At Madrid the
+image-to-geometry changes in normalized whole-body SAR are $+0.233$, $+0.249$,
+and $+0.269$~dB for $q_{10}$, $q_{50}$, and $q_{90}$. At Mexico City the
+corresponding changes are $+24.84$, $-0.158$, and $+0.104$~dB. The large
+$q_{10}$ change comes from the three fully shadowed points, where both totals
+are near zero and first-diffuse transport is the only nonzero contribution. The
+direct term is identical in every pair. At Madrid, the image-derived map changes
+the route-median specular component by $+1.89$~dB and the first-diffuse
+component by $-12.43$~dB, but the total median changes by only $+0.249$~dB.
+This control tests the complete material map, including its parameters and the
+treatment of woody vegetation as nonblocking. It does not measure material
+accuracy or isolate reflectance alone. The supplementary material gives
+pointwise and component-level comparisons.

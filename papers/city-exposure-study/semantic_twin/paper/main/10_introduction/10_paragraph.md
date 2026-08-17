@@ -10,16 +10,19 @@
 % NEXT: transport, spatial source models, and body coupling. Because these studies use
 % NEXT: different source assumptions, their reported quantities are not directly
 % NEXT: comparable without a common source law.
-\IEEEPARstart{U}{rban} wireless systems operate in a built environment that
-strongly shapes radio propagation~\cite{itu2040}. Propagation can change over a
-few meters along a pedestrian route. A person can move from direct visibility of a roofline to a
-region where buildings block the direct field and reflected power arrives from
-another direction. The surface materials then affect how much power is returned
-to the street~\cite{itu2040,vitucci}. This local variation also matters after propagation.
-Whole-body absorption depends on the arrival direction and on the orientation of
-the body, so one incident-power value at one receiver position does not describe
-exposure along a route. A route calculation must retain position and arrival
-direction until the field is coupled to the body~\cite{icnirp}.
+\IEEEPARstart{A}{s} wireless networks expand into higher frequency bands,
+the built environment plays a larger role in determining the radiofrequency
+field that reaches a pedestrian~\cite{itu2040}. Along a city street, received
+power can change over a few meters. A person walking past a row of buildings
+can move from a clear view of a rooftop transmitter into a shadow where
+buildings block the direct field and only reflected power reaches the
+street. The facade materials then determine how much power returns to the
+street~\cite{itu2040,vitucci}. This variation also matters after the field
+arrives: whole-body absorption depends on the direction of arrival and on how
+the body is oriented, so a single power value at a single point does not
+describe exposure along a walking route. A route-level calculation must keep
+the arrival direction until the field is applied to the
+body~\cite{icnirp}.
 
 ## reviews (paragraph)
 

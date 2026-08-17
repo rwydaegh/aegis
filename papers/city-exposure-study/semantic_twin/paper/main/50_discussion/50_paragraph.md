@@ -16,16 +16,15 @@
 % PREV: A separate geometric fixed-grid diagnostic in the supplementary material
 % PREV: provides a broader configuration check and remains separate from these
 % PREV: fixed-route results.
-The first priority is source calibration and validation of the city
-calculation. Calibration should use a measured site source distribution.
-Outdoor field measurements should then test the directional field before body
-coupling. Second, higher specular orders and paths after a diffuse event
-can be added through paired studies that report their change in whole-body SAR,
-variance, and computation time. Third, several routes at the same site can
+The first priority is source calibration and end-to-end validation of the city
+calculation against outdoor field measurements of the directional field before
+body coupling. Second, higher specular orders and paths beyond the first diffuse
+event can be added through paired studies that report their change in whole-body
+SAR, variance, and computation time. Third, several routes at the same site can
 quantify route-selection variation before the site set is enlarged. Other
 frequencies, body models, and orientations can then test the remaining range of
-validity. Each extension should also report how much of the surface reached by
-the modeled paths has an image-derived material.
+validity. Each extension should also report what fraction of the surfaces
+reached by the modeled paths carries an image-derived material.
 
 ## AI notes
 - Orders future work by the present evidential gaps.

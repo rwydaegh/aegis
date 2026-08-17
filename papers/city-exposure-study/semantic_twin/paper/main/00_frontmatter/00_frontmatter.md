@@ -42,29 +42,29 @@ Ghent University--imec, Technologiepark-Zwijnaarde 126, 9052 Ghent, Belgium
 (e-mail: robin.wydaeghe@ugent.be).}
 
 \begin{abstract}
-Street-level radiofrequency exposure at 15 GHz depends on the route geometry,
-surface materials, transmitter locations, and body orientation. This study maps
-360-degree street images onto a photogrammetric city mesh and assigns surface materials
-around five selected pedestrian routes. A common source model sets the expected
-number of transmitters from their areal density and distributes them along the
-visible roofline in proportion to its physical length. All exposure values are
-normalized per unit areal density times effective isotropic radiated power.
-The calculation treats direct paths and one specular reflection exactly. It
-estimates one diffuse reflection and then stops the path.
-The directional fields are coupled to a 56,024-element Duke body surface. The
-five routes contain 73 route points. Each point uses 16 independent
-replicas, 200,000 primary rays per replica, and 4,096 fixed first-diffuse angular cells. In
-a controlled open-square case, the maximum bounced-term difference between the
-adjoint estimator and deterministic quadrature is 0.0616 dB, and the maximum
-total-transport difference between the adjoint and forward tracers is 0.0344
-dB. The route medians of normalized whole-body specific
-absorption rate differ by a factor of 13.34. Direct transport is the largest
-term at all 67 nonshadowed points. First-diffuse transport gives the only
-nonzero modeled contribution at six shadowed points. The maximum 12-to-16-replica change
-in total transfer is 0.0436 dB across the five sites, although lower-tail
-estimates in Mexico City and Tokyo are less stable. The result applies to five
-selected routes under the fixed model and does not estimate city-wide or
-deployed-network exposure.
+Street-level radiofrequency exposure varies along a pedestrian route because
+buildings change the direct and reflected fields, surface materials affect how
+much power returns to the street, and the human body absorbs differently
+depending on the direction of arrival. This study projects 360-degree street
+images onto a photogrammetric city mesh to identify surface materials along five
+pedestrian routes at 15~GHz. Transmitters are placed along the visible
+roofline in proportion to its physical length. All results are normalized per
+unit product of areal source density and effective isotropic radiated power
+(EIRP). The transport model treats direct
+paths and one specular reflection exactly, estimates one diffuse reflection, and
+stops. The arriving fields and their directions are then applied to a
+56,024-element Duke body model. The five routes contain 73 fixed observation
+points, each calculated with 16 independent replicas of 200,000 primary rays
+and 4,096 angular output cells. In a controlled test scene, the adjoint estimate and deterministic quadrature
+differ by at most 0.0616~dB for the reflected term. An independent forward
+tracer gives a maximum difference of 0.0344~dB. Route-median
+whole-body specific absorption rate differs by a factor of 13.34 across the
+five routes. Direct paths carry the largest share at all 67 points with line of
+sight, while the diffuse reflection is the only nonzero modeled contribution at
+six fully shadowed points. The maximum change from 12 to 16 replicas is
+0.0436~dB, though lower-tail estimates in Mexico City and Tokyo are less
+stable. These results describe five selected routes under a fixed model and do
+not estimate city-wide or deployed-network exposure.
 \end{abstract}
 
 \begin{keywords}
@@ -75,20 +75,3 @@ propagation, whole-body specific absorption rate.
 \titlepgskip=-21pt
 \maketitle
 <!-- AUTO_END: assembled -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Aggregation notes (AI-owned)

@@ -21,15 +21,14 @@
 % NEXT: ensures that splitting one segment into smaller numerical pieces does not add
 % NEXT: transmitters. The baseline uses three-dimensional length rather than horizontal
 % NEXT: projected length.
-The calculation uses a fixed route, city mesh, material map, and roofline source
-curve. Every route point uses 15~GHz and a crop with radius
+The calculation uses a fixed route, city mesh, material map, and roofline
+transmitter model. Every route point uses 15~GHz and a crop with radius
 $R_{\mathrm{crop}}=250$~m, which gives
 $A_{\mathrm{crop}}=\pi R_{\mathrm{crop}}^2=196{,}349.54$~m$^2$. The receiver
-position $\mathbf{x}$ is also the reciprocal ray origin and body reference
-point. The phantom faces along the local direction of travel. Index $i$ denotes
-a roofline segment, $r_i(\mathbf{x})$ is its range to the receiver, and
-$\mathbf{r}$ is the position of a body surface element. These assumptions stay
-fixed across replicas and sites.
+position $\mathbf{x}$ is the ray origin and body reference point. The body model faces along the local direction of travel. Index $i$
+denotes a roofline segment, $r_i(\mathbf{x})$ is its range to the receiver,
+and $\mathbf{r}$ is a position on the body surface. These assumptions are fixed
+across replicas and sites.
 
 ## reviews (paragraph)
 

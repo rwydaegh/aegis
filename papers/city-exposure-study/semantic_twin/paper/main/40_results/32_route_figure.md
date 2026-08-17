@@ -28,6 +28,6 @@
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{figures/route_results/route_results.pdf}
-\caption{Normalized whole-body SAR on the five fixed routes. (a) Midpoint empirical CDFs include all 73 route points. Hollow triangles mark the six points with zero direct and order-1 specular transfer. (b) Additive contributions to route-mean whole-body SAR. The routes are fixed case studies rather than city or population samples.}
+\caption{Normalized whole-body SAR on the five fixed routes. (a) Empirical CDFs of all 73 observation points. Hollow triangles mark the six points with zero direct and zero order-1 specular transfer. (b) Additive component shares of route-mean whole-body SAR. These routes are fixed case studies, not city or population samples.}
 \label{fig:route-distributions}
 \end{figure*}

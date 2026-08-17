@@ -19,15 +19,11 @@
 % NEXT: canopy as pass-through without attenuation because the city mesh has no canopy
 % NEXT: volume. The comparison therefore measures sensitivity to both choices and does
 % NEXT: not establish the accuracy of the assigned materials.
-The three modeled components explain the local changes within the route
-distributions. A direct path is present at 67 route points. The exact order-1
-specular term adds one surface reflection. The first-diffuse term connects the
-receiver to a roofline transmitter through one blocking surface. After body
-coupling, the first-diffuse contribution is small at most nonshadowed
-route points. The six remaining points have zero direct and zero
-order-1 specular contributions. The first-diffuse contribution is the only
-nonzero modeled contribution at those points. Therefore, its small contribution
-at most nonshadowed positions does not make it dispensable at shadowed positions.
+The first-diffuse component is small at most points (0.419\% pooled median),
+but it is the only nonzero contribution at the six fully shadowed points. Its
+small share where line of sight exists does not make it dispensable where
+buildings block all direct and specular paths. A transport model that omits the
+diffuse term would assign zero exposure to those six positions.
 
 ## AI notes
 - Interprets the direct, order-1 specular, and first-diffuse roles.

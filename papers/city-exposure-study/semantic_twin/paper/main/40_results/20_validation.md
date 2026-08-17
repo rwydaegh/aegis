@@ -14,10 +14,11 @@
 % NEXT: \label{fig:controlled-validation}
 % NEXT: \end{figure*}
 % claim: controlled_depth1_validation
-The controlled comparison in Fig.~\ref{fig:controlled-validation} tests the
-first-diffuse estimator before the city results. The open-square scene has 27
-sources, six receivers, eight triangles, and one diffuse reflection. It has no
-specular reflection, refraction, or diffraction. Deterministic surface
+The direct and specular paths are computed from exact geometry, but the
+first-diffuse estimate depends on random ray sampling. The controlled comparison
+in Fig.~\ref{fig:controlled-validation} tests this stochastic component before
+the city results. The open-square scene has 27 sources, 6 receivers, 8 triangles, and one diffuse
+reflection. It has no specular reflection, refraction, or diffraction. Deterministic surface
 quadrature uses 2,097,152 samples. The adjoint estimate uses 50,000 primary rays
 for each of four seeds. An independent Sionna RT forward calculation uses
 50,000 samples per source for each of three seeds. The maximum difference

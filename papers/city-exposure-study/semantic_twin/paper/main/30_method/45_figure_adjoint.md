@@ -70,7 +70,7 @@
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=\textwidth]{figures/adjoint/adjoint.pdf}
-  \caption{Forward and adjoint sampling for the first-diffuse term. (a) A forward calculation launches rays from every roofline segment toward the route point. (b) The adjoint calculation launches rays once from the route point. At the first blocking surface, next-event estimation tests connections to the roofline.}
+  \caption{Forward and adjoint sampling for the first-diffuse term. (a) A forward calculation launches rays from every roofline segment toward the observation point. (b) The adjoint calculation launches rays once from the observation point. At the first blocking surface, connections to every visible roofline segment are tested.}
   \label{fig:adjoint}
 \end{figure*}
 

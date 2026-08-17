@@ -15,11 +15,12 @@
 % NEXT:   \caption{Flowchart of the computation and input checks. Aligned 360-degree street images and the city mesh give the material map. The fixed route and visible roofline give receiver and possible transmitter positions. Transport retains direct, first-order specular, and first-diffuse terms. A hash-verified file list fixes every input to the five-site result.}
 % NEXT:   \label{fig:flowchart}
 % NEXT: \end{figure*}
-Fig.~\ref{fig:flowchart} shows the computation and the files checked before it
-runs. A hash-verified manifest lists the aligned images, material map, city
-mesh, route, roofline, body, sampler, and transport settings. Only files that
-match this list enter the five-site data set. The transport calculation keeps
-direct, first-order specular, and first-diffuse contributions separate until
-body coupling. The five manifests contain 210 verified entries. Across the
-resulting 1,168 directional body fields, the largest additive-closure residual
-is $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
+Fig.~\ref{fig:flowchart} shows the computation and its input checks. A
+hash-verified manifest lists every input file: aligned images, material map,
+city mesh, route, roofline, body model, and transport settings. Only files whose
+hashes match the manifest enter the five-site data set. The transport
+calculation keeps direct, specular, and diffuse contributions separate until
+the field is applied to the body. The five manifests contain 210 verified entries. Across the
+resulting 1,168 directional body fields, the largest residual when the three
+components are summed back to the stored total is
+$1.735\times10^{-18}\,\mathrm{m}^{-2}$.

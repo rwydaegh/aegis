@@ -10,14 +10,12 @@
 % PREV: route points. Their route-median values differed by a factor of 13.34. Direct
 % PREV: transport was largest at 67 nonshadowed points, while first-diffuse transport
 % PREV: was the only nonzero modeled contribution at all six shadowed points.
-These results describe five selected routes at 15\,GHz per unit active-source
-density and EIRP. They do not rank cities or predict deployed-network exposure.
-The comparison uses the fixed transmitter model, material map, Duke body facing
-along the walk, and one-diffuse-reflection limit. The 16-replica
-checks showed stable central route statistics, although the shadowed lower tails
-remained less stable. The distributions have no population weighting across
-each urban area and have greater estimator uncertainty at locally shadowed
-positions.
+The image-to-mesh material mapping took effect mainly through the specular
+component. A paired control at two sites showed route-median whole-body SAR
+changes of $+0.249$ and $-0.158$~dB when the image-derived materials were
+replaced by the geometry defaults. The method runs in under 70~s per prepared
+site on one GPU. The main open items are outdoor field validation against the
+full city model and a measured transmitter source distribution.
 
 ## reviews (paragraph)
 

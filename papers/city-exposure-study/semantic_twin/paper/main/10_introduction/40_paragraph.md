@@ -18,19 +18,19 @@
 % NEXT: distributions are therefore results for five fixed routes under this source and
 % NEXT: transport model. They do not estimate population exposure or deployed-network
 % NEXT: exposure, and they do not rank the five cities.
-The calculation combines these established parts in one fixed model. First, each
-360-degree street image is aligned with the same city mesh used for ray tracing.
-The image labels are then projected onto that mesh to make a material map.
-Second, the same transmitter model is used at every site, with the number of
-transmitters set independently of how finely the roofline is divided. Third,
-direct, specular, and diffuse power stays separate until its arrival direction
-is coupled to the body. The transport calculation treats direct paths and one
-specular reflection exactly, estimates one diffuse reflection, and then stops.
-The route points are fixed case studies rather than a population sample, and the
-roofline transmitters are a model rather than a measured deployment. To the best
-of the authors' knowledge, prior work has not combined aligned 360-degree street
-images, a common roofline transmitter model, these separate transport components,
-and directional body coupling along fixed routes.
+This study combines these established parts in one fixed model. Each 360-degree
+street image is aligned with the same photogrammetric city mesh used for ray
+tracing, and the image labels are projected onto that mesh to produce a material map. A common transmitter model distributes sources along the visible
+roofline at every site. Rooflines are a natural choice: they are elevated, street-facing, and visible
+from the route. Distributing transmitters in proportion to roofline length
+avoids tying the result to any particular deployment. The ray tracer keeps the direct, specular, and diffuse components separate,
+preserving their arrival directions, until the field is applied to the body. The transport model treats direct paths and one
+specular reflection exactly, estimates one diffuse reflection, and stops there.
+The route points are fixed case studies, not a population sample, and the
+roofline transmitters are a model, not a measured deployment. To the best of the author's knowledge, prior work has not combined aligned
+360-degree street images, a common roofline transmitter model, and separate
+transport components with their arrival directions in a single route-level body
+exposure calculation.
 
 ## reviews (paragraph)
 

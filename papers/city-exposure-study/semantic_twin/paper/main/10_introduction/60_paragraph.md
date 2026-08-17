@@ -6,21 +6,20 @@
 % PREV: distributions are therefore results for five fixed routes under this source and
 % PREV: transport model. They do not estimate population exposure or deployed-network
 % PREV: exposure, and they do not rank the five cities.
-For the first time, one fixed-route calculation combines the following three
-contributions.
+This work makes the following three contributions.
 \begin{enumerate}
-  \item Aligned 360-degree street images supply traceable
-  material labels to the same city mesh used for the propagation calculation.
-  Surfaces without a reliable image label keep their geometry-based material.
+  \item Aligned 360-degree street images supply traceable material labels to
+  the same city mesh used for ray tracing. Surfaces without a reliable image
+  label keep their geometry-based material.
 
-  \item A normalized roofline transmitter model and transport calculation preserve
-  direct, one-reflection specular, and first-diffuse power and
-  direction until whole-body coupling.
+  \item A roofline transmitter model and transport calculation keep direct,
+  specular, and diffuse power separate, with arrival directions, until the
+  field is applied to the body.
 
-  \item A five-site application reports fixed-route exposure distributions,
-  controlled first-diffuse validation, component closure, replica convergence,
-  and the retained transport at the six route points with no direct or
-  one-reflection specular contribution.
+  \item A five-route application reports fixed-route exposure distributions,
+  controlled first-diffuse validation, replica convergence, and the retained
+  transport at the six observation points where buildings block all direct and
+  specular paths.
 \end{enumerate}
 
 ## reviews (paragraph)

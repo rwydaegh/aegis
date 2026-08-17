@@ -24,14 +24,14 @@
 % NEXT: body coupling. The five manifests contain 210 verified entries. Across the
 % NEXT: resulting 1,168 directional body fields, the largest additive-closure residual
 % NEXT: is $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
-The two image models have separate roles. Mask2Former assigns a Vistas object
-class to every image pixel~\cite{mask2former,vistas}. These classes include
-buildings, roads, people, vehicles, and vegetation. SAM 3 then tests relevant
-material and vegetation labels inside compatible object regions~\cite{sam3}.
-The known camera position and viewing direction project both sets of labels onto
-the visible city mesh. Repeated observations are combined into one material
-map, and every mapped triangle stays linked to its original image. A mesh
-triangle changes material only when the object and material labels agree and
-pass the acceptance tests. All other triangles keep their geometry-based
-material. The prompts, image-alignment tests, rejected labels, and mapping rules
-are given in the supplementary material.
+Two image-analysis models work in sequence. Mask2Former assigns a Vistas object
+class (building, road, vegetation, etc.) to every image
+pixel~\cite{mask2former,vistas}. SAM~3 then tests material and vegetation labels
+inside the compatible object regions~\cite{sam3}. Both sets of labels are
+projected onto the visible city mesh using the known camera position and viewing
+direction. Where multiple images cover the same triangle, the labels are
+combined into one material map, and every mapped triangle stays linked to its
+source image. A mesh triangle changes material only when the object and
+material labels agree and pass the acceptance tests. All other triangles keep
+their default material. The prompts, alignment tests, rejected labels, and
+mapping rules are given in the supplementary material.

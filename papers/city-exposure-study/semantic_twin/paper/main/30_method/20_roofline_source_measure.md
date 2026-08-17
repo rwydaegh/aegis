@@ -34,7 +34,7 @@ N_{\mathrm{site}}=\rho_A A_{\mathrm{crop}},
 \qquad
 p_i=\frac{\ell_i}{\sum_j \ell_j},
 \qquad
-\ell_i=\left\lVert\mathbf{p}_{i+1}-\mathbf{p}_i\right\rVert_2 .
+\ell_i=\left\lVert\mathbf{p}_{i+1}-\mathbf{p}_i\right\rVert_2 \, .
 \label{eq:source-measure}
 \end{equation}
 Thus, $N_{\mathrm{site}}$ sets the number of transmitters and $p_i$ assigns a

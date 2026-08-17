@@ -8,17 +8,18 @@
 % NEXT: each urban area and have greater estimator uncertainty at locally shadowed
 % NEXT: positions.
 This study aligned 360-degree street images with a photogrammetric city mesh to
-map surface materials around fixed pedestrian routes. A common roofline
-transmitter model and direction-aware body coupling then gave normalized
-whole-body SAR along each route. Each result was normalized by
-$\rho_A P_{\mathrm{EIRP}}$. The transport model retained exact direct paths,
-exact order-1 specular paths, and the first diffuse reflection. In a
-controlled depth-1 case, the adjoint first-diffuse estimate had maximum
-bounced-transport errors of 0.0616\,dB against deterministic surface quadrature
-and 0.0621\,dB against Sionna RT forward tracing. The five scenes contained 73
-route points. Their route-median values differed by a factor of 13.34. Direct
-transport was largest at 67 nonshadowed points, while first-diffuse transport
-was the only nonzero modeled contribution at all six shadowed points.
+map surface materials around fixed pedestrian routes. A roofline transmitter model and a directional absorption step then produced
+normalized whole-body SAR along each route, with all results per unit
+$\rho_A P_{\mathrm{EIRP}}$. In a controlled one-reflection scene, the
+first-diffuse estimate differed from deterministic quadrature by at most
+0.0616\,dB and from an independent Sionna RT forward calculation by at most
+0.0621\,dB. Across 73 observation points on five routes, route-median
+whole-body SAR values differed by a factor of 13.34. Direct transport was
+largest at all 67 points with line of sight, while first-diffuse transport was
+the only nonzero contribution at the six fully shadowed points. The route
+medians were stable at 16 replicas, but the fully shadowed lower tails had
+larger estimator uncertainty. These results do not rank cities or predict
+deployed-network exposure.
 
 ## reviews (paragraph)
 

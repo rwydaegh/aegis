@@ -26,7 +26,7 @@
 % NEXT: transport. The supplementary material gives the complete split by material source.
 % claim: five_city_wbsar_route_quantiles
 \begin{table*}[!t]
-\caption{Fixed-route exposure summary. Whole-body SAR quantiles are normalized per unit $\rho_A P_{\mathrm{EIRP}}$ and have units m$^2$~kg$^{-1}$. Surplus uses finite-direct points only. The last column is the maximum pointwise total-transfer change from 12 to 16 replicas.}
+\caption{Fixed-route exposure summary. Whole-body SAR quantiles are normalized per unit $\rho_A P_{\mathrm{EIRP}}$ and have units m$^2$~kg$^{-1}$. Surplus is computed only at points with nonzero direct transfer. The last column is the maximum pointwise total-transfer change from 12 to 16 replicas.}
 \label{tab:route-results}
 \centering
 \begin{tabular}{lrrrrrr}

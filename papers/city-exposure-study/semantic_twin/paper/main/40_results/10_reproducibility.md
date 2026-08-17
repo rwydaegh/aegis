@@ -10,13 +10,12 @@
 % NEXT: confirm the input files, addition of components, and agreement between CPU and
 % NEXT: GPU calculations. They do not externally validate the complete city model.
 % claim: current_campaign_contract
-Table~\ref{tab:routes} defines the five fixed routes and their 73 calculation
-points. Every site uses 15~GHz, a photogrammetric city mesh cropped to a
-250~m radius, and the Duke body model with 56,024 surface elements and a
-72.4~kg mass. The phantom faces along the walk. Each point has 16 independent
-replicas with seeds 7 through 22, and each replica uses 200,000 IID primary rays
-and 4,096 fixed output directions for the first-diffuse term. The resulting
-1,168 fields contain 233.6 million primary rays. Calculation time for a prepared
-site ranges from 29.79 to 69.02~s on one A6000 GPU. These times exclude image
-acquisition, image-to-mesh alignment, depth estimation, and material mapping
-because the full preparation time was not recorded.
+Table~\ref{tab:routes} defines the five fixed routes and their 73 observation
+points. Every site uses 15~GHz and a photogrammetric city mesh cropped to a
+250~m radius. The Duke body model has 56,024 surface elements and a mass of
+72.4~kg, and faces along the direction of travel. Each point has 16 independent
+replicas with seeds 7 through 22. Each replica uses 200,000 primary rays and
+4,096 fixed Fibonacci output cells for the first-diffuse term. The resulting 1,168 body fields contain 233.6 million primary rays.
+Calculation time for a prepared site ranges from 29.79 to 69.02~s on one A6000
+GPU. These times exclude image acquisition, alignment, depth estimation, and
+material mapping because the full preparation time was not recorded.

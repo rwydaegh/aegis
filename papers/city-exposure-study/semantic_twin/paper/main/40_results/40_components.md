@@ -33,20 +33,21 @@
 % claim: six_shadowed_standpoints
 % claim: pooled_median_wbsar_component_shares
 The component shares in Fig.~\ref{fig:route-distributions}(b) are additive
-shares of route-mean whole-body SAR. Direct transport is the largest body
-contribution at all 67 nonshadowed points. Exact order-1 specular transport is
-never the largest. Mexico City points 0, 1, and 3 and Tokyo Hachiko points 13,
-14, and 15 have zero direct and zero order-1 specular transport. First-diffuse
-transport is the only nonzero modeled contribution at these six points. Across
-all 73 points, the pooled component medians are 77.662\% direct, 21.391\% exact
-order-1 specular, and 0.419\% first diffuse. They do not sum to 100\% because
-each component has a separate median over the 73 route points. The small
-first-diffuse median therefore does not describe the six shadowed points.
+shares of route-mean whole-body SAR. Direct transport is the largest
+contribution at all 67 points with line of sight. Exact order-1 specular
+transport is never the largest. Mexico City points 0, 1, and 3 and Tokyo
+Hachiko points 13, 14, and 15 have zero direct and zero order-1 specular
+transport. First-diffuse transport is the only nonzero contribution at these six
+points. Across all 73 points, the pooled component medians are 77.662\% direct,
+21.391\% exact order-1 specular, and 0.419\% first diffuse. They do not sum to
+100\% because each component has a separate median over the 73 route points. The
+small first-diffuse median therefore does not describe the six fully shadowed
+points.
 
 % claim: ray_reached_evidence_coverage
 The path audit assigns each retained material interaction to an image-mapped or
-geometry-based material. Pooled over the five routes and 16 seeds,
-image-mapped surfaces account for 75.903\% of the non-direct
-body-coupled whole-body SAR contribution. The corresponding shares are
-80.643\% for exact order-1 specular transport and 13.337\% for first-diffuse
-transport. The supplementary material gives the complete split by material source.
+geometry-based surface. Pooled over the five routes and 16 seeds, image-mapped
+surfaces account for 75.903\% of the reflected SAR. The
+corresponding shares are 80.643\% for exact order-1 specular transport and
+13.337\% for first-diffuse transport. The supplementary material gives the
+complete split by material source.
