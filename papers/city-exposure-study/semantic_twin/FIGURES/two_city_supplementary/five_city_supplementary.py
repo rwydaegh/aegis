@@ -33,14 +33,10 @@ from _supplementary_common import DB, ecdf, save, setup_style
 
 import matplotlib.pyplot as plt
 
-PRODUCTION_ROOT = pathlib.Path(
-    "/home/user/aegis-exposure-body-path/papers/city-exposure-study/semantic_twin"
-)
+PRODUCTION_ROOT = pathlib.Path("/home/user/aegis-exposure-body-path/papers/city-exposure-study/semantic_twin")
 CAMPAIGN_ROOT = PRODUCTION_ROOT / "outputs" / "roofline_campaign"
 RESULT_JSON = (
-    CAMPAIGN_ROOT
-    / "current_five_city_first_material_interaction"
-    / "current_five_city_first_material_interaction.json"
+    CAMPAIGN_ROOT / "current_five_city_first_material_interaction" / "current_five_city_first_material_interaction.json"
 )
 REPLICA64 = {
     "Mexico": CAMPAIGN_ROOT / "mexico_zocalo_provider_corridor_v1_convergence64_cuda_iid",
@@ -99,9 +95,7 @@ def component_transfer(city: dict, component: str) -> np.ndarray:
 
 
 def component_body(city: dict, component: str, metric: str) -> np.ndarray:
-    return np.array(
-        [point["component_body"][component][metric] for point in city["route"]], dtype=np.float64
-    )
+    return np.array([point["component_body"][component][metric] for point in city["route"]], dtype=np.float64)
 
 
 def safe_db(values: np.ndarray, floor: float = FLOOR_DB) -> np.ndarray:
@@ -130,9 +124,7 @@ def load_shards(directory: pathlib.Path) -> tuple[np.ndarray, list[int], dict]:
     stack = np.stack(
         [np.load(directory / "checkpoint" / entry["path"])["raw_transfer"] for entry in index["committed"]]
     )
-    body = np.stack(
-        [np.load(directory / "checkpoint" / entry["path"])["body_metrics"] for entry in index["committed"]]
-    )
+    body = np.stack([np.load(directory / "checkpoint" / entry["path"])["body_metrics"] for entry in index["committed"]])
     return stack, [entry["seed"] for entry in index["committed"]], {"index": index, "body": body}
 
 
@@ -285,9 +277,7 @@ def figure_cross_city(results: dict, numbers: dict) -> None:
                 "ci95_low": float(entry["ci95_percentile"][0]),
                 "ci95_high": float(entry["ci95_percentile"][1]),
                 "ci95_width_relative_percent": float(
-                    100.0
-                    * (entry["ci95_percentile"][1] - entry["ci95_percentile"][0])
-                    / entry["estimate"]
+                    100.0 * (entry["ci95_percentile"][1] - entry["ci95_percentile"][0]) / entry["estimate"]
                 ),
             }
         quantile_axis.errorbar(
@@ -325,9 +315,7 @@ def figure_cross_city(results: dict, numbers: dict) -> None:
         columnspacing=0.8,
         fontsize=5.8,
     )
-    surplus_axis.set_title(
-        "Fixed-route ECDFs over registered standpoints, not population CDFs", fontsize=6.2, pad=4
-    )
+    surplus_axis.set_title("Fixed-route ECDFs over registered standpoints, not population CDFs", fontsize=6.2, pad=4)
     fig.subplots_adjust(hspace=0.78, top=0.895)
     save(fig, "C3_five_city_distributions")
 
@@ -361,9 +349,7 @@ def figure_convergence(results: dict, numbers: dict) -> None:
         numbers.setdefault("convergence", {})[name] = {
             "se_db_p90_by_look": {str(look): float(value) for look, value in zip(looks, p90)},
             "se_db_max_by_look": {str(look): float(value) for look, value in zip(looks, maximum)},
-            "look_to_look_p90_abs_db": {
-                str(boundary): float(value) for boundary, value in zip(boundaries, shifts)
-            },
+            "look_to_look_p90_abs_db": {str(boundary): float(value) for boundary, value in zip(boundaries, shifts)},
             "look_to_look_max_abs_db_12_to_16": float(
                 city["convergence"]["look_to_look"][-1]["total_transfer"]["maximum_abs_db"]
             ),
@@ -443,9 +429,7 @@ def figure_zero_direct(results: dict, numbers: dict) -> None:
             "zero_direct_standpoints": shadowed,
             "shadowed_wbsar_median": float(np.median(wbsar[shadowed])),
             "lit_wbsar_median": float(np.median(wbsar[lit])),
-            "shadow_deficit_db": float(
-                10.0 * np.log10(np.median(wbsar[lit]) / np.median(wbsar[shadowed]))
-            ),
+            "shadow_deficit_db": float(10.0 * np.log10(np.median(wbsar[lit]) / np.median(wbsar[shadowed]))),
             "shadowed_specular_transfer": [float(specular[point]) for point in shadowed],
             "shadowed_diffuse_transfer": [float(diffuse[point]) for point in shadowed],
             "shadowed_carried_entirely_by_first_diffuse": bool(
@@ -513,6 +497,7 @@ def figure_replica_16_vs_64(numbers: dict) -> None:
         se_axis.plot(counts, p90, "-", marker="o", color=colour, label=CITY_LABEL[name])
         reference = p90[3] * np.sqrt(16.0 / counts)
         se_axis.plot(counts, reference, ":", color=colour, alpha=0.6)
+
         # p90 can move between standpoints as n grows, so also pair each standpoint
         # with itself and report the ratio of its own standard errors.
         def point_se(count: int) -> np.ndarray:
@@ -578,9 +563,7 @@ def audit(results: dict, numbers: dict) -> None:
             "published_12_to_16_max_abs_db": published[name],
             "estimator_wall_seconds_total": float(city["timings"]["estimator_wall_seconds"]["total_seconds"]),
             "specular_seconds_total": float(city["timings"]["specular_seconds"]["total_seconds"]),
-            "stochastic_trace_seconds_total": float(
-                city["timings"]["stochastic_trace_seconds"]["total_seconds"]
-            ),
+            "stochastic_trace_seconds_total": float(city["timings"]["stochastic_trace_seconds"]["total_seconds"]),
             "body_coupling_seconds_total": float(city["timings"]["body_coupling_seconds"]["total_seconds"]),
         }
     numbers["not_retained"] = [

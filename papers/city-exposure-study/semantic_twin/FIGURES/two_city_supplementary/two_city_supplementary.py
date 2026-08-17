@@ -120,9 +120,7 @@ class Campaign:
         return sample.std(axis=0, ddof=1) / np.sqrt(look)
 
     def body(self, component: str, metric: str, look: int = 16) -> np.ndarray:
-        return self.body_metrics[
-            :look, :, COMPONENTS.index(component), BODY_METRICS.index(metric)
-        ].mean(axis=0)
+        return self.body_metrics[:look, :, COMPONENTS.index(component), BODY_METRICS.index(metric)].mean(axis=0)
 
     def body_se(self, component: str, metric: str, look: int = 16) -> np.ndarray:
         sample = self.body_metrics[:look, :, COMPONENTS.index(component), BODY_METRICS.index(metric)]
@@ -138,9 +136,7 @@ class Campaign:
         return 10.0 * np.log10(self.d_ref() / self.transfer("direct", look))
 
     def ensemble_peak_sab(self) -> np.ndarray:
-        return np.array(
-            [row["components"]["total"]["body"]["ensemble_field_peak_sab_w_m2"] for row in self.locations]
-        )
+        return np.array([row["components"]["total"]["body"]["ensemble_field_peak_sab_w_m2"] for row in self.locations])
 
 
 def load_campaign(city: str, sampler: str) -> Campaign:
@@ -271,9 +267,7 @@ def figure_route_profile(data: dict[tuple[str, str], Campaign], numbers: dict) -
             "registered_points": int(registered.sum()),
             "total_transfer_db_min": float(10.0 * np.log10(campaign.transfer("total")).min()),
             "total_transfer_db_max": float(10.0 * np.log10(campaign.transfer("total")).max()),
-            "total_transfer_db_span": float(
-                np.ptp(10.0 * np.log10(campaign.transfer("total")))
-            ),
+            "total_transfer_db_span": float(np.ptp(10.0 * np.log10(campaign.transfer("total")))),
             "diffuse_below_direct_db_median": float(
                 np.median(10.0 * np.log10(campaign.transfer("direct") / campaign.transfer("diffuse")))
             ),
@@ -370,17 +364,34 @@ def figure_convergence(data: dict[tuple[str, str], Campaign], numbers: dict) -> 
                 p90s.append(np.percentile(errors, 90))
             for previous, current in zip(LOOKS[:-1], LOOKS[1:]):
                 shift = np.abs(
-                    10.0
-                    * np.log10(campaign.transfer("total", current) / campaign.transfer("total", previous))
+                    10.0 * np.log10(campaign.transfer("total", current) / campaign.transfer("total", previous))
                 )
                 movement.append(np.percentile(shift, 90))
             marker = "o" if sampler == "iid" else "^"
-            left.plot(LOOKS, p90s, SAMPLER_STYLE[sampler], marker=marker, color=CITY_COLOUR[city],
-                      label=f"p90, {SAMPLER_LABEL[sampler]}")
-            left.plot(LOOKS, medians, SAMPLER_STYLE[sampler], marker=marker, color="#7f8c8d",
-                      label=f"median, {SAMPLER_LABEL[sampler]}")
-            right.plot(LOOKS[1:], movement, SAMPLER_STYLE[sampler], marker=marker, color=CITY_COLOUR[city],
-                       label=SAMPLER_LABEL[sampler])
+            left.plot(
+                LOOKS,
+                p90s,
+                SAMPLER_STYLE[sampler],
+                marker=marker,
+                color=CITY_COLOUR[city],
+                label=f"p90, {SAMPLER_LABEL[sampler]}",
+            )
+            left.plot(
+                LOOKS,
+                medians,
+                SAMPLER_STYLE[sampler],
+                marker=marker,
+                color="#7f8c8d",
+                label=f"median, {SAMPLER_LABEL[sampler]}",
+            )
+            right.plot(
+                LOOKS[1:],
+                movement,
+                SAMPLER_STYLE[sampler],
+                marker=marker,
+                color=CITY_COLOUR[city],
+                label=SAMPLER_LABEL[sampler],
+            )
             numbers.setdefault("convergence", {}).setdefault(city, {})[sampler] = {
                 "se_db_median_by_look": {str(look): float(value) for look, value in zip(LOOKS, medians)},
                 "se_db_p90_by_look": {str(look): float(value) for look, value in zip(LOOKS, p90s)},
@@ -429,9 +440,7 @@ def figure_paired_deltas(data: dict[tuple[str, str], Campaign], numbers: dict) -
                 "median_signed_db": float(np.median(delta)),
                 "argmax_standpoint": int(np.abs(delta).argmax()),
             }
-        direct_delta = np.abs(
-            10.0 * np.log10(iid.transfer("direct") / fibonacci.transfer("direct"))
-        ).max()
+        direct_delta = np.abs(10.0 * np.log10(iid.transfer("direct") / fibonacci.transfer("direct"))).max()
         numbers.setdefault("paired_deltas", {}).setdefault(city, {})["direct transfer"] = {
             "max_abs_db": float(direct_delta),
             "note": "direct transfer is a deterministic exact atom sum, identical in both samplers",
@@ -454,7 +463,11 @@ def figure_fixed_route_cdfs(data: dict[tuple[str, str], Campaign], numbers: dict
     panels = (
         ("multipath surplus [dB]", lambda c: c.surplus_db(), None),
         (r"normalised wbSAR [m$^2$ kg$^{-1}$]", lambda c: c.body("total", "sar_wb_w_kg"), "log"),
-        (r"peak $S_{ab}$ / body-mean $S_{ab}$", lambda c: c.body("total", "peak_sab_w_m2") / c.body("total", "mean_sab_w_m2"), None),
+        (
+            r"peak $S_{ab}$ / body-mean $S_{ab}$",
+            lambda c: c.body("total", "peak_sab_w_m2") / c.body("total", "mean_sab_w_m2"),
+            None,
+        ),
     )
     fig, axes = plt.subplots(3, 1, figsize=(3.5, 5.0))
     for ax, (label, getter, scale) in zip(axes, panels):
@@ -552,9 +565,7 @@ def figure_body_endpoints(data: dict[tuple[str, str], Campaign], numbers: dict) 
             "body_minus_transfer_surplus_db_median": float(np.median(body_surplus - surplus)),
             "body_minus_transfer_surplus_db_max_abs": float(np.abs(body_surplus - surplus).max()),
             "sar_over_mean_sab": _constant(campaign.body("total", "sar_wb_w_kg") / mean_sab),
-            "absorbed_power_over_mean_sab": _constant(
-                campaign.body("total", "absorbed_power_w") / mean_sab
-            ),
+            "absorbed_power_over_mean_sab": _constant(campaign.body("total", "absorbed_power_w") / mean_sab),
             "arriving_over_total_transfer": _constant(arriving / campaign.transfer("total")),
         }
     for city, _ in CITIES:
@@ -629,13 +640,9 @@ def audit_numbers(data: dict[tuple[str, str], Campaign], numbers: dict) -> None:
             "recomputed_median_wbsar": float(np.median(campaign.body("total", "sar_wb_w_kg"))),
             "published_median_wbsar": published[city]["wbsar"],
             "component_sum_max_relative_error": float(
-                np.abs(
-                    campaign.raw_transfer[:, :, :3].sum(axis=2) / campaign.raw_transfer[:, :, 3] - 1.0
-                ).max()
+                np.abs(campaign.raw_transfer[:, :, :3].sum(axis=2) / campaign.raw_transfer[:, :, 3] - 1.0).max()
             ),
-            "direct_transfer_seed_spread_max": float(
-                np.ptp(campaign.raw_transfer[:, :, 0], axis=0).max()
-            ),
+            "direct_transfer_seed_spread_max": float(np.ptp(campaign.raw_transfer[:, :, 0], axis=0).max()),
             "specular_atom_count_median": float(
                 np.median(campaign.field_meta[:, :, FIELD_META.index("specular_atom_count")].mean(axis=0))
             ),
@@ -643,9 +650,7 @@ def audit_numbers(data: dict[tuple[str, str], Campaign], numbers: dict) -> None:
                 campaign.field_meta[:, :, FIELD_META.index("specular_atom_count")].mean(axis=0).min()
             ),
             "nonzero_diffuse_cells_median": float(
-                np.median(
-                    campaign.field_meta[:, :, FIELD_META.index("nonzero_diffuse_cell_count")].mean(axis=0)
-                )
+                np.median(campaign.field_meta[:, :, FIELD_META.index("nonzero_diffuse_cell_count")].mean(axis=0))
             ),
             "estimator_wall_seconds_per_replica_total": float(
                 campaign.timings[:, :, TIMING_FIELDS.index("estimator_wall_seconds")].sum(axis=1).mean()
@@ -661,11 +666,7 @@ def audit_numbers(data: dict[tuple[str, str], Campaign], numbers: dict) -> None:
 
 def main() -> None:
     setup_style()
-    data = {
-        (city, sampler): load_campaign(city, sampler)
-        for city, _ in CITIES
-        for sampler in SAMPLERS
-    }
+    data = {(city, sampler): load_campaign(city, sampler) for city, _ in CITIES for sampler in SAMPLERS}
     numbers: dict = {}
     figure_route_profile(data, numbers)
     figure_route_budget(data, numbers)

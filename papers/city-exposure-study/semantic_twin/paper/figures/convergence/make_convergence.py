@@ -35,8 +35,13 @@ INPUT = (
 EXPECTED_INPUT_SHA256 = "d530a056bfa7be9cf1966a7169cea58b0fcae48dc9cab89ab62ae4577aa765bd"
 EXPECTED_SCHEMA = "roofline_multicity_results_v1"
 EXPECTED_CITIES = ("Korenmarkt", "Prague", "Madrid", "Mexico", "Tokyo")
-CITY_DISPLAY = {"Korenmarkt": "Ghent", "Prague": "Prague", "Madrid": "Madrid",
-                "Mexico": "Mexico City", "Tokyo": "Tokyo Hachiko"}
+CITY_DISPLAY = {
+    "Korenmarkt": "Ghent",
+    "Prague": "Prague",
+    "Madrid": "Madrid",
+    "Mexico": "Mexico City",
+    "Tokyo": "Tokyo Hachiko",
+}
 EXPECTED_SEEDS = tuple(range(7, 23))
 EXPECTED_LOOKS = (4, 8, 12, 16)
 EXPECTED_TRANSITIONS = ((4, 8), (8, 12), (12, 16))
