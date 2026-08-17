@@ -23,6 +23,7 @@
 
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
+\usepackage{newtxtext}
 \usepackage{bm}
 \usepackage{booktabs}
 \usepackage{graphicx}

@@ -117,12 +117,12 @@
   ],
   "outputs": {
     "configuration.pdf": {
-      "sha256": "e887cfe1ee0a918dceb68c703e259db501fcf7e3aee948b0881bdd783330d73e",
-      "bytes": 2354486
+      "sha256": "116a0352d280ba70e819f4a37dfc33b9e84b939289808e422db41acdec2af41e",
+      "bytes": 2547422
     },
     "configuration.png": {
-      "sha256": "7bd044e9c1c887888c397c9b917fe519f71e5c38c73b9ad9b893cce2f0f506d5",
-      "bytes": 2549508
+      "sha256": "9eda2c59f19e699513ae50295480b830bbbdb4a7b02b844cd2e19bf38d760850",
+      "bytes": 2816483
     }
   }
 }

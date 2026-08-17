@@ -53,7 +53,7 @@
 
 %% Font definitions
 
-\def\timesfont{times}%
+\def\timesfont{ptm}%
 
 % FormataOTF substituted by Helvetica (phv) - proprietary fonts not installed
 \DeclareFontFamily{T1}{formata}{}

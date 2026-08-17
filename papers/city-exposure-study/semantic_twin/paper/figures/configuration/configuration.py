@@ -244,8 +244,8 @@ def _plot_panorama_panel(ax: plt.Axes, path: Path, label: str) -> None:
 def _plot_curtain_panel(ax: plt.Axes) -> None:
     image = plt.imread(CURTAIN_PATH)
     assert image.shape[:2] == (832, 1664)
+    image = image[:580, :, :]
     ax.imshow(image, interpolation="lanczos")
-    ax.set_ylim(580, 0)
     cuts = np.asarray([0, 330, 550, 815, 1100, 1385, 1664], dtype=np.float64) / 1664.0
     headers = (
         ("Street image", "source photograph"),
@@ -420,7 +420,7 @@ def _plot_configuration(
     grid = fig.add_gridspec(
         2,
         12,
-        height_ratios=(1.95, 1.15),
+        height_ratios=(1.36, 1.15),
         left=0.065,
         right=0.985,
         bottom=0.085,
