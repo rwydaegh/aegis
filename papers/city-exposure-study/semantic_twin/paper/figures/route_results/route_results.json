@@ -32,7 +32,7 @@
   },
   "cities": {
     "Korenmarkt": {
-      "label": "Korenmarkt",
+      "label": "Ghent",
       "normalized_wbsar_quantiles_m2_per_kg": {
         "maximum": 0.0689618554941825,
         "median": 0.06204518535491678,
@@ -162,23 +162,23 @@
   },
   "render": {
     "deterministic_second_render_match": true,
-    "matplotlib_version": "3.11.1",
+    "matplotlib_version": "3.9.4",
     "pdf": {
-      "bytes": 35516,
+      "bytes": 32175,
       "height_in": 2.95,
       "path": "route_results.pdf",
-      "sha256": "9791bb805f26eccbb821bb64b741ff78d83f27ab2f335ebb837f804537614305",
+      "sha256": "c0334bc3e572d22949a50d4e6fb0253940aa5393c9f42504e532e51a0e9d5179",
       "width_in": 7.16
     },
     "png": {
-      "bytes": 252520,
+      "bytes": 221542,
       "dpi": 400,
       "height_px": 1180,
       "path": "route_results.png",
-      "sha256": "97283e9f6746955f751075334ec492e8519ec65958528404b259e0015050f658",
+      "sha256": "d3f34c4dea66332084ab0db419f14e386655383fc8d86dc28be4decee141119f",
       "width_px": 2864
     },
-    "scienceplots_version": "2.2.2",
+    "scienceplots_version": "2.2.1",
     "style": [
       "science",
       "ieee",

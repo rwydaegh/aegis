@@ -6,7 +6,7 @@
   "route_quantiles": [
     {
       "source_key": "Korenmarkt",
-      "label": "Korenmarkt",
+      "label": "Ghent",
       "color": "#000000",
       "standpoints": 10,
       "q10": 0.0578327438321708,
@@ -61,10 +61,10 @@
       299.9994
     ],
     "png_mode": "P",
-    "png_bytes": 14437,
-    "pdf_bytes": 35279,
-    "png_sha256": "3b7a5efffcd5c535add647524db1b7b21f9fd781a80aef197557b0bc13ec8ac8",
-    "pdf_sha256": "56fb9ac2da08521ea3302be6dbe4941a441c69b98ce7dbecb4e4a717ec21aa0a"
+    "png_bytes": 13430,
+    "pdf_bytes": 33006,
+    "png_sha256": "5b39712b26df4f4eeb1510f5352c1d91d6fc4d9fa8f9d682d7f5f34b88ff1bdc",
+    "pdf_sha256": "1dd11d2b84235a875c46966cf37df383a9753c37f0d8dfb444fe03644eeccea3"
   },
   "checks": {
     "exact_660_by_295_px": true,

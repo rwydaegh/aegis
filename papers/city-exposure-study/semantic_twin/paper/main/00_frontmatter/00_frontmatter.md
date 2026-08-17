@@ -12,7 +12,7 @@
 \vol{16}
 \year{2026}
 
-\graphicspath{{../figures/}{figures/}}
+\graphicspath{{../}{./}}
 
 \newcommand{\rhoA}{\rho_{\mathrm{A}}}
 \newcommand{\Peirp}{P_{\mathrm{EIRP}}}

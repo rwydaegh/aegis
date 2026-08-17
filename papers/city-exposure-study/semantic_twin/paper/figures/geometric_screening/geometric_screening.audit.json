@@ -15,12 +15,12 @@
   },
   "outputs": {
     "geometric_screening.pdf": {
-      "bytes": 99246,
-      "sha256": "ff00eb1b5d2ad0f93de7e9254616256ae69b2538e05a3101a8685271292a53e1"
+      "bytes": 387239,
+      "sha256": "22c231251bac29bc26c869d0c5d6b18929ffb242c724bf3d066d6d3a076a468a"
     },
     "geometric_screening.png": {
-      "bytes": 130093,
-      "sha256": "3a3e24fd1d4bb1dcd5d71129389c0d84f2f5f498ee5e7ffbc3dd29d2ba9c642b"
+      "bytes": 70254,
+      "sha256": "ba81f4350508aa2c2aebf2c60d919239d6b508fd0f655afc928565ef6ae8d321"
     }
   },
   "quantile_span_factors": {

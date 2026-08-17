@@ -190,13 +190,13 @@
   },
   "outputs": {
     "pdf": {
-      "bytes": 167656,
+      "bytes": 622065,
       "path": "convergence.pdf"
     },
     "png": {
-      "bytes": 161200,
+      "bytes": 161826,
       "path": "convergence.png",
-      "sha256": "1779a9021e82e8f8db74e9bf54522e846a64f7435951974d770a02fc95496fae"
+      "sha256": "e615195fde3c47886888a59e6bf5b973bf7c697305b0f1267e70fa55b257b477"
     }
   },
   "schema_version": "five_city_convergence_figure_audit_v2",
