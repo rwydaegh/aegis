@@ -32,8 +32,8 @@
 % NEXT: supplementary material.
 % claim: six_shadowed_standpoints
 % claim: pooled_median_wbsar_component_shares
-The component shares in Fig.~\ref{fig:route-distributions}(b) are additive
-shares of route-mean whole-body SAR. Direct transport is the largest
+The additive component shares of route-mean whole-body SAR are shown in the
+supplementary material. Direct transport is the largest
 contribution at all 67 points with line of sight. Exact order-1 specular
 transport is never the largest. Mexico City points 0, 1, and 3 and Tokyo
 Hachiko points 13, 14, and 15 have zero direct and zero order-1 specular

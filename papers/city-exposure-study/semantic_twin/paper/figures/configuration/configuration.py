@@ -245,6 +245,7 @@ def _plot_curtain_panel(ax: plt.Axes) -> None:
     image = plt.imread(CURTAIN_PATH)
     assert image.shape[:2] == (832, 1664)
     ax.imshow(image, interpolation="lanczos")
+    ax.set_ylim(580, 0)
     cuts = np.asarray([0, 330, 550, 815, 1100, 1385, 1664], dtype=np.float64) / 1664.0
     headers = (
         ("Street image", "source photograph"),

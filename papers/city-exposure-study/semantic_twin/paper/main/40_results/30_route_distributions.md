@@ -11,12 +11,12 @@
 % NEXT: \label{fig:route-distributions}
 % NEXT: \end{figure*}
 % claim: route_median_contrast_factor
-Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions
-and route-mean component shares. Table~\ref{tab:route-results} gives the central
+Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions.
+Table~\ref{tab:route-results} gives the central
 summaries and finite multipath surplus. Normalized whole-body SAR is reported in
 m$^2$~kg$^{-1}$ per unit $\rho_A P_{\mathrm{EIRP}}$. A physical whole-body SAR value therefore requires multiplication by the
 deployment's areal source density and EIRP.
-Panel (a) includes all 73 observation points and marks the six with zero direct
+The figure includes all 73 observation points and marks the six with zero direct
 and zero order-1 specular transfer. The largest route median is 13.34 times the
 smallest. Mexico City and Tokyo Hachiko have the widest spread along a route
 and the lowest tails.

@@ -155,29 +155,44 @@
     }
   },
   "figure_semantics": {
+    "cdf_figure": "midpoint empirical CDF of normalized whole-body SAR at every registered route standpoint",
+    "cdf_shadow_marker": "hollow downward triangle at each of six included points where direct and exact order-1 specular components are both zero",
     "city_comparison_limit": "routes are fixed case studies; the figure does not estimate city or population distributions",
-    "panel_a": "midpoint empirical CDF of normalized whole-body SAR at every registered route standpoint",
-    "panel_a_shadow_marker": "hollow downward triangle at each of six included points where direct and exact order-1 specular components are both zero",
-    "panel_b": "additive component sum divided by total whole-body SAR sum over each fixed route"
+    "component_figure": "additive component sum divided by total whole-body SAR sum over each fixed route"
   },
   "render": {
-    "deterministic_second_render_match": true,
-    "matplotlib_version": "3.9.4",
-    "pdf": {
-      "bytes": 32175,
+    "cdf_pdf": {
+      "bytes": 27677,
       "height_in": 2.95,
       "path": "route_results.pdf",
-      "sha256": "c0334bc3e572d22949a50d4e6fb0253940aa5393c9f42504e532e51a0e9d5179",
-      "width_in": 7.16
+      "sha256": "b85e1ef08efa5c27ede8a6bb241497d3d898371594abaddebd93064abd0e5fc2",
+      "width_in": 3.5
     },
-    "png": {
-      "bytes": 221542,
+    "cdf_png": {
+      "bytes": 132298,
       "dpi": 400,
       "height_px": 1180,
       "path": "route_results.png",
-      "sha256": "d3f34c4dea66332084ab0db419f14e386655383fc8d86dc28be4decee141119f",
-      "width_px": 2864
+      "sha256": "5cfa6032bdf7e5209a615676e39b469a1aceec5f4f3639cc52886a5ca8054cec",
+      "width_px": 1400
     },
+    "component_pdf": {
+      "bytes": 17611,
+      "height_in": 2.95,
+      "path": "route_components.pdf",
+      "sha256": "a99e280e8166812865aa1a0114a1e424361f5fc7558c288a573e45c2e4701012",
+      "width_in": 3.5
+    },
+    "component_png": {
+      "bytes": 86922,
+      "dpi": 400,
+      "height_px": 1180,
+      "path": "route_components.png",
+      "sha256": "adc587a6d2ff66b5dbcd41c13dce31ab65ff7b2c755bb43a71900cc58593308d",
+      "width_px": 1400
+    },
+    "deterministic_second_render_match": true,
+    "matplotlib_version": "3.9.4",
     "scienceplots_version": "2.2.1",
     "style": [
       "science",

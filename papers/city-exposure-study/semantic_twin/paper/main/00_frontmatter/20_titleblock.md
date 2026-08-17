@@ -46,7 +46,7 @@
 \history{}
 \doi{}
 
-\title{Image-Informed Urban Propagation and Route-Level Body Exposure at 15 GHz}
+\title{Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities at 15 GHz}
 
 \author{\uppercase{Robin Wydaeghe}\authorrefmark{1},
 \uppercase{G\"unter Vermeeren}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
@@ -57,8 +57,8 @@ and~\uppercase{Wout Joseph}\authorrefmark{1}, \IEEEmembership{Senior Member, IEE
 9052 Ghent, Belgium (e-mail: robin.wydaeghe@ugent.be)}
 
 \markboth
-{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure}
-{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure}
+{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
+{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
 
 \corresp{Corresponding author: Robin Wydaeghe
 (e-mail: robin.wydaeghe@ugent.be).}

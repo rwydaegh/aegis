@@ -36,6 +36,8 @@ INPUT_JSON = INPUT_DIRECTORY / "current_five_city_first_material_interaction.jso
 INPUT_MANIFEST = INPUT_DIRECTORY / "current_five_city_first_material_interaction_manifest.json"
 OUTPUT_PDF = HERE / "route_results.pdf"
 OUTPUT_PNG = HERE / "route_results.png"
+OUTPUT_COMPONENTS_PDF = HERE / "route_components.pdf"
+OUTPUT_COMPONENTS_PNG = HERE / "route_components.png"
 OUTPUT_AUDIT = HERE / "route_results.json"
 
 RESULT_SCHEMA = "roofline_multicity_results_v1"
@@ -261,12 +263,7 @@ def _configure_style() -> None:
 
 def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
     _configure_style()
-    figure, (cdf_axis, share_axis) = plt.subplots(
-        1,
-        2,
-        figsize=(7.16, 2.95),
-        gridspec_kw={"width_ratios": (1.18, 1.0)},
-    )
+    figure, cdf_axis = plt.subplots(figsize=(3.5, 2.95))
 
     for city_name in CITY_ORDER:
         city = cities[city_name]
@@ -336,6 +333,32 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
         columnspacing=0.75,
         labelspacing=0.25,
     )
+    cdf_axis.spines["top"].set_visible(False)
+    cdf_axis.spines["right"].set_visible(False)
+
+    figure.subplots_adjust(left=0.145, right=0.98, bottom=0.21, top=0.735)
+    metadata = {
+        "Title": "Fixed-route whole-body exposure CDFs",
+        "Author": "AEGIS city exposure study",
+        "Subject": "Authenticated five-city first-material-interaction results",
+        "Keywords": "whole-body SAR, fixed routes, CDF",
+        "Creator": "make_route_results.py",
+        "Producer": "Matplotlib",
+        "CreationDate": None,
+        "ModDate": None,
+    }
+    figure.savefig(pdf_path, metadata=metadata)
+    figure.savefig(
+        png_path,
+        dpi=400,
+        metadata={"Software": "make_route_results.py", "Title": metadata["Title"]},
+    )
+    plt.close(figure)
+
+
+def _draw_components(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
+    _configure_style()
+    figure, share_axis = plt.subplots(figsize=(3.5, 2.95))
 
     positions = np.arange(len(CITY_ORDER), dtype=np.float64)
     bottom = np.zeros(len(CITY_ORDER), dtype=np.float64)
@@ -387,17 +410,15 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
         handlelength=1.45,
         handletextpad=0.35,
     )
-    for label, axis in zip(("(a)", "(b)"), (cdf_axis, share_axis), strict=True):
-        axis.text(0.018, 0.975, label, transform=axis.transAxes, ha="left", va="top")
-        axis.spines["top"].set_visible(False)
-        axis.spines["right"].set_visible(False)
+    share_axis.spines["top"].set_visible(False)
+    share_axis.spines["right"].set_visible(False)
 
-    figure.subplots_adjust(left=0.072, right=0.995, bottom=0.21, top=0.735, wspace=0.29)
+    figure.subplots_adjust(left=0.145, right=0.98, bottom=0.21, top=0.735)
     metadata = {
-        "Title": "Fixed-route whole-body exposure and component shares",
+        "Title": "Route-mean component shares of whole-body SAR",
         "Author": "AEGIS city exposure study",
         "Subject": "Authenticated five-city first-material-interaction results",
-        "Keywords": "whole-body SAR, fixed routes, direct, specular, diffuse",
+        "Keywords": "whole-body SAR, component shares, direct, specular, diffuse",
         "Creator": "make_route_results.py",
         "Producer": "Matplotlib",
         "CreationDate": None,
@@ -412,21 +433,29 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
     plt.close(figure)
 
 
-def _render_deterministically(cities: dict[str, Any]) -> dict[str, Any]:
+def _render_deterministically(cities: dict[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
     _draw(cities, OUTPUT_PDF, OUTPUT_PNG)
-    first = {"pdf": _sha256(OUTPUT_PDF), "png": _sha256(OUTPUT_PNG)}
+    first_cdf = {"pdf": _sha256(OUTPUT_PDF), "png": _sha256(OUTPUT_PNG)}
+    _draw_components(cities, OUTPUT_COMPONENTS_PDF, OUTPUT_COMPONENTS_PNG)
+    first_comp = {"pdf": _sha256(OUTPUT_COMPONENTS_PDF), "png": _sha256(OUTPUT_COMPONENTS_PNG)}
     with tempfile.TemporaryDirectory(prefix="route-results-") as temporary_directory:
         temporary = Path(temporary_directory)
-        second_pdf = temporary / OUTPUT_PDF.name
-        second_png = temporary / OUTPUT_PNG.name
-        _draw(cities, second_pdf, second_png)
-        second = {"pdf": _sha256(second_pdf), "png": _sha256(second_png)}
-    assert first == second, f"nondeterministic rendering: {first} != {second}"
-    return first
+        _draw(cities, temporary / OUTPUT_PDF.name, temporary / OUTPUT_PNG.name)
+        second_cdf = {"pdf": _sha256(temporary / OUTPUT_PDF.name), "png": _sha256(temporary / OUTPUT_PNG.name)}
+        _draw_components(cities, temporary / OUTPUT_COMPONENTS_PDF.name, temporary / OUTPUT_COMPONENTS_PNG.name)
+        second_comp = {
+            "pdf": _sha256(temporary / OUTPUT_COMPONENTS_PDF.name),
+            "png": _sha256(temporary / OUTPUT_COMPONENTS_PNG.name),
+        }
+    assert first_cdf == second_cdf, f"nondeterministic CDF rendering: {first_cdf} != {second_cdf}"
+    assert first_comp == second_comp, f"nondeterministic component rendering: {first_comp} != {second_comp}"
+    return first_cdf, first_comp
 
 
-def _write_audit(cities: dict[str, Any], validation: dict[str, Any], hashes: dict[str, str]) -> None:
-    pdf_width_in = 7.16
+def _write_audit(
+    cities: dict[str, Any], validation: dict[str, Any], cdf_hashes: dict[str, str], comp_hashes: dict[str, str]
+) -> None:
+    pdf_width_in = 3.5
     png = plt.imread(OUTPUT_PNG)
     audit_cities = {}
     for city_name in CITY_ORDER:
@@ -464,12 +493,12 @@ def _write_audit(cities: dict[str, Any], validation: dict[str, Any], hashes: dic
         },
         "validation": validation,
         "figure_semantics": {
-            "panel_a": ("midpoint empirical CDF of normalized whole-body SAR at every registered route standpoint"),
-            "panel_a_shadow_marker": (
+            "cdf_figure": "midpoint empirical CDF of normalized whole-body SAR at every registered route standpoint",
+            "cdf_shadow_marker": (
                 "hollow downward triangle at each of six included points where direct and exact order-1 "
                 "specular components are both zero"
             ),
-            "panel_b": ("additive component sum divided by total whole-body SAR sum over each fixed route"),
+            "component_figure": "additive component sum divided by total whole-body SAR sum over each fixed route",
             "city_comparison_limit": (
                 "routes are fixed case studies; the figure does not estimate city or population distributions"
             ),
@@ -480,19 +509,34 @@ def _write_audit(cities: dict[str, Any], validation: dict[str, Any], hashes: dic
             "matplotlib_version": mpl.__version__,
             "style": ["science", "ieee", "no-latex"],
             "deterministic_second_render_match": True,
-            "pdf": {
+            "cdf_pdf": {
                 "path": OUTPUT_PDF.name,
-                "sha256": hashes["pdf"],
+                "sha256": cdf_hashes["pdf"],
                 "bytes": OUTPUT_PDF.stat().st_size,
                 "width_in": pdf_width_in,
                 "height_in": 2.95,
             },
-            "png": {
+            "cdf_png": {
                 "path": OUTPUT_PNG.name,
-                "sha256": hashes["png"],
+                "sha256": cdf_hashes["png"],
                 "bytes": OUTPUT_PNG.stat().st_size,
                 "width_px": int(png.shape[1]),
                 "height_px": int(png.shape[0]),
+                "dpi": 400,
+            },
+            "component_pdf": {
+                "path": OUTPUT_COMPONENTS_PDF.name,
+                "sha256": comp_hashes["pdf"],
+                "bytes": OUTPUT_COMPONENTS_PDF.stat().st_size,
+                "width_in": pdf_width_in,
+                "height_in": 2.95,
+            },
+            "component_png": {
+                "path": OUTPUT_COMPONENTS_PNG.name,
+                "sha256": comp_hashes["png"],
+                "bytes": OUTPUT_COMPONENTS_PNG.stat().st_size,
+                "width_px": int(plt.imread(OUTPUT_COMPONENTS_PNG).shape[1]),
+                "height_px": int(plt.imread(OUTPUT_COMPONENTS_PNG).shape[0]),
                 "dpi": 400,
             },
         },
@@ -502,10 +546,10 @@ def _write_audit(cities: dict[str, Any], validation: dict[str, Any], hashes: dic
 
 def main() -> int:
     cities, validation = _load_and_validate()
-    hashes = _render_deterministically(cities)
-    _write_audit(cities, validation, hashes)
+    cdf_hashes, comp_hashes = _render_deterministically(cities)
+    _write_audit(cities, validation, cdf_hashes, comp_hashes)
     print(
-        f"Wrote {OUTPUT_PDF.name}, {OUTPUT_PNG.name}, and {OUTPUT_AUDIT.name} "
+        f"Wrote {OUTPUT_PDF.name}, {OUTPUT_COMPONENTS_PDF.name}, and {OUTPUT_AUDIT.name} "
         f"from {validation['total_standpoints']} authenticated route points."
     )
     print(

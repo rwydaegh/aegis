@@ -11,7 +11,7 @@
 \vol{16}
 \year{2026}
 
-\graphicspath{{../figures/}{figures/}}
+\graphicspath{{../}{./}}
 
 \newcommand{\rhoA}{\rho_{\mathrm{A}}}
 \newcommand{\Peirp}{P_{\mathrm{EIRP}}}
@@ -22,7 +22,7 @@
 \history{}
 \doi{}
 
-\title{Image-Informed Urban Propagation and Route-Level Body Exposure at 15 GHz}
+\title{Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities at 15 GHz}
 
 \author{\uppercase{Robin Wydaeghe}\authorrefmark{1},
 \uppercase{G\"unter Vermeeren}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
@@ -33,8 +33,8 @@ and~\uppercase{Wout Joseph}\authorrefmark{1}, \IEEEmembership{Senior Member, IEE
 9052 Ghent, Belgium (e-mail: robin.wydaeghe@ugent.be)}
 
 \markboth
-{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure}
-{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure}
+{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
+{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
 
 \corresp{Corresponding author: Robin Wydaeghe
 (e-mail: robin.wydaeghe@ugent.be).}
@@ -420,22 +420,22 @@ city.
 \end{figure*}
 
 % claim: route_median_contrast_factor
-Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions
-and route-mean component shares. Table~\ref{tab:route-results} gives the central
+Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions.
+Table~\ref{tab:route-results} gives the central
 summaries and finite multipath surplus. Normalized whole-body SAR is reported in
 m$^2$~kg$^{-1}$ per unit $\rho_A P_{\mathrm{EIRP}}$. A physical whole-body SAR value therefore requires multiplication by the
 deployment's areal source density and EIRP.
-Panel (a) includes all 73 observation points and marks the six with zero direct
+The figure includes all 73 observation points and marks the six with zero direct
 and zero order-1 specular transfer. The largest route median is 13.34 times the
 smallest. Mexico City and Tokyo Hachiko have the widest spread along a route
 and the lowest tails.
 
-\begin{figure*}[!t]
+\begin{figure}[!t]
 \centering
-\includegraphics[width=\textwidth]{figures/route_results/route_results.pdf}
-\caption{Normalized whole-body SAR on the five fixed routes. (a) Empirical CDFs of all 73 observation points. Hollow triangles mark the six points with zero direct and zero order-1 specular transfer. (b) Additive component shares of route-mean whole-body SAR. These routes are fixed case studies, not city or population samples.}
+\includegraphics[width=\columnwidth]{figures/route_results/route_results.pdf}
+\caption{Normalized whole-body SAR on the five fixed routes. Empirical CDFs include all 73 route points. Hollow triangles mark the six points with zero direct and zero order-1 specular transfer. The routes are fixed case studies, not city or population samples.}
 \label{fig:route-distributions}
-\end{figure*}
+\end{figure}
 
 % claim: five_city_wbsar_route_quantiles
 \begin{table*}[!t]
@@ -457,8 +457,8 @@ Tokyo Hachiko & $3.66\times10^{-5}$ & 0.009674 & 0.025200 & 0.828 & 3 & 0.019732
 
 % claim: six_shadowed_standpoints
 % claim: pooled_median_wbsar_component_shares
-The component shares in Fig.~\ref{fig:route-distributions}(b) are additive
-shares of route-mean whole-body SAR. Direct transport is the largest
+The additive component shares of route-mean whole-body SAR are shown in the
+supplementary material. Direct transport is the largest
 contribution at all 67 points with line of sight. Exact order-1 specular
 transport is never the largest. Mexico City points 0, 1, and 3 and Tokyo
 Hachiko points 13, 14, and 15 have zero direct and zero order-1 specular
