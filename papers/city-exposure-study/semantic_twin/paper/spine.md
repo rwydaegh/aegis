@@ -72,16 +72,30 @@ location-median whole-body SAR.
 
 ### III. Results
 
-1. A reproducibility paragraph states frequency, mesh, body, rays, cells,
-   replicas, seeds, and hardware timing boundary.
-2. Figure 3 reports the controlled first-diffuse validation and its scope.
-3. Figure 4 reports route wbSAR and finite surplus distributions.
-4. Table II gives route quantiles and the six zero-direct points.
-5. Figure 4(b) shows direct, order-1 specular, and first-diffuse component shares.
-6. Table II and the supplementary convergence figure report 4, 8, 12, and
-   16-replica convergence and preserve the less stable Mexico City and Tokyo
-   lower tails.
-7. The Madrid and Mexico City paired control bounds the effect of replacing the
+1. A preamble paragraph states frequency, mesh, body, rays, cells, replicas,
+   seeds, and hardware timing boundary.
+
+#### A. Validation
+
+2. Hash verification, component closure, and GPU/CPU agreement confirm the
+   stored calculation.
+3. Figure 3 reports the controlled first-diffuse validation and its scope.
+
+#### B. Route Exposure
+
+4. Figure 4 reports route whole-body SAR distributions.
+5. Table II gives route quantiles and the six zero-direct points.
+6. Component shares show direct, order-1 specular, and first-diffuse splits
+   and the path audit gives image-coverage fractions.
+
+#### C. Replica Convergence
+
+7. The nested 12-to-16 and 48-to-64 replica comparisons separate the stable
+   route medians from the less stable Mexico City and Tokyo lower tails.
+
+#### D. Material Sensitivity
+
+8. The Madrid and Mexico City paired control bounds the effect of replacing the
    panorama atlas with the geometric fallback.
 
 ### IV. Discussion
