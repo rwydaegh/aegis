@@ -5,5 +5,8 @@
 % NEXT: from the route gives the possible transmitter locations. Fixed points along the
 % NEXT: pedestrian route give the receiver locations, and the anatomical phantom faces
 % NEXT: along the direction of travel at each point.
-\section{Configuration and Surface Mapping}
+\section{Method}
+\label{sec:method}
+
+\subsection{Study Configuration}
 \label{sec:configuration}

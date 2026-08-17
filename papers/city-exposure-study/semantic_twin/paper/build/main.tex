@@ -2,6 +2,7 @@
 
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
+\usepackage{newtxtext}
 \usepackage{bm}
 \usepackage{booktabs}
 \usepackage{graphicx}
@@ -44,25 +45,29 @@ Street-level radiofrequency exposure varies along a pedestrian route because
 buildings change the direct and reflected fields, surface materials affect how
 much power returns to the street, and the human body absorbs differently
 depending on the direction of arrival. This study projects 360-degree street
-images onto a photogrammetric city mesh to identify surface materials along five
+images onto a photogrammetric city mesh to identify surface materials along
 pedestrian routes at 15~GHz. Transmitters are placed along the visible
 roofline in proportion to its physical length. All results are normalized per
 unit product of areal source density and effective isotropic radiated power
 (EIRP). The transport model treats direct
 paths and one specular reflection exactly, estimates one diffuse reflection, and
 stops. The arriving fields and their directions are then applied to a
-56,024-element Duke body model. The five routes contain 73 fixed observation
-points, each calculated with 16 independent replicas of 200,000 primary rays
-and 4,096 angular output cells. In a controlled test scene, the adjoint estimate and deterministic quadrature
-differ by at most 0.0616~dB for the reflected term. An independent forward
-tracer gives a maximum difference of 0.0344~dB. Route-median
-whole-body specific absorption rate differs by a factor of 13.34 across the
-five routes. Direct paths carry the largest share at all 67 points with line of
-sight, while the diffuse reflection is the only nonzero modeled contribution at
-six fully shadowed points. The maximum change from 12 to 16 replicas is
-0.0436~dB, though lower-tail estimates in Mexico City and Tokyo are less
-stable. These results describe five selected routes under a fixed model and do
-not estimate city-wide or deployed-network exposure.
+56,024-element Duke body model. A geometric fixed-grid diagnostic covers ten
+urban locations in Europe, Latin America, and East Asia and finds a twofold
+span in location-median whole-body SAR. Five of these locations are then studied
+with image-derived materials along fixed pedestrian routes containing 73
+observation points, each calculated with 16 independent replicas of 200,000
+primary rays and 4,096 angular output cells. In a controlled test scene, the
+adjoint estimate and deterministic quadrature differ by at most 0.0616~dB for
+the reflected term. An independent forward tracer gives a maximum difference
+of 0.0344~dB. Route-median whole-body specific absorption rate differs by a
+factor of 13.34 across the five routes. Direct paths carry the largest share at
+all 67 points with line of sight, while the diffuse reflection is the only
+nonzero modeled contribution at six fully shadowed points. The maximum change
+from 12 to 16 replicas is 0.0436~dB, though lower-tail estimates in Mexico
+City and Tokyo are less stable. These results describe ten fixed-grid locations
+and five selected routes under a fixed model and do not estimate city-wide or
+deployed-network exposure.
 \end{abstract}
 
 \begin{keywords}
@@ -130,12 +135,16 @@ roofline transmitters are a model, not a measured deployment. To the best of the
 transport components with their arrival directions in a single route-level body
 exposure calculation.
 
-This study applies the method at 15~GHz to five selected routes containing 73
-fixed observation points. Every result is normalized per unit active-source areal
+This study applies the method at 15~GHz across ten urban locations. A geometric
+fixed-grid diagnostic first characterizes all ten locations with geometry-based
+materials and a fixed body orientation. Five of these locations are then studied
+with image-derived materials along fixed pedestrian routes containing 73
+observation points. Every result is normalized per unit active-source areal
 density and per unit effective isotropic radiated power (EIRP). The route-median
 whole-body SAR values differ by a factor of 13.34 across the five routes. These
-results describe fixed routes under one source and transport model. They do not
-estimate population exposure or deployed-network exposure.
+results describe fixed-grid locations and fixed routes under one source and
+transport model. They do not estimate population exposure or deployed-network
+exposure.
 
 This work makes the following three contributions.
 \begin{enumerate}
@@ -147,13 +156,17 @@ This work makes the following three contributions.
   specular, and diffuse power separate, with arrival directions, until the
   field is applied to the body.
 
-  \item A five-route application reports fixed-route exposure distributions,
+  \item An application across ten urban locations and five detailed pedestrian
+  routes reports geometric screening, fixed-route exposure distributions,
   controlled first-diffuse validation, replica convergence, and the retained
   transport at the six observation points where buildings block all direct and
   specular paths.
 \end{enumerate}
 
-\section{Configuration and Surface Mapping}
+\section{Method}
+\label{sec:method}
+
+\subsection{Study Configuration}
 \label{sec:configuration}
 
 Fig.~\ref{fig:configuration} shows the study configuration. A 360-degree street
@@ -228,8 +241,8 @@ $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
   \label{fig:flowchart}
 \end{figure*}
 
-\section{Fixed-Route Exposure Method}
-\label{sec:method}
+\subsection{Exposure Calculation}
+\label{sec:exposure-calc}
 
 The calculation uses a fixed route, city mesh, material map, and roofline
 transmitter model. Every route point uses 15~GHz and a crop with radius
@@ -370,7 +383,7 @@ positions $(\operatorname{rank}-0.5)/n$. Multipath surplus is computed
 only where direct transfer is positive. A route point with zero direct transfer
 remains in the whole-body SAR distribution but has no finite surplus value.
 
-\section{Validation and Results}
+\section{Results}
 \label{sec:results}
 
 % claim: current_campaign_contract
@@ -521,12 +534,13 @@ pointwise and component-level comparisons.
 \section{Discussion}
 \label{sec:discussion}
 
-The factor of 13.34 between the largest and smallest route medians shows that
-body exposure differs substantially among the five routes, even after the same
-source-density and EIRP normalization. This contrast reflects the geometry,
-visible roofline, mapped materials, and visibility conditions of each route.
-Each empirical distribution therefore describes only that fixed route and its
-observation points.
+The ten-location geometric screening shows a twofold span in location-median
+whole-body SAR across locations that differ in street width, building height,
+and roofline visibility. The factor of 13.34 between the largest and smallest
+route medians on the five detailed routes is much larger, reflecting the
+additional variation from image-derived materials, canopy, and route-specific
+visibility conditions. Each empirical distribution therefore describes only
+that fixed route and its observation points.
 
 The first-diffuse component is small at most points (0.419\% pooled median),
 but it is the only nonzero contribution at the six fully shadowed points. Its
@@ -548,29 +562,29 @@ volume. The comparison therefore measures sensitivity to both the material
 assignment and the vegetation rule together, and does not establish material
 accuracy on its own.
 
-Several limits restrict what the results can say. The study covers five
-selected routes at 15~GHz and one body model that faces along each walk.
-Results are normalized per unit areal source density and EIRP. Scaling to a
-specific deployment is valid only if its transmitter positions follow the
-assumed roofline model. The transport model stops after one diffuse event and
-omits all later interactions and higher-order specular paths. The controlled
-comparison validates the first-diffuse component in a one-reflection scene. It
-does not validate the city calculations, which also use image-derived materials
-and exact specular transport. The 16 replicas quantify estimator randomness but
-not uncertainty in image-to-mesh alignment, geometry, material labels, route
-choice, transmitter placement, body shape, or body orientation. The five-site
-computation takes less than 70~s per prepared site on the tested GPU, but image
-acquisition and material mapping take longer and do not yet have a complete
-timing record. A ten-location geometric fixed-grid diagnostic in the supplementary material
-checks coverage and orientation sensitivity over a wider set of
-configurations.
+Several limits restrict what the results can say. The geometric fixed-grid
+diagnostic covers ten locations with geometry-based materials and a fixed body
+orientation. The five detailed routes add image-derived materials and a body
+facing along the walk. Both tiers use the same frequency (15~GHz), source model,
+and transport model. Results are normalized per unit areal source density and
+EIRP. Scaling to a specific deployment is valid only if its transmitter
+positions follow the assumed roofline model. The transport model stops after one
+diffuse event and omits all later interactions and higher-order specular paths.
+The controlled comparison validates the first-diffuse component in a
+one-reflection scene. It does not validate the city calculations, which also
+use image-derived materials and exact specular transport. The 16 replicas
+quantify estimator randomness but not uncertainty in image-to-mesh alignment,
+geometry, material labels, route choice, transmitter placement, body shape, or
+body orientation. The five-site computation takes less than 70~s per prepared
+site on the tested GPU, but image acquisition and material mapping take longer
+and do not yet have a complete timing record.
 
 The first priority is source calibration and end-to-end validation of the city
 calculation against outdoor field measurements of the directional field before
 body coupling. Second, higher specular orders and paths beyond the first diffuse
 event can be added through paired studies that report their change in whole-body
 SAR, variance, and computation time. Third, several routes at the same site can
-quantify route-selection variation before the site set is enlarged. Other
+quantify route-selection variation beyond the current ten locations. Other
 frequencies, body models, and orientations can then test the remaining range of
 validity. Each extension should also report what fraction of the surfaces
 reached by the modeled paths carries an image-derived material.
@@ -578,18 +592,21 @@ reached by the modeled paths carries an image-derived material.
 \section{Conclusion}\label{sec:conclusion}
 
 This study aligned 360-degree street images with a photogrammetric city mesh to
-map surface materials around fixed pedestrian routes. A roofline transmitter model and a directional absorption step then produced
-normalized whole-body SAR along each route, with all results per unit
-$\rho_A P_{\mathrm{EIRP}}$. In a controlled one-reflection scene, the
-first-diffuse estimate differed from deterministic quadrature by at most
-0.0616\,dB, and the maximum total-transport difference from an independent
-Sionna RT forward calculation was 0.0344\,dB. Across 73 observation points on five routes, route-median
-whole-body SAR values differed by a factor of 13.34. Direct transport was
-largest at all 67 points with line of sight, while first-diffuse transport was
-the only nonzero contribution at the six fully shadowed points. The route
-medians were stable at 16 replicas, but the fully shadowed lower tails had
-larger estimator uncertainty. These results do not rank cities or predict
-deployed-network exposure.
+map surface materials around pedestrian routes at 15\,GHz. A roofline
+transmitter model and a directional absorption step then produced normalized
+whole-body SAR, with all results per unit $\rho_A P_{\mathrm{EIRP}}$. A
+geometric fixed-grid diagnostic at ten urban locations showed a twofold span in
+location-median whole-body SAR. Five of these locations were then studied with
+image-derived materials along fixed routes. In a controlled one-reflection
+scene, the first-diffuse estimate differed from deterministic quadrature by at
+most 0.0616\,dB, and the maximum total-transport difference from an independent
+Sionna RT forward calculation was 0.0344\,dB. Across 73 observation points on
+five routes, route-median whole-body SAR values differed by a factor of 13.34.
+Direct transport was largest at all 67 points with line of sight, while
+first-diffuse transport was the only nonzero contribution at the six fully
+shadowed points. The route medians were stable at 16 replicas, but the fully
+shadowed lower tails had larger estimator uncertainty. These results do not rank
+cities or predict deployed-network exposure.
 
 The image-to-mesh material mapping took effect mainly through the specular
 component. A paired control at two sites showed route-median whole-body SAR

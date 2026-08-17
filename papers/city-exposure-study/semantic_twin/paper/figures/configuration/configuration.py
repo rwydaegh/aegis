@@ -259,9 +259,9 @@ def _plot_curtain_panel(ax: plt.Axes) -> None:
         left = cuts[panel] + 0.004
         width = cuts[panel + 1] - cuts[panel] - 0.008
         rectangle = Rectangle(
-            (left, 0.895),
+            (left, 0.850),
             width,
-            0.088,
+            0.133,
             transform=ax.transAxes,
             facecolor="#151B22",
             edgecolor="white",
@@ -273,7 +273,7 @@ def _plot_curtain_panel(ax: plt.Axes) -> None:
         text_left = left + (0.026 if panel == 0 else 0.008)
         ax.text(
             text_left,
-            0.960,
+            0.965,
             title,
             transform=ax.transAxes,
             ha="left",
@@ -285,7 +285,7 @@ def _plot_curtain_panel(ax: plt.Axes) -> None:
         )
         ax.text(
             text_left,
-            0.918,
+            0.905,
             detail,
             transform=ax.transAxes,
             ha="left",

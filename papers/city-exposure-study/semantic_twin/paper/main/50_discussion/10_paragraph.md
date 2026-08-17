@@ -9,12 +9,13 @@
 % NEXT: order-1 specular contributions. The first-diffuse contribution is the only
 % NEXT: nonzero modeled contribution at those points. Therefore, its small contribution
 % NEXT: at most nonshadowed positions does not make it dispensable at shadowed positions.
-The factor of 13.34 between the largest and smallest route medians shows that
-body exposure differs substantially among the five routes, even after the same
-source-density and EIRP normalization. This contrast reflects the geometry,
-visible roofline, mapped materials, and visibility conditions of each route.
-Each empirical distribution therefore describes only that fixed route and its
-observation points.
+The ten-location geometric screening shows a twofold span in location-median
+whole-body SAR across locations that differ in street width, building height,
+and roofline visibility. The factor of 13.34 between the largest and smallest
+route medians on the five detailed routes is much larger, reflecting the
+additional variation from image-derived materials, canopy, and route-specific
+visibility conditions. Each empirical distribution therefore describes only
+that fixed route and its observation points.
 
 ## AI notes
 - Interprets the route contrast without extending it to a city or population claim.

@@ -16,7 +16,8 @@ This work makes the following three contributions.
   specular, and diffuse power separate, with arrival directions, until the
   field is applied to the body.
 
-  \item A five-route application reports fixed-route exposure distributions,
+  \item An application across ten urban locations and five detailed pedestrian
+  routes reports geometric screening, fixed-route exposure distributions,
   controlled first-diffuse validation, replica convergence, and the retained
   transport at the six observation points where buildings block all direct and
   specular paths.

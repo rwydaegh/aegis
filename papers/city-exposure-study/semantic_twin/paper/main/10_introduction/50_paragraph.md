@@ -27,12 +27,16 @@
 % NEXT:   and the retained transport at the six route points with no direct or
 % NEXT:   one-reflection specular contribution.
 % NEXT: \end{enumerate}
-This study applies the method at 15~GHz to five selected routes containing 73
-fixed observation points. Every result is normalized per unit active-source areal
+This study applies the method at 15~GHz across ten urban locations. A geometric
+fixed-grid diagnostic first characterizes all ten locations with geometry-based
+materials and a fixed body orientation. Five of these locations are then studied
+with image-derived materials along fixed pedestrian routes containing 73
+observation points. Every result is normalized per unit active-source areal
 density and per unit effective isotropic radiated power (EIRP). The route-median
 whole-body SAR values differ by a factor of 13.34 across the five routes. These
-results describe fixed routes under one source and transport model. They do not
-estimate population exposure or deployed-network exposure.
+results describe fixed-grid locations and fixed routes under one source and
+transport model. They do not estimate population exposure or deployed-network
+exposure.
 
 ## reviews (paragraph)
 

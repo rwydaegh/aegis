@@ -21,22 +21,22 @@
 % NEXT: frequencies, body models, and orientations can then test the remaining range of
 % NEXT: validity. Each extension should also report how much of the surface reached by
 % NEXT: the modeled paths has an image-derived material.
-Several limits restrict what the results can say. The study covers five
-selected routes at 15~GHz and one body model that faces along each walk.
-Results are normalized per unit areal source density and EIRP. Scaling to a
-specific deployment is valid only if its transmitter positions follow the
-assumed roofline model. The transport model stops after one diffuse event and
-omits all later interactions and higher-order specular paths. The controlled
-comparison validates the first-diffuse component in a one-reflection scene. It
-does not validate the city calculations, which also use image-derived materials
-and exact specular transport. The 16 replicas quantify estimator randomness but
-not uncertainty in image-to-mesh alignment, geometry, material labels, route
-choice, transmitter placement, body shape, or body orientation. The five-site
-computation takes less than 70~s per prepared site on the tested GPU, but image
-acquisition and material mapping take longer and do not yet have a complete
-timing record. A ten-location geometric fixed-grid diagnostic in the supplementary material
-checks coverage and orientation sensitivity over a wider set of
-configurations.
+Several limits restrict what the results can say. The geometric fixed-grid
+diagnostic covers ten locations with geometry-based materials and a fixed body
+orientation. The five detailed routes add image-derived materials and a body
+facing along the walk. Both tiers use the same frequency (15~GHz), source model,
+and transport model. Results are normalized per unit areal source density and
+EIRP. Scaling to a specific deployment is valid only if its transmitter
+positions follow the assumed roofline model. The transport model stops after one
+diffuse event and omits all later interactions and higher-order specular paths.
+The controlled comparison validates the first-diffuse component in a
+one-reflection scene. It does not validate the city calculations, which also
+use image-derived materials and exact specular transport. The 16 replicas
+quantify estimator randomness but not uncertainty in image-to-mesh alignment,
+geometry, material labels, route choice, transmitter placement, body shape, or
+body orientation. The five-site computation takes less than 70~s per prepared
+site on the tested GPU, but image acquisition and material mapping take longer
+and do not yet have a complete timing record.
 
 ## AI notes
 - States range, transport, validation, uncertainty, and computational limits.

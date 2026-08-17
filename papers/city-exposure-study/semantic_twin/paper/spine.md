@@ -2,27 +2,31 @@
 
 ## Decision
 
-This is a regular IEEE Access Research Article. It reports a fixed-route,
-five-site method and result at 15 GHz. It does not make a population, city
-ranking, deployed-network, compliance, complete-multipath, or material-accuracy
-claim.
+This is a regular IEEE Access Research Article. It reports a ten-location
+geometric screening and a fixed-route, five-site method and result at 15 GHz.
+It does not make a population, city ranking, deployed-network, compliance,
+complete-multipath, or material-accuracy claim.
 
 ## Title
 
-Image-informed urban propagation and route-level body exposure at 15 GHz
+Image-informed urban propagation and route-level body exposure across ten
+cities at 15 GHz
 
 ## Thesis
 
 Registered street imagery and city geometry define the material scene around a
 fixed route. A common normalized roofline source model then gives stable central
 route statistics while retaining large local changes at shadowed standpoints.
+A broader geometric screening across ten locations shows a twofold span in
+location-median whole-body SAR.
 
 ## Paragraph plan
 
 ### Front matter
 
-1. A 200 to 250 word abstract states the problem, exact method scope, five-site
-   scale, controlled validation, main result, convergence, and limits.
+1. A 200 to 250 word abstract states the problem, exact method scope, ten-city
+   geometric screening, five detailed routes, controlled validation, main
+   result, convergence, and limits.
 2. Six alphabetical keywords span body dosimetry, image-informed propagation,
    ray tracing, street imagery, urban propagation, and whole-body SAR.
 
@@ -34,11 +38,14 @@ route statistics while retaining large local changes at shadowed standpoints.
 3. Image-informed wireless scene construction is established, but its use with
    a declared source measure and route-level body endpoint remains limited.
 4. This study combines registered panorama evidence, a route-aligned roofline
-   measure, a first-material transport decomposition, and body coupling.
-5. Three contributions state the scene, method, and five-route result without a
-   broad first claim.
+   measure, a first-material transport decomposition, and body coupling across
+   ten urban locations.
+5. Three contributions state the scene, method, and ten-location plus
+   five-route result without a broad first claim.
 
-### II. Configuration and scene evidence
+### II. Method
+
+#### A. Study Configuration
 
 1. Figure 1 introduces the panorama, support geometry, material atlas, route,
    source curve, and body.
@@ -49,7 +56,7 @@ route statistics while retaining large local changes at shadowed standpoints.
    declared fallback where evidence is absent or refused.
 5. Figure 2 defines the full computation and the audit boundary.
 
-### III. Route-conditioned exposure method
+#### B. Exposure Calculation
 
 1. A compact notation passage states the fixed assumptions.
 2. The areal density sets source count while physical roofline arc length sets
@@ -63,7 +70,7 @@ route statistics while retaining large local changes at shadowed standpoints.
 6. IID replicas and fixed-route empirical quantiles define the numerical and
    statistical outputs.
 
-### IV. Validation and results
+### III. Results
 
 1. A reproducibility paragraph states frequency, mesh, body, rays, cells,
    replicas, seeds, and hardware timing boundary.
@@ -77,10 +84,11 @@ route statistics while retaining large local changes at shadowed standpoints.
 7. The Madrid and Mexico City paired control bounds the effect of replacing the
    panorama atlas with the geometric fallback.
 
-### V. Discussion
+### IV. Discussion
 
-1. The route-median contrast is interpreted as a conditional result among five
-   selected routes, not a city ranking.
+1. The ten-location geometric screening shows a twofold span in location-median
+   whole-body SAR. The route-median contrast across five detailed routes is
+   interpreted as a conditional result, not a city ranking.
 2. Direct transport sets most nonshadowed points while first-diffuse transport
    is essential at six shadowed points.
 3. The material control shows small central total changes but different
@@ -89,12 +97,14 @@ route statistics while retaining large local changes at shadowed standpoints.
    selected routes, controlled-component validation, and unpropagated input
    uncertainties.
 5. Future work prioritizes source calibration, higher interaction orders, more
-   routes, other frequencies and bodies, and external field validation.
+   routes beyond the current ten locations, other frequencies and bodies, and
+   external field validation.
 
-### VI. Conclusion
+### V. Conclusion
 
-1. A short conclusion restates the method, five-site result, controlled
-   validation, shadowed-point finding, and conditional scope.
+1. A short conclusion restates the method, ten-location screening, five-route
+   detailed result, controlled validation, shadowed-point finding, and
+   conditional scope.
 
 ### End matter
 

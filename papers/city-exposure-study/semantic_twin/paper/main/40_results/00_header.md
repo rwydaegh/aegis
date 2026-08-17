@@ -9,5 +9,5 @@
 % NEXT: site ranges from 29.79 to 69.02~s on one A6000 GPU. These times exclude image
 % NEXT: acquisition, image-to-mesh alignment, depth estimation, and material mapping
 % NEXT: because the full preparation time was not recorded.
-\section{Validation and Results}
+\section{Results}
 \label{sec:results}
