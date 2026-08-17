@@ -12,8 +12,8 @@ map surface materials around fixed pedestrian routes. A roofline transmitter mod
 normalized whole-body SAR along each route, with all results per unit
 $\rho_A P_{\mathrm{EIRP}}$. In a controlled one-reflection scene, the
 first-diffuse estimate differed from deterministic quadrature by at most
-0.0616\,dB and from an independent Sionna RT forward calculation by at most
-0.0621\,dB. Across 73 observation points on five routes, route-median
+0.0616\,dB, and the maximum total-transport difference from an independent
+Sionna RT forward calculation was 0.0344\,dB. Across 73 observation points on five routes, route-median
 whole-body SAR values differed by a factor of 13.34. Direct transport was
 largest at all 67 points with line of sight, while first-diffuse transport was
 the only nonzero contribution at the six fully shadowed points. The route

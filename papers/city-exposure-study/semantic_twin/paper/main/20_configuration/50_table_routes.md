@@ -25,7 +25,7 @@
     \toprule
     Site & Route points & Route span (m) & Wall time (s) \\
     \midrule
-    Korenmarkt & 10 & 49.04 & 29.79 \\
+    Ghent & 10 & 49.04 & 29.79 \\
     Prague & 22 & 119.39 & 69.02 \\
     Madrid & 14 & 73.47 & 40.70 \\
     Mexico City & 11 & 60.79 & 30.92 \\

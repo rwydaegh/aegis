@@ -33,10 +33,11 @@ The arrival directions are carried through to the body. For outward body-surface
 \label{eq:body-coupling}
 \end{equation}
 Here, $T_0$ is the normal-incidence power-transmission coefficient from
-the IT'IS tissue database at 15~GHz~\cite{itis}. The function $g$ sets the
-absorbed fraction to zero where the surface faces away from the incoming
-direction. The calculation applies this directional absorption to the Duke anatomical mesh
-using the published surface-field method~\cite{christ2010,aegis}.
+the IT'IS tissue database at 15~GHz~\cite{itis}. It approximates the
+absorption cross section for incoherent, unpolarized illumination. The
+function $g$ sets the absorbed fraction to zero where the surface faces away
+from the incoming direction. The calculation applies this directional
+absorption to the 56,024-element Duke anatomical mesh~\cite{christ2010}.
 Because all quantities are normalized by $\rho_A P_{\mathrm{EIRP}}$,
 $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the triangle area
 $A_{\mathbf{r}}$ at position $\mathbf{r}$ and body mass

@@ -27,7 +27,7 @@ avoids tying the result to any particular deployment. The ray tracer keeps the d
 preserving their arrival directions, until the field is applied to the body. The transport model treats direct paths and one
 specular reflection exactly, estimates one diffuse reflection, and stops there.
 The route points are fixed case studies, not a population sample, and the
-roofline transmitters are a model, not a measured deployment. To the best of the author's knowledge, prior work has not combined aligned
+roofline transmitters are a model, not a measured deployment. To the best of the authors' knowledge, prior work has not combined aligned
 360-degree street images, a common roofline transmitter model, and separate
 transport components with their arrival directions in a single route-level body
 exposure calculation.

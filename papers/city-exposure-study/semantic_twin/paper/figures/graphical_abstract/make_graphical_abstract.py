@@ -197,7 +197,7 @@ def _draw_body(ax: plt.Axes) -> None:
 def _route_quantiles() -> list[dict[str, object]]:
     data = json.loads(CAMPAIGN.read_text())
     order = ["Korenmarkt", "Prague", "Madrid", "Mexico", "Tokyo"]
-    labels = ["Korenmarkt", "Prague", "Madrid", "Mexico", "Tokyo"]
+    labels = ["Ghent", "Prague", "Madrid", "Mexico", "Tokyo"]
     colors = [BLACK, RED, GREEN, BLUE, ORANGE]
     rows: list[dict[str, object]] = []
     for key, label, color in zip(order, labels, colors, strict=True):

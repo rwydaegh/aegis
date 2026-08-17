@@ -54,14 +54,14 @@ EXPECTED_ZERO_DIRECT = {
 }
 CITY_ORDER = tuple(EXPECTED_ZERO_DIRECT)
 CITY_LABELS = {
-    "Korenmarkt": "Korenmarkt",
+    "Korenmarkt": "Ghent",
     "Prague": "Prague",
     "Madrid": "Madrid",
     "Mexico": "Mexico City",
     "Tokyo": "Tokyo Hachiko",
 }
 CITY_TICK_LABELS = {
-    "Korenmarkt": "Korenmarkt",
+    "Korenmarkt": "Ghent",
     "Prague": "Prague",
     "Madrid": "Madrid",
     "Mexico": "Mexico\nCity",

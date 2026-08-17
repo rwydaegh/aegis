@@ -25,7 +25,7 @@ sys.path.insert(0, str(PAPER_ROOT / "figures"))
 from _style.paper_style import paper_style, save_figure  # noqa: E402
 
 DISPLAY_NAMES = {
-    "korenmarkt": "Korenmarkt",
+    "korenmarkt": "Ghent",
     "prague_staromestske": "Prague",
     "brussels_grandplace": "Brussels",
     "madrid_plazamayor": "Madrid",

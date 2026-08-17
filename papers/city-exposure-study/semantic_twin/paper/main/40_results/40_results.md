@@ -2,6 +2,7 @@
 \section{Validation and Results}
 \label{sec:results}
 
+% claim: current_campaign_contract
 Table~\ref{tab:routes} defines the five fixed routes and their 73 observation
 points. Every site uses 15~GHz and a photogrammetric city mesh cropped to a
 250~m radius. The Duke body model has 56,024 surface elements and a mass of
@@ -12,6 +13,7 @@ Calculation time for a prepared site ranges from 29.79 to 69.02~s on one A6000
 GPU. These times exclude image acquisition, alignment, depth estimation, and
 material mapping because the full preparation time was not recorded.
 
+% claim: raw_component_closure
 The calculation manifests list 42 files per site, and all 210 file hashes pass
 verification. The direct, exact order-1 specular, and first-diffuse fields sum
 to the stored total with a maximum absolute residual of
@@ -21,6 +23,7 @@ difference of $6.64\times10^{-16}$ in the verified benchmark. These checks
 confirm the input files, addition of components, and agreement between CPU and
 GPU calculations. They do not externally validate the complete city model.
 
+% claim: controlled_depth1_validation
 The direct and specular paths are computed from exact geometry, but the
 first-diffuse estimate depends on random ray sampling. The controlled comparison
 in Fig.~\ref{fig:controlled-validation} tests this stochastic component before
@@ -45,6 +48,7 @@ city.
 \label{fig:controlled-validation}
 \end{figure*}
 
+% claim: route_median_contrast_factor
 Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions
 and route-mean component shares. Table~\ref{tab:route-results} gives the central
 summaries and finite multipath surplus. Normalized whole-body SAR is reported in
@@ -62,6 +66,7 @@ and the lowest tails.
 \label{fig:route-distributions}
 \end{figure*}
 
+% claim: five_city_wbsar_route_quantiles
 \begin{table*}[!t]
 \caption{Fixed-route exposure summary. Whole-body SAR quantiles are normalized per unit $\rho_A P_{\mathrm{EIRP}}$ and have units m$^2$~kg$^{-1}$. Surplus is computed only at points with nonzero direct transfer. The last column is the maximum pointwise total-transfer change from 12 to 16 replicas.}
 \label{tab:route-results}
@@ -70,7 +75,7 @@ and the lowest tails.
 \toprule
 Site & $q_{10}$ & $q_{50}$ & $q_{90}$ & Median surplus [dB] & \shortstack{Zero direct and\\order-1 specular} & \shortstack{Max total-transfer\\change [dB]} \\
 \midrule
-Korenmarkt & 0.057833 & 0.062045 & 0.068672 & 1.108 & 0 & 0.0000819 \\
+Ghent & 0.057833 & 0.062045 & 0.068672 & 1.108 & 0 & 0.0000819 \\
 Prague & 0.012157 & 0.013073 & 0.014594 & 1.061 & 0 & 0.0001559 \\
 Madrid & 0.020913 & 0.022381 & 0.023171 & 1.534 & 0 & 0.0004083 \\
 Mexico City & $9.92\times10^{-7}$ & 0.129062 & 0.295798 & 0.721 & 3 & 0.043625 \\
@@ -79,6 +84,8 @@ Tokyo Hachiko & $3.66\times10^{-5}$ & 0.009674 & 0.025200 & 0.828 & 3 & 0.019732
 \end{tabular}
 \end{table*}
 
+% claim: six_shadowed_standpoints
+% claim: pooled_median_wbsar_component_shares
 The component shares in Fig.~\ref{fig:route-distributions}(b) are additive
 shares of route-mean whole-body SAR. Direct transport is the largest
 contribution at all 67 points with line of sight. Exact order-1 specular
@@ -91,6 +98,7 @@ points. Across all 73 points, the pooled component medians are 77.662\% direct,
 small first-diffuse median therefore does not describe the six fully shadowed
 points.
 
+% claim: ray_reached_evidence_coverage
 The path audit assigns each retained material interaction to an image-mapped or
 geometry-based surface. Pooled over the five routes and 16 seeds, image-mapped
 surfaces account for 75.903\% of the reflected SAR. The
@@ -98,6 +106,7 @@ corresponding shares are 80.643\% for exact order-1 specular transport and
 13.337\% for first-diffuse transport. The supplementary material gives the
 complete split by material source.
 
+% claim: replica_convergence_12_to_16
 The nested 12-to-16-replica comparison separates the route median from the
 lower tail. Every route-median whole-body SAR changes by at most
 $5.90\times10^{-5}$~dB. The largest lower-decile changes are 0.032226~dB in
@@ -107,6 +116,7 @@ total-transfer changes in Table~\ref{tab:route-results} reach 0.043625 and
 0.1461~dB in Mexico City and 0.0310~dB in Tokyo Hachiko. The route medians are
 stable at 16 replicas.
 
+% claim: replica_convergence_48_to_64
 A separate calculation reuses the first 16 replicas and extends every route
 through 64 replicas. Between 48 and 64 replicas, the whole-body SAR
 $q_{10}$ changes by 0.00344~dB in Mexico City and 0.00491~dB in Tokyo Hachiko.
@@ -118,6 +128,7 @@ This result is specific to the fixed routes and excludes route-selection and
 city-sampling uncertainty. The complete nested comparison is given in the
 supplementary material.
 
+% claim: paired_material_evidence_control
 A paired control for Madrid and Mexico City replaces all image-mapped materials
 with the default geometry-based materials while keeping the mesh, route,
 roofline model, body, seeds, sampling budget, and transport steps identical.

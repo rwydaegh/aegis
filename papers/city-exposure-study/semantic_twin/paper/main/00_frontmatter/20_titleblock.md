@@ -43,23 +43,22 @@
 % NEXT: \end{abstract}
 \begin{document}
 
-% PROVISIONAL AUTHOR METADATA: Robin-only draft pending final author confirmation.
-% Publication history and DOI are supplied after acceptance.
-% FUNDING: insert the confirmed sponsor statement with \tfootnote before submission.
 \history{}
 \doi{}
 
 \title{Image-Informed Urban Propagation and Route-Level Body Exposure at 15 GHz}
 
-\author{\uppercase{Robin Wydaeghe}\authorrefmark{1}}
+\author{\uppercase{Robin Wydaeghe}\authorrefmark{1},
+\uppercase{G\"unter Vermeeren}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
+\uppercase{Emmeric Tanghe}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
+and~\uppercase{Wout Joseph}\authorrefmark{1}, \IEEEmembership{Senior Member, IEEE}}
 
-\address[1]{WAVES Research Group, Department of Information Technology,
-Ghent University--imec, Technologiepark-Zwijnaarde 126, 9052 Ghent, Belgium
-(e-mail: robin.wydaeghe@ugent.be)}
+\address[1]{Department of Information Technology, Ghent University/IMEC,
+9052 Ghent, Belgium (e-mail: robin.wydaeghe@ugent.be)}
 
 \markboth
-{R. Wydaeghe: Image-Informed Urban Propagation and Route-Level Body Exposure}
-{R. Wydaeghe: Image-Informed Urban Propagation and Route-Level Body Exposure}
+{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure}
+{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure}
 
 \corresp{Corresponding author: Robin Wydaeghe
 (e-mail: robin.wydaeghe@ugent.be).}

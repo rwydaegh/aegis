@@ -104,7 +104,6 @@
 % NEXT: \EOD
 % NEXT:
 % NEXT: \end{document}
-% PROVISIONAL BIOGRAPHY: replace or extend after the final author list is set.
 \begin{IEEEbiographynophoto}{Robin Wydaeghe}
 received the B.Sc. and M.Sc. degrees in engineering physics from Ghent
 University, Ghent, Belgium, in 2019 and 2021, respectively. He is currently
@@ -112,6 +111,36 @@ pursuing the Ph.D. degree in engineering physics with Ghent University. His
 research interests include computational electromagnetics, numerical assessment
 of human radiofrequency electromagnetic-field exposure, and propagation
 modeling for next-generation wireless networks.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{G\"unter Vermeeren}
+received the M.Sc. degree in industrial engineering from KAHO Sint-Lieven,
+Ghent, Belgium, in 1998, the M.Sc. degree in electrical engineering from Ghent
+University, Belgium, in 2001, and the Ph.D. degree in electro-technical
+engineering from Ghent University in 2013. Since 2002, he has been a Research
+Engineer with the Department of Information Technology, Ghent University. His
+research interests include numerical modeling and measurements of
+electromagnetic radiation in the domain of radiofrequency dosimetry,
+electromagnetic exposure, on-body propagation, and medical imaging systems.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Emmeric Tanghe}
+received the M.Sc. and Ph.D. degrees in electrical engineering from Ghent
+University, Ghent, Belgium, in 2005 and 2011, respectively. In 2015, he became
+a Part-Time Professor in medical applications of electromagnetic fields in and
+around the human body. Since 2011, he has been a Postdoctoral Researcher with
+Ghent University/IMEC, where he focuses on propagation modeling. From 2012 to
+2018, he was a Postdoctoral Fellow of FWO-V (Research Foundation-Flanders).
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Wout Joseph}
+received the M.Sc. degree in electrical engineering from Ghent University,
+Ghent, Belgium, in 2000, and the Ph.D. degree in electrical engineering from
+Ghent University in 2005. Since 2009, he has been a Professor in the domain of
+experimental characterization of wireless communication systems. His research
+interests include measuring and modeling electromagnetic fields around base
+stations for mobile communications, electromagnetic exposure assessment,
+propagation for wireless communication systems, and antennas and calibration.
 \end{IEEEbiographynophoto}
 
 ## reviews (biography)

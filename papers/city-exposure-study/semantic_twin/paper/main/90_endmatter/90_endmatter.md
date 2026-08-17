@@ -10,10 +10,9 @@ manifests are kept so the inputs can be reacquired where the licenses allow it.
 
 \section*{Acknowledgment}
 
-OpenAI Codex~\cite{openai_codex} was used to draft and edit text in all
-manuscript sections and to assist with plotting code and manuscript checks. The author reviewed the
-generated text and code and verified the scientific claims, numerical values,
-references, and final text.
+AI tools were used to assist with manuscript preparation. The authors reviewed
+and verified the scientific claims, numerical values, references, and final
+text.
 
 \begin{thebibliography}{99}
 
@@ -109,17 +108,8 @@ anatomical models of two adults and two children for dosimetric simulations,''
 \emph{Phys. Med. Biol.}, vol. 55, no. 2, pp. N23--N38, 2010,
 doi: 10.1088/0031-9155/55/2/N01.
 
-\bibitem{aegis}
-R.~Wydaeghe, ``AEGIS: Absorbed power density on human bodies in wireless
-environments,'' Version 0.39.1, software, 2026.
-
-\bibitem{openai_codex}
-OpenAI, ``Codex CLI,'' \emph{OpenAI Documentation}, 2026. [Online]. Available:
-\url{https://learn.chatgpt.com/docs/codex/cli}. Accessed: Aug. 13, 2026.
-
 \end{thebibliography}
 
-% PROVISIONAL BIOGRAPHY: replace or extend after the final author list is set.
 \begin{IEEEbiographynophoto}{Robin Wydaeghe}
 received the B.Sc. and M.Sc. degrees in engineering physics from Ghent
 University, Ghent, Belgium, in 2019 and 2021, respectively. He is currently
@@ -127,6 +117,36 @@ pursuing the Ph.D. degree in engineering physics with Ghent University. His
 research interests include computational electromagnetics, numerical assessment
 of human radiofrequency electromagnetic-field exposure, and propagation
 modeling for next-generation wireless networks.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{G\"unter Vermeeren}
+received the M.Sc. degree in industrial engineering from KAHO Sint-Lieven,
+Ghent, Belgium, in 1998, the M.Sc. degree in electrical engineering from Ghent
+University, Belgium, in 2001, and the Ph.D. degree in electro-technical
+engineering from Ghent University in 2013. Since 2002, he has been a Research
+Engineer with the Department of Information Technology, Ghent University. His
+research interests include numerical modeling and measurements of
+electromagnetic radiation in the domain of radiofrequency dosimetry,
+electromagnetic exposure, on-body propagation, and medical imaging systems.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Emmeric Tanghe}
+received the M.Sc. and Ph.D. degrees in electrical engineering from Ghent
+University, Ghent, Belgium, in 2005 and 2011, respectively. In 2015, he became
+a Part-Time Professor in medical applications of electromagnetic fields in and
+around the human body. Since 2011, he has been a Postdoctoral Researcher with
+Ghent University/IMEC, where he focuses on propagation modeling. From 2012 to
+2018, he was a Postdoctoral Fellow of FWO-V (Research Foundation-Flanders).
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Wout Joseph}
+received the M.Sc. degree in electrical engineering from Ghent University,
+Ghent, Belgium, in 2000, and the Ph.D. degree in electrical engineering from
+Ghent University in 2005. Since 2009, he has been a Professor in the domain of
+experimental characterization of wireless communication systems. His research
+interests include measuring and modeling electromagnetic fields around base
+stations for mobile communications, electromagnetic exposure assessment,
+propagation for wireless communication systems, and antennas and calibration.
 \end{IEEEbiographynophoto}
 
 \EOD

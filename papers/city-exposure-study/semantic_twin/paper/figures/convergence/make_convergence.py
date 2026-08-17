@@ -35,6 +35,8 @@ INPUT = (
 EXPECTED_INPUT_SHA256 = "d530a056bfa7be9cf1966a7169cea58b0fcae48dc9cab89ab62ae4577aa765bd"
 EXPECTED_SCHEMA = "roofline_multicity_results_v1"
 EXPECTED_CITIES = ("Korenmarkt", "Prague", "Madrid", "Mexico", "Tokyo")
+CITY_DISPLAY = {"Korenmarkt": "Ghent", "Prague": "Prague", "Madrid": "Madrid",
+                "Mexico": "Mexico City", "Tokyo": "Tokyo Hachiko"}
 EXPECTED_SEEDS = tuple(range(7, 23))
 EXPECTED_LOOKS = (4, 8, 12, 16)
 EXPECTED_TRANSITIONS = ((4, 8), (8, 12), (12, 16))
@@ -191,7 +193,7 @@ def draw(metrics: dict[str, dict[str, Any]]) -> None:
             markerfacecolor="white",
             markeredgecolor=color,
             markeredgewidth=0.9,
-            label=name,
+            label=CITY_DISPLAY.get(name, name),
             zorder=3,
         )
 
@@ -263,7 +265,7 @@ def draw(metrics: dict[str, dict[str, Any]]) -> None:
     axis_tail.yaxis.set_minor_locator(LogLocator(base=10.0, subs=(2.0, 5.0), numticks=15))
     axis_tail.yaxis.set_minor_formatter(NullFormatter())
     axis_tail.set_xticks(x)
-    axis_tail.set_xticklabels(("Korenmarkt", "Prague", "Madrid", "Mexico\nCity", "Tokyo\nHachiko"))
+    axis_tail.set_xticklabels(("Ghent", "Prague", "Madrid", "Mexico\nCity", "Tokyo\nHachiko"))
     axis_tail.set_ylabel(r"Absolute $12\!\rightarrow\!16$ change [dB]")
     axis_tail.set_xlabel("Registered city route")
     axis_tail.grid(axis="y", which="major", color="0.82", lw=0.5)

@@ -56,7 +56,7 @@ def _load_report() -> tuple[dict, Path, Path]:
 def _plot(report: dict) -> None:
     looks = np.asarray((16, 24, 32, 48, 64))
     sites = (
-        ("korenmarkt", "Korenmarkt"),
+        ("korenmarkt", "Ghent"),
         ("prague_staromestske", "Prague"),
         ("madrid_plazamayor", "Madrid"),
         ("mexico_zocalo", "Mexico City"),

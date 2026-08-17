@@ -1,10 +1,8 @@
 % PREV: \section*{Acknowledgment}
 % PREV:
-% PREV: OpenAI Codex~\cite{openai_codex} was used to draft and edit text in all
-% PREV: manuscript sections and to assist with plotting code and manuscript checks. The author reviewed the
-% PREV: generated text and code and verified the scientific claims, numerical values,
-% PREV: references, and final text.
-% NEXT: % PROVISIONAL BIOGRAPHY: replace or extend after the final author list is set.
+% PREV: AI tools were used to assist with manuscript preparation. The authors reviewed
+% PREV: and verified the scientific claims, numerical values, references, and final
+% PREV: text.
 % NEXT: \begin{IEEEbiographynophoto}{Robin Wydaeghe}
 % NEXT: received the B.Sc. and M.Sc. degrees in engineering physics from Ghent
 % NEXT: University, Ghent, Belgium, in 2019 and 2021, respectively. He is currently
@@ -106,14 +104,6 @@ A.~Christ \emph{et al.}, ``The Virtual Family: Development of surface-based
 anatomical models of two adults and two children for dosimetric simulations,''
 \emph{Phys. Med. Biol.}, vol. 55, no. 2, pp. N23--N38, 2010,
 doi: 10.1088/0031-9155/55/2/N01.
-
-\bibitem{aegis}
-R.~Wydaeghe, ``AEGIS: Absorbed power density on human bodies in wireless
-environments,'' Version 0.39.1, software, 2026.
-
-\bibitem{openai_codex}
-OpenAI, ``Codex CLI,'' \emph{OpenAI Documentation}, 2026. [Online]. Available:
-\url{https://learn.chatgpt.com/docs/codex/cli}. Accessed: Aug. 13, 2026.
 
 \end{thebibliography}
 

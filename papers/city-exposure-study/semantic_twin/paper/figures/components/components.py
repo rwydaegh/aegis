@@ -36,7 +36,7 @@ COMPONENTS = ("direct", "all_specular", "first_diffuse")
 SEALED_COMPONENTS = (*COMPONENTS, "total")
 CITY_ORDER = ("Korenmarkt", "Prague", "Madrid", "Mexico", "Tokyo")
 CITY_LABELS = {
-    "Korenmarkt": "Korenmarkt",
+    "Korenmarkt": "Ghent",
     "Prague": "Prague",
     "Madrid": "Madrid",
     "Mexico": "Mexico City",

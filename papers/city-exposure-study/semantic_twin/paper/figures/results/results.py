@@ -55,7 +55,7 @@ BODY_ADDITIVE_METRICS = (
 # Saturated house palette, with line shape and marker redundancy for print.
 CITY_STYLES = {
     "Korenmarkt": {
-        "label": "Korenmarkt",
+        "label": "Ghent",
         "colour": "#000000",
         "linestyle": "-",
         "marker": "o",
