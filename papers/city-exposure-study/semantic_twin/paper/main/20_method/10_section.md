@@ -1,10 +1,10 @@
-% NEXT: The study configuration is shown in Fig.~\ref{fig:configuration}. A
-% NEXT: 360-degree street image is aligned with a photogrammetric city mesh cropped to a
-% NEXT: 250\,m radius. Object and material labels from the image are projected onto the
-% NEXT: visible mesh triangles without changing their geometry. The roofline visible
+% NEXT: Fig.~\ref{fig:configuration} shows the study configuration. A 360-degree street
+% NEXT: image is aligned with a photogrammetric city mesh cropped to a 250~m radius
+% NEXT: around the route. Object and material labels from the image are projected onto
+% NEXT: the visible mesh triangles without changing their geometry. The roofline visible
 % NEXT: from the route gives the possible transmitter locations. Fixed points along the
-% NEXT: pedestrian route give the receiver locations, and the anatomical phantom faces
-% NEXT: along the direction of travel at each point.
+% NEXT: pedestrian route give the observation positions, and the anatomical body model
+% NEXT: faces along the direction of travel at each point.
 \section{Method}
 \label{sec:method}
 

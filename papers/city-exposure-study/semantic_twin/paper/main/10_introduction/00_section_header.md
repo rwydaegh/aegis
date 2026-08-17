@@ -1,13 +1,16 @@
-% NEXT: \IEEEPARstart{U}{rban} wireless systems operate in a built environment that
-% NEXT: strongly shapes radio propagation~\cite{itu2040}. Propagation can change over a
-% NEXT: few meters along a pedestrian route. A person can move from direct visibility of a roofline to a
-% NEXT: region where buildings block the direct field and reflected power arrives from
-% NEXT: another direction. The surface materials then affect how much power is returned
-% NEXT: to the street~\cite{itu2040,vitucci}. This local variation also matters after propagation.
-% NEXT: Whole-body absorption depends on the arrival direction and on the orientation of
-% NEXT: the body, so one incident-power value at one receiver position does not describe
-% NEXT: exposure along a route. A route calculation must retain position and arrival
-% NEXT: direction until the field is coupled to the body~\cite{icnirp}.
+% NEXT: \IEEEPARstart{A}{s} wireless networks expand into higher frequency bands,
+% NEXT: the built environment plays a larger role in determining the radiofrequency
+% NEXT: field that reaches a pedestrian~\cite{itu2040}. Along a city street, received
+% NEXT: power can change over a few meters. A person walking past a row of buildings
+% NEXT: can move from a clear view of a rooftop transmitter into a shadow where
+% NEXT: buildings block the direct field and only reflected power reaches the
+% NEXT: street. The facade materials then determine how much power returns to the
+% NEXT: street~\cite{itu2040,vitucci}. This variation also matters after the field
+% NEXT: arrives: whole-body absorption depends on the direction of arrival and on how
+% NEXT: the body is oriented, so a single power value at a single point does not
+% NEXT: describe exposure along a walking route. A route-level calculation must keep
+% NEXT: the arrival direction until the field is applied to the
+% NEXT: body~\cite{icnirp}.
 \section{Introduction}\label{sec:introduction}
 
 ## reviews (section_header)

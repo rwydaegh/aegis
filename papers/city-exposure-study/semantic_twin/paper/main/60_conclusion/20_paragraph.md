@@ -1,15 +1,19 @@
 % PREV: This study aligned 360-degree street images with a photogrammetric city mesh to
-% PREV: map surface materials around fixed pedestrian routes. A common roofline
-% PREV: transmitter model and direction-aware body coupling then gave normalized
-% PREV: whole-body SAR along each route. Each result was normalized by
-% PREV: $\rho_A P_{\mathrm{EIRP}}$. The transport model retained exact direct paths,
-% PREV: exact order-1 specular paths, and the first diffuse reflection. In a
-% PREV: controlled depth-1 case, the adjoint first-diffuse estimate had maximum
-% PREV: bounced-transport errors of 0.0616\,dB against deterministic surface quadrature
-% PREV: and 0.0621\,dB against Sionna RT forward tracing. The five scenes contained 73
-% PREV: route points. Their route-median values differed by a factor of 13.34. Direct
-% PREV: transport was largest at 67 nonshadowed points, while first-diffuse transport
-% PREV: was the only nonzero modeled contribution at all six shadowed points.
+% PREV: map surface materials around pedestrian routes at 15\,GHz. A roofline
+% PREV: transmitter model and a directional absorption step then produced normalized
+% PREV: whole-body SAR, with all results per unit $\rho_A P_{\mathrm{EIRP}}$. A
+% PREV: geometric fixed-grid diagnostic at ten urban locations showed a twofold span in
+% PREV: location-median whole-body SAR. Five of these locations were then studied with
+% PREV: image-derived materials along fixed routes. In a controlled one-reflection
+% PREV: scene, the first-diffuse estimate differed from deterministic quadrature by at
+% PREV: most 0.0616\,dB, and the maximum total-transport difference from an independent
+% PREV: Sionna RT forward calculation was 0.0344\,dB. Across 73 observation points on
+% PREV: five routes, route-median whole-body SAR values differed by a factor of 13.34.
+% PREV: Direct transport was largest at all 67 points with line of sight, while
+% PREV: first-diffuse transport was the only nonzero contribution at the six fully
+% PREV: shadowed points. The route medians were stable at 16 replicas, but the fully
+% PREV: shadowed lower tails had larger estimator uncertainty. These results do not rank
+% PREV: cities or predict deployed-network exposure.
 The image-to-mesh material mapping took effect mainly through the specular
 component. A paired control at two sites showed route-median whole-body SAR
 changes of $+0.249$ and $-0.158$~dB when the image-derived materials were

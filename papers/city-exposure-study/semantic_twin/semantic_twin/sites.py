@@ -18,10 +18,10 @@ sits ninth in the study's own site order rather than seventh alphabetically: it
 joins a cross city sweep only at 250 m. It is now ``130 not in site.crops`` and
 no caller needs a branch for it.
 
-**Two imagery providers are in use and nothing said so.** Every single panorama
-site is Google Street View. The twelve station Korenmarkt walk, the only multi
-station set and the one carrying the SAM 3 binding, is Mapillary. That was an
-undocumented accident. It is :attr:`Site.imagery` now.
+**Two imagery providers are in use and nothing said so.** Most site imagery is
+Google Street View. The twelve station Korenmarkt walk carrying its SAM 3
+binding is Mapillary. That was an undocumented accident. It is
+:attr:`Site.imagery` now.
 """
 
 from __future__ import annotations
@@ -135,9 +135,9 @@ NAMES: dict[str, Naming] = {
 #:
 #: Read off the disk and then written down, because the disk says it in metadata
 #: keys rather than in directory names: a Street View camera's ``metadata.json``
-#: carries ``panoId`` and a Mapillary one carries ``sequence``. Krakow and
-#: Toulouse have no panoramas at all, which is why they carry no image evidence
-#: anywhere in the study and why four of the six subset literals leave them out.
+#: carries ``panoId`` and a Mapillary one carries ``sequence``. The current
+#: ten-location route campaign added screened Street View sets for Krakow and
+#: Toulouse and a separate multi-camera set beside Milan's legacy single view.
 IMAGERY: dict[str, tuple[ImagerySet, ...]] = {
     "brussels_grandplace": (ImagerySet(GOOGLE_STREETVIEW, "brussels_grandplace", "pano_", "stations"),),
     "korenmarkt": (
@@ -145,15 +145,18 @@ IMAGERY: dict[str, tuple[ImagerySet, ...]] = {
         ImagerySet(MAPILLARY, "korenmarkt_walk", "walk_", "walk"),
         ImagerySet(MAPILLARY, "korenmarkt_mapillary", "view_", "multiview"),
     ),
-    "krakow_rynek": (),
+    "krakow_rynek": (ImagerySet(GOOGLE_STREETVIEW, "krakow_rynek", "pano_", "stations"),),
     "london_trafalgar": (ImagerySet(GOOGLE_STREETVIEW, "london_trafalgar", "pano_", "stations"),),
     "madrid_plazamayor": (ImagerySet(GOOGLE_STREETVIEW, "madrid_plazamayor", "pano_", "stations"),),
     "mexico_zocalo": (ImagerySet(GOOGLE_STREETVIEW, "mexico_zocalo", "pano_", "stations"),),
-    "milan_duomo": (ImagerySet(GOOGLE_STREETVIEW, "milan_duomo", "", "stations"),),
+    "milan_duomo": (
+        ImagerySet(GOOGLE_STREETVIEW, "milan_duomo", "", "legacy_station"),
+        ImagerySet(GOOGLE_STREETVIEW, "milan_duomo", "pano_", "stations"),
+    ),
     "newyork_timessquare": (ImagerySet(GOOGLE_STREETVIEW, "newyork_timessquare", "pano_", "stations"),),
     "prague_staromestske": (ImagerySet(GOOGLE_STREETVIEW, "prague_staromestske", "pano_", "stations"),),
     "tokyo_hachiko": (ImagerySet(GOOGLE_STREETVIEW, "tokyo_hachiko", "pano_", "stations"),),
-    "toulouse_capitole": (),
+    "toulouse_capitole": (ImagerySet(GOOGLE_STREETVIEW, "toulouse_capitole", "pano_", "stations"),),
 }
 
 
@@ -303,11 +306,8 @@ class Site:
     def registered_stations(self, role: str = "stations"):
         """The cameras that solved for a pose against the skyline.
 
-        Having a photograph and having a usable one are different facts, and the
-        gap is wide. London has fifteen panoramas on disk and not one registered
-        pose, which is why it drops out of every evidence list even though it
-        drops out of no imagery list. This predicate is what those lists were
-        written by hand to express.
+        Having a photograph and having a usable one are different facts. This
+        predicate is what older evidence lists were written by hand to express.
         """
         return tuple(path for path in self.stations(role) if paths.panorama_pose(path).exists())
 
@@ -396,7 +396,7 @@ def with_station_binding(crop_m: int) -> tuple[Site, ...]:
 
 
 def with_panoramas() -> tuple[Site, ...]:
-    """Sites that have photographs at all. Nine of eleven."""
+    """Sites that have photographs at all."""
     return tuple(site for site in _registry() if site.has_panoramas)
 
 

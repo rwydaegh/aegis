@@ -146,6 +146,11 @@ def test_the_backup_name_records_the_crop_the_old_pose_came_from():
     assert BACKUP_SUFFIX.format(crop=130) == "pose_aligned_before_130m.json"
 
 
+def test_registration_worker_count_must_be_positive():
+    with pytest.raises(ValueError, match="workers must be a positive integer"):
+        RepairOptions(site="tokyo_hachiko", workers=0)
+
+
 def test_the_summary_reports_a_pose_that_is_inside_the_geometry():
     pose = {
         "skyline_score_mean_deg": 6.53,

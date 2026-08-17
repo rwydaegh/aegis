@@ -62,6 +62,7 @@ Run from the `semantic_twin` directory::
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 from concurrent.futures import ProcessPoolExecutor
@@ -324,6 +325,7 @@ def _station_record(
     semantics_dirname: str | None,
 ) -> tuple[bool, dict[str, Any]]:
     """Read and score one station, returning its admission and report row."""
+    capture = _capture_identity(folder)
     aligned = paths.panorama_pose(folder)
     selected_name = semantics_dirname or "semantics"
     selected_directory = semantic_evidence_directory(folder, selected_name)
@@ -345,6 +347,7 @@ def _station_record(
             "admitted": False,
             "refused_because": missing,
             "admission_gate_version": AdmissionGate().version,
+            **capture,
         }
         if semantics_dirname is not None:
             record["semantic_evidence_directory"] = str(selected_directory)
@@ -359,9 +362,31 @@ def _station_record(
     verdict["station"] = folder.name
     verdict["folder"] = str(folder)
     verdict["position_enu_m"] = pose["position_enu_m"]
+    verdict.update(capture)
     if semantics_dirname is not None:
         verdict["semantic_evidence_directory"] = str(selected_directory)
     return bool(verdict["admitted"]), verdict
+
+
+def _capture_identity(folder: pathlib.Path) -> dict[str, str]:
+    """Freeze provider metadata and its complete capture identifier when present."""
+    metadata_path = folder / "metadata.json"
+    if not metadata_path.is_file():
+        return {}
+    payload = metadata_path.read_bytes()
+    document = json.loads(payload)
+    if not isinstance(document, dict):
+        raise TypeError(f"{metadata_path} must contain a metadata object")
+    has_google = document.get("panoId") is not None
+    has_mapillary = document.get("id") is not None
+    if has_google == has_mapillary:
+        raise ValueError(f"{metadata_path} does not identify exactly one supported panorama provider")
+    identity = {
+        "metadata_sha256": hashlib.sha256(payload).hexdigest(),
+        "provider": "google_streetview" if has_google else "mapillary",
+    }
+    identity["pano_id" if has_google else "image_id"] = str(document["panoId" if has_google else "id"])
+    return identity
 
 
 def _modal_class(face: np.ndarray, label: np.ndarray, face_count: int, classes: int) -> np.ndarray:

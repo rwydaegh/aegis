@@ -1,27 +1,29 @@
-% PREV: Urban radio ray tracing provides detailed paths between specified transmitters
-% PREV: and receivers~\cite{sionna}. It has been used for city-scale downlink exposure
-% PREV: with base-station locations from public deployment records~\cite{leeman}, and in
-% PREV: hybrid propagation and anatomical dosimetry calculations along an outdoor user
-% PREV: path~\cite{wydaeghe2026}. Stochastic site models provide a different description
-% PREV: when individual transmitters are not fixed~\cite{wiame}, while normalized body
-% PREV: coefficients separate incident fields from later exposure
-% PREV: calculations~\cite{varsier}. Together, these studies include deterministic urban
-% PREV: transport, spatial source models, and body coupling. Because these studies use
-% PREV: different source assumptions, their reported quantities are not directly
-% PREV: comparable without a common source law.
-% NEXT: The calculation combines these established parts in one fixed model. First, each
-% NEXT: 360-degree street image is aligned with the same city mesh used for ray tracing.
-% NEXT: The image labels are then projected onto that mesh to make a material map.
-% NEXT: Second, the same transmitter model is used at every site, with the number of
-% NEXT: transmitters set independently of how finely the roofline is divided. Third,
-% NEXT: direct, specular, and diffuse power stays separate until its arrival direction
-% NEXT: is coupled to the body. The transport calculation treats direct paths and one
-% NEXT: specular reflection exactly, estimates one diffuse reflection, and then stops.
-% NEXT: The route points are fixed case studies rather than a population sample, and the
-% NEXT: roofline transmitters are a model rather than a measured deployment. To the best
-% NEXT: of the authors' knowledge, prior work has not combined aligned 360-degree street
-% NEXT: images, a common roofline transmitter model, these separate transport components,
-% NEXT: and directional body coupling along fixed routes.
+% PREV: Ray tracing computes detailed propagation paths between transmitters and
+% PREV: receivers in a three-dimensional city model~\cite{sionna}. It has been used for
+% PREV: city-scale downlink exposure using published base-station
+% PREV: locations~\cite{leeman}, and to compute propagation and body exposure along an
+% PREV: outdoor pedestrian path~\cite{wydaeghe2026}. Stochastic geometry models
+% PREV: describe exposure when individual transmitter locations are not
+% PREV: known~\cite{wiame}, while precomputed body coefficients separate the incident
+% PREV: field from the absorption calculation~\cite{varsier}. Together, these studies
+% PREV: cover deterministic urban propagation, spatial source models, and the
+% PREV: directional absorption step that converts the arriving field into absorbed power
+% PREV: on the body. Because they use different source assumptions, their reported
+% PREV: exposure values are not directly comparable without a common source
+% PREV: normalization.
+% NEXT: This study combines these established parts in one fixed model. Each 360-degree
+% NEXT: street image is aligned with the same photogrammetric city mesh used for ray
+% NEXT: tracing, and the image labels are projected onto that mesh to produce a material map. A common transmitter model distributes sources along the visible
+% NEXT: roofline at every site. Rooflines are a natural choice: they are elevated, street-facing, and visible
+% NEXT: from the route. Distributing transmitters in proportion to roofline length
+% NEXT: avoids tying the result to any particular deployment. The ray tracer keeps the direct, specular, and diffuse components separate,
+% NEXT: preserving their arrival directions, until the field is applied to the body. The transport model treats direct paths and one
+% NEXT: specular reflection exactly, estimates one diffuse reflection, and stops there.
+% NEXT: The route points are fixed case studies, not a population sample, and the
+% NEXT: roofline transmitters are a model, not a measured deployment. To the best of the authors' knowledge, prior work has not combined aligned
+% NEXT: 360-degree street images, a common roofline transmitter model, and separate
+% NEXT: transport components with their arrival directions in a single route-level body
+% NEXT: exposure calculation.
 A photogrammetric city mesh gives accurate building geometry, but its triangles
 carry no material information. Street-level images can fill that gap. The
 Mapillary Vistas dataset provides a taxonomy for dense segmentation of street

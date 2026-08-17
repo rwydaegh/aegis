@@ -1,4 +1,4 @@
-% PREV: Direction remains explicit until body coupling. For outward body-surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, define $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot(-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
+% PREV: The arrival directions are carried through to the body. For outward body-surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, define $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot(-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
 % PREV: \begin{equation}
 % PREV: \begin{aligned}
 % PREV: \widetilde{S}_{\mathrm{ab}}(\mathbf{r},\mathbf{x})
@@ -9,15 +9,18 @@
 % PREV: \sum_{a\in\mathcal{D}}\alpha_a g(\mathbf{r},\widehat{\mathbf{k}}_a^{(\mathrm{d})}) \\
 % PREV: &\hspace{5.8em}+\sum_{b\in\mathcal{S}_1}\beta_b g(\mathbf{r},\widehat{\mathbf{k}}_b^{(\mathrm{s})}) \\
 % PREV: &\hspace{5.8em}+\sum_{q=1}^{Q}\widehat{\gamma}_q g(\mathbf{r},\widehat{\mathbf{k}}_q^{(\mathrm{f})})
-% PREV: \Bigg] .
+% PREV: \Bigg] \, .
 % PREV: \end{aligned}
 % PREV: \label{eq:body-coupling}
 % PREV: \end{equation}
-% PREV: Here, $T_0$ is the normal-incidence power-transmission coefficient obtained from
-% PREV: the IT'IS tissue parameters at 15~GHz~\cite{itis}. The implementation applies
-% PREV: this one-sided local-incidence coupling to the Duke anatomical mesh with the
-% PREV: published level-2 dosimetry kernel~\cite{christ2010,aegis}. Thus,
-% PREV: $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the area
+% PREV: Here, $T_0$ is the normal-incidence power-transmission coefficient from
+% PREV: the IT'IS tissue database at 15~GHz~\cite{itis}. It approximates the
+% PREV: absorption cross section for incoherent, unpolarized illumination. The
+% PREV: function $g$ sets the absorbed fraction to zero where the surface faces away
+% PREV: from the incoming direction. The calculation applies this directional
+% PREV: absorption to the 56,024-element Duke anatomical mesh~\cite{christ2010}.
+% PREV: Because all quantities are normalized by $\rho_A P_{\mathrm{EIRP}}$,
+% PREV: $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the triangle area
 % PREV: $A_{\mathbf{r}}$ at position $\mathbf{r}$ and body mass
 % PREV: $m_{\mathrm{body}}$, the normalized integrated quantities are
 % PREV: \begin{equation}
@@ -29,7 +32,7 @@
 % PREV: \widetilde{\mathrm{SAR}}_{\mathrm{wb}}(\mathbf{x})
 % PREV: &\equiv\frac{\mathrm{SAR}_{\mathrm{wb}}(\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
 % PREV: \\
-% PREV: &=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} .
+% PREV: &=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} \, .
 % PREV: \end{aligned}
 % PREV: \label{eq:body-endpoints}
 % PREV: \end{equation}

@@ -1,31 +1,31 @@
-% PREV: The calculation combines these established parts in one fixed model. First, each
-% PREV: 360-degree street image is aligned with the same city mesh used for ray tracing.
-% PREV: The image labels are then projected onto that mesh to make a material map.
-% PREV: Second, the same transmitter model is used at every site, with the number of
-% PREV: transmitters set independently of how finely the roofline is divided. Third,
-% PREV: direct, specular, and diffuse power stays separate until its arrival direction
-% PREV: is coupled to the body. The transport calculation treats direct paths and one
-% PREV: specular reflection exactly, estimates one diffuse reflection, and then stops.
-% PREV: The route points are fixed case studies rather than a population sample, and the
-% PREV: roofline transmitters are a model rather than a measured deployment. To the best
-% PREV: of the authors' knowledge, prior work has not combined aligned 360-degree street
-% PREV: images, a common roofline transmitter model, these separate transport components,
-% PREV: and directional body coupling along fixed routes.
-% NEXT: For the first time, one fixed-route calculation combines the following three
-% NEXT: contributions.
+% PREV: This study combines these established parts in one fixed model. Each 360-degree
+% PREV: street image is aligned with the same photogrammetric city mesh used for ray
+% PREV: tracing, and the image labels are projected onto that mesh to produce a material map. A common transmitter model distributes sources along the visible
+% PREV: roofline at every site. Rooflines are a natural choice: they are elevated, street-facing, and visible
+% PREV: from the route. Distributing transmitters in proportion to roofline length
+% PREV: avoids tying the result to any particular deployment. The ray tracer keeps the direct, specular, and diffuse components separate,
+% PREV: preserving their arrival directions, until the field is applied to the body. The transport model treats direct paths and one
+% PREV: specular reflection exactly, estimates one diffuse reflection, and stops there.
+% PREV: The route points are fixed case studies, not a population sample, and the
+% PREV: roofline transmitters are a model, not a measured deployment. To the best of the authors' knowledge, prior work has not combined aligned
+% PREV: 360-degree street images, a common roofline transmitter model, and separate
+% PREV: transport components with their arrival directions in a single route-level body
+% PREV: exposure calculation.
+% NEXT: This work makes the following three contributions.
 % NEXT: \begin{enumerate}
-% NEXT:   \item Aligned 360-degree street images supply traceable
-% NEXT:   material labels to the same city mesh used for the propagation calculation.
-% NEXT:   Surfaces without a reliable image label keep their geometry-based material.
+% NEXT:   \item Aligned 360-degree street images supply traceable material labels to
+% NEXT:   the same city mesh used for ray tracing. Surfaces without a reliable image
+% NEXT:   label keep their geometry-based material.
 % NEXT:
-% NEXT:   \item A normalized roofline transmitter model and transport calculation preserve
-% NEXT:   direct, one-reflection specular, and first-diffuse power and
-% NEXT:   direction until whole-body coupling.
+% NEXT:   \item A roofline transmitter model and transport calculation keep direct,
+% NEXT:   specular, and diffuse power separate, with arrival directions, until the
+% NEXT:   field is applied to the body.
 % NEXT:
-% NEXT:   \item A five-site application reports fixed-route exposure distributions,
-% NEXT:   controlled first-diffuse validation, component closure, replica convergence,
-% NEXT:   and the retained transport at the six route points with no direct or
-% NEXT:   one-reflection specular contribution.
+% NEXT:   \item An application across ten urban locations and five detailed pedestrian
+% NEXT:   routes reports geometric screening, fixed-route exposure distributions,
+% NEXT:   controlled first-diffuse validation, replica convergence, and the retained
+% NEXT:   transport at the six observation points where buildings block all direct and
+% NEXT:   specular paths.
 % NEXT: \end{enumerate}
 This study applies the method at 15~GHz across ten urban locations. A geometric
 fixed-grid diagnostic first characterizes all ten locations with geometry-based

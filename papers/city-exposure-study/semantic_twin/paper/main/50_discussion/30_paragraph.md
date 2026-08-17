@@ -1,30 +1,24 @@
-% PREV: The three modeled components explain the local changes within the route
-% PREV: distributions. A direct path is present at 67 route points. The exact order-1
-% PREV: specular term adds one surface reflection. The first-diffuse term connects the
-% PREV: receiver to a roofline transmitter through one blocking surface. After body
-% PREV: coupling, the first-diffuse contribution is small at most nonshadowed
-% PREV: route points. The six remaining points have zero direct and zero
-% PREV: order-1 specular contributions. The first-diffuse contribution is the only
-% PREV: nonzero modeled contribution at those points. Therefore, its small contribution
-% PREV: at most nonshadowed positions does not make it dispensable at shadowed positions.
-% NEXT: Several limits restrict the interpretation. The study covers five selected
-% NEXT: routes at 15~GHz and one body model that faces along each walk. The
-% NEXT: reported scale is per unit areal source density and EIRP. Scaling to a specific
-% NEXT: deployment is valid only if its transmitter positions follow the assumed
-% NEXT: roofline model. The transport model contains exact direct transport, exact
-% NEXT: order-1 specular transport, and one first-diffuse event. It stops at that
-% NEXT: diffuse event and omits all later interactions as well as higher-order specular
-% NEXT: paths. The controlled comparison validates the first-diffuse component in a
-% NEXT: depth-1 case. It does not validate the city calculations that also contain
-% NEXT: image-derived materials and specular transport. The 16 replicas quantify
-% NEXT: estimator randomness. They do not include uncertainty in image-to-mesh
-% NEXT: alignment, geometry, material labels, route choice, transmitter placement, body
-% NEXT: shape, or body orientation. The repeated five-site computation takes less than
-% NEXT: 70~s per prepared site on the tested GPU, but image acquisition and material
-% NEXT: mapping take longer and do not yet have one complete timing record.
-% NEXT: A separate geometric fixed-grid diagnostic in the supplementary material
-% NEXT: provides a broader configuration check and remains separate from these
-% NEXT: fixed-route results.
+% PREV: The first-diffuse component is small at most points (0.419\% pooled median),
+% PREV: but it is the only nonzero contribution at the six fully shadowed points. Its
+% PREV: small share where line of sight exists does not make it dispensable where
+% PREV: buildings block all direct and specular paths. A transport model that omits the
+% PREV: diffuse term would assign zero exposure to those six positions.
+% NEXT: Several limits restrict what the results can say. The geometric fixed-grid
+% NEXT: diagnostic covers ten locations with geometry-based materials and a fixed body
+% NEXT: orientation. The five detailed routes add image-derived materials and a body
+% NEXT: facing along the walk. Both tiers use the same frequency (15~GHz), source model,
+% NEXT: and transport model. Results are normalized per unit areal source density and
+% NEXT: EIRP. Scaling to a specific deployment is valid only if its transmitter
+% NEXT: positions follow the assumed roofline model. The transport model stops after one
+% NEXT: diffuse event and omits all later interactions and higher-order specular paths.
+% NEXT: The controlled comparison validates the first-diffuse component in a
+% NEXT: one-reflection scene. It does not validate the city calculations, which also
+% NEXT: use image-derived materials and exact specular transport. The 16 replicas
+% NEXT: quantify estimator randomness but not uncertainty in image-to-mesh alignment,
+% NEXT: geometry, material labels, route choice, transmitter placement, body shape, or
+% NEXT: body orientation. The five-site computation takes less than 70~s per prepared
+% NEXT: site on the tested GPU, but image acquisition and material mapping take longer
+% NEXT: and do not yet have a complete timing record.
 The paired material control tests the effect of image-derived materials on the
 body results. The direct term is identical in both cases, so all observed
 changes come from the materials used by the reflected and diffuse terms. In

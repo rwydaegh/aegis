@@ -1,18 +1,18 @@
-% PREV: The study configuration is shown in Fig.~\ref{fig:configuration}. A
-% PREV: 360-degree street image is aligned with a photogrammetric city mesh cropped to a
-% PREV: 250\,m radius. Object and material labels from the image are projected onto the
-% PREV: visible mesh triangles without changing their geometry. The roofline visible
+% PREV: Fig.~\ref{fig:configuration} shows the study configuration. A 360-degree street
+% PREV: image is aligned with a photogrammetric city mesh cropped to a 250~m radius
+% PREV: around the route. Object and material labels from the image are projected onto
+% PREV: the visible mesh triangles without changing their geometry. The roofline visible
 % PREV: from the route gives the possible transmitter locations. Fixed points along the
-% PREV: pedestrian route give the receiver locations, and the anatomical phantom faces
-% PREV: along the direction of travel at each point.
-% NEXT: Table~\ref{tab:routes} lists the five selected routes. The point counts and spans
-% NEXT: come from the verified route files used for the five-site data set. Each route
-% NEXT: follows a connected corridor covered by aligned 360-degree street images. The
-% NEXT: calculation samples fixed points along that corridor, including interpolated
-% NEXT: points between image locations. The image count and route-point count can
-% NEXT: therefore differ. The 73 route points are fixed observations rather than a
-% NEXT: random sample of pedestrians or places. The phantom faces along the walk, so a
-% NEXT: different route would change both its position and orientation.
+% PREV: pedestrian route give the observation positions, and the anatomical body model
+% PREV: faces along the direction of travel at each point.
+% NEXT: Table~\ref{tab:routes} lists the five selected routes. Each route follows a
+% NEXT: connected street corridor covered by aligned 360-degree street images. The
+% NEXT: calculation places fixed observation points along that corridor, including
+% NEXT: interpolated positions between image locations, so the number of images and
+% NEXT: the number of observation points can differ. The 73 route points are fixed
+% NEXT: observations, not a random sample of pedestrians or places. The body model
+% NEXT: faces along the direction of travel, so a different route would change both
+% NEXT: position and orientation.
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=\textwidth]{figures/configuration/configuration.pdf}

@@ -157,6 +157,7 @@ def test_multicity_writer_validates_and_exports_route_results(tmp_path: Path) ->
     _write_campaign(campaign)
 
     artifacts = write_multicity_results([CampaignInput("fixture", campaign)], tmp_path / "paper" / "current")
+    assert b"\r\n" not in artifacts.csv.read_bytes()
 
     for path in artifacts.__dict__.values():
         assert path.is_file()

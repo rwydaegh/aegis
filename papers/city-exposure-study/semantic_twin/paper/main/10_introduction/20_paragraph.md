@@ -1,25 +1,28 @@
-% PREV: \IEEEPARstart{U}{rban} wireless systems operate in a built environment that
-% PREV: strongly shapes radio propagation~\cite{itu2040}. Propagation can change over a
-% PREV: few meters along a pedestrian route. A person can move from direct visibility of a roofline to a
-% PREV: region where buildings block the direct field and reflected power arrives from
-% PREV: another direction. The surface materials then affect how much power is returned
-% PREV: to the street~\cite{itu2040,vitucci}. This local variation also matters after propagation.
-% PREV: Whole-body absorption depends on the arrival direction and on the orientation of
-% PREV: the body, so one incident-power value at one receiver position does not describe
-% PREV: exposure along a route. A route calculation must retain position and arrival
-% PREV: direction until the field is coupled to the body~\cite{icnirp}.
-% NEXT: Street images can supply surface information that is absent
-% NEXT: from an untextured city mesh. The Vistas dataset provides a street-scene
-% NEXT: taxonomy for dense semantic segmentation~\cite{vistas}. Kamari \emph{et al.}
-% NEXT: segment street-level images, project the resulting material classes onto city
-% NEXT: geometry, and use that geometry in millimeter-wave ray tracing~\cite{mmsv}.
-% NEXT: Xia \emph{et al.} use semantic point-cloud classification and detailed scene
-% NEXT: reconstruction for outdoor urban ray tracing at 2.8~GHz~\cite{xia2024}.
-% NEXT: Image-informed city modeling is therefore established. The
-% NEXT: present work does not claim semantic segmentation, material classification, or
-% NEXT: image-to-geometry projection as new. It uses these operations to form a
-% NEXT: traceable material map around fixed pedestrian routes. The map keeps the
-% NEXT: geometry-based material wherever the images give no reliable label.
+% PREV: \IEEEPARstart{A}{s} wireless networks expand into higher frequency bands,
+% PREV: the built environment plays a larger role in determining the radiofrequency
+% PREV: field that reaches a pedestrian~\cite{itu2040}. Along a city street, received
+% PREV: power can change over a few meters. A person walking past a row of buildings
+% PREV: can move from a clear view of a rooftop transmitter into a shadow where
+% PREV: buildings block the direct field and only reflected power reaches the
+% PREV: street. The facade materials then determine how much power returns to the
+% PREV: street~\cite{itu2040,vitucci}. This variation also matters after the field
+% PREV: arrives: whole-body absorption depends on the direction of arrival and on how
+% PREV: the body is oriented, so a single power value at a single point does not
+% PREV: describe exposure along a walking route. A route-level calculation must keep
+% PREV: the arrival direction until the field is applied to the
+% PREV: body~\cite{icnirp}.
+% NEXT: A photogrammetric city mesh gives accurate building geometry, but its triangles
+% NEXT: carry no material information. Street-level images can fill that gap. The
+% NEXT: Mapillary Vistas dataset provides a taxonomy for dense segmentation of street
+% NEXT: scenes~\cite{vistas}. Kamari \emph{et al.} segment street-level images, project
+% NEXT: the resulting material classes onto city geometry, and use that geometry in
+% NEXT: millimeter-wave ray tracing~\cite{mmsv}. Xia \emph{et al.} use semantic
+% NEXT: point-cloud classification and detailed scene reconstruction for outdoor ray
+% NEXT: tracing at 2.8~GHz~\cite{xia2024}. Projecting image-derived materials onto
+% NEXT: city geometry is therefore established. This study does not claim any of these
+% NEXT: operations as new. It uses them to build a material map around fixed pedestrian
+% NEXT: routes, keeping the default geometry-based material wherever the images give no
+% NEXT: reliable label.
 Ray tracing computes detailed propagation paths between transmitters and
 receivers in a three-dimensional city model~\cite{sionna}. It has been used for
 city-scale downlink exposure using published base-station

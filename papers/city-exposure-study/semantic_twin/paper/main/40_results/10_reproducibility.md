@@ -1,14 +1,7 @@
-% PREV: \section{Validation and Results}
+% PREV: \section{Results}
 % PREV: \label{sec:results}
-% NEXT: % claim: raw_component_closure
-% NEXT: The calculation manifests list 42 files per site, and all 210 file hashes pass
-% NEXT: verification. The direct, exact order-1 specular, and first-diffuse fields sum
-% NEXT: to the stored total with a maximum absolute residual of
-% NEXT: $1.735\times10^{-18}$~m$^{-2}$ across all 1,168 fields. The GPU body-coupling
-% NEXT: result also agrees with the double-precision CPU reference to a maximum relative
-% NEXT: difference of $6.64\times10^{-16}$ in the verified benchmark. These checks
-% NEXT: confirm the input files, addition of components, and agreement between CPU and
-% NEXT: GPU calculations. They do not externally validate the complete city model.
+% NEXT: \subsection{Validation}
+% NEXT: \label{sec:validation}
 % claim: current_campaign_contract
 Table~\ref{tab:routes} defines the five fixed routes and their 73 observation
 points. Every site uses 15~GHz and a photogrammetric city mesh cropped to a

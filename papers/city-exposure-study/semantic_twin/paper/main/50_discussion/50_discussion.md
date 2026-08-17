@@ -2,12 +2,13 @@
 \section{Discussion}
 \label{sec:discussion}
 
-The factor of 13.34 between the largest and smallest route medians shows that
-body exposure differs substantially among the five routes, even after the same
-source-density and EIRP normalization. This contrast reflects the geometry,
-visible roofline, mapped materials, and visibility conditions of each route.
-Each empirical distribution therefore describes only that fixed route and its
-observation points.
+The ten-location geometric screening shows a twofold span in location-median
+whole-body SAR across locations that differ in street width, building height,
+and roofline visibility. The factor of 13.34 between the largest and smallest
+route medians on the five detailed routes is much larger, reflecting the
+additional variation from image-derived materials, canopy, and route-specific
+visibility conditions. Each empirical distribution therefore describes only
+that fixed route and its observation points.
 
 The first-diffuse component is small at most points (0.419\% pooled median),
 but it is the only nonzero contribution at the six fully shadowed points. Its
@@ -29,29 +30,29 @@ volume. The comparison therefore measures sensitivity to both the material
 assignment and the vegetation rule together, and does not establish material
 accuracy on its own.
 
-Several limits restrict what the results can say. The study covers five
-selected routes at 15~GHz and one body model that faces along each walk.
-Results are normalized per unit areal source density and EIRP. Scaling to a
-specific deployment is valid only if its transmitter positions follow the
-assumed roofline model. The transport model stops after one diffuse event and
-omits all later interactions and higher-order specular paths. The controlled
-comparison validates the first-diffuse component in a one-reflection scene. It
-does not validate the city calculations, which also use image-derived materials
-and exact specular transport. The 16 replicas quantify estimator randomness but
-not uncertainty in image-to-mesh alignment, geometry, material labels, route
-choice, transmitter placement, body shape, or body orientation. The five-site
-computation takes less than 70~s per prepared site on the tested GPU, but image
-acquisition and material mapping take longer and do not yet have a complete
-timing record. A ten-location geometric fixed-grid diagnostic in the supplementary material
-checks coverage and orientation sensitivity over a wider set of
-configurations.
+Several limits restrict what the results can say. The geometric fixed-grid
+diagnostic covers ten locations with geometry-based materials and a fixed body
+orientation. The five detailed routes add image-derived materials and a body
+facing along the walk. Both tiers use the same frequency (15~GHz), source model,
+and transport model. Results are normalized per unit areal source density and
+EIRP. Scaling to a specific deployment is valid only if its transmitter
+positions follow the assumed roofline model. The transport model stops after one
+diffuse event and omits all later interactions and higher-order specular paths.
+The controlled comparison validates the first-diffuse component in a
+one-reflection scene. It does not validate the city calculations, which also
+use image-derived materials and exact specular transport. The 16 replicas
+quantify estimator randomness but not uncertainty in image-to-mesh alignment,
+geometry, material labels, route choice, transmitter placement, body shape, or
+body orientation. The five-site computation takes less than 70~s per prepared
+site on the tested GPU, but image acquisition and material mapping take longer
+and do not yet have a complete timing record.
 
 The first priority is source calibration and end-to-end validation of the city
 calculation against outdoor field measurements of the directional field before
 body coupling. Second, higher specular orders and paths beyond the first diffuse
 event can be added through paired studies that report their change in whole-body
 SAR, variance, and computation time. Third, several routes at the same site can
-quantify route-selection variation before the site set is enlarged. Other
+quantify route-selection variation beyond the current ten locations. Other
 frequencies, body models, and orientations can then test the remaining range of
 validity. Each extension should also report what fraction of the surfaces
 reached by the modeled paths carries an image-derived material.

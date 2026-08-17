@@ -1,5 +1,5 @@
-% PREV: \section{Fixed-Route Exposure Method}
-% PREV: \label{sec:method}
+% PREV: \subsection{Exposure Calculation}
+% PREV: \label{sec:exposure-calc}
 % NEXT: The exact positions of future transmitters are unknown, but elevated rooflines
 % NEXT: are plausible street-facing locations. The model therefore distributes the
 % NEXT: expected transmitters uniformly per unit physical length of the roofline visible
@@ -13,7 +13,7 @@
 % NEXT: \qquad
 % NEXT: p_i=\frac{\ell_i}{\sum_j \ell_j},
 % NEXT: \qquad
-% NEXT: \ell_i=\left\lVert\mathbf{p}_{i+1}-\mathbf{p}_i\right\rVert_2 .
+% NEXT: \ell_i=\left\lVert\mathbf{p}_{i+1}-\mathbf{p}_i\right\rVert_2 \, .
 % NEXT: \label{eq:source-measure}
 % NEXT: \end{equation}
 % NEXT: Thus, $N_{\mathrm{site}}$ sets the number of transmitters and $p_i$ assigns a

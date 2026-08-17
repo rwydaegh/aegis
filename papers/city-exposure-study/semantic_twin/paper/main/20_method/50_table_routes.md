@@ -1,22 +1,22 @@
-% PREV: Table~\ref{tab:routes} lists the five selected routes. The point counts and spans
-% PREV: come from the verified route files used for the five-site data set. Each route
-% PREV: follows a connected corridor covered by aligned 360-degree street images. The
-% PREV: calculation samples fixed points along that corridor, including interpolated
-% PREV: points between image locations. The image count and route-point count can
-% PREV: therefore differ. The 73 route points are fixed observations rather than a
-% PREV: random sample of pedestrians or places. The phantom faces along the walk, so a
-% PREV: different route would change both its position and orientation.
-% NEXT: The two image models have separate roles. Mask2Former assigns a Vistas object
-% NEXT: class to every image pixel~\cite{mask2former,vistas}. These classes include
-% NEXT: buildings, roads, people, vehicles, and vegetation. SAM 3 then tests relevant
-% NEXT: material and vegetation labels inside compatible object regions~\cite{sam3}.
-% NEXT: The known camera position and viewing direction project both sets of labels onto
-% NEXT: the visible city mesh. Repeated observations are combined into one material
-% NEXT: map, and every mapped triangle stays linked to its original image. A mesh
-% NEXT: triangle changes material only when the object and material labels agree and
-% NEXT: pass the acceptance tests. All other triangles keep their geometry-based
-% NEXT: material. The prompts, image-alignment tests, rejected labels, and mapping rules
-% NEXT: are given in the supplementary material.
+% PREV: Table~\ref{tab:routes} lists the five selected routes. Each route follows a
+% PREV: connected street corridor covered by aligned 360-degree street images. The
+% PREV: calculation places fixed observation points along that corridor, including
+% PREV: interpolated positions between image locations, so the number of images and
+% PREV: the number of observation points can differ. The 73 route points are fixed
+% PREV: observations, not a random sample of pedestrians or places. The body model
+% PREV: faces along the direction of travel, so a different route would change both
+% PREV: position and orientation.
+% NEXT: Two image-analysis models work in sequence. Mask2Former assigns a Vistas object
+% NEXT: class (building, road, vegetation, etc.) to every image
+% NEXT: pixel~\cite{mask2former,vistas}. SAM~3 then tests material and vegetation labels
+% NEXT: inside the compatible object regions~\cite{sam3}. Both sets of labels are
+% NEXT: projected onto the visible city mesh using the known camera position and viewing
+% NEXT: direction. Where multiple images cover the same triangle, the labels are
+% NEXT: combined into one material map, and every mapped triangle stays linked to its
+% NEXT: source image. A mesh triangle changes material only when the object and
+% NEXT: material labels agree and pass the acceptance tests. All other triangles keep
+% NEXT: their default material. The prompts, alignment tests, rejected labels, and
+% NEXT: mapping rules are given in the supplementary material.
 \begin{table}[!t]
   \caption{Five fixed routes with observation-point counts, route spans, and computation times}
   \label{tab:routes}

@@ -1,9 +1,12 @@
-% PREV: \section{Configuration and Surface Mapping}
+% PREV: \section{Method}
+% PREV: \label{sec:method}
+% PREV:
+% PREV: \subsection{Study Configuration}
 % PREV: \label{sec:configuration}
 % NEXT: \begin{figure*}[!t]
 % NEXT:   \centering
 % NEXT:   \includegraphics[width=\textwidth]{figures/configuration/configuration.pdf}
-% NEXT:   \caption{Study configuration at Prague Old Town Square. Panel (a) follows a 360-degree street image through object segmentation, projection onto the city mesh, and conversion to the material map used by the tracer. Panel (b) shows the 22 route points and the visible roofline on a plan view of the city. Panel (c) enlarges the route. The arrow gives the phantom's direction along the walk.}
+% NEXT:   \caption{Study configuration at Prague Old Town Square. (a) A 360-degree street image is segmented, projected onto the city mesh, and converted to the material map used for ray tracing. (b) The 22 observation points and the visible roofline on a plan view. (c) Close-up of the route. The arrow shows the body model's direction of travel.}
 % NEXT:   \label{fig:configuration}
 % NEXT: \end{figure*}
 Fig.~\ref{fig:configuration} shows the study configuration. A 360-degree street

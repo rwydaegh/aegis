@@ -6,7 +6,7 @@ import json
 from types import SimpleNamespace
 
 from semantic_twin.acquire import site_panoramas
-from semantic_twin.acquire.site_panoramas import FetchOptions, fetch_site_panoramas
+from semantic_twin.acquire.site_panoramas import FetchOptions, fetch_site_panoramas, settled_directory
 from semantic_twin.acquire.source import PanoramaPose
 from semantic_twin.screening import Candidate
 from semantic_twin import screening_workflow
@@ -31,6 +31,24 @@ class FakeStreetView:
     def metadata(self, *, pano_id):
         self.metadata_calls.append(pano_id)
         return self.reply
+
+
+def test_long_identifiers_with_the_same_prefix_use_distinct_cache_directories(tmp_path):
+    prefix = "CAoSFkNJSE0wb2dL"
+    first = settled_directory(tmp_path, 0, f"{prefix}-first-panorama")
+    second = settled_directory(tmp_path, 1, f"{prefix}-second-panorama")
+
+    assert first != second
+    assert first.name.endswith(prefix)
+    assert second.name.endswith(prefix)
+
+
+def test_exact_cached_identifier_survives_selection_index_changes(tmp_path):
+    cached = tmp_path / "pano_19_legacy-prefix"
+    cached.mkdir()
+    (cached / "metadata.json").write_text(json.dumps({"panoId": "a-long-provider-identifier"}))
+
+    assert settled_directory(tmp_path, 2, "a-long-provider-identifier") == cached
 
 
 def test_fetch_uses_cached_native_zoom_and_writes_exact_request_accounting(tmp_path, monkeypatch):

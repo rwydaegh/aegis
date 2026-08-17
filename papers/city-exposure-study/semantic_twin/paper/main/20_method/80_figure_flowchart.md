@@ -1,11 +1,14 @@
-% PREV: Fig.~\ref{fig:flowchart} shows the computation and the files checked before it
-% PREV: runs. A hash-verified manifest lists the aligned images, material map, city
-% PREV: mesh, route, roofline, body, sampler, and transport settings. Only files that
-% PREV: match this list enter the five-site data set. The transport calculation keeps
-% PREV: direct, first-order specular, and first-diffuse contributions separate until
-% PREV: body coupling. The five manifests contain 210 verified entries. Across the
-% PREV: resulting 1,168 directional body fields, the largest additive-closure residual
-% PREV: is $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
+% PREV: Fig.~\ref{fig:flowchart} shows the computation and its input checks. A
+% PREV: hash-verified manifest lists every input file: aligned images, material map,
+% PREV: city mesh, route, roofline, body model, and transport settings. Only files whose
+% PREV: hashes match the manifest enter the five-site data set. The transport
+% PREV: calculation keeps direct, specular, and diffuse contributions separate until
+% PREV: the field is applied to the body. The five manifests contain 210 verified entries. Across the
+% PREV: resulting 1,168 directional body fields, the largest residual when the three
+% PREV: components are summed back to the stored total is
+% PREV: $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
+% NEXT: \subsection{Exposure Calculation}
+% NEXT: \label{sec:exposure-calc}
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=\textwidth]{figures/flowchart/flowchart.pdf}

@@ -1,21 +1,21 @@
-% PREV: An unobstructed reference keeps network scale separate from scene visibility. The reference includes the inverse-square geometry of the complete source curve:
+% PREV: An unobstructed reference separates the source density from the scene geometry. The reference sums the inverse-square contribution of every roofline segment:
 % PREV: \begin{equation}
 % PREV: D_{\mathrm{ref}}(\mathbf{x})=
 % PREV: \sum_i\frac{p_i}{r_i(\mathbf{x})^2},
 % PREV: \qquad
 % PREV: S_{\mathrm{ref}}(\mathbf{x})=
-% PREV: \frac{A_{\mathrm{crop}}D_{\mathrm{ref}}(\mathbf{x})}{4\pi} .
+% PREV: \frac{A_{\mathrm{crop}}D_{\mathrm{ref}}(\mathbf{x})}{4\pi} \, .
 % PREV: \label{eq:reference-scale}
 % PREV: \end{equation}
-% PREV: No visibility test enters $D_{\mathrm{ref}}$. The reported transfer and body
-% PREV: endpoints are normalized per unit $\rho_A P_{\mathrm{EIRP}}$. Multiplication by
-% PREV: $\rho_A P_{\mathrm{EIRP}}$ gives a physical scale only for a deployment that
-% PREV: follows the same roofline transmitter model. The calculation omits transmitters
-% PREV: and interactions outside the crop.
+% PREV: No visibility test enters $D_{\mathrm{ref}}$. All reported quantities are
+% PREV: normalized per unit $\rho_A P_{\mathrm{EIRP}}$. Multiplication by
+% PREV: $\rho_A P_{\mathrm{EIRP}}$ recovers physical units, but only for a deployment
+% PREV: that follows the same roofline transmitter model. The calculation omits
+% PREV: transmitters and interactions outside the crop.
 % NEXT: \begin{figure*}[!t]
 % NEXT:   \centering
 % NEXT:   \includegraphics[width=\textwidth]{figures/adjoint/adjoint.pdf}
-% NEXT:   \caption{Forward and adjoint sampling for the first-diffuse term. (a) A forward calculation launches rays from every roofline segment toward the route point. (b) The adjoint calculation launches rays once from the route point. At the first blocking surface, next-event estimation tests connections to the roofline.}
+% NEXT:   \caption{Forward and adjoint sampling for the first-diffuse term. (a) A forward calculation launches rays from every roofline segment toward the observation point. (b) The adjoint calculation launches rays once from the observation point. At the first blocking surface, connections to every visible roofline segment are tested.}
 % NEXT:   \label{fig:adjoint}
 % NEXT: \end{figure*}
 % claim: directional_component_representation

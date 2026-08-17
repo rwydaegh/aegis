@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import pathlib
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -37,11 +38,30 @@ class FetchOptions:
 
 def settled_directory(out_dir: pathlib.Path, index: int, pano_id: str) -> pathlib.Path:
     """Find a panorama by identifier even if its old selection index changed."""
+    for existing in sorted(out_dir.glob("pano_*")):
+        metadata_path = existing / "metadata.json"
+        if not existing.is_dir() or not metadata_path.is_file():
+            continue
+        try:
+            cached_id = json.loads(metadata_path.read_text()).get("panoId")
+        except (json.JSONDecodeError, OSError):
+            continue
+        if cached_id == pano_id:
+            return existing
+
     tail = pano_id[:16]
-    for existing in sorted(out_dir.glob(f"pano_*_{tail}")):
+    if len(pano_id) <= len(tail):
+        legacy = sorted(path for path in out_dir.glob(f"pano_*_{tail}") if path.is_dir())
+        if legacy:
+            return legacy[0]
+        return out_dir / f"pano_{index:02d}_{tail}"
+
+    digest = hashlib.sha256(pano_id.encode()).hexdigest()[:12]
+    settled = out_dir / f"pano_{index:02d}_{digest}_{tail}"
+    for existing in sorted(out_dir.glob(f"pano_*_{digest}_{tail}")):
         if existing.is_dir():
             return existing
-    return out_dir / f"pano_{index:02d}_{tail}"
+    return settled
 
 
 def site_row(screening: pathlib.Path, name: str) -> dict[str, Any]:
@@ -121,6 +141,9 @@ def fetch_site_panoramas(scene_path: pathlib.Path, options: FetchOptions) -> dic
             f"tiles={tiles} zoom={settled} -> {destination.name}",
             flush=True,
         )
+
+    if len(written) != len(set(written)):
+        raise RuntimeError(f"{name}: multiple selected panorama identifiers resolved to one cache directory")
 
     manifest = {
         "site": name,

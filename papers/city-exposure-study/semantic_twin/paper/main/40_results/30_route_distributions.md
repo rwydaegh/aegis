@@ -1,15 +1,11 @@
-% PREV: \begin{figure*}[!t]
-% PREV: \centering
-% PREV: \includegraphics[width=\textwidth]{figures/validation/validation.pdf}
-% PREV: \caption{Controlled validation of the first-diffuse transfer. (a) Deterministic surface quadrature, the adjoint estimate, and the independent Sionna RT forward calculation at six receivers. (b) Signed error relative to quadrature. Error bars give the standard error across four adjoint seeds and three Sionna seeds.}
-% PREV: \label{fig:controlled-validation}
-% PREV: \end{figure*}
-% NEXT: \begin{figure*}[!t]
+% PREV: \subsection{Route Exposure}
+% PREV: \label{sec:route-exposure}
+% NEXT: \begin{figure}[!t]
 % NEXT: \centering
-% NEXT: \includegraphics[width=\textwidth]{figures/route_results/route_results.pdf}
-% NEXT: \caption{Normalized whole-body SAR on the five fixed routes. (a) Midpoint empirical CDFs include all 73 route points. Hollow triangles mark the six points with zero direct and order-1 specular transfer. (b) Additive contributions to route-mean whole-body SAR. The routes are fixed case studies rather than city or population samples.}
+% NEXT: \includegraphics[width=\columnwidth]{figures/route_results/route_results.pdf}
+% NEXT: \caption{Normalized whole-body SAR on the five fixed routes. Empirical CDFs include all 73 route points. Hollow triangles mark the six points with zero direct and zero order-1 specular transfer. The routes are fixed case studies, not city or population samples.}
 % NEXT: \label{fig:route-distributions}
-% NEXT: \end{figure*}
+% NEXT: \end{figure}
 % claim: route_median_contrast_factor
 Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions.
 Table~\ref{tab:route-results} gives the central

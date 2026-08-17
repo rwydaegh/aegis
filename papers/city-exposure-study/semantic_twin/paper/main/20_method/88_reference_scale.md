@@ -11,7 +11,7 @@
 % PREV: \qquad
 % PREV: p_i=\frac{\ell_i}{\sum_j \ell_j},
 % PREV: \qquad
-% PREV: \ell_i=\left\lVert\mathbf{p}_{i+1}-\mathbf{p}_i\right\rVert_2 .
+% PREV: \ell_i=\left\lVert\mathbf{p}_{i+1}-\mathbf{p}_i\right\rVert_2 \, .
 % PREV: \label{eq:source-measure}
 % PREV: \end{equation}
 % PREV: Thus, $N_{\mathrm{site}}$ sets the number of transmitters and $p_i$ assigns a
@@ -20,8 +20,8 @@
 % PREV: transmitters. The baseline uses three-dimensional length rather than horizontal
 % PREV: projected length.
 % NEXT: % claim: directional_component_representation
-% NEXT: The directional transfer has direct, one-reflection specular, and
-% NEXT: one-reflection diffuse parts. Let $\mathcal{D}$ contain the visible direct
+% NEXT: The propagation result at each observation point has direct, one-reflection
+% NEXT: specular, and one-reflection diffuse parts. Let $\mathcal{D}$ contain the visible direct
 % NEXT: paths, and let $\mathcal{S}_1$ contain the accepted one-reflection specular
 % NEXT: paths. Their normalized powers are
 % NEXT: $\alpha_a=m_a^{(\mathrm{d})}/D_{\mathrm{ref}}$ and
@@ -36,7 +36,7 @@
 % NEXT: \sum_{a\in\mathcal{D}}\alpha_a\delta_{\widehat{\mathbf{k}}_a^{(\mathrm{d})}} \\
 % NEXT: &+\sum_{b\in\mathcal{S}_1}\beta_b\delta_{\widehat{\mathbf{k}}_b^{(\mathrm{s})}} \\
 % NEXT: &+\sum_{q=1}^{Q}\widehat{\gamma}_q\delta_{\widehat{\mathbf{k}}_q^{(\mathrm{f})}},
-% NEXT: \qquad Q=4096 .
+% NEXT: \qquad Q=4096 \, .
 % NEXT: \end{aligned}
 % NEXT: \label{eq:first-material-transfer}
 % NEXT: \end{equation}
@@ -44,8 +44,8 @@
 % NEXT: specular paths. They are not projected onto the angular grid. Only diffuse
 % NEXT: power is accumulated in the $Q$ Fibonacci cells. Rays start at the receiver and
 % NEXT: travel outward to the first blocking surface, as shown in
-% NEXT: Fig.~\ref{fig:adjoint}. Next-event estimation then tests
-% NEXT: a connection from that surface to every roofline segment~\cite{veach}. The
+% NEXT: Fig.~\ref{fig:adjoint}. Next-event estimation then tests visibility from that surface to every roofline
+% NEXT: segment~\cite{veach}. The
 % NEXT: material model combines unpolarized Fresnel power with a Rayleigh roughness
 % NEXT: term. The remaining power enters a Lambertian diffuse term, and the components
 % NEXT: add incoherently. The sampled path ends after this diffuse reflection, and the

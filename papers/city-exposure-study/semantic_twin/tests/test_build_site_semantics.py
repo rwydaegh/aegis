@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import pathlib
@@ -330,6 +331,20 @@ def test_a_site_without_a_companion_reads_only_its_own_directory(tmp_path):
     build(panoramas / "korenmarkt_walk", "walk_00_b")
     admitted, _ = stations("madrid_plazamayor", root=tmp_path, **GATE)
     assert [entry["station"] for entry in admitted] == ["pano_00_a"]
+
+
+def test_station_report_freezes_full_capture_identity_and_metadata_hash(tmp_path):
+    folder = build(tmp_path / "data" / "panoramas" / "krakow_rynek", "pano_00_shared_prefix")
+    capture_id = "CAoSFkNJSE0wb2dL_full_identifier"
+    payload = json.dumps({"panoId": capture_id, "date": "2020-04"}).encode()
+    (folder / "metadata.json").write_bytes(payload)
+
+    admitted, refused = stations("krakow_rynek", root=tmp_path, **GATE)
+
+    assert refused == []
+    assert admitted[0]["pano_id"] == capture_id
+    assert admitted[0]["provider"] == "google_streetview"
+    assert admitted[0]["metadata_sha256"] == hashlib.sha256(payload).hexdigest()
 
 
 def test_the_probe_of_a_rejected_indoor_capture_is_not_a_station(tmp_path):

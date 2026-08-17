@@ -1,29 +1,30 @@
 % PREV: \begin{table}[!t]
-% PREV:   \caption{Five fixed routes and prepared-scene numerical campaign times}
+% PREV:   \caption{Five fixed routes with observation-point counts, route spans, and computation times}
 % PREV:   \label{tab:routes}
 % PREV:   \centering
 % PREV:   \begin{tabular}{lrrr}
-% PREV:     \hline
+% PREV:     \toprule
 % PREV:     Site & Route points & Route span (m) & Wall time (s) \\
-% PREV:     \hline
-% PREV:     Korenmarkt & 10 & 49.04 & 29.79 \\
+% PREV:     \midrule
+% PREV:     Ghent & 10 & 49.04 & 29.79 \\
 % PREV:     Prague & 22 & 119.39 & 69.02 \\
 % PREV:     Madrid & 14 & 73.47 & 40.70 \\
 % PREV:     Mexico City & 11 & 60.79 & 30.92 \\
 % PREV:     Tokyo Hachiko & 16 & 87.38 & 50.11 \\
-% PREV:     \hline
+% PREV:     \midrule
 % PREV:     Total & 73 & 390.07 & 220.54 \\
-% PREV:     \hline
+% PREV:     \bottomrule
 % PREV:   \end{tabular}
 % PREV: \end{table}
-% NEXT: Fig.~\ref{fig:flowchart} shows the computation and the files checked before it
-% NEXT: runs. A hash-verified manifest lists the aligned images, material map, city
-% NEXT: mesh, route, roofline, body, sampler, and transport settings. Only files that
-% NEXT: match this list enter the five-site data set. The transport calculation keeps
-% NEXT: direct, first-order specular, and first-diffuse contributions separate until
-% NEXT: body coupling. The five manifests contain 210 verified entries. Across the
-% NEXT: resulting 1,168 directional body fields, the largest additive-closure residual
-% NEXT: is $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
+% NEXT: Fig.~\ref{fig:flowchart} shows the computation and its input checks. A
+% NEXT: hash-verified manifest lists every input file: aligned images, material map,
+% NEXT: city mesh, route, roofline, body model, and transport settings. Only files whose
+% NEXT: hashes match the manifest enter the five-site data set. The transport
+% NEXT: calculation keeps direct, specular, and diffuse contributions separate until
+% NEXT: the field is applied to the body. The five manifests contain 210 verified entries. Across the
+% NEXT: resulting 1,168 directional body fields, the largest residual when the three
+% NEXT: components are summed back to the stored total is
+% NEXT: $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
 Two image-analysis models work in sequence. Mask2Former assigns a Vistas object
 class (building, road, vegetation, etc.) to every image
 pixel~\cite{mask2former,vistas}. SAM~3 then tests material and vegetation labels

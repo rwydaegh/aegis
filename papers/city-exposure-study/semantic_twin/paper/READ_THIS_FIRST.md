@@ -6,8 +6,10 @@ This directory now has one canonical manuscript: the paragraph tree in
 describe a superseded eleven-site study and are not scientific sources for the
 new manuscript.
 
-The manuscript targets a regular IEEE Access Research Article. Its result is the
-verified five-site, 73-standpoint, first-material calculation. All absolute
+The manuscript targets a regular IEEE Access Research Article. Its main result is the
+verified five-site, 73-standpoint, first-material calculation. The supplement
+also reports a ten-route extension under the same production contract and a
+separate geometric fixed-grid diagnostic. All absolute
 values are normalized per unit areal source density and EIRP. The study is a
 fixed-route comparison. It is not a population study, a city ranking, a
 deployed-network estimate, a compliance assessment, or a complete multipath

@@ -450,9 +450,53 @@
         }
       },
       "verified": true
+    },
+    "ten_route_production_extension": {
+      "docstring": "",
+      "error": null,
+      "output": {
+        "component_share_ranges": {
+          "all_specular": {
+            "maximum": 0.29931297721742844,
+            "minimum": 0.09124023442932315
+          },
+          "direct": {
+            "maximum": 0.8953085596238033,
+            "minimum": 0.6976726702841677
+          },
+          "first_diffuse": {
+            "maximum": 0.05021401762895124,
+            "minimum": 0.003014352498403816
+          }
+        },
+        "final_48_to_64_route_quantile_change_max_db": {
+          "q10": 0.004914586580220958,
+          "q50": 0.00015714191667892853,
+          "q90": 7.61602380400701e-05
+        },
+        "point_replica_fields": 10432,
+        "primary_rays": 2086400000,
+        "q50_span_factor": 14.314818947320367,
+        "replicas_per_route": 64,
+        "route_q50_wbsar": {
+          "Brussels": 0.031186801900083272,
+          "Ghent": 0.062047333041072586,
+          "Krakow": 0.02252023184141687,
+          "London": 0.015008010411373535,
+          "Madrid": 0.02238111794268595,
+          "Mexico City": 0.12906056842948704,
+          "Milan": 0.009015871517791447,
+          "Prague": 0.013073562987120951,
+          "Tokyo Hachiko": 0.009673651662657361,
+          "Toulouse": 0.030216778100008404
+        },
+        "routes": 10,
+        "standpoints": 163
+      },
+      "verified": true
     }
   },
-  "generated_at": "2026-08-16T23:33:43Z",
-  "git_sha": "23b8df33c640f1f4e91fc1b5a9778f0dc9342558",
+  "generated_at": "2026-08-17T22:41:27Z",
+  "git_sha": "08e4e32be79e7c80fd0be12c5037eb9814b6063a",
   "schema_version": 1
 }

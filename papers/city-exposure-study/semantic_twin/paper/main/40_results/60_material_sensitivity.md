@@ -1,18 +1,5 @@
-% PREV: % claim: replica_convergence_12_to_16
-% PREV: The nested 12-to-16-replica comparison separates the central route statistic from the lower tail. Every route-median whole-body SAR changes by at most $5.90\times10^{-5}$~dB. The largest lower-decile point changes are 0.032226~dB in Mexico City and 0.017636~dB in Tokyo Hachiko. The maximum pointwise total-transfer changes in Table~\ref{tab:route-results} reach 0.043625 and 0.019732~dB at these two sites. At 16 replicas, their 90th-percentile total-transfer standard errors are 0.1461 and 0.0310~dB, respectively. Central route statistics are stable under the retained estimator.
-% PREV:
-% PREV: % claim: replica_convergence_48_to_64
-% PREV: A separate calculation retains the exact verified 16-replica
-% PREV: prefix and continues every route through 64 replicas. Between 48 and 64
-% PREV: replicas, the whole-body SAR $q_{10}$ changes by 0.00344~dB in Mexico City and
-% PREV: 0.00491~dB in Tokyo Hachiko. The largest change among their six shadowed
-% PREV: route points is 0.0125 and 0.0104~dB, respectively. Both lower tails satisfy the
-% PREV: stated aggregate stability criteria through 64 replicas. Mexico City still
-% PREV: shows rare-event first-diffuse behavior, with a maximum-to-median positive
-% PREV: replica contribution ratio of 5738. This result remains
-% PREV: specific to the fixed routes and excludes route-selection and
-% PREV: city-sampling uncertainty. The complete nested comparison is provided in the
-% PREV: supplementary material.
+% PREV: \subsection{Material Sensitivity}
+% PREV: \label{sec:material-sensitivity}
 % claim: paired_material_evidence_control
 A paired control for Madrid and Mexico City replaces all image-mapped materials
 with the default geometry-based materials while keeping the mesh, route,

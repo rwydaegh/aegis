@@ -33,6 +33,45 @@ POINTS = {
     "tokyo_hachiko": 16,
 }
 
+EXTENSION_SITES = (
+    "brussels_grandplace",
+    "london_trafalgar",
+    "milan_duomo",
+    "krakow_rynek",
+    "toulouse_capitole",
+)
+
+
+def test_ten_city_route_extension_configs_match_the_sealed_production_contract() -> None:
+    root = Path(__file__).parents[1]
+    expected_seeds = list(range(7, 71))
+    for site in EXTENSION_SITES:
+        path = (
+            root / "config" / f"roofline_campaign_{site}_provider_corridor_v1_first_material_interaction_v1_"
+            "extension64_cuda_iid.json"
+        )
+        document = json.loads(path.read_text())
+        run = document["run"]
+        campaign = document["campaign"]
+        source = document["source"]
+        assert run["site"] == campaign["site"] == site
+        assert run["walk_path"] == "provider_corridor"
+        assert run["materials"] == campaign["material_mode"] == "atlas"
+        assert run["rays"] == 200_000
+        assert run["local_cells"] == 4096
+        assert run["max_bounces"] == 1
+        assert campaign["route_contract"] == "provider_corridor_v1"
+        assert campaign["planned_seeds"] == expected_seeds
+        assert campaign["convergence_looks"] == [16, 24, 32, 48, 64]
+        assert campaign["specular_acceptance"] == "first_material_interaction_exact_order_1"
+        assert campaign["transport_topology"] == "first_material_interaction_v1"
+        expected_budget = {
+            "london_trafalgar": 500_000_000,
+            "milan_duomo": 400_000_000,
+        }.get(site, 320_000_000)
+        assert source["specular_candidate_budget"] == expected_budget
+        assert source["specular_suffix_mode"] == "disabled"
+
 
 def _identity(site: str, extended: bool) -> dict[str, object]:
     seeds = list(range(7, 71)) if extended else list(range(7, 23))

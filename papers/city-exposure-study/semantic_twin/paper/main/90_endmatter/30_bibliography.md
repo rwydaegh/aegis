@@ -11,6 +11,36 @@
 % NEXT: of human radiofrequency electromagnetic-field exposure, and propagation
 % NEXT: modeling for next-generation wireless networks.
 % NEXT: \end{IEEEbiographynophoto}
+% NEXT:
+% NEXT: \begin{IEEEbiographynophoto}{G\"unter Vermeeren}
+% NEXT: received the M.Sc. degree in industrial engineering from KAHO Sint-Lieven,
+% NEXT: Ghent, Belgium, in 1998, the M.Sc. degree in electrical engineering from Ghent
+% NEXT: University, Belgium, in 2001, and the Ph.D. degree in electro-technical
+% NEXT: engineering from Ghent University in 2013. Since 2002, he has been a Research
+% NEXT: Engineer with the Department of Information Technology, Ghent University. His
+% NEXT: research interests include numerical modeling and measurements of
+% NEXT: electromagnetic radiation in the domain of radiofrequency dosimetry,
+% NEXT: electromagnetic exposure, on-body propagation, and medical imaging systems.
+% NEXT: \end{IEEEbiographynophoto}
+% NEXT:
+% NEXT: \begin{IEEEbiographynophoto}{Emmeric Tanghe}
+% NEXT: received the M.Sc. and Ph.D. degrees in electrical engineering from Ghent
+% NEXT: University, Ghent, Belgium, in 2005 and 2011, respectively. In 2015, he became
+% NEXT: a Part-Time Professor in medical applications of electromagnetic fields in and
+% NEXT: around the human body. Since 2011, he has been a Postdoctoral Researcher with
+% NEXT: Ghent University/IMEC, where he focuses on propagation modeling. From 2012 to
+% NEXT: 2018, he was a Postdoctoral Fellow of FWO-V (Research Foundation-Flanders).
+% NEXT: \end{IEEEbiographynophoto}
+% NEXT:
+% NEXT: \begin{IEEEbiographynophoto}{Wout Joseph}
+% NEXT: received the M.Sc. degree in electrical engineering from Ghent University,
+% NEXT: Ghent, Belgium, in 2000, and the Ph.D. degree in electrical engineering from
+% NEXT: Ghent University in 2005. Since 2009, he has been a Professor in the domain of
+% NEXT: experimental characterization of wireless communication systems. His research
+% NEXT: interests include measuring and modeling electromagnetic fields around base
+% NEXT: stations for mobile communications, electromagnetic exposure assessment,
+% NEXT: propagation for wireless communication systems, and antennas and calibration.
+% NEXT: \end{IEEEbiographynophoto}
 \begin{thebibliography}{99}
 
 \bibitem{itu2040}

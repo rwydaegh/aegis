@@ -1,9 +1,8 @@
 % NEXT: \section*{Acknowledgment}
 % NEXT:
-% NEXT: OpenAI Codex~\cite{openai_codex} was used to draft and edit text in all
-% NEXT: manuscript sections and to assist with plotting code and manuscript checks. The author reviewed the
-% NEXT: generated text and code and verified the scientific claims, numerical values,
-% NEXT: references, and final text.
+% NEXT: AI tools were used to assist with manuscript preparation. The authors reviewed
+% NEXT: and verified the scientific claims, numerical values, references, and final
+% NEXT: text.
 \section*{Data and Code Availability}
 
 The verified five-site data, manifests, analysis scripts, and figure scripts

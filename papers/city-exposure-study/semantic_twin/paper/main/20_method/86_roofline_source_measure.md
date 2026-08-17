@@ -1,26 +1,25 @@
-% PREV: The calculation uses a fixed route, city mesh, material map, and roofline source
-% PREV: curve. Every route point uses 15~GHz and a crop with radius
+% PREV: The calculation uses a fixed route, city mesh, material map, and roofline
+% PREV: transmitter model. Every route point uses 15~GHz and a crop with radius
 % PREV: $R_{\mathrm{crop}}=250$~m, which gives
 % PREV: $A_{\mathrm{crop}}=\pi R_{\mathrm{crop}}^2=196{,}349.54$~m$^2$. The receiver
-% PREV: position $\mathbf{x}$ is also the reciprocal ray origin and body reference
-% PREV: point. The phantom faces along the local direction of travel. Index $i$ denotes
-% PREV: a roofline segment, $r_i(\mathbf{x})$ is its range to the receiver, and
-% PREV: $\mathbf{r}$ is the position of a body surface element. These assumptions stay
-% PREV: fixed across replicas and sites.
-% NEXT: An unobstructed reference keeps network scale separate from scene visibility. The reference includes the inverse-square geometry of the complete source curve:
+% PREV: position $\mathbf{x}$ is the ray origin and body reference point. The body model faces along the local direction of travel. Index $i$
+% PREV: denotes a roofline segment, $r_i(\mathbf{x})$ is its range to the receiver,
+% PREV: and $\mathbf{r}$ is a position on the body surface. These assumptions are fixed
+% PREV: across replicas and sites.
+% NEXT: An unobstructed reference separates the source density from the scene geometry. The reference sums the inverse-square contribution of every roofline segment:
 % NEXT: \begin{equation}
 % NEXT: D_{\mathrm{ref}}(\mathbf{x})=
 % NEXT: \sum_i\frac{p_i}{r_i(\mathbf{x})^2},
 % NEXT: \qquad
 % NEXT: S_{\mathrm{ref}}(\mathbf{x})=
-% NEXT: \frac{A_{\mathrm{crop}}D_{\mathrm{ref}}(\mathbf{x})}{4\pi} .
+% NEXT: \frac{A_{\mathrm{crop}}D_{\mathrm{ref}}(\mathbf{x})}{4\pi} \, .
 % NEXT: \label{eq:reference-scale}
 % NEXT: \end{equation}
-% NEXT: No visibility test enters $D_{\mathrm{ref}}$. The reported transfer and body
-% NEXT: endpoints are normalized per unit $\rho_A P_{\mathrm{EIRP}}$. Multiplication by
-% NEXT: $\rho_A P_{\mathrm{EIRP}}$ gives a physical scale only for a deployment that
-% NEXT: follows the same roofline transmitter model. The calculation omits transmitters
-% NEXT: and interactions outside the crop.
+% NEXT: No visibility test enters $D_{\mathrm{ref}}$. All reported quantities are
+% NEXT: normalized per unit $\rho_A P_{\mathrm{EIRP}}$. Multiplication by
+% NEXT: $\rho_A P_{\mathrm{EIRP}}$ recovers physical units, but only for a deployment
+% NEXT: that follows the same roofline transmitter model. The calculation omits
+% NEXT: transmitters and interactions outside the crop.
 The exact positions of future transmitters are unknown, but elevated rooflines
 are plausible street-facing locations. The model therefore distributes the
 expected transmitters uniformly per unit physical length of the roofline visible

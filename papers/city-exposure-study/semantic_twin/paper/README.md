@@ -6,11 +6,12 @@ Access source and PDF are `build/main.tex` and `build/main.pdf`. The argument is
 in [spine.md](spine.md), and author decisions are collected in
 [QUESTIONS_BANK.md](QUESTIONS_BANK.md).
 
-The manuscript is a regular IEEE Access Research Article. It reports the
-authenticated five-site, 73-standpoint result under the declared
-first-material-interaction model. The current publication figures are indexed
-in [figures/README.md](figures/README.md). The supplementary paragraph tree is
-in `si_new/`.
+The manuscript is a regular IEEE Access Research Article. Its main result is the
+authenticated five-site, 73-standpoint calculation under the declared
+first-material-interaction model. The supplement includes a ten-route extension
+under the same production contract and a separate geometric fixed-grid diagnostic.
+The current publication figures are indexed in [figures/README.md](figures/README.md).
+The supplementary paragraph tree is in `si_new/`.
 
 The existing `paper.tex`, `body.tex`, `methods.tex`, `si.tex`, and their PDFs
 belong to the superseded eleven-city source-law manuscript. They remain only for

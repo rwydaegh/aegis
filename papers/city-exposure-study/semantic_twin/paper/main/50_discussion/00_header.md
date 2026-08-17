@@ -1,11 +1,10 @@
-% NEXT: The factor of $13.34$ between the largest and smallest route medians shows that
-% NEXT: body exposure differs among the selected routes after the same source-density
-% NEXT: and EIRP normalization. This contrast includes the geometry, visible roofline,
-% NEXT: mapped materials, and visibility conditions of each selected route. The
-% NEXT: empirical distribution for each site therefore describes only that fixed route
-% NEXT: and its calculation points. It does not estimate a city distribution or define
-% NEXT: a ranking of the five cities. The analysis reports changes along each
-% NEXT: pedestrian route while keeping the statistical unit clear.
+% NEXT: The ten-location geometric screening shows a twofold span in location-median
+% NEXT: whole-body SAR across locations that differ in street width, building height,
+% NEXT: and roofline visibility. The factor of 13.34 between the largest and smallest
+% NEXT: route medians on the five detailed routes is much larger, reflecting the
+% NEXT: additional variation from image-derived materials, canopy, and route-specific
+% NEXT: visibility conditions. Each empirical distribution therefore describes only
+% NEXT: that fixed route and its observation points.
 \section{Discussion}
 \label{sec:discussion}
 

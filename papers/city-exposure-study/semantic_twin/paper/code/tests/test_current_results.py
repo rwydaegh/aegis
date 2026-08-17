@@ -42,6 +42,7 @@ def test_all_claim_functions_pass_against_authenticated_outputs() -> None:
         CLAIMS.ray_reached_evidence_coverage,
         CLAIMS.roofline_budget_sensitivity,
         CLAIMS.geometric_fixed_grid_diagnostic,
+        CLAIMS.ten_route_production_extension,
     )
     for function in functions:
         assert function()
@@ -57,6 +58,16 @@ def test_geometric_fixed_grid_claim_uses_authenticated_report() -> None:
     }
     assert max(result["eight_to_sixteen_seed_max_abs_db"].values()) < 0.004
     assert max(result["thirty_two_to_sixty_four_point_max_abs_db"].values()) > 1.3
+
+
+def test_ten_route_claim_uses_authenticated_report() -> None:
+    result = CLAIMS.ten_route_production_extension()
+    assert result["routes"] == 10
+    assert result["standpoints"] == 163
+    assert result["point_replica_fields"] == 10_432
+    assert result["primary_rays"] == 2_086_400_000
+    assert round(result["q50_span_factor"], 1) == 14.3
+    assert max(result["final_48_to_64_route_quantile_change_max_db"].values()) < 0.005
 
 
 def test_budget_sensitivity_claim_passes_against_authenticated_report() -> None:

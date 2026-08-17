@@ -1,5 +1,5 @@
 <!-- AUTO_BEGIN: assembled -->
-\section{Validation and Results}
+\section{Results}
 \label{sec:results}
 
 % claim: current_campaign_contract
@@ -12,6 +12,9 @@ replicas with seeds 7 through 22. Each replica uses 200,000 primary rays and
 Calculation time for a prepared site ranges from 29.79 to 69.02~s on one A6000
 GPU. These times exclude image acquisition, alignment, depth estimation, and
 material mapping because the full preparation time was not recorded.
+
+\subsection{Validation}
+\label{sec:validation}
 
 % claim: raw_component_closure
 The calculation manifests list 42 files per site, and all 210 file hashes pass
@@ -48,23 +51,26 @@ city.
 \label{fig:controlled-validation}
 \end{figure*}
 
+\subsection{Route Exposure}
+\label{sec:route-exposure}
+
 % claim: route_median_contrast_factor
-Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions
-and route-mean component shares. Table~\ref{tab:route-results} gives the central
+Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions.
+Table~\ref{tab:route-results} gives the central
 summaries and finite multipath surplus. Normalized whole-body SAR is reported in
 m$^2$~kg$^{-1}$ per unit $\rho_A P_{\mathrm{EIRP}}$. A physical whole-body SAR value therefore requires multiplication by the
 deployment's areal source density and EIRP.
-Panel (a) includes all 73 observation points and marks the six with zero direct
+The figure includes all 73 observation points and marks the six with zero direct
 and zero order-1 specular transfer. The largest route median is 13.34 times the
 smallest. Mexico City and Tokyo Hachiko have the widest spread along a route
 and the lowest tails.
 
-\begin{figure*}[!t]
+\begin{figure}[!t]
 \centering
-\includegraphics[width=\textwidth]{figures/route_results/route_results.pdf}
-\caption{Normalized whole-body SAR on the five fixed routes. (a) Empirical CDFs of all 73 observation points. Hollow triangles mark the six points with zero direct and zero order-1 specular transfer. (b) Additive component shares of route-mean whole-body SAR. These routes are fixed case studies, not city or population samples.}
+\includegraphics[width=\columnwidth]{figures/route_results/route_results.pdf}
+\caption{Normalized whole-body SAR on the five fixed routes. Empirical CDFs include all 73 route points. Hollow triangles mark the six points with zero direct and zero order-1 specular transfer. The routes are fixed case studies, not city or population samples.}
 \label{fig:route-distributions}
-\end{figure*}
+\end{figure}
 
 % claim: five_city_wbsar_route_quantiles
 \begin{table*}[!t]
@@ -86,8 +92,8 @@ Tokyo Hachiko & $3.66\times10^{-5}$ & 0.009674 & 0.025200 & 0.828 & 3 & 0.019732
 
 % claim: six_shadowed_standpoints
 % claim: pooled_median_wbsar_component_shares
-The component shares in Fig.~\ref{fig:route-distributions}(b) are additive
-shares of route-mean whole-body SAR. Direct transport is the largest
+The additive component shares of route-mean whole-body SAR are shown in the
+supplementary material. Direct transport is the largest
 contribution at all 67 points with line of sight. Exact order-1 specular
 transport is never the largest. Mexico City points 0, 1, and 3 and Tokyo
 Hachiko points 13, 14, and 15 have zero direct and zero order-1 specular
@@ -105,6 +111,9 @@ surfaces account for 75.903\% of the reflected SAR. The
 corresponding shares are 80.643\% for exact order-1 specular transport and
 13.337\% for first-diffuse transport. The supplementary material gives the
 complete split by material source.
+
+\subsection{Replica Convergence}
+\label{sec:convergence}
 
 % claim: replica_convergence_12_to_16
 The nested 12-to-16-replica comparison separates the route median from the
@@ -127,6 +136,9 @@ carries 5738 times the median replica contribution.
 This result is specific to the fixed routes and excludes route-selection and
 city-sampling uncertainty. The complete nested comparison is given in the
 supplementary material.
+
+\subsection{Material Sensitivity}
+\label{sec:material-sensitivity}
 
 % claim: paired_material_evidence_control
 A paired control for Madrid and Mexico City replaces all image-mapped materials

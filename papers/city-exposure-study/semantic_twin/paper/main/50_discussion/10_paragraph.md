@@ -1,14 +1,10 @@
 % PREV: \section{Discussion}
 % PREV: \label{sec:discussion}
-% NEXT: The three modeled components explain the local changes within the route
-% NEXT: distributions. A direct path is present at 67 route points. The exact order-1
-% NEXT: specular term adds one surface reflection. The first-diffuse term connects the
-% NEXT: receiver to a roofline transmitter through one blocking surface. After body
-% NEXT: coupling, the first-diffuse contribution is small at most nonshadowed
-% NEXT: route points. The six remaining points have zero direct and zero
-% NEXT: order-1 specular contributions. The first-diffuse contribution is the only
-% NEXT: nonzero modeled contribution at those points. Therefore, its small contribution
-% NEXT: at most nonshadowed positions does not make it dispensable at shadowed positions.
+% NEXT: The first-diffuse component is small at most points (0.419\% pooled median),
+% NEXT: but it is the only nonzero contribution at the six fully shadowed points. Its
+% NEXT: small share where line of sight exists does not make it dispensable where
+% NEXT: buildings block all direct and specular paths. A transport model that omits the
+% NEXT: diffuse term would assign zero exposure to those six positions.
 The ten-location geometric screening shows a twofold span in location-median
 whole-body SAR across locations that differ in street width, building height,
 and roofline visibility. The factor of 13.34 between the largest and smallest

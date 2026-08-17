@@ -56,12 +56,16 @@ roofline transmitters are a model, not a measured deployment. To the best of the
 transport components with their arrival directions in a single route-level body
 exposure calculation.
 
-This study applies the method at 15~GHz to five selected routes containing 73
-fixed observation points. Every result is normalized per unit active-source areal
+This study applies the method at 15~GHz across ten urban locations. A geometric
+fixed-grid diagnostic first characterizes all ten locations with geometry-based
+materials and a fixed body orientation. Five of these locations are then studied
+with image-derived materials along fixed pedestrian routes containing 73
+observation points. Every result is normalized per unit active-source areal
 density and per unit effective isotropic radiated power (EIRP). The route-median
 whole-body SAR values differ by a factor of 13.34 across the five routes. These
-results describe fixed routes under one source and transport model. They do not
-estimate population exposure or deployed-network exposure.
+results describe fixed-grid locations and fixed routes under one source and
+transport model. They do not estimate population exposure or deployed-network
+exposure.
 
 This work makes the following three contributions.
 \begin{enumerate}
@@ -73,7 +77,8 @@ This work makes the following three contributions.
   specular, and diffuse power separate, with arrival directions, until the
   field is applied to the body.
 
-  \item A five-route application reports fixed-route exposure distributions,
+  \item An application across ten urban locations and five detailed pedestrian
+  routes reports geometric screening, fixed-route exposure distributions,
   controlled first-diffuse validation, replica convergence, and the retained
   transport at the six observation points where buildings block all direct and
   specular paths.

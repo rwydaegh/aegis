@@ -11,6 +11,11 @@ along selected routes under a declared first-material transport model. It is not
 a ten-city cohort, a population sample, a deployed-network prediction, or a
 complete multipath solution.
 
+A separate authenticated extension now applies the same production contract
+and 64-replica setting to ten selected routes. It combines the five convergence
+routes with Brussels, London, Milan, Krakow, and Toulouse. This extension adds
+site and route coverage without redefining the canonical five-route paper result.
+
 ## Canonical sources
 
 Two sources define the current paper result.
@@ -30,6 +35,37 @@ Three authenticated diagnostics now accompany the retained 16-replica result.
 They are the exact ray-reached evidence audit, the current-contract extension
 through 64 replicas, and the paired ray/cell budget sensitivity. These
 diagnostics do not alter the sealed campaign directories.
+
+## Ten-route production-contract extension
+
+The authenticated extension contains ten `provider_corridor_v1` routes, 163
+observation points, and 64 replicas per route. Every campaign uses image-derived
+surface properties, route-tangent Duke orientation, 200,000 primary rays per
+point and seed, 4,096 first-diffuse cells, and
+`first_material_interaction_v1`. The result contains 10,432 point-replica body
+fields and 2.0864 billion primary rays.
+
+| Added route | Points | Admitted image stations | Route-median normalized wbSAR |
+| --- | ---: | ---: | ---: |
+| Brussels Grand-Place | 14 | 8 | 0.03119 |
+| London Trafalgar Square | 22 | 14 | 0.01501 |
+| Milan Duomo | 23 | 13 | 0.009016 |
+| Krakow Rynek | 16 | 11 | 0.02252 |
+| Toulouse Capitole | 15 | 9 | 0.03022 |
+
+Across all ten selected routes, the route-median normalized whole-body SAR
+ranges from 0.009016 to 0.1291 m² kg⁻¹ per unit
+\(\rho_A P_{\mathrm{EIRP}}\), a factor of 14.3. The route-summed direct,
+order-1 specular, and first-diffuse absorbed-power shares range from 69.8% to
+89.5%, 9.1% to 29.9%, and 0.301% to 5.02%, respectively. The maximum absolute
+48-to-64 route-quantile changes are 0.00491 dB for q10, 0.000157 dB for q50,
+and 0.0000762 dB for q90.
+
+The compact report and artifact manifest are under
+`outputs/experiments/ten_city_route_extension64_v1/report/`. The manifest
+SHA-256 is
+`595ffe0404517c824a231b565e7528ff799503f3beb74052168b11c7ea3e91b6`.
+These selected routes do not support population inference or a city ranking.
 
 ## Ten-site geometry-only screening diagnostic
 

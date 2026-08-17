@@ -65,11 +65,11 @@ setting is globally optimal for every scene or future topology.
 
 ## Comparable-city cohort
 
-Comparable-city v2 is a ten-site intended cohort. Nine sites currently have
-panorama acquisitions: Korenmarkt, Prague, Brussels, Madrid, Mexico City,
-Tokyo Hachiko, London Trafalgar, Milan Duomo, and Toulouse Capitole. Krakow is
-the tenth and is pending Street View quota. Every site's evidence products
-must independently pass readiness before execution. Times Square is excluded
+Comparable-city v2 is a ten-site intended cohort. All ten sites now have
+panorama acquisitions and a completed strict production-contract route:
+Korenmarkt, Prague, Brussels, Madrid, Mexico City, Tokyo Hachiko, London
+Trafalgar, Milan Duomo, Krakow Rynek, and Toulouse Capitole. Every site's
+evidence products independently passed readiness before execution. Times Square is excluded
 because its current geometry is invalid. Legacy Korenmarkt and Prague link
 runs remain sealed sensitivity artifacts and are byte-compatible. They are
 not the v2 cohort definition.
@@ -155,6 +155,16 @@ q10 changes by 0.00344 dB in Mexico and 0.00491 dB in Tokyo. The maximum change
 among their three shadowed points is 0.0125 and 0.0104 dB. Both sites pass the
 declared lower-tail criteria. This extension is a convergence diagnostic and
 does not rewrite the retained 16-replica campaign package.
+
+A separate ten-route extension combines these five convergence campaigns with
+fresh 64-replica campaigns for Brussels, London, Milan, Krakow, and Toulouse.
+The added routes contain 14, 22, 23, 16, and 15 points, respectively. London
+and Milan require 500-million and 400-million exact candidate caps. These caps
+only bound deterministic enumeration. All ten routes retain 200,000 rays,
+4,096 cells, seeds 7 through 70, and the same transport and body contracts. The
+combined report contains 163 route points and authenticates under manifest
+SHA-256
+`595ffe0404517c824a231b565e7528ff799503f3beb74052168b11c7ea3e91b6`.
 
 Mexico points 0, 1, and 3, and Tokyo points 13, 14, and 15 have zero direct
 transport. They remain meaningful shadowed points and are not excluded.

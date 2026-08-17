@@ -86,18 +86,12 @@ def test_milan_is_out_of_alphabetical_order_because_it_joins_the_sweep_late():
 
 @pytest.mark.local_data
 def test_the_site_builders_derive_their_site_sets_from_the_registry():
-    """Eight of eleven, and the eight are derivable rather than chosen.
-
-    London is the one that shows the predicate is the right one. It has fifteen
-    panoramas on disk and no registered pose among them, so it is in the imagery
-    list and out of the evidence list.
-    """
+    """The builder sets are derivable rather than chosen."""
     from semantic_twin.scene import site_fishnets, site_semantics
 
     assert site_fishnets.SITES == tuple(site.name for site in sites.with_registered_stations())
     assert site_semantics.SITES == Site.names()
-    assert "london_trafalgar" in {site.name for site in sites.with_panoramas()}
-    assert "london_trafalgar" not in {site.name for site in sites.with_registered_stations()}
+    assert {site.name for site in sites.with_registered_stations()} <= {site.name for site in sites.with_panoramas()}
 
 
 def test_the_fishnet_builder_routes_a_canonical_mesh_name_through_the_shared_resolver(tmp_path, monkeypatch):
@@ -121,11 +115,11 @@ def test_the_fishnet_builder_keeps_support_for_an_arbitrary_mesh_filename(tmp_pa
 
 @pytest.mark.local_data
 def test_the_station_calibration_lists_are_the_sites_with_a_fused_binding_at_250_m():
-    """Two files carry these seven and only one of them says why."""
+    """Both calibration entry points cover every fused 250 m binding."""
     expected = {site.name for site in sites.with_station_binding(250)}
     assert set(literal("run_station_calibration.py", "SITES")) == expected
     assert set(literal("summarise_station_calibration.py", "SITES")) == expected
-    assert len(expected) == 7
+    assert len(expected) == 10
 
 
 @pytest.mark.local_data
@@ -364,9 +358,8 @@ def test_every_declared_imagery_set_is_on_disk_and_its_provider_matches_the_meta
                 assert "computed_geometry" in document and "panoId" not in document
 
 
-def test_the_two_sites_with_no_photographs_are_krakow_and_toulouse():
-    """Which is why they carry no image evidence anywhere downstream."""
-    assert {site.name for site in Site.all() if not site.has_panoramas} == {"krakow_rynek", "toulouse_capitole"}
+def test_every_site_now_has_a_declared_imagery_set():
+    assert all(site.has_panoramas for site in Site.all())
 
 
 # ----------------------------------------------------------------- the evidence
@@ -387,5 +380,5 @@ def test_korenmarkt_keeps_its_mapillary_binding_at_its_first_crop():
 
 
 def test_a_site_with_no_binding_says_none_rather_than_handing_back_a_missing_path():
-    assert Site.get("krakow_rynek").station_binding(250) is None
-    assert not Site.get("krakow_rynek").has_station_binding(250)
+    assert Site.get("krakow_rynek").station_binding(131) is None
+    assert not Site.get("krakow_rynek").has_station_binding(131)

@@ -1,12 +1,10 @@
 % PREV: \section{Conclusion}\label{sec:conclusion}
-% NEXT: These results describe five selected routes at 15\,GHz per unit active-source
-% NEXT: density and EIRP. They do not rank cities or predict deployed-network exposure.
-% NEXT: The comparison uses the fixed transmitter model, material map, Duke body facing
-% NEXT: along the walk, and one-diffuse-reflection limit. The 16-replica
-% NEXT: checks showed stable central route statistics, although the shadowed lower tails
-% NEXT: remained less stable. The distributions have no population weighting across
-% NEXT: each urban area and have greater estimator uncertainty at locally shadowed
-% NEXT: positions.
+% NEXT: The image-to-mesh material mapping took effect mainly through the specular
+% NEXT: component. A paired control at two sites showed route-median whole-body SAR
+% NEXT: changes of $+0.249$ and $-0.158$~dB when the image-derived materials were
+% NEXT: replaced by the geometry defaults. The method runs in under 70~s per prepared
+% NEXT: site on one GPU. The main open items are outdoor field validation against the
+% NEXT: full city model and a measured transmitter source distribution.
 This study aligned 360-degree street images with a photogrammetric city mesh to
 map surface materials around pedestrian routes at 15\,GHz. A roofline
 transmitter model and a directional absorption step then produced normalized

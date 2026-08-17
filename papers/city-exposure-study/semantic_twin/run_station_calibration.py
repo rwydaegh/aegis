@@ -15,6 +15,9 @@ SITES: tuple[str, ...] = (
     "madrid_plazamayor",
     "tokyo_hachiko",
     "milan_duomo",
+    "london_trafalgar",
+    "krakow_rynek",
+    "toulouse_capitole",
 )
 
 

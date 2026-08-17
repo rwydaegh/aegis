@@ -518,7 +518,7 @@ def _write_csv(path: Path, data: Mapping[str, Any]) -> None:
         *[key for key, _label, _unit in _ROUTE_METRICS],
     )
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         for city, campaign in data["cities"].items():
             for row in campaign["route"]:

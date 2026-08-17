@@ -92,14 +92,6 @@
 % PREV: \emph{Phys. Med. Biol.}, vol. 55, no. 2, pp. N23--N38, 2010,
 % PREV: doi: 10.1088/0031-9155/55/2/N01.
 % PREV:
-% PREV: \bibitem{aegis}
-% PREV: R.~Wydaeghe, ``AEGIS: Absorbed power density on human bodies in wireless
-% PREV: environments,'' Version 0.39.1, software, 2026.
-% PREV:
-% PREV: \bibitem{openai_codex}
-% PREV: OpenAI, ``Codex CLI,'' \emph{OpenAI Documentation}, 2026. [Online]. Available:
-% PREV: \url{https://learn.chatgpt.com/docs/codex/cli}. Accessed: Aug. 13, 2026.
-% PREV:
 % PREV: \end{thebibliography}
 % NEXT: \EOD
 % NEXT:

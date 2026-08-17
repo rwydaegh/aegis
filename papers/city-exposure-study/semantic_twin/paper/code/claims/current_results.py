@@ -38,6 +38,22 @@ GEOMETRIC_SCREEN_REPORT_DIR = GEOMETRIC_SCREEN_ROOT / "report"
 GEOMETRIC_SCREEN_REPORT_PATH = GEOMETRIC_SCREEN_REPORT_DIR / "ten_city_geometry_screen_64_v1.json"
 GEOMETRIC_SCREEN_MANIFEST_PATH = GEOMETRIC_SCREEN_REPORT_DIR / "ten_city_geometry_screen_64_v1_manifest.json"
 EXPECTED_GEOMETRIC_SCREEN_MANIFEST_SHA256 = "3e29d721e77de435da54a8881cf81ecf1a9ed6f8ee2b7df025caca2c9417dbb9"
+TEN_ROUTE_REPORT_DIR = EXPERIMENT_ROOT / "ten_city_route_extension64_v1" / "report"
+TEN_ROUTE_REPORT_PATH = TEN_ROUTE_REPORT_DIR / "ten_city_route_production64_v1.json"
+TEN_ROUTE_MANIFEST_PATH = TEN_ROUTE_REPORT_DIR / "ten_city_route_production64_v1_manifest.json"
+EXPECTED_TEN_ROUTE_MANIFEST_SHA256 = "595ffe0404517c824a231b565e7528ff799503f3beb74052168b11c7ea3e91b6"
+TEN_ROUTE_CAMPAIGNS = {
+    "Ghent": EXPERIMENT_ROOT / "current_topology_convergence64_v1" / "korenmarkt",
+    "Prague": EXPERIMENT_ROOT / "current_topology_convergence64_v1" / "prague_staromestske",
+    "Madrid": EXPERIMENT_ROOT / "current_topology_convergence64_v1" / "madrid_plazamayor",
+    "Mexico City": EXPERIMENT_ROOT / "current_topology_convergence64_v1" / "mexico_zocalo",
+    "Tokyo Hachiko": EXPERIMENT_ROOT / "current_topology_convergence64_v1" / "tokyo_hachiko",
+    "Brussels": EXPERIMENT_ROOT / "ten_city_route_extension64_v1" / "brussels_grandplace",
+    "London": EXPERIMENT_ROOT / "ten_city_route_extension64_v1" / "london_trafalgar",
+    "Milan": EXPERIMENT_ROOT / "ten_city_route_extension64_v1" / "milan_duomo",
+    "Krakow": EXPERIMENT_ROOT / "ten_city_route_extension64_v1" / "krakow_rynek",
+    "Toulouse": EXPERIMENT_ROOT / "ten_city_route_extension64_v1" / "toulouse_capitole",
+}
 
 CITY_SLUGS = {
     "Korenmarkt": "korenmarkt",
@@ -1114,4 +1130,122 @@ def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
         "eight_to_sixteen_seed_max_abs_db": seed_transition,
         "thirty_two_to_sixty_four_point_max_abs_db": spatial_transition,
         "uncertainty_definition": report["uncertainty_definition"],
+    }
+
+
+@claim("ten_route_production_extension")
+def ten_route_production_extension() -> dict[str, Any]:
+    assert _sha256(TEN_ROUTE_MANIFEST_PATH) == EXPECTED_TEN_ROUTE_MANIFEST_SHA256
+    manifest = _read_json(TEN_ROUTE_MANIFEST_PATH)
+    assert manifest["schema_version"] == "roofline_multicity_artifacts_v1"
+    assert manifest["result_schema_version"] == "roofline_multicity_results_v1"
+    assert set(manifest["sources"]) == set(TEN_ROUTE_CAMPAIGNS)
+    for name, record in manifest["artifacts"].items():
+        path = TEN_ROUTE_REPORT_DIR / name
+        assert path.is_file(), f"ten-route report artifact is missing: {path}"
+        assert path.stat().st_size == int(record["bytes"])
+        assert _sha256(path) == record["sha256"], f"ten-route artifact hash mismatch: {path}"
+
+    report = _read_json(TEN_ROUTE_REPORT_PATH)
+    assert report["schema_version"] == "roofline_multicity_results_v1"
+    assert set(report["cities"]) == set(TEN_ROUTE_CAMPAIGNS)
+    for city, root in TEN_ROUTE_CAMPAIGNS.items():
+        campaign_manifest = _read_json(root / "manifest.json")
+        identity = _read_json(root / "campaign_identity.json")
+        source = manifest["sources"][city]
+        row = report["cities"][city]
+        assert campaign_manifest["identity_sha256"] == identity["sha256"]
+        assert source["campaign_identity_sha256"] == identity["sha256"]
+        assert source["campaign_manifest_sha256"] == _sha256(root / "manifest.json")
+        assert row["provenance"]["campaign_identity_sha256"] == identity["sha256"]
+        assert row["provenance"]["campaign_manifest_sha256"] == _sha256(root / "manifest.json")
+        assert row["replicas"] == 64
+        assert row["seeds"] == list(range(7, 71))
+        assert [entry["replicas"] for entry in row["convergence"]["standard_error"]] == [16, 24, 32, 48, 64]
+        assert [(entry["from_replicas"], entry["to_replicas"]) for entry in row["convergence"]["look_to_look"]] == [
+            (16, 24),
+            (24, 32),
+            (32, 48),
+            (48, 64),
+        ]
+        assert row["contract"]["cohort"] == "comparable_city"
+        assert row["contract"]["route_contract"] == "provider_corridor_v1"
+        assert row["contract"]["material_mode"] == "atlas"
+        assert row["contract"]["reference_mode"] == "per_density_eirp"
+        assert row["contract"]["specular_acceptance"] == "first_material_interaction_exact_order_1"
+        assert row["transport_topology"] == "first_material_interaction_v1"
+        assert row["components"] == ["direct", "all_specular", "first_diffuse", "total"]
+        assert len(row["route"]) == int(row["standpoints"])
+        for quantile, probability in (("q10", 0.1), ("q50", 0.5), ("q90", 0.9)):
+            estimate = float(row["route_quantile_uncertainty"]["quantiles"]["wbsar"][quantile]["estimate"])
+            recomputed = _quantile([float(point["wbsar"]) for point in row["route"]], probability)
+            _assert_close(estimate, recomputed)
+        for point in row["route"]:
+            total = float(point["component_body"]["total"]["absorbed_power_w"])
+            additive = sum(
+                float(point["component_body"][component]["absorbed_power_w"])
+                for component in ("direct", "all_specular", "first_diffuse")
+            )
+            _assert_close(additive, total)
+
+    rows = list(report["cities"].values())
+    standpoints = sum(int(row["standpoints"]) for row in rows)
+    point_replica_fields = standpoints * 64
+    primary_rays = point_replica_fields * 200_000
+    q50 = {
+        city: float(row["route_quantile_uncertainty"]["quantiles"]["wbsar"]["q50"]["estimate"])
+        for city, row in report["cities"].items()
+    }
+    q50_span_factor = max(q50.values()) / min(q50.values())
+    component_shares: dict[str, dict[str, float]] = {}
+    for city, row in report["cities"].items():
+        totals = {
+            component: sum(float(point["component_body"][component]["absorbed_power_w"]) for point in row["route"])
+            for component in ("direct", "all_specular", "first_diffuse", "total")
+        }
+        component_shares[city] = {
+            component: totals[component] / totals["total"] for component in ("direct", "all_specular", "first_diffuse")
+        }
+    component_share_ranges = {
+        component: {
+            "minimum": min(site[component] for site in component_shares.values()),
+            "maximum": max(site[component] for site in component_shares.values()),
+        }
+        for component in ("direct", "all_specular", "first_diffuse")
+    }
+    final_change_max_db = {
+        quantile: max(
+            float(row["tail_instability"]["look_to_look"][-1]["route_quantile_abs_change_db"][quantile]) for row in rows
+        )
+        for quantile in ("q10", "q50", "q90")
+    }
+    assert standpoints == 163
+    assert point_replica_fields == 10_432
+    assert primary_rays == 2_086_400_000
+    _assert_close(q50_span_factor, 14.314818947320367)
+    expected_ranges = {
+        "direct": {"minimum": 0.6976726702841677, "maximum": 0.8953085596238033},
+        "all_specular": {"minimum": 0.09124023442932315, "maximum": 0.29931297721742844},
+        "first_diffuse": {"minimum": 0.003014352498403816, "maximum": 0.05021401762895124},
+    }
+    for component, expected in expected_ranges.items():
+        _assert_close(component_share_ranges[component]["minimum"], expected["minimum"])
+        _assert_close(component_share_ranges[component]["maximum"], expected["maximum"])
+    expected_final_changes = {
+        "q10": 0.004914586580220958,
+        "q50": 0.00015714191667892853,
+        "q90": 0.0000761602380400701,
+    }
+    for quantile, expected in expected_final_changes.items():
+        _assert_close(final_change_max_db[quantile], expected)
+    return {
+        "routes": len(rows),
+        "standpoints": standpoints,
+        "replicas_per_route": 64,
+        "point_replica_fields": point_replica_fields,
+        "primary_rays": primary_rays,
+        "route_q50_wbsar": q50,
+        "q50_span_factor": q50_span_factor,
+        "component_share_ranges": component_share_ranges,
+        "final_48_to_64_route_quantile_change_max_db": final_change_max_db,
     }

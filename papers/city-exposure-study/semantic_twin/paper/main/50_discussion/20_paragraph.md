@@ -1,24 +1,23 @@
-% PREV: The factor of $13.34$ between the largest and smallest route medians shows that
-% PREV: body exposure differs among the selected routes after the same source-density
-% PREV: and EIRP normalization. This contrast includes the geometry, visible roofline,
-% PREV: mapped materials, and visibility conditions of each selected route. The
-% PREV: empirical distribution for each site therefore describes only that fixed route
-% PREV: and its calculation points. It does not estimate a city distribution or define
-% PREV: a ranking of the five cities. The analysis reports changes along each
-% PREV: pedestrian route while keeping the statistical unit clear.
+% PREV: The ten-location geometric screening shows a twofold span in location-median
+% PREV: whole-body SAR across locations that differ in street width, building height,
+% PREV: and roofline visibility. The factor of 13.34 between the largest and smallest
+% PREV: route medians on the five detailed routes is much larger, reflecting the
+% PREV: additional variation from image-derived materials, canopy, and route-specific
+% PREV: visibility conditions. Each empirical distribution therefore describes only
+% PREV: that fixed route and its observation points.
 % NEXT: The paired material control tests the effect of image-derived materials on the
-% NEXT: body results. The direct term is identical between the image-derived and
-% NEXT: geometry-based cases, so the observed changes arise from the materials used by the
-% NEXT: reflected and diffuse terms. In Madrid, the specular and first-diffuse component
-% NEXT: changes have opposite signs, while the route-median normalized
-% NEXT: whole-body SAR changes by $0.249$~dB. The Mexico City route median changes by
-% NEXT: $-0.158$~dB. Its much larger lower-tail ratio comes from three shadowed
-% NEXT: route points where both estimates are close to zero, and it is not a stable
-% NEXT: central effect. The paired cases differ in their assigned materials and in their
-% NEXT: treatment of woody canopy. The image-derived case treats identified woody
-% NEXT: canopy as pass-through without attenuation because the city mesh has no canopy
-% NEXT: volume. The comparison therefore measures sensitivity to both choices and does
-% NEXT: not establish the accuracy of the assigned materials.
+% NEXT: body results. The direct term is identical in both cases, so all observed
+% NEXT: changes come from the materials used by the reflected and diffuse terms. In
+% NEXT: Madrid, the specular and first-diffuse component changes have opposite signs,
+% NEXT: while the route-median normalized whole-body SAR changes by only $0.249$~dB.
+% NEXT: The Mexico City route median changes by $-0.158$~dB. Its much larger lower-tail
+% NEXT: ratio comes from the three fully shadowed route points where both estimates are
+% NEXT: close to zero, not from a central effect. The paired cases differ in their
+% NEXT: assigned materials and in their treatment of woody canopy. The image-derived
+% NEXT: case treats identified canopy as transparent because the city mesh has no canopy
+% NEXT: volume. The comparison therefore measures sensitivity to both the material
+% NEXT: assignment and the vegetation rule together, and does not establish material
+% NEXT: accuracy on its own.
 The first-diffuse component is small at most points (0.419\% pooled median),
 but it is the only nonzero contribution at the six fully shadowed points. Its
 small share where line of sight exists does not make it dispensable where

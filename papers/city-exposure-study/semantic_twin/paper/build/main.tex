@@ -397,6 +397,9 @@ Calculation time for a prepared site ranges from 29.79 to 69.02~s on one A6000
 GPU. These times exclude image acquisition, alignment, depth estimation, and
 material mapping because the full preparation time was not recorded.
 
+\subsection{Validation}
+\label{sec:validation}
+
 % claim: raw_component_closure
 The calculation manifests list 42 files per site, and all 210 file hashes pass
 verification. The direct, exact order-1 specular, and first-diffuse fields sum
@@ -431,6 +434,9 @@ city.
 \caption{Controlled validation of the first-diffuse transfer. (a) Deterministic surface quadrature, the adjoint estimate, and the independent Sionna RT forward calculation at six receivers. (b) Signed error relative to quadrature. Error bars give the standard error across four adjoint seeds and three Sionna seeds.}
 \label{fig:controlled-validation}
 \end{figure*}
+
+\subsection{Route Exposure}
+\label{sec:route-exposure}
 
 % claim: route_median_contrast_factor
 Fig.~\ref{fig:route-distributions} shows the fixed-route empirical distributions.
@@ -490,6 +496,9 @@ corresponding shares are 80.643\% for exact order-1 specular transport and
 13.337\% for first-diffuse transport. The supplementary material gives the
 complete split by material source.
 
+\subsection{Replica Convergence}
+\label{sec:convergence}
+
 % claim: replica_convergence_12_to_16
 The nested 12-to-16-replica comparison separates the route median from the
 lower tail. Every route-median whole-body SAR changes by at most
@@ -511,6 +520,9 @@ carries 5738 times the median replica contribution.
 This result is specific to the fixed routes and excludes route-selection and
 city-sampling uncertainty. The complete nested comparison is given in the
 supplementary material.
+
+\subsection{Material Sensitivity}
+\label{sec:material-sensitivity}
 
 % claim: paired_material_evidence_control
 A paired control for Madrid and Mexico City replaces all image-mapped materials

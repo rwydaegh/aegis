@@ -39,6 +39,7 @@ import pathlib
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -65,6 +66,11 @@ class RepairOptions:
     dry_run: bool = False
     no_backup: bool = False
     root_dir: pathlib.Path | None = None
+    workers: int = 1
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.workers, int) or isinstance(self.workers, bool) or self.workers < 1:
+            raise ValueError("workers must be a positive integer")
 
 
 def stations(
@@ -246,11 +252,16 @@ def reregister_site(options: RepairOptions) -> list[str]:
         raise SystemExit(f"no station of {options.site} carries a pose and segmented semantics")
 
     print(f"{options.site}: {len(folders)} stations against {mesh.name}")
-    changed = []
+    before_by_folder = {folder: read_pose(folder) for folder in folders}
     for folder in folders:
-        before = read_pose(folder)
-        _back_up_pose(folder, before, enabled=not options.no_backup and not options.dry_run)
-        command = register(
+        _back_up_pose(
+            folder,
+            before_by_folder[folder],
+            enabled=not options.no_backup and not options.dry_run,
+        )
+
+    def run(folder: pathlib.Path) -> list[str]:
+        return register(
             folder,
             mesh,
             dry_run=options.dry_run,
@@ -258,6 +269,18 @@ def reregister_site(options: RepairOptions) -> list[str]:
             root_dir=study_root,
             semantics_dirname=options.semantics_dirname,
         )
+
+    if options.workers == 1 or len(folders) == 1:
+        commands = {folder: run(folder) for folder in folders}
+    else:
+        with ThreadPoolExecutor(max_workers=min(options.workers, len(folders))) as executor:
+            futures = {folder: executor.submit(run, folder) for folder in folders}
+            commands = {folder: futures[folder].result() for folder in folders}
+
+    changed = []
+    for folder in folders:
+        before = before_by_folder[folder]
+        command = commands[folder]
         if options.dry_run:
             print(" ".join(command))
             continue
