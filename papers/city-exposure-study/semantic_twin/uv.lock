@@ -48,6 +48,7 @@ test = [
     { name = "pytest" },
     { name = "rtree" },
     { name = "ruff" },
+    { name = "scienceplots" },
     { name = "sionna-rt" },
     { name = "trimesh" },
 ]
@@ -70,6 +71,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'test'", specifier = "==0.15.16" },
     { name = "safetensors", marker = "extra == 'baseline'", specifier = ">=0.7" },
     { name = "scienceplots", marker = "extra == 'paper'", specifier = ">=2.2" },
+    { name = "scienceplots", marker = "extra == 'test'", specifier = ">=2.2" },
     { name = "scikit-image", specifier = ">=0.24" },
     { name = "scipy", specifier = ">=1.14" },
     { name = "shapely", specifier = ">=2.0" },

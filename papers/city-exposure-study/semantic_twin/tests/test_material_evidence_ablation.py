@@ -210,6 +210,13 @@ def test_shipped_geometric_controls_change_only_declared_setup_fields() -> None:
         assert atlas_normal == geometric_normal
         assert geometric["run"]["materials"] == "geometric"
         assert geometric["campaign"]["material_mode"] == "geometric"
+
+
+@pytest.mark.local_data
+def test_shipped_geometric_controls_load_against_local_route_evidence() -> None:
+    root = Path(__file__).resolve().parents[1]
+    for site in ("madrid_plazamayor", "mexico_zocalo"):
+        prefix = f"roofline_campaign_{site}_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid"
         setup = load_roofline_setup(root / "config" / f"{prefix}_geometric_control.json")
         assert setup.run.materials == "geometric"
         assert setup.campaign.material_mode == "geometric"
