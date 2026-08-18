@@ -16,7 +16,7 @@
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=0.92\textwidth]{figures/ten_route_extension/ten_route_extension.pdf}
-  \caption{Production results for ten selected routes. Panel (a) shows
+  \caption{Per-route exposure and component detail. Panel (a) shows
   the route $q_{10}$--$q_{90}$ interval and an open marker at $q_{50}$ for
   normalized whole-body SAR. Panel (b) shows the route-summed additive absorbed-power
   shares. All routes use 64 replicas and image-derived surface properties. The
