@@ -26,6 +26,6 @@
   Panel (a) shows $q_{10}$, $q_{50}$, and $q_{90}$ across the 64 fixed
   observation points. Red bars give the 16-seed conditional Monte Carlo
   standard error of $q_{50}$. Panel (b) shows the pooled additive component
-  shares. These results are not combined with the five-route calculation.}
+  shares. These results are not combined with the route calculation.}
   \label{fig:si-geometric-screening}
 \end{figure*}

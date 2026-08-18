@@ -18,7 +18,7 @@
 % NEXT: volume. The comparison therefore measures sensitivity to both the material
 % NEXT: assignment and the vegetation rule together, and does not establish material
 % NEXT: accuracy on its own.
-The first-diffuse component is small at most points (0.419\% pooled median),
+The first-diffuse component is small at most points (0.500\% pooled median),
 but it is the only nonzero contribution at the six fully shadowed points. Its
 small share where line of sight exists does not make it dispensable where
 buildings block all direct and specular paths. A transport model that omits the

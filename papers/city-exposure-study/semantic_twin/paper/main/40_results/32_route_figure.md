@@ -25,9 +25,9 @@
 % NEXT: \bottomrule
 % NEXT: \end{tabular}
 % NEXT: \end{table*}
-\begin{figure}[!t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=\columnwidth]{figures/route_results/route_results.pdf}
-\caption{Normalized whole-body SAR on the five fixed routes. Empirical CDFs include all 73 route points. Hollow triangles mark the six points with zero direct and zero order-1 specular transfer. The routes are fixed case studies, not city or population samples.}
+\includegraphics[width=\textwidth]{figures/route_results/route_results.pdf}
+\caption{Normalized whole-body SAR on the ten fixed routes. (a)~Empirical CDFs include all 163 route points. Hollow triangles mark the six points with zero direct and zero order-1 specular transfer. (b)~Route-mean component shares of whole-body SAR. The routes are fixed case studies, not city or population samples.}
 \label{fig:route-distributions}
-\end{figure}
+\end{figure*}

@@ -21,11 +21,11 @@
 % NEXT: specular and first-diffuse transport. It does not test whether the image labels
 % NEXT: or geometry-based material are correct. The current claims therefore apply to
 % NEXT: these recorded surfaces.
-The five routes are selected case studies. Their differences do not rank the
-five cities and do not estimate population exposure. Each result is normalized
+The ten routes are selected case studies. Their differences do not rank the
+ten cities and do not estimate population exposure. Each result is normalized
 per unit $\rho_A P_{\mathrm{EIRP}}$, so it is not an absolute prediction for an
 operator deployment. The study uses one 15 GHz frequency, one body phantom,
-one body orientation that faces along the walk, one roofline transmitter model, and five
+one body orientation that faces along the walk, one roofline transmitter model, and ten
 plaza routes. Additional frequencies, body models, headings, deployment laws,
 street canyons, parks, and repeated route selections are outside this study.
 

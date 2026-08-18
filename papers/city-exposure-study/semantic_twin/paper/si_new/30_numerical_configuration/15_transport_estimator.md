@@ -67,11 +67,16 @@ retained counts.
     \toprule
     Site & Route points & Roofline segments & Length (m) \\
     \midrule
-    Korenmarkt & 10 & 457 & 157.54 \\
-    Prague & 22 & 502 & 267.15 \\
+    Brussels & 14 & 450 & 158.53 \\
+    Ghent & 10 & 457 & 157.54 \\
+    Krakow & 16 & 320 & 94.97 \\
+    London & 22 & 635 & 296.67 \\
     Madrid & 14 & 207 & 79.40 \\
     Mexico City & 11 & 164 & 63.69 \\
+    Milan & 23 & 502 & 437.63 \\
+    Prague & 22 & 502 & 267.15 \\
     Tokyo Hachiko & 16 & 400 & 248.76 \\
+    Toulouse & 15 & 283 & 72.10 \\
     \bottomrule
   \end{tabular}
 \end{table}

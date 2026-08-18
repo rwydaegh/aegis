@@ -18,9 +18,9 @@
 Fig.~\ref{fig:flowchart} shows the computation and its input checks. A
 hash-verified manifest lists every input file: aligned images, material map,
 city mesh, route, roofline, body model, and transport settings. Only files whose
-hashes match the manifest enter the five-site data set. The transport
+hashes match the manifest enter the ten-site data set. The transport
 calculation keeps direct, specular, and diffuse contributions separate until
-the field is applied to the body. The five manifests contain 210 verified entries. Across the
-resulting 1,168 directional body fields, the largest residual when the three
+the field is applied to the body. The ten manifests contain 420 verified entries. Across the
+resulting 10,432 directional body fields, the largest residual when the three
 components are summed back to the stored total is
-$1.735\times10^{-18}\,\mathrm{m}^{-2}$.
+$1.214\times10^{-17}\,\mathrm{m}^{-2}$.

@@ -18,20 +18,25 @@
 % NEXT: their default material. The prompts, alignment tests, rejected labels, and
 % NEXT: mapping rules are given in the supplementary material.
 \begin{table}[!t]
-  \caption{Five fixed routes with observation-point counts, route spans, and computation times}
+  \caption{Ten fixed routes with observation-point counts, route spans, and computation times}
   \label{tab:routes}
   \centering
   \begin{tabular}{lrrr}
     \toprule
     Site & Route points & Route span (m) & Wall time (s) \\
     \midrule
-    Ghent & 10 & 49.04 & 29.79 \\
-    Prague & 22 & 119.39 & 69.02 \\
-    Madrid & 14 & 73.47 & 40.70 \\
-    Mexico City & 11 & 60.79 & 30.92 \\
-    Tokyo Hachiko & 16 & 87.38 & 50.11 \\
+    Brussels & 14 & 87.00 & 32.16 \\
+    Ghent & 10 & 49.04 & 6.59 \\
+    Krakow & 16 & 116.10 & 31.76 \\
+    London & 22 & 121.10 & 73.77 \\
+    Madrid & 14 & 73.47 & 8.06 \\
+    Mexico City & 11 & 60.79 & 5.95 \\
+    Milan & 23 & 128.43 & 69.02 \\
+    Prague & 22 & 119.39 & 39.00 \\
+    Tokyo Hachiko & 16 & 87.38 & 10.02 \\
+    Toulouse & 15 & 82.47 & 37.87 \\
     \midrule
-    Total & 73 & 390.07 & 220.54 \\
+    Total & 163 & 925.17 & 314.20 \\
     \bottomrule
   \end{tabular}
 \end{table}

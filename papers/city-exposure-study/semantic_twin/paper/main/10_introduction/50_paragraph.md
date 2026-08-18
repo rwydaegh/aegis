@@ -27,16 +27,15 @@
 % NEXT:   transport at the six observation points where buildings block all direct and
 % NEXT:   specular paths.
 % NEXT: \end{enumerate}
-This study applies the method at 15~GHz across ten urban locations. A geometric
-fixed-grid diagnostic first characterizes all ten locations with geometry-based
-materials and a fixed body orientation. Five of these locations are then studied
-with image-derived materials along fixed pedestrian routes containing 73
-observation points. Every result is normalized per unit active-source areal
-density and per unit effective isotropic radiated power (EIRP). The route-median
-whole-body SAR values differ by a factor of 13.34 across the five routes. These
-results describe fixed-grid locations and fixed routes under one source and
-transport model. They do not estimate population exposure or deployed-network
-exposure.
+This study applies the method at 15~GHz along pedestrian routes in ten cities:
+Ghent, Prague, Madrid, Mexico City, Tokyo, Brussels, London, Milan, Krakow, and
+Toulouse. The ten routes contain 163 observation points with image-derived
+surface materials and a body model facing along each walk. Every result is
+normalized per unit active-source areal density and per unit effective isotropic
+radiated power (EIRP). The route-median whole-body SAR values differ by a factor
+of 14.31 across the ten routes. These results describe fixed routes under one
+source and transport model. They do not estimate population exposure or
+deployed-network exposure.
 
 ## reviews (paragraph)
 

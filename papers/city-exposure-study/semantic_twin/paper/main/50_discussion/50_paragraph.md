@@ -19,7 +19,7 @@ calculation against outdoor field measurements of the directional field before
 body coupling. Second, higher specular orders and paths beyond the first diffuse
 event can be added through paired studies that report their change in whole-body
 SAR, variance, and computation time. Third, several routes at the same site can
-quantify route-selection variation beyond the current ten locations. Other
+quantify route-selection variation within a single city. Other
 frequencies, body models, and orientations can then test the remaining range of
 validity. Each extension should also report what fraction of the surfaces
 reached by the modeled paths carries an image-derived material.

@@ -17,8 +17,7 @@
 The image-to-mesh material mapping took effect mainly through the specular
 component. A paired control at two sites showed route-median whole-body SAR
 changes of $+0.249$ and $-0.158$~dB when the image-derived materials were
-replaced by the geometry defaults. The method runs in under 70~s per prepared
-site on one GPU. The main open items are outdoor field validation against the
+replaced by the geometry defaults. Ray calculation time ranges from 5.95 to 73.77~s per site on one A6000 GPU. The main open items are outdoor field validation against the
 full city model and a measured transmitter source distribution.
 
 ## reviews (paragraph)

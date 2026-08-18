@@ -25,7 +25,7 @@
 \subsection{Material labels on reached surfaces}
 \label{sec:si-ray-reached-coverage}
 
-The audit replays all five verified routes and 16 seeds with the production
+The audit replays all ten verified routes and 64 seeds with the production
 geometry, source curve, material map, body, 200,000 primary rays, and 4,096 output
 cells. It classifies the exact reflection point of every retained order-1
 specular path and the first blocking surface of every accepted

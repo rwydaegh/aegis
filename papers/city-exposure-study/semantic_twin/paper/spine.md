@@ -2,10 +2,10 @@
 
 ## Decision
 
-This is a regular IEEE Access Research Article. It reports a ten-location
-geometric screening and a fixed-route, five-site method and result at 15 GHz.
-It does not make a population, city ranking, deployed-network, compliance,
-complete-multipath, or material-accuracy claim.
+This is a regular IEEE Access Research Article. It reports a fixed-route,
+ten-city method and result at 15 GHz. It does not make a population, city
+ranking, deployed-network, compliance, complete-multipath, or
+material-accuracy claim.
 
 ## Title
 
@@ -17,16 +17,13 @@ cities at 15 GHz
 Registered street imagery and city geometry define the material scene around a
 fixed route. A common normalized roofline source model then gives stable central
 route statistics while retaining large local changes at shadowed standpoints.
-A broader geometric screening across ten locations shows a twofold span in
-location-median whole-body SAR.
 
 ## Paragraph plan
 
 ### Front matter
 
 1. A 200 to 250 word abstract states the problem, exact method scope, ten-city
-   geometric screening, five detailed routes, controlled validation, main
-   result, convergence, and limits.
+   scale, controlled validation, main result, convergence, and limits.
 2. Six alphabetical keywords span body dosimetry, image-informed propagation,
    ray tracing, street imagery, urban propagation, and whole-body SAR.
 
@@ -40,8 +37,8 @@ location-median whole-body SAR.
 4. This study combines registered panorama evidence, a route-aligned roofline
    measure, a first-material transport decomposition, and body coupling across
    ten urban locations.
-5. Three contributions state the scene, method, and ten-location plus
-   five-route result without a broad first claim.
+5. Three contributions state the scene, method, and ten-route result without a
+   broad first claim.
 
 ### II. Method
 
@@ -49,7 +46,7 @@ location-median whole-body SAR.
 
 1. Figure 1 introduces the panorama, support geometry, material atlas, route,
    source curve, and body.
-2. Table I defines the five selected routes and shows that standpoints are fixed
+2. Table I defines the ten selected routes and shows that standpoints are fixed
    observations rather than a population sample.
 3. Panorama registration and the two semantic sources define surface evidence.
 4. Projection preserves evidence on the original support mesh and uses a
@@ -83,15 +80,15 @@ location-median whole-body SAR.
 
 #### B. Route Exposure
 
-4. Figure 4 reports route whole-body SAR distributions.
+4. Figure 4 reports route whole-body SAR distributions across ten routes.
 5. Table II gives route quantiles and the six zero-direct points.
 6. Component shares show direct, order-1 specular, and first-diffuse splits
    and the path audit gives image-coverage fractions.
 
 #### C. Replica Convergence
 
-7. The nested 12-to-16 and 48-to-64 replica comparisons separate the stable
-   route medians from the less stable Mexico City and Tokyo lower tails.
+7. The 48-to-64 replica comparison shows stable route medians and larger
+   lower-tail changes in Mexico City and Tokyo.
 
 #### D. Material Sensitivity
 
@@ -100,9 +97,9 @@ location-median whole-body SAR.
 
 ### IV. Discussion
 
-1. The ten-location geometric screening shows a twofold span in location-median
-   whole-body SAR. The route-median contrast across five detailed routes is
-   interpreted as a conditional result, not a city ranking.
+1. Route-median whole-body SAR differs by a factor of 14.31 across the ten
+   routes. The contrast is interpreted as a conditional result among selected
+   routes, not a city ranking.
 2. Direct transport sets most nonshadowed points while first-diffuse transport
    is essential at six shadowed points.
 3. The material control shows small central total changes but different
@@ -111,14 +108,12 @@ location-median whole-body SAR.
    selected routes, controlled-component validation, and unpropagated input
    uncertainties.
 5. Future work prioritizes source calibration, higher interaction orders, more
-   routes beyond the current ten locations, other frequencies and bodies, and
-   external field validation.
+   routes, other frequencies and bodies, and external field validation.
 
 ### V. Conclusion
 
-1. A short conclusion restates the method, ten-location screening, five-route
-   detailed result, controlled validation, shadowed-point finding, and
-   conditional scope.
+1. A short conclusion restates the method, ten-route result, controlled
+   validation, shadowed-point finding, and conditional scope.
 
 ### End matter
 

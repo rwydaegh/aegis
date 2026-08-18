@@ -5,7 +5,7 @@
 % NEXT: text.
 \section*{Data and Code Availability}
 
-The verified five-site data, manifests, analysis scripts, and figure scripts
+The verified ten-site data, manifests, analysis scripts, and figure scripts
 are kept in the study repository. A stable public archive with a versioned
 digital object identifier will be deposited before publication. The 360-degree
 street images and commercial photogrammetric tiles are governed by their

@@ -32,4 +32,4 @@ Duke phantom faces north at every point. The calculation uses the same
 first-material transport model with 16 seeds, 200,000 primary rays per point
 and seed, and 4,096 first-diffuse output cells. The fixed-grid design remains
 separate from the pedestrian-route calculations and is not combined with the
-five-route results.
+route results.

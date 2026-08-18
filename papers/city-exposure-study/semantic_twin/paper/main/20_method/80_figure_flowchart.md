@@ -12,6 +12,6 @@
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=\textwidth]{figures/flowchart/flowchart.pdf}
-  \caption{Flowchart of the computation and input checks. Aligned 360-degree street images and the city mesh give the material map. The fixed route and visible roofline give observation and transmitter positions. Transport retains direct, first-order specular, and first-diffuse terms. A hash-verified file list pins every input to the five-site result.}
+  \caption{Flowchart of the computation and input checks. Aligned 360-degree street images and the city mesh give the material map. The fixed route and visible roofline give observation and transmitter positions. Transport retains direct, first-order specular, and first-diffuse terms. A hash-verified file list pins every input to the ten-site result.}
   \label{fig:flowchart}
 \end{figure*}

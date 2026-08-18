@@ -18,10 +18,10 @@
 % NEXT: image-derived material map, exact specular transport, or their combination in a
 % NEXT: city.
 % claim: raw_component_closure
-The calculation manifests list 42 files per site, and all 210 file hashes pass
+The calculation manifests list 42 files per site, and all 420 file hashes pass
 verification. The direct, exact order-1 specular, and first-diffuse fields sum
 to the stored total with a maximum absolute residual of
-$1.735\times10^{-18}$~m$^{-2}$ across all 1,168 fields. The GPU body-coupling
+$1.214\times10^{-17}$~m$^{-2}$ across all 10,432 fields. The GPU body-coupling
 result also agrees with the double-precision CPU reference to a maximum relative
 difference of $6.64\times10^{-16}$ in the verified benchmark. These checks
 confirm the input files, addition of components, and agreement between CPU and

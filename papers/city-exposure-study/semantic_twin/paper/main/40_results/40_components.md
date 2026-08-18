@@ -20,20 +20,20 @@
 % claim: six_shadowed_standpoints
 % claim: pooled_median_wbsar_component_shares
 The additive component shares of route-mean whole-body SAR are shown in the
-supplementary material. Direct transport is the largest
-contribution at all 67 points with line of sight. Exact order-1 specular
-transport is never the largest. Mexico City points 0, 1, and 3 and Tokyo
+supplementary material. Of the 157 points with line of sight, direct transport
+is the largest contribution at 156. At one point in Brussels, exact order-1
+specular transport is the largest. Mexico City points 0, 1, and 3 and Tokyo
 Hachiko points 13, 14, and 15 have zero direct and zero order-1 specular
 transport. First-diffuse transport is the only nonzero contribution at these six
-points. Across all 73 points, the pooled component medians are 77.662\% direct,
-21.391\% exact order-1 specular, and 0.419\% first diffuse. They do not sum to
-100\% because each component has a separate median over the 73 route points. The
+points. Across all 163 points, the pooled component medians are 78.056\% direct,
+20.231\% exact order-1 specular, and 0.500\% first diffuse. They do not sum to
+100\% because each component has a separate median over the 163 route points. The
 small first-diffuse median therefore does not describe the six fully shadowed
 points.
 
 % claim: ray_reached_evidence_coverage
 The path audit assigns each retained material interaction to an image-mapped or
-geometry-based surface. Pooled over the five routes and 16 seeds, image-mapped
+geometry-based surface. Pooled over the ten routes and 64 seeds, image-mapped
 surfaces account for 75.903\% of the reflected SAR. The
 corresponding shares are 80.643\% for exact order-1 specular transport and
 13.337\% for first-diffuse transport. The supplementary material gives the

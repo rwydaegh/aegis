@@ -37,7 +37,7 @@ and their whole-replica bootstrap widths are 0.364 and 0.0538~dB.
 
 The bootstrap resamples complete replicas jointly over all route points, so it
 preserves spatial dependence within one replica. Its 2,000 draws use PCG64 with
-the authenticated analysis seed 20260814. All five identities, manifests,
+the authenticated analysis seed 20260814. All ten identities, manifests,
 component closures, and common inputs pass, and both lower tails meet the
 stated 48-to-64 aggregate criteria. Mexico City nevertheless retains
 rare-event first-diffuse behavior: its maximum positive replica contribution

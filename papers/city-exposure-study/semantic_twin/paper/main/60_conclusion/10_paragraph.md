@@ -8,19 +8,18 @@
 This study aligned 360-degree street images with a photogrammetric city mesh to
 map surface materials around pedestrian routes at 15\,GHz. A roofline
 transmitter model and a directional absorption step then produced normalized
-whole-body SAR, with all results per unit $\rho_A P_{\mathrm{EIRP}}$. A
-geometric fixed-grid diagnostic at ten urban locations showed a twofold span in
-location-median whole-body SAR. Five of these locations were then studied with
-image-derived materials along fixed routes. In a controlled one-reflection
-scene, the first-diffuse estimate differed from deterministic quadrature by at
-most 0.0616\,dB, and the maximum total-transport difference from an independent
-Sionna RT forward calculation was 0.0344\,dB. Across 73 observation points on
-five routes, route-median whole-body SAR values differed by a factor of 13.34.
-Direct transport was largest at all 67 points with line of sight, while
+whole-body SAR at ten urban locations, with all results per unit
+$\rho_A P_{\mathrm{EIRP}}$. In a controlled one-reflection scene, the
+first-diffuse estimate differed from deterministic quadrature by at most
+0.0616\,dB, and the maximum total-transport difference from an independent
+Sionna RT forward calculation was 0.0344\,dB. Across 163 observation points on
+ten routes, route-median whole-body SAR differed by a factor of 14.31. Direct
+transport was largest at 156 of the 157 points with line of sight, while
 first-diffuse transport was the only nonzero contribution at the six fully
-shadowed points. The route medians were stable at 16 replicas, but the fully
-shadowed lower tails had larger estimator uncertainty. These results do not rank
-cities or predict deployed-network exposure.
+shadowed points.
+The route medians were stable at 64 replicas, but the fully shadowed lower
+tails had larger estimator uncertainty. These results do not rank cities or
+predict deployed-network exposure.
 
 ## reviews (paragraph)
 

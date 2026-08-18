@@ -22,11 +22,11 @@
 % NEXT:     \bottomrule
 % NEXT:   \end{tabular}
 % NEXT: \end{table}
-Table~\ref{tab:routes} lists the five selected routes. Each route follows a
+Table~\ref{tab:routes} lists the ten selected routes. Each route follows a
 connected street corridor covered by aligned 360-degree street images. The
 calculation places fixed observation points along that corridor, including
 interpolated positions between image locations, so the number of images and
-the number of observation points can differ. The 73 route points are fixed
+the number of observation points can differ. The 163 route points are fixed
 observations, not a random sample of pedestrians or places. The body model
 faces along the direction of travel, so a different route would change both
 position and orientation.

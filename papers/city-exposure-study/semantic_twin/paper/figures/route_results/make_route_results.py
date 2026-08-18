@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the authenticated five-city route result figure.
+"""Render the authenticated ten-city route result figure.
 
 Run from any directory with:
 
@@ -31,9 +31,9 @@ from matplotlib.lines import Line2D  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 SEMANTIC_TWIN = HERE.parents[2]
-INPUT_DIRECTORY = SEMANTIC_TWIN / "outputs" / "roofline_campaign" / "current_five_city_first_material_interaction"
-INPUT_JSON = INPUT_DIRECTORY / "current_five_city_first_material_interaction.json"
-INPUT_MANIFEST = INPUT_DIRECTORY / "current_five_city_first_material_interaction_manifest.json"
+INPUT_DIRECTORY = SEMANTIC_TWIN / "outputs" / "experiments" / "ten_city_route_extension64_v1" / "report"
+INPUT_JSON = INPUT_DIRECTORY / "ten_city_route_production64_v1.json"
+INPUT_MANIFEST = INPUT_DIRECTORY / "ten_city_route_production64_v1_manifest.json"
 OUTPUT_PDF = HERE / "route_results.pdf"
 OUTPUT_PNG = HERE / "route_results.png"
 OUTPUT_COMPONENTS_PDF = HERE / "route_components.pdf"
@@ -45,41 +45,60 @@ MANIFEST_SCHEMA = "roofline_multicity_artifacts_v1"
 TRANSPORT_TOPOLOGY = "first_material_interaction_v1"
 SEALED_COMPONENTS = ("direct", "all_specular", "first_diffuse", "total")
 ADDITIVE_COMPONENTS = SEALED_COMPONENTS[:-1]
-EXPECTED_SEEDS = tuple(range(7, 23))
-EXPECTED_STANDPOINTS = 73
+EXPECTED_SEEDS = tuple(range(7, 71))
+EXPECTED_STANDPOINTS = 163
 EXPECTED_ZERO_DIRECT = {
-    "Korenmarkt": (),
-    "Prague": (),
+    "Brussels": (),
+    "Ghent": (),
+    "Krakow": (),
+    "London": (),
     "Madrid": (),
-    "Mexico": (0, 1, 3),
-    "Tokyo": (13, 14, 15),
+    "Mexico City": (0, 1, 3),
+    "Milan": (),
+    "Prague": (),
+    "Tokyo Hachiko": (13, 14, 15),
+    "Toulouse": (),
 }
-CITY_ORDER = tuple(EXPECTED_ZERO_DIRECT)
-CITY_LABELS = {
-    "Korenmarkt": "Ghent",
-    "Prague": "Prague",
-    "Madrid": "Madrid",
-    "Mexico": "Mexico City",
-    "Tokyo": "Tokyo Hachiko",
-}
+CITY_ORDER = (
+    "Brussels", "Ghent", "Krakow", "London", "Madrid",
+    "Mexico City", "Milan", "Prague", "Tokyo Hachiko", "Toulouse",
+)
+CITY_LABELS = {city: city for city in CITY_ORDER}
 CITY_TICK_LABELS = {
-    "Korenmarkt": "Ghent",
-    "Prague": "Prague",
+    "Brussels": "Brussels",
+    "Ghent": "Ghent",
+    "Krakow": "Krakow",
+    "London": "London",
     "Madrid": "Madrid",
-    "Mexico": "Mexico\nCity",
-    "Tokyo": "Tokyo\nHachiko",
+    "Mexico City": "Mexico City",
+    "Milan": "Milan",
+    "Prague": "Prague",
+    "Tokyo Hachiko": "Tokyo Hachiko",
+    "Toulouse": "Toulouse",
 }
 CITY_STYLES = {
-    "Korenmarkt": {"color": "#000000", "linestyle": "-", "marker": "o"},
-    "Prague": {"color": "#FF0000", "linestyle": "--", "marker": "s"},
+    "Brussels": {"color": "#8B4513", "linestyle": "-", "marker": "h"},
+    "Ghent": {"color": "#000000", "linestyle": "-", "marker": "o"},
+    "Krakow": {"color": "#9467BD", "linestyle": "--", "marker": "P"},
+    "London": {"color": "#17BECF", "linestyle": "-.", "marker": "X"},
     "Madrid": {"color": "#00A000", "linestyle": "-.", "marker": "^"},
-    "Mexico": {"color": "#0000FF", "linestyle": ":", "marker": "D"},
-    "Tokyo": {"color": "#FF7F00", "linestyle": (0, (3, 1, 1, 1)), "marker": "p"},
+    "Mexico City": {"color": "#0000FF", "linestyle": ":", "marker": "D"},
+    "Milan": {"color": "#E377C2", "linestyle": (0, (5, 2)), "marker": "v"},
+    "Prague": {"color": "#FF0000", "linestyle": "--", "marker": "s"},
+    "Tokyo Hachiko": {"color": "#FF7F00", "linestyle": (0, (3, 1, 1, 1)), "marker": "p"},
+    "Toulouse": {"color": "#7F7F7F", "linestyle": (0, (1, 1)), "marker": "d"},
 }
 COMPONENT_STYLES = {
     "direct": {"label": "Direct", "color": "#000000", "hatch": ""},
     "all_specular": {"label": "Order-1 specular", "color": "#FF0000", "hatch": "////"},
     "first_diffuse": {"label": "First diffuse", "color": "#00A000", "hatch": "xxxx"},
+}
+EXPECTED_CONTRACT_FIELDS = {
+    "cohort": "comparable_city",
+    "material_mode": "atlas",
+    "reference_mode": "per_density_eirp",
+    "route_contract": "provider_corridor_v1",
+    "specular_acceptance": "first_material_interaction_exact_order_1",
 }
 
 
@@ -136,15 +155,10 @@ def _load_and_validate() -> tuple[dict[str, Any], dict[str, Any]]:
         assert source["transport_topology"] == TRANSPORT_TOPOLOGY
         assert tuple(city["components"]) == SEALED_COMPONENTS
         assert tuple(source["components"]) == SEALED_COMPONENTS
-        assert city["replicas"] == 16
+        assert city["replicas"] == 64
         assert tuple(city["seeds"]) == EXPECTED_SEEDS
-        assert city["contract"] == {
-            "cohort": "comparable_city",
-            "material_mode": "atlas",
-            "reference_mode": "per_density_eirp",
-            "route_contract": "provider_corridor_v1",
-            "specular_acceptance": "first_material_interaction_exact_order_1",
-        }
+        for key, value in EXPECTED_CONTRACT_FIELDS.items():
+            assert city["contract"][key] == value, f"{city_name}: contract.{key} mismatch"
 
         route = city["route"]
         assert len(route) == city["standpoints"]
@@ -216,7 +230,7 @@ def _load_and_validate() -> tuple[dict[str, Any], dict[str, Any]]:
     assert total_points == EXPECTED_STANDPOINTS
     assert observed_zero == EXPECTED_ZERO_DIRECT
     assert sum(len(points) for points in observed_zero.values()) == 6
-    assert dominance_counts == {"direct": 67, "all_specular": 0, "first_diffuse": 6}
+    assert dominance_counts == {"direct": 156, "all_specular": 1, "first_diffuse": 6}
 
     validation = {
         "input_sha256": observed_hash,
@@ -239,13 +253,13 @@ def _configure_style() -> None:
             "mathtext.fontset": "stix",
             "font.size": 8.0,
             "axes.labelsize": 8.0,
-            "legend.fontsize": 6.7,
+            "legend.fontsize": 6.0,
             "xtick.labelsize": 7.0,
             "ytick.labelsize": 7.0,
             "axes.linewidth": 0.6,
             "lines.linewidth": 1.05,
-            "lines.markersize": 3.2,
-            "lines.markeredgewidth": 0.75,
+            "lines.markersize": 3.0,
+            "lines.markeredgewidth": 0.65,
             "xtick.major.width": 0.6,
             "ytick.major.width": 0.6,
             "xtick.minor.width": 0.45,
@@ -263,7 +277,9 @@ def _configure_style() -> None:
 
 def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
     _configure_style()
-    figure, cdf_axis = plt.subplots(figsize=(3.5, 2.95))
+    figure, (cdf_axis, share_axis) = plt.subplots(
+        1, 2, figsize=(7.16, 3.20), gridspec_kw={"width_ratios": [1.15, 1.0]}
+    )
 
     for city_name in CITY_ORDER:
         city = cities[city_name]
@@ -287,10 +303,10 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
                 [point["cdf_probability"] for point in city["zero_direct_and_specular"]],
                 linestyle="none",
                 marker="v",
-                markersize=6.0,
+                markersize=5.4,
                 markerfacecolor="white",
                 markeredgecolor=style["color"],
-                markeredgewidth=1.2,
+                markeredgewidth=1.0,
                 zorder=5,
             )
 
@@ -311,10 +327,10 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
             [],
             linestyle="none",
             marker="v",
-            markersize=5.4,
+            markersize=4.8,
             markerfacecolor="white",
             markeredgecolor="black",
-            markeredgewidth=1.0,
+            markeredgewidth=0.9,
         )
     )
     cdf_labels.append("Zero direct and specular")
@@ -323,42 +339,19 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
         cdf_labels,
         loc="lower left",
         bbox_to_anchor=(0.0, 1.025),
-        ncol=2,
+        ncol=3,
         frameon=True,
         framealpha=0.94,
         edgecolor="black",
         fancybox=False,
-        borderpad=0.28,
-        handlelength=1.55,
-        columnspacing=0.75,
-        labelspacing=0.25,
+        borderpad=0.25,
+        handlelength=1.4,
+        columnspacing=0.6,
+        labelspacing=0.22,
     )
     cdf_axis.spines["top"].set_visible(False)
     cdf_axis.spines["right"].set_visible(False)
-
-    figure.subplots_adjust(left=0.145, right=0.98, bottom=0.21, top=0.735)
-    metadata = {
-        "Title": "Fixed-route whole-body exposure CDFs",
-        "Author": "AEGIS city exposure study",
-        "Subject": "Authenticated five-city first-material-interaction results",
-        "Keywords": "whole-body SAR, fixed routes, CDF",
-        "Creator": "make_route_results.py",
-        "Producer": "Matplotlib",
-        "CreationDate": None,
-        "ModDate": None,
-    }
-    figure.savefig(pdf_path, metadata=metadata)
-    figure.savefig(
-        png_path,
-        dpi=400,
-        metadata={"Software": "make_route_results.py", "Title": metadata["Title"]},
-    )
-    plt.close(figure)
-
-
-def _draw_components(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
-    _configure_style()
-    figure, share_axis = plt.subplots(figsize=(3.5, 2.95))
+    cdf_axis.text(-0.12, 1.06, "(a)", transform=cdf_axis.transAxes, fontsize=9, fontweight="bold", va="bottom")
 
     positions = np.arange(len(CITY_ORDER), dtype=np.float64)
     bottom = np.zeros(len(CITY_ORDER), dtype=np.float64)
@@ -385,11 +378,11 @@ def _draw_components(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> 
         if shadow_count:
             share_axis.text(
                 index,
-                4.0,
-                f"{shadow_count}/{cities[city_name]['standpoints']}\nshadow",
+                8.0,
+                f"{shadow_count}/{cities[city_name]['standpoints']}\nNLOS",
                 ha="center",
                 va="bottom",
-                fontsize=6.1,
+                fontsize=5.0,
                 color="white",
                 zorder=5,
             )
@@ -399,7 +392,8 @@ def _draw_components(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> 
     share_axis.set_yticks([0, 25, 50, 75, 100])
     share_axis.set_ylabel("Route-mean wbSAR share [%]")
     share_axis.set_xticks(positions, [CITY_TICK_LABELS[city] for city in CITY_ORDER])
-    share_axis.tick_params(axis="x", length=0, pad=3.0)
+    share_axis.tick_params(axis="x", length=0, pad=2.0, labelsize=6.0)
+    plt.setp(share_axis.get_xticklabels(), rotation=40, ha="right", rotation_mode="anchor")
     share_axis.grid(axis="y", color="0.86", linewidth=0.45, zorder=0)
     share_axis.legend(
         loc="lower center",
@@ -412,13 +406,14 @@ def _draw_components(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> 
     )
     share_axis.spines["top"].set_visible(False)
     share_axis.spines["right"].set_visible(False)
+    share_axis.text(-0.16, 1.06, "(b)", transform=share_axis.transAxes, fontsize=9, fontweight="bold", va="bottom")
 
-    figure.subplots_adjust(left=0.145, right=0.98, bottom=0.21, top=0.735)
+    figure.subplots_adjust(left=0.07, right=0.99, bottom=0.24, top=0.72, wspace=0.30)
     metadata = {
-        "Title": "Route-mean component shares of whole-body SAR",
+        "Title": "Fixed-route whole-body exposure CDFs and component shares",
         "Author": "AEGIS city exposure study",
-        "Subject": "Authenticated five-city first-material-interaction results",
-        "Keywords": "whole-body SAR, component shares, direct, specular, diffuse",
+        "Subject": "Authenticated ten-city first-material-interaction results",
+        "Keywords": "whole-body SAR, fixed routes, CDF, component shares",
         "Creator": "make_route_results.py",
         "Producer": "Matplotlib",
         "CreationDate": None,
@@ -433,29 +428,21 @@ def _draw_components(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> 
     plt.close(figure)
 
 
-def _render_deterministically(cities: dict[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
+def _render_deterministically(cities: dict[str, Any]) -> dict[str, str]:
     _draw(cities, OUTPUT_PDF, OUTPUT_PNG)
-    first_cdf = {"pdf": _sha256(OUTPUT_PDF), "png": _sha256(OUTPUT_PNG)}
-    _draw_components(cities, OUTPUT_COMPONENTS_PDF, OUTPUT_COMPONENTS_PNG)
-    first_comp = {"pdf": _sha256(OUTPUT_COMPONENTS_PDF), "png": _sha256(OUTPUT_COMPONENTS_PNG)}
+    first = {"pdf": _sha256(OUTPUT_PDF), "png": _sha256(OUTPUT_PNG)}
     with tempfile.TemporaryDirectory(prefix="route-results-") as temporary_directory:
         temporary = Path(temporary_directory)
         _draw(cities, temporary / OUTPUT_PDF.name, temporary / OUTPUT_PNG.name)
-        second_cdf = {"pdf": _sha256(temporary / OUTPUT_PDF.name), "png": _sha256(temporary / OUTPUT_PNG.name)}
-        _draw_components(cities, temporary / OUTPUT_COMPONENTS_PDF.name, temporary / OUTPUT_COMPONENTS_PNG.name)
-        second_comp = {
-            "pdf": _sha256(temporary / OUTPUT_COMPONENTS_PDF.name),
-            "png": _sha256(temporary / OUTPUT_COMPONENTS_PNG.name),
-        }
-    assert first_cdf == second_cdf, f"nondeterministic CDF rendering: {first_cdf} != {second_cdf}"
-    assert first_comp == second_comp, f"nondeterministic component rendering: {first_comp} != {second_comp}"
-    return first_cdf, first_comp
+        second = {"pdf": _sha256(temporary / OUTPUT_PDF.name), "png": _sha256(temporary / OUTPUT_PNG.name)}
+    assert first == second, f"nondeterministic rendering: {first} != {second}"
+    return first
 
 
 def _write_audit(
-    cities: dict[str, Any], validation: dict[str, Any], cdf_hashes: dict[str, str], comp_hashes: dict[str, str]
+    cities: dict[str, Any], validation: dict[str, Any], hashes: dict[str, str]
 ) -> None:
-    pdf_width_in = 3.5
+    pdf_width_in = 7.16
     png = plt.imread(OUTPUT_PNG)
     audit_cities = {}
     for city_name in CITY_ORDER:
@@ -473,7 +460,7 @@ def _write_audit(
         }
 
     audit = {
-        "schema_version": "route_results_figure_audit_v1",
+        "schema_version": "route_results_figure_audit_v2",
         "source": {
             "aggregate": str(INPUT_JSON.relative_to(SEMANTIC_TWIN)),
             "manifest": str(INPUT_MANIFEST.relative_to(SEMANTIC_TWIN)),
@@ -487,13 +474,13 @@ def _write_audit(
             "route_contract": "provider_corridor_v1",
             "transport_topology": TRANSPORT_TOPOLOGY,
             "components": list(SEALED_COMPONENTS),
-            "replicas_per_city": 16,
+            "replicas_per_city": 64,
             "seeds": list(EXPECTED_SEEDS),
             "scope": "fixed registered routes, not city or population samples",
         },
         "validation": validation,
         "figure_semantics": {
-            "cdf_figure": "midpoint empirical CDF of normalized whole-body SAR at every registered route standpoint",
+            "panels": "(a) midpoint empirical CDF, (b) additive component shares",
             "cdf_shadow_marker": (
                 "hollow downward triangle at each of six included points where direct and exact order-1 "
                 "specular components are both zero"
@@ -509,34 +496,19 @@ def _write_audit(
             "matplotlib_version": mpl.__version__,
             "style": ["science", "ieee", "no-latex"],
             "deterministic_second_render_match": True,
-            "cdf_pdf": {
+            "pdf": {
                 "path": OUTPUT_PDF.name,
-                "sha256": cdf_hashes["pdf"],
+                "sha256": hashes["pdf"],
                 "bytes": OUTPUT_PDF.stat().st_size,
                 "width_in": pdf_width_in,
-                "height_in": 2.95,
+                "height_in": 3.20,
             },
-            "cdf_png": {
+            "png": {
                 "path": OUTPUT_PNG.name,
-                "sha256": cdf_hashes["png"],
+                "sha256": hashes["png"],
                 "bytes": OUTPUT_PNG.stat().st_size,
                 "width_px": int(png.shape[1]),
                 "height_px": int(png.shape[0]),
-                "dpi": 400,
-            },
-            "component_pdf": {
-                "path": OUTPUT_COMPONENTS_PDF.name,
-                "sha256": comp_hashes["pdf"],
-                "bytes": OUTPUT_COMPONENTS_PDF.stat().st_size,
-                "width_in": pdf_width_in,
-                "height_in": 2.95,
-            },
-            "component_png": {
-                "path": OUTPUT_COMPONENTS_PNG.name,
-                "sha256": comp_hashes["png"],
-                "bytes": OUTPUT_COMPONENTS_PNG.stat().st_size,
-                "width_px": int(plt.imread(OUTPUT_COMPONENTS_PNG).shape[1]),
-                "height_px": int(plt.imread(OUTPUT_COMPONENTS_PNG).shape[0]),
                 "dpi": 400,
             },
         },
@@ -546,10 +518,10 @@ def _write_audit(
 
 def main() -> int:
     cities, validation = _load_and_validate()
-    cdf_hashes, comp_hashes = _render_deterministically(cities)
-    _write_audit(cities, validation, cdf_hashes, comp_hashes)
+    hashes = _render_deterministically(cities)
+    _write_audit(cities, validation, hashes)
     print(
-        f"Wrote {OUTPUT_PDF.name}, {OUTPUT_COMPONENTS_PDF.name}, and {OUTPUT_AUDIT.name} "
+        f"Wrote {OUTPUT_PDF.name} and {OUTPUT_AUDIT.name} "
         f"from {validation['total_standpoints']} authenticated route points."
     )
     print(
