@@ -1,9 +1,8 @@
 """Which company took the photograph, made into a choice rather than an accident.
 
 The study reads panoramas from two providers and, until this module, no document
-said so. Every single camera site is Google Street View. The twelve station
-Korenmarkt walk, the only multi station set and the one carrying the SAM 3
-material binding, is Mapillary. A reader of the old code could not tell, because
+said so. Most camera sets are Google Street View. The twelve station Korenmarkt
+walk carrying its SAM 3 material binding is Mapillary. A reader of the old code could not tell, because
 :mod:`semantic_twin.panorama` opened by calling itself Street View and the
 Mapillary module had no counterpart to compare against.
 

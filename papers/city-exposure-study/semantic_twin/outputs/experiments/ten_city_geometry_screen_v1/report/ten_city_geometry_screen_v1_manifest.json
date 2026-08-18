@@ -1,0 +1,66 @@
+{
+  "artifacts": {
+    "ten_city_geometry_screen_v1.csv": {
+      "bytes": 6483,
+      "sha256": "b0063a358dd1dcb84cfcdfcd0b9eb3f8824512baba9749fc867fa2421a70c677"
+    },
+    "ten_city_geometry_screen_v1.json": {
+      "bytes": 88358,
+      "sha256": "efc945960dca8f69cb0b5830497ca79dc7b5a61293a21dac55c6ed364c4d9360"
+    },
+    "ten_city_geometry_screen_v1.pdf": {
+      "bytes": 28386,
+      "sha256": "eba2472a9e9ed726d844a520113476761fc331719ded2732913f64c07c452d5f"
+    },
+    "ten_city_geometry_screen_v1.png": {
+      "bytes": 160795,
+      "sha256": "61c2c6b11d7a2b8a6036dae9a2e9d17f899d4668d38a9a5cda9f1afd120e3eb1"
+    }
+  },
+  "authenticated": true,
+  "report_schema_version": "geometric_fixed_grid_screening_report_v1",
+  "schema_version": "geometric_fixed_grid_screening_artifacts_v1",
+  "screening_contract": "geometric_fixed_grid_screening_v1",
+  "sources": {
+    "brussels_grandplace": {
+      "campaign_identity_sha256": "1174db49a72b8ee1ab1b457395bc669711578a5a4d1ef8d802468959d24bab97",
+      "campaign_manifest_sha256": "5a6128921ddb993f50a6a2b2b9be0d87ae74e4af418f92b53e874852ee39dd06"
+    },
+    "korenmarkt": {
+      "campaign_identity_sha256": "b3960a55fcaab5fd79485544d4e1b2441eab9dd1d0f7310a29f0be5b5b8f5466",
+      "campaign_manifest_sha256": "13fe62cb8912a3242000794f6683fb684459bb08a58b5a884d5c8ecd50a082bc"
+    },
+    "krakow_rynek": {
+      "campaign_identity_sha256": "ae47eaa9fd326ca40e7fb7bbf6293a593a69399b5ac6413a1ccd59a34ab9ccbf",
+      "campaign_manifest_sha256": "c4fbbe9fda24d109ce47834fcc0c2dfc745aa59036f942a1cbe2ec17509ad977"
+    },
+    "london_trafalgar": {
+      "campaign_identity_sha256": "639d1ab4fcb47717acc04fb1772e7368bcb7f6ccb880ae80b3b89f471e3e1dda",
+      "campaign_manifest_sha256": "3a3f6bf67e931cee6969578429254fd3e6afb09942070c44eaf31dc5457578bf"
+    },
+    "madrid_plazamayor": {
+      "campaign_identity_sha256": "501820255f1a3f4058433672784a9f478371e4ad06191d8666559704c5e450ea",
+      "campaign_manifest_sha256": "d3fe9e6aaaa1714bd23778c23a0996642d6ba8b33d1d08f60412a7c82204af7b"
+    },
+    "mexico_zocalo": {
+      "campaign_identity_sha256": "177219e26a355ea2ce209302f647bcc036db4b94d0dfd976428a794921b61682",
+      "campaign_manifest_sha256": "08d431b04a2def46f687895d457be5e54cd91ab64c56645ac20fb1f5c43135a4"
+    },
+    "milan_duomo": {
+      "campaign_identity_sha256": "4c339b989ad5aced354814bb79800ef46bf3e4dff1e5cfadbba655fe9a202911",
+      "campaign_manifest_sha256": "a2e409846502d7d4f5b278307623fc5313c1a214c81d9f59a8958e72772507e5"
+    },
+    "prague_staromestske": {
+      "campaign_identity_sha256": "a96f06459b88ae1b326a9c197929a2315f4b0093ada231a0d652f6a0182eb420",
+      "campaign_manifest_sha256": "a88c0fdcfad4bbcc35ec657eff0c34ef9f34beaf01bdd208e65d1c8f61c5f6b6"
+    },
+    "tokyo_hachiko": {
+      "campaign_identity_sha256": "504a21bbd6dc1b2713a492df80599e1605f90e911fc8154902ba4f03f5bf9d71",
+      "campaign_manifest_sha256": "d1d8159e18b61450d7a0090ee433dcf24dde9f50b50cdca235696928e251b353"
+    },
+    "toulouse_capitole": {
+      "campaign_identity_sha256": "7ea58c4e498f891f8f49f1bdabca5b66116b0a0ff176f13044186a29f7e082da",
+      "campaign_manifest_sha256": "582a748c1ac4b7c2cafbeb7ed2837658d9522e7c85c365da082826e4f364e0fe"
+    }
+  }
+}

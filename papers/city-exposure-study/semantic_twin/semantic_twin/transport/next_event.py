@@ -17,6 +17,8 @@ from ..illumination.sources import direct_from_sites, normalized_source_weights,
 from ..illumination.sphere import nearest_cell
 from .device_next_event import (
     BoundDeviceSpecularFaceProposal,
+    DeviceFirstDiffuseAuditCategories,
+    DeviceFirstDiffuseAuditResult,
     DeviceNextEventGather,
     DeviceSpecularFaceProposal,
 )
@@ -977,6 +979,13 @@ class NextEventEstimator:
     #: contract: exact direct and order-one all-specular atoms plus diffuse NEE
     #: at the first material vertex only.
     transport_topology: str = "hybrid_max_bounces_v1"
+    #: Audit-only seven-way classifier for accepted terminal first-diffuse
+    #: connections. Normal estimation leaves this unset and preserves its
+    #: existing result schema.
+    first_diffuse_audit: DeviceFirstDiffuseAuditCategories | None = None
+    #: Host classifier paired with ``first_diffuse_audit`` for the exact
+    #: order-one specular audit partition. It is audit metadata only.
+    ray_reached_evidence_classifier: Any | None = None
     _deterministic_cache: OrderedDict[tuple[Any, ...], Any] = field(
         default_factory=OrderedDict,
         init=False,
@@ -1031,6 +1040,23 @@ class NextEventEstimator:
                 raise ValueError("first-material-interaction transport requires exact order-one all-specular support")
             if self.specular_suffix_mode != "disabled":
                 raise ValueError("first-material-interaction transport requires specular_suffix_mode='disabled'")
+        audit_enabled = self.first_diffuse_audit is not None
+        classifier_enabled = self.ray_reached_evidence_classifier is not None
+        if audit_enabled != classifier_enabled:
+            raise ValueError("ray-reached evidence audit requires paired device and host classifiers")
+        if audit_enabled:
+            if (
+                not isinstance(self.tracer, DeviceEscapeTracer)
+                or self.transport_topology != "first_material_interaction_v1"
+            ):
+                raise ValueError("ray-reached evidence audit requires device first-material-interaction transport")
+            classifier = self.ray_reached_evidence_classifier
+            classifier_names = tuple(getattr(classifier, "category_names", getattr(classifier, "names", ())))
+            if classifier_names != self.first_diffuse_audit.category_names:
+                raise ValueError("ray-reached host and device classifiers use different category vocabularies")
+            for name in ("face_to_category_row", "category_by_texel", "fallback_category_by_face"):
+                if not np.array_equal(np.asarray(getattr(classifier, name)), getattr(self.first_diffuse_audit, name)):
+                    raise ValueError(f"ray-reached host and device classifiers disagree on {name}")
         if self.deterministic_cache_size < 1:
             raise ValueError("deterministic_cache_size must be positive")
         if self.persistent_cache_dir is not None:
@@ -1237,6 +1263,45 @@ class NextEventEstimator:
             source_refinement=source_refinement,
             specular_bounce_cap=maximum_order,
         )
+
+    def estimate_first_diffuse_audit(
+        self,
+        origin: np.ndarray,
+        *,
+        ground_z_m: float = 0.0,
+        seed: int | None = None,
+    ) -> tuple[Surplus, DeviceFirstDiffuseAuditResult]:
+        """Run an opt-in field replay and return its closed first-diffuse tally."""
+        if self.first_diffuse_audit is None:
+            raise RuntimeError("first_diffuse_audit must be configured before audit replay")
+        surplus, gather, _field_data, _all_specular, _source_refinement = self._estimate_and_gather(
+            origin,
+            ground_z_m=ground_z_m,
+            seed=seed,
+            field_grid=self.tracer.local_grid,
+        )
+        if not isinstance(gather, DeviceNextEventGather):
+            raise RuntimeError("first-diffuse audit replay did not use the resident device gather")
+        audit = gather.first_diffuse_audit_result()
+        return surplus, audit
+
+    def _order_one_specular_audit(self, all_specular: SpecularPaths | None) -> dict[str, Any]:
+        if self.ray_reached_evidence_classifier is None:
+            raise RuntimeError("ray-reached evidence classifier is not configured")
+        if all_specular is None:
+            raise RuntimeError("ray-reached evidence audit requires exact order-one specular paths")
+        vertices = np.asarray(getattr(self.geometry, "vertices", None), dtype=np.float64)
+        faces = np.asarray(getattr(self.geometry, "faces", None))
+        if vertices.ndim != 2 or vertices.shape[1] != 3 or faces.ndim != 2 or faces.shape[1] != 3:
+            raise TypeError("ray-reached evidence audit requires indexed triangular support geometry")
+        from .specular_evidence_audit import partition_specular_paths
+
+        partition = partition_specular_paths(
+            all_specular,
+            vertices[faces.astype(np.int64, copy=False)],
+            self.ray_reached_evidence_classifier,
+        )
+        return partition.as_dict()
 
     def _automatic_specular_transport(self) -> OneBounceSpecularTransport:
         key = ("automatic_specular_transport", id(self.tracer), self.specular_candidate_budget)
@@ -1954,6 +2019,7 @@ class NextEventEstimator:
             collect_field=field_grid is not None,
             specular_face_proposal=self._device_specular_face_proposal,
             first_material_interaction_only=first_interaction,
+            first_diffuse_audit=self.first_diffuse_audit,
         )
         trace_started = time.perf_counter()
         point = self.tracer.trace(
@@ -2058,6 +2124,9 @@ class NextEventEstimator:
         if first_interaction:
             detail["transport_topology"] = self.transport_topology
             detail["first_material_interaction_nee_only"] = True
+        if self.first_diffuse_audit is not None:
+            detail["first_diffuse_audit"] = gather.first_diffuse_audit_result().as_dict()
+            detail["order_one_specular_audit"] = self._order_one_specular_audit(all_specular)
         if self._persistent_cache is not None:
             detail["deterministic_specular_persistent_cache_hit"] = deterministic_specular_persistent_cache_hit
             detail["direct_persistent_cache_hit"] = direct_persistent_cache_hit

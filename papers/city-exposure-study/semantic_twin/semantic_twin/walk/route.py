@@ -473,6 +473,12 @@ def _station_location(
     exists only for fixture sites outside the eleven-site registry and still
     requires a path below ``data/panoramas``.
     """
+    recorded_parts = pathlib.PurePath(recorded_folder).parts
+    if any(
+        recorded_parts[index : index + 2] == ("data", "panorama_cohorts") for index in range(len(recorded_parts) - 1)
+    ):
+        candidate = _recorded_station_location(station, recorded_folder, base)
+        return candidate, None, station.startswith("pano_")
     try:
         selected = Site.get(site)
     except KeyError:

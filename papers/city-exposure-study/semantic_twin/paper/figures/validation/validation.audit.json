@@ -1,0 +1,178 @@
+{
+  "schema_version": "controlled_depth1_validation_figure_audit_v1",
+  "sources": {
+    "deterministic_surface_quadrature": {
+      "path_from_semantic_twin_root": "outputs/cross_validation/deterministic_first_bounce_open_square_high.json",
+      "sha256": "2fd297325ecdc067b66c106be7a3e0f72b5179815f13cceec3fe555b0e9fbee4"
+    },
+    "adjoint_and_forward_tracer": {
+      "path_from_semantic_twin_root": "outputs/cross_validation/forward_sionna_open_depth1_50k_open_square.json",
+      "sha256": "9d5f7b039b32db96b06ff32c3fafdb322fa9a3cc532b755d7ae30402d0140f8c"
+    }
+  },
+  "controlled_experiment": {
+    "frequency_hz": 15000000000.0,
+    "geometry": "exact ground plane and three rectangular walls",
+    "triangles": 8,
+    "sources": 27,
+    "receivers": 6,
+    "interaction_depth": 1,
+    "surface": "fully diffuse near-perfect reflector",
+    "excluded_mechanisms": [
+      "specular reflection",
+      "refraction",
+      "diffraction"
+    ],
+    "quantity": "incoherent bounced transfer in inverse square meters"
+  },
+  "estimators": {
+    "deterministic_surface_quadrature": {
+      "subdivisions": 512,
+      "surface_samples": 2097152,
+      "previous_resolution_subdivisions": 256,
+      "previous_to_final_change_db": [
+        0.0010476521388232878,
+        0.0031437197543959065,
+        0.0032349771986709868,
+        0.0030308326862071786,
+        0.0008200736421903568,
+        -0.0028627429835683896
+      ],
+      "previous_to_final_absolute_change_db": {
+        "median": 0.002946787834887784,
+        "maximum": 0.0032349771986709868
+      }
+    },
+    "adjoint_first_diffuse": {
+      "primary_rays_per_seed": 50000,
+      "seeds": 4,
+      "connections_per_vertex": 1
+    },
+    "independent_forward_tracer": {
+      "engine": "Sionna RT",
+      "samples_per_source_per_seed": 50000,
+      "seeds": 3,
+      "path_buffer_saturated": false
+    }
+  },
+  "plotted_values": {
+    "receiver_labels": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6"
+    ],
+    "deterministic_surface_quadrature_m_inv2": [
+      0.00045138778938804227,
+      0.0008610508735133684,
+      0.0006974734993977965,
+      0.000900668901474991,
+      0.00013857109583373766,
+      0.00045200852906999967
+    ],
+    "adjoint_first_diffuse_mean_m_inv2": [
+      0.00044942270620716674,
+      0.0008552947292424535,
+      0.0006876559512012926,
+      0.0009039075931007841,
+      0.00014018667222481004,
+      0.00045026788539946725
+    ],
+    "adjoint_first_diffuse_standard_error_m_inv2": [
+      2.999311291197401e-06,
+      3.215191056126978e-06,
+      3.326607653849622e-06,
+      6.013193490999087e-07,
+      7.22302334403365e-07,
+      1.5129593419045047e-06
+    ],
+    "independent_forward_tracer_mean_m_inv2": [
+      0.0004515929828846344,
+      0.000860866634922539,
+      0.0006975657942584129,
+      0.0009008330910288395,
+      0.00013928225028248114,
+      0.00045205389960615937
+    ],
+    "independent_forward_tracer_standard_error_m_inv2": [
+      4.978697559281282e-12,
+      1.4155036411825243e-11,
+      2.3746873983819485e-11,
+      1.4155036411825243e-11,
+      3.5930654971860305e-12,
+      1.52091123997242e-11
+    ]
+  },
+  "error_against_deterministic_quadrature_db": {
+    "adjoint_first_diffuse": {
+      "signed_by_receiver": [
+        -0.01894796163818539,
+        -0.029130159593716023,
+        -0.061565053096781466,
+        0.015588670428247837,
+        0.05034075086783818,
+        -0.01675656964447292
+      ],
+      "absolute": {
+        "median": 0.024039060615950708,
+        "maximum": 0.061565053096781466
+      }
+    },
+    "independent_forward_tracer": {
+      "signed_by_receiver": [
+        0.0019737829987676475,
+        -0.000929356990264513,
+        0.0005746526125025816,
+        0.0007916351768329499,
+        0.022231233245833856,
+        0.0004359029395907842
+      ],
+      "absolute": {
+        "median": 0.0008604960835487314,
+        "maximum": 0.022231233245833856
+      }
+    }
+  },
+  "outputs": {
+    "pdf": {
+      "path": "validation.pdf",
+      "sha256": "bea214ff29b6f2d3bbb0812bbcbffc7a3904048a013cf7e55b6cca4c37429f25",
+      "page_size": "515.52 x 185.76 pts",
+      "contains_raster_images": false,
+      "fonts_embedded": true,
+      "contains_type3_fonts": false,
+      "font_types": [
+        "CID TrueType"
+      ],
+      "fonts": [
+        "CJTTVH+STIXGeneral-Bold",
+        "DBVCNN+Cmr10",
+        "DGROAQ+STIXGeneral-Regular",
+        "DOIIOB+Cmmi10",
+        "FPYHOW+Cmsy10",
+        "GHVTJQ+STIXGeneral-Regular"
+      ]
+    },
+    "png": {
+      "path": "validation.png",
+      "sha256": "05331dece4855dcd3852bc22690d0fcfa9c6dc589d229e672ea00c8989e9aed4",
+      "dimensions_pixels": [
+        2148,
+        774
+      ],
+      "rasterization_dpi": 300
+    }
+  },
+  "generator": {
+    "path": "make_validation.py",
+    "sha256": "352e771cc41d545706292bb8b6cfeddafbadd22bc4a6931e4eca26529826e94a",
+    "style": [
+      "science",
+      "ieee",
+      "no-latex"
+    ],
+    "width_inches": 7.16
+  }
+}

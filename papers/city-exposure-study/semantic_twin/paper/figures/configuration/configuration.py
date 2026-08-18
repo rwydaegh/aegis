@@ -1,0 +1,778 @@
+"""Render the provenance-locked Prague simulation configuration.
+
+Run from any directory with::
+
+    uvx --from SciencePlots --with matplotlib --with numpy \
+        semantic_twin/paper/figures/configuration/configuration.py
+
+The script refuses changed source bytes before writing ``configuration.pdf``,
+``configuration.png``, and ``configuration_assets.json`` beside itself.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from pathlib import Path
+from typing import Any
+
+import matplotlib as mpl
+
+mpl.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import scienceplots  # noqa: E402, F401
+from matplotlib.collections import LineCollection, PolyCollection  # noqa: E402
+from matplotlib.patches import Rectangle  # noqa: E402
+
+
+HERE = Path(__file__).resolve().parent
+SEMANTIC_TWIN_ROOT = HERE.parents[2]
+REPOSITORY_ROOT = SEMANTIC_TWIN_ROOT.parent
+PIPELINE_DIRECTORY = SEMANTIC_TWIN_ROOT / "outputs" / "propagation_viz" / "prague_360_pipeline_v2"
+CAMPAIGN_DIRECTORY = (
+    SEMANTIC_TWIN_ROOT
+    / "outputs"
+    / "roofline_campaign"
+    / "prague_staromestske_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid"
+)
+MESH_PATH = SEMANTIC_TWIN_ROOT / "data" / "geometry" / "prague_staromestske" / "inhouse_leaf_250m_f64.ply"
+BODY_PATH = REPOSITORY_ROOT.parents[1] / "data" / "duke.stl"
+
+PHOTO_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_registered_photograph.png"
+SUPPORT_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_full_traced_support.png"
+MATERIAL_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_rf_material_atlas_(posterior_display).png"
+TRANSPORT_PATH = PIPELINE_DIRECTORY / "panorama_pipeline_final_transport_state.png"
+CURTAIN_MANIFEST = PIPELINE_DIRECTORY / "prague_360_publication_curtain.json"
+CURTAIN_PATH = PIPELINE_DIRECTORY / "prague_360_publication_curtain.png"
+CAMPAIGN_IDENTITY = CAMPAIGN_DIRECTORY / "campaign_identity.json"
+LOCATIONS_PATH = CAMPAIGN_DIRECTORY / "locations.jsonl"
+SOURCE_CURVE_JSON = CAMPAIGN_DIRECTORY / "source_curve_audit.json"
+SOURCE_CURVE_NPZ = CAMPAIGN_DIRECTORY / "source_curve_audit.npz"
+
+EXPECTED_SHA256 = {
+    PHOTO_PATH: "059a3bde49239a8bcbc5cd2cb881b9b89fe69fd4bcc894f06dda7494b26d59b3",
+    SUPPORT_PATH: "c1db560d268789b7268434f527e63f8afed32bed9446a6c0024de2693cc199da",
+    MATERIAL_PATH: "b94ed326ded0c85f0a8bda5ecc896878470fbe473f4d4e42f4d2279ba724ff53",
+    TRANSPORT_PATH: "f431244ff9c16118366d775f2415d8f74e26b75d3536f2079e20114f0184e7ec",
+    CURTAIN_PATH: "7d0ddfe59a0c85552788fd8ab66dc8f3221b3c6ee2de646d3a47dde03997b676",
+    MESH_PATH: "a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4",
+    BODY_PATH: "781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b",
+    LOCATIONS_PATH: "dfe271c4e099e87eb8f2b32af25baafbe140a2967fc4d72b724e43ffe958ad34",
+    SOURCE_CURVE_NPZ: "f27c039eba5f5dfc4cbb350d1b0855944c8daf30781d49f09067e6a1199182d1",
+}
+EXPECTED_CAMPAIGN_IDENTITY = "68cbbd269af2e2bc29681ba9b82510a5a046ba5fe991ac221823b2971617e206"
+EXPECTED_SOURCE_CURVE = "9805ef88d174edbe0ef57facf8cf17ea915f570ea2c7191d65a3e99bf8067fd0"
+
+OUTPUT_PDF = HERE / "configuration.pdf"
+OUTPUT_PNG = HERE / "configuration.png"
+ASSET_MANIFEST = HERE / "configuration_assets.json"
+
+TRANSPORT_SOURCE_RGB = (
+    np.asarray(
+        (
+            (89, 229, 253),
+            (129, 239, 153),
+            (250, 191, 97),
+        ),
+        dtype=np.float64,
+    )
+    / 255.0
+)
+TRANSPORT_DISPLAY_RGB = np.asarray(
+    (
+        mpl.colors.to_rgb("#9CCBE8"),
+        mpl.colors.to_rgb("#257A5C"),
+        mpl.colors.to_rgb("#33234D"),
+    ),
+    dtype=np.float64,
+)
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _relative(path: Path) -> str:
+    return os.path.relpath(path, start=REPOSITORY_ROOT)
+
+
+def _authenticate_inputs() -> tuple[dict[str, Any], dict[str, Any]]:
+    observed_hashes: dict[str, str] = {}
+    for path, expected in EXPECTED_SHA256.items():
+        actual = _sha256(path)
+        assert actual == expected, f"source hash mismatch for {path}: {actual} != {expected}"
+        observed_hashes[_relative(path)] = actual
+
+    curtain = json.loads(CURTAIN_MANIFEST.read_text(encoding="utf-8"))
+    curtain_panels = {Path(panel["path"]).name: panel for panel in curtain["panels"]}
+    for path in (PHOTO_PATH, SUPPORT_PATH, MATERIAL_PATH, TRANSPORT_PATH):
+        panel = curtain_panels[path.name]
+        assert panel["sha256"] == EXPECTED_SHA256[path]
+        assert panel["status"] == "available"
+    assert curtain["render_dimensions"] == [1664, 832]
+    assert curtain["output_sha256"] == EXPECTED_SHA256[CURTAIN_PATH]
+
+    identity = json.loads(CAMPAIGN_IDENTITY.read_text(encoding="utf-8"))
+    assert identity["sha256"] == EXPECTED_CAMPAIGN_IDENTITY
+    contract = identity["data"]
+    assert contract["configuration"]["site"] == "prague_staromestske"
+    assert contract["configuration"]["route_contract"] == "provider_corridor_v1"
+    assert contract["configuration"]["material_mode"] == "atlas"
+    assert contract["body"]["phantom"] == "duke"
+    assert contract["body"]["level"] == 2
+    assert contract["body"]["surface_elements"] == 56024
+    assert contract["walk"]["standpoints"] == 22
+    assert contract["sources"]["provenance"]["edge_count"] == 502
+    assert contract["sources"]["provenance"]["curve_hash_sha256"] == EXPECTED_SOURCE_CURVE
+
+    source_audit = json.loads(SOURCE_CURVE_JSON.read_text(encoding="utf-8"))
+    assert source_audit["curve_source_hash_sha256"] == EXPECTED_SOURCE_CURVE
+    assert source_audit["npz"]["sha256"] == EXPECTED_SHA256[SOURCE_CURVE_NPZ]
+    assert source_audit["segments"] == 502
+    assert source_audit["selected_source_measure_rule"] == "physical_3d_edge_length"
+    return contract, {"sha256": observed_hashes, "curtain": curtain, "source": source_audit}
+
+
+def _load_locations() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+    rows = [json.loads(line) for line in LOCATIONS_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert [row["standpoint"] for row in rows] == list(range(22))
+    distance = np.asarray([row["route_distance_m"] for row in rows], dtype=np.float64)
+    assert np.all(np.diff(distance) > 0.0)
+    positions = np.asarray([row["position_m"] for row in rows], dtype=np.float64)
+    yaws = np.asarray([row["body_yaw_deg"] for row in rows], dtype=np.float64)
+    kinds = [row["point_kind"] for row in rows]
+    assert kinds[0] == kinds[-1] == "camera_registered"
+    assert all(kind == "stride_interpolated" for kind in kinds[1:-1])
+    return positions, distance, yaws, kinds
+
+
+def _load_source_curve() -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    with np.load(SOURCE_CURVE_NPZ, allow_pickle=False) as data:
+        starts = np.asarray(data["segment_starts_m"], dtype=np.float64)
+        ends = np.asarray(data["segment_ends_m"], dtype=np.float64)
+        total = float(data["physical_3d_total_m"])
+        selected_rule = str(data["selected_measure_rule"])
+    assert starts.shape == ends.shape == (502, 3)
+    assert selected_rule == "physical_3d_edge_length"
+    assert np.isclose(total, 267.15180247365765, rtol=0.0, atol=1.0e-10)
+    return starts, ends, {"segments": 502, "physical_3d_total_m": total}
+
+
+def _load_binary_triangle_ply() -> tuple[np.ndarray, np.ndarray]:
+    header = bytearray()
+    with MESH_PATH.open("rb") as stream:
+        while not header.endswith(b"end_header\n"):
+            line = stream.readline()
+            assert line, "unterminated PLY header"
+            header.extend(line)
+    header_text = header.decode("ascii")
+    assert "format binary_little_endian 1.0" in header_text
+    vertex_count = int(next(line.split()[2] for line in header_text.splitlines() if line.startswith("element vertex")))
+    face_count = int(next(line.split()[2] for line in header_text.splitlines() if line.startswith("element face")))
+    assert vertex_count == 823889
+    assert face_count == 664619
+    vertex_offset = len(header)
+    vertices = np.memmap(
+        MESH_PATH,
+        mode="r",
+        dtype="<f4",
+        offset=vertex_offset,
+        shape=(vertex_count, 3),
+    )
+    face_dtype = np.dtype([("count", "u1"), ("indices", "<i4", (3,))])
+    faces = np.memmap(
+        MESH_PATH,
+        mode="r",
+        dtype=face_dtype,
+        offset=vertex_offset + 12 * vertex_count,
+        shape=(face_count,),
+    )
+    assert np.all(faces["count"] == 3)
+    return vertices, faces["indices"]
+
+
+def _configure_style() -> None:
+    plt.style.use("science")
+    mpl.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.size": 8.0,
+            "axes.titlesize": 8.0,
+            "axes.labelsize": 8.0,
+            "xtick.labelsize": 7.0,
+            "ytick.labelsize": 7.0,
+            "legend.fontsize": 6.8,
+            "axes.linewidth": 0.6,
+            "xtick.major.width": 0.6,
+            "ytick.major.width": 0.6,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+            "savefig.facecolor": "white",
+            "savefig.bbox": None,
+        }
+    )
+
+
+def _plot_panorama_panel(ax: plt.Axes, path: Path, label: str) -> None:
+    image = plt.imread(path)
+    assert image.shape[:2] == (832, 1664)
+    ax.imshow(image, interpolation="lanczos")
+    ax.text(
+        0.012,
+        0.96,
+        label,
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=5,
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.5)
+
+
+def _plot_curtain_panel(ax: plt.Axes) -> None:
+    image = plt.imread(CURTAIN_PATH)
+    assert image.shape[:2] == (832, 1664)
+    image = image[:580, :, :]
+    ax.imshow(image, interpolation="lanczos")
+    cuts = np.asarray([0, 330, 550, 815, 1100, 1385, 1664], dtype=np.float64) / 1664.0
+    headers = (
+        ("Street image", "source photograph"),
+        ("Object labels", "single image"),
+        ("City mesh", "aligned geometry"),
+        ("Combined objects", "all images"),
+        ("Material labels", "accepted surfaces"),
+        ("Tracer input", "final surface state"),
+    )
+    for panel, (title, detail) in enumerate(headers):
+        left = cuts[panel] + 0.004
+        width = cuts[panel + 1] - cuts[panel] - 0.008
+        rectangle = Rectangle(
+            (left, 0.850),
+            width,
+            0.133,
+            transform=ax.transAxes,
+            facecolor="#151B22",
+            edgecolor="white",
+            linewidth=0.25,
+            alpha=1.0,
+            zorder=4,
+        )
+        ax.add_patch(rectangle)
+        text_left = left + (0.026 if panel == 0 else 0.008)
+        ax.text(
+            text_left,
+            0.965,
+            title,
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=7.0,
+            fontweight="bold",
+            color="white",
+            zorder=5,
+        )
+        ax.text(
+            text_left,
+            0.905,
+            detail,
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=5.5,
+            color="0.82",
+            zorder=5,
+        )
+    ax.text(
+        0.006,
+        0.985,
+        "(a)",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        color="white",
+        bbox={"facecolor": "black", "edgecolor": "none", "alpha": 0.78, "pad": 1.2},
+        zorder=5,
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.5)
+
+
+def _transport_display_image(path: Path) -> tuple[np.ndarray, tuple[int, int, int]]:
+    """Remap exact state colours to redundant print-safe display encodings."""
+    image = np.asarray(plt.imread(path), dtype=np.float64).copy()
+    assert image.shape[:2] == (832, 1664)
+    rgb = image[..., :3]
+    distance = np.linalg.norm(rgb[..., None, :] - TRANSPORT_SOURCE_RGB, axis=-1)
+    winner = np.argmin(distance, axis=-1)
+    classified = np.min(distance, axis=-1) < (30.0 / 255.0)
+    masks = tuple(classified & (winner == state) for state in range(3))
+    counts = tuple(int(np.count_nonzero(mask)) for mask in masks)
+    assert counts[0] > 450_000 and counts[1] > 20_000 and counts[2] > 35_000
+
+    for state, mask in enumerate(masks):
+        rgb[mask] = TRANSPORT_DISPLAY_RGB[state]
+
+    yy, xx = np.indices(classified.shape)
+    diagonal = ((xx + yy) % 18) < 3
+    cross = (((xx + yy) % 18) < 2) | (((xx - yy) % 18) < 2)
+    rgb[masks[1] & diagonal] = 0.92
+    rgb[masks[2] & cross] = 0.78
+
+    # A dark one-pixel interior boundary remains visible when color is removed.
+    for mask in masks:
+        interior_edge = mask & (
+            ~np.roll(mask, 1, axis=0)
+            | ~np.roll(mask, -1, axis=0)
+            | ~np.roll(mask, 1, axis=1)
+            | ~np.roll(mask, -1, axis=1)
+        )
+        rgb[interior_edge] = 0.08
+    return image, counts
+
+
+def _plot_transport_panel(ax: plt.Axes) -> tuple[int, int, int]:
+    image, counts = _transport_display_image(TRANSPORT_PATH)
+    ax.imshow(image, interpolation="lanczos")
+    ax.text(
+        0.012,
+        0.96,
+        "(c)",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=5,
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.5)
+    return counts
+
+
+def _plot_body_panel(ax: plt.Axes, body_triangles: np.ndarray) -> None:
+    projected = body_triangles[:, :, (0, 2)]
+    depth = body_triangles[:, :, 1].mean(axis=1)
+    order = np.argsort(depth)
+    # Rasterization keeps the PDF compact while retaining every surface element.
+    chosen = order
+    ax.add_collection(
+        PolyCollection(
+            projected[chosen],
+            facecolors="#777777",
+            edgecolors="none",
+            rasterized=True,
+        )
+    )
+    lower = projected.reshape(-1, 2).min(axis=0)
+    upper = projected.reshape(-1, 2).max(axis=0)
+    padding = 0.04 * (upper - lower)
+    ax.set_xlim(lower[0] - padding[0], upper[0] + padding[0])
+    ax.set_ylim(lower[1] - 0.08, upper[1] + padding[1])
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.text(
+        0.04,
+        0.96,
+        "(e)",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=5,
+    )
+    for spine in ax.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.55)
+
+
+def _plot_configuration(
+    positions: np.ndarray,
+    distance: np.ndarray,
+    yaws: np.ndarray,
+    source_starts: np.ndarray,
+    source_ends: np.ndarray,
+    vertices: np.ndarray,
+    faces: np.ndarray,
+) -> tuple[int, int, int]:
+    _configure_style()
+    fig = plt.figure(figsize=(7.16, 5.55), constrained_layout=False)
+    grid = fig.add_gridspec(
+        2,
+        12,
+        height_ratios=(1.36, 1.15),
+        left=0.065,
+        right=0.985,
+        bottom=0.085,
+        top=0.985,
+        hspace=0.10,
+        wspace=0.08,
+    )
+    _plot_curtain_panel(fig.add_subplot(grid[0, :]))
+    _, transport_counts = _transport_display_image(TRANSPORT_PATH)
+
+    ax = fig.add_subplot(grid[1, :6])
+    all_xy = np.vstack((source_starts[:, :2], source_ends[:, :2], positions[:, :2]))
+    lower = all_xy.min(axis=0) - np.array([12.0, 12.0])
+    upper = all_xy.max(axis=0) + np.array([12.0, 12.0])
+    span = upper - lower
+    if span[0] < span[1]:
+        padding = 0.5 * (span[1] - span[0])
+        lower[0] -= padding
+        upper[0] += padding
+
+    face_centres = vertices[faces].mean(axis=1)
+    inside = (
+        (face_centres[:, 0] >= lower[0])
+        & (face_centres[:, 0] <= upper[0])
+        & (face_centres[:, 1] >= lower[1])
+        & (face_centres[:, 1] <= upper[1])
+    )
+    triangles = vertices[faces]
+    edge_a = triangles[:, 1] - triangles[:, 0]
+    edge_b = triangles[:, 2] - triangles[:, 0]
+    normals = np.cross(edge_a, edge_b)
+    normal_length = np.linalg.norm(normals, axis=1)
+    vertical_fraction = np.abs(normals[:, 2]) / np.maximum(normal_length, 1.0e-12)
+    local_ground = float(np.median(positions[:, 2]))
+    roofs = (face_centres[:, 2] > local_ground + 3.0) & (vertical_fraction > 0.55)
+    selected = np.flatnonzero(inside & roofs)
+    plan_triangles = vertices[faces[selected]][:, :, :2]
+    ax.set_facecolor("#F6F4EF")
+    ax.add_collection(
+        PolyCollection(
+            plan_triangles,
+            facecolors="#D8D3CA",
+            edgecolors="#B7B1A6",
+            linewidths=0.08,
+            rasterized=True,
+            zorder=1,
+        )
+    )
+
+    source_segments = np.stack((source_starts[:, :2], source_ends[:, :2]), axis=1)
+    ax.add_collection(
+        LineCollection(
+            source_segments,
+            colors="#D62728",
+            linewidths=1.15,
+            alpha=0.94,
+            capstyle="round",
+            zorder=3,
+        )
+    )
+    ax.plot(
+        positions[:, 0],
+        positions[:, 1],
+        color="#0057B8",
+        linewidth=1.55,
+        zorder=4,
+    )
+    ax.scatter(
+        positions[:, 0],
+        positions[:, 1],
+        s=13.0,
+        facecolor="white",
+        edgecolor="#0057B8",
+        linewidth=0.65,
+        zorder=5,
+    )
+    endpoint_mask = np.array([True] + [False] * 20 + [True])
+    ax.scatter(
+        positions[endpoint_mask, 0],
+        positions[endpoint_mask, 1],
+        s=25.0,
+        marker="s",
+        facecolor="#0057B8",
+        edgecolor="white",
+        linewidth=0.6,
+        zorder=6,
+    )
+
+    middle = len(positions) // 2
+    theta = np.deg2rad(90.0 - yaws[middle])
+    arrow_start = positions[middle, :2]
+    arrow_delta = 14.0 * np.array([np.cos(theta), np.sin(theta)])
+    ax.annotate(
+        "",
+        xy=arrow_start + arrow_delta,
+        xytext=arrow_start,
+        arrowprops={"arrowstyle": "-|>", "color": "#0057B8", "lw": 1.0},
+        zorder=7,
+    )
+
+    ax.plot([], [], color="#0057B8", linewidth=1.55, marker="o", markerfacecolor="white", label="Route points")
+    ax.plot([], [], color="#D62728", linewidth=1.15, label="Visible roofline")
+    legend = ax.legend(loc="upper right", frameon=True, fancybox=False, borderpad=0.25, handlelength=1.5)
+    legend.get_frame().set_edgecolor("black")
+    legend.get_frame().set_linewidth(0.6)
+
+    ax.text(
+        0.012,
+        0.975,
+        "(b)",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=12,
+    )
+    ax.set_xlabel("East of site center (m)")
+    ax.set_ylabel("North of site center (m)")
+    ax.set_xlim(lower[0], upper[0])
+    ax.set_ylim(lower[1], upper[1])
+    ax.set_aspect("equal", adjustable="box")
+    ax.tick_params(direction="out", length=3.0)
+    ax.grid(False)
+    for spine in ax.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.55)
+
+    detail = fig.add_subplot(grid[1, 6:])
+    detail.set_facecolor("#F6F4EF")
+    detail.add_collection(
+        PolyCollection(
+            plan_triangles,
+            facecolors="#D8D3CA",
+            edgecolors="#B7B1A6",
+            linewidths=0.08,
+            rasterized=True,
+            zorder=1,
+        )
+    )
+    detail.add_collection(
+        LineCollection(
+            source_segments,
+            colors="#D62728",
+            linewidths=1.15,
+            alpha=0.94,
+            capstyle="round",
+            zorder=3,
+        )
+    )
+    detail.plot(positions[:, 0], positions[:, 1], color="#0057B8", linewidth=1.55, zorder=4)
+    detail.scatter(
+        positions[:, 0],
+        positions[:, 1],
+        s=13.0,
+        facecolor="white",
+        edgecolor="#0057B8",
+        linewidth=0.65,
+        zorder=5,
+    )
+    detail.scatter(
+        positions[endpoint_mask, 0],
+        positions[endpoint_mask, 1],
+        s=25.0,
+        marker="s",
+        facecolor="#0057B8",
+        edgecolor="white",
+        linewidth=0.6,
+        zorder=6,
+    )
+    detail.annotate(
+        "",
+        xy=arrow_start + arrow_delta,
+        xytext=arrow_start,
+        arrowprops={"arrowstyle": "-|>", "color": "#0057B8", "lw": 1.0},
+        zorder=7,
+    )
+    detail_lower = positions[:, :2].min(axis=0) - np.array([20.0, 20.0])
+    detail_upper = positions[:, :2].max(axis=0) + np.array([20.0, 20.0])
+    detail_span = detail_upper - detail_lower
+    if detail_span[0] < detail_span[1]:
+        padding = 0.5 * (detail_span[1] - detail_span[0])
+        detail_lower[0] -= padding
+        detail_upper[0] += padding
+    else:
+        padding = 0.5 * (detail_span[0] - detail_span[1])
+        detail_lower[1] -= padding
+        detail_upper[1] += padding
+    detail.text(
+        0.012,
+        0.975,
+        "(c) Route detail",
+        transform=detail.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.9, "pad": 1.2},
+        zorder=12,
+    )
+    detail.set_xlabel("East of site center (m)")
+    detail.set_ylabel("North of site center (m)")
+    detail.set_xlim(detail_lower[0], detail_upper[0])
+    detail.set_ylim(detail_lower[1], detail_upper[1])
+    detail.set_aspect("equal", adjustable="box")
+    detail.tick_params(direction="out", length=3.0)
+    detail.grid(False)
+    for spine in detail.spines.values():
+        spine.set_color("0.2")
+        spine.set_linewidth(0.55)
+
+    fig.savefig(
+        OUTPUT_PDF,
+        dpi=300,
+        metadata={
+            "Title": "Prague city-exposure simulation configuration",
+            "Creator": "configuration.py",
+            "CreationDate": None,
+            "ModDate": None,
+        },
+    )
+    fig.savefig(
+        OUTPUT_PNG,
+        dpi=300,
+        metadata={"Title": "Prague city-exposure simulation configuration"},
+    )
+    plt.close(fig)
+    return transport_counts
+
+
+def _write_manifest(
+    contract: dict[str, Any],
+    authentication: dict[str, Any],
+    positions: np.ndarray,
+    distance: np.ndarray,
+    source_summary: dict[str, Any],
+    transport_counts: tuple[int, int, int],
+) -> None:
+    roles = {
+        PHOTO_PATH: "registered source panorama, exact publication-pipeline panel",
+        SUPPORT_PATH: "exact traced-support publication-pipeline panel",
+        MATERIAL_PATH: "authenticated upstream material-posterior display; not shown after transport-state replacement",
+        TRANSPORT_PATH: "exact final host-gated transport state shown in panel (c)",
+        MESH_PATH: "current 250 m Prague transport support mesh, with visual-only plan-view subsampling",
+        CURTAIN_PATH: "authenticated six-stage street-image-to-transport curtain shown in panel (a)",
+        BODY_PATH: "current campaign anatomical body surface",
+        LOCATIONS_PATH: "current sealed fixed-route positions, body yaws, and route distances",
+        SOURCE_CURVE_NPZ: "current sealed roofline segment endpoints and physical-length measure",
+    }
+    source_assets = []
+    for path, role in roles.items():
+        source_assets.append(
+            {
+                "path": _relative(path),
+                "sha256": authentication["sha256"][_relative(path)],
+                "role": role,
+            }
+        )
+
+    payload = {
+        "schema_version": "prague_configuration_figure_assets_v1",
+        "figure_scope": (
+            "early physical configuration: street image, semantic labels, city-mesh projection, "
+            "material map, visible roofline, and fixed pedestrian route"
+        ),
+        "site": "prague_staromestske",
+        "source_assets": source_assets,
+        "authenticated_contracts": {
+            "curtain_manifest": {
+                "path": _relative(CURTAIN_MANIFEST),
+                "capture": authentication["curtain"]["capture"],
+                "projection": authentication["curtain"]["projection"],
+                "panel_dimensions": [1664, 832],
+            },
+            "campaign_identity": {
+                "path": _relative(CAMPAIGN_IDENTITY),
+                "sha256": EXPECTED_CAMPAIGN_IDENTITY,
+                "route_contract": contract["configuration"]["route_contract"],
+                "material_mode": contract["configuration"]["material_mode"],
+                "transport_topology": contract["configuration"]["transport_topology"],
+            },
+            "source_curve": {
+                "path": _relative(SOURCE_CURVE_JSON),
+                "curve_source_hash_sha256": EXPECTED_SOURCE_CURVE,
+                "selected_measure_rule": "physical_3d_edge_length",
+            },
+        },
+        "shown_configuration": {
+            "mesh_crop_radius_m": 250.0,
+            "mesh_triangles": 664619,
+            "route_standpoints": int(positions.shape[0]),
+            "route_length_m": float(distance[-1]),
+            "route_endpoints_are_registered_cameras": True,
+            "body": {
+                "description": "anatomical adult-male surface phantom",
+                "surface_elements": 56024,
+                "level": 2,
+                "yaw_rule": "route tangent at each standpoint",
+            },
+            "roofline_segments": source_summary["segments"],
+            "roofline_physical_3d_total_m": source_summary["physical_3d_total_m"],
+        },
+        "visual_transforms": {
+            "panorama_panels": "authenticated six-stage 1664 x 832 curtain, uniformly resampled for layout only",
+            "plan_view_mesh": (
+                "roof-like triangles above local street level, projected to an OSM-style display. "
+                "Transport still uses all 664619 faces"
+            ),
+            "roofline_and_route": "all coordinates shown without smoothing in local ENU metres",
+            "transport_state_print_encoding": {
+                "source_pixel_counts": list(transport_counts),
+                "classification_rule": "nearest exact render state colour within Euclidean RGB distance 30/255",
+                "atlas_interface": "light blue solid fill",
+                "nonblocking_woody_vegetation": "dark green fill with diagonal light stripes",
+                "geometric_fallback": "dark purple fill with light crosshatch",
+                "boundaries": "dark one-pixel interior edge",
+                "role": "display-only redundant colour, luminance, pattern, and edge encoding; categorical state is unchanged",
+            },
+        },
+        "excluded_assets": [
+            {
+                "pattern": "outputs/propagation_viz/figures/prague_staromestske_propagation_*.png",
+                "reason": "older Blender walk, source, body, and ray renders do not represent the current sealed campaign",
+            },
+            {
+                "kind": "propagation rays",
+                "reason": "no rays are shown because available rendered rays are stale for this configuration",
+            },
+        ],
+        "outputs": {
+            OUTPUT_PDF.name: {"sha256": _sha256(OUTPUT_PDF), "bytes": OUTPUT_PDF.stat().st_size},
+            OUTPUT_PNG.name: {"sha256": _sha256(OUTPUT_PNG), "bytes": OUTPUT_PNG.stat().st_size},
+        },
+    }
+    ASSET_MANIFEST.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def main() -> None:
+    contract, authentication = _authenticate_inputs()
+    positions, distance, yaws, _kinds = _load_locations()
+    source_starts, source_ends, source_summary = _load_source_curve()
+    vertices, faces = _load_binary_triangle_ply()
+    transport_counts = _plot_configuration(
+        positions,
+        distance,
+        yaws,
+        source_starts,
+        source_ends,
+        vertices,
+        faces,
+    )
+    _write_manifest(contract, authentication, positions, distance, source_summary, transport_counts)
+
+
+if __name__ == "__main__":
+    main()

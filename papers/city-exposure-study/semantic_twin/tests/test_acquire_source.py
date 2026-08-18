@@ -155,10 +155,9 @@ def test_every_other_site_with_photographs_is_street_view() -> None:
     assert set().union(*others.values()) == {sites.GOOGLE_STREETVIEW}
 
 
-def test_a_site_with_no_photographs_says_so_rather_than_guessing_a_provider() -> None:
+def test_new_route_extension_sites_name_their_acquired_provider() -> None:
     for name in ("krakow_rynek", "toulouse_capitole"):
-        with pytest.raises(KeyError):
-            source_for_site(name)
+        assert source_for_site(name).provider == sites.GOOGLE_STREETVIEW
 
 
 def test_an_unknown_provider_names_the_two_that_exist() -> None:

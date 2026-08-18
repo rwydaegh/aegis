@@ -25,6 +25,137 @@ SPECULAR_SOURCE_COUNTER_DIMENSION = 0
 SPECULAR_FACE_COUNTER_DIMENSION = 1
 _MASK_64 = (1 << 64) - 1
 
+FIRST_DIFFUSE_AUDIT_CATEGORY_NAMES = (
+    "atlas_interface",
+    "nonblocking_woody_atlas",
+    "geometric_no_panorama_evidence",
+    "geometric_evidence_refused_host_compatibility",
+    "geometric_evidence_refused_atlas_state",
+    "geometric_evidence_refused_insufficient_structural_mass",
+    "geometric_fallback_other",
+)
+
+
+@dataclass(frozen=True)
+class DeviceFirstDiffuseAuditCategories:
+    """Exact face/texel classification used only by first-diffuse audit replay."""
+
+    face_to_category_row: np.ndarray
+    category_by_texel: np.ndarray
+    fallback_category_by_face: np.ndarray
+    category_names: tuple[str, ...] = FIRST_DIFFUSE_AUDIT_CATEGORY_NAMES
+
+    def __post_init__(self) -> None:
+        names = tuple(str(value) for value in self.category_names)
+        if names != FIRST_DIFFUSE_AUDIT_CATEGORY_NAMES:
+            raise ValueError("first-diffuse audit categories must use the fixed ordered vocabulary")
+        face_to_row = _readonly_array(self.face_to_category_row, np.int32)
+        category = _readonly_array(self.category_by_texel, np.uint8)
+        fallback = _readonly_array(self.fallback_category_by_face, np.uint8)
+        if face_to_row.ndim != 1 or fallback.shape != face_to_row.shape:
+            raise ValueError("first-diffuse audit face maps must be aligned vectors")
+        if category.ndim != 3 or category.shape[0] < 1 or any(size < 2 for size in category.shape[1:]):
+            raise ValueError("category_by_texel must have positive rows and resolution at least 2 by 2")
+        if np.any(face_to_row < -1) or np.any(face_to_row >= category.shape[0]):
+            raise ValueError("face_to_category_row contains an index outside the audit texel rows")
+        count = len(names)
+        if np.any(category >= count) or np.any(fallback >= count):
+            raise ValueError("first-diffuse audit maps contain an unknown category")
+        object.__setattr__(self, "category_names", names)
+        object.__setattr__(self, "face_to_category_row", face_to_row)
+        object.__setattr__(self, "category_by_texel", category)
+        object.__setattr__(self, "fallback_category_by_face", fallback)
+
+    @property
+    def category_count(self) -> int:
+        return len(self.category_names)
+
+    @property
+    def resolution(self) -> tuple[int, int]:
+        return tuple(int(value) for value in self.category_by_texel.shape[1:])
+
+
+@dataclass(frozen=True)
+class DeviceFirstDiffuseAuditResult:
+    """Closed category tally for accepted terminal first-diffuse connections."""
+
+    category_names: tuple[str, ...]
+    accepted_event_count: np.ndarray
+    contribution_transfer: np.ndarray
+    local_cell_mass: np.ndarray
+    expected_accepted_events: int
+    expected_contribution_transfer: float
+    expected_local_cell_mass: np.ndarray | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        names = tuple(str(value) for value in self.category_names)
+        counts = _readonly_array(self.accepted_event_count, np.uint64)
+        transfer = _readonly_array(self.contribution_transfer, np.float64)
+        field_mass = _readonly_array(self.local_cell_mass, np.float64)
+        if names != FIRST_DIFFUSE_AUDIT_CATEGORY_NAMES:
+            raise ValueError("first-diffuse audit result uses an unknown category vocabulary")
+        if counts.shape != (len(names),) or transfer.shape != counts.shape:
+            raise ValueError("first-diffuse audit category totals must be aligned vectors")
+        if field_mass.ndim != 2 or field_mass.shape[0] != len(names):
+            raise ValueError("first-diffuse audit local-cell mass must have one row per category")
+        if np.any(~np.isfinite(transfer)) or np.any(transfer < 0.0):
+            raise ValueError("first-diffuse audit contribution transfer must be finite and nonnegative")
+        if np.any(~np.isfinite(field_mass)) or np.any(field_mass < 0.0):
+            raise ValueError("first-diffuse audit local-cell mass must be finite and nonnegative")
+        if int(np.sum(counts, dtype=np.uint64)) != int(self.expected_accepted_events):
+            raise ValueError("first-diffuse audit accepted-event categories do not close")
+        if not np.isclose(
+            np.sum(transfer, dtype=np.float64),
+            float(self.expected_contribution_transfer),
+            rtol=2.0e-12,
+            atol=1.0e-15,
+        ):
+            raise ValueError("first-diffuse audit contribution categories do not close")
+        expected_field = self.expected_local_cell_mass
+        if expected_field is not None:
+            expected = np.asarray(expected_field, dtype=np.float64)
+            if expected.shape != (field_mass.shape[1],) or not np.allclose(
+                np.sum(field_mass, axis=0, dtype=np.float64),
+                expected,
+                rtol=2.0e-12,
+                atol=1.0e-15,
+            ):
+                raise ValueError("first-diffuse audit category-resolved local-cell mass does not close")
+        woody = names.index("nonblocking_woody_atlas")
+        if counts[woody] or transfer[woody] != 0.0 or np.any(field_mass[woody] != 0.0):
+            raise ValueError("nonblocking woody atlas cells cannot be terminal first-diffuse interactions")
+        object.__setattr__(self, "category_names", names)
+        object.__setattr__(self, "accepted_event_count", counts)
+        object.__setattr__(self, "contribution_transfer", transfer)
+        object.__setattr__(self, "local_cell_mass", field_mass)
+
+    @property
+    def total_accepted_events(self) -> int:
+        return int(np.sum(self.accepted_event_count, dtype=np.uint64))
+
+    @property
+    def total_contribution_transfer(self) -> float:
+        return float(np.sum(self.contribution_transfer, dtype=np.float64))
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "category_names": list(self.category_names),
+            "accepted_event_count": self.accepted_event_count.tolist(),
+            "contribution_transfer": self.contribution_transfer.tolist(),
+            "local_cell_mass": self.local_cell_mass.tolist(),
+            "total_accepted_events": self.total_accepted_events,
+            "total_contribution_transfer": self.total_contribution_transfer,
+            "closure": {
+                "accepted_events": True,
+                "contribution_transfer": True,
+                "local_cell_mass": self.expected_local_cell_mass is not None,
+            },
+            "nonblocking_woody_note": (
+                "Pass-through woody atlas texels are not terminal material interactions and therefore "
+                "have zero accepted first-diffuse events."
+            ),
+        }
+
 
 @dataclass(frozen=True)
 class DeviceNextEventBatch:
@@ -42,6 +173,8 @@ class DeviceNextEventBatch:
     specular_visible_by_order: np.ndarray | None = None
     specular_accepted_by_order: np.ndarray | None = None
     sampled_specular_samples: int = 1
+    first_diffuse_audit_event_count: np.ndarray | None = None
+    first_diffuse_audit_weight_by_category: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         arrays = _validated_batch_arrays(self)
@@ -79,6 +212,9 @@ class DeviceNextEventReduction:
     rays: int
     samples: int
     sampled_specular_samples: int = 1
+    first_diffuse_audit_event_count: np.ndarray | None = None
+    first_diffuse_audit_raw_by_category: np.ndarray | None = None
+    first_diffuse_audit_raw_field_mass: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         raw = np.asarray(self.raw_by_order, dtype=np.float64)
@@ -125,6 +261,22 @@ class DeviceNextEventReduction:
             ("specular_raw_field_mass", specular_field),
         ):
             object.__setattr__(self, name, value)
+        audit_count = self.first_diffuse_audit_event_count
+        audit_raw = self.first_diffuse_audit_raw_by_category
+        audit_field = self.first_diffuse_audit_raw_field_mass
+        if (audit_count is None) != (audit_raw is None) or (audit_count is None) != (audit_field is None):
+            raise ValueError("compact first-diffuse audit reductions must be present together")
+        if audit_count is not None:
+            count = np.asarray(audit_count, dtype=np.uint64)
+            category_raw = np.asarray(audit_raw, dtype=np.float64)
+            category_field = np.asarray(audit_field, dtype=np.float64)
+            if count.ndim != 1 or category_raw.shape != count.shape:
+                raise ValueError("compact first-diffuse audit totals must be aligned vectors")
+            if category_field.ndim != 2 or category_field.shape[0] != count.size:
+                raise ValueError("compact first-diffuse audit fields need one row per category")
+            object.__setattr__(self, "first_diffuse_audit_event_count", count)
+            object.__setattr__(self, "first_diffuse_audit_raw_by_category", category_raw)
+            object.__setattr__(self, "first_diffuse_audit_raw_field_mass", category_field)
 
 
 def _specular_count_array(raw: np.ndarray | None, orders: int, name: str) -> np.ndarray:
@@ -167,6 +319,17 @@ def _validated_batch_arrays(batch: DeviceNextEventBatch) -> tuple[np.ndarray, ..
         raise ValueError("sampled specular diagnostic stages must be monotonically decreasing")
     if batch.sampled_specular_samples < 1:
         raise ValueError("sampled_specular_samples must be positive")
+    audit_count = batch.first_diffuse_audit_event_count
+    audit_weight = batch.first_diffuse_audit_weight_by_category
+    if (audit_count is None) != (audit_weight is None):
+        raise ValueError("first-diffuse audit batch arrays must be present together")
+    if audit_count is not None:
+        count = np.asarray(audit_count, dtype=np.uint64)
+        category_weight = np.asarray(audit_weight, dtype=np.float32)
+        if count.ndim != 1 or category_weight.shape != (count.size, batch.rays):
+            raise ValueError("first-diffuse audit weights must have shape (categories, rays)")
+        object.__setattr__(batch, "first_diffuse_audit_event_count", count)
+        object.__setattr__(batch, "first_diffuse_audit_weight_by_category", category_weight)
     return weight, connections, cleared, specular_weight, candidates, geometric, visible, accepted
 
 
@@ -412,6 +575,7 @@ class DeviceNextEventGather:
     #: its terminal collision query, but no next-event contribution is allowed
     #: after depth zero.
     first_material_interaction_only: bool = False
+    first_diffuse_audit: DeviceFirstDiffuseAuditCategories | None = None
 
     _sites: np.ndarray = field(init=False, repr=False)
     _probabilities: np.ndarray = field(init=False, repr=False)
@@ -421,6 +585,8 @@ class DeviceNextEventGather:
     _device_arrays: tuple[Any, ...] | None = field(init=False, default=None, repr=False)
     _specular_device_key: tuple[str, int] | None = field(init=False, default=None, repr=False)
     _specular_device_arrays: tuple[Any, ...] | None = field(init=False, default=None, repr=False)
+    _first_diffuse_audit_device_key: tuple[str, int] | None = field(init=False, default=None, repr=False)
+    _first_diffuse_audit_device_arrays: tuple[Any, ...] | None = field(init=False, default=None, repr=False)
     _face_triangles: np.ndarray = field(init=False, default_factory=lambda: np.empty((0, 3, 3)), repr=False)
     _face_normals: np.ndarray = field(init=False, default_factory=lambda: np.empty((0, 3)), repr=False)
     _face_index: np.ndarray = field(init=False, default_factory=lambda: np.empty(0, dtype=np.uint32), repr=False)
@@ -453,6 +619,15 @@ class DeviceNextEventGather:
     _specular_accepted_by_order: np.ndarray = field(
         init=False, default_factory=lambda: np.zeros(1, dtype=np.uint64), repr=False
     )
+    _first_diffuse_audit_event_count: np.ndarray = field(
+        init=False, default_factory=lambda: np.empty(0, dtype=np.uint64), repr=False
+    )
+    _first_diffuse_audit_raw_by_category: np.ndarray = field(
+        init=False, default_factory=lambda: np.empty(0), repr=False
+    )
+    _first_diffuse_audit_raw_field_mass: np.ndarray = field(
+        init=False, default_factory=lambda: np.empty((0, 0)), repr=False
+    )
 
     def __post_init__(self) -> None:
         if self.samples < 1:
@@ -469,6 +644,8 @@ class DeviceNextEventGather:
             raise ValueError("sampled_specular_seed_offset must be nonnegative")
         if not isinstance(self.first_material_interaction_only, bool):
             raise TypeError("first_material_interaction_only must be boolean")
+        if self.first_diffuse_audit is not None and not self.first_material_interaction_only:
+            raise ValueError("first-diffuse audit is defined only for first-material-interaction transport")
         sites = np.asarray(self.sources.sites(), dtype=np.float64)
         if sites.ndim != 2 or sites.shape[1] != 3 or not np.all(np.isfinite(sites)):
             raise ValueError("source sites must have shape (sources, 3) and be finite")
@@ -541,6 +718,14 @@ class DeviceNextEventGather:
         self._specular_geometric_by_order = np.zeros(initial_orders, dtype=np.uint64)
         self._specular_visible_by_order = np.zeros(initial_orders, dtype=np.uint64)
         self._specular_accepted_by_order = np.zeros(initial_orders, dtype=np.uint64)
+        categories = 0 if self.first_diffuse_audit is None else self.first_diffuse_audit.category_count
+        self._first_diffuse_audit_event_count = np.zeros(categories, dtype=np.uint64)
+        self._first_diffuse_audit_raw_by_category = np.zeros(categories, dtype=np.float64)
+        self._first_diffuse_audit_raw_field_mass = (
+            np.zeros((categories, grid.shape[0]), dtype=np.float64)
+            if categories and self.collect_field
+            else np.empty((categories, 0), dtype=np.float64)
+        )
 
     def consume(
         self,
@@ -558,6 +743,7 @@ class DeviceNextEventGather:
         self._sampled_specular_counter += int(np.sum(batch.specular_candidates_by_order, dtype=np.uint64))
         if self.collect_field:
             self._accumulate_field(batch, launch, launch_cells, source_order_count)
+        self._accumulate_first_diffuse_audit_batch(batch, launch, launch_cells)
         self._received_rays += batch.rays
 
     def consume_reduced(self, reduction: DeviceNextEventReduction) -> None:
@@ -605,7 +791,56 @@ class DeviceNextEventGather:
             self._specular_raw_field_mass += reduction.specular_raw_field_mass
         elif reduction.raw_field_mass.size or reduction.specular_raw_field_mass.size:
             raise RuntimeError("scalar next-event gather received an unexpected angular field")
+        self._accumulate_first_diffuse_audit_reduction(reduction)
         self._received_rays += reduction.rays
+
+    def _accumulate_first_diffuse_audit_batch(
+        self,
+        batch: DeviceNextEventBatch,
+        launch: np.ndarray,
+        launch_cells: np.ndarray | None,
+    ) -> None:
+        if self.first_diffuse_audit is None:
+            if batch.first_diffuse_audit_event_count is not None:
+                raise RuntimeError("audit-disabled gather received first-diffuse audit data")
+            return
+        counts = batch.first_diffuse_audit_event_count
+        weights = batch.first_diffuse_audit_weight_by_category
+        if counts is None or weights is None:
+            raise RuntimeError("audit-enabled gather did not receive first-diffuse audit data")
+        if counts.shape != self._first_diffuse_audit_event_count.shape:
+            raise RuntimeError("first-diffuse audit batch has the wrong category count")
+        self._first_diffuse_audit_event_count += counts
+        self._first_diffuse_audit_raw_by_category += np.sum(weights, axis=1, dtype=np.float64)
+        if self.collect_field:
+            cells = self._field_cells(batch, launch, launch_cells)
+            for category, row in enumerate(weights):
+                np.add.at(
+                    self._first_diffuse_audit_raw_field_mass[category],
+                    cells,
+                    row.astype(np.float64, copy=False),
+                )
+
+    def _accumulate_first_diffuse_audit_reduction(self, reduction: DeviceNextEventReduction) -> None:
+        if self.first_diffuse_audit is None:
+            if reduction.first_diffuse_audit_event_count is not None:
+                raise RuntimeError("audit-disabled gather received compact first-diffuse audit data")
+            return
+        counts = reduction.first_diffuse_audit_event_count
+        raw = reduction.first_diffuse_audit_raw_by_category
+        field_mass = reduction.first_diffuse_audit_raw_field_mass
+        if counts is None or raw is None or field_mass is None:
+            raise RuntimeError("audit-enabled gather did not receive compact first-diffuse audit data")
+        if counts.shape != self._first_diffuse_audit_event_count.shape:
+            raise RuntimeError("compact first-diffuse audit reduction has the wrong category count")
+        self._first_diffuse_audit_event_count += counts
+        self._first_diffuse_audit_raw_by_category += raw
+        if self.collect_field:
+            if field_mass.shape != self._first_diffuse_audit_raw_field_mass.shape:
+                raise RuntimeError("compact first-diffuse audit field has the wrong local-cell shape")
+            self._first_diffuse_audit_raw_field_mass += field_mass
+        elif field_mass.shape != (counts.size, 0):
+            raise RuntimeError("scalar compact first-diffuse audit returned a local-cell field")
 
     def _validated_launch(self, batch: DeviceNextEventBatch, launch_direction: np.ndarray) -> np.ndarray:
         if self._local_grid is None:
@@ -745,6 +980,26 @@ class DeviceNextEventGather:
             return float(np.sum(self.bounced_mass(), dtype=np.float64))
         return float(np.sum(self.chi_by_order(), dtype=np.float64))
 
+    def first_diffuse_audit_result(self) -> DeviceFirstDiffuseAuditResult:
+        """Return the normalized, closure-checked opt-in first-diffuse tally."""
+        if self.first_diffuse_audit is None:
+            raise RuntimeError("this device next-event gather did not enable first-diffuse audit")
+        if self.rays == 0:
+            scale = 0.0
+        else:
+            scale = 4.0 * np.pi / (self.rays * self.samples)
+        field_mass = scale * self._first_diffuse_audit_raw_field_mass
+        expected_field = self.bounced_mass() if self.collect_field else None
+        return DeviceFirstDiffuseAuditResult(
+            category_names=self.first_diffuse_audit.category_names,
+            accepted_event_count=self._first_diffuse_audit_event_count.copy(),
+            contribution_transfer=scale * self._first_diffuse_audit_raw_by_category,
+            local_cell_mass=field_mass,
+            expected_accepted_events=self.cleared,
+            expected_contribution_transfer=self.chi_bounce(),
+            expected_local_cell_mass=expected_field,
+        )
+
     @property
     def specular_candidates(self) -> int:
         return int(np.sum(self._specular_candidates_by_order, dtype=np.uint64))
@@ -881,6 +1136,25 @@ class DeviceNextEventGather:
         self._specular_device_arrays = arrays
         return arrays
 
+    def _bind_first_diffuse_audit_device(self, kernel: Any) -> tuple[Any, ...]:
+        if self.first_diffuse_audit is None:
+            return ()
+        key = (str(kernel.mi.variant()), id(kernel.geometry))
+        if self._first_diffuse_audit_device_key == key and self._first_diffuse_audit_device_arrays is not None:
+            return self._first_diffuse_audit_device_arrays
+        audit = self.first_diffuse_audit
+        if audit.face_to_category_row.shape != kernel.face_class.shape:
+            raise ValueError("first-diffuse audit face maps must match the device support mesh")
+        arrays = (
+            kernel.mi.Int32(audit.face_to_category_row),
+            kernel.mi.UInt32(audit.category_by_texel.reshape(-1).astype(np.uint32)),
+            kernel.mi.UInt32(audit.fallback_category_by_face.astype(np.uint32)),
+        )
+        kernel.dr.eval(*arrays)
+        self._first_diffuse_audit_device_key = key
+        self._first_diffuse_audit_device_arrays = arrays
+        return arrays
+
     def _device_state(
         self,
         kernel: Any,
@@ -926,7 +1200,43 @@ class _DeviceNextEventState:
             _splitmix_seed_word(self.specular_seed),
         )
         self.specular_arrays = gather._bind_specular_device(kernel)
+        self.first_diffuse_audit_arrays = gather._bind_first_diffuse_audit_device(kernel)
+        if gather.first_diffuse_audit is None:
+            self.first_diffuse_audit_event_count: list[Any] = []
+            self.first_diffuse_audit_weight_by_category: list[Any] = []
+        else:
+            categories = gather.first_diffuse_audit.category_count
+            self.first_diffuse_audit_event_count = [self.dr.zeros(self.mi.UInt32, 1) for _ in range(categories)]
+            self.first_diffuse_audit_weight_by_category = [
+                self.dr.zeros(self.mi.Float, self.ray_count) for _ in range(categories)
+            ]
         self.loop_errors: list[Any] = []
+
+    def _first_diffuse_category(self, face: Any, barycentric_uv: Any, active: Any) -> Any:
+        mi, dr = self.mi, self.dr
+        if self.gather.first_diffuse_audit is None or not self.first_diffuse_audit_arrays:
+            raise RuntimeError("first-diffuse category lookup requires an audit classifier")
+        face_to_row, category_by_texel, fallback_by_face = self.first_diffuse_audit_arrays
+        row = dr.gather(mi.Int32, face_to_row, face, active)
+        present = active & (row >= 0)
+        safe_row = dr.maximum(row, 0)
+        height, width = self.gather.first_diffuse_audit.resolution
+        u = dr.clip(barycentric_uv.x, 0.0, 1.0)
+        v = dr.clip(barycentric_uv.y, 0.0, 1.0)
+        scaled_row = v * float(height - 1)
+        scaled_column = u * float(width - 1)
+        texel_row = mi.Int32(dr.floor(scaled_row + 0.5))
+        texel_column = mi.Int32(dr.floor(scaled_column + 0.5))
+        row_excess = mi.Float(texel_row) - scaled_row
+        column_excess = mi.Float(texel_column) - scaled_column
+        outside = mi.Float(texel_row) / float(height - 1) + mi.Float(texel_column) / float(width - 1) > 1.0 + 1.0e-7
+        step_row = outside & (row_excess >= column_excess)
+        texel_row = dr.select(step_row, texel_row - 1, texel_row)
+        texel_column = dr.select(outside & ~step_row, texel_column - 1, texel_column)
+        texel = (safe_row * height + texel_row) * width + texel_column
+        texel_category = dr.gather(mi.UInt32, category_by_texel, texel, present)
+        fallback = dr.gather(mi.UInt32, fallback_by_face, face, active)
+        return dr.select(present, texel_category, fallback)
 
     def _sample_source(self, uniform: Any, active: Any) -> tuple[Any, Any]:
         mi, dr = self.mi, self.dr
@@ -1002,6 +1312,8 @@ class _DeviceNextEventState:
         share: Any,
         active: Any,
         random_draw: Any,
+        face: Any | None = None,
+        barycentric_uv: Any | None = None,
     ) -> None:
         """Add one fixed-width order row after material response."""
         if self.gather.first_material_interaction_only and depth != 0:
@@ -1010,6 +1322,12 @@ class _DeviceNextEventState:
         total_weight = dr.zeros(mi.Float, self.ray_count)
         total_connections = dr.zeros(mi.UInt32, 1)
         total_cleared = dr.zeros(mi.UInt32, 1)
+        if self.gather.first_diffuse_audit is None:
+            audit_category = None
+        else:
+            if face is None or barycentric_uv is None:
+                raise RuntimeError("first-diffuse audit requires exact first-hit face and barycentric coordinates")
+            audit_category = self._first_diffuse_category(face, barycentric_uv, active)
         lobe = throughput * (1.0 - share) / np.pi
         for sample in range(self.gather.samples):
             _source_index, target = self._sample_source(random_draw(sample), active)
@@ -1035,6 +1353,11 @@ class _DeviceNextEventState:
             total_cleared += dr.sum(mi.UInt32(clear))
             weight = lobe * cosine / dr.maximum(distance * distance, 1.0e-24)
             total_weight += dr.select(clear, weight, 0.0)
+            if audit_category is not None:
+                for category in range(self.gather.first_diffuse_audit.category_count):
+                    accepted = clear & (audit_category == category)
+                    self.first_diffuse_audit_event_count[category] += dr.sum(mi.UInt32(accepted))
+                    self.first_diffuse_audit_weight_by_category[category] += dr.select(accepted, weight, 0.0)
         self._sampled_specular_vertex(depth, position, normal, lobe, active)
         self.weight_by_order.append(total_weight)
         self.connections_by_order.append(total_connections)
@@ -1292,19 +1615,30 @@ class _DeviceNextEventState:
         ):
             for value in values:
                 packed_parts.append(dr.reinterpret_array(mi.Float, value))
+        audit_categories = len(self.first_diffuse_audit_event_count)
+        for value in self.first_diffuse_audit_event_count:
+            packed_parts.append(dr.reinterpret_array(mi.Float, value))
         packed_parts.extend(self.weight_by_order)
         packed_parts.extend(self.specular_weight_by_order)
+        packed_parts.extend(self.first_diffuse_audit_weight_by_category)
         transferred = np.asarray(dr.concat(packed_parts)).copy()
-        header = 1 + 6 * orders
-        if transferred.size != header + 2 * orders * self.ray_count:
+        header = 1 + 6 * orders + audit_categories
+        if transferred.size != header + (2 * orders + audit_categories) * self.ray_count:
             raise RuntimeError("device next-event record packing is inconsistent")
-        counts = transferred[1:header].view(np.uint32).astype(np.uint64)
+        counts = transferred[1 : 1 + 6 * orders].view(np.uint32).astype(np.uint64)
+        audit_counts = (
+            transferred[1 + 6 * orders : header].view(np.uint32).astype(np.uint64) if audit_categories else None
+        )
         if transferred[:1].view(np.uint32)[0]:
             raise RuntimeError(
                 "device next-event shadow ray exceeded the support-mesh face count while crossing "
                 "non-blocking atlas cells"
             )
-        weight = transferred[header:].reshape(2, orders, self.ray_count)
+        weight_size = 2 * orders * self.ray_count
+        weight = transferred[header : header + weight_size].reshape(2, orders, self.ray_count)
+        audit_weight = (
+            transferred[header + weight_size :].reshape(audit_categories, self.ray_count) if audit_categories else None
+        )
         return DeviceNextEventBatch(
             weight_by_order=weight[0],
             connections_by_order=counts[:orders],
@@ -1318,6 +1652,8 @@ class _DeviceNextEventState:
             specular_visible_by_order=counts[4 * orders : 5 * orders],
             specular_accepted_by_order=counts[5 * orders : 6 * orders],
             sampled_specular_samples=self.gather.sampled_specular_samples,
+            first_diffuse_audit_event_count=audit_counts,
+            first_diffuse_audit_weight_by_category=audit_weight,
         )
 
     def transfer_reduced(
@@ -1348,6 +1684,7 @@ class _DeviceNextEventState:
             self.specular_accepted_by_order,
         ):
             count_parts.extend(values)
+        count_parts.extend(self.first_diffuse_audit_event_count)
 
         raw_totals = [dr.sum(mi.Float64(value)) for value in self.weight_by_order]
         specular_totals = [dr.sum(mi.Float64(value)) for value in self.specular_weight_by_order]
@@ -1379,17 +1716,36 @@ class _DeviceNextEventState:
             )
             field_parts.extend((diffuse_field, specular_field))
 
+        audit_categories = len(self.first_diffuse_audit_event_count)
+        audit_totals = [dr.sum(mi.Float64(value)) for value in self.first_diffuse_audit_weight_by_category]
+        audit_field_parts: list[Any] = []
+        if audit_categories and self.gather.collect_field:
+            if launch_cell is None or field_cells < 1:
+                raise RuntimeError("compact first-diffuse audit field needs resident launch-cell indices")
+            for value in self.first_diffuse_audit_weight_by_category:
+                category_field = dr.zeros(mi.Float64, field_cells)
+                dr.scatter_reduce(
+                    dr.ReduceOp.Add,
+                    category_field,
+                    mi.Float64(value),
+                    launch_cell,
+                    mode=dr.ReduceMode.Auto,
+                )
+                audit_field_parts.append(category_field)
+
         counts = np.asarray(dr.concat(count_parts), dtype=np.uint32).astype(np.uint64)
         if counts[0]:
             raise RuntimeError(
                 "device next-event shadow ray exceeded the support-mesh face count while crossing "
                 "non-blocking atlas cells"
             )
-        floating_parts = raw_totals + specular_totals + field_parts
+        floating_parts = raw_totals + specular_totals + field_parts + audit_totals + audit_field_parts
         floating = np.asarray(dr.concat(floating_parts), dtype=np.float64)
         total_count = 2 * orders
-        expected = total_count + (2 * field_cells if self.gather.collect_field else 0)
-        if floating.size != expected or counts.size != 1 + 6 * orders:
+        standard_field_count = 2 * field_cells if self.gather.collect_field else 0
+        audit_field_count = audit_categories * field_cells if self.gather.collect_field else 0
+        expected = total_count + standard_field_count + audit_categories + audit_field_count
+        if floating.size != expected or counts.size != 1 + 6 * orders + audit_categories:
             raise RuntimeError("compact device next-event reduction packing is inconsistent")
         field_offset = total_count
         raw_field = (
@@ -1401,6 +1757,13 @@ class _DeviceNextEventState:
             floating[field_offset + field_cells : field_offset + 2 * field_cells].copy()
             if self.gather.collect_field
             else np.empty(0, dtype=np.float64)
+        )
+        audit_offset = total_count + standard_field_count
+        audit_raw = floating[audit_offset : audit_offset + audit_categories].copy() if audit_categories else None
+        audit_field = (
+            floating[audit_offset + audit_categories :].reshape(audit_categories, field_cells).copy()
+            if audit_categories and self.gather.collect_field
+            else (np.empty((audit_categories, 0), dtype=np.float64) if audit_categories else None)
         )
         return DeviceNextEventReduction(
             raw_by_order=floating[:orders].copy(),
@@ -1417,6 +1780,9 @@ class _DeviceNextEventState:
             rays=self.ray_count,
             samples=self.gather.samples,
             sampled_specular_samples=self.gather.sampled_specular_samples,
+            first_diffuse_audit_event_count=(counts[1 + 6 * orders :].copy() if audit_categories else None),
+            first_diffuse_audit_raw_by_category=audit_raw,
+            first_diffuse_audit_raw_field_mass=audit_field,
         )
 
 

@@ -1,0 +1,90 @@
+{
+  "component_shares": {
+    "Brussels": {
+      "all_specular": 0.2300038979062791,
+      "direct": 0.7197820844647695,
+      "first_diffuse": 0.05021401762895124
+    },
+    "Ghent": {
+      "all_specular": 0.22570788426085964,
+      "direct": 0.7629543605212842,
+      "first_diffuse": 0.011337755217855943
+    },
+    "Krakow": {
+      "all_specular": 0.16274394886192006,
+      "direct": 0.8296017942370553,
+      "first_diffuse": 0.007654256901024364
+    },
+    "London": {
+      "all_specular": 0.17283468474103575,
+      "direct": 0.8120863610502637,
+      "first_diffuse": 0.015078954208699915
+    },
+    "Madrid": {
+      "all_specular": 0.29931297721742844,
+      "direct": 0.6976726702841677,
+      "first_diffuse": 0.0030143524984038166
+    },
+    "Mexico City": {
+      "all_specular": 0.09124023442932315,
+      "direct": 0.8953085596238033,
+      "first_diffuse": 0.013451205946873112
+    },
+    "Milan": {
+      "all_specular": 0.2223721150132727,
+      "direct": 0.7740384328426295,
+      "first_diffuse": 0.003589452144097517
+    },
+    "Prague": {
+      "all_specular": 0.2139975618599944,
+      "direct": 0.7827458632376927,
+      "first_diffuse": 0.0032565749023132627
+    },
+    "Tokyo Hachiko": {
+      "all_specular": 0.11345024622615703,
+      "direct": 0.8735754296980285,
+      "first_diffuse": 0.01297432407581428
+    },
+    "Toulouse": {
+      "all_specular": 0.15449981171799776,
+      "direct": 0.8405067951180906,
+      "first_diffuse": 0.004993393163911579
+    }
+  },
+  "contract": {
+    "replicas_per_route": [
+      64
+    ],
+    "routes": 10,
+    "standpoints": 163
+  },
+  "outputs": {
+    "ten_route_extension.pdf": {
+      "bytes": 99495,
+      "sha256": "bca7f1da7f5c357112f16fc2c0399d22de0c82cc1b3756eb4809966b9d8879fe"
+    },
+    "ten_route_extension.png": {
+      "bytes": 125068,
+      "sha256": "3dcdb500558ef442767e82070f725a629fed5ed34e01a751aa999d4cab412163"
+    }
+  },
+  "route_q50_wbsar": {
+    "Brussels": 0.031186801900083272,
+    "Ghent": 0.062047333041072586,
+    "Krakow": 0.02252023184141687,
+    "London": 0.015008010411373535,
+    "Madrid": 0.02238111794268595,
+    "Mexico City": 0.12906056842948704,
+    "Milan": 0.009015871517791447,
+    "Prague": 0.013073562987120951,
+    "Tokyo Hachiko": 0.009673651662657361,
+    "Toulouse": 0.030216778100008404
+  },
+  "schema": "paper_ten_route_extension_figure_v1",
+  "source": {
+    "manifest": "outputs/experiments/ten_city_route_extension64_v1/report/ten_city_route_production64_v1_manifest.json",
+    "manifest_sha256": "595ffe0404517c824a231b565e7528ff799503f3beb74052168b11c7ea3e91b6",
+    "report": "outputs/experiments/ten_city_route_extension64_v1/report/ten_city_route_production64_v1.json",
+    "report_sha256": "2b4a3bbfbb24e7c4808401f78b3856384813757ec4ca1a23fe48a7076de1cdd6"
+  }
+}

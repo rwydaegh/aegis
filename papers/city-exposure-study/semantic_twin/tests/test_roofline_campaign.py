@@ -302,6 +302,29 @@ def test_default_campaign_identity_dict_is_legacy_byte_compatible(tmp_path):
     }
 
 
+def test_fixed_grid_screening_identity_is_explicit_and_cannot_leak_into_route_cohorts(tmp_path):
+    config = RooflineCampaignConfig(
+        site="korenmarkt",
+        cohort="geometric_fixed_grid_screening",
+        material_mode="geometric",
+        output_dir=tmp_path / "screen",
+        planned_seeds=(7, 8, 9, 10),
+        sampling_claim="geometric_fixed_grid_screening_v1",
+        convergence_looks=(4,),
+        specular_acceptance="first_material_interaction_exact_order_1",
+        transport_topology="first_material_interaction_v1",
+        grid_contract="fixed_ground_grid_v1",
+    )
+
+    identity = config.identity_dict()
+    assert identity["cohort"] == "geometric_fixed_grid_screening"
+    assert identity["sampling_claim"] == "geometric_fixed_grid_screening_v1"
+    assert identity["grid_contract"] == "fixed_ground_grid_v1"
+
+    with pytest.raises(ValueError, match="reserved for the disclosed"):
+        dataclasses.replace(config, cohort="geometric_transfer_extension", sampling_claim="full_declared_walk")
+
+
 def test_first_material_interaction_campaign_persists_closed_named_components(tmp_path):
     config = RooflineCampaignConfig(
         site="test_square",
@@ -349,6 +372,35 @@ def test_first_material_interaction_campaign_persists_closed_named_components(tm
         "first_diffuse",
         "total",
     ]
+
+
+def test_point_capture_is_opt_in_complete_and_fresh_only(tmp_path):
+    config = RooflineCampaignConfig(
+        site="test_square",
+        cohort="primary_semantic_route",
+        material_mode="atlas",
+        output_dir=tmp_path / "captured-first-material",
+        planned_seeds=(1,),
+        minimum_completed_specular_order=1,
+        specular_acceptance="first_material_interaction_exact_order_1",
+        transport_topology="first_material_interaction_v1",
+    )
+    campaign = prepared(
+        tmp_path,
+        estimator=FirstMaterialInteractionFakeEstimator(),
+        seeds=(1,),
+        config=config,
+    )
+    captured = []
+
+    run_roofline_campaign(campaign, point_capture=lambda **point: captured.append(point))
+
+    assert [(point["seed"], point["point_index"]) for point in captured] == [(1, 0), (1, 1)]
+    assert all(point["point_seed"] == derive_point_seed(1, point["point_index"]) for point in captured)
+    assert all(point["body_metrics"].shape == (4, 6) for point in captured)
+    assert all(point["total_sab"].shape == (2,) for point in captured)
+    with pytest.raises(ValueError, match="fresh campaign output"):
+        run_roofline_campaign(campaign, point_capture=lambda **point: None)
 
 
 def test_first_material_interaction_measure_rejects_mixed_suffix(tmp_path):

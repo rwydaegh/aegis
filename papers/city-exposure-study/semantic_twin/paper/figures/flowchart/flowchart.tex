@@ -1,0 +1,73 @@
+\documentclass[border=0pt]{standalone}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,fit,positioning}
+
+\begin{document}
+
+\resizebox{7.16in}{!}{%
+\begin{tikzpicture}[
+  every node/.style={
+    font=\fontsize{8.3}{9.6}\selectfont,
+    text=black
+  },
+  block/.style={
+    draw=black,
+    line width=0.55pt,
+    rectangle,
+    fill=white,
+    align=center,
+    inner xsep=1.4mm,
+    inner ysep=1.5mm,
+    minimum width=28.2mm,
+    minimum height=21.5mm,
+    text width=25.4mm
+  },
+  arrow/.style={
+    ->,
+    draw=black,
+    line width=0.55pt,
+    >=Latex,
+    shorten <=0.3mm,
+    shorten >=0.3mm
+  }
+]
+  \node[block] (evidence)
+    {Street panoramas\\+ city geometry};
+  \node[block, right=3.1mm of evidence] (surface)
+    {Registered\\material surface};
+  \node[block, right=3.1mm of surface] (configuration)
+    {Fixed pedestrian\\route + roofline\\source measure};
+  \node[block, right=3.1mm of configuration] (transport)
+    {First-material\\directional transport\\direct + specular\\+ first diffuse};
+  \node[block, right=3.1mm of transport] (body)
+    {Direction-aware\\body field + normalized\\whole-body SAR};
+  \node[block, right=3.1mm of body] (summary)
+    {Fixed-route\\quantiles and\\component shares};
+
+  \draw[arrow] (evidence) -- (surface);
+  \draw[arrow] (surface) -- (configuration);
+  \draw[arrow] (configuration) -- (transport);
+  \draw[arrow] (transport) -- (body);
+  \draw[arrow] (body) -- (summary);
+
+  \node[
+    draw=black,
+    dashed,
+    line width=0.45pt,
+    inner xsep=1.3mm,
+    inner ysep=1.4mm,
+    fit=(surface)(configuration)(transport)(body)
+  ] (audit) {};
+  \node[
+    anchor=south,
+    yshift=0.7mm,
+    font=\fontsize{7.7}{8.7}\selectfont
+  ] at (audit.north) {Registration, transport, and body-coupling audits};
+\end{tikzpicture}%
+}
+
+\end{document}

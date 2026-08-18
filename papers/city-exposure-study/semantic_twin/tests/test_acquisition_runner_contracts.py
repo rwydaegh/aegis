@@ -135,6 +135,8 @@ def test_registration_runner_maps_every_option(monkeypatch):
             "tokyo_hachiko",
             "--crop-m",
             "300",
+            "--workers",
+            "4",
             "--station",
             "pano_01_a",
             "--station",
@@ -154,6 +156,7 @@ def test_registration_runner_maps_every_option(monkeypatch):
     assert called == {
         "site": "tokyo_hachiko",
         "crop_m": 300,
+        "workers": 4,
         "station_names": ("pano_01_a", "pano_02_b"),
         "cohort_dir": pathlib.Path("data/panorama_cohorts/tokyo_2024"),
         "semantics_dirname": "semantics",

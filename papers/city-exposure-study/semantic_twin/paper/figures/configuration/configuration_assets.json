@@ -1,0 +1,128 @@
+{
+  "schema_version": "prague_configuration_figure_assets_v1",
+  "figure_scope": "early physical configuration: street image, semantic labels, city-mesh projection, material map, visible roofline, and fixed pedestrian route",
+  "site": "prague_staromestske",
+  "source_assets": [
+    {
+      "path": "semantic_twin/outputs/propagation_viz/prague_360_pipeline_v2/panorama_pipeline_registered_photograph.png",
+      "sha256": "059a3bde49239a8bcbc5cd2cb881b9b89fe69fd4bcc894f06dda7494b26d59b3",
+      "role": "registered source panorama, exact publication-pipeline panel"
+    },
+    {
+      "path": "semantic_twin/outputs/propagation_viz/prague_360_pipeline_v2/panorama_pipeline_full_traced_support.png",
+      "sha256": "c1db560d268789b7268434f527e63f8afed32bed9446a6c0024de2693cc199da",
+      "role": "exact traced-support publication-pipeline panel"
+    },
+    {
+      "path": "semantic_twin/outputs/propagation_viz/prague_360_pipeline_v2/panorama_pipeline_rf_material_atlas_(posterior_display).png",
+      "sha256": "b94ed326ded0c85f0a8bda5ecc896878470fbe473f4d4e42f4d2279ba724ff53",
+      "role": "authenticated upstream material-posterior display; not shown after transport-state replacement"
+    },
+    {
+      "path": "semantic_twin/outputs/propagation_viz/prague_360_pipeline_v2/panorama_pipeline_final_transport_state.png",
+      "sha256": "f431244ff9c16118366d775f2415d8f74e26b75d3536f2079e20114f0184e7ec",
+      "role": "exact final host-gated transport state shown in panel (c)"
+    },
+    {
+      "path": "semantic_twin/data/geometry/prague_staromestske/inhouse_leaf_250m_f64.ply",
+      "sha256": "a2533b5d589f3604b63e905a5673873df2db7a41d396c8cef03389e72d08b6f4",
+      "role": "current 250 m Prague transport support mesh, with visual-only plan-view subsampling"
+    },
+    {
+      "path": "semantic_twin/outputs/propagation_viz/prague_360_pipeline_v2/prague_360_publication_curtain.png",
+      "sha256": "7d0ddfe59a0c85552788fd8ab66dc8f3221b3c6ee2de646d3a47dde03997b676",
+      "role": "authenticated six-stage street-image-to-transport curtain shown in panel (a)"
+    },
+    {
+      "path": "../../data/duke.stl",
+      "sha256": "781e65ef3882f1347669e0ddca5dafa82cd6368dddd6b9e801dc49613822fe3b",
+      "role": "current campaign anatomical body surface"
+    },
+    {
+      "path": "semantic_twin/outputs/roofline_campaign/prague_staromestske_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid/locations.jsonl",
+      "sha256": "dfe271c4e099e87eb8f2b32af25baafbe140a2967fc4d72b724e43ffe958ad34",
+      "role": "current sealed fixed-route positions, body yaws, and route distances"
+    },
+    {
+      "path": "semantic_twin/outputs/roofline_campaign/prague_staromestske_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid/source_curve_audit.npz",
+      "sha256": "f27c039eba5f5dfc4cbb350d1b0855944c8daf30781d49f09067e6a1199182d1",
+      "role": "current sealed roofline segment endpoints and physical-length measure"
+    }
+  ],
+  "authenticated_contracts": {
+    "curtain_manifest": {
+      "path": "semantic_twin/outputs/propagation_viz/prague_360_pipeline_v2/prague_360_publication_curtain.json",
+      "capture": "pano_11_2kxTfwHTzp1m5mL-",
+      "projection": "equirectangular",
+      "panel_dimensions": [
+        1664,
+        832
+      ]
+    },
+    "campaign_identity": {
+      "path": "semantic_twin/outputs/roofline_campaign/prague_staromestske_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid/campaign_identity.json",
+      "sha256": "68cbbd269af2e2bc29681ba9b82510a5a046ba5fe991ac221823b2971617e206",
+      "route_contract": "provider_corridor_v1",
+      "material_mode": "atlas",
+      "transport_topology": "first_material_interaction_v1"
+    },
+    "source_curve": {
+      "path": "semantic_twin/outputs/roofline_campaign/prague_staromestske_provider_corridor_v1_first_material_interaction_v1_convergence_cuda_iid/source_curve_audit.json",
+      "curve_source_hash_sha256": "9805ef88d174edbe0ef57facf8cf17ea915f570ea2c7191d65a3e99bf8067fd0",
+      "selected_measure_rule": "physical_3d_edge_length"
+    }
+  },
+  "shown_configuration": {
+    "mesh_crop_radius_m": 250.0,
+    "mesh_triangles": 664619,
+    "route_standpoints": 22,
+    "route_length_m": 119.37200716005765,
+    "route_endpoints_are_registered_cameras": true,
+    "body": {
+      "description": "anatomical adult-male surface phantom",
+      "surface_elements": 56024,
+      "level": 2,
+      "yaw_rule": "route tangent at each standpoint"
+    },
+    "roofline_segments": 502,
+    "roofline_physical_3d_total_m": 267.15180247365765
+  },
+  "visual_transforms": {
+    "panorama_panels": "authenticated six-stage 1664 x 832 curtain, uniformly resampled for layout only",
+    "plan_view_mesh": "roof-like triangles above local street level, projected to an OSM-style display. Transport still uses all 664619 faces",
+    "roofline_and_route": "all coordinates shown without smoothing in local ENU metres",
+    "transport_state_print_encoding": {
+      "source_pixel_counts": [
+        494830,
+        23919,
+        41191
+      ],
+      "classification_rule": "nearest exact render state colour within Euclidean RGB distance 30/255",
+      "atlas_interface": "light blue solid fill",
+      "nonblocking_woody_vegetation": "dark green fill with diagonal light stripes",
+      "geometric_fallback": "dark purple fill with light crosshatch",
+      "boundaries": "dark one-pixel interior edge",
+      "role": "display-only redundant colour, luminance, pattern, and edge encoding; categorical state is unchanged"
+    }
+  },
+  "excluded_assets": [
+    {
+      "pattern": "outputs/propagation_viz/figures/prague_staromestske_propagation_*.png",
+      "reason": "older Blender walk, source, body, and ray renders do not represent the current sealed campaign"
+    },
+    {
+      "kind": "propagation rays",
+      "reason": "no rays are shown because available rendered rays are stale for this configuration"
+    }
+  ],
+  "outputs": {
+    "configuration.pdf": {
+      "sha256": "e9e1485a13b71857a945720c983d39b459889d209d997997526caf2260a39178",
+      "bytes": 2547423
+    },
+    "configuration.png": {
+      "sha256": "ece81c9e3b046b15e7b1168342b8913782ba8455274370ce77248ab9931d5c21",
+      "bytes": 2761080
+    }
+  }
+}

@@ -12,6 +12,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--site", required=True)
     parser.add_argument("--crop-m", type=int, default=250)
+    parser.add_argument("--workers", type=int, default=1, help="independent station registrations to run in parallel")
     parser.add_argument("--station", action="append", help="Limit to named station directories")
     parser.add_argument(
         "--cohort-dir",
@@ -56,6 +57,7 @@ def main() -> None:
             dz_bounds=tuple(args.dz_bounds) if args.dz_bounds else None,
             dry_run=args.dry_run,
             no_backup=args.no_backup,
+            workers=args.workers,
         )
     )
 

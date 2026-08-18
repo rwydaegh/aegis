@@ -1,0 +1,38 @@
+{
+  "headline": {
+    "denominator": "retained modeled non-direct body-coupled contribution",
+    "geometric_fallback_categories": [
+      "geometric_evidence_refused_atlas_state",
+      "geometric_evidence_refused_host_compatibility",
+      "geometric_evidence_refused_insufficient_structural_mass",
+      "geometric_fallback_other",
+      "geometric_no_panorama_evidence"
+    ],
+    "geometric_fallback_sar_fraction": 0.24097223009850738,
+    "panorama_informed_categories": [
+      "atlas_interface",
+      "nonblocking_woody_atlas"
+    ],
+    "panorama_informed_sar_fraction": 0.7590277699014926
+  },
+  "label_policy": "reader-facing image and material terms; report keys remain unchanged",
+  "outputs": {
+    "pdf": {
+      "bytes": 78092,
+      "path": "ray_reached_evidence.pdf",
+      "sha256": "0a5afbfa6dd85b063f14c5e62b476bd0305a6eb483666a9d0fe2398392c1c327"
+    },
+    "png": {
+      "bytes": 121594,
+      "path": "ray_reached_evidence.png",
+      "sha256": "a6dbfe6487f541e1fbba5ba74dec9474ceb7c6f1072c5c486bc601b58835f452"
+    }
+  },
+  "schema": "paper_ray_reached_evidence_figure_v1",
+  "source": {
+    "manifest_path": "outputs/experiments/ray_reached_evidence_coverage_v1/report/ray_reached_evidence_coverage_manifest.json",
+    "manifest_sha256": "4f863148ac809ddc8ff97043a2b409c6e131ba49a1ded7fd0851d4702fe3f14a",
+    "report_path": "outputs/experiments/ray_reached_evidence_coverage_v1/report/ray_reached_evidence_coverage.json",
+    "report_sha256": "db16c38580d9496ff072603cb75c7ca5f452e896d7276c0214a989b032b4b7da"
+  }
+}

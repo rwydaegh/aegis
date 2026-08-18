@@ -20,8 +20,8 @@ from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 
-#: A three metre lattice over walkable ground, filtered by ray cast gates and
-#: ordered nearest neighbour. Every published number in the study used this one.
+#: A configurable regular lattice over walkable ground, filtered by ray-cast
+#: gates and ordered nearest neighbour. The exact spacing is sealed separately.
 GRID = "grid"
 
 #: One standpoint per admitted panorama, ordered by the shortest route through
@@ -55,7 +55,7 @@ STRIDE_INTERPOLATED = "stride_interpolated"
 
 #: One sentence per kind, so a report can print the rule rather than the label.
 KIND_RULE = {
-    GRID: "a three metre grid over walkable ground, chained nearest neighbour",
+    GRID: "a regular grid over walkable ground, chained nearest neighbour; spacing recorded separately",
     PANORAMA_LINKS: "the panorama link chain, standpoints at the cameras and along the road between them",
     STREET_ROUTE: "a walking path from A to B across the square, standpoints at a fixed stride",
     PROVIDER_CORRIDOR: "an evidence-supported corridor on the panorama provider's own link graph",

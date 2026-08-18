@@ -1,0 +1,85 @@
+{
+  "lower_tail_assessment": {
+    "mexico_zocalo": {
+      "criteria_pass": {
+        "q10_48_to_64": true,
+        "q10_bootstrap_width": true,
+        "shadow_point_48_to_64": true
+      },
+      "first_diffuse_replica_max_to_median_ratio": 5737.844506023721,
+      "q10_48_to_64_abs_db": {
+        "total_transfer_m_inv2": 0.0053952743406305275,
+        "wbsar_m2_per_kg": 0.0034408407908050015
+      },
+      "q10_bootstrap_95_width_db": 0.3638279391681467,
+      "q10_change_from_sealed_16_abs_db": {
+        "total_transfer_m_inv2": 0.06883123715948546,
+        "wbsar_m2_per_kg": 0.0567026115022958
+      },
+      "rare_event_behavior": true,
+      "shadow_point_48_to_64_max_abs_db": 0.012484950417289281,
+      "shadow_point_change_from_sealed_16_db": [
+        0.33444254555405667,
+        0.0567026115022958,
+        -0.00587862163167668
+      ],
+      "status": "stabilized_with_rare_event_behavior",
+      "thresholds": {
+        "q10_48_to_64_abs_db": 0.1,
+        "q10_bootstrap_95_width_db": 0.5,
+        "rare_event_max_to_median_replica_ratio": 10.0,
+        "shadow_point_48_to_64_max_abs_db": 0.25
+      }
+    },
+    "tokyo_hachiko": {
+      "criteria_pass": {
+        "q10_48_to_64": true,
+        "q10_bootstrap_width": true,
+        "shadow_point_48_to_64": true
+      },
+      "first_diffuse_replica_max_to_median_ratio": 2.3793787286360097,
+      "q10_48_to_64_abs_db": {
+        "total_transfer_m_inv2": 0.0030385757874471855,
+        "wbsar_m2_per_kg": 0.004914586580220958
+      },
+      "q10_bootstrap_95_width_db": 0.05379368852716219,
+      "q10_change_from_sealed_16_abs_db": {
+        "total_transfer_m_inv2": 0.019255749684004664,
+        "wbsar_m2_per_kg": 0.02577571931754099
+      },
+      "rare_event_behavior": false,
+      "shadow_point_48_to_64_max_abs_db": 0.010443295223947286,
+      "shadow_point_change_from_sealed_16_db": [
+        -0.017568185481602924,
+        -0.03968149442488931,
+        0.02853360606888789
+      ],
+      "status": "stabilized",
+      "thresholds": {
+        "q10_48_to_64_abs_db": 0.1,
+        "q10_bootstrap_95_width_db": 0.5,
+        "rare_event_max_to_median_replica_ratio": 10.0,
+        "shadow_point_48_to_64_max_abs_db": 0.25
+      }
+    }
+  },
+  "outputs": {
+    "pdf": {
+      "bytes": 355502,
+      "path": "convergence64.pdf",
+      "sha256": "55e7dcf2a5a8324fd8624ff85604ef4c67d20478a8669a215b7bc1efb168748c"
+    },
+    "png": {
+      "bytes": 139205,
+      "path": "convergence64.png",
+      "sha256": "18579b60112553aa4019a7d48552c572341c95367fc0e6ea4d4fada2712e7774"
+    }
+  },
+  "schema": "paper_current_topology_convergence64_figure_v1",
+  "source": {
+    "manifest_path": "outputs/experiments/current_topology_convergence64_v1/report/current_topology_convergence_manifest.json",
+    "manifest_sha256": "2e6f688cd4ca22124eefdcaa577749e1008421e554692c14f342c72494986791",
+    "report_path": "outputs/experiments/current_topology_convergence64_v1/report/current_topology_convergence.json",
+    "report_sha256": "c9d6d19aae3e502e8169f4da4889388eb98b3a45bcfa42345c3de2342d372b06"
+  }
+}

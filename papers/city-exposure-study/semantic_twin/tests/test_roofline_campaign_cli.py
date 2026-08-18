@@ -15,12 +15,14 @@ from semantic_twin.exposure import roofline_setup
 from semantic_twin.exposure.roofline_setup import (
     PreparationBackend,
     RooflineSetupConfig,
+    _add_route_input_paths,
+    _fixed_ground_grid_screening_walk,
     load_roofline_setup,
     preflight_report,
     prepare_roofline_campaign,
 )
 from semantic_twin.runconfig import NextEventConfig, RunConfig
-from semantic_twin.walk.model import PANORAMA_LINKS, Walk
+from semantic_twin.walk.model import GRID, PANORAMA_LINKS, Walk, stratified_subset
 
 
 def setup_document(root, *, output="outputs/roofline/test"):
@@ -289,6 +291,167 @@ def test_shipped_cuda_convergence_configs_load():
         assert setup.source.specular_suffix_mode == "sampled"
         assert setup.source.sampled_specular_samples == 1
         assert setup.source.sampled_specular_seed_offset == 2000
+
+
+def test_shipped_ten_city_fixed_grid_screening_configs_are_one_closed_contract():
+    expected_sites = set(cohort_contract.INCLUDED_SITES)
+    configs = sorted(
+        paths.config_dir().glob(
+            "roofline_campaign_*_fixed_ground_grid_v1_first_material_interaction_v1_geometry_screen_cuda_iid.json"
+        )
+    )
+    setups = [load_roofline_setup(path) for path in configs]
+
+    assert len(setups) == 10
+    assert {setup.run.site for setup in setups} == expected_sites
+    assert all(setup.run.walk == "grid" for setup in setups)
+    assert all(setup.run.walk_spacing_m == 6.0 for setup in setups)
+    assert all(setup.run.walk_radius_m == 90.0 for setup in setups)
+    assert all(setup.run.locations == 16 for setup in setups)
+    assert all(setup.run.materials == "geometric" for setup in setups)
+    assert all(setup.run.rays == 200_000 and setup.run.local_cells == 4096 for setup in setups)
+    assert all(setup.source.specular_candidate_budget == 2_000_000_000 for setup in setups)
+    assert all(setup.run.variant == "cuda_ad_rgb" and setup.run.transport_kernel == "drjit" for setup in setups)
+    assert all(setup.campaign.cohort == "geometric_fixed_grid_screening" for setup in setups)
+    assert all(setup.campaign.sampling_claim == "geometric_fixed_grid_screening_v1" for setup in setups)
+    assert all(setup.campaign.grid_contract == "fixed_ground_grid_v1" for setup in setups)
+    assert all(setup.campaign.planned_seeds == (7, 8, 9, 10) for setup in setups)
+    assert all(setup.campaign.convergence_looks == (4,) for setup in setups)
+    assert all(
+        setup.campaign.output_dir
+        == paths.root() / "outputs" / "experiments" / "ten_city_geometry_screen_v1" / setup.run.site
+        for setup in setups
+    )
+
+
+def test_fixed_ground_grid_screening_selects_and_seals_exactly_sixteen_north_facing_points():
+    points = np.column_stack(
+        (
+            np.arange(33, dtype=np.float64) * 6.0,
+            np.zeros(33, dtype=np.float64),
+            np.full(33, 1.5, dtype=np.float64),
+        )
+    )
+    full = Walk(
+        points=points,
+        ground_z_m=np.zeros(33, dtype=np.float64),
+        step_m=np.concatenate(([0.0], np.full(32, 6.0))),
+        provenance={"spacing_m": 6.0, "radius_m": 90.0, "seed": 7},
+        kind=GRID,
+    )
+
+    selected = _fixed_ground_grid_screening_walk(full, site="korenmarkt")
+    picks = stratified_subset(full, 16)
+
+    assert selected.kind == GRID
+    assert selected.site == "korenmarkt"
+    assert len(selected) == 16
+    np.testing.assert_array_equal(selected.points, full.points[picks])
+    np.testing.assert_array_equal(selected.body_yaw_deg, np.zeros(16))
+    assert selected.provenance["selection_indices"] == picks.tolist()
+    assert selected.provenance["grid_contract"] == "fixed_ground_grid_v1"
+    assert selected.provenance["sampling_claim"] == "geometric_fixed_grid_screening_v1"
+    assert selected.provenance["point_kind"] == ["fixed_ground_grid"] * 16
+    assert selected.provenance["body_yaw_rule"] == "fixed_north_v1"
+
+
+def test_fixed_ground_grid_64_configs_load_as_a_distinct_closed_contract():
+    expected_sites = {
+        "brussels_grandplace",
+        "korenmarkt",
+        "krakow_rynek",
+        "london_trafalgar",
+        "madrid_plazamayor",
+        "mexico_zocalo",
+        "milan_duomo",
+        "prague_staromestske",
+        "tokyo_hachiko",
+        "toulouse_capitole",
+    }
+    configs = sorted(
+        (paths.root() / "config").glob(
+            "roofline_campaign_*_fixed_ground_grid_64_v1_first_material_interaction_v1_geometry_screen_cuda_iid.json"
+        )
+    )
+    setups = [load_roofline_setup(path) for path in configs]
+
+    assert len(setups) == 10
+    assert {setup.run.site for setup in setups} == expected_sites
+    assert all(setup.run.locations == 64 for setup in setups)
+    assert all(setup.campaign.cohort == "geometric_fixed_grid_screening_64" for setup in setups)
+    assert all(setup.campaign.sampling_claim == "geometric_fixed_grid_screening_64_v1" for setup in setups)
+    assert all(setup.campaign.grid_contract == "fixed_ground_grid_64_v1" for setup in setups)
+    assert all(setup.campaign.planned_seeds == tuple(range(7, 23)) for setup in setups)
+    assert all(setup.campaign.convergence_looks == (4, 8, 16) for setup in setups)
+    budgets = {setup.run.site: setup.source.specular_candidate_budget for setup in setups}
+    assert budgets.pop("toulouse_capitole") == 3_000_000_000
+    assert set(budgets.values()) == {2_000_000_000}
+    assert all(
+        setup.campaign.output_dir
+        == paths.root() / "outputs" / "experiments" / "ten_city_geometry_screen_64_v1" / setup.run.site
+        for setup in setups
+    )
+
+
+def test_fixed_ground_grid_screening_selects_and_seals_exactly_sixty_four_north_facing_points():
+    points = np.column_stack(
+        (
+            np.arange(129, dtype=np.float64) * 6.0,
+            np.zeros(129, dtype=np.float64),
+            np.full(129, 1.5, dtype=np.float64),
+        )
+    )
+    full = Walk(
+        points=points,
+        ground_z_m=np.zeros(129, dtype=np.float64),
+        step_m=np.concatenate(([0.0], np.full(128, 6.0))),
+        provenance={"spacing_m": 6.0, "radius_m": 90.0, "seed": 7},
+        kind=GRID,
+    )
+
+    selected = _fixed_ground_grid_screening_walk(
+        full,
+        site="korenmarkt",
+        sampling_claim="geometric_fixed_grid_screening_64_v1",
+        grid_contract="fixed_ground_grid_64_v1",
+        points_count=64,
+    )
+    picks = stratified_subset(full, 64)
+
+    assert len(selected) == 64
+    np.testing.assert_array_equal(selected.points, full.points[picks])
+    np.testing.assert_array_equal(selected.body_yaw_deg, np.zeros(64))
+    assert selected.provenance["selection_indices"] == picks.tolist()
+    assert selected.provenance["selection_count"] == 64
+    assert selected.provenance["grid_contract"] == "fixed_ground_grid_64_v1"
+    assert selected.provenance["sampling_claim"] == "geometric_fixed_grid_screening_64_v1"
+    assert selected.provenance["point_kind"] == ["fixed_ground_grid"] * 64
+
+
+def test_fixed_grid_screening_contract_does_not_relax_production_route_setup(tmp_path):
+    document = setup_document(tmp_path)
+    document["run"].update({"walk": "grid", "locations": 16, "walk_spacing_m": 6.0})
+    config = tmp_path / "not-screening.json"
+    config.write_text(json.dumps(document))
+
+    with pytest.raises(ValueError, match="complete declared route"):
+        load_roofline_setup(config)
+
+
+def test_grid_screening_input_discovery_excludes_route_and_panorama_evidence(tmp_path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    site_config = config_dir / "korenmarkt.json"
+    site_config.write_text("{}")
+    report = tmp_path / "outputs" / "site_semantics" / "korenmarkt" / "walk_semantic_250m.json"
+    report.parent.mkdir(parents=True)
+    report.write_text(json.dumps({"stations_admitted": []}))
+    candidates: set = set()
+    run = RunConfig(site="korenmarkt", walk="grid")
+
+    _add_route_input_paths(tmp_path, run, candidates, include_route_evidence=False)
+
+    assert candidates == {site_config}
 
 
 @pytest.mark.parametrize(

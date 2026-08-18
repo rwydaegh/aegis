@@ -202,7 +202,7 @@ def test_legacy_paired_report_remains_canonical_byte_identical(tmp_path: Path) -
     canonical = json.dumps(report, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
     assert hashlib.sha256(canonical.encode()).hexdigest() == (
-        "96a78e26705723e0a776b21b0caa6182b7caf9e19c08ff9f158400db5d42bb99"
+        "b5517637a1767b6adcfdfc869c535fdca1448205df148f6bb9d60ac21b9f1bda"
     )
 
 

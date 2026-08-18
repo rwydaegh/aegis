@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import fields
 from pathlib import Path
@@ -152,7 +153,8 @@ def test_duke_cuda_level_two_parity_determinism_and_timing(record_property) -> N
     dr = pytest.importorskip("drjit")
     if not dr.has_backend(dr.JitBackend.CUDA):
         pytest.skip("Dr.Jit CUDA backend is unavailable")
-    phantom = Path(__file__).resolve().parents[4] / "data" / "duke.stl"
+    data_root = Path(os.environ.get("AEGIS_DATA_DIR", Path(__file__).resolve().parents[4] / "data"))
+    phantom = data_root / "duke.stl"
     if not phantom.is_file():
         pytest.skip("Duke phantom is unavailable")
     numpy_coupler = BodyCoupler(str(phantom), 15.0e9, body_mass_kg=72.4)
