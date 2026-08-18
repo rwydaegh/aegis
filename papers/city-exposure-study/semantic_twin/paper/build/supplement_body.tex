@@ -6,7 +6,7 @@ are needed to reproduce the study but are not needed to follow the main paper.
 It covers the image and semantic-model roles, street-image acceptance, numerical settings,
 provenance, convergence, the material-evidence control, timing boundaries, and
 additional limitations. Unless marked as the separate fixed-grid diagnostic,
-numerical statements refer to the verified five-site calculations under the
+numerical statements refer to the verified ten-site calculations under the
 first-material-interaction transport contract.
 
 \section{Image labels and material mapping}
@@ -96,7 +96,7 @@ transport geometry.
 \subsection{Material labels on reached surfaces}
 \label{sec:si-ray-reached-coverage}
 
-The audit replays all five verified routes and 16 seeds with the production
+The audit replays all ten verified routes and 64 seeds with the production
 geometry, source curve, material map, body, 200,000 primary rays, and 4,096 output
 cells. It classifies the exact reflection point of every retained order-1
 specular path and the first blocking surface of every accepted
@@ -171,20 +171,20 @@ combined material map.
 \label{sec:si-configuration}
 
 \begin{table*}[!t]
-  \caption{Configuration of the verified five-site result.}
+  \caption{Configuration of the verified ten-site result.}
   \label{tab:si-configuration}
   \centering
   \begin{tabular}{p{0.24\textwidth}p{0.70\textwidth}}
     \toprule
     Item & Production value \\
     \midrule
-    Sites and routes & Korenmarkt, Prague, Madrid, Mexico City, and Tokyo Hachiko. The fixed routes contain 10, 22, 14, 11, and 16 route points. \\
+    Sites and routes & Brussels, Ghent, Krakow, London, Madrid, Mexico City, Milan, Prague, Tokyo Hachiko, and Toulouse. The fixed routes contain 14, 10, 16, 22, 14, 11, 23, 22, 16, and 15 route points (163 total). \\
     Geometry and frequency & Original photogrammetric city mesh within a 250 m horizontal radius at 15 GHz. The circular crop area is $196{,}349.54\,\mathrm{m^2}$. \\
     Transmitter model & Roofline visible from the route. Areal density sets the expected number of transmitters. Physical three-dimensional roofline length assigns their relative probability to each segment. \\
     Exposure normalization & Per unit $\rho_A P_{\mathrm{EIRP}}$. Normalized whole-body SAR has unit $\mathrm{m^2\,kg^{-1}}$. \\
     Transport & Exact direct term, exact one-reflection specular term, and stochastic next-event estimation of one diffuse reflection at the first blocking surface. \\
     Surface model & Image-derived material map with measured finish roughness. The material probabilities are evaluated at the exact hit point. \\
-    Monte Carlo & 200,000 IID primary rays per route point and replica. Seeds 7 through 22 give 16 replicas. Stored convergence results use 4, 8, 12, and 16 replicas. \\
+    Monte Carlo & 200,000 IID primary rays per route point and replica. Seeds 7 through 70 give 64 replicas. Stored convergence results use 16, 24, 32, 48, and 64 replicas. \\
     Angular output & 4,096 passive cells collect only the first-diffuse estimate. Exact direct and one-reflection specular paths retain their arrival directions. The cells do not control launch directions. \\
     Body & Duke with 56,024 surface elements, area $1.87250\,\mathrm{m^2}$, mass 72.4 kg, and $T_0=0.500140$. The phantom faces along the walk. Body coupling uses the level-2 surface-field model. \\
     \bottomrule
@@ -208,11 +208,16 @@ retained counts.
     \toprule
     Site & Route points & Roofline segments & Length (m) \\
     \midrule
-    Korenmarkt & 10 & 457 & 157.54 \\
-    Prague & 22 & 502 & 267.15 \\
+    Brussels & 14 & 450 & 158.53 \\
+    Ghent & 10 & 457 & 157.54 \\
+    Krakow & 16 & 320 & 94.97 \\
+    London & 22 & 635 & 296.67 \\
     Madrid & 14 & 207 & 79.40 \\
     Mexico City & 11 & 164 & 63.69 \\
+    Milan & 23 & 502 & 437.63 \\
+    Prague & 22 & 502 & 267.15 \\
     Tokyo Hachiko & 16 & 400 & 248.76 \\
+    Toulouse & 15 & 283 & 72.10 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -277,17 +282,17 @@ coupling uses fixed blocks of 512 directions. Candidate caps, broad-phase
 thresholds, chunks, and block sizes control computation. They do not change the
 stated physical model.
 
-The result contains 73 route points, 1,168 point-replica fields, 80
-site-replica runs, and 233.6 million stochastic primary rays. Every campaign
-manifest lists 42 files. All 210 recorded file hashes pass. The aggregate JSON,
-CSV, PDF, and PNG also match their artifact manifest. Across the 1,168 fields,
+The result contains 163 route points, 10,432 point-replica fields, 640
+site-replica runs, and 2.086 billion stochastic primary rays. Every campaign
+manifest lists 42 files. All 420 recorded file hashes pass. The aggregate JSON,
+CSV, PDF, and PNG also match their artifact manifest. Across the 10,432 fields,
 the maximum raw residual between the saved total and the sum of direct,
 all-specular, and first-diffuse components is
-$1.735\times10^{-18}\,\mathrm{m^{-2}}$. The CUDA body result agrees with the
+$1.214\times10^{-17}\,\mathrm{m^{-2}}$. The CUDA body result agrees with the
 NumPy reference to a maximum relative error of $6.64\times10^{-16}$ in the
 verified benchmark. The verified artifacts are stored under
 the roofline campaign output package named
-\texttt{current\_five\_city\_\allowbreak{}first\_material\_interaction}.
+\texttt{ten\_city\_route\_\allowbreak{}production64\_v1}.
 The Duke STL has SHA-256
 \texttt{781e65ef3882f134\allowbreak{}7669e0ddca5dafa82\allowbreak{}cd6368dddd6b9e80\allowbreak{}1dc49613822fe3b}.
 The verified body-area array has SHA-256
@@ -300,18 +305,23 @@ segments, source weights, route arrays, material tables, and executable configur
 
 % claim: replica_convergence_48_to_64
 \begin{table}[!t]
-  \caption{Convergence from 48 to 64 replicas. Bootstrap width is the 95\% interval width for route $q_{10}$ whole-body SAR. Shadow change is the largest stepwise change among the six shadowed route points.}
+  \caption{Convergence from 48 to 64 replicas. Bootstrap width is the 95\% interval width for route $q_{10}$ whole-body SAR. Shadow change is the largest stepwise change among the six shadowed route points in Mexico City and Tokyo Hachiko.}
   \label{tab:si-convergence}
   \centering
   \begin{tabular}{lrrr}
     \toprule
     Site & \shortstack{$q_{10}$ change\\(dB)} & \shortstack{Bootstrap width\\(dB)} & \shortstack{Shadow change\\(dB)} \\
     \midrule
-    Korenmarkt & 0.0000723 & 0.000222 & -- \\
-    Prague & 0.0000203 & 0.000218 & -- \\
-    Madrid & 0.00000615 & 0.000378 & -- \\
-    Mexico City & 0.00344 & 0.364 & 0.0125 \\
-    Tokyo Hachiko & 0.00491 & 0.0538 & 0.0104 \\
+    Brussels & 0.000114 & 0.000592 & -- \\
+    Ghent & 0.0000723 & 0.000221 & -- \\
+    Krakow & 0.000130 & 0.00107 & -- \\
+    London & 0.0000427 & 0.000671 & -- \\
+    Madrid & 0.00000615 & 0.000374 & -- \\
+    Mexico City & 0.00344 & 0.355 & 0.0125 \\
+    Milan & 0.0000883 & 0.000236 & -- \\
+    Prague & 0.0000203 & 0.000222 & -- \\
+    Tokyo Hachiko & 0.00491 & 0.0528 & 0.0104 \\
+    Toulouse & 0.0000110 & 0.000173 & -- \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -327,7 +337,7 @@ and their whole-replica bootstrap widths are 0.364 and 0.0538~dB.
 
 The bootstrap resamples complete replicas jointly over all route points, so it
 preserves spatial dependence within one replica. Its 2,000 draws use PCG64 with
-the authenticated analysis seed 20260814. All five identities, manifests,
+the authenticated analysis seed 20260814. All ten identities, manifests,
 component closures, and common inputs pass, and both lower tails meet the
 stated 48-to-64 aggregate criteria. Mexico City nevertheless retains
 rare-event first-diffuse behavior: its maximum positive replica contribution
@@ -426,7 +436,7 @@ Duke phantom faces north at every point. The calculation uses the same
 first-material transport model with 16 seeds, 200,000 primary rays per point
 and seed, and 4,096 first-diffuse output cells. The fixed-grid design remains
 separate from the pedestrian-route calculations and is not combined with the
-five-route results.
+route results.
 
 Across the ten fixed-grid descriptions, the ratio of the largest to smallest
 normalized whole-body-SAR quantile is 2.02 for $q_{10}$, 2.01 for $q_{50}$,
@@ -457,29 +467,27 @@ declared fixed-grid calculation.
   Panel (a) shows $q_{10}$, $q_{50}$, and $q_{90}$ across the 64 fixed
   observation points. Red bars give the 16-seed conditional Monte Carlo
   standard error of $q_{50}$. Panel (b) shows the pooled additive component
-  shares. These results are not combined with the five-route calculation.}
+  shares. These results are not combined with the route calculation.}
   \label{fig:si-geometric-screening}
 \end{figure*}
 
 \FloatBarrier
-\section{Ten-route production-contract extension}
-\label{sec:si-ten-route-extension}
+\section{Ten-route production detail}
+\label{sec:si-ten-route-detail}
 
-% claim: ten_route_production_extension
-The route-based extension applies the production contract to five additional
-prepared scenes and combines them with the original five routes in one
-authenticated report. The ten selected routes contain 163 observation points.
-Every route uses image-derived surface properties, a Duke phantom facing along
-the walk, 64 independent seeds from 7 through 70, 200,000 primary rays per
-point and seed, and 4,096 first-diffuse output cells. Direct, exact order-1
-specular, and first-diffuse transport use the same first-material model as the
-five detailed routes. The extension changes the site and route coverage. It
-does not turn the selected routes into a population sample or a city ranking.
+% claim: ten_route_production_detail
+The ten selected routes contain 163 observation points. Every route uses
+image-derived surface properties, a Duke phantom facing along the walk, 64
+independent seeds from 7 through 70, 200,000 primary rays per point and seed,
+and 4,096 first-diffuse output cells. Direct, exact order-1 specular, and
+first-diffuse transport use the first-material model described in the main text.
+The selected routes are fixed case studies, not a population sample or a city
+ranking.
 
 The route-median normalized whole-body SAR ranges from
 $0.009016\,\mathrm{m^2/kg}$ in Milan to $0.1291\,\mathrm{m^2/kg}$ in
 Mexico City per unit $\rho_A P_\mathrm{EIRP}$, a factor of 14.3.
-Fig.~\ref{fig:si-ten-route-extension} shows the full route ranges. The low
+Fig.~\ref{fig:si-ten-route-detail} shows the full route ranges. The low
 $q_{10}$ values in Mexico City and Tokyo Hachiko come from the shadowed points
 described in Section~\ref{sec:si-convergence}, rather than a shift in the central
 route values.
@@ -489,18 +497,18 @@ The order-1 specular share ranges from 9.1\% to 29.9\%, and the first-diffuse
 share ranges from 0.301\% to 5.02\%. Between 48 and 64 replicas, the largest
 absolute route-quantile changes across the ten routes are 0.00491~dB for
 $q_{10}$, 0.000157~dB for $q_{50}$, and 0.0000762~dB for $q_{90}$.
-The ten-route extension contains 10,432 point-replica body fields and
+The ten routes contain 10,432 point-replica body fields and
 2.0864~billion primary rays.
 
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=0.92\textwidth]{figures/ten_route_extension/ten_route_extension.pdf}
-  \caption{Production-contract results for ten selected routes. Panel (a) shows
+  \caption{Per-route exposure and component detail. Panel (a) shows
   the route $q_{10}$--$q_{90}$ interval and an open marker at $q_{50}$ for
   normalized whole-body SAR. Panel (b) shows the route-summed additive absorbed-power
   shares. All routes use 64 replicas and image-derived surface properties. The
   selected routes do not represent city populations.}
-  \label{fig:si-ten-route-extension}
+  \label{fig:si-ten-route-detail}
 \end{figure*}
 
 \section{Computation time}
@@ -536,16 +544,16 @@ diffuse event, further specular reflections, and all other multipath. The contro
 test validates the first-diffuse normalization, visibility, inverse-square loss,
 and cosine factors. The maximum adjoint-versus-Sionna difference is 0.0621 dB
 for the bounced term and 0.0344 dB for total transport in that test. The same
-three-way test has not been repeated for the full five-site calculation with its
+three-way test has not been repeated for the full ten-site calculation with its
 image-derived materials and exact specular term. The test validates this component. It
 does not provide external validation of every city result. The level-2 body
 coupling uses one-sided local incidence. It does not trace body self-occlusion.
 
-The five routes are selected case studies. Their differences do not rank the
-five cities and do not estimate population exposure. Each result is normalized
+The ten routes are selected case studies. Their differences do not rank the
+ten cities and do not estimate population exposure. Each result is normalized
 per unit $\rho_A P_{\mathrm{EIRP}}$, so it is not an absolute prediction for an
 operator deployment. The study uses one 15 GHz frequency, one body phantom,
-one body orientation that faces along the walk, one roofline transmitter model, and five
+one body orientation that faces along the walk, one roofline transmitter model, and ten
 plaza routes. Additional frequencies, body models, headings, deployment laws,
 street canyons, parks, and repeated route selections are outside this study.
 

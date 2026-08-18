@@ -7,17 +7,17 @@
 % PREV: coupling uses fixed blocks of 512 directions. Candidate caps, broad-phase
 % PREV: thresholds, chunks, and block sizes control computation. They do not change the
 % PREV: stated physical model.
-The result contains 73 route points, 1,168 point-replica fields, 80
-site-replica runs, and 233.6 million stochastic primary rays. Every campaign
-manifest lists 42 files. All 210 recorded file hashes pass. The aggregate JSON,
-CSV, PDF, and PNG also match their artifact manifest. Across the 1,168 fields,
+The result contains 163 route points, 10,432 point-replica fields, 640
+site-replica runs, and 2.086 billion stochastic primary rays. Every campaign
+manifest lists 42 files. All 420 recorded file hashes pass. The aggregate JSON,
+CSV, PDF, and PNG also match their artifact manifest. Across the 10,432 fields,
 the maximum raw residual between the saved total and the sum of direct,
 all-specular, and first-diffuse components is
-$1.735\times10^{-18}\,\mathrm{m^{-2}}$. The CUDA body result agrees with the
+$1.214\times10^{-17}\,\mathrm{m^{-2}}$. The CUDA body result agrees with the
 NumPy reference to a maximum relative error of $6.64\times10^{-16}$ in the
 verified benchmark. The verified artifacts are stored under
 the roofline campaign output package named
-\texttt{current\_five\_city\_\allowbreak{}first\_material\_interaction}.
+\texttt{ten\_city\_route\_\allowbreak{}production64\_v1}.
 The Duke STL has SHA-256
 \texttt{781e65ef3882f134\allowbreak{}7669e0ddca5dafa82\allowbreak{}cd6368dddd6b9e80\allowbreak{}1dc49613822fe3b}.
 The verified body-area array has SHA-256

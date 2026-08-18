@@ -1,8 +1,7 @@
 # Current supplementary-information source
 
-This directory contains the PaperMaker paragraph tree for the current five-site
-result, the ten-route production-contract extension, and the separate geometric
-diagnostic. The root is `si_new.md`. Its LaTeX body is designed for inclusion after
+This directory contains the PaperMaker paragraph tree for the current ten-site
+result and the separate geometric diagnostic. The root is `si_new.md`. Its LaTeX body is designed for inclusion after
 the main paper or assembly as a separate supplement with the main paper's
 preamble and bibliography.
 
