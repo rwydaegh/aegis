@@ -124,35 +124,81 @@ def _plot_report(report: dict[str, Any]) -> None:
         ("prague_staromestske", "Prague", "#009E73"),
     )
     rows = report["budgets"]
-    labels = [f"{row['rays'] // 1000}k/{row['cells'] // 1024}k" for row in rows]
+    labels = [f"{row['rays'] // 1000}k\n{row['cells']:,}" for row in rows]
     x = np.arange(len(rows))
 
-    with paper_style("double", height_ratio=0.55, use_tex=True):
-        figure, axes = plt.subplots(2, 2)
+    def db_change_to_percent(value: float) -> float:
+        """Convert a power-ratio change in decibels to a relative percentage."""
+        return 100.0 * (10.0 ** (float(value) / 10.0) - 1.0)
+
+    # The manuscript uses this as a full-width thesis figure.  Explicit inches
+    # preserve readable type when LaTeX places it at the thesis text width.
+    with paper_style("double", height_ratio=0.72, use_tex=True):
+        plt.rcParams["figure.constrained_layout.use"] = False
+        figure, axes = plt.subplots(2, 2, figsize=(4.55, 3.65), sharex=True)
+        city_lines = []
         for site, label, color in sites:
-            q50 = [row["sites"][site]["normalized_wbSAR"]["route_quantile_difference_db"]["q50"] for row in rows]
-            shadow = [row["sites"][site]["normalized_wbSAR"]["maximum_absolute_db"] for row in rows]
+            q50 = [
+                db_change_to_percent(
+                    row["sites"][site]["normalized_wbSAR"]["route_quantile_difference_db"]["q50"]
+                )
+                for row in rows
+            ]
             directional = [
                 row["sites"][site]["directional_first_diffuse"]["normalized_l1_quantiles"]["q90"] for row in rows
             ]
             timing = [row["sites"][site]["timing"]["estimator_wall_seconds"]["ratio"] for row in rows]
-            for axis, values in zip(axes.flat, (q50, shadow, directional, timing), strict=True):
-                axis.plot(x, values, marker="o", markersize=3.0, color=color, label=label)
+            (line,) = axes[0, 0].plot(x, q50, marker="o", markersize=3.4, color=color, label=label)
+            city_lines.append(line)
+            axes[1, 0].plot(x, directional, marker="o", markersize=3.4, color=color)
+            axes[1, 1].plot(x, timing, marker="o", markersize=3.4, color=color)
 
-        axes[0, 0].set_title("(a) Route median", loc="left")
-        axes[0, 0].set_ylabel("q50 wbSAR change (dB)")
-        axes[0, 1].set_title("(b) Maximum route-point change", loc="left")
-        axes[0, 1].set_ylabel("Maximum wbSAR change (dB)")
-        axes[1, 0].set_title("(c) First-diffuse directionality", loc="left")
-        axes[1, 0].set_ylabel("Paired q90 normalized L1")
-        axes[1, 1].set_title("(d) Observed timing", loc="left")
-        axes[1, 1].set_ylabel("Estimator wall time / baseline")
+        # The route-wide maximum is dominated by Mexico City's three fully
+        # shadowed points. Showing that controlling case alone avoids an
+        # unreadable axis with the other two curves compressed against zero.
+        mexico = "mexico_zocalo"
+        shadow = [
+            db_change_to_percent(row["sites"][mexico]["normalized_wbSAR"]["maximum_absolute_db"])
+            for row in rows
+        ]
+        axes[0, 1].plot(x, shadow, marker="s", markersize=3.4, color="#D55E00", linestyle="--")
+
+        axes[0, 0].set_title("(a) Route-median SAR", loc="left")
+        axes[0, 0].set_ylabel(r"Median deviation (\%)")
+        axes[0, 1].set_title("(b) Mexico City shadow points", loc="left")
+        axes[0, 1].set_ylabel(r"Largest deviation (\%)")
+        axes[1, 0].set_title("(c) Diffuse directionality", loc="left")
+        axes[1, 0].set_ylabel("90th-percentile\nnormalized L1")
+        axes[1, 1].set_title("(d) Estimator time", loc="left")
+        axes[1, 1].set_ylabel("Relative time\n(baseline = 1)")
+        axes[0, 0].axhline(0.0, color="0.25", linewidth=0.7, zorder=0)
+        axes[0, 1].set_ylim(bottom=0.0)
+        axes[1, 0].set_ylim(bottom=0.0)
+        axes[1, 1].axhline(1.0, color="0.25", linewidth=0.7, zorder=0)
         for axis in axes.flat:
-            axis.set_xticks(x, labels, rotation=28, ha="right")
-            axis.grid(color="0.86", linewidth=0.45)
-        for axis in axes[0, :]:
-            axis.tick_params(labelbottom=False)
-        axes[0, 0].legend(ncol=3, bbox_to_anchor=(0.92, 1.35), loc="lower center")
+            axis.set_xlim(-0.25, len(rows) - 0.75)
+            axis.set_xticks(x, labels)
+            axis.grid(axis="y", color="0.86", linewidth=0.45)
+            axis.axvline(2.5, color="0.72", linewidth=0.65, linestyle=":", zorder=0)
+            axis.tick_params(axis="x", pad=2.0)
+        figure.supxlabel("Primary rays / angular cells", y=0.165)
+        legend = figure.legend(
+            city_lines,
+            [line.get_label() for line in city_lines],
+            loc="lower center",
+            bbox_to_anchor=(0.5, 0.018),
+            ncol=3,
+            frameon=True,
+            fancybox=False,
+            framealpha=1.0,
+            edgecolor="black",
+            facecolor="white",
+            borderpad=0.45,
+            handlelength=2.2,
+            columnspacing=1.5,
+        )
+        legend.get_frame().set_linewidth(0.8)
+        figure.subplots_adjust(left=0.145, right=0.985, bottom=0.31, top=0.95, wspace=0.38, hspace=0.40)
         save_figure(figure, OUTPUT_PDF)
         save_figure(figure, OUTPUT_PNG, dpi=300)
         plt.close(figure)

@@ -9,14 +9,14 @@
   },
   "outputs": {
     "pdf": {
-      "bytes": 96820,
+      "bytes": 96823,
       "path": "budget_sensitivity.pdf",
-      "sha256": "3010f361e6a63dbea6b4425408c3477a32204fe9b867d5fda7cc337ffa103985"
+      "sha256": "43ce8dc3e60c28b9fddddd1e63f627b69c05d0c41eb1377d48330819b3b54156"
     },
     "png": {
-      "bytes": 288826,
+      "bytes": 247165,
       "path": "budget_sensitivity.png",
-      "sha256": "b301b5d4e31239c2a6824ae8f3cfd2341a9db82e9263548568416b8cacd6691b"
+      "sha256": "307f86f05835d677699b34f713f6a8d02aa279446a61d23d7574f737e1d42ae8"
     }
   },
   "schedule_identity_sha256": "fd699f5693c69ce0c85d1b3ad823eb0450bddac546ea11abc62c9e4cb90933d5",

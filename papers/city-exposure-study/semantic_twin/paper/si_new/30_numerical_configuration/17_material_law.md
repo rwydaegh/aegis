@@ -15,11 +15,16 @@
 % PREV:     \toprule
 % PREV:     Site & Route points & Roofline segments & Length (m) \\
 % PREV:     \midrule
-% PREV:     Korenmarkt & 10 & 457 & 157.54 \\
-% PREV:     Prague & 22 & 502 & 267.15 \\
+% PREV:     Brussels & 14 & 450 & 158.53 \\
+% PREV:     Ghent & 10 & 457 & 157.54 \\
+% PREV:     Krakow & 16 & 320 & 94.97 \\
+% PREV:     London & 22 & 635 & 296.67 \\
 % PREV:     Madrid & 14 & 207 & 79.40 \\
 % PREV:     Mexico City & 11 & 164 & 63.69 \\
+% PREV:     Milan & 23 & 502 & 437.63 \\
+% PREV:     Prague & 22 & 502 & 267.15 \\
 % PREV:     Tokyo Hachiko & 16 & 400 & 248.76 \\
+% PREV:     Toulouse & 15 & 283 & 72.10 \\
 % PREV:     \bottomrule
 % PREV:   \end{tabular}
 % PREV: \end{table}

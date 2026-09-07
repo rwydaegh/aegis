@@ -3,9 +3,10 @@
 % PREV: stops at that reflection. The model omits a specular reflection after the
 % PREV: diffuse event, further specular reflections, and all other multipath. The controlled open-square
 % PREV: test validates the first-diffuse normalization, visibility, inverse-square loss,
-% PREV: and cosine factors. The maximum adjoint-versus-Sionna difference is 0.0621 dB
-% PREV: for the bounced term and 0.0344 dB for total transport in that test. The same
-% PREV: three-way test has not been repeated for the full five-site calculation with its
+% PREV: and cosine factors. The maximum adjoint-versus-quadrature difference is 1.43\%
+% PREV: for the bounced term, and the maximum adjoint-versus-Sionna difference is 0.80\%
+% PREV: for total transport in that test. The same
+% PREV: three-way test has not been repeated for the full ten-site calculation with its
 % PREV: image-derived materials and exact specular term. The test validates this component. It
 % PREV: does not provide external validation of every city result. The level-2 body
 % PREV: coupling uses one-sided local incidence. It does not trace body self-occlusion.

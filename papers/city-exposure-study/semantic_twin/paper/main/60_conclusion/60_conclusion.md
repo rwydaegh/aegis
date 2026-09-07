@@ -1,27 +1,21 @@
 <!-- AUTO_BEGIN: assembled -->
 \section{Conclusion}\label{sec:conclusion}
 
-This study aligned 360-degree street images with a photogrammetric city mesh to
-map surface materials around pedestrian routes at 15\,GHz. A roofline
-transmitter model and a directional absorption step then produced normalized
-whole-body SAR, with all results per unit $\rho_A P_{\mathrm{EIRP}}$. A
-geometric fixed-grid diagnostic at ten urban locations showed a twofold span in
-location-median whole-body SAR. Five of these locations were then studied with
-image-derived materials along fixed routes. In a controlled one-reflection
-scene, the first-diffuse estimate differed from deterministic quadrature by at
-most 0.0616\,dB, and the maximum total-transport difference from an independent
-Sionna RT forward calculation was 0.0344\,dB. Across 73 observation points on
-five routes, route-median whole-body SAR values differed by a factor of 13.34.
-Direct transport was largest at all 67 points with line of sight, while
-first-diffuse transport was the only nonzero contribution at the six fully
-shadowed points. The route medians were stable at 16 replicas, but the fully
-shadowed lower tails had larger estimator uncertainty. These results do not rank
-cities or predict deployed-network exposure.
+This study contributes a human-centric digital twin that uses SAM~3 Agent for
+agentic material assignment, a normalized roofline source model, and
+direction-aware body coupling for RF-EMF exposure assessment.
+Across 163 observation points on routes in ten cities, normalized route-median
+whole-body SAR differs by a factor of 14.31. Direct power is largest at 156 of
+157 points with line of sight. The specular component is largest at one point, and a
+diffuse path is the only nonzero contribution at six shadowed points. Controlled
+validation gives maximum differences of 1.43\% from deterministic quadrature
+and 0.80\% from Sionna RT. Increasing the number of runs from 48 to 64 changes
+the total at any point by at most 0.32\%. We do not rank cities or predict
+exposure from a deployed network.
 
-The image-to-mesh material mapping took effect mainly through the specular
-component. A paired control at two sites showed route-median whole-body SAR
-changes of $+0.249$ and $-0.158$~dB when the image-derived materials were
-replaced by the geometry defaults. The method runs in under 70~s per prepared
-site on one GPU. The main open items are outdoor field validation against the
-full city model and a measured transmitter source distribution.
+Image-derived materials increase the Madrid route median by 5.9\% and decrease
+the Mexico City route median by 3.6\% relative to geometry-based defaults.
+Future work will consist of outdoor field validation, measured transmitter
+distributions, higher reflection orders, and tests of more routes, frequencies,
+body models, and orientations.
 <!-- AUTO_END: assembled -->

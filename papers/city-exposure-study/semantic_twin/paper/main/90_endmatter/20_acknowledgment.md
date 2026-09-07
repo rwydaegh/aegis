@@ -1,11 +1,11 @@
 % PREV: \section*{Data and Code Availability}
 % PREV:
-% PREV: The verified five-site data, manifests, analysis scripts, and figure scripts
-% PREV: are kept in the study repository. A stable public archive with a versioned
-% PREV: digital object identifier will be deposited before publication. The 360-degree
-% PREV: street images and commercial photogrammetric tiles are governed by their
-% PREV: providers' terms and are not redistributed. Their identifiers and the alignment
-% PREV: manifests are kept so the inputs can be reacquired where the licenses allow it.
+% PREV: The ten-route results, analysis scripts, and figure scripts are kept in the
+% PREV: study repository. A stable public archive with a versioned digital object
+% PREV: identifier will be deposited before publication. The 360-degree street images
+% PREV: and commercial photogrammetric tiles are governed by their providers' terms and
+% PREV: are not redistributed. Their identifiers are retained so the inputs can be
+% PREV: obtained again where the licenses allow it.
 % NEXT: \begin{thebibliography}{99}
 % NEXT:
 % NEXT: \bibitem{itu2040}
@@ -56,6 +56,14 @@
 % NEXT: wireless cellular network,'' \emph{Bioelectromagnetics}, vol. 36, no. 6,
 % NEXT: pp. 451--463, 2015, doi: 10.1002/bem.21928.
 % NEXT:
+% NEXT: \bibitem{google3d}
+% NEXT: Google, ``Photorealistic 3D Tiles,'' 2023. [Online]. Available:
+% NEXT: \url{https://developers.google.com/maps/documentation/tile/3d-tiles}.
+% NEXT:
+% NEXT: \bibitem{blosm}
+% NEXT: vvoovv, ``Blosm for Blender: OpenStreetMap, Google 3D cities, terrain,''
+% NEXT: GitHub, 2023. [Online]. Available: \url{https://github.com/vvoovv/blosm}.
+% NEXT:
 % NEXT: \bibitem{vistas}
 % NEXT: G.~Neuhold, T.~Ollmann, S.~Rota~Bul\`o, and P.~Kontschieder,
 % NEXT: ``The Mapillary Vistas dataset for semantic understanding of street scenes,''
@@ -79,15 +87,33 @@
 % NEXT: B.~Cheng, I.~Misra, A.~G.~Schwing, A.~Kirillov, and R.~Girdhar,
 % NEXT: ``Masked-attention mask transformer for universal image segmentation,'' in
 % NEXT: \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit.}, 2022,
-% NEXT: pp. 1290--1299.
+% NEXT: pp. 1290--1299, doi: 10.1109/CVPR52688.2022.00135.
 % NEXT:
 % NEXT: \bibitem{sam3}
 % NEXT: N.~Carion \emph{et al.}, ``SAM 3: Segment anything with concepts,''
 % NEXT: arXiv:2511.16719, 2025, doi: 10.48550/arXiv.2511.16719.
 % NEXT:
+% NEXT: \bibitem{ngo2017}
+% NEXT: H.~Q.~Ngo, A.~Ashikhmin, H.~Yang, E.~G.~Larsson, and T.~L.~Marzetta,
+% NEXT: ``Cell-free massive MIMO versus small cells,'' \emph{IEEE Trans. Wireless
+% NEXT: Commun.}, vol. 16, no. 3, pp. 1834--1850, 2017,
+% NEXT: doi: 10.1109/TWC.2017.2655515.
+% NEXT:
+% NEXT: \bibitem{behlouli2014}
+% NEXT: A.~Behlouli, P.~Combeau, L.~Aveneau, S.~Sahuguede, and
+% NEXT: A.~Julien-Vergonjanne, ``Efficient simulation of optical wireless channel
+% NEXT: application to WBANs with MISO link,'' \emph{Procedia Comput. Sci.}, vol. 40,
+% NEXT: pp. 190--197, 2014, doi: 10.1016/j.procs.2014.12.027.
+% NEXT:
+% NEXT: \bibitem{cocheril2007}
+% NEXT: Y.~Cocheril and R.~Vauzelle, ``A new ray-tracing based wave propagation model
+% NEXT: including rough surfaces scattering,'' \emph{Prog. Electromagn. Res.}, vol. 75,
+% NEXT: pp. 357--381, 2007, doi: 10.2528/PIER07061202.
+% NEXT:
 % NEXT: \bibitem{veach}
-% NEXT: E.~Veach, \emph{Robust Monte Carlo Methods for Light Transport Simulation}.
-% NEXT: Stanford, CA, USA: Stanford Univ., Ph.D. dissertation, 1997.
+% NEXT: E.~Veach, ``Robust Monte Carlo methods for light transport simulation,'' Ph.D.
+% NEXT: dissertation, Stanford Univ., Stanford, CA, USA, 1997. [Online]. Available:
+% NEXT: \url{https://graphics.stanford.edu/papers/veach_thesis/}
 % NEXT:
 % NEXT: \bibitem{itis}
 % NEXT: P.~A.~Hasgall \emph{et al.}, ``IT'IS database for thermal and electromagnetic

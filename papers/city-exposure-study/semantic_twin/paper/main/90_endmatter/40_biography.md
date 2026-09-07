@@ -48,6 +48,14 @@
 % PREV: wireless cellular network,'' \emph{Bioelectromagnetics}, vol. 36, no. 6,
 % PREV: pp. 451--463, 2015, doi: 10.1002/bem.21928.
 % PREV:
+% PREV: \bibitem{google3d}
+% PREV: Google, ``Photorealistic 3D Tiles,'' 2023. [Online]. Available:
+% PREV: \url{https://developers.google.com/maps/documentation/tile/3d-tiles}.
+% PREV:
+% PREV: \bibitem{blosm}
+% PREV: vvoovv, ``Blosm for Blender: OpenStreetMap, Google 3D cities, terrain,''
+% PREV: GitHub, 2023. [Online]. Available: \url{https://github.com/vvoovv/blosm}.
+% PREV:
 % PREV: \bibitem{vistas}
 % PREV: G.~Neuhold, T.~Ollmann, S.~Rota~Bul\`o, and P.~Kontschieder,
 % PREV: ``The Mapillary Vistas dataset for semantic understanding of street scenes,''
@@ -71,15 +79,33 @@
 % PREV: B.~Cheng, I.~Misra, A.~G.~Schwing, A.~Kirillov, and R.~Girdhar,
 % PREV: ``Masked-attention mask transformer for universal image segmentation,'' in
 % PREV: \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit.}, 2022,
-% PREV: pp. 1290--1299.
+% PREV: pp. 1290--1299, doi: 10.1109/CVPR52688.2022.00135.
 % PREV:
 % PREV: \bibitem{sam3}
 % PREV: N.~Carion \emph{et al.}, ``SAM 3: Segment anything with concepts,''
 % PREV: arXiv:2511.16719, 2025, doi: 10.48550/arXiv.2511.16719.
 % PREV:
+% PREV: \bibitem{ngo2017}
+% PREV: H.~Q.~Ngo, A.~Ashikhmin, H.~Yang, E.~G.~Larsson, and T.~L.~Marzetta,
+% PREV: ``Cell-free massive MIMO versus small cells,'' \emph{IEEE Trans. Wireless
+% PREV: Commun.}, vol. 16, no. 3, pp. 1834--1850, 2017,
+% PREV: doi: 10.1109/TWC.2017.2655515.
+% PREV:
+% PREV: \bibitem{behlouli2014}
+% PREV: A.~Behlouli, P.~Combeau, L.~Aveneau, S.~Sahuguede, and
+% PREV: A.~Julien-Vergonjanne, ``Efficient simulation of optical wireless channel
+% PREV: application to WBANs with MISO link,'' \emph{Procedia Comput. Sci.}, vol. 40,
+% PREV: pp. 190--197, 2014, doi: 10.1016/j.procs.2014.12.027.
+% PREV:
+% PREV: \bibitem{cocheril2007}
+% PREV: Y.~Cocheril and R.~Vauzelle, ``A new ray-tracing based wave propagation model
+% PREV: including rough surfaces scattering,'' \emph{Prog. Electromagn. Res.}, vol. 75,
+% PREV: pp. 357--381, 2007, doi: 10.2528/PIER07061202.
+% PREV:
 % PREV: \bibitem{veach}
-% PREV: E.~Veach, \emph{Robust Monte Carlo Methods for Light Transport Simulation}.
-% PREV: Stanford, CA, USA: Stanford Univ., Ph.D. dissertation, 1997.
+% PREV: E.~Veach, ``Robust Monte Carlo methods for light transport simulation,'' Ph.D.
+% PREV: dissertation, Stanford Univ., Stanford, CA, USA, 1997. [Online]. Available:
+% PREV: \url{https://graphics.stanford.edu/papers/veach_thesis/}
 % PREV:
 % PREV: \bibitem{itis}
 % PREV: P.~A.~Hasgall \emph{et al.}, ``IT'IS database for thermal and electromagnetic
@@ -93,20 +119,18 @@
 % PREV: doi: 10.1088/0031-9155/55/2/N01.
 % PREV:
 % PREV: \end{thebibliography}
-% NEXT: \EOD
-% NEXT:
 % NEXT: \end{document}
-\begin{IEEEbiographynophoto}{Robin Wydaeghe}
-received the B.Sc. and M.Sc. degrees in engineering physics from Ghent
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{figures/rw.png}}]{Robin Wydaeghe}
+\hspace{0.25em}received the B.Sc. and M.Sc. degrees in engineering physics from Ghent
 University, Ghent, Belgium, in 2019 and 2021, respectively. He is currently
 pursuing the Ph.D. degree in engineering physics with Ghent University. His
 research interests include computational electromagnetics, numerical assessment
 of human radiofrequency electromagnetic-field exposure, and propagation
 modeling for next-generation wireless networks.
-\end{IEEEbiographynophoto}
+\end{IEEEbiography}
 
-\begin{IEEEbiographynophoto}{G\"unter Vermeeren}
-received the M.Sc. degree in industrial engineering from KAHO Sint-Lieven,
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{figures/gv.png}}]{G\"unter Vermeeren}
+\hspace{0.25em}received the M.Sc. degree in industrial engineering from KAHO Sint-Lieven,
 Ghent, Belgium, in 1998, the M.Sc. degree in electrical engineering from Ghent
 University, Belgium, in 2001, and the Ph.D. degree in electro-technical
 engineering from Ghent University in 2013. Since 2002, he has been a Research
@@ -114,26 +138,26 @@ Engineer with the Department of Information Technology, Ghent University. His
 research interests include numerical modeling and measurements of
 electromagnetic radiation in the domain of radiofrequency dosimetry,
 electromagnetic exposure, on-body propagation, and medical imaging systems.
-\end{IEEEbiographynophoto}
+\end{IEEEbiography}
 
-\begin{IEEEbiographynophoto}{Emmeric Tanghe}
-received the M.Sc. and Ph.D. degrees in electrical engineering from Ghent
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{figures/et.png}}]{Emmeric Tanghe}
+\hspace{0.25em}received the M.Sc. and Ph.D. degrees in electrical engineering from Ghent
 University, Ghent, Belgium, in 2005 and 2011, respectively. In 2015, he became
 a Part-Time Professor in medical applications of electromagnetic fields in and
 around the human body. Since 2011, he has been a Postdoctoral Researcher with
 Ghent University/IMEC, where he focuses on propagation modeling. From 2012 to
 2018, he was a Postdoctoral Fellow of FWO-V (Research Foundation-Flanders).
-\end{IEEEbiographynophoto}
+\end{IEEEbiography}
 
-\begin{IEEEbiographynophoto}{Wout Joseph}
-received the M.Sc. degree in electrical engineering from Ghent University,
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{figures/wj.png}}]{Wout Joseph}
+\hspace{0.25em}received the M.Sc. degree in electrical engineering from Ghent University,
 Ghent, Belgium, in 2000, and the Ph.D. degree in electrical engineering from
 Ghent University in 2005. Since 2009, he has been a Professor in the domain of
 experimental characterization of wireless communication systems. His research
 interests include measuring and modeling electromagnetic fields around base
 stations for mobile communications, electromagnetic exposure assessment,
 propagation for wireless communication systems, and antennas and calibration.
-\end{IEEEbiographynophoto}
+\end{IEEEbiography}
 
 ## reviews (biography)
 

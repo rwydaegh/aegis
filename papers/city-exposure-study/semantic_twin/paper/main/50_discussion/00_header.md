@@ -1,10 +1,8 @@
-% NEXT: The ten-location geometric screening shows a twofold span in location-median
-% NEXT: whole-body SAR across locations that differ in street width, building height,
-% NEXT: and roofline visibility. The factor of 13.34 between the largest and smallest
-% NEXT: route medians on the five detailed routes is much larger, reflecting the
-% NEXT: additional variation from image-derived materials, canopy, and route-specific
-% NEXT: visibility conditions. Each empirical distribution therefore describes only
-% NEXT: that fixed route and its observation points.
+% NEXT: Route-median normalized whole-body SAR differs by a factor of 14.31 across the
+% NEXT: ten selected routes. Street width, building height, roofline visibility,
+% NEXT: surface materials, and canopy all differ between these routes. The study does
+% NEXT: not separate their individual effects. Each distribution applies only to its
+% NEXT: route and observation points, so the result is not a city ranking.
 \section{Discussion}
 \label{sec:discussion}
 

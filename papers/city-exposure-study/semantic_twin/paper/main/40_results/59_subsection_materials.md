@@ -1,41 +1,26 @@
-% PREV: % claim: replica_convergence_12_to_16
-% PREV: The nested 12-to-16-replica comparison separates the route median from the
-% PREV: lower tail. Every route-median whole-body SAR changes by at most
-% PREV: $5.90\times10^{-5}$~dB. The largest lower-decile changes are 0.032226~dB in
-% PREV: Mexico City and 0.017636~dB in Tokyo Hachiko. The maximum pointwise
-% PREV: total-transfer changes in Table~\ref{tab:route-results} reach 0.043625 and
-% PREV: 0.019732~dB at these two sites. At 16 replicas, the 90th-percentile total-transfer standard errors are
-% PREV: 0.1461~dB in Mexico City and 0.0310~dB in Tokyo Hachiko. The route medians are
-% PREV: stable at 16 replicas.
-% PREV:
-% PREV: % claim: replica_convergence_48_to_64
-% PREV: A separate calculation reuses the first 16 replicas and extends every route
-% PREV: through 64 replicas. Between 48 and 64 replicas, the whole-body SAR
-% PREV: $q_{10}$ changes by 0.00344~dB in Mexico City and 0.00491~dB in Tokyo Hachiko.
-% PREV: The largest change among their six fully shadowed route points is 0.0125 and
-% PREV: 0.0104~dB. Both lower tails remain stable through 64 replicas.
-% PREV: In Mexico City, the single strongest diffuse replica at one shadowed point
-% PREV: carries 5738 times the median replica contribution.
-% PREV: This result is specific to the fixed routes and excludes route-selection and
-% PREV: city-sampling uncertainty. The complete nested comparison is given in the
-% PREV: supplementary material.
+% PREV: % claim: ten_route_replica_convergence_48_to_64
+% PREV: Between 48 and 64 runs, the largest pointwise change in total received power is
+% PREV: 0.32\% at a shadowed point in Mexico City. The next largest change is 0.13\% in
+% PREV: Tokyo Hachiko. The maximum is below 0.023\% on each of the other eight routes,
+% PREV: and every route-median whole-body SAR is stable. At one shadowed point in Mexico
+% PREV: City, the largest single-run diffuse estimate is 5,738 times the median run estimate. This
+% PREV: concentration explains the larger lower-tail variation. It does not measure
+% PREV: city-sampling or route-selection uncertainty. The supplementary material gives
+% PREV: the complete 48-to-64-run comparison.
 % NEXT: % claim: paired_material_evidence_control
-% NEXT: A paired control for Madrid and Mexico City replaces all image-mapped materials
-% NEXT: with the default geometry-based materials while keeping the mesh, route,
-% NEXT: roofline model, body, seeds, sampling budget, and transport steps identical.
-% NEXT: Each reported change is
-% NEXT: $10\log_{10}(x_{\mathrm{image}}/x_{\mathrm{geometry}})$. At Madrid the
-% NEXT: image-to-geometry changes in normalized whole-body SAR are $+0.233$, $+0.249$,
-% NEXT: and $+0.269$~dB for $q_{10}$, $q_{50}$, and $q_{90}$. At Mexico City the
-% NEXT: corresponding changes are $+24.84$, $-0.158$, and $+0.104$~dB. The large
-% NEXT: $q_{10}$ change comes from the three fully shadowed points, where both totals
-% NEXT: are near zero and first-diffuse transport is the only nonzero contribution. The
-% NEXT: direct term is identical in every pair. At Madrid, the image-derived map changes
-% NEXT: the route-median specular component by $+1.89$~dB and the first-diffuse
-% NEXT: component by $-12.43$~dB, but the total median changes by only $+0.249$~dB.
-% NEXT: This control tests the complete material map, including its parameters and the
+% NEXT: A paired control for Madrid and Mexico City replaces all image-derived
+% NEXT: materials with geometry-based defaults. The geometry, route, rooflines, body,
+% NEXT: seeds, number of rays, and propagation steps remain unchanged. In Madrid, the
+% NEXT: image-derived case increases normalized whole-body SAR by 5.5\%, 5.9\%, and
+% NEXT: 6.4\% at $q_{10}$, $q_{50}$, and $q_{90}$. In Mexico City, the image-derived case gives a roughly
+% NEXT: 305-fold larger $q_{10}$, a 3.6\% smaller median, and a 2.4\% larger $q_{90}$.
+% NEXT: The large lower-tail ratio occurs at three shadowed points where both values are
+% NEXT: near zero and only diffuse power is nonzero. Direct power is identical in every
+% NEXT: pair. In Madrid, image-derived materials increase the median specular component
+% NEXT: by 54\% and reduce the median diffuse component by 94\%, but increase the total
+% NEXT: median by only 5.9\%. The control includes both surface parameters and the
 % NEXT: treatment of woody vegetation as nonblocking. It does not measure material
 % NEXT: accuracy or isolate reflectance alone. The supplementary material gives
-% NEXT: pointwise and component-level comparisons.
-\subsection{Material Sensitivity}
+% NEXT: pointwise and component results.
+\subsection{Material sensitivity}
 \label{sec:material-sensitivity}

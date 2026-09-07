@@ -1,19 +1,14 @@
-% NEXT: This study aligned 360-degree street images with a photogrammetric city mesh to
-% NEXT: map surface materials around pedestrian routes at 15\,GHz. A roofline
-% NEXT: transmitter model and a directional absorption step then produced normalized
-% NEXT: whole-body SAR, with all results per unit $\rho_A P_{\mathrm{EIRP}}$. A
-% NEXT: geometric fixed-grid diagnostic at ten urban locations showed a twofold span in
-% NEXT: location-median whole-body SAR. Five of these locations were then studied with
-% NEXT: image-derived materials along fixed routes. In a controlled one-reflection
-% NEXT: scene, the first-diffuse estimate differed from deterministic quadrature by at
-% NEXT: most 0.0616\,dB, and the maximum total-transport difference from an independent
-% NEXT: Sionna RT forward calculation was 0.0344\,dB. Across 73 observation points on
-% NEXT: five routes, route-median whole-body SAR values differed by a factor of 13.34.
-% NEXT: Direct transport was largest at all 67 points with line of sight, while
-% NEXT: first-diffuse transport was the only nonzero contribution at the six fully
-% NEXT: shadowed points. The route medians were stable at 16 replicas, but the fully
-% NEXT: shadowed lower tails had larger estimator uncertainty. These results do not rank
-% NEXT: cities or predict deployed-network exposure.
+% NEXT: This study contributes a human-centric digital twin that uses SAM~3 Agent for
+% NEXT: agentic material assignment, a normalized roofline source model, and
+% NEXT: direction-aware body coupling for RF-EMF exposure assessment.
+% NEXT: Across 163 observation points on routes in ten cities, normalized route-median
+% NEXT: whole-body SAR differs by a factor of 14.31. Direct power is largest at 156 of
+% NEXT: 157 points with line of sight. The specular component is largest at one point, and a
+% NEXT: diffuse path is the only nonzero contribution at six shadowed points. Controlled
+% NEXT: validation gives maximum differences of 1.43\% from deterministic quadrature
+% NEXT: and 0.80\% from Sionna RT. Increasing the number of runs from 48 to 64 changes
+% NEXT: the total at any point by at most 0.32\%. We do not rank cities or predict
+% NEXT: exposure from a deployed network.
 \section{Conclusion}\label{sec:conclusion}
 
 ## reviews (section_header)

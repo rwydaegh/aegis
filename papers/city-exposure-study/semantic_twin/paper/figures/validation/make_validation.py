@@ -175,6 +175,8 @@ def load_and_validate() -> tuple[dict[str, np.ndarray], dict[str, Any]]:
 
     adjoint_residual_db = _db_ratio(adjoint_transfer, quadrature_transfer)
     sionna_residual_db = _db_ratio(sionna_transfer, quadrature_transfer)
+    adjoint_residual_percent = 100.0 * (adjoint_transfer / quadrature_transfer - 1.0)
+    sionna_residual_percent = 100.0 * (sionna_transfer / quadrature_transfer - 1.0)
     recorded_sionna_minus_adjoint = np.asarray(
         forward["comparison"]["bounced"]["sionna_minus_adjoint_db"], dtype=np.float64
     )
@@ -193,6 +195,8 @@ def load_and_validate() -> tuple[dict[str, np.ndarray], dict[str, Any]]:
         "sionna_standard_error": sionna_standard_error,
         "adjoint_residual_db": adjoint_residual_db,
         "sionna_residual_db": sionna_residual_db,
+        "adjoint_residual_percent": adjoint_residual_percent,
+        "sionna_residual_percent": sionna_residual_percent,
     }
     audit = {
         "schema_version": "controlled_depth1_validation_figure_audit_v1",
@@ -255,6 +259,16 @@ def load_and_validate() -> tuple[dict[str, np.ndarray], dict[str, Any]]:
             "independent_forward_tracer": {
                 "signed_by_receiver": sionna_residual_db.tolist(),
                 "absolute": _summarize_absolute(sionna_residual_db),
+            },
+        },
+        "difference_from_deterministic_quadrature_percent": {
+            "adjoint_first_diffuse": {
+                "signed_by_receiver": adjoint_residual_percent.tolist(),
+                "absolute": _summarize_absolute(adjoint_residual_percent),
+            },
+            "independent_forward_tracer": {
+                "signed_by_receiver": sionna_residual_percent.tolist(),
+                "absolute": _summarize_absolute(sionna_residual_percent),
             },
         },
     }
@@ -346,13 +360,13 @@ def draw(values: dict[str, np.ndarray]) -> None:
     )
     axes[0].grid(axis="y", color="0.86", linewidth=0.5)
 
-    adjoint_db_se = 10.0 / np.log(10.0) * values["adjoint_standard_error"] / values["adjoint"]
-    sionna_db_se = 10.0 / np.log(10.0) * values["sionna_standard_error"] / values["sionna"]
+    adjoint_percent_se = 100.0 * values["adjoint_standard_error"] / values["quadrature"]
+    sionna_percent_se = 100.0 * values["sionna_standard_error"] / values["quadrature"]
     axes[1].axhline(0.0, color="0.35", linewidth=0.7, zorder=1)
     axes[1].errorbar(
         x - 0.07,
-        values["adjoint_residual_db"],
-        yerr=adjoint_db_se,
+        values["adjoint_residual_percent"],
+        yerr=adjoint_percent_se,
         color="#0065BD",
         marker="s",
         markerfacecolor="white",
@@ -363,8 +377,8 @@ def draw(values: dict[str, np.ndarray]) -> None:
     )
     axes[1].errorbar(
         x + 0.07,
-        values["sionna_residual_db"],
-        yerr=sionna_db_se,
+        values["sionna_residual_percent"],
+        yerr=sionna_percent_se,
         color="#D62728",
         marker="^",
         markerfacecolor="white",
@@ -376,11 +390,10 @@ def draw(values: dict[str, np.ndarray]) -> None:
     axes[1].set_xticks(x)
     axes[1].set_xticklabels(RECEIVER_LABELS)
     axes[1].set_xlim(-0.35, RECEIVERS - 0.65)
-    axes[1].set_ylim(-0.105, 0.105)
-    axes[1].set_yticks((-0.1, -0.05, 0.0, 0.05, 0.1))
-    axes[1].set_yticklabels((r"$-0.10$", r"$-0.05$", r"$0.00$", r"$0.05$", r"$0.10$"))
+    axes[1].set_ylim(-2.5, 2.5)
+    axes[1].set_yticks((-2, -1, 0, 1, 2))
     axes[1].set_xlabel("Receiver")
-    axes[1].set_ylabel("Difference from quadrature [dB]")
+    axes[1].set_ylabel("Difference from quadrature [%]")
     axes[1].text(
         0.0,
         1.015,
@@ -397,7 +410,7 @@ def draw(values: dict[str, np.ndarray]) -> None:
         axis.tick_params(which="both", top=False, right=False)
 
     figure.suptitle(
-        r"Controlled diffuse-reflection scene, 15 GHz, depth 1",
+        r"Controlled single-reflection diffuse scene, 15 GHz",
         x=0.5,
         y=0.985,
         fontsize=8.0,

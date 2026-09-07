@@ -8,7 +8,7 @@
 % PREV: first-material transport model with 16 seeds, 200,000 primary rays per point
 % PREV: and seed, and 4,096 first-diffuse output cells. The fixed-grid design remains
 % PREV: separate from the pedestrian-route calculations and is not combined with the
-% PREV: five-route results.
+% PREV: route results.
 % NEXT: \begin{figure*}[!t]
 % NEXT:   \centering
 % NEXT:   \includegraphics[width=\textwidth]{figures/geometric_screening/geometric_screening.pdf}
@@ -16,7 +16,7 @@
 % NEXT:   Panel (a) shows $q_{10}$, $q_{50}$, and $q_{90}$ across the 64 fixed
 % NEXT:   observation points. Red bars give the 16-seed conditional Monte Carlo
 % NEXT:   standard error of $q_{50}$. Panel (b) shows the pooled additive component
-% NEXT:   shares. These results are not combined with the five-route calculation.}
+% NEXT:   shares. These results are not combined with the route calculation.}
 % NEXT:   \label{fig:si-geometric-screening}
 % NEXT: \end{figure*}
 Across the ten fixed-grid descriptions, the ratio of the largest to smallest

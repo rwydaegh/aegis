@@ -1,17 +1,17 @@
-\documentclass[border=0pt]{standalone}
+\documentclass[border=1pt]{standalone}
 
 \usepackage[T1]{fontenc}
-\usepackage{lmodern}
+\usepackage{newtxtext}
 \usepackage{graphicx}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,fit,positioning}
+\usetikzlibrary{arrows.meta,calc,fit,positioning}
 
 \begin{document}
 
 \resizebox{7.16in}{!}{%
 \begin{tikzpicture}[
   every node/.style={
-    font=\fontsize{8.3}{9.6}\selectfont,
+    font=\fontsize{8.1}{9.2}\selectfont,
     text=black
   },
   block/.style={
@@ -20,11 +20,11 @@
     rectangle,
     fill=white,
     align=center,
-    inner xsep=1.4mm,
-    inner ysep=1.5mm,
-    minimum width=28.2mm,
-    minimum height=21.5mm,
-    text width=25.4mm
+    inner xsep=1.1mm,
+    inner ysep=1.2mm,
+    minimum width=25.5mm,
+    minimum height=16.5mm,
+    text width=23.3mm
   },
   arrow/.style={
     ->,
@@ -35,24 +35,29 @@
     shorten >=0.3mm
   }
 ]
-  \node[block] (evidence)
-    {Street panoramas\\+ city geometry};
-  \node[block, right=3.1mm of evidence] (surface)
-    {Registered\\material surface};
-  \node[block, right=3.1mm of surface] (configuration)
-    {Fixed pedestrian\\route + roofline\\source measure};
-  \node[block, right=3.1mm of configuration] (transport)
-    {First-material\\directional transport\\direct + specular\\+ first diffuse};
-  \node[block, right=3.1mm of transport] (body)
-    {Direction-aware\\body field + normalized\\whole-body SAR};
-  \node[block, right=3.1mm of body] (summary)
-    {Fixed-route\\quantiles and\\component shares};
+  \node[block] (images) {360-degree street\\images};
+  \node[block, below=4.5mm of images] (geometry) {3-D city\\geometry};
+  \node[block, right=4.5mm of images] (labels)
+    {AI assigns object\\and material labels};
+  \node[block, below=24mm of labels] (setup)
+    {Pedestrian locations\\and body orientation\\Possible roofline\\transmitters};
 
-  \draw[arrow] (evidence) -- (surface);
-  \draw[arrow] (surface) -- (configuration);
-  \draw[arrow] (configuration) -- (transport);
-  \draw[arrow] (transport) -- (body);
-  \draw[arrow] (body) -- (summary);
+  \node[block, right=7.0mm of labels, yshift=-21mm] (twin)
+    {Human-centric\\digital twin};
+  \node[block, right=6.0mm of twin] (arrivals)
+    {Compute direct\\and reflected\\radio arrivals};
+  \node[block, right=6.0mm of arrivals] (body)
+    {Apply each radio arrival\\to the body};
+  \node[block, right=6.0mm of body] (sar)
+    {Whole-body SAR};
+
+  \draw[arrow] (images) -- (labels);
+  \draw[arrow] (labels.east) -| (twin.north);
+  \draw[arrow] (geometry.east) -- (twin.west);
+  \draw[arrow] (setup.east) -| (twin.south);
+  \draw[arrow] (twin) -- (arrivals);
+  \draw[arrow] (arrivals) -- (body);
+  \draw[arrow] (body) -- (sar);
 
   \node[
     draw=black,
@@ -60,13 +65,13 @@
     line width=0.45pt,
     inner xsep=1.3mm,
     inner ysep=1.4mm,
-    fit=(surface)(configuration)(transport)(body)
-  ] (audit) {};
+    fit=(images)(geometry)(labels)
+  ] (multimodal) {};
   \node[
     anchor=south,
     yshift=0.7mm,
     font=\fontsize{7.7}{8.7}\selectfont
-  ] at (audit.north) {Registration, transport, and body-coupling audits};
+  ] at (multimodal.north) {Multimodal city data};
 \end{tikzpicture}%
 }
 

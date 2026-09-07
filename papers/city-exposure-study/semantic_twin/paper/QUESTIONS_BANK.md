@@ -3,13 +3,16 @@
 These questions do not block a complete scientific draft. Provisional text is
 used where needed and is marked here rather than scattered through the paper.
 
-1. What is the final author list, order, IEEE membership status, affiliation,
-   email address, and ORCID for each author?
-   Robin Wydaeghe, G\"unter Vermeeren, Emmeric Tanghe, Wout Joseph. U can take a look at semantic_twin/paper/IEEE_Access_paper_submit.zip it has literally all u could ever need (go hard on stealing stuff from it)
+1. Resolved on 2026-08-27. The author order is Robin Wydaeghe, G\"unter
+   Vermeeren, Emmeric Tanghe, and Wout Joseph. The byline contains the confirmed
+   IEEE membership grades and ORCIDs. All authors use the Ghent University/IMEC
+   affiliation, and Robin Wydaeghe is the corresponding author at
+   `robin.wydaeghe@ugent.be`.
 2. What funding statement and grant numbers belong in the first-page footnote?
 None
-3. Which biography text and headshot should be used for each author?
-See above
+3. Resolved on 2026-08-27. The biographies use `figures/rw.png`,
+   `figures/gv.png`, `figures/et.png`, and `figures/wj.png` for Robin Wydaeghe,
+   G\"unter Vermeeren, Emmeric Tanghe, and Wout Joseph, respectively.
 4. Is the working title, "Image-informed urban propagation and route-level body
    exposure at 15 GHz," the preferred final title?
 Prolly not, feel free to think of a good one. I tend on the longer side. Has to contain the word exposure and 10 cities.
@@ -65,3 +68,40 @@ Uhhh whatever u think is best. We are adding new cities anyways.
     span), or should it remain supplement-only?
 It turns out this was with a 'shortcut' to compute them faster. They are now running the normal way. We will slide in those new results some day. But for now pretend like the new results are just like the old results, to be slotted in. And dont mention this in the text
 
+## OJ-COMS revision, 2026-08-27
+
+17. Resolved on 2026-08-27. Robin confirmed that the production surface-label
+    stage uses the SAM~3 Agent variant. The paper now identifies SAM~3 Agent as
+    the agentic AI stage. Historical planning documents that describe this
+    stage as future work are superseded for the manuscript.
+
+18. The stable public code and data archive is still missing. The draft can be
+    completed with a factual availability statement, but the DOI and final
+    repository URL must be supplied before submission.
+
+19. Resolved on 2026-08-27. The byline links Robin Wydaeghe to
+    `0000-0002-1374-0118`, G\"unter Vermeeren to `0000-0002-5309-3808`,
+    Emmeric Tanghe to `0000-0003-0020-6466`, and Wout Joseph to
+    `0000-0002-8807-0673`.
+
+20. The official OJ-COMS template prints received, revised, accepted,
+    publication, and current-version dates. The draft keeps the official
+    `XX Month, XXXX` placeholders. Replace them only when the journal supplies
+    the dates.
+
+21. Resolved on 2026-08-27. Retain the requested "in Ten Cities" title. The
+    methods and results identify the selected route and observation points in
+    each city directly.
+
+22. The special-issue page links to ScholarOne, while the general OJ-COMS page
+    points to the newer IEEE submission portal. Confirm the active portal when
+    the submission package is uploaded.
+
+23. IEEE asks authors to identify the system, affected sections, and level of
+    use when generative AI produced substantive article content. The current
+    acknowledgment follows the requested short generic wording. Confirm whether
+    a more specific disclosure is required for this submission.
+
+24. Resolved on 2026-08-27. `claude --model claude-opus-4-6` completed the
+    requested independent review. Its report is preserved in
+    `versions_and_feedback/claude_opus_flow_review.md`.

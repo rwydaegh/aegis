@@ -1,39 +1,22 @@
-% PREV: The paired material control tests the effect of image-derived materials on the
-% PREV: body results. The direct term is identical in both cases, so all observed
-% PREV: changes come from the materials used by the reflected and diffuse terms. In
-% PREV: Madrid, the specular and first-diffuse component changes have opposite signs,
-% PREV: while the route-median normalized whole-body SAR changes by only $0.249$~dB.
-% PREV: The Mexico City route median changes by $-0.158$~dB. Its much larger lower-tail
-% PREV: ratio comes from the three fully shadowed route points where both estimates are
-% PREV: close to zero, not from a central effect. The paired cases differ in their
-% PREV: assigned materials and in their treatment of woody canopy. The image-derived
-% PREV: case treats identified canopy as transparent because the city mesh has no canopy
-% PREV: volume. The comparison therefore measures sensitivity to both the material
-% PREV: assignment and the vegetation rule together, and does not establish material
-% PREV: accuracy on its own.
-% NEXT: The first priority is source calibration and end-to-end validation of the city
-% NEXT: calculation against outdoor field measurements of the directional field before
-% NEXT: body coupling. Second, higher specular orders and paths beyond the first diffuse
-% NEXT: event can be added through paired studies that report their change in whole-body
-% NEXT: SAR, variance, and computation time. Third, several routes at the same site can
-% NEXT: quantify route-selection variation beyond the current ten locations. Other
-% NEXT: frequencies, body models, and orientations can then test the remaining range of
-% NEXT: validity. Each extension should also report what fraction of the surfaces
-% NEXT: reached by the modeled paths carries an image-derived material.
-Several limits restrict what the results can say. The ten routes use one
-frequency (15~GHz), one body model facing along each walk, one roofline source
-model, and image-derived surface materials. Results are normalized per unit
-areal source density and EIRP. Scaling to a specific deployment is valid only
-if its transmitter positions follow the assumed roofline model. The transport
-model stops after one diffuse event and omits all later interactions and
-higher-order specular paths. The controlled comparison validates the
-first-diffuse component in a one-reflection scene. It does not validate the
-city calculations, which also use image-derived materials and exact specular
-transport. The 64 replicas quantify estimator randomness but not uncertainty in
-image-to-mesh alignment, geometry, material labels, route choice, transmitter
-placement, body shape, or body orientation. Ray calculation time ranges from
-5.95 to 73.77~s per site on one A6000 GPU, but image acquisition and material
-mapping take longer and do not yet have a complete timing record.
+% PREV: The paired control shows how image-derived surface information changes the body
+% PREV: result. Direct power is identical in both cases. In Madrid, the specular and
+% PREV: diffuse changes have opposite signs, while the total route median increases by
+% PREV: only 5.9\%. The Mexico City median decreases by 3.6\%. Its large lower-tail
+% PREV: ratio comes from three shadowed points where both estimates are near zero. The
+% PREV: image-derived case also treats identified canopy as
+% PREV: nonblocking because the city geometry has no canopy volume. The control tests
+% PREV: both the surface parameters and vegetation rule. It does not establish material
+% PREV: accuracy.
+This study covers ten selected routes at one frequency with one body model, one
+roofline source model, and one set of image-derived surface labels. The
+normalized values can be scaled to a specific deployment when its transmitter
+distribution matches the source model. The propagation calculation includes
+direct paths and one specular or diffuse reflection. The controlled comparison
+covers the diffuse component in a one-reflection scene. Variation across 64
+runs quantifies random ray-sampling error. Geometry, image alignment, surface
+labels, route choice, transmitter placement, body shape, and body orientation
+form separate sources of uncertainty. The recorded GPU times cover the ray and
+body calculations.
 
 ## AI notes
 - States range, transport, validation, uncertainty, and computational limits.

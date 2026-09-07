@@ -34,12 +34,12 @@
         0.0010476521388232878,
         0.0031437197543959065,
         0.0032349771986709868,
-        0.0030308326862071786,
+        0.0030308326862071777,
         0.0008200736421903568,
         -0.0028627429835683896
       ],
       "previous_to_final_absolute_change_db": {
-        "median": 0.002946787834887784,
+        "median": 0.0029467878348877837,
         "maximum": 0.0032349771986709868
       }
     },
@@ -112,7 +112,7 @@
         -0.029130159593716023,
         -0.061565053096781466,
         0.015588670428247837,
-        0.05034075086783818,
+        0.050340750867838166,
         -0.01675656964447292
       ],
       "absolute": {
@@ -122,23 +122,53 @@
     },
     "independent_forward_tracer": {
       "signed_by_receiver": [
-        0.0019737829987676475,
-        -0.000929356990264513,
+        0.001973782998767647,
+        -0.0009293569902645129,
         0.0005746526125025816,
-        0.0007916351768329499,
-        0.022231233245833856,
+        0.0007916351768329498,
+        0.022231233245833853,
         0.0004359029395907842
       ],
       "absolute": {
         "median": 0.0008604960835487314,
-        "maximum": 0.022231233245833856
+        "maximum": 0.022231233245833853
+      }
+    }
+  },
+  "difference_from_deterministic_quadrature_percent": {
+    "adjoint_first_diffuse": {
+      "signed_by_receiver": [
+        -0.4353425651012044,
+        -0.6685022276823216,
+        -1.407587271054822,
+        0.35958737117371964,
+        1.1658826693633273,
+        -0.3850908906771644
+      ],
+      "absolute": {
+        "median": 0.551922396391763,
+        "maximum": 1.407587271054822
+      }
+    },
+    "independent_forward_tracer": {
+      "signed_by_receiver": [
+        0.04545836228098121,
+        -0.021396946045437737,
+        0.013232740841906399,
+        0.018229734986929813,
+        0.5132054736701752,
+        0.010037539834262255
+      ],
+      "absolute": {
+        "median": 0.019813340516183775,
+        "maximum": 0.5132054736701752
       }
     }
   },
   "outputs": {
     "pdf": {
       "path": "validation.pdf",
-      "sha256": "bea214ff29b6f2d3bbb0812bbcbffc7a3904048a013cf7e55b6cca4c37429f25",
+      "sha256": "32b86942b3b08053c506498f387baf4d1cef5d02bded600e9d0c78d9a75ce907",
       "page_size": "515.52 x 185.76 pts",
       "contains_raster_images": false,
       "fonts_embedded": true,
@@ -147,17 +177,16 @@
         "CID TrueType"
       ],
       "fonts": [
+        "CENHIH+Cmr10",
         "CJTTVH+STIXGeneral-Bold",
-        "DBVCNN+Cmr10",
-        "DGROAQ+STIXGeneral-Regular",
-        "DOIIOB+Cmmi10",
+        "CTQZDQ+STIXGeneral-Regular",
         "FPYHOW+Cmsy10",
         "GHVTJQ+STIXGeneral-Regular"
       ]
     },
     "png": {
       "path": "validation.png",
-      "sha256": "05331dece4855dcd3852bc22690d0fcfa9c6dc589d229e672ea00c8989e9aed4",
+      "sha256": "64a9e00dfcd005b3f9de35e786de463555863f244db2b3eb7472350a0af28e53",
       "dimensions_pixels": [
         2148,
         774
@@ -167,7 +196,7 @@
   },
   "generator": {
     "path": "make_validation.py",
-    "sha256": "352e771cc41d545706292bb8b6cfeddafbadd22bc4a6931e4eca26529826e94a",
+    "sha256": "d3188e6b87ff6586ecb637103007ddfa267a357d06add5cb2fb07c3ab271e9e6",
     "style": [
       "science",
       "ieee",

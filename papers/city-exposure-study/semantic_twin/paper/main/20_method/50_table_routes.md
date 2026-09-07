@@ -1,29 +1,31 @@
-% PREV: Table~\ref{tab:routes} lists the five selected routes. Each route follows a
-% PREV: connected street corridor covered by aligned 360-degree street images. The
-% PREV: calculation places fixed observation points along that corridor, including
-% PREV: interpolated positions between image locations, so the number of images and
-% PREV: the number of observation points can differ. The 73 route points are fixed
-% PREV: observations, not a random sample of pedestrians or places. The body model
-% PREV: faces along the direction of travel, so a different route would change both
-% PREV: position and orientation.
-% NEXT: Two image-analysis models work in sequence. Mask2Former assigns a Vistas object
-% NEXT: class (building, road, vegetation, etc.) to every image
-% NEXT: pixel~\cite{mask2former,vistas}. SAM~3 then tests material and vegetation labels
-% NEXT: inside the compatible object regions~\cite{sam3}. Both sets of labels are
-% NEXT: projected onto the visible city mesh using the known camera position and viewing
-% NEXT: direction. Where multiple images cover the same triangle, the labels are
-% NEXT: combined into one material map, and every mapped triangle stays linked to its
-% NEXT: source image. A mesh triangle changes material only when the object and
-% NEXT: material labels agree and pass the acceptance tests. All other triangles keep
-% NEXT: their default material. The prompts, alignment tests, rejected labels, and
-% NEXT: mapping rules are given in the supplementary material.
+% PREV: With this configuration fixed, Table~\ref{tab:routes} summarizes the study
+% PREV: route in each of the ten cities. Each
+% PREV: route follows a connected street corridor covered by aligned 360-degree street
+% PREV: images. Fixed observation points include positions between image locations, so
+% PREV: the number of images and points can differ. The 163 points are fixed case-study
+% PREV: observations that describe the selected routes. A different route would change
+% PREV: both position and body orientation.
+% NEXT: \subsection{AI-assisted digital twin}
+% NEXT: \label{sec:digital-twin}
+% NEXT:
+% NEXT: Two image models are applied in sequence. First, Mask2Former assigns a Vistas object
+% NEXT: class such as building, road, or vegetation to every pixel~\cite{mask2former,vistas}.
+% NEXT: Next, SAM~3 Agent performs the agentic AI step by assigning material and vegetation
+% NEXT: labels inside compatible object regions~\cite{sam3}. Its prompt-guided concepts
+% NEXT: extend the fixed object classes with material evidence. The camera position and
+% NEXT: viewing direction locate these labels on visible triangles in the city geometry. When several images cover one
+% NEXT: triangle, their accepted labels are combined. A triangle changes material only
+% NEXT: when its object and material labels are compatible and meet the selection
+% NEXT: criteria. All other triangles keep their geometry-based material. The
+% NEXT: supplementary material gives the prompts, alignment tests, rejected labels, and
+% NEXT: assignment rules.
 \begin{table}[!t]
-  \caption{Ten fixed routes with observation-point counts, route spans, and computation times}
+  \caption{Study route in each city, with observation-point counts, route spans, and ray calculation times}
   \label{tab:routes}
   \centering
   \begin{tabular}{lrrr}
     \toprule
-    Site & Route points & Route span (m) & Wall time (s) \\
+    City & Points & Span (m) & Time (s) \\
     \midrule
     Brussels & 14 & 87.00 & 32.16 \\
     Ghent & 10 & 49.04 & 6.59 \\

@@ -1,17 +1,13 @@
-% PREV: Fig.~\ref{fig:flowchart} shows the computation and its input checks. A
-% PREV: hash-verified manifest lists every input file: aligned images, material map,
-% PREV: city mesh, route, roofline, body model, and transport settings. Only files whose
-% PREV: hashes match the manifest enter the five-site data set. The transport
-% PREV: calculation keeps direct, specular, and diffuse contributions separate until
-% PREV: the field is applied to the body. The five manifests contain 210 verified entries. Across the
-% PREV: resulting 1,168 directional body fields, the largest residual when the three
-% PREV: components are summed back to the stored total is
-% PREV: $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
-% NEXT: \subsection{Exposure Calculation}
+% PREV: Fig.~\ref{fig:flowchart} connects the scene-building and exposure stages. The
+% PREV: image and geometry branches first form the human-centric digital twin.
+% PREV: Pedestrian locations, body orientations, and possible roofline transmitters
+% PREV: complete its route-specific inputs. The final stages compute directional radio
+% PREV: arrivals and apply them to the body.
+% NEXT: \subsection{Exposure calculation}
 % NEXT: \label{sec:exposure-calc}
-\begin{figure*}[!t]
+\begin{figure*}[!htb]
   \centering
   \includegraphics[width=\textwidth]{figures/flowchart/flowchart.pdf}
-  \caption{Flowchart of the computation and input checks. Aligned 360-degree street images and the city mesh give the material map. The fixed route and visible roofline give observation and transmitter positions. Transport retains direct, first-order specular, and first-diffuse terms. A hash-verified file list pins every input to the ten-site result.}
+  \caption{Flowchart from multimodal city data to whole-body specific absorption rate (SAR). Mask2Former assigns object labels, and SAM~3 Agent assigns material labels. These labels, 3-D city geometry, pedestrian locations and body orientations, and possible roofline transmitters form a human-centric digital twin. The propagation and body calculations then give whole-body SAR.}
   \label{fig:flowchart}
 \end{figure*}

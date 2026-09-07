@@ -1,18 +1,18 @@
 % PREV: \begin{table*}[!t]
-% PREV:   \caption{Configuration of the verified five-site result.}
+% PREV:   \caption{Configuration of the verified ten-site result.}
 % PREV:   \label{tab:si-configuration}
 % PREV:   \centering
 % PREV:   \begin{tabular}{p{0.24\textwidth}p{0.70\textwidth}}
 % PREV:     \toprule
 % PREV:     Item & Production value \\
 % PREV:     \midrule
-% PREV:     Sites and routes & Korenmarkt, Prague, Madrid, Mexico City, and Tokyo Hachiko. The fixed routes contain 10, 22, 14, 11, and 16 route points. \\
+% PREV:     Sites and routes & Brussels, Ghent, Krakow, London, Madrid, Mexico City, Milan, Prague, Tokyo Hachiko, and Toulouse. The fixed routes contain 14, 10, 16, 22, 14, 11, 23, 22, 16, and 15 route points (163 total). \\
 % PREV:     Geometry and frequency & Original photogrammetric city mesh within a 250 m horizontal radius at 15 GHz. The circular crop area is $196{,}349.54\,\mathrm{m^2}$. \\
 % PREV:     Transmitter model & Roofline visible from the route. Areal density sets the expected number of transmitters. Physical three-dimensional roofline length assigns their relative probability to each segment. \\
 % PREV:     Exposure normalization & Per unit $\rho_A P_{\mathrm{EIRP}}$. Normalized whole-body SAR has unit $\mathrm{m^2\,kg^{-1}}$. \\
 % PREV:     Transport & Exact direct term, exact one-reflection specular term, and stochastic next-event estimation of one diffuse reflection at the first blocking surface. \\
 % PREV:     Surface model & Image-derived material map with measured finish roughness. The material probabilities are evaluated at the exact hit point. \\
-% PREV:     Monte Carlo & 200,000 IID primary rays per route point and replica. Seeds 7 through 22 give 16 replicas. Stored convergence results use 4, 8, 12, and 16 replicas. \\
+% PREV:     Monte Carlo & 200,000 IID primary rays per route point and replica. Seeds 7 through 70 give 64 replicas. Stored convergence results use 16, 24, 32, 48, and 64 replicas. \\
 % PREV:     Angular output & 4,096 passive cells collect only the first-diffuse estimate. Exact direct and one-reflection specular paths retain their arrival directions. The cells do not control launch directions. \\
 % PREV:     Body & Duke with 56,024 surface elements, area $1.87250\,\mathrm{m^2}$, mass 72.4 kg, and $T_0=0.500140$. The phantom faces along the walk. Body coupling uses the level-2 surface-field model. \\
 % PREV:     \bottomrule

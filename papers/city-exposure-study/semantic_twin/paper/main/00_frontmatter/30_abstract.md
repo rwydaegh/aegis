@@ -1,55 +1,57 @@
 % PREV: \begin{document}
 % PREV:
-% PREV: \history{}
-% PREV: \doi{}
+% PREV: \receiveddate{XX Month, XXXX}
+% PREV: \reviseddate{XX Month, XXXX}
+% PREV: \accepteddate{XX Month, XXXX}
+% PREV: \publisheddate{XX Month, XXXX}
+% PREV: \currentdate{XX Month, XXXX}
 % PREV:
-% PREV: \title{Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities at 15 GHz}
+% PREV: \title{Human-Centric 6G RF-EMF Exposure with AI-Assisted Digital Twins in Ten Cities}
 % PREV:
-% PREV: \author{\uppercase{Robin Wydaeghe}\authorrefmark{1},
-% PREV: \uppercase{G\"unter Vermeeren}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
-% PREV: \uppercase{Emmeric Tanghe}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
-% PREV: and~\uppercase{Wout Joseph}\authorrefmark{1}, \IEEEmembership{Senior Member, IEEE}}
+% PREV: \author{ROBIN WYDAEGHE~\orcidlink{0000-0002-1374-0118}\IEEEauthorrefmark{1},
+% PREV: G\"UNTER VERMEEREN~\orcidlink{0000-0002-5309-3808}\IEEEauthorrefmark{1},
+% PREV: \IEEEmembership{Member, IEEE},
+% PREV: EMMERIC TANGHE~\orcidlink{0000-0003-0020-6466}\IEEEauthorrefmark{1},
+% PREV: \IEEEmembership{Member, IEEE},
+% PREV: and WOUT JOSEPH~\orcidlink{0000-0002-8807-0673}\IEEEauthorrefmark{1},
+% PREV: \IEEEmembership{Senior Member, IEEE}}
 % PREV:
-% PREV: \address[1]{Department of Information Technology, Ghent University/IMEC,
-% PREV: 9052 Ghent, Belgium (e-mail: robin.wydaeghe@ugent.be)}
+% PREV: \affil{Department of Information Technology, Ghent University/IMEC,
+% PREV: 9052 Ghent, Belgium}
 % PREV:
-% PREV: \markboth
-% PREV: {Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
-% PREV: {Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
-% PREV:
-% PREV: \corresp{Corresponding author: Robin Wydaeghe
+% PREV: \corresp{CORRESPONDING AUTHOR: Robin Wydaeghe
 % PREV: (e-mail: robin.wydaeghe@ugent.be).}
-% NEXT: \begin{keywords}
-% NEXT: Body dosimetry, image-informed propagation, ray tracing, street imagery, urban
-% NEXT: propagation, whole-body specific absorption rate.
-% NEXT: \end{keywords}
+% PREV:
+% PREV: \markboth{Human-Centric 6G RF-EMF Exposure with AI-Assisted Digital Twins in Ten Cities}
+% PREV: {Wydaeghe \textit{et al.}}
+% NEXT: \begin{IEEEkeywords}
+% NEXT: AI-assisted digital twins, human-centric wireless systems, ray tracing,
+% NEXT: RF-EMF exposure, whole-body specific absorption rate.
+% NEXT: \end{IEEEkeywords}
 % NEXT:
-% NEXT: \titlepgskip=-21pt
 % NEXT: \maketitle
 \begin{abstract}
-Street-level radiofrequency exposure varies along a pedestrian route because
-buildings change the direct and reflected fields, surface materials affect how
-much power returns to the street, and the human body absorbs differently
-depending on the direction of arrival. This study projects 360-degree street
-images onto a photogrammetric city mesh to identify surface materials along
-pedestrian routes at 15~GHz in ten cities across Europe, Latin America, and
-East Asia. Transmitters are placed along the visible roofline in proportion to
-its physical length. All results are normalized per unit product of areal source
-density and effective isotropic radiated power (EIRP). The transport model
-treats direct paths and one specular reflection exactly, estimates one diffuse
-reflection, and stops. The arriving fields and their directions are then applied
-to a 56,024-element Duke body model. The ten routes contain 163 observation
-points, each calculated with 64 independent replicas of 200,000 primary rays
-and 4,096 angular output cells. In a controlled test scene, the adjoint
-estimate and deterministic quadrature differ by at most 0.0616~dB for the
-reflected term. An independent forward tracer gives a maximum difference of
-0.0344~dB. Route-median whole-body specific absorption rate differs by a factor
-of 14.31 across the ten routes. Direct paths carry the largest share at 156 of
-the 157 points with line of sight, while the diffuse reflection is the only nonzero
-modeled contribution at six fully shadowed points. The maximum change from 48 to
-64 replicas is 0.0139~dB, though lower-tail estimates in Mexico City and Tokyo
-are less stable. These results describe ten selected routes under a fixed model
-and do not estimate city-wide or deployed-network exposure.
+Realistic urban radiofrequency electromagnetic-field (RF-EMF) assessment must
+connect the field in a city to the power absorbed by the human body. This
+supports monitoring and epidemiological studies. The goal of
+this study is to compute direction-aware whole-body specific absorption rate
+(SAR) along pedestrian routes in ten cities. We combine 360-degree street
+images, photogrammetric geometry, and AI-derived object and material labels in
+a human-centric digital twin. Its agentic AI stage uses SAM~3 Agent for
+material and vegetation labeling. The calculation places possible transmitters
+along visible rooflines at 15~GHz, traces direct and single-reflection paths,
+and applies each arrival direction to an anatomical body model. Results are
+normalized per unit product of source density and effective isotropic radiated
+power. The ten routes contain 163 observation points, each evaluated with 64
+independent runs. The normalized route-median whole-body SAR ranges from
+0.00902 to 0.129~m$^2$~kg$^{-1}$, a factor of 14.31. Direct paths give the
+largest component at 156 of 157 points with line of sight. The single-reflection
+specular component is largest at one point, while the single-reflection diffuse component is
+the only nonzero component at six shadowed points. Increasing the number of
+runs from 48 to 64 changes the total at any point by at most 0.32\%. Validation
+in a controlled scene gives maximum differences of 1.43\% against deterministic
+quadrature and 0.80\% against an independent Sionna RT forward calculation.
+The reported values apply to the selected routes under the stated source model.
 \end{abstract}
 
 ## reviews (abstract)

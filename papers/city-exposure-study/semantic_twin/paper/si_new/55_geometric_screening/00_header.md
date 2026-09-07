@@ -8,7 +8,7 @@
 % NEXT: first-material transport model with 16 seeds, 200,000 primary rays per point
 % NEXT: and seed, and 4,096 first-diffuse output cells. The fixed-grid design remains
 % NEXT: separate from the pedestrian-route calculations and is not combined with the
-% NEXT: five-route results.
+% NEXT: route results.
 \FloatBarrier
 \section{Separate geometric fixed-grid diagnostic}
 \label{sec:si-geometric-screening}

@@ -1,53 +1,55 @@
-% PREV: The arrival directions are carried through to the body. For outward body-surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, define $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot(-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
+% PREV: The last two blocks in Fig.~\ref{fig:flowchart} make the propagation-to-body
+% PREV: handoff explicit. Accordingly, the calculation keeps each arrival direction
+% PREV: until body coupling. For outward
+% PREV: surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, let
+% PREV: $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot
+% PREV: (-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
 % PREV: \begin{equation}
-% PREV: \begin{aligned}
 % PREV: \widetilde{S}_{\mathrm{ab}}(\mathbf{r},\mathbf{x})
-% PREV: &\equiv\frac{S_{\mathrm{ab}}(\mathbf{r},\mathbf{x})}
-% PREV: {\rho_A P_{\mathrm{EIRP}}}
-% PREV: \\
-% PREV: &=T_0S_{\mathrm{ref}}(\mathbf{x})\Bigg[
-% PREV: \sum_{a\in\mathcal{D}}\alpha_a g(\mathbf{r},\widehat{\mathbf{k}}_a^{(\mathrm{d})}) \\
-% PREV: &\hspace{5.8em}+\sum_{b\in\mathcal{S}_1}\beta_b g(\mathbf{r},\widehat{\mathbf{k}}_b^{(\mathrm{s})}) \\
-% PREV: &\hspace{5.8em}+\sum_{q=1}^{Q}\widehat{\gamma}_q g(\mathbf{r},\widehat{\mathbf{k}}_q^{(\mathrm{f})})
-% PREV: \Bigg] \, .
-% PREV: \end{aligned}
+% PREV: \equiv\frac{S_{\mathrm{ab}}(\mathbf{r},\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
+% PREV: =T_0S_{\mathrm{ref}}(\mathbf{x})
+% PREV: \int_{\mathbb{S}^2}g(\mathbf{r},\widehat{\mathbf{k}})\,
+% PREV: \mathrm{d}\mu_{\mathbf{x}}(\widehat{\mathbf{k}}) .
 % PREV: \label{eq:body-coupling}
 % PREV: \end{equation}
-% PREV: Here, $T_0$ is the normal-incidence power-transmission coefficient from
-% PREV: the IT'IS tissue database at 15~GHz~\cite{itis}. It approximates the
-% PREV: absorption cross section for incoherent, unpolarized illumination. The
-% PREV: function $g$ sets the absorbed fraction to zero where the surface faces away
-% PREV: from the incoming direction. The calculation applies this directional
-% PREV: absorption to the 56,024-element Duke anatomical mesh~\cite{christ2010}.
-% PREV: Because all quantities are normalized by $\rho_A P_{\mathrm{EIRP}}$,
-% PREV: $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the triangle area
-% PREV: $A_{\mathbf{r}}$ at position $\mathbf{r}$ and body mass
-% PREV: $m_{\mathrm{body}}$, the normalized integrated quantities are
+% PREV: The angular integral sums the direct, specular, and diffuse arrivals while
+% PREV: retaining their incoming directions.
+% PREV: Here, $T_0$ is the normal-incidence power-transmission coefficient from the
+% PREV: IT'IS tissue database at 15~GHz~\cite{itis}. It represents incoherent,
+% PREV: unpolarized illumination. The function $g$ gives zero absorption where the
+% PREV: surface faces away from the incoming direction. We apply this law to the
+% PREV: 56,024-element Duke anatomical mesh~\cite{christ2010}. With triangle area
+% PREV: $A_{\mathbf{r}}$ and body mass $m_{\mathrm{body}}$, the normalized endpoints are
 % PREV: \begin{equation}
 % PREV: \begin{aligned}
 % PREV: \widetilde{P}_{\mathrm{abs}}(\mathbf{x})
-% PREV: &\equiv\frac{P_{\mathrm{abs}}(\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
-% PREV: \\
 % PREV: &=\sum_{\mathbf{r}}A_{\mathbf{r}}\widetilde{S}_{\mathrm{ab}}(\mathbf{r},\mathbf{x}), \\
 % PREV: \widetilde{\mathrm{SAR}}_{\mathrm{wb}}(\mathbf{x})
-% PREV: &\equiv\frac{\mathrm{SAR}_{\mathrm{wb}}(\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
-% PREV: \\
-% PREV: &=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} \, .
+% PREV: &=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} .
 % PREV: \end{aligned}
 % PREV: \label{eq:body-endpoints}
 % PREV: \end{equation}
-% PREV: $\widetilde{P}_{\mathrm{abs}}$ has units m$^2$, and $\widetilde{\mathrm{SAR}}_{\mathrm{wb}}$ has units m$^2$~kg$^{-1}$.
-Each replica launches 200,000 independent and identically distributed primary
-rays per route point and accumulates first-diffuse power in 4,096 fixed
-Fibonacci output cells. Exact direct and specular paths bypass this grid. The output cells do not control the launch directions.
-The calculations use 16 replicas with seeds 7 through 22 and retain cumulative
-results after 4, 8, 12, and 16 replicas. Only the first-diffuse estimate varies
-between replicas. Scalar quantities and body fields are averaged across replicas
-before route statistics are computed. Route quantiles use linear interpolation
-over equally weighted route points, and the plotted empirical distributions use
-positions $(\operatorname{rank}-0.5)/n$. Multipath surplus is computed
-only where direct transfer is positive. A route point with zero direct transfer
-remains in the whole-body SAR distribution but has no finite surplus value.
+% PREV: $\widetilde{P}_{\mathrm{abs}}$ has units m$^2$, and
+% PREV: $\widetilde{\mathrm{SAR}}_{\mathrm{wb}}$ has units m$^2$~kg$^{-1}$ per unit
+% PREV: $\rho_A P_{\mathrm{EIRP}}$.
+\subsection{Numerical settings and route statistics}
+\label{sec:numerical-settings}
+
+For each independent run, the calculation launches 200,000 primary rays per
+observation point and collects single-reflection diffuse power in 4,096 fixed
+angular cells. Direct and specular paths are not binned on this grid, which does
+not control the launch directions. The calculations use 64 runs with seeds 7
+through 70 and keep cumulative results after 4, 8, 12, 16, 32, 48, and 64 runs.
+Only the diffuse estimate varies between runs. Whole-body SAR values and body-surface fields
+are averaged before route statistics are computed. The ten routes give 10,432
+directional body fields from 2.086 billion primary rays. Route quantiles use
+linear interpolation over equally weighted points, and empirical distribution
+positions are $(\operatorname{rank}-0.5)/n$. Excess above direct-path power is
+computed only where direct power is positive. Points with zero direct power
+remain in the SAR distribution but have no finite excess value. Ray calculation
+takes 5.95 to 73.77~s per city on one NVIDIA A6000 GPU. These times exclude
+image acquisition, alignment, depth estimation, and surface-label assignment
+because their full times were not recorded.
 
 ## reviews (paragraph)
 

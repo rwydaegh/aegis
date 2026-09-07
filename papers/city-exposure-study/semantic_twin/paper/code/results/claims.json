@@ -21,85 +21,165 @@
       "verified": true
     },
     "current_campaign_contract": {
-      "docstring": "The paper result is five authenticated 15 GHz fixed-route campaigns.",
+      "docstring": "The paper result is ten authenticated 15 GHz fixed-route campaigns.",
       "error": null,
       "output": {
-        "authenticated_campaign_files": 210,
         "body_surface_elements": 56024,
-        "cities": 5,
-        "city_replica_runs": 80,
         "frequency_hz": 15000000000.0,
         "normalization": "per unit rho_A P_EIRP",
         "passive_output_cells": 4096,
-        "primary_rays": 233600000,
-        "standpoint_replica_fields": 1168,
-        "standpoints": 73
+        "point_replica_fields": 10432,
+        "primary_rays": 2086400000,
+        "replicas_per_route": 64,
+        "routes": 10,
+        "seed_range_inclusive": [
+          7,
+          70
+        ],
+        "seeds": [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "standpoints": 163
       },
       "verified": true
     },
-    "directional_component_representation": {
-      "docstring": "Sealed shards distinguish direct/specular atoms from passive diffuse cells.",
+    "five_route_ray_reached_evidence_coverage": {
+      "docstring": "Five-route non-direct transport is partitioned by exact evidence state.",
       "error": null,
       "output": {
-        "all_specular": {
-          "atom_count_range": [
-            0,
-            1107
-          ],
-          "representation": "exact order-1 directional atoms"
+        "accepted_events": {
+          "first_diffuse": 95389603,
+          "order_1_specular": 689888
         },
-        "direct": {
-          "atom_count_range": [
-            0,
-            447
-          ],
-          "representation": "exact directional atoms"
+        "denominator": "retained modeled non-direct body-coupled contribution",
+        "non_direct_wbsar_fraction": {
+          "geometric_fallback": 0.24097223009850738,
+          "panorama_informed": 0.7590277699014926
         },
-        "first_diffuse": {
-          "cell_capacity": 4096,
-          "nonzero_cell_count_range": [
-            542,
-            3471
-          ],
-          "representation": "nonzero passive angular output cells"
-        },
-        "launch_cells": false,
-        "standpoint_replica_rows": 1168
+        "scope": "five routes and 73 standpoints only",
+        "table_rows": {
+          "combined_non_direct": {
+            "host_incompatible": 0.12768980746784794,
+            "no_panorama_evidence": 0.11279507119363207,
+            "other_fallback": 0.0004873514370273951,
+            "panorama_informed": 0.7590277699014926
+          },
+          "first_diffuse": {
+            "host_incompatible": 0.42313964955266,
+            "no_panorama_evidence": 0.44345147385166056,
+            "other_fallback": 4.169249224817807e-05,
+            "panorama_informed": 0.13336718410343135
+          },
+          "order_1_specular": {
+            "host_incompatible": 0.10530373486292556,
+            "no_panorama_evidence": 0.08774141679005237,
+            "other_fallback": 0.0005211187710170229,
+            "panorama_informed": 0.806433729576005
+          }
+        }
       },
       "verified": true
     },
-    "five_city_wbsar_route_quantiles": {
-      "docstring": "Route q10, q50, and q90 values are recomputed from all 73 standpoints.",
+    "five_route_replica_convergence_48_to_64": {
+      "docstring": "The current-contract 64-replica extension authenticates the two lower tails.",
       "error": null,
       "output": {
-        "cities": {
+        "lower_tail_status": {
           "Korenmarkt": {
-            "q10": 0.0578327438321708,
-            "q50": 0.06204518535491678,
-            "q90": 0.0686717408320388
+            "q10_bootstrap_95_width_db": 0.00022232758404101718,
+            "q10_change_db": 7.229028053766959e-05,
+            "shadow_point_max_change_db": null
           },
           "Madrid": {
-            "q10": 0.020913294077888667,
-            "q50": 0.02238105138497516,
-            "q90": 0.02317093976407998
+            "q10_bootstrap_95_width_db": 0.00037805244663012116,
+            "q10_change_db": 6.147006725693227e-06,
+            "shadow_point_max_change_db": null
           },
           "Mexico": {
-            "q10": 9.92187947769122e-07,
-            "q50": 0.12906154022429828,
-            "q90": 0.2957983257792987
+            "q10_bootstrap_95_width_db": 0.3638279391681467,
+            "q10_change_db": 0.0034408407908050015,
+            "shadow_point_max_change_db": 0.012484950417289281
           },
           "Prague": {
-            "q10": 0.012157461907945675,
-            "q50": 0.0130731658075402,
-            "q90": 0.014593757806466821
+            "q10_bootstrap_95_width_db": 0.00021814219482941877,
+            "q10_change_db": 2.027887149130285e-05,
+            "shadow_point_max_change_db": null
           },
           "Tokyo": {
-            "q10": 3.656217959315326e-05,
-            "q50": 0.009673886624732418,
-            "q90": 0.025200369144298053
+            "q10_bootstrap_95_width_db": 0.05379368852716219,
+            "q10_change_db": 0.004914586580220958,
+            "shadow_point_max_change_db": 0.010443295223947286
           }
         },
-        "unit": "m^2 kg^-1 per unit rho_A P_EIRP"
+        "scope": "finite-replica uncertainty conditional on the fixed registered routes",
+        "sealed_prefix_exact": true,
+        "transition": [
+          48,
+          64
+        ]
       },
       "verified": true
     },
@@ -218,154 +298,6 @@
       },
       "verified": true
     },
-    "pooled_median_wbsar_component_shares": {
-      "docstring": "Pooled component medians are rebuilt from all body-metric replica shards.",
-      "error": null,
-      "output": {
-        "note": "componentwise medians need not sum to 100 percent",
-        "reported_share_percent": {
-          "all_specular": 21.391,
-          "direct": 77.662,
-          "first_diffuse": 0.419
-        },
-        "share_percent": {
-          "all_specular": 21.390850539012177,
-          "direct": 77.66194473787252,
-          "first_diffuse": 0.41895042544439237
-        },
-        "standpoints": 73,
-        "statistic": "componentwise median of the 73 standpoint shares"
-      },
-      "verified": true
-    },
-    "raw_component_closure": {
-      "docstring": "Direct, specular, and diffuse fields close to total across all 1,168 fields.",
-      "error": null,
-      "output": {
-        "fields": 1168,
-        "maximum_absolute_residual_m_inv2": 1.734723475976807e-18
-      },
-      "verified": true
-    },
-    "ray_reached_evidence_coverage": {
-      "docstring": "Pooled retained non-direct transport is partitioned by exact evidence state.",
-      "error": null,
-      "output": {
-        "accepted_events": {
-          "first_diffuse": 95389603,
-          "order_1_specular": 689888
-        },
-        "denominator": "retained modeled non-direct body-coupled contribution",
-        "non_direct_wbsar_fraction": {
-          "geometric_fallback": 0.24097223009850738,
-          "panorama_informed": 0.7590277699014926
-        },
-        "table_rows": {
-          "combined_non_direct": {
-            "host_incompatible": 0.12768980746784794,
-            "no_panorama_evidence": 0.11279507119363207,
-            "other_fallback": 0.0004873514370273951,
-            "panorama_informed": 0.7590277699014926
-          },
-          "first_diffuse": {
-            "host_incompatible": 0.42313964955266,
-            "no_panorama_evidence": 0.44345147385166056,
-            "other_fallback": 4.169249224817807e-05,
-            "panorama_informed": 0.13336718410343135
-          },
-          "order_1_specular": {
-            "host_incompatible": 0.10530373486292556,
-            "no_panorama_evidence": 0.08774141679005237,
-            "other_fallback": 0.0005211187710170229,
-            "panorama_informed": 0.806433729576005
-          }
-        }
-      },
-      "verified": true
-    },
-    "replica_convergence_12_to_16": {
-      "docstring": "The final nested-replica change is authenticated for every fixed route.",
-      "error": null,
-      "output": {
-        "cities": {
-          "Korenmarkt": {
-            "lower_decile_worst_change_db": 5.2891030093640733e-05,
-            "maximum_total_transfer_change_db": 8.19350556661845e-05,
-            "p90_standard_error_db": 0.00025817147731677683,
-            "route_median_wbsar_change_db": 5.903060058470832e-05
-          },
-          "Madrid": {
-            "lower_decile_worst_change_db": 0.00019362155034890387,
-            "maximum_total_transfer_change_db": 0.000408320201322325,
-            "p90_standard_error_db": 0.00034434383770933153,
-            "route_median_wbsar_change_db": 1.129869503847132e-05
-          },
-          "Mexico": {
-            "lower_decile_worst_change_db": 0.03222604137500032,
-            "maximum_total_transfer_change_db": 0.04362524009941786,
-            "p90_standard_error_db": 0.146098927284293,
-            "route_median_wbsar_change_db": 4.8977160445773606e-05
-          },
-          "Prague": {
-            "lower_decile_worst_change_db": 0.00016909979381862688,
-            "maximum_total_transfer_change_db": 0.00015589567357771397,
-            "p90_standard_error_db": 0.00024392918841562519,
-            "route_median_wbsar_change_db": 9.08967708114676e-06
-          },
-          "Tokyo": {
-            "lower_decile_worst_change_db": 0.01763639109243898,
-            "maximum_total_transfer_change_db": 0.019731518973211258,
-            "p90_standard_error_db": 0.030982958084244054,
-            "route_median_wbsar_change_db": 5.560101508359477e-05
-          }
-        },
-        "transition": [
-          12,
-          16
-        ]
-      },
-      "verified": true
-    },
-    "replica_convergence_48_to_64": {
-      "docstring": "The current-contract 64-replica extension authenticates the two lower tails.",
-      "error": null,
-      "output": {
-        "lower_tail_status": {
-          "Korenmarkt": {
-            "q10_bootstrap_95_width_db": 0.00022232758404101718,
-            "q10_change_db": 7.229028053766959e-05,
-            "shadow_point_max_change_db": null
-          },
-          "Madrid": {
-            "q10_bootstrap_95_width_db": 0.00037805244663012116,
-            "q10_change_db": 6.147006725693227e-06,
-            "shadow_point_max_change_db": null
-          },
-          "Mexico": {
-            "q10_bootstrap_95_width_db": 0.3638279391681467,
-            "q10_change_db": 0.0034408407908050015,
-            "shadow_point_max_change_db": 0.012484950417289281
-          },
-          "Prague": {
-            "q10_bootstrap_95_width_db": 0.00021814219482941877,
-            "q10_change_db": 2.027887149130285e-05,
-            "shadow_point_max_change_db": null
-          },
-          "Tokyo": {
-            "q10_bootstrap_95_width_db": 0.05379368852716219,
-            "q10_change_db": 0.004914586580220958,
-            "shadow_point_max_change_db": 0.010443295223947286
-          }
-        },
-        "scope": "finite-replica uncertainty conditional on the fixed registered routes",
-        "sealed_prefix_exact": true,
-        "transition": [
-          48,
-          64
-        ]
-      },
-      "verified": true
-    },
     "roofline_budget_sensitivity": {
       "docstring": "Every cheaper current-contract budget arm fails the directional gate.",
       "error": null,
@@ -414,45 +346,102 @@
       },
       "verified": true
     },
-    "route_median_contrast_factor": {
-      "docstring": "The largest and smallest selected-route medians differ by a factor of 13.34.",
+    "ten_route_component_dominance": {
+      "docstring": "Direct is largest at 156 of 157 LOS points; six shadowed points are diffuse-only.",
       "error": null,
       "output": {
-        "factor": 13.341229355979571,
-        "largest_route_median": "Mexico",
-        "reported_factor": 13.34,
-        "scope": "contrast among five selected routes, not a city ranking",
-        "smallest_route_median": "Tokyo"
-      },
-      "verified": true
-    },
-    "six_shadowed_standpoints": {
-      "docstring": "Six points have zero direct and order-1 specular transport but positive diffuse transport.",
-      "error": null,
-      "output": {
-        "count": 6,
-        "finite_multipath_surplus_points": 67,
+        "diffuse_only_locations": [
+          {
+            "city": "Mexico City",
+            "standpoint": 0
+          },
+          {
+            "city": "Mexico City",
+            "standpoint": 1
+          },
+          {
+            "city": "Mexico City",
+            "standpoint": 3
+          },
+          {
+            "city": "Tokyo Hachiko",
+            "standpoint": 13
+          },
+          {
+            "city": "Tokyo Hachiko",
+            "standpoint": 14
+          },
+          {
+            "city": "Tokyo Hachiko",
+            "standpoint": 15
+          }
+        ],
         "largest_component_counts": {
-          "direct": 67,
+          "all_specular": 1,
+          "direct": 156,
           "first_diffuse": 6
         },
-        "standpoints": {
-          "Mexico": [
+        "line_of_sight_points": 157,
+        "points": 163,
+        "shadowed_points": 6,
+        "shadowed_standpoints": {
+          "Mexico City": [
             0,
             1,
             3
           ],
-          "Tokyo": [
+          "Tokyo Hachiko": [
             13,
             14,
             15
           ]
-        }
+        },
+        "specular_largest_locations": [
+          {
+            "city": "Brussels",
+            "standpoint": 2
+          }
+        ]
       },
       "verified": true
     },
-    "ten_route_production_extension": {
-      "docstring": "",
+    "ten_route_median_contrast_factor": {
+      "docstring": "Mexico City's route median is 14.31 times Milan's route median.",
+      "error": null,
+      "output": {
+        "factor": 14.314818947320367,
+        "largest_route_median": "Mexico City",
+        "largest_route_median_value": 0.12906056842948704,
+        "reported_factor": 14.31,
+        "scope": "contrast among ten selected routes, not a city ranking",
+        "smallest_route_median": "Milan",
+        "smallest_route_median_value": 0.009015871517791447,
+        "unit": "m^2 kg^-1 per unit rho_A P_EIRP"
+      },
+      "verified": true
+    },
+    "ten_route_pooled_median_wbsar_component_shares": {
+      "docstring": "Pooled component medians are rebuilt from all 163 route-point results.",
+      "error": null,
+      "output": {
+        "note": "componentwise medians need not sum to 100 percent",
+        "reported_share_percent": {
+          "all_specular": 20.231,
+          "direct": 78.056,
+          "first_diffuse": 0.5
+        },
+        "share_percent": {
+          "all_specular": 20.230565408540063,
+          "direct": 78.05583488137367,
+          "first_diffuse": 0.49973569313391336
+        },
+        "standpoints": 163,
+        "statistic": "componentwise median of the 163 route-point shares"
+      },
+      "verified": true
+    },
+    "ten_route_production_results": {
+      "docstring": "Authenticate the promoted ten-route result and recompute its cohort summaries.",
       "error": null,
       "output": {
         "component_share_ranges": {
@@ -491,12 +480,151 @@
           "Toulouse": 0.030216778100008404
         },
         "routes": 10,
+        "seed_range_inclusive": [
+          7,
+          70
+        ],
         "standpoints": 163
+      },
+      "verified": true
+    },
+    "ten_route_replica_convergence_48_to_64": {
+      "docstring": "All ten route quantiles are stable from 48 to 64 independent seeds.",
+      "error": null,
+      "output": {
+        "maximum_route_quantile_abs_change_db": {
+          "q10": 0.004914586580220958,
+          "q50": 0.00015714191667892853,
+          "q90": 7.61602380400701e-05
+        },
+        "replicas": [
+          48,
+          64
+        ],
+        "route_quantile_abs_change_db": {
+          "Brussels": {
+            "q10": 0.00011356814246172675,
+            "q50": 2.1446167456262474e-05,
+            "q90": 7.348125206310219e-05
+          },
+          "Ghent": {
+            "q10": 7.229028053766959e-05,
+            "q50": 7.514916899310245e-05,
+            "q90": 6.382351036670361e-05
+          },
+          "Krakow": {
+            "q10": 0.00012986412131769278,
+            "q50": 0.00014527532195026462,
+            "q90": 7.61602380400701e-05
+          },
+          "London": {
+            "q10": 4.2696581544858546e-05,
+            "q50": 0.00015714191667892853,
+            "q90": 1.4817163379563153e-05
+          },
+          "Madrid": {
+            "q10": 6.147006725693227e-06,
+            "q50": 5.5939870685556444e-05,
+            "q90": 2.2793307824272772e-05
+          },
+          "Mexico City": {
+            "q10": 0.0034408407908050015,
+            "q50": 2.6480606425963504e-06,
+            "q90": 3.4050079323794956e-05
+          },
+          "Milan": {
+            "q10": 8.831504501813855e-05,
+            "q50": 9.318853529897845e-05,
+            "q90": 1.69136372688529e-05
+          },
+          "Prague": {
+            "q10": 2.027887149130285e-05,
+            "q50": 6.722771107984953e-05,
+            "q90": 5.5128246288565305e-05
+          },
+          "Tokyo Hachiko": {
+            "q10": 0.004914586580220958,
+            "q50": 2.240790221443757e-05,
+            "q90": 2.0120923639985872e-05
+          },
+          "Toulouse": {
+            "q10": 1.0982041031462617e-05,
+            "q50": 5.9988269939020615e-05,
+            "q90": 4.479281906693064e-05
+          }
+        },
+        "routes": 10,
+        "seed_range_at_64_inclusive": [
+          7,
+          70
+        ]
+      },
+      "verified": true
+    },
+    "ten_route_wbsar_route_quantiles": {
+      "docstring": "Route q10, q50, and q90 values are recomputed from all 163 points.",
+      "error": null,
+      "output": {
+        "cities": {
+          "Brussels": {
+            "q10": 0.025021953356122794,
+            "q50": 0.031186801900083272,
+            "q90": 0.033714272203305
+          },
+          "Ghent": {
+            "q10": 0.05783450605880442,
+            "q50": 0.062047333041072586,
+            "q90": 0.06866785288028787
+          },
+          "Krakow": {
+            "q10": 0.006717342636831953,
+            "q50": 0.02252023184141687,
+            "q90": 0.04926804489859621
+          },
+          "London": {
+            "q10": 0.011746088805666664,
+            "q50": 0.015008010411373535,
+            "q90": 0.017443634924234744
+          },
+          "Madrid": {
+            "q10": 0.020912997730475873,
+            "q50": 0.02238111794268595,
+            "q90": 0.023170345268216663
+          },
+          "Mexico City": {
+            "q10": 1.0052271467418079e-06,
+            "q50": 0.12906056842948704,
+            "q90": 0.2957659607223248
+          },
+          "Milan": {
+            "q10": 0.008528983382906584,
+            "q50": 0.009015871517791447,
+            "q90": 0.009861179674594565
+          },
+          "Prague": {
+            "q10": 0.012157498669957316,
+            "q50": 0.013073562987120951,
+            "q90": 0.014594651002026216
+          },
+          "Tokyo Hachiko": {
+            "q10": 3.634582286181274e-05,
+            "q50": 0.009673651662657361,
+            "q90": 0.025199585623447
+          },
+          "Toulouse": {
+            "q10": 0.0243124047345837,
+            "q50": 0.030216778100008404,
+            "q90": 0.042914910888784324
+          }
+        },
+        "routes": 10,
+        "standpoints": 163,
+        "unit": "m^2 kg^-1 per unit rho_A P_EIRP"
       },
       "verified": true
     }
   },
-  "generated_at": "2026-08-17T22:41:27Z",
-  "git_sha": "08e4e32be79e7c80fd0be12c5037eb9814b6063a",
+  "generated_at": "2026-08-27T04:40:04Z",
+  "git_sha": "ed92325102f3b82287db628a7ee573122043fe83",
   "schema_version": 1
 }

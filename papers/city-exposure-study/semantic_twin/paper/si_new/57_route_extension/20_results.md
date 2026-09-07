@@ -4,11 +4,12 @@
 % PREV: independent seeds from 7 through 70, 200,000 primary rays per point and seed,
 % PREV: and 4,096 first-diffuse output cells. Direct, exact order-1 specular, and
 % PREV: first-diffuse transport use the first-material model described in the main text.
-% PREV: The selected routes do not form a population sample or a city ranking.
+% PREV: The selected routes are fixed case studies, not a population sample or a city
+% PREV: ranking.
 % NEXT: \begin{figure*}[!t]
 % NEXT:   \centering
 % NEXT:   \includegraphics[width=0.92\textwidth]{figures/ten_route_extension/ten_route_extension.pdf}
-% NEXT:   \caption{Production results for ten selected routes. Panel (a) shows
+% NEXT:   \caption{Per-route exposure and component detail. Panel (a) shows
 % NEXT:   the route $q_{10}$--$q_{90}$ interval and an open marker at $q_{50}$ for
 % NEXT:   normalized whole-body SAR. Panel (b) shows the route-summed additive absorbed-power
 % NEXT:   shares. All routes use 64 replicas and image-derived surface properties. The

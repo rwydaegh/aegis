@@ -9,7 +9,7 @@
 % PREV:
 % PREV: The bootstrap resamples complete replicas jointly over all route points, so it
 % PREV: preserves spatial dependence within one replica. Its 2,000 draws use PCG64 with
-% PREV: the authenticated analysis seed 20260814. All five identities, manifests,
+% PREV: the authenticated analysis seed 20260814. All ten identities, manifests,
 % PREV: component closures, and common inputs pass, and both lower tails meet the
 % PREV: stated 48-to-64 aggregate criteria. Mexico City nevertheless retains
 % PREV: rare-event first-diffuse behavior: its maximum positive replica contribution

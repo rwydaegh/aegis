@@ -1,16 +1,17 @@
-% PREV: \documentclass{ieeeaccess}
+% PREV: \documentclass{IEEEoj}
 % PREV:
 % PREV: \usepackage{cite}
 % PREV: \usepackage{amsmath,amssymb,amsfonts}
-% PREV: \usepackage{newtxtext}
 % PREV: \usepackage{bm}
 % PREV: \usepackage{booktabs}
 % PREV: \usepackage{graphicx}
+% PREV: \usepackage{orcidlink}
+% PREV: \hypersetup{hidelinks}
 % PREV: \usepackage{textcomp}
 % PREV: \usepackage{url}
 % PREV:
-% PREV: \vol{16}
-% PREV: \year{2026}
+% PREV: \AtBeginDocument{\definecolor{ojcolor}{cmyk}{0.93,0.59,0.15,0.02}}
+% PREV: \def\OJlogo{\vspace{-4pt}\hskip-4pt\includegraphics[height=18pt]{ojcoms.png}}
 % PREV:
 % PREV: \graphicspath{{../}{./}}
 % PREV:
@@ -18,55 +19,55 @@
 % PREV: \newcommand{\Peirp}{P_{\mathrm{EIRP}}}
 % PREV: \newcommand{\wbsar}{\mathrm{SAR}_{\mathrm{wb}}}
 % NEXT: \begin{abstract}
-% NEXT: Street-level radiofrequency exposure varies along a pedestrian route because
-% NEXT: buildings change the direct and reflected fields, surface materials affect how
-% NEXT: much power returns to the street, and the human body absorbs differently
-% NEXT: depending on the direction of arrival. This study projects 360-degree street
-% NEXT: images onto a photogrammetric city mesh to identify surface materials along
-% NEXT: pedestrian routes at 15~GHz. Transmitters are placed along the visible
-% NEXT: roofline in proportion to its physical length. All results are normalized per
-% NEXT: unit product of areal source density and effective isotropic radiated power
-% NEXT: (EIRP). The transport model treats direct
-% NEXT: paths and one specular reflection exactly, estimates one diffuse reflection, and
-% NEXT: stops. The arriving fields and their directions are then applied to a
-% NEXT: 56,024-element Duke body model. A geometric fixed-grid diagnostic covers ten
-% NEXT: urban locations in Europe, Latin America, and East Asia and finds a twofold
-% NEXT: span in location-median whole-body SAR. Five of these locations are then studied
-% NEXT: with image-derived materials along fixed pedestrian routes containing 73
-% NEXT: observation points, each calculated with 16 independent replicas of 200,000
-% NEXT: primary rays and 4,096 angular output cells. In a controlled test scene, the
-% NEXT: adjoint estimate and deterministic quadrature differ by at most 0.0616~dB for
-% NEXT: the reflected term. An independent forward tracer gives a maximum difference
-% NEXT: of 0.0344~dB. Route-median whole-body specific absorption rate differs by a
-% NEXT: factor of 13.34 across the five routes. Direct paths carry the largest share at
-% NEXT: all 67 points with line of sight, while the diffuse reflection is the only
-% NEXT: nonzero modeled contribution at six fully shadowed points. The maximum change
-% NEXT: from 12 to 16 replicas is 0.0436~dB, though lower-tail estimates in Mexico
-% NEXT: City and Tokyo are less stable. These results describe ten fixed-grid locations
-% NEXT: and five selected routes under a fixed model and do not estimate city-wide or
-% NEXT: deployed-network exposure.
+% NEXT: Realistic urban radiofrequency electromagnetic-field (RF-EMF) assessment must
+% NEXT: connect the field in a city to the power absorbed by the human body. This
+% NEXT: supports monitoring and epidemiological studies. The goal of
+% NEXT: this study is to compute direction-aware whole-body specific absorption rate
+% NEXT: (SAR) along pedestrian routes in ten cities. We combine 360-degree street
+% NEXT: images, photogrammetric geometry, and AI-derived object and material labels in
+% NEXT: a human-centric digital twin. Its agentic AI stage uses SAM~3 Agent for
+% NEXT: material and vegetation labeling. The calculation places possible transmitters
+% NEXT: along visible rooflines at 15~GHz, traces direct and single-reflection paths,
+% NEXT: and applies each arrival direction to an anatomical body model. Results are
+% NEXT: normalized per unit product of source density and effective isotropic radiated
+% NEXT: power. The ten routes contain 163 observation points, each evaluated with 64
+% NEXT: independent runs. The normalized route-median whole-body SAR ranges from
+% NEXT: 0.00902 to 0.129~m$^2$~kg$^{-1}$, a factor of 14.31. Direct paths give the
+% NEXT: largest component at 156 of 157 points with line of sight. The single-reflection
+% NEXT: specular component is largest at one point, while the single-reflection diffuse component is
+% NEXT: the only nonzero component at six shadowed points. Increasing the number of
+% NEXT: runs from 48 to 64 changes the total at any point by at most 0.32\%. Validation
+% NEXT: in a controlled scene gives maximum differences of 1.43\% against deterministic
+% NEXT: quadrature and 0.80\% against an independent Sionna RT forward calculation.
+% NEXT: The reported values apply to the selected routes under the stated source model.
+% NEXT: We do not estimate whole-city or deployed-network exposure.
 % NEXT: \end{abstract}
 \begin{document}
 
-\history{}
-\doi{}
+\receiveddate{XX Month, XXXX}
+\reviseddate{XX Month, XXXX}
+\accepteddate{XX Month, XXXX}
+\publisheddate{XX Month, XXXX}
+\currentdate{XX Month, XXXX}
 
-\title{Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities at 15 GHz}
+\title{Human-Centric 6G RF-EMF Exposure with AI-Assisted Digital Twins in Ten Cities}
 
-\author{\uppercase{Robin Wydaeghe}\authorrefmark{1},
-\uppercase{G\"unter Vermeeren}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
-\uppercase{Emmeric Tanghe}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
-and~\uppercase{Wout Joseph}\authorrefmark{1}, \IEEEmembership{Senior Member, IEEE}}
+\author{ROBIN WYDAEGHE~\orcidlink{0000-0002-1374-0118}\IEEEauthorrefmark{1},
+G\"UNTER VERMEEREN~\orcidlink{0000-0002-5309-3808}\IEEEauthorrefmark{1},
+\IEEEmembership{Member, IEEE},
+EMMERIC TANGHE~\orcidlink{0000-0003-0020-6466}\IEEEauthorrefmark{1},
+\IEEEmembership{Member, IEEE},
+and WOUT JOSEPH~\orcidlink{0000-0002-8807-0673}\IEEEauthorrefmark{1},
+\IEEEmembership{Senior Member, IEEE}}
 
-\address[1]{Department of Information Technology, Ghent University/IMEC,
-9052 Ghent, Belgium (e-mail: robin.wydaeghe@ugent.be)}
+\affil{Department of Information Technology, Ghent University/IMEC,
+9052 Ghent, Belgium}
 
-\markboth
-{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
-{Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
-
-\corresp{Corresponding author: Robin Wydaeghe
+\corresp{CORRESPONDING AUTHOR: Robin Wydaeghe
 (e-mail: robin.wydaeghe@ugent.be).}
+
+\markboth{Human-Centric 6G RF-EMF Exposure with AI-Assisted Digital Twins in Ten Cities}
+{Wydaeghe \textit{et al.}}
 
 ## reviews (titleblock)
 

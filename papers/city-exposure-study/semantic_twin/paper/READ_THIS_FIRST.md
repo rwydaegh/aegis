@@ -6,17 +6,15 @@ This directory now has one canonical manuscript: the paragraph tree in
 describe a superseded eleven-site study and are not scientific sources for the
 new manuscript.
 
-The manuscript targets a regular IEEE Access Research Article. Its main result is the
-verified five-site, 73-standpoint, first-material calculation. The supplement
-also reports a ten-route extension under the same production contract and a
-separate geometric fixed-grid diagnostic. All absolute
-values are normalized per unit areal source density and EIRP. The study is a
-fixed-route comparison. It is not a population study, a city ranking, a
-deployed-network estimate, a compliance assessment, or a complete multipath
-solution.
+The manuscript targets the IEEE Open Journal of the Communications Society
+(OJ-COMS) special issue on human-centric wireless systems. Its main result is
+the authenticated ten-route calculation: 163 observation points, 64 independent
+runs per point, and a declared single-reflection model. All values are
+normalized per unit areal source density and EIRP. The study scope is the ten
+selected routes under the declared roofline source and single-reflection models.
 
-The main manuscript is eight pages in the current Access build. The separate
-supplement is six pages. The graphical abstract meets the 660 by 295 pixel,
+The main manuscript is eight pages in the current OJ-COMS build. The separate
+supplement is built independently. The graphical abstract meets the 660 by 295 pixel,
 300 dpi, and file-size requirements. The scientific plots are generated from
 the sealed current result package. No fake or placeholder result data are used.
 
@@ -26,6 +24,6 @@ technical completion. Read `spine.md` for the argument. Read
 the numerical and method authorities.
 
 The post-draft review and applied fixes are summarized in `LENS_REVIEW.md`.
-The required final checks are PaperMaker lint and lens coverage, a clean Access
+The required final checks are PaperMaker lint and lens coverage, a clean OJ-COMS
 template build, page-by-page PNG inspection, figure-source checks, citation
 checks, claim checks, and a fresh Git diff review.

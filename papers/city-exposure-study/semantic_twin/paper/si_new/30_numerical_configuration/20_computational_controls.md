@@ -30,17 +30,17 @@
 % PREV:     \bottomrule
 % PREV:   \end{tabular}
 % PREV: \end{table*}
-% NEXT: The result contains 73 route points, 1,168 point-replica fields, 80
-% NEXT: site-replica runs, and 233.6 million stochastic primary rays. Every campaign
-% NEXT: manifest lists 42 files. All 210 recorded file hashes pass. The aggregate JSON,
-% NEXT: CSV, PDF, and PNG also match their artifact manifest. Across the 1,168 fields,
+% NEXT: The result contains 163 route points, 10,432 point-replica fields, 640
+% NEXT: site-replica runs, and 2.086 billion stochastic primary rays. Every campaign
+% NEXT: manifest lists 42 files. All 420 recorded file hashes pass. The aggregate JSON,
+% NEXT: CSV, PDF, and PNG also match their artifact manifest. Across the 10,432 fields,
 % NEXT: the maximum raw residual between the saved total and the sum of direct,
 % NEXT: all-specular, and first-diffuse components is
-% NEXT: $1.735\times10^{-18}\,\mathrm{m^{-2}}$. The CUDA body result agrees with the
+% NEXT: $1.214\times10^{-17}\,\mathrm{m^{-2}}$. The CUDA body result agrees with the
 % NEXT: NumPy reference to a maximum relative error of $6.64\times10^{-16}$ in the
 % NEXT: verified benchmark. The verified artifacts are stored under
 % NEXT: the roofline campaign output package named
-% NEXT: \texttt{current\_five\_city\_\allowbreak{}first\_material\_interaction}.
+% NEXT: \texttt{ten\_city\_route\_\allowbreak{}production64\_v1}.
 % NEXT: The Duke STL has SHA-256
 % NEXT: \texttt{781e65ef3882f134\allowbreak{}7669e0ddca5dafa82\allowbreak{}cd6368dddd6b9e80\allowbreak{}1dc49613822fe3b}.
 % NEXT: The verified body-area array has SHA-256

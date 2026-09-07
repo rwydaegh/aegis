@@ -1,0 +1,22 @@
+Big picture thoughts on 10 cities
+-Intro start is a bit direct. Gimme one of those vague classic buzzwordy sentences (dont get carried away though. papermaker9000) and some citation.
+-Registered panoramas? WHat even is that. A reader has no clue what this is so tbh id like another word than registered, or panoramas frankly.
+-"a transport model that stops after the first diffuse material interaction." unclear. KISS
+-Just quite heavy grammar in the mid-late paragraph of intro. KISS please
+-In general the intro can be way clearer that we are projecting street view on google earth. That is what we're doing. Dont just assume the reader knows the basic idea here.
+-What is figure 1c?? have you looked at that mess? ANyways I much preferred something along the lines of prague_360_publication_curtain.png although that is prolly a tad too much (unless all relevant and you wanna explain all parts)
+-"the source support." KISS. What is a "support" lol
+-"the sealed route records ". Please. KISS. Sealed?
+-"standpoints" This is also a bad word. Just cuz the word is used extensively in md report or ur context or code doesn't mean it's comprehensively on first read to a reader. this principle should apply THROUGHOUT.
+-In fact I order you to do an aggressive pass through the whole paper for stupid nouns that are unnecessarily complex or weird or niche. I'm a concrete person. Just dont take ELI5 too literally and stay somewhat professional, although this is rarely an actual issue.
+-"Therefore, panorama and standpoint counts need not agree." need not agree is stupidly complex grammar. Pleeeeease dont do this shit. KISS.
+-lack of buildings in fig 1. background in (d) is just fucked. It should be a pretty ground plan OSM-style
+-the word "atlas" is very bad too. KISS.
+- "scene evidence" is this some crime scene or what? KISS.
+- "conditioned on a fixed route," noooo, bad word conditioned. and all routes are fixed. Stay focused when you write, to avoid this shit.
+- "body yaw" just say that the human phantom model points along the walk. good example of unnecessary jargon again
+-"r denotes a body surface element. " wait does it?? is so, that is a terrible name. r is usually a position. i could just be confused tho.
+-"The number of numerical elements is not a source count." uhhh okk. wtf. KISS. "a source count?"
+-the whole argument of why we spread BS over the rooflines is missing, I think
+-imma give up on listing small scale issues here. lots of problems in word and grammar choices
+-the pretty old figs? semantic_twin/paper/paper.tex semantic_twin/paper/paper.pdf showed some nice figures. now, not all of them are relevant. but perhaps you could use some. idk. I mean you're explaining adjoint raytracing right, so we need to show it somehow.

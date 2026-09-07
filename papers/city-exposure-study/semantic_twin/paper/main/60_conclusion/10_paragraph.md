@@ -1,25 +1,20 @@
 % PREV: \section{Conclusion}\label{sec:conclusion}
-% NEXT: The image-to-mesh material mapping took effect mainly through the specular
-% NEXT: component. A paired control at two sites showed route-median whole-body SAR
-% NEXT: changes of $+0.249$ and $-0.158$~dB when the image-derived materials were
-% NEXT: replaced by the geometry defaults. The method runs in under 70~s per prepared
-% NEXT: site on one GPU. The main open items are outdoor field validation against the
-% NEXT: full city model and a measured transmitter source distribution.
-This study aligned 360-degree street images with a photogrammetric city mesh to
-map surface materials around pedestrian routes at 15\,GHz. A roofline
-transmitter model and a directional absorption step then produced normalized
-whole-body SAR at ten urban locations, with all results per unit
-$\rho_A P_{\mathrm{EIRP}}$. In a controlled one-reflection scene, the
-first-diffuse estimate differed from deterministic quadrature by at most
-0.0616\,dB, and the maximum total-transport difference from an independent
-Sionna RT forward calculation was 0.0344\,dB. Across 163 observation points on
-ten routes, route-median whole-body SAR differed by a factor of 14.31. Direct
-transport was largest at 156 of the 157 points with line of sight, while
-first-diffuse transport was the only nonzero contribution at the six fully
-shadowed points.
-The route medians were stable at 64 replicas, but the fully shadowed lower
-tails had larger estimator uncertainty. These results do not rank cities or
-predict deployed-network exposure.
+% NEXT: Image-derived materials increase the Madrid route median by 5.9\% and decrease
+% NEXT: the Mexico City route median by 3.6\% relative to geometry-based defaults.
+% NEXT: Future work will consist of outdoor field validation, measured transmitter
+% NEXT: distributions, higher reflection orders, and tests of more routes, frequencies,
+% NEXT: body models, and orientations.
+This study contributes a human-centric digital twin that uses SAM~3 Agent for
+agentic material assignment, a normalized roofline source model, and
+direction-aware body coupling for RF-EMF exposure assessment.
+Across 163 observation points on routes in ten cities, normalized route-median
+whole-body SAR differs by a factor of 14.31. Direct power is largest at 156 of
+157 points with line of sight. The specular component is largest at one point, and a
+diffuse path is the only nonzero contribution at six shadowed points. Controlled
+validation gives maximum differences of 1.43\% from deterministic quadrature
+and 0.80\% from Sionna RT. Increasing the number of runs from 48 to 64 changes
+the total at any point by at most 0.32\%. These values describe the selected
+routes under the stated roofline source model.
 
 ## reviews (paragraph)
 

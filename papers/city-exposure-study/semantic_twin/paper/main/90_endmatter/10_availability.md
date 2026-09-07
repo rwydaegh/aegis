@@ -5,12 +5,12 @@
 % NEXT: text.
 \section*{Data and Code Availability}
 
-The verified ten-site data, manifests, analysis scripts, and figure scripts
-are kept in the study repository. A stable public archive with a versioned
-digital object identifier will be deposited before publication. The 360-degree
-street images and commercial photogrammetric tiles are governed by their
-providers' terms and are not redistributed. Their identifiers and the alignment
-manifests are kept so the inputs can be reacquired where the licenses allow it.
+The ten-route results, analysis scripts, and figure scripts are kept in the
+study repository. A stable public archive with a versioned digital object
+identifier will be deposited before publication. The 360-degree street images
+and commercial photogrammetric tiles are governed by their providers' terms and
+are not redistributed. Their identifiers are retained so the inputs can be
+obtained again where the licenses allow it.
 
 ## reviews (paragraph)
 

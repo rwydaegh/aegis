@@ -1,27 +1,24 @@
-% PREV: This study applies the method at 15~GHz across ten urban locations. A geometric
-% PREV: fixed-grid diagnostic first characterizes all ten locations with geometry-based
-% PREV: materials and a fixed body orientation. Five of these locations are then studied
-% PREV: with image-derived materials along fixed pedestrian routes containing 73
-% PREV: observation points. Every result is normalized per unit active-source areal
-% PREV: density and per unit effective isotropic radiated power (EIRP). The route-median
-% PREV: whole-body SAR values differ by a factor of 13.34 across the five routes. These
-% PREV: results describe fixed-grid locations and fixed routes under one source and
-% PREV: transport model. They do not estimate population exposure or deployed-network
-% PREV: exposure.
+% PREV: The goal of this study is to compute direction-aware human whole-body SAR along
+% PREV: pedestrian routes in ten cities at 15~GHz. The routes contain 163 observation
+% PREV: points with image-derived surface materials and a body model facing along each
+% PREV: walk. Every value is normalized per unit active-source areal density and per
+% PREV: unit effective isotropic radiated power (EIRP). The selected-route medians
+% PREV: differ by a factor of 14.31. We do not estimate population exposure,
+% PREV: whole-city exposure, or exposure from a deployed network.
 This work makes the following three contributions.
 \begin{enumerate}
-  \item Aligned 360-degree street images supply traceable material labels to
-  the same city mesh used for ray tracing. Surfaces without a reliable image
-  label keep their geometry-based material.
+  \item Multimodal fusion combines 360-degree street images and city geometry
+  with Mask2Former object labels and SAM~3 Agent material labels in an
+  AI-assisted digital twin. Surfaces without a reliable image label keep their
+  geometry-based material.
 
-  \item A roofline transmitter model and transport calculation keep direct,
-  specular, and diffuse power separate, with arrival directions, until the
+  \item A normalized roofline source model and an adjoint ray tracer keep
+  direct and once-reflected power separate, with arrival directions, until the
   field is applied to the body.
 
-  \item An application across ten urban routes reports fixed-route exposure
-  distributions, controlled first-diffuse validation, replica convergence, and
-  the retained transport at the six observation points where buildings block all
-  direct and specular paths.
+  \item Results for ten routes quantify whole-body SAR, component shares,
+  numerical convergence, surface-material sensitivity, and controlled
+  single-reflection validation.
 \end{enumerate}
 
 ## reviews (paragraph)

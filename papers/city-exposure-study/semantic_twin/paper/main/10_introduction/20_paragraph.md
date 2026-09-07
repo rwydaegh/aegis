@@ -1,41 +1,30 @@
-% PREV: \IEEEPARstart{A}{s} wireless networks expand into higher frequency bands,
-% PREV: the built environment plays a larger role in determining the radiofrequency
-% PREV: field that reaches a pedestrian~\cite{itu2040}. Along a city street, received
-% PREV: power can change over a few meters. A person walking past a row of buildings
-% PREV: can move from a clear view of a rooftop transmitter into a shadow where
-% PREV: buildings block the direct field and only reflected power reaches the
-% PREV: street. The facade materials then determine how much power returns to the
-% PREV: street~\cite{itu2040,vitucci}. This variation also matters after the field
-% PREV: arrives: whole-body absorption depends on the direction of arrival and on how
-% PREV: the body is oriented, so a single power value at a single point does not
-% PREV: describe exposure along a walking route. A route-level calculation must keep
-% PREV: the arrival direction until the field is applied to the
-% PREV: body~\cite{icnirp}.
-% NEXT: A photogrammetric city mesh gives accurate building geometry, but its triangles
-% NEXT: carry no material information. Street-level images can fill that gap. The
-% NEXT: Mapillary Vistas dataset provides a taxonomy for dense segmentation of street
-% NEXT: scenes~\cite{vistas}. Kamari \emph{et al.} segment street-level images, project
-% NEXT: the resulting material classes onto city geometry, and use that geometry in
-% NEXT: millimeter-wave ray tracing~\cite{mmsv}. Xia \emph{et al.} use semantic
-% NEXT: point-cloud classification and detailed scene reconstruction for outdoor ray
-% NEXT: tracing at 2.8~GHz~\cite{xia2024}. Projecting image-derived materials onto
-% NEXT: city geometry is therefore established. This study does not claim any of these
-% NEXT: operations as new. It uses them to build a material map around fixed pedestrian
-% NEXT: routes, keeping the default geometry-based material wherever the images give no
-% NEXT: reliable label.
-Ray tracing computes detailed propagation paths between transmitters and
-receivers in a three-dimensional city model~\cite{sionna}. It has been used for
-city-scale downlink exposure using published base-station
-locations~\cite{leeman}, and to compute propagation and body exposure along an
-outdoor pedestrian path~\cite{wydaeghe2026}. Stochastic geometry models
-describe exposure when individual transmitter locations are not
-known~\cite{wiame}, while precomputed body coefficients separate the incident
-field from the absorption calculation~\cite{varsier}. Together, these studies
-cover deterministic urban propagation, spatial source models, and the
-directional absorption step that converts the arriving field into absorbed power
-on the body. Because they use different source assumptions, their reported
-exposure values are not directly comparable without a common source
-normalization.
+% PREV: \IEEEPARstart{R}{ealistic} radiofrequency electromagnetic-field (RF-EMF)
+% PREV: exposure assessment must connect the field in a real environment to the power
+% PREV: absorbed by the human body. This link matters for street-level exposure
+% PREV: monitoring and for exposure estimates used in epidemiological research. Along
+% PREV: a city street, buildings can block the direct field, and facade materials
+% PREV: change the reflected power~\cite{itu2040,vitucci}. Human whole-body absorption
+% PREV: also depends on the arrival direction and body orientation~\cite{icnirp}.
+% PREV: Therefore, exposure assessment along a walking route must retain direction
+% PREV: until the field is applied to the body.
+% NEXT: Detailed photogrammetric geometry~\cite{google3d,blosm} does not identify its
+% NEXT: surface materials. Street images can supply this information. The Mapillary
+% NEXT: Vistas data set provides object classes for street scenes~\cite{vistas}.
+% NEXT: Kamari \emph{et al.} assign material classes from street images to city geometry
+% NEXT: for millimeter-wave ray tracing~\cite{mmsv}. Xia \emph{et al.} combine semantic
+% NEXT: point-cloud classes with detailed scenes for outdoor ray tracing at
+% NEXT: 2.8~GHz~\cite{xia2024}. These studies show that multimodal scene data can
+% NEXT: support radio propagation. They do not connect a common source model, retained
+% NEXT: arrival directions, and human whole-body SAR across routes in several cities.
+Prior exposure studies provide several parts of this route-to-body link. Ray tracing gives
+detailed paths in three-dimensional city models~\cite{sionna}. Ray tracing has supported
+city-scale downlink exposure calculations with known base-station
+locations~\cite{leeman} and realistic 28~GHz body exposure along an outdoor
+path~\cite{wydaeghe2026}. Stochastic geometry represents unknown transmitter
+locations~\cite{wiame}. SAR conversion factors connect incident fields to
+absorption~\cite{varsier}. Taken together, these studies provide the main
+propagation, source, and body components. However, they do not combine those
+components across cities under one source normalization.
 
 ## reviews (paragraph)
 

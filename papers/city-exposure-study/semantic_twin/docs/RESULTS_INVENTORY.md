@@ -2,43 +2,44 @@
 
 ## Status in one paragraph
 
-The current reliable result set contains five authenticated 15 GHz campaigns.
-They cover Korenmarkt, Prague, Madrid, Mexico City, and Tokyo Hachiko. The
-campaigns contain 73 fixed-route standpoints and 16 independent replicas per
-standpoint. Each replica uses 200,000 primary rays and 4,096 passive angular
-output cells. The result set is suitable for a paper about normalized exposure
-along selected routes under a declared first-material transport model. It is not
-a ten-city cohort, a population sample, a deployed-network prediction, or a
-complete multipath solution.
+The current paper result contains ten authenticated 15 GHz route campaigns.
+They cover Brussels, Ghent, Krakow, London, Madrid, Mexico City, Milan, Prague,
+Tokyo Hachiko, and Toulouse. The campaigns contain 163 fixed-route observation
+points and 64 independent runs per point. Each run uses 200,000 primary rays
+and 4,096 angular output cells. The result supports a paper about normalized
+exposure along selected routes under a declared single-reflection propagation
+model. It is not a population sample, deployed-network prediction, or complete
+multipath solution.
 
-A separate authenticated extension now applies the same production contract
-and 64-replica setting to ten selected routes. It combines the five convergence
-routes with Brussels, London, Milan, Krakow, and Toulouse. This extension adds
-site and route coverage without redefining the canonical five-route paper result.
+The earlier five-route, 73-point result remains an authenticated predecessor
+and supports paired controls that were not rerun for all ten routes. It is not
+the headline paper result.
 
 ## Canonical sources
 
-Two sources define the current paper result.
+Three sources define the current paper result.
 
 1. [CURRENT_PRODUCTION_CONTRACT.md](CURRENT_PRODUCTION_CONTRACT.md) defines the
    active physical and numerical contract.
-2. The authenticated
-   [five-city JSON](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json)
-   and its
-   [manifest](../outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction_manifest.json)
-   define every reported number.
+2. The authenticated ten-route report and manifest under
+   `outputs/experiments/ten_city_route_extension64_v1/report/` define the
+   production results.
+3. The compact figure data in
+   `paper/figures/route_results/route_results.json` define the publication
+   quantiles, component shares, and convergence summaries.
 
-Older eleven-city, height-band, range-band, three-bounce, masonry, RCWA, and
-agentic-AI records are not current result sources.
+Older eleven-city, height-band, range-band, three-bounce, masonry, and RCWA
+records are not current result sources. Robin confirmed on 2026-08-27 that the
+production surface-label stage uses SAM~3 Agent. Historical documents that
+describe SAM~3 Agent as planned work are superseded for the manuscript.
 
-Three authenticated diagnostics now accompany the retained 16-replica result.
-They are the exact ray-reached evidence audit, the current-contract extension
-through 64 replicas, and the paired ray/cell budget sensitivity. These
-diagnostics do not alter the sealed campaign directories.
+The earlier five-route material control, ray and angular-cell sensitivity, and
+material-source classification remain supporting diagnostics. Their narrower
+scope must be stated whenever they are used.
 
-## Ten-route production-contract extension
+## Ten-route paper result
 
-The authenticated extension contains ten `provider_corridor_v1` routes, 163
+The authenticated paper result contains ten `provider_corridor_v1` routes, 163
 observation points, and 64 replicas per route. Every campaign uses image-derived
 surface properties, route-tangent Duke orientation, 200,000 primary rays per
 point and seed, 4,096 first-diffuse cells, and
@@ -95,9 +96,9 @@ only. It does not measure grid, material, yaw, or source-design uncertainty.
 An initial run was quarantined because its legacy manifest prose incorrectly
 described a three-metre grid. The corrected run reproduces the scientific
 arrays bit for bit for the eight overlapping completed sites. Only identity and
-timing fields changed. The production result remains the five-route result.
+timing fields changed. The paper production result is the ten-route result.
 
-## Exact result count
+## Earlier five-route result count
 
 | Site | Standpoints | Route span | Replicas | Wall time on one A6000 |
 | --- | ---: | ---: | ---: | ---: |
@@ -291,13 +292,13 @@ single cold end-to-end time is currently defensible.
   gate and remains experimental.
 - Blender files are audit and communication products. They are not part of the
   numerical result path.
-- No Gemini or agentic-AI experiment contributes to these results.
+- No Gemini experiment contributes to these results. The surface-label stage
+  uses SAM~3 Agent, as confirmed by Robin on 2026-08-27.
 
 ## Gaps before submission
 
-The five-city result is sufficient for a focused paper. It does not need ten
-cities to support the fixed-route claim. The following gaps matter more than
-additional city count.
+The ten-route result is sufficient for the fixed-route claim. The following
+gaps matter more than additional city count.
 
 1. Use the controlled three-way validation in the main paper and state its
    component-level scope.

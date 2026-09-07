@@ -1,16 +1,13 @@
-% PREV: \subsection{Replica Convergence}
+% PREV: \subsection{Convergence across runs}
 % PREV: \label{sec:convergence}
-% NEXT: \subsection{Material Sensitivity}
+% NEXT: \subsection{Material sensitivity}
 % NEXT: \label{sec:material-sensitivity}
-% claim: replica_convergence_48_to_64
-Between 48 and 64 replicas, the largest pointwise total-transfer change across
-all ten routes is 0.0139~dB at a shadowed point in Mexico City. The next largest
-is 0.00558~dB in Tokyo Hachiko. At the remaining eight routes, the maximum
-change stays below 0.001~dB. Route-median whole-body SAR is stable at all ten
-sites.
-In Mexico City, the single strongest diffuse replica at one shadowed point
-carries 5738 times the median replica contribution. This concentration produces
-the large lower-tail changes seen in
-Table~\ref{tab:route-results} and is specific to the fixed routes. It does not
-represent city-sampling or route-selection uncertainty. The complete nested
-comparison is given in the supplementary material.
+% claim: ten_route_replica_convergence_48_to_64
+Between 48 and 64 runs, the largest pointwise change in total received power is
+0.32\% at a shadowed point in Mexico City. The next largest change is 0.13\% in
+Tokyo Hachiko. The maximum is below 0.023\% on each of the other eight routes,
+and every route-median whole-body SAR is stable. At one shadowed point in Mexico
+City, the largest single-run diffuse estimate is 5,738 times the median run estimate. This
+concentration explains the larger lower-tail variation. This comparison
+quantifies ray-sampling convergence for the fixed routes. The supplementary material gives
+the complete 48-to-64-run comparison.

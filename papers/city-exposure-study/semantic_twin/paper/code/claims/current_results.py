@@ -1,8 +1,12 @@
-"""Authenticated numerical claims for the current five-city manuscript.
+"""Authenticated numerical claims for the current ten-route manuscript.
 
 The claim functions read the immutable production outputs. They do not import
 the simulation package and do not write into ``semantic_twin/outputs``. This
 keeps the manuscript audit runnable in PaperMaker9000's small environment.
+
+Claims based only on the retained five-route result are named explicitly. They
+remain available for the supplement and are not evidence for the ten-route
+cohort.
 """
 
 from __future__ import annotations
@@ -71,58 +75,75 @@ EXPECTED_STANDPOINTS = {
     "Prague": 22,
     "Tokyo": 16,
 }
-EXPECTED_WBSAR_QUANTILES = {
-    "Korenmarkt": {
-        "q10": 0.0578327438321708,
-        "q50": 0.06204518535491678,
-        "q90": 0.0686717408320388,
+EXPECTED_TEN_ROUTE_WBSAR_QUANTILES = {
+    "Brussels": {
+        "q10": 0.025021953356122794,
+        "q50": 0.031186801900083272,
+        "q90": 0.033714272203305,
+    },
+    "Ghent": {
+        "q10": 0.05783450605880442,
+        "q50": 0.062047333041072586,
+        "q90": 0.06866785288028787,
+    },
+    "Krakow": {
+        "q10": 0.006717342636831953,
+        "q50": 0.02252023184141687,
+        "q90": 0.04926804489859621,
+    },
+    "London": {
+        "q10": 0.011746088805666664,
+        "q50": 0.015008010411373535,
+        "q90": 0.017443634924234744,
     },
     "Madrid": {
-        "q10": 0.020913294077888663,
-        "q50": 0.02238105138497516,
-        "q90": 0.02317093976407998,
+        "q10": 0.020912997730475873,
+        "q50": 0.02238111794268595,
+        "q90": 0.023170345268216663,
     },
-    "Mexico": {
-        "q10": 9.92187947769122e-7,
-        "q50": 0.12906154022429828,
-        "q90": 0.2957983257792987,
+    "Mexico City": {
+        "q10": 1.0052271467418079e-6,
+        "q50": 0.12906056842948704,
+        "q90": 0.2957659607223248,
+    },
+    "Milan": {
+        "q10": 0.008528983382906584,
+        "q50": 0.009015871517791447,
+        "q90": 0.009861179674594565,
     },
     "Prague": {
-        "q10": 0.012157461907945675,
-        "q50": 0.0130731658075402,
-        "q90": 0.014593757806466821,
+        "q10": 0.012157498669957316,
+        "q50": 0.013073562987120951,
+        "q90": 0.014594651002026216,
     },
-    "Tokyo": {
-        "q10": 0.00003656217959315326,
-        "q50": 0.009673886624732418,
-        "q90": 0.025200369144298053,
+    "Tokyo Hachiko": {
+        "q10": 3.634582286181274e-5,
+        "q50": 0.009673651662657361,
+        "q90": 0.025199585623447,
+    },
+    "Toulouse": {
+        "q10": 0.0243124047345837,
+        "q50": 0.030216778100008404,
+        "q90": 0.042914910888784324,
     },
 }
-EXPECTED_TOTAL_TRANSFER_CHANGE_DB = {
-    "Korenmarkt": 0.0000819350556661845,
-    "Madrid": 0.000408320201322325,
-    "Mexico": 0.04362524009941786,
-    "Prague": 0.00015589567357771397,
-    "Tokyo": 0.019731518973211258,
+EXPECTED_TEN_ROUTE_POOLED_MEDIAN_WBSAR_SHARES_PERCENT = {
+    "direct": 78.05583488137367,
+    "all_specular": 20.230565408540063,
+    "first_diffuse": 0.49973569313391336,
 }
-EXPECTED_ZERO_STANDPOINTS = {
-    "Mexico": [0, 1, 3],
-    "Tokyo": [13, 14, 15],
+EXPECTED_TEN_ROUTE_48_TO_64_QUANTILE_CHANGE_DB = {
+    "Brussels": {"q10": 0.00011356814246172675, "q50": 0.000021446167456262474, "q90": 0.00007348125206310219},
+    "Ghent": {"q10": 0.00007229028053766959, "q50": 0.00007514916899310245, "q90": 0.00006382351036670361},
+    "Krakow": {"q10": 0.00012986412131769278, "q50": 0.00014527532195026462, "q90": 0.0000761602380400701},
+    "London": {"q10": 0.000042696581544858546, "q50": 0.00015714191667892853, "q90": 0.000014817163379563153},
+    "Madrid": {"q10": 0.000006147006725693227, "q50": 0.000055939870685556444, "q90": 0.000022793307824272772},
+    "Mexico City": {"q10": 0.0034408407908050015, "q50": 0.0000026480606425963504, "q90": 0.000034050079323794956},
+    "Milan": {"q10": 0.00008831504501813855, "q50": 0.00009318853529897845, "q90": 0.0000169136372688529},
+    "Prague": {"q10": 0.00002027887149130285, "q50": 0.00006722771107984953, "q90": 0.000055128246288565305},
+    "Tokyo Hachiko": {"q10": 0.004914586580220958, "q50": 0.00002240790221443757, "q90": 0.000020120923639985872},
+    "Toulouse": {"q10": 0.000010982041031462617, "q50": 0.000059988269939020615, "q90": 0.00004479281906693064},
 }
-EXPECTED_POOLED_MEDIAN_WBSAR_SHARES_PERCENT = {
-    "direct": 77.66194473787252,
-    "all_specular": 21.390850539012177,
-    "first_diffuse": 0.41895042544439237,
-}
-FIELD_META_NAMES = (
-    "includes_specular",
-    "missing_specular",
-    "maximum_completed_all_specular_order",
-    "maximum_completed_specular_suffix_order",
-    "direct_atom_count",
-    "specular_atom_count",
-    "nonzero_diffuse_cell_count",
-)
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -225,6 +246,45 @@ def _load_aggregate() -> dict[str, Any]:
     return result
 
 
+def _load_ten_route_report() -> dict[str, Any]:
+    """Authenticate and load the promoted ten-route result package."""
+    assert _sha256(TEN_ROUTE_MANIFEST_PATH) == EXPECTED_TEN_ROUTE_MANIFEST_SHA256
+    manifest = _read_json(TEN_ROUTE_MANIFEST_PATH)
+    assert manifest["schema_version"] == "roofline_multicity_artifacts_v1"
+    assert manifest["result_schema_version"] == "roofline_multicity_results_v1"
+    assert set(manifest["sources"]) == set(TEN_ROUTE_CAMPAIGNS)
+    for name, record in manifest["artifacts"].items():
+        path = TEN_ROUTE_REPORT_DIR / name
+        assert path.is_file(), f"ten-route report artifact is missing: {path}"
+        assert path.stat().st_size == int(record["bytes"])
+        assert _sha256(path) == record["sha256"], f"ten-route artifact hash mismatch: {path}"
+
+    report = _read_json(TEN_ROUTE_REPORT_PATH)
+    assert report["schema_version"] == "roofline_multicity_results_v1"
+    assert set(report["cities"]) == set(TEN_ROUTE_CAMPAIGNS)
+    for city, root in TEN_ROUTE_CAMPAIGNS.items():
+        campaign_manifest_path = root / "manifest.json"
+        campaign_manifest = _read_json(campaign_manifest_path)
+        identity = _read_json(root / "campaign_identity.json")
+        source = manifest["sources"][city]
+        row = report["cities"][city]
+        manifest_sha256 = _sha256(campaign_manifest_path)
+        assert campaign_manifest["identity_sha256"] == identity["sha256"]
+        assert source["campaign_identity_sha256"] == identity["sha256"]
+        assert source["campaign_manifest_sha256"] == manifest_sha256
+        assert row["provenance"]["campaign_identity_sha256"] == identity["sha256"]
+        assert row["provenance"]["campaign_manifest_sha256"] == manifest_sha256
+        data = identity["data"]
+        assert data["configuration"]["planned_seeds"] == list(range(7, 71))
+        assert data["configuration"]["route_contract"] == "provider_corridor_v1"
+        assert data["configuration"]["reference_mode"] == "per_density_eirp"
+        assert data["transport"]["tracer"]["configuration"]["rays"] == 200_000
+        assert data["transport"]["tracer"]["configuration"]["local_cells"] == 4096
+        assert data["body"]["frequency_hz"] == 15_000_000_000.0
+        assert data["body"]["surface_elements"] == 56_024
+    return report
+
+
 def _read_npy_f64(npz_path: Path, member: str) -> tuple[tuple[int, ...], tuple[float, ...]]:
     """Read a C-order float64 NPY member using only the Python standard library."""
     with zipfile.ZipFile(npz_path) as archive:
@@ -255,55 +315,51 @@ def _abs_db_errors(values: list[float], reference: list[float]) -> list[float]:
 
 @claim("current_campaign_contract")
 def current_campaign_contract() -> dict[str, Any]:
-    """The paper result is five authenticated 15 GHz fixed-route campaigns."""
-    aggregate = _load_aggregate()
-    assert set(aggregate["cities"]) == set(CITY_SLUGS)
-    manifest_files = 0
-    fields = 0
-    for city, expected_points in EXPECTED_STANDPOINTS.items():
-        root, identity = _verify_campaign(city)
-        manifest_files += len(_read_json(root / "manifest.json")["files"])
-        result = aggregate["cities"][city]
-        assert result["standpoints"] == expected_points
-        assert result["replicas"] == 16
-        assert result["seeds"] == EXPECTED_SEEDS
-        assert result["transport_topology"] == "first_material_interaction_v1"
-        assert result["components"] == ["direct", "all_specular", "first_diffuse", "total"]
-        data = identity["data"]
-        assert data["configuration"]["route_contract"] == "provider_corridor_v1"
-        assert data["configuration"]["reference_mode"] == "per_density_eirp"
-        assert data["transport"]["tracer"]["configuration"]["rays"] == 200_000
-        assert data["transport"]["tracer"]["configuration"]["local_cells"] == 4096
-        assert data["body"]["frequency_hz"] == 15_000_000_000.0
-        assert data["body"]["surface_elements"] == 56_024
-        fields += expected_points * 16
-    assert manifest_files == 210
-    assert fields == 1_168
-    primary_rays = fields * 200_000
-    assert primary_rays == 233_600_000
+    """The paper result is ten authenticated 15 GHz fixed-route campaigns."""
+    report = _load_ten_route_report()
+    seeds = list(range(7, 71))
+    standpoints = 0
+    for row in report["cities"].values():
+        assert row["replicas"] == 64
+        assert row["seeds"] == seeds
+        assert row["transport_topology"] == "first_material_interaction_v1"
+        assert row["components"] == ["direct", "all_specular", "first_diffuse", "total"]
+        assert row["contract"]["cohort"] == "comparable_city"
+        assert row["contract"]["route_contract"] == "provider_corridor_v1"
+        assert row["contract"]["material_mode"] == "atlas"
+        assert row["contract"]["reference_mode"] == "per_density_eirp"
+        assert row["contract"]["specular_acceptance"] == "first_material_interaction_exact_order_1"
+        assert len(row["route"]) == int(row["standpoints"])
+        standpoints += int(row["standpoints"])
+    point_replica_fields = standpoints * 64
+    primary_rays = point_replica_fields * 200_000
+    assert standpoints == 163
+    assert point_replica_fields == 10_432
+    assert primary_rays == 2_086_400_000
     return {
-        "cities": 5,
-        "standpoints": sum(EXPECTED_STANDPOINTS.values()),
-        "city_replica_runs": 5 * 16,
-        "standpoint_replica_fields": fields,
+        "routes": 10,
+        "standpoints": standpoints,
+        "replicas_per_route": 64,
+        "seed_range_inclusive": [7, 70],
+        "seeds": seeds,
+        "point_replica_fields": point_replica_fields,
         "primary_rays": primary_rays,
         "passive_output_cells": 4096,
-        "authenticated_campaign_files": manifest_files,
         "frequency_hz": 15_000_000_000.0,
         "body_surface_elements": 56_024,
         "normalization": "per unit rho_A P_EIRP",
     }
 
 
-@claim("five_city_wbsar_route_quantiles")
-def five_city_wbsar_route_quantiles() -> dict[str, Any]:
-    """Route q10, q50, and q90 values are recomputed from all 73 standpoints."""
-    aggregate = _load_aggregate()
+@claim("ten_route_wbsar_route_quantiles")
+def ten_route_wbsar_route_quantiles() -> dict[str, Any]:
+    """Route q10, q50, and q90 values are recomputed from all 163 points."""
+    report = _load_ten_route_report()
     result: dict[str, Any] = {}
-    for city, expected in EXPECTED_WBSAR_QUANTILES.items():
-        record = aggregate["cities"][city]
+    for city, expected in EXPECTED_TEN_ROUTE_WBSAR_QUANTILES.items():
+        record = report["cities"][city]
         values = [float(row["wbsar"]) for row in record["route"]]
-        assert len(values) == EXPECTED_STANDPOINTS[city]
+        assert len(values) == int(record["standpoints"])
         computed = {
             "q10": _quantile(values, 0.1),
             "q50": _quantile(values, 0.5),
@@ -313,37 +369,51 @@ def five_city_wbsar_route_quantiles() -> dict[str, Any]:
         for name, value in computed.items():
             _assert_close(value, expected[name])
             _assert_close(value, float(stored[name]["estimate"]))
-        result[city] = computed
-    return {"unit": "m^2 kg^-1 per unit rho_A P_EIRP", "cities": result}
-
-
-@claim("route_median_contrast_factor")
-def route_median_contrast_factor() -> dict[str, Any]:
-    """The largest and smallest selected-route medians differ by a factor of 13.34."""
-    medians = {city: values["q50"] for city, values in EXPECTED_WBSAR_QUANTILES.items()}
-    largest_city = max(medians, key=medians.get)
-    smallest_city = min(medians, key=medians.get)
-    factor = medians[largest_city] / medians[smallest_city]
-    _assert_close(factor, 13.341229355979571)
-    assert round(factor, 2) == 13.34
+        result[city] = {name: float(stored[name]["estimate"]) for name in ("q10", "q50", "q90")}
+    assert sum(int(row["standpoints"]) for row in report["cities"].values()) == 163
     return {
-        "factor": factor,
-        "reported_factor": 13.34,
-        "largest_route_median": largest_city,
-        "smallest_route_median": smallest_city,
-        "scope": "contrast among five selected routes, not a city ranking",
+        "routes": 10,
+        "standpoints": 163,
+        "unit": "m^2 kg^-1 per unit rho_A P_EIRP",
+        "cities": result,
     }
 
 
-@claim("six_shadowed_standpoints")
-def six_shadowed_standpoints() -> dict[str, Any]:
-    """Six points have zero direct and order-1 specular transport but positive diffuse transport."""
-    aggregate = _load_aggregate()
+@claim("ten_route_median_contrast_factor")
+def ten_route_median_contrast_factor() -> dict[str, Any]:
+    """Mexico City's route median is 14.31 times Milan's route median."""
+    quantiles = ten_route_wbsar_route_quantiles()["cities"]
+    medians = {city: values["q50"] for city, values in quantiles.items()}
+    largest_city = max(medians, key=medians.get)
+    smallest_city = min(medians, key=medians.get)
+    factor = medians[largest_city] / medians[smallest_city]
+    assert largest_city == "Mexico City"
+    assert smallest_city == "Milan"
+    _assert_close(medians[largest_city], 0.12906056842948704)
+    _assert_close(medians[smallest_city], 0.009015871517791447)
+    _assert_close(factor, 14.314818947320367)
+    assert round(factor, 2) == 14.31
+    return {
+        "factor": factor,
+        "reported_factor": 14.31,
+        "largest_route_median": largest_city,
+        "largest_route_median_value": medians[largest_city],
+        "smallest_route_median": smallest_city,
+        "smallest_route_median_value": medians[smallest_city],
+        "unit": "m^2 kg^-1 per unit rho_A P_EIRP",
+        "scope": "contrast among ten selected routes, not a city ranking",
+    }
+
+
+@claim("ten_route_component_dominance")
+def ten_route_component_dominance() -> dict[str, Any]:
+    """Direct is largest at 156 of 157 LOS points; six shadowed points are diffuse-only."""
+    report = _load_ten_route_report()
     found: dict[str, list[int]] = {}
-    finite_surplus = 0
-    diffuse_largest = 0
-    direct_largest = 0
-    for city, record in aggregate["cities"].items():
+    largest_counts = {"direct": 0, "all_specular": 0, "first_diffuse": 0}
+    largest_locations = {"direct": [], "all_specular": [], "first_diffuse": []}
+    line_of_sight_points = 0
+    for city, record in report["cities"].items():
         city_zeros: list[int] = []
         for row in record["route"]:
             components = row["component_body"]
@@ -357,225 +427,85 @@ def six_shadowed_standpoints() -> dict[str, Any]:
                 assert row["multipath_surplus_db"] is None
                 city_zeros.append(int(row["standpoint"]))
             else:
+                assert direct > 0.0
                 assert row["multipath_surplus_db"] is not None
-                finite_surplus += 1
-            largest = max((direct, "direct"), (specular, "specular"), (diffuse, "diffuse"))[1]
-            direct_largest += largest == "direct"
-            diffuse_largest += largest == "diffuse"
+                line_of_sight_points += 1
+            values = {"direct": direct, "all_specular": specular, "first_diffuse": diffuse}
+            largest = max(values, key=values.get)
+            largest_counts[largest] += 1
+            largest_locations[largest].append({"city": city, "standpoint": int(row["standpoint"])})
         if city_zeros:
             found[city] = city_zeros
-    assert found == EXPECTED_ZERO_STANDPOINTS
-    assert finite_surplus == 67
-    assert direct_largest == 67
-    assert diffuse_largest == 6
+    assert found == {
+        "Mexico City": [0, 1, 3],
+        "Tokyo Hachiko": [13, 14, 15],
+    }
+    assert line_of_sight_points == 157
+    assert largest_counts == {"direct": 156, "all_specular": 1, "first_diffuse": 6}
+    assert largest_locations["all_specular"] == [{"city": "Brussels", "standpoint": 2}]
+    assert largest_locations["first_diffuse"] == [
+        {"city": "Mexico City", "standpoint": 0},
+        {"city": "Mexico City", "standpoint": 1},
+        {"city": "Mexico City", "standpoint": 3},
+        {"city": "Tokyo Hachiko", "standpoint": 13},
+        {"city": "Tokyo Hachiko", "standpoint": 14},
+        {"city": "Tokyo Hachiko", "standpoint": 15},
+    ]
     return {
-        "count": 6,
-        "standpoints": found,
-        "finite_multipath_surplus_points": finite_surplus,
-        "largest_component_counts": {"direct": direct_largest, "first_diffuse": diffuse_largest},
+        "points": 163,
+        "line_of_sight_points": line_of_sight_points,
+        "shadowed_points": 6,
+        "shadowed_standpoints": found,
+        "largest_component_counts": largest_counts,
+        "specular_largest_locations": largest_locations["all_specular"],
+        "diffuse_only_locations": largest_locations["first_diffuse"],
     }
 
 
-@claim("raw_component_closure")
-def raw_component_closure() -> dict[str, Any]:
-    """Direct, specular, and diffuse fields close to total across all 1,168 fields."""
-    maximum = 0.0
-    fields = 0
-    for city in CITY_SLUGS:
-        root, _identity = _verify_campaign(city)
-        for seed in EXPECTED_SEEDS:
-            shard = root / "checkpoint" / "replicas" / f"seed_{seed:010d}.npz"
-            shape, values = _read_npy_f64(shard, "raw_transfer.npy")
-            assert shape == (EXPECTED_STANDPOINTS[city], 4)
-            for offset in range(0, len(values), 4):
-                residual = abs(values[offset] + values[offset + 1] + values[offset + 2] - values[offset + 3])
-                maximum = max(maximum, residual)
-                fields += 1
-    assert fields == 1_168
-    _assert_close(maximum, 1.734723475976807e-18, atol=1e-24)
-    return {"fields": fields, "maximum_absolute_residual_m_inv2": maximum}
-
-
-@claim("pooled_median_wbsar_component_shares")
-def pooled_median_wbsar_component_shares() -> dict[str, Any]:
-    """Pooled component medians are rebuilt from all body-metric replica shards."""
-    aggregate = _load_aggregate()
+@claim("ten_route_pooled_median_wbsar_component_shares")
+def ten_route_pooled_median_wbsar_component_shares() -> dict[str, Any]:
+    """Pooled component medians are rebuilt from all 163 route-point results."""
+    report = _load_ten_route_report()
     shares: dict[str, list[float]] = {
         "direct": [],
         "all_specular": [],
         "first_diffuse": [],
     }
-    for city in CITY_SLUGS:
-        root, identity = _verify_campaign(city)
-        points = EXPECTED_STANDPOINTS[city]
-        components = identity["data"]["components"]
-        body_metrics = identity["data"]["body_metrics"]
-        assert components == ["direct", "all_specular", "first_diffuse", "total"]
-        assert body_metrics[5] == "sar_wb_w_kg"
-        component_count = len(components)
-        metric_count = len(body_metrics)
-        accumulated = [0.0] * (points * component_count * metric_count)
-        for seed in EXPECTED_SEEDS:
-            shard = root / "checkpoint" / "replicas" / f"seed_{seed:010d}.npz"
-            shape, values = _read_npy_f64(shard, "body_metrics.npy")
-            assert shape == (points, component_count, metric_count)
-            for index, value in enumerate(values):
-                accumulated[index] += value / len(EXPECTED_SEEDS)
-
-        for point in range(points):
-            values: dict[str, float] = {}
-            for component_index, component in enumerate(components):
-                offset = (point * component_count + component_index) * metric_count + 5
-                values[component] = accumulated[offset]
+    for row in report["cities"].values():
+        for point in row["route"]:
+            component_body = point["component_body"]
+            values = {
+                component: float(component_body[component]["sar_wb_w_kg"])
+                for component in ("direct", "all_specular", "first_diffuse", "total")
+            }
             assert values["total"] > 0.0
-            aggregate_row = aggregate["cities"][city]["route"][point]["component_body"]
-            for component in components:
-                _assert_close(
-                    values[component],
-                    float(aggregate_row[component]["sar_wb_w_kg"]),
-                    atol=1e-14,
-                )
+            _assert_close(
+                values["direct"] + values["all_specular"] + values["first_diffuse"],
+                values["total"],
+                atol=1e-14,
+            )
             for component, component_shares in shares.items():
                 component_shares.append(100.0 * values[component] / values["total"])
 
-    assert all(len(values) == 73 for values in shares.values())
+    assert all(len(values) == 163 for values in shares.values())
     medians = {component: _quantile(values, 0.5) for component, values in shares.items()}
-    for component, expected in EXPECTED_POOLED_MEDIAN_WBSAR_SHARES_PERCENT.items():
+    for component, expected in EXPECTED_TEN_ROUTE_POOLED_MEDIAN_WBSAR_SHARES_PERCENT.items():
         _assert_close(medians[component], expected)
     return {
-        "statistic": "componentwise median of the 73 standpoint shares",
-        "standpoints": 73,
+        "statistic": "componentwise median of the 163 route-point shares",
+        "standpoints": 163,
         "share_percent": medians,
         "reported_share_percent": {
-            "direct": 77.662,
-            "all_specular": 21.391,
-            "first_diffuse": 0.419,
+            "direct": 78.056,
+            "all_specular": 20.231,
+            "first_diffuse": 0.500,
         },
         "note": "componentwise medians need not sum to 100 percent",
     }
 
 
-@claim("directional_component_representation")
-def directional_component_representation() -> dict[str, Any]:
-    """Sealed shards distinguish direct/specular atoms from passive diffuse cells."""
-    atom_min = {"direct": math.inf, "all_specular": math.inf}
-    atom_max = {"direct": -math.inf, "all_specular": -math.inf}
-    diffuse_min = math.inf
-    diffuse_max = -math.inf
-    rows_verified = 0
-    for city in CITY_SLUGS:
-        root, identity = _verify_campaign(city)
-        points = EXPECTED_STANDPOINTS[city]
-        local_cells = int(identity["data"]["transport"]["tracer"]["configuration"]["local_cells"])
-        assert local_cells == 4096
-        checkpoint = _read_json(root / "checkpoint" / "index.json")
-        assert checkpoint["components"] == ["direct", "all_specular", "first_diffuse", "total"]
-        locations = _read_jsonl(root / "locations.jsonl")
-        assert len(locations) == points
-        observed_ranges = [{name: [math.inf, -math.inf] for name in FIELD_META_NAMES} for _ in range(points)]
-
-        for seed in EXPECTED_SEEDS:
-            shard = root / "checkpoint" / "replicas" / f"seed_{seed:010d}.npz"
-            meta_shape, meta_values = _read_npy_f64(shard, "field_meta.npy")
-            raw_shape, raw_values = _read_npy_f64(shard, "raw_transfer.npy")
-            assert meta_shape == (points, len(FIELD_META_NAMES))
-            assert raw_shape == (points, 4)
-            diagnostics = json.loads(
-                (root / "checkpoint" / "replicas" / f"seed_{seed:010d}.json").read_text(encoding="utf-8")
-            )
-            assert isinstance(diagnostics, list) and len(diagnostics) == points
-            for point in range(points):
-                offset = point * len(FIELD_META_NAMES)
-                row = meta_values[offset : offset + len(FIELD_META_NAMES)]
-                assert row[0] == 1.0
-                assert row[2] == 1.0
-                assert row[3] == 0.0
-                direct_atoms, specular_atoms, diffuse_cells = row[4:7]
-                assert direct_atoms.is_integer() and direct_atoms >= 0.0
-                assert specular_atoms.is_integer() and specular_atoms >= 0.0
-                assert diffuse_cells.is_integer() and 0.0 <= diffuse_cells <= local_cells
-                raw_offset = point * 4
-                assert (direct_atoms == 0.0) == (raw_values[raw_offset] == 0.0)
-                assert (specular_atoms == 0.0) == (raw_values[raw_offset + 1] == 0.0)
-                assert (diffuse_cells == 0.0) == (raw_values[raw_offset + 2] == 0.0)
-                atom_min["direct"] = min(atom_min["direct"], direct_atoms)
-                atom_max["direct"] = max(atom_max["direct"], direct_atoms)
-                atom_min["all_specular"] = min(atom_min["all_specular"], specular_atoms)
-                atom_max["all_specular"] = max(atom_max["all_specular"], specular_atoms)
-                diffuse_min = min(diffuse_min, diffuse_cells)
-                diffuse_max = max(diffuse_max, diffuse_cells)
-                for index, name in enumerate(FIELD_META_NAMES):
-                    observed_ranges[point][name][0] = min(observed_ranges[point][name][0], row[index])
-                    observed_ranges[point][name][1] = max(observed_ranges[point][name][1], row[index])
-                diagnostic = diagnostics[point]
-                assert diagnostic["transport_topology"] == "first_material_interaction_v1"
-                assert diagnostic["first_material_interaction_nee_only"] is True
-                assert diagnostic["specular_estimate_kind"] == "exact_order_1"
-                assert diagnostic["sampled_specular_suffix"]["enabled"] is False
-                rows_verified += 1
-
-        for point, location in enumerate(locations):
-            stored = location["field_metadata_range"]
-            assert set(stored) == set(FIELD_META_NAMES)
-            for name in FIELD_META_NAMES:
-                assert stored[name] == observed_ranges[point][name]
-
-    assert rows_verified == 1_168
-    return {
-        "standpoint_replica_rows": rows_verified,
-        "direct": {
-            "representation": "exact directional atoms",
-            "atom_count_range": [int(atom_min["direct"]), int(atom_max["direct"])],
-        },
-        "all_specular": {
-            "representation": "exact order-1 directional atoms",
-            "atom_count_range": [
-                int(atom_min["all_specular"]),
-                int(atom_max["all_specular"]),
-            ],
-        },
-        "first_diffuse": {
-            "representation": "nonzero passive angular output cells",
-            "nonzero_cell_count_range": [int(diffuse_min), int(diffuse_max)],
-            "cell_capacity": 4096,
-        },
-        "launch_cells": False,
-    }
-
-
-@claim("replica_convergence_12_to_16")
-def replica_convergence_12_to_16() -> dict[str, Any]:
-    """The final nested-replica change is authenticated for every fixed route."""
-    aggregate = _load_aggregate()
-    audit_path = PAPER_ROOT / "figures" / "convergence" / "convergence.audit.json"
-    audit = _read_json(audit_path)
-    assert audit["schema_version"] in {
-        "five_city_convergence_figure_audit_v1",
-        "five_city_convergence_figure_audit_v2",
-    }
-    assert audit["source"]["sha256"] == _sha256(AGGREGATE_PATH)
-    result: dict[str, Any] = {}
-    for city, expected in EXPECTED_TOTAL_TRANSFER_CHANGE_DB.items():
-        record = aggregate["cities"][city]
-        transition = record["convergence"]["look_to_look"][-1]
-        assert (transition["from_replicas"], transition["to_replicas"]) == (12, 16)
-        value = float(transition["total_transfer"]["maximum_abs_db"])
-        _assert_close(value, expected)
-        audited = audit["cities"][city]
-        route_median = float(record["tail_instability"]["look_to_look"][-1]["route_quantile_abs_change_db"]["q50"])
-        _assert_close(route_median, float(audited["route_q50_abs_change_db_12_to_16"]))
-        result[city] = {
-            "maximum_total_transfer_change_db": value,
-            "route_median_wbsar_change_db": route_median,
-            "p90_standard_error_db": float(audited["p90_standard_error_db_at_16"]),
-            "lower_decile_worst_change_db": float(audited["final_lower_decile_worst_abs_change_db_12_to_16"]),
-        }
-    assert max(item["route_median_wbsar_change_db"] for item in result.values()) < 0.00006
-    return {"transition": [12, 16], "cities": result}
-
-
-@claim("replica_convergence_48_to_64")
-def replica_convergence_48_to_64() -> dict[str, Any]:
+@claim("five_route_replica_convergence_48_to_64")
+def five_route_replica_convergence_48_to_64() -> dict[str, Any]:
     """The current-contract 64-replica extension authenticates the two lower tails."""
     report_path = CONVERGENCE64_REPORT_DIR / "current_topology_convergence.json"
     report = _read_json(report_path)
@@ -667,9 +597,41 @@ def replica_convergence_48_to_64() -> dict[str, Any]:
     }
 
 
-@claim("ray_reached_evidence_coverage")
-def ray_reached_evidence_coverage() -> dict[str, Any]:
-    """Pooled retained non-direct transport is partitioned by exact evidence state."""
+@claim("ten_route_replica_convergence_48_to_64")
+def ten_route_replica_convergence_48_to_64() -> dict[str, Any]:
+    """All ten route quantiles are stable from 48 to 64 independent seeds."""
+    report = _load_ten_route_report()
+    expected_maximum = {
+        "q10": 0.004914586580220958,
+        "q50": 0.00015714191667892853,
+        "q90": 0.0000761602380400701,
+    }
+    changes: dict[str, dict[str, float]] = {}
+    for city, row in report["cities"].items():
+        transition = row["tail_instability"]["look_to_look"][-1]
+        assert (transition["from_replicas"], transition["to_replicas"]) == (48, 64)
+        changes[city] = {
+            quantile: float(transition["route_quantile_abs_change_db"][quantile]) for quantile in ("q10", "q50", "q90")
+        }
+        for quantile, expected in EXPECTED_TEN_ROUTE_48_TO_64_QUANTILE_CHANGE_DB[city].items():
+            _assert_close(changes[city][quantile], expected)
+    assert set(changes) == set(EXPECTED_TEN_ROUTE_48_TO_64_QUANTILE_CHANGE_DB)
+    maximum = {quantile: max(route[quantile] for route in changes.values()) for quantile in ("q10", "q50", "q90")}
+    for quantile, expected in expected_maximum.items():
+        _assert_close(maximum[quantile], expected)
+    assert max(maximum.values()) < 0.005
+    return {
+        "routes": 10,
+        "replicas": [48, 64],
+        "seed_range_at_64_inclusive": [7, 70],
+        "route_quantile_abs_change_db": changes,
+        "maximum_route_quantile_abs_change_db": maximum,
+    }
+
+
+@claim("five_route_ray_reached_evidence_coverage")
+def five_route_ray_reached_evidence_coverage() -> dict[str, Any]:
+    """Five-route non-direct transport is partitioned by exact evidence state."""
     report_path = RAY_REACHED_REPORT_DIR / "ray_reached_evidence_coverage.json"
     report = _read_json(report_path)
     manifest = _read_json(RAY_REACHED_REPORT_DIR / "ray_reached_evidence_coverage_manifest.json")
@@ -738,6 +700,7 @@ def ray_reached_evidence_coverage() -> dict[str, Any]:
     assert report["pooled"]["specular"]["event_count"] == 689_888
     assert report["pooled"]["first_diffuse"]["event_count"] == 95_389_603
     return {
+        "scope": "five routes and 73 standpoints only",
         "denominator": headline["denominator"],
         "non_direct_wbsar_fraction": {
             "panorama_informed": panorama,
@@ -1133,32 +1096,12 @@ def geometric_fixed_grid_diagnostic() -> dict[str, Any]:
     }
 
 
-@claim("ten_route_production_extension")
-def ten_route_production_extension() -> dict[str, Any]:
-    assert _sha256(TEN_ROUTE_MANIFEST_PATH) == EXPECTED_TEN_ROUTE_MANIFEST_SHA256
-    manifest = _read_json(TEN_ROUTE_MANIFEST_PATH)
-    assert manifest["schema_version"] == "roofline_multicity_artifacts_v1"
-    assert manifest["result_schema_version"] == "roofline_multicity_results_v1"
-    assert set(manifest["sources"]) == set(TEN_ROUTE_CAMPAIGNS)
-    for name, record in manifest["artifacts"].items():
-        path = TEN_ROUTE_REPORT_DIR / name
-        assert path.is_file(), f"ten-route report artifact is missing: {path}"
-        assert path.stat().st_size == int(record["bytes"])
-        assert _sha256(path) == record["sha256"], f"ten-route artifact hash mismatch: {path}"
-
-    report = _read_json(TEN_ROUTE_REPORT_PATH)
-    assert report["schema_version"] == "roofline_multicity_results_v1"
-    assert set(report["cities"]) == set(TEN_ROUTE_CAMPAIGNS)
-    for city, root in TEN_ROUTE_CAMPAIGNS.items():
-        campaign_manifest = _read_json(root / "manifest.json")
-        identity = _read_json(root / "campaign_identity.json")
-        source = manifest["sources"][city]
+@claim("ten_route_production_results")
+def ten_route_production_results() -> dict[str, Any]:
+    """Authenticate the promoted ten-route result and recompute its cohort summaries."""
+    report = _load_ten_route_report()
+    for city in TEN_ROUTE_CAMPAIGNS:
         row = report["cities"][city]
-        assert campaign_manifest["identity_sha256"] == identity["sha256"]
-        assert source["campaign_identity_sha256"] == identity["sha256"]
-        assert source["campaign_manifest_sha256"] == _sha256(root / "manifest.json")
-        assert row["provenance"]["campaign_identity_sha256"] == identity["sha256"]
-        assert row["provenance"]["campaign_manifest_sha256"] == _sha256(root / "manifest.json")
         assert row["replicas"] == 64
         assert row["seeds"] == list(range(7, 71))
         assert [entry["replicas"] for entry in row["convergence"]["standard_error"]] == [16, 24, 32, 48, 64]
@@ -1242,6 +1185,7 @@ def ten_route_production_extension() -> dict[str, Any]:
         "routes": len(rows),
         "standpoints": standpoints,
         "replicas_per_route": 64,
+        "seed_range_inclusive": [7, 70],
         "point_replica_fields": point_replica_fields,
         "primary_rays": primary_rays,
         "route_q50_wbsar": q50,

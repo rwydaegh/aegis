@@ -1,38 +1,42 @@
 % PREV: \begin{table}[!t]
-% PREV:   \caption{Five fixed routes with observation-point counts, route spans, and computation times}
+% PREV:   \caption{Study route in each city, with observation-point counts, route spans, and ray calculation times}
 % PREV:   \label{tab:routes}
 % PREV:   \centering
 % PREV:   \begin{tabular}{lrrr}
 % PREV:     \toprule
-% PREV:     Site & Route points & Route span (m) & Wall time (s) \\
+% PREV:     City & Points & Span (m) & Time (s) \\
 % PREV:     \midrule
-% PREV:     Ghent & 10 & 49.04 & 29.79 \\
-% PREV:     Prague & 22 & 119.39 & 69.02 \\
-% PREV:     Madrid & 14 & 73.47 & 40.70 \\
-% PREV:     Mexico City & 11 & 60.79 & 30.92 \\
-% PREV:     Tokyo Hachiko & 16 & 87.38 & 50.11 \\
+% PREV:     Brussels & 14 & 87.00 & 32.16 \\
+% PREV:     Ghent & 10 & 49.04 & 6.59 \\
+% PREV:     Krakow & 16 & 116.10 & 31.76 \\
+% PREV:     London & 22 & 121.10 & 73.77 \\
+% PREV:     Madrid & 14 & 73.47 & 8.06 \\
+% PREV:     Mexico City & 11 & 60.79 & 5.95 \\
+% PREV:     Milan & 23 & 128.43 & 69.02 \\
+% PREV:     Prague & 22 & 119.39 & 39.00 \\
+% PREV:     Tokyo Hachiko & 16 & 87.38 & 10.02 \\
+% PREV:     Toulouse & 15 & 82.47 & 37.87 \\
 % PREV:     \midrule
-% PREV:     Total & 73 & 390.07 & 220.54 \\
+% PREV:     Total & 163 & 925.17 & 314.20 \\
 % PREV:     \bottomrule
 % PREV:   \end{tabular}
 % PREV: \end{table}
-% NEXT: Fig.~\ref{fig:flowchart} shows the computation and its input checks. A
-% NEXT: hash-verified manifest lists every input file: aligned images, material map,
-% NEXT: city mesh, route, roofline, body model, and transport settings. Only files whose
-% NEXT: hashes match the manifest enter the five-site data set. The transport
-% NEXT: calculation keeps direct, specular, and diffuse contributions separate until
-% NEXT: the field is applied to the body. The five manifests contain 210 verified entries. Across the
-% NEXT: resulting 1,168 directional body fields, the largest residual when the three
-% NEXT: components are summed back to the stored total is
-% NEXT: $1.735\times10^{-18}\,\mathrm{m}^{-2}$.
-Two image-analysis models work in sequence. Mask2Former assigns a Vistas object
-class (building, road, vegetation, etc.) to every image
-pixel~\cite{mask2former,vistas}. SAM~3 then tests material and vegetation labels
-inside the compatible object regions~\cite{sam3}. Both sets of labels are
-projected onto the visible city mesh using the known camera position and viewing
-direction. Where multiple images cover the same triangle, the labels are
-combined into one material map, and every mapped triangle stays linked to its
-source image. A mesh triangle changes material only when the object and
-material labels agree and pass the acceptance tests. All other triangles keep
-their default material. The prompts, alignment tests, rejected labels, and
-mapping rules are given in the supplementary material.
+% NEXT: Fig.~\ref{fig:flowchart} connects the scene-building and exposure stages. The
+% NEXT: image and geometry branches first form the human-centric digital twin.
+% NEXT: Pedestrian locations, body orientations, and possible roofline transmitters
+% NEXT: complete its route-specific inputs. The final stages compute directional radio
+% NEXT: arrivals and apply them to the body.
+\subsection{AI-assisted digital twin}
+\label{sec:digital-twin}
+
+Two image models are applied in sequence. First, Mask2Former assigns a Vistas object
+class such as building, road, or vegetation to every pixel~\cite{mask2former,vistas}.
+Next, SAM~3 Agent performs the agentic AI step by assigning material and vegetation
+labels inside compatible object regions~\cite{sam3}. Its prompt-guided concepts
+extend the fixed object classes with material evidence. The camera position and
+viewing direction locate these labels on visible triangles in the city geometry. When several images cover one
+triangle, their accepted labels are combined. A triangle changes material only
+when its object and material labels are compatible and meet the selection
+criteria. All other triangles keep their geometry-based material. The
+supplementary material gives the prompts, alignment tests, rejected labels, and
+assignment rules.

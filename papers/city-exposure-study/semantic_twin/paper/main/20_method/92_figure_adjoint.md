@@ -1,79 +1,73 @@
 % PREV: % claim: directional_component_representation
 % PREV: The propagation result at each observation point has direct, one-reflection
-% PREV: specular, and one-reflection diffuse parts. Let $\mathcal{D}$ contain the visible direct
-% PREV: paths, and let $\mathcal{S}_1$ contain the accepted one-reflection specular
+% PREV: specular, and one-reflection diffuse parts. Let $\mathcal{D}$ contain visible direct
+% PREV: paths and $\mathcal{S}_1$ contain accepted one-reflection specular
 % PREV: paths. Their normalized powers are
 % PREV: $\alpha_a=m_a^{(\mathrm{d})}/D_{\mathrm{ref}}$ and
 % PREV: $\beta_b=m_b^{(\mathrm{s})}/D_{\mathrm{ref}}$. The diffuse estimate uses
 % PREV: normalized angular-cell powers
-% PREV: $\widehat{\gamma}_q=\widehat{m}_q^{(\mathrm{f})}/D_{\mathrm{ref}}$. With
-% PREV: $\delta_{\widehat{\mathbf{k}}}$ denoting a unit point mass in physical arrival
-% PREV: direction $\widehat{\mathbf{k}}$, the directional distribution is
+% PREV: $\widehat{\gamma}_q=\widehat{m}_q^{(\mathrm{f})}/D_{\mathrm{ref}}$ in
+% PREV: $Q=4096$ fixed angular cells. With $\delta_{\widehat{\mathbf{k}}}$ denoting a unit point
+% PREV: mass in arrival direction $\widehat{\mathbf{k}}$, the directional distribution is
 % PREV: \begin{equation}
 % PREV: \begin{aligned}
 % PREV: \mu_{\mathbf{x}}={}&
-% PREV: \sum_{a\in\mathcal{D}}\alpha_a\delta_{\widehat{\mathbf{k}}_a^{(\mathrm{d})}} \\
-% PREV: &+\sum_{b\in\mathcal{S}_1}\beta_b\delta_{\widehat{\mathbf{k}}_b^{(\mathrm{s})}} \\
-% PREV: &+\sum_{q=1}^{Q}\widehat{\gamma}_q\delta_{\widehat{\mathbf{k}}_q^{(\mathrm{f})}},
-% PREV: \qquad Q=4096 \, .
+% PREV: \sum_{a\in\mathcal{D}}\alpha_a\delta_{\widehat{\mathbf{k}}_a^{(\mathrm{d})}}
+% PREV: +\sum_{b\in\mathcal{S}_1}\beta_b\delta_{\widehat{\mathbf{k}}_b^{(\mathrm{s})}} \\
+% PREV: &+\sum_{q=1}^{Q}\widehat{\gamma}_q\delta_{\widehat{\mathbf{k}}_q^{(\mathrm{f})}} .
 % PREV: \end{aligned}
 % PREV: \label{eq:first-material-transfer}
 % PREV: \end{equation}
-% PREV: The first two sums retain the exact directions and powers of the direct and
-% PREV: specular paths. They are not projected onto the angular grid. Only diffuse
-% PREV: power is accumulated in the $Q$ Fibonacci cells. Rays start at the receiver and
-% PREV: travel outward to the first blocking surface, as shown in
-% PREV: Fig.~\ref{fig:adjoint}. Next-event estimation then tests visibility from that surface to every roofline
-% PREV: segment~\cite{veach}. The
-% PREV: material model combines unpolarized Fresnel power with a Rayleigh roughness
-% PREV: term. The remaining power enters a Lambertian diffuse term, and the components
-% PREV: add incoherently. The sampled path ends after this diffuse reflection, and the
-% PREV: calculation omits further specular reflections. Woody vegetation identified in
-% PREV: the material map does not block rays because the city mesh has no canopy
-% PREV: volume. The supplementary material gives the full laws and parameter values.
-% NEXT: The arrival directions are carried through to the body. For outward body-surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, define $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot(-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
+% PREV: The first two sums keep exact path directions and powers. Only diffuse power
+% PREV: uses the angular cells. Fig.~\ref{fig:adjoint} contrasts the two sampling paths
+% PREV: for this diffuse term. \emph{Adjoint ray tracing} launches rays from the
+% PREV: observation point and tests visibility from each first surface hit to every
+% PREV: roofline source~\cite{behlouli2014,cocheril2007}. This source connection is a next-event
+% PREV: estimate~\cite{veach}. The surface law combines unpolarized Fresnel power with
+% PREV: a Rayleigh roughness term. The surface law assigns the remaining reflected power to a
+% PREV: Lambertian diffuse component, and all components add incoherently. Each sampled
+% PREV: path ends after the diffuse reflection. Higher-order specular paths are also
+% PREV: omitted. Woody vegetation identified by the images is transparent to rays
+% PREV: because the city geometry has no canopy volume. The supplementary material gives the
+% PREV: full laws and parameters.
+% NEXT: The last two blocks in Fig.~\ref{fig:flowchart} make the propagation-to-body
+% NEXT: handoff explicit. Accordingly, the calculation keeps each arrival direction
+% NEXT: until body coupling. For outward
+% NEXT: surface normal $\widehat{\mathbf{n}}(\mathbf{r})$, let
+% NEXT: $g(\mathbf{r},\widehat{\mathbf{k}})=[\widehat{\mathbf{n}}(\mathbf{r})\cdot
+% NEXT: (-\widehat{\mathbf{k}})]_+$. The normalized absorbed power density is
 % NEXT: \begin{equation}
-% NEXT: \begin{aligned}
 % NEXT: \widetilde{S}_{\mathrm{ab}}(\mathbf{r},\mathbf{x})
-% NEXT: &\equiv\frac{S_{\mathrm{ab}}(\mathbf{r},\mathbf{x})}
-% NEXT: {\rho_A P_{\mathrm{EIRP}}}
-% NEXT: \\
-% NEXT: &=T_0S_{\mathrm{ref}}(\mathbf{x})\Bigg[
-% NEXT: \sum_{a\in\mathcal{D}}\alpha_a g(\mathbf{r},\widehat{\mathbf{k}}_a^{(\mathrm{d})}) \\
-% NEXT: &\hspace{5.8em}+\sum_{b\in\mathcal{S}_1}\beta_b g(\mathbf{r},\widehat{\mathbf{k}}_b^{(\mathrm{s})}) \\
-% NEXT: &\hspace{5.8em}+\sum_{q=1}^{Q}\widehat{\gamma}_q g(\mathbf{r},\widehat{\mathbf{k}}_q^{(\mathrm{f})})
-% NEXT: \Bigg] \, .
-% NEXT: \end{aligned}
+% NEXT: \equiv\frac{S_{\mathrm{ab}}(\mathbf{r},\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
+% NEXT: =T_0S_{\mathrm{ref}}(\mathbf{x})
+% NEXT: \int_{\mathbb{S}^2}g(\mathbf{r},\widehat{\mathbf{k}})\,
+% NEXT: \mathrm{d}\mu_{\mathbf{x}}(\widehat{\mathbf{k}}) .
 % NEXT: \label{eq:body-coupling}
 % NEXT: \end{equation}
-% NEXT: Here, $T_0$ is the normal-incidence power-transmission coefficient from
-% NEXT: the IT'IS tissue database at 15~GHz~\cite{itis}. It approximates the
-% NEXT: absorption cross section for incoherent, unpolarized illumination. The
-% NEXT: function $g$ sets the absorbed fraction to zero where the surface faces away
-% NEXT: from the incoming direction. The calculation applies this directional
-% NEXT: absorption to the 56,024-element Duke anatomical mesh~\cite{christ2010}.
-% NEXT: Because all quantities are normalized by $\rho_A P_{\mathrm{EIRP}}$,
-% NEXT: $\widetilde{S}_{\mathrm{ab}}$ is dimensionless. For the triangle area
-% NEXT: $A_{\mathbf{r}}$ at position $\mathbf{r}$ and body mass
-% NEXT: $m_{\mathrm{body}}$, the normalized integrated quantities are
+% NEXT: The angular integral sums the direct, specular, and diffuse arrivals while
+% NEXT: retaining their incoming directions.
+% NEXT: Here, $T_0$ is the normal-incidence power-transmission coefficient from the
+% NEXT: IT'IS tissue database at 15~GHz~\cite{itis}. It represents incoherent,
+% NEXT: unpolarized illumination. The function $g$ gives zero absorption where the
+% NEXT: surface faces away from the incoming direction. We apply this law to the
+% NEXT: 56,024-element Duke anatomical mesh~\cite{christ2010}. With triangle area
+% NEXT: $A_{\mathbf{r}}$ and body mass $m_{\mathrm{body}}$, the normalized endpoints are
 % NEXT: \begin{equation}
 % NEXT: \begin{aligned}
 % NEXT: \widetilde{P}_{\mathrm{abs}}(\mathbf{x})
-% NEXT: &\equiv\frac{P_{\mathrm{abs}}(\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
-% NEXT: \\
 % NEXT: &=\sum_{\mathbf{r}}A_{\mathbf{r}}\widetilde{S}_{\mathrm{ab}}(\mathbf{r},\mathbf{x}), \\
 % NEXT: \widetilde{\mathrm{SAR}}_{\mathrm{wb}}(\mathbf{x})
-% NEXT: &\equiv\frac{\mathrm{SAR}_{\mathrm{wb}}(\mathbf{x})}{\rho_A P_{\mathrm{EIRP}}}
-% NEXT: \\
-% NEXT: &=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} \, .
+% NEXT: &=\frac{\widetilde{P}_{\mathrm{abs}}(\mathbf{x})}{m_{\mathrm{body}}} .
 % NEXT: \end{aligned}
 % NEXT: \label{eq:body-endpoints}
 % NEXT: \end{equation}
-% NEXT: $\widetilde{P}_{\mathrm{abs}}$ has units m$^2$, and $\widetilde{\mathrm{SAR}}_{\mathrm{wb}}$ has units m$^2$~kg$^{-1}$.
-\begin{figure*}[!t]
+% NEXT: $\widetilde{P}_{\mathrm{abs}}$ has units m$^2$, and
+% NEXT: $\widetilde{\mathrm{SAR}}_{\mathrm{wb}}$ has units m$^2$~kg$^{-1}$ per unit
+% NEXT: $\rho_A P_{\mathrm{EIRP}}$.
+\begin{figure*}[!htb]
   \centering
   \includegraphics[width=\textwidth]{figures/adjoint/adjoint.pdf}
-  \caption{Forward and adjoint sampling for the first-diffuse term. (a) A forward calculation launches rays from every roofline segment toward the observation point. (b) The adjoint calculation launches rays once from the observation point. At the first blocking surface, connections to every visible roofline segment are tested.}
+  \caption{Forward and adjoint sampling for the single-reflection diffuse component. (a) Forward sampling launches rays from every roofline segment. (b) Adjoint sampling launches one set of rays from the observation point and tests visible source connections at the first surface hit.}
   \label{fig:adjoint}
 \end{figure*}
 

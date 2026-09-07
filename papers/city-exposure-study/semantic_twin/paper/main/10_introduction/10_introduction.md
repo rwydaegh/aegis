@@ -1,86 +1,65 @@
 <!-- AUTO_BEGIN: assembled -->
 \section{Introduction}\label{sec:introduction}
 
-\IEEEPARstart{A}{s} wireless networks expand into higher frequency bands,
-the built environment plays a larger role in determining the radiofrequency
-field that reaches a pedestrian~\cite{itu2040}. Along a city street, received
-power can change over a few meters. A person walking past a row of buildings
-can move from a clear view of a rooftop transmitter into a shadow where
-buildings block the direct field and only reflected power reaches the
-street. The facade materials then determine how much power returns to the
-street~\cite{itu2040,vitucci}. This variation also matters after the field
-arrives: whole-body absorption depends on the direction of arrival and on how
-the body is oriented, so a single power value at a single point does not
-describe exposure along a walking route. A route-level calculation must keep
-the arrival direction until the field is applied to the
-body~\cite{icnirp}.
+\IEEEPARstart{R}{ealistic} radiofrequency electromagnetic-field (RF-EMF)
+exposure assessment must connect the field in a real environment to the power
+absorbed by the human body. This link matters for street-level exposure
+monitoring and for exposure estimates used in epidemiological research. Along
+a city street, buildings can block the direct field, and facade materials
+change the reflected power~\cite{itu2040,vitucci}. Human whole-body absorption
+also depends on the arrival direction and body orientation~\cite{icnirp}.
+Therefore, exposure assessment along a walking route must retain direction
+until the field is applied to the body.
 
-Ray tracing computes detailed propagation paths between transmitters and
-receivers in a three-dimensional city model~\cite{sionna}. It has been used for
-city-scale downlink exposure using published base-station
-locations~\cite{leeman}, and to compute propagation and body exposure along an
-outdoor pedestrian path~\cite{wydaeghe2026}. Stochastic geometry models
-describe exposure when individual transmitter locations are not
-known~\cite{wiame}, while precomputed body coefficients separate the incident
-field from the absorption calculation~\cite{varsier}. Together, these studies
-cover deterministic urban propagation, spatial source models, and the
-directional absorption step that converts the arriving field into absorbed power
-on the body. Because they use different source assumptions, their reported
-exposure values are not directly comparable without a common source
-normalization.
+Prior exposure studies provide several parts of this link. Ray tracing gives
+detailed paths in three-dimensional city models~\cite{sionna}. Ray tracing has supported
+city-scale downlink exposure calculations with known base-station
+locations~\cite{leeman} and realistic 28~GHz body exposure along an outdoor
+path~\cite{wydaeghe2026}. Stochastic geometry represents unknown transmitter
+locations~\cite{wiame}. SAR conversion factors connect incident fields to
+absorption~\cite{varsier}. These studies use different source assumptions.
+A common normalization is needed before their exposure values can be compared.
 
-A photogrammetric city mesh gives accurate building geometry, but its triangles
-carry no material information. Street-level images can fill that gap. The
-Mapillary Vistas dataset provides a taxonomy for dense segmentation of street
-scenes~\cite{vistas}. Kamari \emph{et al.} segment street-level images, project
-the resulting material classes onto city geometry, and use that geometry in
-millimeter-wave ray tracing~\cite{mmsv}. Xia \emph{et al.} use semantic
-point-cloud classification and detailed scene reconstruction for outdoor ray
-tracing at 2.8~GHz~\cite{xia2024}. Projecting image-derived materials onto
-city geometry is therefore established. This study does not claim any of these
-operations as new. It uses them to build a material map around fixed pedestrian
-routes, keeping the default geometry-based material wherever the images give no
-reliable label.
+Detailed photogrammetric geometry~\cite{google3d,blosm} does not identify its
+surface materials. Street images can supply this information. The Mapillary
+Vistas data set provides object classes for street scenes~\cite{vistas}.
+Kamari \emph{et al.} assign material classes from street images to city geometry
+for millimeter-wave ray tracing~\cite{mmsv}. Xia \emph{et al.} combine semantic
+point-cloud classes with detailed scenes for outdoor ray tracing at
+2.8~GHz~\cite{xia2024}. These studies show that multimodal scene data can
+support radio propagation. They do not connect a common source model, retained
+arrival directions, and human whole-body SAR across routes in several cities.
 
-This study combines these established parts in one fixed model. Each 360-degree
-street image is aligned with the same photogrammetric city mesh used for ray
-tracing, and the image labels are projected onto that mesh to produce a material map. A common transmitter model distributes sources along the visible
-roofline at every site. Rooflines are a natural choice: they are elevated, street-facing, and visible
-from the route. Distributing transmitters in proportion to roofline length
-avoids tying the result to any particular deployment. The ray tracer keeps the direct, specular, and diffuse components separate,
-preserving their arrival directions, until the field is applied to the body. The transport model treats direct paths and one
-specular reflection exactly, estimates one diffuse reflection, and stops there.
-The route points are fixed case studies, not a population sample, and the
-roofline transmitters are a model, not a measured deployment. To the best of the authors' knowledge, prior work has not combined aligned
-360-degree street images, a common roofline transmitter model, and separate
-transport components with their arrival directions in a single route-level body
-exposure calculation.
+To address this gap, we form an AI-assisted, human-centric digital twin from
+360-degree street images and photogrammetric city geometry. Mask2Former assigns
+object labels. SAM~3 Agent performs the agentic AI step by assigning material
+and vegetation labels on visible surfaces. A common model
+places possible transmitters along rooflines. The propagation calculation keeps
+direct, single-reflection specular, and single-reflection diffuse components
+separate, with their arrival directions, until the body calculation. The model
+includes one reflection only.
 
-This study applies the method at 15~GHz across ten urban locations. A geometric
-fixed-grid diagnostic first characterizes all ten locations with geometry-based
-materials and a fixed body orientation. Five of these locations are then studied
-with image-derived materials along fixed pedestrian routes containing 73
-observation points. Every result is normalized per unit active-source areal
-density and per unit effective isotropic radiated power (EIRP). The route-median
-whole-body SAR values differ by a factor of 13.34 across the five routes. These
-results describe fixed-grid locations and fixed routes under one source and
-transport model. They do not estimate population exposure or deployed-network
-exposure.
+The goal of this study is to compute direction-aware human whole-body SAR along
+pedestrian routes in ten cities at 15~GHz. The routes contain 163 observation
+points with image-derived surface materials and a body model facing along each
+walk. Every value is normalized per unit active-source areal density and per
+unit effective isotropic radiated power (EIRP). The selected-route medians
+differ by a factor of 14.31. We do not estimate population exposure,
+whole-city exposure, or exposure from a deployed network.
 
 This work makes the following three contributions.
 \begin{enumerate}
-  \item Aligned 360-degree street images supply traceable material labels to
-  the same city mesh used for ray tracing. Surfaces without a reliable image
-  label keep their geometry-based material.
+  \item Multimodal fusion combines 360-degree street images and city geometry
+  with Mask2Former object labels and SAM~3 Agent material labels in an
+  AI-assisted digital twin. Surfaces without a reliable image label keep their
+  geometry-based material.
 
-  \item A roofline transmitter model and transport calculation keep direct,
-  specular, and diffuse power separate, with arrival directions, until the
+  \item A normalized roofline source model and an adjoint ray tracer keep
+  direct and once-reflected power separate, with arrival directions, until the
   field is applied to the body.
 
-  \item An application across ten urban locations and five detailed pedestrian
-  routes reports geometric screening, fixed-route exposure distributions,
-  controlled first-diffuse validation, replica convergence, and the retained
-  transport at the six observation points where buildings block all direct and
-  specular paths.
+  \item Results for ten routes quantify whole-body SAR, component shares,
+  numerical convergence, surface-material sensitivity, and controlled
+  single-reflection validation.
 \end{enumerate}
 <!-- AUTO_END: assembled -->

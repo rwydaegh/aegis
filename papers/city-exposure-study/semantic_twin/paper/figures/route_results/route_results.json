@@ -300,23 +300,23 @@
   },
   "render": {
     "deterministic_second_render_match": true,
-    "matplotlib_version": "3.9.4",
+    "matplotlib_version": "3.11.1",
     "pdf": {
-      "bytes": 41148,
-      "height_in": 3.2,
+      "bytes": 42170,
+      "height_in": 6.55,
       "path": "route_results.pdf",
-      "sha256": "c0fff4411e69fad04b42f29fc81cdcc0e1e6f91ad038d7f35e7465cbb153fc53",
-      "width_in": 7.16
+      "sha256": "a65401c7456fbd2aa534ff5826a90c147b61e5779f296457665a92bd7187a7eb",
+      "width_in": 4.55
     },
     "png": {
-      "bytes": 321494,
+      "bytes": 327304,
       "dpi": 400,
-      "height_px": 1280,
+      "height_px": 2620,
       "path": "route_results.png",
-      "sha256": "5a6781ddd470aec5fcead7e5fe8d7a12f9b85b0b7cbf8e63f3f0dfcf6f3f12de",
-      "width_px": 2864
+      "sha256": "da4fb18766e058ec1c0c1350312191742c8a614d63abec94f9c26aa77ec5a1c4",
+      "width_px": 1820
     },
-    "scienceplots_version": "2.2.1",
+    "scienceplots_version": "2.2.2",
     "style": [
       "science",
       "ieee",

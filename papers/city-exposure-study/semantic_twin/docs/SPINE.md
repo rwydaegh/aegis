@@ -1,5 +1,12 @@
 # Paper spine
 
+> **Superseded planning record.** The five-site plan below is retained only as
+> provenance. The current IEEE OJ-COMS ten-route manuscript is governed by
+> [`../paper/spine.md`](../paper/spine.md) and
+> [`RESULTS_INVENTORY.md`](RESULTS_INVENTORY.md). Robin confirmed on 2026-08-27
+> that the production workflow uses SAM 3 Agent as its agentic AI stage. Do not
+> use the older five-site or non-agentic statements below for manuscript edits.
+
 ## Decision
 
 This paper is a focused five-site methods-and-results paper. It explains one

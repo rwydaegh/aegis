@@ -3,7 +3,7 @@
 
 Run from any directory with:
 
-    uv run --with scienceplots==2.2.1 \
+    uv run --project semantic_twin --extra paper python \
         semantic_twin/paper/figures/route_results/make_route_results.py
 
 The script refuses an aggregate that does not match the sealed manifest or
@@ -89,9 +89,9 @@ CITY_STYLES = {
     "Toulouse": {"color": "#7F7F7F", "linestyle": (0, (1, 1)), "marker": "d"},
 }
 COMPONENT_STYLES = {
-    "direct": {"label": "Direct", "color": "#000000", "hatch": ""},
-    "all_specular": {"label": "Order-1 specular", "color": "#FF0000", "hatch": "////"},
-    "first_diffuse": {"label": "First diffuse", "color": "#00A000", "hatch": "xxxx"},
+    "direct": {"label": "Direct", "color": "#000000"},
+    "all_specular": {"label": "Specular", "color": "#D62728"},
+    "first_diffuse": {"label": "Diffuse", "color": "#2CA02C"},
 }
 EXPECTED_CONTRACT_FIELDS = {
     "cohort": "comparable_city",
@@ -266,7 +266,6 @@ def _configure_style() -> None:
             "ytick.minor.width": 0.45,
             "xtick.direction": "in",
             "ytick.direction": "in",
-            "hatch.linewidth": 0.35,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
             "savefig.bbox": None,
@@ -278,7 +277,10 @@ def _configure_style() -> None:
 def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
     _configure_style()
     figure, (cdf_axis, share_axis) = plt.subplots(
-        1, 2, figsize=(7.16, 3.20), gridspec_kw={"width_ratios": [1.15, 1.0]}
+        2,
+        1,
+        figsize=(4.55, 6.55),
+        gridspec_kw={"height_ratios": [1.08, 1.0]},
     )
 
     for city_name in CITY_ORDER:
@@ -337,8 +339,8 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
     cdf_axis.legend(
         cdf_handles,
         cdf_labels,
-        loc="lower left",
-        bbox_to_anchor=(0.0, 1.025),
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.025),
         ncol=3,
         frameon=True,
         framealpha=0.94,
@@ -351,7 +353,8 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
     )
     cdf_axis.spines["top"].set_visible(False)
     cdf_axis.spines["right"].set_visible(False)
-    cdf_axis.text(-0.12, 1.06, "(a)", transform=cdf_axis.transAxes, fontsize=9, fontweight="bold", va="bottom")
+    cdf_axis.tick_params(which="both", top=False, right=False)
+    cdf_axis.text(-0.14, 1.04, "(a)", transform=cdf_axis.transAxes, fontsize=9, fontweight="bold", va="bottom")
 
     positions = np.arange(len(CITY_ORDER), dtype=np.float64)
     bottom = np.zeros(len(CITY_ORDER), dtype=np.float64)
@@ -365,9 +368,8 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
             width=0.72,
             bottom=bottom,
             color=style["color"],
-            edgecolor="white" if component == "direct" else "#202020",
-            linewidth=0.22,
-            hatch=style["hatch"],
+            edgecolor="white",
+            linewidth=0.25,
             label=style["label"],
             zorder=2,
         )
@@ -393,7 +395,7 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
     share_axis.set_ylabel("Route-mean wbSAR share [%]")
     share_axis.set_xticks(positions, [CITY_TICK_LABELS[city] for city in CITY_ORDER])
     share_axis.tick_params(axis="x", length=0, pad=2.0, labelsize=6.0)
-    plt.setp(share_axis.get_xticklabels(), rotation=40, ha="right", rotation_mode="anchor")
+    plt.setp(share_axis.get_xticklabels(), rotation=32, ha="right", rotation_mode="anchor")
     share_axis.grid(axis="y", color="0.86", linewidth=0.45, zorder=0)
     share_axis.legend(
         loc="lower center",
@@ -406,9 +408,10 @@ def _draw(cities: dict[str, Any], pdf_path: Path, png_path: Path) -> None:
     )
     share_axis.spines["top"].set_visible(False)
     share_axis.spines["right"].set_visible(False)
-    share_axis.text(-0.16, 1.06, "(b)", transform=share_axis.transAxes, fontsize=9, fontweight="bold", va="bottom")
+    share_axis.tick_params(which="both", top=False, right=False)
+    share_axis.text(-0.14, 1.04, "(b)", transform=share_axis.transAxes, fontsize=9, fontweight="bold", va="bottom")
 
-    figure.subplots_adjust(left=0.07, right=0.99, bottom=0.24, top=0.72, wspace=0.30)
+    figure.subplots_adjust(left=0.15, right=0.985, bottom=0.105, top=0.765, hspace=0.76)
     metadata = {
         "Title": "Fixed-route whole-body exposure CDFs and component shares",
         "Author": "AEGIS city exposure study",
@@ -442,7 +445,7 @@ def _render_deterministically(cities: dict[str, Any]) -> dict[str, str]:
 def _write_audit(
     cities: dict[str, Any], validation: dict[str, Any], hashes: dict[str, str]
 ) -> None:
-    pdf_width_in = 7.16
+    pdf_width_in = 4.55
     png = plt.imread(OUTPUT_PNG)
     audit_cities = {}
     for city_name in CITY_ORDER:
@@ -501,7 +504,7 @@ def _write_audit(
                 "sha256": hashes["pdf"],
                 "bytes": OUTPUT_PDF.stat().st_size,
                 "width_in": pdf_width_in,
-                "height_in": 3.20,
+                "height_in": 6.55,
             },
             "png": {
                 "path": OUTPUT_PNG.name,

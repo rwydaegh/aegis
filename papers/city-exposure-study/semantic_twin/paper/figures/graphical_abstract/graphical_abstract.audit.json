@@ -1,53 +1,26 @@
 {
   "schema_version": 1,
-  "figure": "IEEE Access graphical abstract",
-  "source_campaign": "semantic_twin/outputs/roofline_campaign/current_five_city_first_material_interaction/current_five_city_first_material_interaction.json",
-  "source_contract": "current_five_city_first_material_interaction",
+  "figure": "IEEE OJ-COMS graphical abstract",
+  "source_campaign": "semantic_twin/paper/figures/route_results/route_results.json",
+  "source_contract": "ten_city_route_production64_v1",
   "route_quantiles": [
     {
-      "source_key": "Korenmarkt",
-      "label": "Ghent",
-      "color": "#000000",
-      "standpoints": 10,
-      "q10": 0.0578327438321708,
-      "q50": 0.06204518535491678,
-      "q90": 0.0686717408320388
+      "source_key": "Milan",
+      "label": "Milan",
+      "color": "#E66100",
+      "standpoints": 23,
+      "q10": 0.008528983382906584,
+      "q50": 0.009015871517791447,
+      "q90": 0.009861179674594565
     },
     {
-      "source_key": "Prague",
-      "label": "Prague",
-      "color": "#E31A1C",
-      "standpoints": 22,
-      "q10": 0.012157461907945675,
-      "q50": 0.0130731658075402,
-      "q90": 0.014593757806466821
-    },
-    {
-      "source_key": "Madrid",
-      "label": "Madrid",
-      "color": "#00A600",
-      "standpoints": 14,
-      "q10": 0.020913294077888663,
-      "q50": 0.02238105138497516,
-      "q90": 0.02317093976407998
-    },
-    {
-      "source_key": "Mexico",
-      "label": "Mexico",
+      "source_key": "Mexico City",
+      "label": "Mexico City",
       "color": "#0066B3",
       "standpoints": 11,
-      "q10": 9.92187947769122e-07,
-      "q50": 0.12906154022429828,
-      "q90": 0.2957983257792987
-    },
-    {
-      "source_key": "Tokyo",
-      "label": "Tokyo",
-      "color": "#E66100",
-      "standpoints": 16,
-      "q10": 3.656217959315326e-05,
-      "q50": 0.009673886624732418,
-      "q90": 0.025200369144298053
+      "q10": 1.0052271467418079e-06,
+      "q50": 0.12906056842948704,
+      "q90": 0.2957659607223248
     }
   ],
   "output": {
@@ -61,10 +34,10 @@
       299.9994
     ],
     "png_mode": "P",
-    "png_bytes": 13430,
-    "pdf_bytes": 33006,
-    "png_sha256": "5b39712b26df4f4eeb1510f5352c1d91d6fc4d9fa8f9d682d7f5f34b88ff1bdc",
-    "pdf_sha256": "1dd11d2b84235a875c46966cf37df383a9753c37f0d8dfb444fe03644eeccea3"
+    "png_bytes": 13810,
+    "pdf_bytes": 35244,
+    "png_sha256": "e09ef1a4303ae8a9c7c6e70b8ada73db92435922dbba0520a0e6a7b1697cc5cc",
+    "pdf_sha256": "c216fb6c3046ff8e7beba15cdbff148fa97954dd998806e3795793c04413d575"
   },
   "checks": {
     "exact_660_by_295_px": true,

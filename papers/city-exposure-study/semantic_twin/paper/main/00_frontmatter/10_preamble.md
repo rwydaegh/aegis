@@ -1,37 +1,43 @@
 % NEXT: \begin{document}
 % NEXT:
-% NEXT: \history{}
-% NEXT: \doi{}
+% NEXT: \receiveddate{XX Month, XXXX}
+% NEXT: \reviseddate{XX Month, XXXX}
+% NEXT: \accepteddate{XX Month, XXXX}
+% NEXT: \publisheddate{XX Month, XXXX}
+% NEXT: \currentdate{XX Month, XXXX}
 % NEXT:
-% NEXT: \title{Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities at 15 GHz}
+% NEXT: \title{Human-Centric 6G RF-EMF Exposure with AI-Assisted Digital Twins in Ten Cities}
 % NEXT:
-% NEXT: \author{\uppercase{Robin Wydaeghe}\authorrefmark{1},
-% NEXT: \uppercase{G\"unter Vermeeren}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
-% NEXT: \uppercase{Emmeric Tanghe}\authorrefmark{1}, \IEEEmembership{Member, IEEE},
-% NEXT: and~\uppercase{Wout Joseph}\authorrefmark{1}, \IEEEmembership{Senior Member, IEEE}}
+% NEXT: \author{ROBIN WYDAEGHE~\orcidlink{0000-0002-1374-0118}\IEEEauthorrefmark{1},
+% NEXT: G\"UNTER VERMEEREN~\orcidlink{0000-0002-5309-3808}\IEEEauthorrefmark{1},
+% NEXT: \IEEEmembership{Member, IEEE},
+% NEXT: EMMERIC TANGHE~\orcidlink{0000-0003-0020-6466}\IEEEauthorrefmark{1},
+% NEXT: \IEEEmembership{Member, IEEE},
+% NEXT: and WOUT JOSEPH~\orcidlink{0000-0002-8807-0673}\IEEEauthorrefmark{1},
+% NEXT: \IEEEmembership{Senior Member, IEEE}}
 % NEXT:
-% NEXT: \address[1]{Department of Information Technology, Ghent University/IMEC,
-% NEXT: 9052 Ghent, Belgium (e-mail: robin.wydaeghe@ugent.be)}
+% NEXT: \affil{Department of Information Technology, Ghent University/IMEC,
+% NEXT: 9052 Ghent, Belgium}
 % NEXT:
-% NEXT: \markboth
-% NEXT: {Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
-% NEXT: {Wydaeghe \headeretal: Image-Informed Urban Propagation and Route-Level Body Exposure Across Ten Cities}
-% NEXT:
-% NEXT: \corresp{Corresponding author: Robin Wydaeghe
+% NEXT: \corresp{CORRESPONDING AUTHOR: Robin Wydaeghe
 % NEXT: (e-mail: robin.wydaeghe@ugent.be).}
-\documentclass{ieeeaccess}
+% NEXT:
+% NEXT: \markboth{Human-Centric 6G RF-EMF Exposure with AI-Assisted Digital Twins in Ten Cities}
+% NEXT: {Wydaeghe \textit{et al.}}
+\documentclass{IEEEoj}
 
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
-\usepackage{newtxtext}
 \usepackage{bm}
 \usepackage{booktabs}
 \usepackage{graphicx}
+\usepackage{orcidlink}
+\hypersetup{hidelinks}
 \usepackage{textcomp}
 \usepackage{url}
 
-\vol{16}
-\year{2026}
+\AtBeginDocument{\definecolor{ojcolor}{cmyk}{0.93,0.59,0.15,0.02}}
+\def\OJlogo{\vspace{-4pt}\hskip-4pt\includegraphics[height=18pt]{ojcoms.png}}
 
 \graphicspath{{../}{./}}
 

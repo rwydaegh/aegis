@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the IEEE Access graphical abstract from the current five-city campaign."""
+"""Build the IEEE OJ-COMS graphical abstract from the ten-route result."""
 
 from __future__ import annotations
 
@@ -17,11 +17,7 @@ import scienceplots  # noqa: F401  # registers the SciencePlots styles
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
-CAMPAIGN = (
-    REPO / "semantic_twin/outputs/roofline_campaign/"
-    "current_five_city_first_material_interaction/"
-    "current_five_city_first_material_interaction.json"
-)
+CAMPAIGN = REPO / "semantic_twin/paper/figures/route_results/route_results.json"
 
 PX_W, PX_H = 660, 295
 DISPLAY_DPI = 300
@@ -50,7 +46,7 @@ def _panel(ax: plt.Axes, title: str) -> None:
 
 
 def _draw_scene(ax: plt.Axes) -> None:
-    _panel(ax, "Scene evidence")
+    _panel(ax, "AI-assisted city twin")
     ax.add_patch(Rectangle((0, 0.37), 1, 0.63, facecolor=SKY, edgecolor="none"))
     ax.add_patch(Rectangle((0, 0), 1, 0.37, facecolor="#D3D3D3", edgecolor="none"))
 
@@ -93,12 +89,12 @@ def _draw_scene(ax: plt.Axes) -> None:
                         )
                     )
     ax.axvline(0.51, color=BLACK, lw=0.65, ls=(0, (2, 2)))
-    ax.text(0.25, 0.08, "panorama", ha="center", va="center", fontsize=6.5)
-    ax.text(0.75, 0.08, "material surface", ha="center", va="center", fontsize=6.5)
+    ax.text(0.25, 0.08, "street image", ha="center", va="center", fontsize=6.5)
+    ax.text(0.75, 0.08, "surface labels", ha="center", va="center", fontsize=6.5)
 
 
 def _draw_route(ax: plt.Axes) -> None:
-    _panel(ax, "Fixed route and source")
+    _panel(ax, "Route and roofline sources")
     ax.set_facecolor("white")
     mesh = [
         [(0.00, 0.10), (0.38, 0.02), (0.20, 0.42)],
@@ -181,7 +177,7 @@ def _ray(ax: plt.Axes, start: tuple[float, float], end: tuple[float, float], col
 
 
 def _draw_body(ax: plt.Axes) -> None:
-    _panel(ax, "Directional body exposure")
+    _panel(ax, "Direction-aware body SAR")
     _body_patch(ax)
     _ray(ax, (0.04, 0.87), (0.46, 0.69), BLACK, 1.35)
     ax.plot([0.97, 0.87, 0.67], [0.87, 0.58, 0.55], color=RED, lw=1.25)
@@ -196,22 +192,21 @@ def _draw_body(ax: plt.Axes) -> None:
 
 def _route_quantiles() -> list[dict[str, object]]:
     data = json.loads(CAMPAIGN.read_text())
-    order = ["Korenmarkt", "Prague", "Madrid", "Mexico", "Tokyo"]
-    labels = ["Ghent", "Prague", "Madrid", "Mexico", "Tokyo"]
-    colors = [BLACK, RED, GREEN, BLUE, ORANGE]
+    order = ["Milan", "Mexico City"]
+    colors = [ORANGE, BLUE]
     rows: list[dict[str, object]] = []
-    for key, label, color in zip(order, labels, colors, strict=True):
-        values = np.asarray([float(point["wbsar"]) for point in data["cities"][key]["route"]])
-        q10, q50, q90 = np.quantile(values, [0.1, 0.5, 0.9])
+    for key, color in zip(order, colors, strict=True):
+        city = data["cities"][key]
+        quantiles = city["normalized_wbsar_quantiles_m2_per_kg"]
         rows.append(
             {
                 "source_key": key,
-                "label": label,
+                "label": key,
                 "color": color,
-                "standpoints": int(values.size),
-                "q10": float(q10),
-                "q50": float(q50),
-                "q90": float(q90),
+                "standpoints": int(city["standpoints"]),
+                "q10": float(quantiles["q10"]),
+                "q50": float(quantiles["median"]),
+                "q90": float(quantiles["q90"]),
             }
         )
     return rows
@@ -224,18 +219,17 @@ def _draw_results(ax: plt.Axes, rows: list[dict[str, object]]) -> None:
     for spine in ax.spines.values():
         spine.set_color(BLACK)
         spine.set_linewidth(0.8)
-    ax.set_title("Five-route result", fontsize=8.3, fontweight="bold", pad=3)
+    ax.set_title(r"10 routes: 14.31$\times$ range", fontsize=7.5, fontweight="bold", pad=3)
 
     y = np.arange(len(rows))[::-1]
     for yi, row in zip(y, rows, strict=True):
         ax.text(0.015, yi, str(row["label"]), ha="left", va="center", fontsize=5.5)
 
-    plot_ax = ax.inset_axes([0.29, 0.0, 0.71, 1.0])
+    plot_ax = ax.inset_axes([0.34, 0.18, 0.66, 0.62])
     plot_ax.set_xscale("log")
     for yi, row in zip(y, rows, strict=True):
-        q10, q50, q90 = float(row["q10"]), float(row["q50"]), float(row["q90"])
+        q50 = float(row["q50"])
         color = str(row["color"])
-        plot_ax.plot([q10, q90], [yi, yi], color=color, lw=1.3, solid_capstyle="round")
         plot_ax.plot(q50, yi, "o", ms=4.2, mfc="white", mec=color, mew=1.2)
     plot_ax.set_xlim(5e-7, 1.0)
     plot_ax.set_ylim(-0.65, len(rows) - 0.35)
@@ -248,16 +242,7 @@ def _draw_results(ax: plt.Axes, rows: list[dict[str, object]]) -> None:
     plot_ax.spines["right"].set_visible(False)
     plot_ax.spines["bottom"].set_color(BLACK)
     plot_ax.spines["bottom"].set_linewidth(0.8)
-    plot_ax.set_xlabel(r"normalized whole-body SAR [m$^2$ kg$^{-1}$]", fontsize=5.9, labelpad=1)
-    plot_ax.text(
-        0.97,
-        0.04,
-        "10th–90th percentile",
-        transform=plot_ax.transAxes,
-        ha="right",
-        va="bottom",
-        fontsize=5.3,
-    )
+    plot_ax.set_xlabel("Normalized median SAR", fontsize=5.5, labelpad=1)
 
 
 def _flow_arrow(fig: plt.Figure, x0: float, x1: float) -> None:
@@ -319,7 +304,7 @@ def main() -> None:
             facecolor="white",
             bbox_inches=None,
             pad_inches=0,
-            metadata={"Title": "Image-informed route exposure graphical abstract"},
+            metadata={"Title": "Human-centric RF-EMF exposure graphical abstract"},
         )
         plt.close(fig)
 
@@ -342,9 +327,9 @@ def main() -> None:
         color_mode = image.mode
     audit = {
         "schema_version": 1,
-        "figure": "IEEE Access graphical abstract",
+        "figure": "IEEE OJ-COMS graphical abstract",
         "source_campaign": str(CAMPAIGN.relative_to(REPO)),
-        "source_contract": "current_five_city_first_material_interaction",
+        "source_contract": "ten_city_route_production64_v1",
         "route_quantiles": rows,
         "output": {
             "png": png.name,

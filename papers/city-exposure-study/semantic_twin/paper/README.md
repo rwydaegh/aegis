@@ -1,15 +1,15 @@
-# Canonical IEEE Access paper
+# Canonical IEEE OJ-COMS paper
 
 Start with [READ_THIS_FIRST.md](READ_THIS_FIRST.md). The sole canonical
 manuscript is the PaperMaker9000 paragraph tree in `main/`. Its compiled IEEE
-Access source and PDF are `build/main.tex` and `build/main.pdf`. The argument is
+OJ-COMS source and PDF are `build/main.tex` and `build/main.pdf`. The argument is
 in [spine.md](spine.md), and author decisions are collected in
 [QUESTIONS_BANK.md](QUESTIONS_BANK.md).
 
-The manuscript is a regular IEEE Access Research Article. Its main result is the
-authenticated five-site, 73-standpoint calculation under the declared
-first-material-interaction model. The supplement includes a ten-route extension
-under the same production contract and a separate geometric fixed-grid diagnostic.
+The manuscript targets the IEEE OJ-COMS special issue on human-centric wireless
+systems. Its main result is the authenticated ten-route, 163-point calculation
+with 64 independent runs under the declared single-reflection model. The older
+five-route result and the geometric fixed-grid diagnostic are supporting records.
 The current publication figures are indexed in [figures/README.md](figures/README.md).
 The supplementary paragraph tree is in `si_new/`.
 
@@ -32,8 +32,8 @@ uv run --project /home/user/PaperMaker9000 papermaker lenses --type paragraph --
 uv run --project /home/user/PaperMaker9000 papermaker claims run --code-root code
 ```
 
-The Access class, font files, and logos are the official May 13, 2026 template
-assets. Do not replace them with an older class.
+`IEEEoj.cls` and `ojcoms.png` come from the official January 2024 OJ-COMS LaTeX
+package. Do not replace them with IEEE Access assets.
 
 Build the separate supplement from this directory with:
 
@@ -46,7 +46,7 @@ latexmk -pdf -interaction=nonstopmode -halt-on-error \
 
 ## Current authority order
 
-1. The authenticated five-city JSON and artifact manifest
+1. The authenticated ten-route JSON and artifact manifest
 2. `docs/CURRENT_PRODUCTION_CONTRACT.md`
 3. `docs/RESULTS_INVENTORY.md`
 4. `paper/spine.md`
