@@ -48,7 +48,7 @@ from pathlib import Path
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-FORK_ROOT = REPO_ROOT / "papers" / "coherent-exposure-operator" / "code"
+FORK_ROOT = REPO_ROOT / "private" / "papers" / "coherent-exposure-operator" / "code"
 
 UE_IDX = 4  # the default 14 m UE, mid-corridor (e11 convention)
 N_UE = 9  # corridor UE positions 0..8 (x = -7..+9 m at 2 m spacing)

@@ -101,3 +101,11 @@ Read the relevant rule file before working in that area.
 ## When you're stuck, ask Robin
 
 If you hit a tooling blocker (missing API keys, can't access a website, need browser interaction, need an MCP server installed, need a manual download), STOP and ask. Do not silently fall back to an inferior approach. Robin can provide API keys, run browser steps, install tools, download files, or grant permissions. He wants the most ambitious result, not the fastest fallback.
+
+## Public and private workspace
+
+The independent private repository lives at `private/`. It is ignored by the outer repository and is not a submodule. Search it explicitly when a task concerns private papers, business, research or operations, because ordinary searches may skip ignored paths.
+
+Before finishing work, run `python3 tools/workspace-status.py`. Inspect both repositories. Commit and push only repositories that changed, using their respective remotes and explicit file staging. Never add private files or the private Git directory to the outer repository. Keep raw credentials and bulky generated assets out of both Git histories.
+
+The public codebase is authoritative for `src`, tests and app data. Private research imports that code rather than keeping a second copy. Maintain references when files move. Existing mesh use, app experience and reporting automation are outside this cleanup's behavioral scope.

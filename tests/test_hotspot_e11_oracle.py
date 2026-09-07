@@ -33,6 +33,7 @@ FREQ = 28e9
 
 _PACK = (
     Path(__file__).resolve().parents[1]
+    / "private"
     / "papers"
     / "coherent-exposure-operator"
     / "data"

@@ -40,7 +40,7 @@ description: Viewer-specific rules for the Flask + Three.js 3D frontend
 
 ## Known issues and QA
 
-Track viewer behavior against `docs/internal/viewer_bug_report.md` and `docs/internal/features.md`. Several older UI items there have been fixed (drag threshold, Sionna voxel hiding, RT teardown, favicon). Prefer exercising current `index.html` and server routes before copying bug text into new issues.
+Track viewer behavior against `private/notes/internal/viewer_bug_report.md` and `private/notes/internal/features.md`. Several older UI items there have been fixed (drag threshold, Sionna voxel hiding, RT teardown, favicon). Prefer exercising current `index.html` and server routes before copying bug text into new issues.
 
 ## Testing
 

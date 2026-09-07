@@ -1,4 +1,0 @@
-# Source material and generated audits stay local. Only the rule list is tracked.
-*
-!.gitignore
-!RULES_SUPERLIST.md

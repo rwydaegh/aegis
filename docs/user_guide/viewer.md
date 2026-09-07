@@ -2,7 +2,7 @@
 
 The viewer has two parts: a Flask REST backend that runs dosimetry computations and serves data, and a React + Three.js frontend that renders the scene. The frontend shows a body mesh with absorbed power density heatmap, optional voxel environments, antenna radiation patterns, and real-time dosimetry stats.
 
-The production instance runs at [aegis.waves-ugent.be](https://aegis.waves-ugent.be) (password-protected). See [Deployment](deployment.md) for server details.
+The production instance runs at [aegis.waves-ugent.be](https://aegis.waves-ugent.be). Access is controlled by `AEGIS_PUBLIC_ACCESS` in the deployment configuration.
 
 ## Running locally
 

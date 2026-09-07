@@ -109,6 +109,9 @@ version-file = "src/aegis/_version.py"
 packages = ["src/aegis"]
 artifacts = ["src/aegis/viewer/static/**"]
 
+[tool.hatch.build]
+exclude = ["/private"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"

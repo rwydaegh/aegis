@@ -2,7 +2,9 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    env_file: app.env
+    env_file:
+      - access.env
+      - app.env
     ports:
       - "80:80"
       - "443:443"
@@ -19,7 +21,9 @@ services:
     image: ghcr.io/rwydaegh/aegis:${IMAGE_TAG:-latest}
     hostname: aegis-prod
     restart: unless-stopped
-    env_file: app.env
+    env_file:
+      - access.env
+      - app.env
     expose:
       - "8000"
     healthcheck:

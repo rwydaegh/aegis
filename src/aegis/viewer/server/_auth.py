@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -62,6 +63,8 @@ def _auth_login_response(gate_password: str) -> tuple:
 
 def setup_auth(app: Flask, gate_password: str | None) -> None:
     """Register the before_request auth check and /api/auth route."""
+    if os.environ.get("AEGIS_PUBLIC_ACCESS") == "true":
+        gate_password = None
 
     @app.before_request
     def check_auth():

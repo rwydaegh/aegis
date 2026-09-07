@@ -1,6 +1,6 @@
 # Development machine (TensorDock)
 
-The production viewer runs on a [Hetzner VPS](../user_guide/deployment.md) without a GPU. For development with GPU acceleration (JAX/CUDA for Sionna RT, coherent MIMO), AEGIS uses an on-demand TensorDock VM. The `tools/cloud.py` script manages it with a single command.
+The production viewer runs on a Hetzner VPS without a GPU. For development with GPU acceleration (JAX/CUDA for Sionna RT, coherent MIMO), AEGIS uses an on-demand TensorDock VM. The `tools/cloud.py` script manages it with a single command.
 
 This machine is for writing and testing code, not serving users. Code written here gets pushed to GitHub, which triggers the CI/CD pipeline to deploy to production.
 

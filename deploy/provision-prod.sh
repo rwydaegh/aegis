@@ -31,6 +31,8 @@ PROD_HOST="$NEW_IP"   # retarget every ssh_prod/scp at the new box
 compose_src="$AEGIS_REPO/docker-compose.yml"; caddy_src="$AEGIS_REPO/Caddyfile"
 [[ -f "$compose_src" ]] || { compose_src="./../docker-compose.yml"; caddy_src="./../Caddyfile"; }
 [[ -f "$compose_src" ]] || die "docker-compose.yml not found (set AEGIS_REPO)"
+access_src="$(dirname "$compose_src")/access.env"
+[[ -f "$access_src" ]] || die "access.env not found beside docker-compose.yml"
 
 log "Waiting for SSH on $NEW_IP ..."
 for _ in $(seq 1 30); do ssh_prod true 2>/dev/null && break; sleep 5; done
@@ -45,7 +47,7 @@ scp "${SSH_OPTS[@]}" "$SECRETS_DIR/app.env" "$PROD_USER@$NEW_IP:$APP_DIR/app.env
 ssh_prod "chmod 600 $APP_DIR/app.env"
 
 log "3/7 Restoring docker-compose.yml + Caddyfile"
-scp "${SSH_OPTS[@]}" "$compose_src" "$caddy_src" "$PROD_USER@$NEW_IP:$APP_DIR/"
+scp "${SSH_OPTS[@]}" "$compose_src" "$caddy_src" "$access_src" "$PROD_USER@$NEW_IP:$APP_DIR/"
 
 log "4/7 Restoring SMPL-X models"
 if [[ -d "$SMPLX_SRC" ]] && ls "$SMPLX_SRC"/*.npz >/dev/null 2>&1; then

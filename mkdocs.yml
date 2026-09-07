@@ -7,6 +7,10 @@ repo_name: rwydaegh/aegis
 
 docs_dir: docs
 
+exclude_docs: |
+  internal/
+  superpowers/
+
 theme:
   name: material
   custom_dir: docs/overrides
@@ -85,7 +89,6 @@ nav:
     - AI automation: developer_guide/ai_automation.md
   - Reference:
     - API reference: reference/api.md
-    - Feature inventory: internal/features.md
 
 plugins:
   - search:
