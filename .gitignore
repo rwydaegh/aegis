@@ -372,3 +372,15 @@ tools/rf-scene-web/dist/
 tools/citygen/The_City_Generator_2.6/
 tools/buildify/
 The_City_Generator_2.6*.zip
+
+# Local document build intermediates
+*.aux
+*.out
+*.toc
+*.nav
+*.snm
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+# Downloaded source document, retained locally
+/papers/city-exposure-study/1-s2.0-S0160412025002910-mmc1.docx

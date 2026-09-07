@@ -21,3 +21,7 @@ archive/loose_images/
 archive/semantic_twin_loose/
 archive/third_party/
 archive/*.zip
+
+# Keep LaTeX intermediates out of the figure inclusion above
+*.fls
+*.fdb_latexmk

@@ -1,6 +1,0 @@
-{
-  "n_universe": 166,
-  "n_covered": 166,
-  "uncovered": [],
-  "duplicated_in_paragraph": {}
-}
