@@ -4,11 +4,11 @@
 % NEXT: unpolarized reflectance varies by less than $1\%$ over $[0^\circ,
 % NEXT: 60^\circ]$. Empirically, the near-constancy extends to $|\ntilde| > 2.5$,
 % NEXT: below the strict Azzam threshold. The SI evaluates this extension on
-% NEXT: the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Biological tissue at the wireless mmWave
+% NEXT: the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Biological tissue in the wireless mmWave
 % NEXT: band has $|\ntilde| \in [3, 6]$, putting it in the high-index
 % NEXT: regime. This connection between the Azzam criterion and biological dosimetry
-% NEXT: has not appeared in the optics or bioelectromagnetics literature,
-% NEXT: where prior work has evaluated the angular and polarization
+% NEXT: has not appeared in the antenna propagation or bioelectromagnetics literature;
+% NEXT: prior work has evaluated the angular and polarization
 % NEXT: dependence of body transmission above $6$~GHz
 % NEXT: numerically~\cite{Samaras2019} without the high-index reduction.
 The Brewster angle of a lossless dielectric is $\theta_{\mathrm{B}} =

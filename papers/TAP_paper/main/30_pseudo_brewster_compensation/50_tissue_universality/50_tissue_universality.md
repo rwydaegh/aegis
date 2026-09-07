@@ -4,7 +4,7 @@
 <!-- AUTO_BEGIN: assembled -->
 \subsection{Tissue universality}\label{subsec:pB-tissues}
 
-All biological tissues at the wireless mmWave band cluster in the
+All biological tissues in the wireless mmWave band cluster in the
 $|\ntilde| > 2.5$ region where the compensation operates.
 \Cref{tab:materials} lists the relevant parameters at 28~GHz from
 the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Skin and
@@ -13,7 +13,7 @@ $5.6\%$. Water has $|\ntilde| > 6$ and a variation below $4\%$.
 Fat is the outlier, with $|\ntilde| \approx 2$ and an $8.2\%$
 variation, but fat is rarely the outermost tissue at exposure sites
 of regulatory interest. Above $6$~GHz, the relevant outermost
-tissues are skin, subcutaneous fat, and vitreous humor.
+tissues are skin and vitreous humor.
 
 \begin{table}[!t]
 \centering
@@ -34,6 +34,7 @@ Water  & 25.0 & 55.0 & 6.62 & 0.45 & $3.9\%$ \\
 \end{tabular}
 \end{table}
 <!-- AUTO_END: assembled -->
+
 
 
 

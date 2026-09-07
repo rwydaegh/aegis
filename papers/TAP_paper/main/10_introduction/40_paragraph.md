@@ -1,5 +1,5 @@
-% PREV: This work derives the closed form behind these coefficients. On
-% PREV: high-index tissue, the unpolarized Fresnel transmission becomes a
+% PREV: This work derives the closed form behind these coefficients. For tissue with a
+% PREV: high refractive index, the unpolarized Fresnel transmission becomes a
 % PREV: near-constant scalar~\cite{Azzam2015}. The local law then integrates
 % PREV: over a nonconvex body through a generalized Cauchy identity
 % PREV: from 1841~\cite{Cauchy1841}, with self-shadowing from ambient
@@ -35,7 +35,7 @@ contributions are as follows.
   geometric approximation within a few percent over the relevant
   angular range.
 
-  \item The computation is differentiable end-to-end, the first
+  \item The absorbed-power map is differentiable end-to-end and is the first
   \gls{APD} map to provide closed-form gradients. For a body mesh
   under many incident paths, the absorbed-power map is a single
   matrix-vector multiplication, evaluated in under $10$~ms.

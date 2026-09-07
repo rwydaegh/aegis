@@ -161,7 +161,7 @@ incidence directions takes weeks on \gls{GPU} clusters. Whole-body
 simulations above 30~GHz become computationally difficult~\cite{Wydaeghe2026}.
 This work shows that the surface absorbed-power map on a
 $10^4$-triangle body mesh reduces to one matrix-vector multiply,
-evaluated in under $10$~ms on a commercial modern GPU at any
+evaluated in under $10$~ms on a modern GPU at any
 frequency from 1 to 100~GHz. The whole-body absorbed power
 reduces to only three precomputed scalars: the body mass, the
 body surface area, and the flux-weighted Fresnel transmission.
@@ -178,8 +178,8 @@ differ between studies, and they provide no gradients for design. No
 study writes them as one expression, and none treats a nonconvex body
 in closed form.
 
-This work derives the closed form behind these coefficients. On
-high-index tissue, the unpolarized Fresnel transmission becomes a
+This work derives the closed form behind these coefficients. For tissue with a
+high refractive index, the unpolarized Fresnel transmission becomes a
 near-constant scalar~\cite{Azzam2015}. The local law then integrates
 over a nonconvex body through a generalized Cauchy identity
 from 1841~\cite{Cauchy1841}, with self-shadowing from ambient
@@ -420,7 +420,7 @@ $\xi = \ntilde$, giving the polarization-independent normal-incidence value
 For skin at 28~GHz with $\varepsilon_r = 16.55$ and
 $\sigma = 25.8$~S/m, $\ntilde = 4.49 - 1.79i$ and $T_0 = 0.539$.
 
-\subsection{Polarization-aware exact law}\label{subsec:exact-law}
+\subsection{Polarization-aware exact absorbed power density}\label{subsec:exact-law}
 
 Any incident plane wave is fully polarized, so the exact \gls{APD}
 law must be polarization-aware. At a surface point
@@ -768,7 +768,7 @@ posture-dependent. The construction here is computational and
 posture-resolved. For the Thelonious phantom, an ambient-occlusion
 solver returns the area-weighted mean
 $\bar{\eta} = \Aab/A = 0.865$. This is near the upper end of
-Flintoft's band $[0.75, 0.85]$~\cite{Tomita1999}.
+Flintoft's band $[0.75, 0.85]$~\cite{Flintoft2014}.
 \Cref{fig:phantom}\subref{fig:phantom:eta-front} and
 \subref{fig:phantom:eta-side} render it on the phantom. Most of the
 body has $\eta \approx 1$. Reductions occur in concavities. The
@@ -1444,9 +1444,14 @@ End-to-end exposure assessment in current practice requires a
 per-scenario FDTD evaluation on the user phantom as the back-end
 step~\cite{Wydaeghe2022access,Wydaeghe2026npj}. With the closed form
 replacing that step, exposure-constrained network design becomes a
-continuous optimization problem.
+continuous optimization problem, because of a speed increase and the
+availability of gradients on each differentiable computation.
 
-Second, the per-triangle absorbed-power map for $M \approx 10^4$
+Second, the per-triangle absorbed-power map for $M \approx 10^4$\footnote{Note
+that the number of triangles is arbitrary. As long as the geometric shadow is
+kept constant, $\mathrm{SAR}_{\mathrm{wb}}$ results will not change. A correct
+validation with FDTD requires similar geometric accuracy of the underlying
+mesh.}
 triangles and $N \approx 10^2$ paths is one matrix-vector multiply on
 a modern GPU, evaluated in under $10$~ms. The cost is independent of
 frequency. Against an FDTD reference whose cost scales as $f^4$, the

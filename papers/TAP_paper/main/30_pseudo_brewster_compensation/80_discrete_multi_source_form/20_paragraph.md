@@ -2,16 +2,17 @@
 % PREV: multiple incident waves. Discretize the body into $M$ triangles. Row $j$ of
 % PREV: $\mathbf{N} \in \mathbb{R}^{M\times 3}$ holds the outward unit
 % PREV: normal $\nhat_j$. Let $N$ plane waves arrive with unit directions
-% PREV: $\khat_1, \ldots, \khat_N$ and power densities $S_1, \ldots, S_N$.
+% PREV: $\khat_1, \ldots, \khat_N$ and incident power densities
+% PREV: $\IPD_1, \ldots, \IPD_N$.
 % PREV: Stack the directions column-wise into
 % PREV: $\mathbf{K} \in \mathbb{R}^{3\times N}$, with column $i$ equal to
-% PREV: $-\khat_i$. Stack the powers into
-% PREV: $\mathbf{s} = [S_1,\ldots,S_N]^\top \in \mathbb{R}^N$. Let
+% PREV: $-\khat_i$. Stack the incident power densities into
+% PREV: $\bm{\mathrm{IPD}} = [\IPD_1,\ldots,\IPD_N]^\top \in \mathbb{R}^N$. Let
 % PREV: $\mathbf{V} \in \{0,1\}^{M\times N}$ be the visibility matrix, with
 % PREV: $V_{ji} = 1$ when direction $\khat_i$ reaches triangle $j$, and
 % PREV: $V_{ji} = 0$ otherwise. Collect the per-triangle APD values into
 % PREV: $\bm{\mathrm{APD}} \in \mathbb{R}^{M}$.
-% NEXT: Each step is differentiable. The operator $\pospart{\cdot}$ is the
+% NEXT: Each step is differentiable almost everywhere. The operator $\pospart{\cdot}$ is the
 % NEXT: rectified linear unit (ReLU). Replacing it with the smooth
 % NEXT: \gls{GELU} activation~\cite{Hendrycks2016} leaves the structure
 % NEXT: intact and replaces the hard cutoff with a soft rolloff

@@ -1,4 +1,4 @@
-% PREV: \subsection{Polarization-aware exact law}\label{subsec:exact-law}
+% PREV: \subsection{Polarization-aware exact absorbed power density}\label{subsec:exact-law}
 % NEXT: To proceed, write
 % NEXT: \begin{equation}\label{eq:Teff-decomp}
 % NEXT:   \Teff(\rr) = \Tavg(\theta) + \tfrac{1}{2}\,q(\rr)\,\Delta T(\theta)\, ,
@@ -14,11 +14,11 @@
 % NEXT: ensemble orientation either in space or time, the ensemble average
 % NEXT: $\langle q\rangle$ vanishes by the same argument. Third, for a body
 % NEXT: in a multipath environment with $N$ independent path orientations,
-% NEXT: the variance of the polarization correction scales as $D_B/\sqrt{2N}$,
+% NEXT: the standard deviation of the polarization correction scales as $D_B/\sqrt{2N}$,
 % NEXT: where $D_B \le 16\%$ is the body's polarization directivity on the
 % NEXT: Thelonious phantom, and for $N \ge 20$ paths the correction drops
 % NEXT: below $2.5\%$. Section~\ref{si:fresnel} of the SI derives all three
-% NEXT: conditions and the $D_B/\sqrt{2N}$ variance bound. Under any of these conditions the exact law reduces to
+% NEXT: conditions and the $D_B/\sqrt{2N}$ standard-deviation bound. Under any of these conditions the exact law reduces to
 % NEXT: \begin{equation}\label{eq:Sab-Tavg}
 % NEXT:   \APD(\rr) = \IPD \, \Tavg(\theta(\rr)) \, \pospart{\mu(\rr)}\, .
 % NEXT: \end{equation}

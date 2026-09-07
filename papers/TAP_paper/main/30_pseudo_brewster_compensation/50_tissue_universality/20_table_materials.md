@@ -1,4 +1,4 @@
-% PREV: All biological tissues at the wireless mmWave band cluster in the
+% PREV: All biological tissues in the wireless mmWave band cluster in the
 % PREV: $|\ntilde| > 2.5$ region where the compensation operates.
 % PREV: \Cref{tab:materials} lists the relevant parameters at 28~GHz from
 % PREV: the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Skin and
@@ -7,7 +7,7 @@
 % PREV: Fat is the outlier, with $|\ntilde| \approx 2$ and an $8.2\%$
 % PREV: variation, but fat is rarely the outermost tissue at exposure sites
 % PREV: of regulatory interest. Above $6$~GHz, the relevant outermost
-% PREV: tissues are skin, subcutaneous fat, and vitreous humor.
+% PREV: tissues are skin and vitreous humor.
 \begin{table}[!t]
 \centering
 \caption{Pseudo-Brewster compensation across tissue types at

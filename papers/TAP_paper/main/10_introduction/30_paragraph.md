@@ -24,7 +24,7 @@
 % NEXT:   geometric approximation within a few percent over the relevant
 % NEXT:   angular range.
 % NEXT:
-% NEXT:   \item The computation is differentiable end-to-end, the first
+% NEXT:   \item The absorbed-power map is differentiable end-to-end and is the first
 % NEXT:   \gls{APD} map to provide closed-form gradients. For a body mesh
 % NEXT:   under many incident paths, the absorbed-power map is a single
 % NEXT:   matrix-vector multiplication, evaluated in under $10$~ms.
@@ -39,8 +39,8 @@
 % NEXT:   the Thelonious phantom, Sim4Life FDTD, and dosimetry literature
 % NEXT:   across $108$ volunteers and $5$ FDTD phantoms.
 % NEXT: \end{enumerate}
-This work derives the closed form behind these coefficients. On
-high-index tissue, the unpolarized Fresnel transmission becomes a
+This work derives the closed form behind these coefficients. For tissue with a
+high refractive index, the unpolarized Fresnel transmission becomes a
 near-constant scalar~\cite{Azzam2015}. The local law then integrates
 over a nonconvex body through a generalized Cauchy identity
 from 1841~\cite{Cauchy1841}, with self-shadowing from ambient

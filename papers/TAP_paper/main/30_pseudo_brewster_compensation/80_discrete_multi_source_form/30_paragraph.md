@@ -1,15 +1,15 @@
 % PREV: The geometric law on the mesh then reads
 % PREV: \begin{equation}\label{eq:mat-multi}
 % PREV:   \bm{\mathrm{APD}} = T_0\,\bigl(\pospart{\mathbf{N}\,\mathbf{K}}
-% PREV:   \odot \mathbf{V}\bigr)\,\mathbf{s}\, .
+% PREV:   \odot \mathbf{V}\bigr)\,\bm{\mathrm{IPD}}\, .
 % PREV: \end{equation}
 % PREV: The cosine matrix $\mathbf{N}\,\mathbf{K} \in \mathbb{R}^{M\times N}$
 % PREV: has entry $(j,i)$ equal to $\nhat_j\cdot(-\khat_i)$. The operator
 % PREV: $\pospart{\cdot} \equiv \max(\cdot,0)$ acts componentwise, and clamps
 % PREV: back-facing entries to zero. The Hadamard product $\odot$ with
 % PREV: $\mathbf{V}$ gates self-shadowed entries. The product with
-% PREV: $\mathbf{s}$ sums the contributions of the $N$ incident waves.
-Each step is differentiable. The operator $\pospart{\cdot}$ is the
+% PREV: $\bm{\mathrm{IPD}}$ sums the contributions of the $N$ incident waves.
+Each step is differentiable almost everywhere. The operator $\pospart{\cdot}$ is the
 rectified linear unit (ReLU). Replacing it with the smooth
 \gls{GELU} activation~\cite{Hendrycks2016} leaves the structure
 intact and replaces the hard cutoff with a soft rolloff
@@ -34,4 +34,3 @@ _PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (41 rules cleared).
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

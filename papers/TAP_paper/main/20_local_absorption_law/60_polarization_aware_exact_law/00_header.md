@@ -24,7 +24,7 @@
 % NEXT: suppressed in this subsection because the Fresnel calculation
 % NEXT: operates at a point already taken to be visible. Visibility returns
 % NEXT: with the multi-source matrix form in \cref{subsec:matrix}.
-\subsection{Polarization-aware exact law}\label{subsec:exact-law}
+\subsection{Polarization-aware exact absorbed power density}\label{subsec:exact-law}
 
 ## reviews (subsection_header)
 

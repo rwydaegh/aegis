@@ -32,7 +32,6 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
 \usepackage{xr-hyper}
-\externaldocument{paper_SI}
 \usepackage[colorlinks=true,allcolors=black]{hyperref}
 \usepackage{orcidlink}
 \usepackage[capitalize]{cleveref}
@@ -76,6 +75,11 @@
 \newcommand{\Vis}{V}
 \newcommand{\APDAvg}{\langle\mathrm{APD}\rangle_{1\,/\,4\,\mathrm{cm}^2}}
 \DeclareMathOperator{\RE}{Re}
+\DeclareMathOperator{\IM}{Im}
+
+% Load cross-document labels only after commands used in the external
+% auxiliary file have been defined.
+\externaldocument{paper_SI}
 
 % Flowchart output-box colors
 \definecolor{outA}{RGB}{216,234,251}
@@ -149,6 +153,8 @@ APD, dosimetry, FDTD, Fresnel transmission, ICNIRP, mmWave, SAR.
 
 \IEEEpeerreviewmaketitle
 <!-- AUTO_END: assembled -->
+
+
 
 
 

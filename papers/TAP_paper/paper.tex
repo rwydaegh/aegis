@@ -28,7 +28,6 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
 \usepackage{xr-hyper}
-\externaldocument{paper_SI}
 \usepackage[colorlinks=true,allcolors=black]{hyperref}
 \usepackage{orcidlink}
 \usepackage[capitalize]{cleveref}
@@ -72,6 +71,11 @@
 \newcommand{\Vis}{V}
 \newcommand{\APDAvg}{\langle\mathrm{APD}\rangle_{1\,/\,4\,\mathrm{cm}^2}}
 \DeclareMathOperator{\RE}{Re}
+\DeclareMathOperator{\IM}{Im}
+
+% Load cross-document labels only after commands used in the external
+% auxiliary file have been defined.
+\externaldocument{paper_SI}
 
 % Flowchart output-box colors
 \definecolor{outA}{RGB}{216,234,251}
@@ -148,10 +152,10 @@ APD, dosimetry, FDTD, Fresnel transmission, ICNIRP, mmWave, SAR.
 \section{Introduction}\label{sec:introduction}
 
 \IEEEPARstart{W}{ireless} exposure of the human body is regulated
-through two basic restrictions in the \gls{ICNIRP} 2020
-guidelines~\cite{ICNIRP2020}, IEC/IEEE~63195, and IEEE~C95.1: the
-mass-averaged \gls{SAR} below 6~GHz, with peak values evaluated as
-\gls{psSAR10g}, and the surface-averaged \gls{APD} above 6~GHz. Direct evaluation uses
+through whole-body and local basic restrictions in the \gls{ICNIRP} 2020
+guidelines~\cite{ICNIRP2020}, IEC/IEEE~63195, and IEEE~C95.1. Whole-body
+exposure is expressed as mass-averaged \gls{SAR}. The local metric changes
+from \gls{psSAR10g} below 6~GHz to surface-averaged \gls{APD} above 6~GHz. Direct evaluation uses
 \gls{FDTD} simulations on an anatomical
 phantom~\cite{Kodera2024,Diao2024,Hirata2021,Wydaeghe2026}. Resolving the submillimeter
 absorption layer at ten cells per wavelength
@@ -161,7 +165,7 @@ incidence directions takes weeks on \gls{GPU} clusters. Whole-body
 simulations above 30~GHz become computationally difficult~\cite{Wydaeghe2026}.
 This work shows that the surface absorbed-power map on a
 $10^4$-triangle body mesh reduces to one matrix-vector multiply,
-evaluated in under $10$~ms on a commercial modern GPU at any
+evaluated in under $10$~ms on a modern GPU at any
 frequency from 1 to 100~GHz. The whole-body absorbed power
 reduces to only three precomputed scalars: the body mass, the
 body surface area, and the flux-weighted Fresnel transmission.
@@ -178,8 +182,8 @@ differ between studies, and they provide no gradients for design. No
 study writes them as one expression, and none treats a nonconvex body
 in closed form.
 
-This work derives the closed form behind these coefficients. On
-high-index tissue, the unpolarized Fresnel transmission becomes a
+This work derives the closed form behind these coefficients. For tissue with a
+high refractive index, the unpolarized Fresnel transmission becomes a
 near-constant scalar~\cite{Azzam2015}. The local law then integrates
 over a nonconvex body through a generalized Cauchy identity
 from 1841~\cite{Cauchy1841}, with self-shadowing from ambient
@@ -206,7 +210,7 @@ contributions are as follows.
   geometric approximation within a few percent over the relevant
   angular range.
 
-  \item The computation is differentiable end-to-end, the first
+  \item The absorbed-power map is differentiable end-to-end and is the first
   \gls{APD} map to provide closed-form gradients. For a body mesh
   under many incident paths, the absorbed-power map is a single
   matrix-vector multiplication, evaluated in under $10$~ms.
@@ -420,7 +424,7 @@ $\xi = \ntilde$, giving the polarization-independent normal-incidence value
 For skin at 28~GHz with $\varepsilon_r = 16.55$ and
 $\sigma = 25.8$~S/m, $\ntilde = 4.49 - 1.79i$ and $T_0 = 0.539$.
 
-\subsection{Polarization-aware exact law}\label{subsec:exact-law}
+\subsection{Polarization-aware exact absorbed power density}\label{subsec:exact-law}
 
 Any incident plane wave is fully polarized, so the exact \gls{APD}
 law must be polarization-aware. At a surface point
@@ -464,11 +468,11 @@ $q \equiv 0$ pointwise. Second, for linear polarization with random
 ensemble orientation either in space or time, the ensemble average
 $\langle q\rangle$ vanishes by the same argument. Third, for a body
 in a multipath environment with $N$ independent path orientations,
-the variance of the polarization correction scales as $D_B/\sqrt{2N}$,
+the standard deviation of the polarization correction scales as $D_B/\sqrt{2N}$,
 where $D_B \le 16\%$ is the body's polarization directivity on the
 Thelonious phantom, and for $N \ge 20$ paths the correction drops
 below $2.5\%$. Section~\ref{si:fresnel} of the SI derives all three
-conditions and the $D_B/\sqrt{2N}$ variance bound. Under any of these conditions the exact law reduces to
+conditions and the $D_B/\sqrt{2N}$ standard-deviation bound. Under any of these conditions the exact law reduces to
 \begin{equation}\label{eq:Sab-Tavg}
   \APD(\rr) = \IPD \, \Tavg(\theta(\rr)) \, \pospart{\mu(\rr)}\, .
 \end{equation}
@@ -502,7 +506,7 @@ with refractive index $|\ntilde| > 2 + \sqrt{3} \approx 3.73$, the
 unpolarized reflectance varies by less than $1\%$ over $[0^\circ,
 60^\circ]$. Empirically, the near-constancy extends to $|\ntilde| > 2.5$,
 below the strict Azzam threshold. The SI evaluates this extension on
-the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Biological tissue at the wireless mmWave
+the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Biological tissue in the wireless mmWave
 band has $|\ntilde| \in [3, 6]$, putting it in the high-index
 regime. This connection between the Azzam criterion and biological dosimetry
 has not appeared in the antenna propagation or bioelectromagnetics literature;
@@ -549,7 +553,7 @@ deviation stays below $0.2\%$.
 
 \subsection{Tissue universality}\label{subsec:pB-tissues}
 
-All biological tissues at the wireless mmWave band cluster in the
+All biological tissues in the wireless mmWave band cluster in the
 $|\ntilde| > 2.5$ region where the compensation operates.
 \Cref{tab:materials} lists the relevant parameters at 28~GHz from
 the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Skin and
@@ -619,7 +623,7 @@ Table~\ref{tab:itis-fvs} and Fig.~\ref{fig:si-angle-family} of the SI.
 
 Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
 First, the polarization reduction~\eqref{eq:Sab-Tavg} removes the
-angular dependence. Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
+polarization dependence. Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
 self-shadowing through the binary visibility
 $\Vis(\rr,\khat) \in \{0,1\}$. The exact law reduces to the
 \textit{geometric absorption law}
@@ -719,7 +723,7 @@ back-facing entries to zero. The Hadamard product $\odot$ with
 $\mathbf{V}$ gates self-shadowed entries. The product with
 $\bm{\mathrm{IPD}}$ sums the contributions of the $N$ incident waves.
 
-Each step is differentiable. The operator $\pospart{\cdot}$ is the
+Each step is differentiable almost everywhere. The operator $\pospart{\cdot}$ is the
 rectified linear unit (ReLU). Replacing it with the smooth
 \gls{GELU} activation~\cite{Hendrycks2016} leaves the structure
 intact and replaces the hard cutoff with a soft rolloff
@@ -768,7 +772,7 @@ posture-dependent. The construction here is computational and
 posture-resolved. For the Thelonious phantom, an ambient-occlusion
 solver returns the area-weighted mean
 $\bar{\eta} = \Aab/A = 0.865$. This is near the upper end of
-Flintoft's band $[0.75, 0.85]$~\cite{Tomita1999}.
+Flintoft's band $[0.75, 0.85]$~\cite{Flintoft2014}.
 \Cref{fig:phantom}\subref{fig:phantom:eta-front} and
 \subref{fig:phantom:eta-side} render it on the phantom. Most of the
 body has $\eta \approx 1$. Reductions occur in concavities. The
@@ -1444,10 +1448,15 @@ End-to-end exposure assessment in current practice requires a
 per-scenario FDTD evaluation on the user phantom as the back-end
 step~\cite{Wydaeghe2022access,Wydaeghe2026npj}. With the closed form
 replacing that step, exposure-constrained network design becomes a
-continuous optimization problem.
+continuous optimization problem, because of a speed increase and the
+availability of gradients on each differentiable computation.
 
-Second, the per-triangle absorbed-power map for $M \approx 10^4$
-triangles and $N \approx 10^2$ paths is one matrix-vector multiply on
+Second, the per-triangle absorbed-power map for $M \approx 10^4$ triangles\footnote{Note
+that the number of triangles is arbitrary. As long as the geometric shadow is
+kept constant, $\mathrm{SAR}_{\mathrm{wb}}$ results will not change. A correct
+validation with FDTD requires similar geometric accuracy of the underlying
+mesh.}
+and $N \approx 10^2$ paths is one matrix-vector multiply on
 a modern GPU, evaluated in under $10$~ms. The cost is independent of
 frequency. Against an FDTD reference whose cost scales as $f^4$, the
 speed advantage grows by roughly $10^4$ from $6$ to $60$~GHz, exactly

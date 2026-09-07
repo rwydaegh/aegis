@@ -1,29 +1,29 @@
 % PREV: Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
-% PREV: First, we apply the polarization reduction~\eqref{eq:Sab-Tavg}.
-% PREV: Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
+% PREV: First, the polarization reduction~\eqref{eq:Sab-Tavg} removes the
+% PREV: polarization dependence. Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
 % PREV: self-shadowing through the binary visibility
 % PREV: $\Vis(\rr,\khat) \in \{0,1\}$. The exact law reduces to the
 % PREV: \textit{geometric absorption law}
 % PREV: \begin{equation}\label{eq:geom-law}
 % PREV:   \boxed{%
-% PREV:     \APD(\rr) \approx \IPD \cdot T_0 \cdot \Vis(\rr,\khat) \cdot
-% PREV:     \pospart{\nhat(\rr) \cdot (-\khat)}
+% PREV:     \APD(\rr) \approx \IPD \cdot T_0 \cdot \pospart{\nhat(\rr) \cdot (-\khat)} \cdot
+% PREV:     \Vis(\rr,\khat)
 % PREV:   }\, .
 % PREV: \end{equation}
-% PREV: The tissue physics enters through the scalar $T_0$. All spatial
+% PREV: The tissue physics enters through the scalar $T_0$. The transmission
+% PREV: coefficient $T_{\mathrm{tr}}$ fitted
+% PREV: in~\cite{Kodera2024,Diao2024,Funahashi2018} is identified with $T_0$,
+% PREV: the normal-incidence transmission. All spatial
 % PREV: variation depends on the body shape through the surface-normal field
 % PREV: $\nhat(\rr)$ and the visibility field $\Vis(\rr,\khat)$. For a convex
-% PREV: body $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces to the classical
+% PREV: body, $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces to the classical
 % PREV: convex form $\IPD\,T_0 \pospart{\nhat\cdot(-\khat)}$.
 % PREV: \Cref{fig:phantom} shows how visibility enters the geometric law on
 % PREV: the Thelonious phantom. Panel~(a) shows the frontal APD map.
 % PREV: Panels~(b) and~(c) show the direction-isotropic exposure fraction
-% PREV: $\eta(\rr)$ from the front and side. Under frontal illumination the medial
-% PREV: thighs, the inside of the wrists, and the underside of the chin
-% PREV: become self-shadowed and drop to zero through $\Vis$. The transmission coefficient
-% PREV: $T_{\mathrm{tr}}$ fitted in
-% PREV: \cite{Kodera2024,Diao2024,Funahashi2018} is identified with $T_0$,
-% PREV: the normal-incidence transmission.
+% PREV: $\eta(\rr)$ from the front and side. Under frontal illumination,
+% PREV: $\Vis$ drops three regions to zero: the medial thighs, the sides of
+% PREV: the torso beneath the arms, and the underside of the jaw.
 % NEXT: Hence, the error of~\eqref{eq:geom-law} relative to the exact
 % NEXT: polarization-aware law is bounded by the maximum of the polarization
 % NEXT: correction and the angular variation of $\Tavg$. The latter is below

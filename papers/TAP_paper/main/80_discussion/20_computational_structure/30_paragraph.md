@@ -1,14 +1,15 @@
-% PREV: First, the network is differentiable in every input. Replacing the
-% PREV: hard $[\cdot]_+$ gate with the smooth \gls{GELU}
-% PREV: activation~\eqref{eq:gelu} preserves the chain rule. Gradients of
+% PREV: First, the network is differentiable in every input. The smooth
+% PREV: \gls{GELU} activation~\eqref{eq:gelu} replaces the hard $[\cdot]_+$
+% PREV: gate, preserving the chain rule. Gradients of
 % PREV: regulatory quantities propagate to antenna positions, antenna
 % PREV: orientations, beam codebooks, and reconfigurable-intelligent-surface
-% PREV: phases through standard backpropagation. End-to-end exposure
-% PREV: assessment in current practice carries a per-scenario FDTD
-% PREV: evaluation on the user phantom as the back-end
+% PREV: phases through standard backpropagation.
+% PREV: End-to-end exposure assessment in current practice requires a
+% PREV: per-scenario FDTD evaluation on the user phantom as the back-end
 % PREV: step~\cite{Wydaeghe2022access,Wydaeghe2026npj}. With the closed form
 % PREV: replacing that step, exposure-constrained network design becomes a
-% PREV: continuous optimization problem.
+% PREV: continuous optimization problem, because of a speed increase and the
+% PREV: availability of gradients on each differentiable computation.
 % NEXT: Third, the whole-body identity~\eqref{eq:cauchy-exact} factorizes the
 % NEXT: body dependence into a single scalar $\Aab = \bar\eta\,A$. For a
 % NEXT: given phantom and posture, $\bar\eta$ is computed once, in tens of
@@ -16,8 +17,12 @@
 % NEXT: required one FDTD solve per body and per direction reduce to one
 % NEXT: Fresnel quadrature shared across the population and one occlusion
 % NEXT: pass per body.
-Second, the per-triangle absorbed-power map for $M \approx 10^4$
-triangles and $N \approx 10^2$ paths is one matrix-vector multiply on
+Second, the per-triangle absorbed-power map for $M \approx 10^4$ triangles\footnote{Note
+that the number of triangles is arbitrary. As long as the geometric shadow is
+kept constant, $\mathrm{SAR}_{\mathrm{wb}}$ results will not change. A correct
+validation with FDTD requires similar geometric accuracy of the underlying
+mesh.}
+and $N \approx 10^2$ paths is one matrix-vector multiply on
 a modern GPU, evaluated in under $10$~ms. The cost is independent of
 frequency. Against an FDTD reference whose cost scales as $f^4$, the
 speed advantage grows by roughly $10^4$ from $6$ to $60$~GHz, exactly
@@ -43,4 +48,3 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
     - _dismissed_ `latex.substitutions.cref_capitalized`: Reference sits inside a trailing parenthetical, not at sentence start or as a mid-sentence reference word, so lowercase \cref rendering '(table 5)' is the standard cleveref form here.
     - _dismissed_ `latex.math.thin_space_units`: Number is in math mode, unit follows in text after a non-breaking tilde; this number-in-math plus tilde-unit pattern is internally consistent and not a missing-separator violation.
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

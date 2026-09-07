@@ -28,7 +28,6 @@
 \usepackage{xcolor}
 \usepackage{xr-hyper}
 \usepackage[colorlinks=true,allcolors=black]{hyperref}
-\externaldocument{paper}
 \usepackage{orcidlink}
 \usepackage[capitalize]{cleveref}
 \usepackage[acronym,nonumberlist,nopostdot,nomain]{glossaries}
@@ -73,8 +72,13 @@
 \newcommand{\diff}{\mathrm{d}}
 \newcommand{\pospart}[1]{\left[#1\right]_{+}}
 \newcommand{\Vis}{V}
+\newcommand{\APDAvg}{\langle\mathrm{APD}\rangle_{1\,/\,4\,\mathrm{cm}^2}}
 \DeclareMathOperator{\RE}{Re}
 \DeclareMathOperator{\IM}{Im}
+
+% Load cross-document labels only after commands used in the external
+% auxiliary file have been defined.
+\externaldocument{paper}
 
 \begin{document}
 
@@ -209,7 +213,7 @@ polarization directivity~\cite{Diao2024} as
 \end{equation}
 where $\tilde{B}$ is the off-diagonal Stokes component and
 $\tilde{A}_\perp$ the diagonal projected-area component, both at the
-body-integrated level. The variance of the polarization correction
+body-integrated level. The standard deviation of the polarization correction
 to the direction-averaged absorbed power is bounded by
 $D_B / \sqrt{2N}$. With $D_B = 16\%$ on the Thelonious phantom and
 $N = 20$ paths, the correction is below $2.5\%$.
@@ -899,7 +903,7 @@ identified in the main paper.
 All cross-references in this section that take a `main paper'
 qualifier point at the main paper's labels. The whole-body
 compliance threshold there, evaluated at the worst-case directional
-exposure (Remark~\ref{rem:hull}), is
+exposure, is
 \begin{equation}\label{eq:Sinc-max-SI}
   \IPD_{\mathrm{max}} = \frac{0.16\,m}{\Tbar\,A}\, ,
 \end{equation}

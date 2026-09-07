@@ -13,7 +13,7 @@
 % PREV:   geometric approximation within a few percent over the relevant
 % PREV:   angular range.
 % PREV:
-% PREV:   \item The computation is differentiable end-to-end, the first
+% PREV:   \item The absorbed-power map is differentiable end-to-end and is the first
 % PREV:   \gls{APD} map to provide closed-form gradients. For a body mesh
 % PREV:   under many incident paths, the absorbed-power map is a single
 % PREV:   matrix-vector multiplication, evaluated in under $10$~ms.

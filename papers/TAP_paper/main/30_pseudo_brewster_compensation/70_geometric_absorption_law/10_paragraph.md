@@ -36,7 +36,7 @@
 % NEXT: \end{figure*}
 Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
 First, the polarization reduction~\eqref{eq:Sab-Tavg} removes the
-angular dependence. Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
+polarization dependence. Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
 self-shadowing through the binary visibility
 $\Vis(\rr,\khat) \in \{0,1\}$. The exact law reduces to the
 \textit{geometric absorption law}
@@ -76,4 +76,3 @@ _PaperMaker9000 sweep — 4 flag(s) across 4 lens(es)._
     - `BOOK_WILLIAMS_style.prose_structure.comma_after_long_intro` (unknown): `For a convex body $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces to the classical` -> Add a comma after the four-word intro phrase: "For a convex body, $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces..." so the symbol is not misread as part of the noun phrase.
 - **latex-micro** — pass (41 rules cleared).
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

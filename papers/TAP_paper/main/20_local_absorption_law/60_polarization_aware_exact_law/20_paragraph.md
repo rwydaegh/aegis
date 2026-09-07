@@ -39,11 +39,11 @@ $q \equiv 0$ pointwise. Second, for linear polarization with random
 ensemble orientation either in space or time, the ensemble average
 $\langle q\rangle$ vanishes by the same argument. Third, for a body
 in a multipath environment with $N$ independent path orientations,
-the variance of the polarization correction scales as $D_B/\sqrt{2N}$,
+the standard deviation of the polarization correction scales as $D_B/\sqrt{2N}$,
 where $D_B \le 16\%$ is the body's polarization directivity on the
 Thelonious phantom, and for $N \ge 20$ paths the correction drops
 below $2.5\%$. Section~\ref{si:fresnel} of the SI derives all three
-conditions and the $D_B/\sqrt{2N}$ variance bound. Under any of these conditions the exact law reduces to
+conditions and the $D_B/\sqrt{2N}$ standard-deviation bound. Under any of these conditions the exact law reduces to
 \begin{equation}\label{eq:Sab-Tavg}
   \APD(\rr) = \IPD \, \Tavg(\theta(\rr)) \, \pospart{\mu(\rr)}\, .
 \end{equation}

@@ -2,14 +2,14 @@
 % NEXT: The geometric law on the mesh then reads
 % NEXT: \begin{equation}\label{eq:mat-multi}
 % NEXT:   \bm{\mathrm{APD}} = T_0\,\bigl(\pospart{\mathbf{N}\,\mathbf{K}}
-% NEXT:   \odot \mathbf{V}\bigr)\,\mathbf{s}\, .
+% NEXT:   \odot \mathbf{V}\bigr)\,\bm{\mathrm{IPD}}\, .
 % NEXT: \end{equation}
 % NEXT: The cosine matrix $\mathbf{N}\,\mathbf{K} \in \mathbb{R}^{M\times N}$
 % NEXT: has entry $(j,i)$ equal to $\nhat_j\cdot(-\khat_i)$. The operator
 % NEXT: $\pospart{\cdot} \equiv \max(\cdot,0)$ acts componentwise, and clamps
 % NEXT: back-facing entries to zero. The Hadamard product $\odot$ with
 % NEXT: $\mathbf{V}$ gates self-shadowed entries. The product with
-% NEXT: $\mathbf{s}$ sums the contributions of the $N$ incident waves.
+% NEXT: $\bm{\mathrm{IPD}}$ sums the contributions of the $N$ incident waves.
 Equation~\eqref{eq:geom-law} extends to a triangle mesh under
 multiple incident waves. Discretize the body into $M$ triangles. Row $j$ of
 $\mathbf{N} \in \mathbb{R}^{M\times 3}$ holds the outward unit

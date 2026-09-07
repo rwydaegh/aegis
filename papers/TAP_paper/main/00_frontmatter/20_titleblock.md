@@ -28,7 +28,6 @@
 % PREV: \usepackage{tikz}
 % PREV: \usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
 % PREV: \usepackage{xr-hyper}
-% PREV: \externaldocument{paper_SI}
 % PREV: \usepackage[colorlinks=true,allcolors=black]{hyperref}
 % PREV: \usepackage{orcidlink}
 % PREV: \usepackage[capitalize]{cleveref}
@@ -72,6 +71,11 @@
 % PREV: \newcommand{\Vis}{V}
 % PREV: \newcommand{\APDAvg}{\langle\mathrm{APD}\rangle_{1\,/\,4\,\mathrm{cm}^2}}
 % PREV: \DeclareMathOperator{\RE}{Re}
+% PREV: \DeclareMathOperator{\IM}{Im}
+% PREV:
+% PREV: % Load cross-document labels only after commands used in the external
+% PREV: % auxiliary file have been defined.
+% PREV: \externaldocument{paper_SI}
 % PREV:
 % PREV: % Flowchart output-box colors
 % PREV: \definecolor{outA}{RGB}{216,234,251}

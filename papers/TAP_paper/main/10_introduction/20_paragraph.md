@@ -1,8 +1,8 @@
 % PREV: \IEEEPARstart{W}{ireless} exposure of the human body is regulated
-% PREV: through two basic restrictions in the \gls{ICNIRP} 2020
-% PREV: guidelines~\cite{ICNIRP2020}, IEC/IEEE~63195, and IEEE~C95.1: the
-% PREV: mass-averaged \gls{SAR} below 6~GHz, with peak values evaluated as
-% PREV: \gls{psSAR10g}, and the surface-averaged \gls{APD} above 6~GHz. Direct evaluation uses
+% PREV: through whole-body and local basic restrictions in the \gls{ICNIRP} 2020
+% PREV: guidelines~\cite{ICNIRP2020}, IEC/IEEE~63195, and IEEE~C95.1. Whole-body
+% PREV: exposure is expressed as mass-averaged \gls{SAR}. The local metric changes
+% PREV: from \gls{psSAR10g} below 6~GHz to surface-averaged \gls{APD} above 6~GHz. Direct evaluation uses
 % PREV: \gls{FDTD} simulations on an anatomical
 % PREV: phantom~\cite{Kodera2024,Diao2024,Hirata2021,Wydaeghe2026}. Resolving the submillimeter
 % PREV: absorption layer at ten cells per wavelength
@@ -12,12 +12,12 @@
 % PREV: simulations above 30~GHz become computationally difficult~\cite{Wydaeghe2026}.
 % PREV: This work shows that the surface absorbed-power map on a
 % PREV: $10^4$-triangle body mesh reduces to one matrix-vector multiply,
-% PREV: evaluated in under $10$~ms on a commercial modern GPU at any
+% PREV: evaluated in under $10$~ms on a modern GPU at any
 % PREV: frequency from 1 to 100~GHz. The whole-body absorbed power
 % PREV: reduces to only three precomputed scalars: the body mass, the
 % PREV: body surface area, and the flux-weighted Fresnel transmission.
-% NEXT: This work derives the closed form behind these coefficients. On
-% NEXT: high-index tissue, the unpolarized Fresnel transmission becomes a
+% NEXT: This work derives the closed form behind these coefficients. For tissue with a
+% NEXT: high refractive index, the unpolarized Fresnel transmission becomes a
 % NEXT: near-constant scalar~\cite{Azzam2015}. The local law then integrates
 % NEXT: over a nonconvex body through a generalized Cauchy identity
 % NEXT: from 1841~\cite{Cauchy1841}, with self-shadowing from ambient

@@ -32,7 +32,7 @@ posture-dependent. The construction here is computational and
 posture-resolved. For the Thelonious phantom, an ambient-occlusion
 solver returns the area-weighted mean
 $\bar{\eta} = \Aab/A = 0.865$. This is near the upper end of
-Flintoft's band $[0.75, 0.85]$~\cite{Tomita1999}, and is rendered
+Flintoft's band $[0.75, 0.85]$~\cite{Flintoft2014}, and is rendered
 on the phantom in \cref{fig:phantom}\subref{fig:phantom:eta-front}
 and \cref{fig:phantom}\subref{fig:phantom:eta-side}. Most of the
 body has $\eta \approx 1$. Reductions occur in concavities. The

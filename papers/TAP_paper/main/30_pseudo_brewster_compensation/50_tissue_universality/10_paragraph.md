@@ -17,7 +17,7 @@
 % NEXT: \bottomrule
 % NEXT: \end{tabular}
 % NEXT: \end{table}
-All biological tissues at the wireless mmWave band cluster in the
+All biological tissues in the wireless mmWave band cluster in the
 $|\ntilde| > 2.5$ region where the compensation operates.
 \Cref{tab:materials} lists the relevant parameters at 28~GHz from
 the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Skin and
@@ -40,4 +40,3 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
 - **latex-micro** — pass (41 rules cleared).
     - _dismissed_ `latex.substitutions.approx_text_vs_math`: This is a genuine math-mode relation between the quantity $|\ntilde|$ and a value, not \approx standing in for the prose word 'approximately' (the rule's '$\approx 5\%$' failure mode); legitimate use.
 - **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
-

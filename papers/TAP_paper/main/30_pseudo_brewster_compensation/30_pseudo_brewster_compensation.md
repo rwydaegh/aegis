@@ -28,7 +28,7 @@ with refractive index $|\ntilde| > 2 + \sqrt{3} \approx 3.73$, the
 unpolarized reflectance varies by less than $1\%$ over $[0^\circ,
 60^\circ]$. Empirically, the near-constancy extends to $|\ntilde| > 2.5$,
 below the strict Azzam threshold. The SI evaluates this extension on
-the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Biological tissue at the wireless mmWave
+the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Biological tissue in the wireless mmWave
 band has $|\ntilde| \in [3, 6]$, putting it in the high-index
 regime. This connection between the Azzam criterion and biological dosimetry
 has not appeared in the antenna propagation or bioelectromagnetics literature;
@@ -75,7 +75,7 @@ deviation stays below $0.2\%$.
 
 \subsection{Tissue universality}\label{subsec:pB-tissues}
 
-All biological tissues at the wireless mmWave band cluster in the
+All biological tissues in the wireless mmWave band cluster in the
 $|\ntilde| > 2.5$ region where the compensation operates.
 \Cref{tab:materials} lists the relevant parameters at 28~GHz from
 the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Skin and
@@ -145,7 +145,7 @@ Table~\ref{tab:itis-fvs} and Fig.~\ref{fig:si-angle-family} of the SI.
 
 Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
 First, the polarization reduction~\eqref{eq:Sab-Tavg} removes the
-angular dependence. Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
+polarization dependence. Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
 self-shadowing through the binary visibility
 $\Vis(\rr,\khat) \in \{0,1\}$. The exact law reduces to the
 \textit{geometric absorption law}
@@ -245,7 +245,7 @@ back-facing entries to zero. The Hadamard product $\odot$ with
 $\mathbf{V}$ gates self-shadowed entries. The product with
 $\bm{\mathrm{IPD}}$ sums the contributions of the $N$ incident waves.
 
-Each step is differentiable. The operator $\pospart{\cdot}$ is the
+Each step is differentiable almost everywhere. The operator $\pospart{\cdot}$ is the
 rectified linear unit (ReLU). Replacing it with the smooth
 \gls{GELU} activation~\cite{Hendrycks2016} leaves the structure
 intact and replaces the hard cutoff with a soft rolloff
@@ -258,6 +258,10 @@ and $\mathbf{V}$ as ambient occlusion. For $M \approx 10^4$ and
 $N \approx 10^2$, the spatial map is one matrix-vector multiply on
 the GPU.
 <!-- AUTO_END: assembled -->
+
+
+
+
 
 
 

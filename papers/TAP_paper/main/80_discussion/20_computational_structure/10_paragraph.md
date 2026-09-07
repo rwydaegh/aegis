@@ -1,15 +1,16 @@
 % PREV: \subsection{Computational structure}\label{subsec:disc-primitives}
-% NEXT: First, the network is differentiable in every input. Replacing the
-% NEXT: hard $[\cdot]_+$ gate with the smooth \gls{GELU}
-% NEXT: activation~\eqref{eq:gelu} preserves the chain rule. Gradients of
+% NEXT: First, the network is differentiable in every input. The smooth
+% NEXT: \gls{GELU} activation~\eqref{eq:gelu} replaces the hard $[\cdot]_+$
+% NEXT: gate, preserving the chain rule. Gradients of
 % NEXT: regulatory quantities propagate to antenna positions, antenna
 % NEXT: orientations, beam codebooks, and reconfigurable-intelligent-surface
-% NEXT: phases through standard backpropagation. End-to-end exposure
-% NEXT: assessment in current practice carries a per-scenario FDTD
-% NEXT: evaluation on the user phantom as the back-end
+% NEXT: phases through standard backpropagation.
+% NEXT: End-to-end exposure assessment in current practice requires a
+% NEXT: per-scenario FDTD evaluation on the user phantom as the back-end
 % NEXT: step~\cite{Wydaeghe2022access,Wydaeghe2026npj}. With the closed form
 % NEXT: replacing that step, exposure-constrained network design becomes a
-% NEXT: continuous optimization problem.
+% NEXT: continuous optimization problem, because of a speed increase and the
+% NEXT: availability of gradients on each differentiable computation.
 The matrix form~\eqref{eq:mat-multi} is a single-hidden-layer
 rectified-linear `network' whose weights are the path directions and
 powers from a ray tracer~\cite{SionnaRT}. Three properties follow.
