@@ -5,10 +5,15 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-# --- Version from latest git tag ---
-VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+# Pass the intended version before tagging. Otherwise use the latest tag.
+VERSION=${1:-$(git describe --tags --abbrev=0 2>/dev/null)}
+VERSION=${VERSION#v}
 if [ -z "$VERSION" ]; then
   echo "ERROR: No git tags found. Tag a release first." >&2
+  exit 1
+fi
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "ERROR: Expected a release version such as v0.41.0." >&2
   exit 1
 fi
 

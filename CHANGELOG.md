@@ -3,6 +3,36 @@
 Curated highlights per release. Full detail lives in `git log` — this file
 exists so a human can understand a release in two minutes.
 
+## v0.41.0 - 2026-09-07
+
+### Features
+
+- Control password access to the viewer and documentation together with
+  `AEGIS_PUBLIC_ACCESS`. Set it to `true` to allow access without a password
+  while retaining the configured passwords for switching back (#952).
+
+### Fixes
+
+- Correct Sionna synthetic-array expansion for arbitrary element layouts by
+  tracing at the array centroid and applying each path's departure-direction
+  phase (`db5b36d9`).
+- Validate Sionna coefficient, delay, angle, and validity-mask shapes before
+  conversion. Handle empty JAX path sets and single-element non-synthetic
+  traces explicitly (`0abb95bb`).
+- Restore the mpmath constraint required by the optional body stack so the
+  combined installation resolves correctly (#952).
+- Remove stale documentation files during deployment (#952).
+
+### Maintenance
+
+- Limit source packages to application code, tests, configuration, and
+  documentation (#952).
+- Refresh viewer, visualization, documentation, and development dependencies
+  and the dependency lockfile (#935-#951).
+- Refresh viewer visual-regression baselines and verify the production SSH
+  host key during disaster-recovery backups (`573e615f`, `35180a3e`).
+- Synchronize citation version, release date, and test-count metadata.
+
 ## v0.40.0 — 2026-08-09
 
 The consolidation release: 539 commits across three parallel lines (June 8 to

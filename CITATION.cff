@@ -2,15 +2,11 @@ cff-version: 1.2.0
 title: AEGIS
 message: If you use this software, please cite it using these metadata.
 type: software
-version: 0.39.1
-date-released: 2026-06-08
+version: 0.41.0
+date-released: 2026-09-07
 authors:
   - family-names: Wydaeghe
     given-names: Robin
-identifiers:
-  - type: doi
-    description: DOI placeholder until a Zenodo or journal DOI is assigned
-    value: 10.00000/zenodo.placeholder
 repository-code: https://github.com/rwydaegh/aegis
 license: LicenseRef-Proprietary
 abstract: Geometric dosimetry engine for wireless exposure assessment.
