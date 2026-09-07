@@ -26,8 +26,13 @@ exclude_patterns = [
   "tools/**",
   # Spin-off business docs + scripts (IDF, founder materials, one-off generators)
   "spinoff/**",
-  # One-off phantom build script (run locally when phantom STLs are regenerated)
-  "scripts/build_phantoms.py",
+  # Validation, study campaigns, and supporting scripts are outside analysis scope
+  "validation/**",
+  "studies/**",
+  "scripts/**",
+  # Base station and environment modules are excluded from this quality scope
+  "src/aegis/basestations/**",
+  "src/aegis/environment/**",
 ]
 
 test_patterns = [
