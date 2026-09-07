@@ -16,7 +16,7 @@ dependencies = [
     "scipy>=1.17.1,<2",
     # sympy (via the body extra's torch) caps mpmath below 1.4, so this floor
     # must stay at 1.3 while ``all`` includes ``body``.
-    "mpmath>=1.3.0",
+    "mpmath>=1.4.1",
     "pyyaml>=6.0.3",
 ]
 
@@ -26,14 +26,14 @@ aegis-run = "aegis.run:main"
 aegis-study = "aegis.study.run:main"
 
 [project.optional-dependencies]
-fast = ["numba>=0.66.0"]
+fast = ["numba>=0.67.0"]
 jax = ["jax>=0.10.2"]
 # Remote GPU workers opt into this explicitly. The development PC has no GPU,
 # so this extra is deliberately excluded from ``all``.
 gpu = ["jax[cuda12]>=0.10.2"]
 viz = [
     "matplotlib>=3.11.1",
-    "plotly>=6.9.0",
+    "plotly>=7.0.0",
     "pyvista>=0.48.4",
     "trame>=3.13.2",
     "scienceplots>=2.2.2",
@@ -43,10 +43,10 @@ viz = [
 # magnitude slower (effectively hang on a full body) without the JIT. Keeping it
 # only in the 'fast' extra let the Docker image ship without it (the self-shadow
 # toggle then hung in production). It belongs in the viewer dependency contract.
-viewer = ["flask>=3.1.3", "psutil>=7.2.2", "differt @ git+https://github.com/rwydaegh/DiffeRT.git#subdirectory=differt", "modal>=1.5.3", "requests>=2.34.2", "pandas>=3.0.5", "geopy>=2.5.0", "Pillow>=12.3.0", "pyarrow>=25.0.0", "numba>=0.66.0"]
+viewer = ["flask>=3.1.3", "psutil>=7.2.2", "differt @ git+https://github.com/rwydaegh/DiffeRT.git#subdirectory=differt", "modal>=1.5.4", "requests>=2.34.2", "pandas>=3.0.5", "geopy>=2.5.0", "Pillow>=12.3.0", "pyarrow>=25.0.1", "numba>=0.67.0"]
 rt = ["differt @ git+https://github.com/rwydaegh/DiffeRT.git#subdirectory=differt"]
 sionna = ["sionna-rt>=2.0.1,<3.0"]
-modal = ["modal>=1.5.3"]
+modal = ["modal>=1.5.4"]
 docs = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.7",
@@ -61,15 +61,15 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-randomly>=4.1.0",
     "pytest-xdist>=3.8.0",
-    "hypothesis>=6.165.1",
-    "ruff>=0.16.1",
-    "basedpyright>=1.39.9",
-    "pre-commit>=4.6.1",
+    "hypothesis>=6.167.1",
+    "ruff>=0.16.5",
+    "basedpyright>=1.39.10",
+    "pre-commit>=4.6.2",
     "codespell>=2.4.3",
     "miepython>=3.3.0",
     "requests>=2.34.2",
     "pandas>=3.0.5",
-    "pyarrow>=25.0.0",
+    "pyarrow>=25.0.1",
     # Schemathesis drives the OpenAPI fuzzer at release-tier and the in-process
     # smoke test in tests/test_viewer_schemathesis_smoke.py.
     "schemathesis>=4.24.3",
