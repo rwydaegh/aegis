@@ -1,0 +1,136 @@
+% Korte bijlage bij de e-mail aan Filip over de valorisatie van AEGIS.
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper,margin=22mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\usepackage{microtype}
+
+\hypersetup{
+  hidelinks,
+  pdfauthor={Robin Wydaeghe},
+  pdftitle={AEGIS-dosimetrie: commerciële haalbaarheid}
+}
+
+\pagestyle{plain}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlist[itemize]{leftmargin=5mm,itemsep=1pt,topsep=2pt}
+\renewcommand{\arraystretch}{1.12}
+
+\begin{document}
+
+{\Large\bfseries AEGIS-dosimetrie: commerciële haalbaarheid}
+
+\vspace{8pt}
+
+\textbf{Kern}
+
+AEGIS hoeft geen nieuwe certificatiemethode te worden. Het is een snelle ontwerp- en screeningslaag vóór de bestaande FDTD/FEM-simulatie en meting. Een klant onderzoekt meer antenneconfiguraties, bundels en gebruiksposities en stuurt alleen de relevante gevallen door naar zijn erkende eindprocedure.
+
+\textbf{Eén toestelprogramma, honderden configuraties}
+
+Het publieke FCC-dossier van de Samsung Galaxy S25~\cite{samsung_s25_part0,samsung_s25_final} toont de omvang van één toestelprogramma. Eén FCC-ID omvat twee mmWave-antennemodules, drie frequentiebanden, meerdere toesteloppervlakken en 378 bundellimieten. Simulatie bepaalt de relevante vermogenslimieten en de meting daarna toont de conformiteit aan. Eén FCC-ID staat dus niet voor één berekening, maar voor honderden tot duizenden combinaties.
+
+AEGIS voegt een stap toe vóór die bestaande keten: snel varianten verkennen, zwakke ontwerpen uitsluiten, interessante ontwerpen optimaliseren en de uiteindelijke selectie met HFSS, Sim4Life, CST of een fysieke meting bevestigen. Opname in een norm of certificatieverslag is daarvoor niet nodig.
+
+\textbf{Een beperkte maar bereikbare groep kopers}
+
+Een eigen extractie van de FCC Equipment Authorization-data~\cite{fcc_eas} bevat 3.900 unieke toestel-ID's boven 5,925~GHz sinds 2019, waarvan 764 in 2025. Niet elk dossier is een AEGIS-klant. Belangrijker is dat de dossiers een bereikbare groep vormen. Een eerste selectie telt 120 organisaties met recente activiteit. De twintig grootste vertegenwoordigen ongeveer de helft van de recente dossiers. Daaronder bevinden zich Apple, Samsung, Google, Motorola, ASUS, Cisco, LG, Xiaomi, Lenovo, Quectel en Ubiquiti.
+
+De eerste commerciële doelgroepen zijn:
+
+\begin{itemize}
+  \item toestel-, chipset- en moduleteams die veel ontwerpvarianten evalueren
+  \item testlabo's en gespecialiseerde consultants die klanten sneller door pre-compliance willen loodsen~\cite{ctia_labs}
+  \item bestaande simulatieleveranciers die AEGIS als snelle module of voorbewerking kunnen aanbieden~\cite{sim4life}
+\end{itemize}
+
+Deze markt is geconcentreerd. Dat beperkt het aantal mogelijke klanten, maar maakt een internationale enterpriseverkoop ook haalbaar zonder massamarketing.
+
+\textbf{Wat dit financieel kan betekenen}
+
+Onderstaande cijfers zijn geen omzetvoorspelling. Ze tonen welke combinatie van klanten en prijzen nodig is. De prijs per enterprisecontract ligt onder de jaarlijkse kost van één gespecialiseerde ingenieur en binnen bestaande budgetten voor professionele simulatiesoftware. Ter referentie: een openbare Britse opdracht voor ANSYS-licenties en ondersteuning bedroeg GBP~290.055 over drie jaar~\cite{ukri_ansys}.
+
+\small
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{42mm}}
+\toprule
+\textbf{Rechtstreekse specialistische activiteit} & \textbf{Jaaromzet} \\
+\midrule
+20 enterprisecontracten à EUR~75.000 & EUR~1,50 miljoen \\
+25 labo- of specialistische licenties à EUR~20.000 & EUR~0,50 miljoen \\
+20 integratie- of ontwerptrajecten à EUR~25.000 & EUR~0,50 miljoen \\
+\midrule
+\textbf{Totaal} & \textbf{EUR~2,50 miljoen} \\
+\bottomrule
+\end{tabularx}
+
+\vspace{7pt}
+
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{42mm}}
+\toprule
+\textbf{Internationale activiteit met distributie} & \textbf{Recurrente omzet} \\
+\midrule
+30 enterprisecontracten à EUR~100.000 & EUR~3,00 miljoen \\
+40 labo- of specialistische licenties à EUR~25.000 & EUR~1,00 miljoen \\
+2 embedded licenties of distributiecontracten à EUR~500.000 & EUR~1,00 miljoen \\
+\midrule
+\textbf{Totaal} & \textbf{EUR~5,00 miljoen} \\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+In het tweede scenario bedienen distributiepartners andere klanten of toepassingen dan de directe klanten. Dezelfde omzet wordt dus niet tweemaal geteld. Vijf miljoen euro is geen basisscenario. Het wordt haalbaar wanneer rechtstreekse verkoop wordt gecombineerd met één of twee bestaande platformen die al toegang hebben tot de doelklanten.
+
+\textbf{Waarom ZMT geen bovengrens is}
+
+Zelfs als ZMT EUR~2 tot 3 miljoen omzet, volgt daar niet uit dat AEGIS slechts 1 tot 5\% daarvan kan halen. AEGIS hoeft geen marktaandeel van ZMT af te nemen. AEGIS kan rechtstreeks aan toestelbedrijven en labo's verkopen en tegelijk via ZMT of andere simulatieleveranciers distribueren. ZMT bewijst vooral dat een kleine, gespecialiseerde markt duurzame software-omzet kan dragen. De grotere AEGIS-case vereist distributie. Een rechtstreekse activiteit alleen zou eerder in de orde van EUR~2 tot 3 miljoen liggen.
+
+\textbf{Het risico rond standaarden is begrensd}
+
+De klant kan zijn finale conformiteit blijven aantonen met de bestaande FDTD/FEM-procedure of meting. AEGIS versnelt de ontwerp- en selectiefase. Vermelding van AEGIS in een standaard zou de verkoop later vergemakkelijken, maar is geen voorwaarde om pilots, ontwerptrajecten of enterprisecontracten te verkopen.
+
+\textbf{Conclusie}
+
+Dosimetrie is een geconcentreerde internationale B2B-markt met een beperkt aantal ontwikkelprogramma's, gespecialiseerde teams en bestaande distributiekanalen. Rechtstreekse verkoop draagt enkele miljoenen euro omzet. Bij integratie in bestaande platformen loopt dat op naar EUR~5 miljoen recurrente omzet.
+
+\begingroup
+\footnotesize
+\begin{thebibliography}{9}
+
+\bibitem{fcc_eas}
+FCC Equipment Authorization System, eigen extractie en deduplicatie per FCC-ID, 2019--2026.
+\url{https://apps.fcc.gov/oetcf/eas/reports/GenericSearch.cfm}
+
+\bibitem{samsung_s25_part0}
+Samsung Galaxy S25, Part~0 Power Density Report, FCC-ID A3LSMS921U.
+\url{https://fcc.report/FCC-ID/A3LSMS921U/6902432.pdf}
+
+\bibitem{samsung_s25_final}
+Samsung Galaxy S25, finaal Power Density Evaluation Report, FCC-ID A3LSMS921U.
+\url{https://fcc.report/FCC-ID/A3LSMS921U/6959656.pdf}
+
+\bibitem{sim4life}
+Sim4Life, licentievormen en ondersteuning voor externe modules.
+\url{https://sim4life.swiss/specifications}
+
+\bibitem{ukri_ansys}
+UK Research and Innovation, openbare ANSYS-opdracht van GBP~290.055 over drie jaar.
+\url{https://www.find-tender.service.gov.uk/Notice/008984-2022}
+
+\bibitem{ctia_labs}
+CTIA, overzicht van geautoriseerde testlabo's.
+\url{https://www.ctia.org/certification/eval_criteria/index.cfm}
+
+\end{thebibliography}
+\endgroup
+
+\end{document}

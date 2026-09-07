@@ -1,0 +1,526 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+\input{preamble}
+
+\title{AEGIS Surface Operator}
+\subtitle{Near-Body Dosimetry}
+\author{Robin Wydaeghe}
+\institute{WAVES, Ghent University and imec}
+\date{25 August 2026}
+
+\begin{document}
+
+% 1
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Large\color{navyblue}\bfseries AEGIS Surface Operator}\\[7pt]
+    {\normalsize Near-Body Dosimetry}\\[17pt]
+    {\small Robin Wydaeghe \quad$\cdot$\quad WAVES, Ghent University and imec}\\[3pt]
+    {\footnotesize 25 August 2026}
+  \end{center}
+  \vspace{11pt}
+  \begin{center}
+    {\small\color{darkgray}Geldigheidsgrens en falsificatie van de oppervlaktereductie.}
+  \end{center}
+  \vfill
+  \begin{center}{\footnotesize\color{alertred}\textbf{CONFIDENTIAL} \quad Patent filing pending}\end{center}
+\end{frame}
+
+% 2
+\begin{frame}{Scope}
+  \vspace{3pt}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{resultbox}[Beslissing, 24 augustus]
+        \small
+        De huidige patentaanvraag blijft gericht op \textbf{dosimetrie}. Een bredere EM-toepassing is geen voorwaarde meer voor indiening of de IOF-case.
+      \end{resultbox}
+      \vspace{8pt}
+      {\small\color{darkgray}De bredere toepassing is niet meer het hoofddoel.}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{questionbox}[Open vragen]
+        \begin{enumerate}\small\setlength\itemsep{5pt}
+          \item De technische \textbf{classificatie} van de reductie
+          \item De \textbf{eerste dominante fout} bij een device dicht bij het lichaam
+          \item De \textbf{kleinste overtuigende benchmark} tegen een referentiesolver
+        \end{enumerate}
+      \end{questionbox}
+    \end{column}
+  \end{columns}
+  \vspace{8pt}
+  \scopebar{Aangrenzende toepassingen worden afzonderlijk beoordeeld.}
+\end{frame}
+
+% 3
+\begin{frame}{Operator}
+  \vspace{2pt}
+  \begin{center}
+    \begin{tikzpicture}[node distance=8mm and 16mm,
+      label/.style={font=\small,align=center},
+      op/.style={draw=navyblue,minimum width=38mm,minimum height=14mm,align=center,fill=lightblue!25,font=\small},
+      arr/.style={->,>=stealth,line width=0.5pt,darkgray}]
+      \node[label] (field) {Incident field};
+      \node[label,below=of field] (body) {Body surface};
+      \node[op,right=18mm of $(field)!0.5!(body)$] (aegis) {Surface operator};
+      \node[label,right=18mm of aegis] (out) {Absorbed power};
+      \draw[arr] (field.east) -- ([yshift=4mm]aegis.west);
+      \draw[arr] (body.east) -- ([yshift=-4mm]aegis.west);
+      \draw[arr] (aegis) -- (out);
+    \end{tikzpicture}
+  \end{center}
+  \vspace{3pt}
+  \pause
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{evidencebox}[Included]
+        \footnotesize Shape, polarization, incidence angle, path phase, occlusion, spatial averaging.
+      \end{evidencebox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{limitbox}[Excluded]
+        \footnotesize Source-body coupling, induced currents, cavity and resonant fields, edge and creeping waves.
+      \end{limitbox}
+    \end{column}
+  \end{columns}
+  \vspace{2pt}
+  \scopebar{Maps a given incident field and body surface to absorbed power.}
+\end{frame}
+
+% 4
+\begin{frame}{Surface law}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \centering
+      \includegraphics[height=4.35cm]{fig_geometry.pdf}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \vspace{8pt}
+      {\small\begin{equation*}
+        \begin{aligned}
+        \Sab(\rr)={}&{\color{colsinc}\Sinc(\rr)}
+        {\color{coltransmission}\Teff(\rr)}\\[-1pt]
+        &{\color{colgeometry}[\nhat(\rr)\!\cdot\!(-\khat)]_+}
+        \Vis(\rr,\khat)
+        \end{aligned}
+      \end{equation*}}
+      \vspace{4pt}
+      \pause
+      \begin{itemize}\small\setlength\itemsep{5pt}
+        \item $[\nhat\cdot(-\khat)]_+$: projected area factor
+        \item $\Vis$: 0 if the body shadows the point, 1 otherwise
+        \item $\Teff$: from the Fresnel equations at the surface
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{2pt}
+  \pause
+  \begin{limitbox}[Validity]
+    \centering\small
+    Electrically large, locally smooth surface. Optically thick lossy tissue. Given illumination. Curvature parameter: $1/(kR)$.
+  \end{limitbox}
+\end{frame}
+
+% 5
+\begin{frame}{Tissue response}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \includegraphics[width=0.98\linewidth]{apd_angle_panel_T.pdf}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \vspace{2pt}
+      {\small Polarization-aware base model:}
+      \begin{equation*}
+        \Teff=|e_s|^2T_s+|e_p|^2T_p.
+      \end{equation*}
+      \pause
+      \begin{itemize}\footnotesize\setlength\itemsep{3pt}
+        \item Fresnel coefficients give the transmitted fraction per path
+        \item For unpolarized, high-loss tissue, $\Teff$ is close to $\Tzero$
+        \item A planar layer stack can improve total-power estimates
+      \end{itemize}
+      \vspace{2pt}
+      \begin{limitbox}[Limits of $T_0$]
+        \scriptsize $T_0$ is a high-index, unpolarized approximation. Less accurate near grazing incidence.
+      \end{limitbox}
+    \end{column}
+  \end{columns}
+  \vspace{1pt}
+\end{frame}
+
+% 6
+\begin{frame}{Operators}
+  \vspace{3pt}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{questionbox}[Incoherent operator]
+        \begin{equation*}
+          \mathbf{s}_{\mathrm{ab}}
+          =\bigl(\mathbf{T}_{\mathrm{eff}}\odot[\mathbf{N}\mathbf{K}]_+\odot\mathbf{V}\bigr)
+          \mathbf{s}_{\mathrm{inc}}.
+        \end{equation*}
+        \scriptsize $\mathbf{T}_{\mathrm{eff}}$ has full angle and polarization dependence. $\mathbf{T}_{\mathrm{eff}}\!\to T_0$ is the simplified form.
+      \end{questionbox}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{questionbox}[Coherent operator]
+        \begin{equation*}
+          \Sab(\rr)=\lVert\Gtilde(\rr)\xx\rVert_2^2.
+        \end{equation*}
+        \scriptsize Phase and polarization are in the field operator; power is the squared magnitude.
+      \end{questionbox}
+    \end{column}
+  \end{columns}
+  \vspace{9pt}
+  \pause
+  \begin{center}
+    \resizebox{0.94\linewidth}{!}{%
+    \begin{tikzpicture}[node distance=7mm,
+      stage/.style={draw=navyblue,fill=lightblue!45,minimum height=12mm,minimum width=25mm,align=center,font=\footnotesize},
+      arrow/.style={-{Latex[length=2mm]},navyblue,line width=0.7pt}]
+      \node[stage] (a) {Field or paths};
+      \node[stage,right=of a] (b) {Local Fresnel\\response};
+      \node[stage,right=of b] (c) {Geometry and\\occlusion};
+      \node[stage,right=of c] (d) {Surface\\operator};
+      \node[stage,right=of d] (e) {APD and\\averages};
+      \draw[arrow] (a)--(b); \draw[arrow] (b)--(c); \draw[arrow] (c)--(d); \draw[arrow] (d)--(e);
+    \end{tikzpicture}}
+  \end{center}
+  \vspace{1pt}
+  \scopebar{Differentiable when paths and shadows stay fixed.}
+\end{frame}
+
+% 7
+\begin{frame}{Coherence}
+  \begin{columns}[T]
+    \begin{column}{0.60\textwidth}
+      \centering
+      \includegraphics[height=5.8cm]{channel_exposure_flow.pdf}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \vspace{0pt}
+      {\small\begin{equation*}
+        P_{\mathrm{abs}}=\xx^H\QQ\xx,
+        \qquad
+        \QQ=\int_{\Sigma}\Gtilde^H\Gtilde\,\diff A.
+      \end{equation*}}
+      \pause
+      \begin{itemize}\scriptsize\setlength\itemsep{2pt}
+        \item $\QQ$ is Hermitian positive semidefinite
+        \item Random path phases average out cross terms
+        \item Once built, $\QQ$ is reusable across precoders
+        \item $\Gtilde$ uses a mean-depth approximation ($<0.08\%$ discrepancy in tested band)
+      \end{itemize}
+      \vspace{2pt}
+      \pause
+      \begin{limitbox}[Evidence limit]
+        \scriptsize Derived and tested numerically. Cross-term accuracy has no independent full-wave validation.
+      \end{limitbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% 8
+\begin{frame}{Evidence}
+  \begin{columns}[T]
+    \begin{column}{0.51\textwidth}
+      \centering
+      \includegraphics[height=3.75cm]{fig_kernels_vs_fdtd.pdf}
+      \\[-1pt]{\scriptsize Averaging-kernel predictions against Sim4Life FDTD}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \vspace{0pt}
+      {\footnotesize\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{25mm}@{}}
+        \toprule
+        \textbf{Evidence layer} & \textbf{Status} \\
+        \midrule
+        Anatomical-mesh $\Teff\!\to T_0$ reduction check & \textcolor{resultgreen}{\bfseries Done} \\
+        Sphere benchmark against Mie & \yes \\
+        Sim4Life FDTD: whole-body and averaged APD & \yes \\
+        Blind 28 GHz device-to-body benchmark & \maybe \\
+        Coherent off-diagonal terms against full wave & \maybe \\
+        \bottomrule
+      \end{tabularx}}
+    \end{column}
+  \end{columns}
+  \vspace{4pt}
+  \pause
+  \begin{evidencebox}[Evidence status]
+    \centering\footnotesize At 28 GHz, $\Teff\!\to T_0$ changes mean APD on illuminated triangles by $0.5\%$ and gives $3.2\%$ local RMS below $75^\circ$. This is a reduction check. Sim4Life FDTD checks cover 5.8 GHz whole-body and 7 GHz averaged APD. No matched 28 GHz device-body validation.
+  \end{evidencebox}
+\end{frame}
+
+% 9
+\begin{frame}{Validity}
+  \vspace{2pt}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{29mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Assumption} & \textbf{Reduction basis} & \textbf{Dominant error} \\
+    \midrule
+    Large smooth body & $kR\gg1$, local tangent-plane boundary & curvature, diffraction near shadow boundary \\
+    Opaque lossy tissue & absorption in a thin outer layer & optically thin, low-loss, layered resonance \\
+    Known illumination & reusable ray or field decomposition & source-body coupling \\
+    Lit convex region & local incidence factor & nonconvex self-shadowing ($\Vis$) \\
+    Power observable & surface-integrated loss & S-parameters, detuning, total scattering (global currents) \\
+    \bottomrule
+  \end{tabularx}
+  \vspace{9pt}
+  \pause
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{evidencebox}[Use case]
+        \centering\footnotesize Fast pre-screening and repeated optimization in a bounded regime.
+      \end{evidencebox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{limitbox}[Escalation]
+        \centering\footnotesize Reactive near field, small $ka$, resonant interiors, edges or cavities.
+      \end{limitbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% 10
+\begin{frame}{Device sources}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \vspace{1pt}
+      \begin{tikzpicture}[node distance=4.5mm,
+        box/.style={draw=navyblue,fill=softgray,minimum width=46mm,minimum height=9mm,align=center,font=\footnotesize},
+        yesbox/.style={draw=navyblue,fill=lightblue!25,minimum width=46mm,minimum height=9mm,align=center,font=\footnotesize},
+        nobox/.style={draw=navyblue,fill=softgray,minimum width=46mm,minimum height=9mm,align=center,font=\footnotesize},
+        arrow/.style={-{Latex[length=1.8mm]},line width=0.55pt}]
+        \node[box] (q1) {Source-body interaction\\below tolerance?};
+        \node[box,below=of q1] (q2) {Incident field known\\without the body?};
+        \node[box,below=of q2] (q3) {Local surface response dominant?};
+        \node[yesbox,below=of q3] (ok) {Candidate for benchmark};
+        \node[nobox,below=of ok] (fw) {Joint EM solution needed};
+        \draw[arrow] (q1)--node[right,font=\scriptsize]{Yes}(q2);
+        \draw[arrow] (q2)--node[right,font=\scriptsize]{Yes}(q3);
+        \draw[arrow] (q3)--node[right,font=\scriptsize]{Yes}(ok);
+        \coordinate (bus1) at ([xshift=-5mm]q1.west);
+        \coordinate (bus3) at ([xshift=-5mm]q3.west);
+        \draw[darkgray,line width=0.7pt] (q1.west) -- (bus1) -- (bus3);
+        \draw[darkgray,line width=0.7pt] (q2.west) -- (bus1 |- q2.west);
+        \draw[darkgray,line width=0.7pt] (q3.west) -- (bus3);
+        \draw[arrow,darkgray] (bus3) |- node[pos=0.58,left,font=\scriptsize]{No} (fw.west);
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \pause
+      \begin{questionbox}[Open question]
+        \small
+        For \SIrange{10}{60}{\giga\hertz} outside the reactive near field, what fails first?
+        \begin{itemize}\footnotesize\setlength\itemsep{2pt}
+          \item Wavefront curvature
+          \item Source-body coupling
+          \item Multiple scattering
+          \item Diffraction or creeping fields
+          \item Layered anatomy
+        \end{itemize}
+      \end{questionbox}
+      \vspace{4pt}
+      \begin{limitbox}
+        \footnotesize Describes the source field in isolation. Does not account for how the body changes it.
+      \end{limitbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% 11
+\begin{frame}{Benchmark}
+  \vspace{2pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{questionbox}[Canonical geometries]
+        \begin{enumerate}\small\setlength\itemsep{5pt}
+          \item Lossy half-space under oblique polarized illumination
+          \item Homogeneous lossy sphere across $ka$ and frequency
+          \item Layered curved patch with a finite aperture at several standoffs
+        \end{enumerate}
+      \end{questionbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \pause
+      \begin{questionbox}[Benchmark outputs]
+        \begin{itemize}\footnotesize\setlength\itemsep{3pt}
+          \item Local absorbed-power map
+          \item Peak spatially averaged APD
+          \item Total absorbed power
+          \item Source impedance or accepted-power change
+          \item Runtime after source characterization
+        \end{itemize}
+      \end{questionbox}
+    \end{column}
+  \end{columns}
+  \vspace{3pt}
+  \pause
+  \begin{resultbox}[Acceptance criteria]
+    \centering\small
+    Geometry, source, standoff, solver, observables and tolerances fixed before simulation. Include cases that should pass and cases that should fail.
+  \end{resultbox}
+  \vspace{2pt}
+  \scopebar{Outcome: an empirical escalation rule from AEGIS to full wave.}
+\end{frame}
+
+% 12
+\begin{frame}{Questions}
+  \vspace{2pt}
+  \begin{enumerate}\setlength\itemsep{8pt}
+    \item<1-> \textbf{Classificatie.} Is ``local high-frequency surface response operator'' technisch de juiste familie, of zou u dit anders benoemen?
+    \item<2-> \textbf{Eerste fout.} Welke ontbrekende fysica wordt bij een device nabij het lichaam eerst dominant?
+    \item<3-> \textbf{Falsificatie.} Welke drie geometrie\"en, bronafstanden, frequenties, observables en fouttoleranties vormen de kleinste overtuigende benchmark?
+    \item<4-> \textbf{Tussenmodel.} Kan een differential surface-admittance or boundary-integral formulation als referentie of tussenmodel dienen? Wat kan worden voorberekend en hergebruikt?
+  \end{enumerate}
+  \vspace{2pt}
+  \onslide<5->
+  \begin{questionbox}[Optionele vraag]
+    \centering\small
+    Ziet u \emph{\'e\'en} aangrenzende toepassing met een dissipatieve grootheid, groot $ka$, lokaal glad, optisch dik materiaal en beperkte source-body coupling?
+  \end{questionbox}
+  \vspace{4pt}
+  \scopebar{Huidige scope is dosimetrie. Bredere toepassingen worden apart beoordeeld.}
+\end{frame}
+
+\appendix
+
+% A1
+\begin{frame}{Fresnel response}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=0.95\linewidth,height=5.2cm,keepaspectratio]{incidence_plane_fig.pdf}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \small
+      With $\mu=\cos\theta_i$, complex refractive index $\ntilde$ and
+      $\xi=\sqrt{\ntilde^2-1+\mu^2}$,
+      \begin{align*}
+        r_s&=\frac{\mu-\xi}{\mu+\xi},
+        &T_s&=1-|r_s|^2,\\
+        r_p&=\frac{\ntilde^2\mu-\xi}{\ntilde^2\mu+\xi},
+        &T_p&=1-|r_p|^2,\\
+        \Teff&=|e_s|^2T_s+|e_p|^2T_p.&&
+      \end{align*}
+      \begin{limitbox}
+        \footnotesize Local planar boundary solution only. Full-body scattering is not included.
+      \end{limitbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% A2
+\begin{frame}{Sphere asymptotics}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=0.98\linewidth]{mie_panel_freq.pdf}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=0.98\linewidth]{mie_panel_size.pdf}
+    \end{column}
+  \end{columns}
+  \vspace{1pt}
+  \begin{limitbox}[Failure modes]
+    \centering\small
+    At 28 GHz, the head-scale total-power residual is about $14\%$. Smaller bodies and lower frequencies show larger finite-size, curvature and diffraction errors.
+  \end{limitbox}
+\end{frame}
+
+% A3
+\begin{frame}{Error budget}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \centering
+      \includegraphics[height=5.8cm]{error_budget_comprehensive.pdf}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \small
+      Error sources:
+      \begin{itemize}\setlength\itemsep{4pt}
+        \item Local Fresnel reduction
+        \item Curvature and diffraction
+        \item Source-body coupling
+        \item Tissue-property uncertainty
+        \item Source-model uncertainty
+      \end{itemize}
+      \vspace{3pt}
+      \begin{questionbox}
+        \footnotesize Which term should control the device-to-body validation design?
+      \end{questionbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% A4
+\begin{frame}{Coherent experiment}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=0.96\linewidth]{configuration.pdf}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=0.96\linewidth]{pareto.pdf}
+    \end{column}
+  \end{columns}
+  \vspace{3pt}
+  \scopebar{746,496 exposure maps in 2.2 GPU hours. Median 5.29-fold absorption suppression at 50\% signal retention. Demonstrates operator reuse; no independent full-wave validation.}
+\end{frame}
+
+% A5
+\begin{frame}{Validity limits}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{32mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Claim} & \textbf{Scope} & \textbf{Escalation} \\
+    \midrule
+    Local APD map & 6 to 100 GHz under given illumination, with scale- and geometry-dependent error & layered resonance, source-body coupling, strong diffraction \\
+    Whole-body absorption & roughly 1 to 100 GHz with layered total-power response & electrically small body or low-loss penetration \\
+    Device pre-screening & 10 to 60 GHz radiating near field, after benchmark & incident field changed by the body \\
+    Differentiability & wherever paths and shadows stay fixed & shadow or path birth and death \\
+    Coherent operator & PSD by construction, tested numerically & off-diagonal accuracy not validated \\
+    \bottomrule
+  \end{tabularx}
+  \vspace{8pt}
+  \begin{resultbox}\centering\small
+    Validity depends on observable, geometry and source model together. Frequency alone is not enough.
+  \end{resultbox}
+\end{frame}
+
+% A6
+\begin{frame}{Application filter}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{evidencebox}[Eligibility]
+        \begin{enumerate}\footnotesize\setlength\itemsep{3pt}
+          \item Observable is local or integrated dissipated power
+          \item Object is electrically large and locally smooth
+          \item Material is sufficiently opaque and lossy
+          \item Incident field is known without strong body coupling
+          \item Repeated evaluations justify the reduction
+        \end{enumerate}
+      \end{evidencebox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{limitbox}[Exclusions]
+        \begin{itemize}\footnotesize\setlength\itemsep{5pt}
+          \item Antenna detuning or general S-parameters
+          \item Total scattering or certifiable RCS
+          \item Edge-dominated signatures
+          \item Resonant thin or low-loss structures
+          \item Reactive near-field source coupling
+        \end{itemize}
+      \end{limitbox}
+    \end{column}
+  \end{columns}
+  \vspace{9pt}
+  \begin{questionbox}\centering\small
+    Each candidate needs a separate prior-art search and benchmark.
+  \end{questionbox}
+\end{frame}
+
+\end{document}

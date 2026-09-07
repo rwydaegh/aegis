@@ -1,0 +1,16 @@
+Onderwerp: Verkennend gesprek over snelle dosimetriesimulatie
+
+Dag allen,
+
+Ik ben doctoraatsonderzoeker bij WAVES binnen INTEC aan de UGent. In 2020 liep ik stage bij het Keysight EDA-team.
+
+Aan het einde van mijn doctoraat ontwikkelde ik een snelle methode voor dosimetrische berekeningen op het menselijk lichaam, meer bepaald voor absorbed power density boven 6 GHz. Binnen het beoogde toepassingsgebied haalt de methode in onze huidige resultaten een vergelijkbare nauwkeurigheid als FDTD, maar is ze meerdere grootteordes sneller. Ze sluit daardoor mogelijk aan bij de dosimetrie- en compliancefunctionaliteit van EMPro, waaronder W4006E.
+
+We onderzoeken momenteel of we hier een IOF-valorisatietraject rond kunnen opbouwen. Samen met business developer Filip Louagie zou ik daarom graag 30 tot 45 minuten spreken met enkele mensen van het EDA-team. Ik wil de methode kort toelichten en vooral horen of jullie dit als een relevante aanvulling op de huidige workflow zien en welke noden jullie bij klanten tegenkomen.
+
+Augustus of september zou voor ons goed passen. Omdat de methode nog niet gepubliceerd is en de patentaanvraag wordt voorbereid, zouden we voor het inhoudelijke gesprek vooraf een NDA moeten afsluiten.
+
+Zien jullie dit zitten, en wie sluit hier volgens jullie het best bij aan?
+
+Met vriendelijke groeten,
+Robin

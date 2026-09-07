@@ -1,0 +1,217 @@
+% Uitgebreid kader bij de e-mail aan Filip over de AEGIS-valorisatie.
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper,margin=22mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{amsmath}
+
+\hypersetup{
+  hidelinks,
+  pdfauthor={Robin Wydaeghe},
+  pdftitle={AEGIS-valorisatie: technisch en commercieel kader}
+}
+
+\pagestyle{plain}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlist[itemize]{leftmargin=5mm,itemsep=1pt,topsep=2pt}
+\setlist[enumerate]{leftmargin=5mm,itemsep=1pt,topsep=2pt}
+\renewcommand{\arraystretch}{1.12}
+
+\begin{document}
+
+{\Large\bfseries AEGIS-valorisatie: technisch en commercieel kader}
+
+\vspace{8pt}
+
+\textbf{Kern}
+
+AEGIS wordt de snelle screeninglaag in een bredere exposure-workflow. De trage maar nauwkeurige stap, FDTD-simulatie in Sim4Life, is al geautomatiseerd via software ontwikkeld in het EU-project GOLIAT~\cite{goliat_docs}. Die automatisering levert het formele computationele bewijs. AEGIS verkent grote aantallen ontwerp- en gebruiksvarianten en rangschikt ze naar blootstellingsrisico. Gevallen die te dicht bij de limiet liggen of buiten het gevalideerde domein vallen, gaan terug naar full-wave simulatie of meting.
+
+De formele conformiteitsbeoordeling blijft bij geaccepteerde methodes. De waarde zit in snelheid, iteratie en prioritering.
+
+\textbf{Workflow}
+
+Concreet vertrekt de workflow van toestel-, antenne- en gebruiksgegevens:
+
+\begin{enumerate}
+  \item De geautomatiseerde Sim4Life-workflow bouwt een gecontroleerde referentie op.
+  \item Een beperkte set full-wave berekeningen kalibreert de snelle screening.
+  \item AEGIS rangschikt varianten van positie, oriëntatie, afstand, antenneconfiguratie en beamstate.
+  \item Een onzekerheidsmodel markeert gevallen buiten het gevalideerde domein of dicht bij de limiet.
+  \item De Sim4Life-automatisering of een andere full-wave solver bevestigt de geselecteerde gevallen.
+  \item De workflow bewaart invoer, softwareversies, resultaten, onzekerheden en beslissingen in een technisch rapport.
+\end{enumerate}
+
+De eerste commerciële vorm hoeft geen self-service softwarepakket te zijn. Een betaalde \textbf{pre-compliance} dienst of labworkflow gebruikt dezelfde technische keten en legt tegelijk de productvereisten bloot.
+
+\textbf{Full-wave basis}
+
+Naast AEGIS heb ik een geautomatiseerde workflow rond Sim4Life geschreven, de FDTD-software van ZMT (Zürich). Die automatisering is nieuw, geschreven tijdens het EU-project GOLIAT~\cite{goliat_docs}. FDTD is de nauwkeurigste simulatiemethode voor elektromagnetische blootstelling, maar ook de traagste: één toestelberekening kan uren tot dagen duren. De automatisering zet simulatiescenario's op, voert de berekeningen lokaal of in de cloud uit, en haalt SAR- en power density-resultaten op. De derde prijs in de Sim4Life Student Competition van ZMT zelf bevestigt de technische kwaliteit en de aansluiting bij dat ecosysteem.
+
+De automatisering kan zowel een directe workflow voor bestaande Sim4Life-gebruikers worden als de referentieomgeving waarin AEGIS wordt gevalideerd.
+
+\textbf{Technische uitdagingen}
+
+AEGIS gebruikt een gekend vrij-ruimte-antennepatroon en inverse-square spreiding. Bij korte afstanden (onder ongeveer 3~cm bij 28~GHz) worden de benaderingen minder nauwkeurig. De workflow vangt dat op via kalibratie met full-wave ankers en automatische escalatie naar Sim4Life bij korte afstanden of grote onzekerheid. Het IOF-project moet bepalen hoeveel full-wave ankers daarvoor nodig zijn.
+
+De validatie meet of AEGIS dezelfde worst cases vindt als de trage solver, of het hotspot op de juiste plek zit, hoeveel trage berekeningen vermeden worden, en hoe lang het totaal duurt.
+
+\textbf{Markt}
+
+Ik heb de FCC Equipment Authorization-data~\cite{fcc_eas} opgehaald en per FCC-ID samengevoegd. Dat levert 3.900 toestel-ID's boven 5,925~GHz sinds 2019, waarvan 764 in 2025. Dit is alleen de Amerikaanse markt. Europa (RED/CE), Japan, Korea en China hebben vergelijkbare certificatietrajecten met samen een groter volume dan de VS, maar hun dossiers zijn niet op dezelfde manier publiek.
+
+De segmenten verschillen sterk. Wi-Fi 6E/7 levert 448 nieuwe toestellen in 2025 en ongeveer 480 per jaar in 2026. FR2 telt 16 tot 20 nieuwe toestellen per jaar, maar elk dossier omvat een omvangrijk simulatie- en meettraject. De 60~GHz-band leverde 118 toestellen in 2025; veel daarvan vallen onder een eenvoudige MPE-berekening of een test exclusion.
+
+Daaruit heb ik 2.239 filings verzameld met 10.491 exposure-documenten. In een steekproef van 163 filings verschijnt Sim4Life in 50 dossiers, HFSS/Ansys in 28, en een geconcentreerde groep testlaboratoria~\cite{ctia_labs}.
+
+Het publieke Samsung Galaxy S24-dossier~\cite{samsung_s24_part0,samsung_s24_final} toont wat één toestelprogramma inhoudt: twee mmWave-modules, drie frequentiebanden en 378 beam limits. Simulatie bepaalt de power limit per beam. Die 378 limits zijn geen 378 losse solves, want de full-device oplossing wordt over alle beams hergebruikt. De kost ontstaat wanneer een designwijziging een nieuwe device solve vereist. AEGIS hoort in die iteratieve ontwerpfase, niet als snellere uitvoering van een reeds goedkope beam sweep. De waarde zit in marktselectie, workloadbewijs en acquisitie.
+
+\textbf{Klanten}
+
+Daarin tel ik 18 organisaties met minstens vijf relevante filings per jaar, alleen in de VS. Een volwassen directe marktpositie betekent vier tot acht enterprise- of labcontracten.
+
+De interessantste klanten combineren meerdere complexe toestelprogramma's per jaar, herhaalde ontwerpiteraties, interne solver-capaciteit, een eigenaar van het exposure- of compliancebudget, en behoefte aan on-premise verwerking van vertrouwelijke CAD- en antennegegevens.
+
+Testlaboratoria vormen een distributiekanaal. In diezelfde 163 dossiers verschijnen 16 labmerken. De vier grootste verzorgen 77\% van de identificeerbare filings~\cite{fcc_eas}. Eén integratie bereikt meerdere toestelprogramma's. Usage- of projectinkomsten passen beter dan losse seats. Een labo kan de workflow als pre-compliance dienst aanbieden, wat de labdrempel voor nieuwe klanten verlaagt.
+
+Kleinere OEM's en integratoren kunnen per project kopen. De relevante doelgroep beperkt zich tot complexe portable en body-near toestellen.
+
+Sim4Life en HFSS zijn zichtbaar in de publieke dossiers~\cite{sim4life_v9,ansys_rf}. ZMT, Ansys en eventueel andere solverleveranciers bieden een concreet integratiekanaal.
+
+\textbf{Concurrentie en differentiatie}
+
+SPEAG biedt met DASY8 reeds forward transformation, maximum exposure optimization, test-case reduction, API-integratie, automatische rapportering en meetgebaseerde evaluatie van complexe phased arrays~\cite{speag_dasy8}. Sim4Life biedt parameter sweeps, optimizers, meta-modelling, clouduitvoering, Python-automatisering en een pluginframework~\cite{sim4life_v9}. Ansys RF Advisor levert een geautomatiseerd simulatierapport op basis van aangeleverde CAD~\cite{ansys_rf}.
+
+De positie van de gecombineerde workflow is specifieker dan codebook sweeps of test-case reduction:
+
+\begin{itemize}
+  \item geautomatiseerde Sim4Life-orchestratie als reproduceerbare full-wave basis
+  \item AEGIS als exposure-specifieke low-fidelity fysica
+  \item kalibratie op een kleine set full-wave ankers
+  \item expliciete onzekerheid en een guard band
+  \item automatische selectie van volgende full-wave gevallen
+  \item rapportering van screening en finale verificatie samen
+  \item inzet vóór CAD freeze en vóór de fysieke labcampagne
+\end{itemize}
+
+De kern is een snelle screening gekoppeld aan een nauwkeurige solver.
+
+\textbf{Standaarden en certificatie}
+
+IEEE/IEC P63195-4~\cite{ieee_p63195} specificeert FDTD en FEM voor computationele APD van toestellen dicht bij het lichaam. ISED RSS-102.IPD.SIM~\cite{ised_rss102} vereist een reproduceerbare technische brief met toestelconfiguratie, CAD, antennegegevens, simulatiemethode, onzekerheid en meetvalidatie.
+
+De Sim4Life-automatisering en andere full-wave engines leveren het formele computationele bewijs. Metingen blijven beschikbaar voor finale conformiteit. AEGIS werkt vóór die formele stap als screening- en prioriteringsmethode en hoeft niet onmiddellijk als zelfstandige conformity method te worden erkend.
+
+FCC 26-28~\cite{fcc_26_28} vermeldt dat 23 laboratoria hun erkenning verloren of niet vernieuwd kregen. De order introduceert een fast-track PAG-route voor trusted labs. Een ruimere uitsluiting bevindt zich nog in een Second FNPRM en is geen geldende phase-out. Dat leidt tot meer concentratie van complexe dossiers bij een kleinere groep labs en grotere waarde van first-time-right.
+
+Een standaardenbijdrage bouwt vertrouwen en zichtbaarheid op. Een formele vermelding van AEGIS in een standaard versnelt de verkoop, maar is geen voorwaarde om pilots en contracten te starten.
+
+\textbf{Commerciële vormen}
+
+\emph{Gekwalificeerde labworkflow.} Deployment van de geautomatiseerde workflow op bestaande Sim4Life-infra\-struc\-tuur, vast\-ge\-zette configuraties en softwareversies, automatische extractie en rapportering, AEGIS-screening als optionele accelerator. Implementatiefee en jaarlijkse support, eventueel aangevuld met usage pricing.
+
+\emph{OEM design workflow.} On-premise verwerking van vertrouwelijke CAD en antennegegevens, ondersteuning van meerdere productiteraties, snelle rangschikking van varianten met full-wave verificatie van kritieke gevallen. Programma- of enterprisecontract.
+
+\emph{Pre-compliance projectdienst.} Afgebakend project voor een kleinere OEM of integrator, geleverd via een testlab of consultancy. Levert vroeg omzet- en klantbewijs en legt integratie- en productvereisten bloot.
+
+\emph{Embedded module.} AEGIS-engine en de full-wave automatisering als plugin of template, met ZMT/Sim4Life als technisch natuurlijke eerste partner. Licentie, royalty of revenue share. Schaalroute bovenop de directe business.
+
+\textbf{Omzetpotentieel}
+
+De prijs per enterprisecontract ligt onder de jaarlijkse kost van één gespecialiseerde ingenieur en past in bestaande solver-budgetten. De prijsankers zijn engineeringtijd, vertragingskosten bij redesign, bestaande solverlicentie-uitgaven en het aantal toestelprogramma's dat één implementatie ondersteunt.
+
+\small
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}p{42mm}}
+\toprule
+\textbf{Rechtstreekse specialistische activiteit} & \textbf{Jaaromzet} \\
+\midrule
+20 enterprisecontracten à EUR~75.000 & EUR~1,50 miljoen \\
+25 labo- of specialistische licenties à EUR~20.000 & EUR~0,50 miljoen \\
+20 integratie- of ontwerptrajecten à EUR~25.000 & EUR~0,50 miljoen \\
+\midrule
+\textbf{Totaal} & \textbf{EUR~2,50 miljoen} \\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+Dat is de zelfstandige basis, op de Amerikaanse markt alleen. Met één embedded solver- of platformpartner, drie tot vijf laboratoria die projecten aanbrengen, en Europese en Aziatische klanten loopt dat op naar \textbf{EUR~3 tot 5 miljoen}. Brede platformintegratie en een internationaal labnetwerk kunnen \textbf{EUR~5 tot 7 miljoen} opleveren. Een strategische overname of exclusieve platformdeal kan \textbf{EUR~10 miljoen} opleveren.
+
+\textbf{Validatie en go/no-go}
+
+\emph{Technisch.} Drie matched scenariofamilies: een radiative situatie ruim binnen het theoretische domein, een toestel op middelgrote afstand, en een FR2-situatie rond 2~mm. Voor elk scenario: vooraf vastgezette AEGIS-voorspelling, gekwalificeerde Sim4Life-referentie, absolute en relatieve APD-fout, hotspotlocatie en rangorde, top-$k$-recall, detectie van domeinfalen, onzekerheidsmarge en false-clearance test.
+
+\emph{Workflow.} Aantal onderzochte designvarianten, vereiste full-wave ankers, vermeden solverruns, end-to-end doorlooptijd, setup- en rapporttijd, en reproduceerbaarheid bij een externe partij.
+
+\emph{Commercieel.} Eén pilot met een testlaboratorium, één pilot met een OEM of solverpartij, minstens één betaalde evaluation agreement, prijsinterview met de werkelijke budgeteigenaar, en een beslissing over de sterkste route: direct product, labkanaal of embedded.
+
+\textbf{IOF-project}
+
+IOF investeert \textbf{EUR~250.000} over twee jaar in een concrete technische en commerciële beslissing: AEGIS kwalificeren als screeninglaag, de Sim4Life-automatisering omzetten tot reproduceerbare workflow, de reductie in full-wave workload meten, pilots uitvoeren met partijen die al een exposurebudget hebben, de directe, labgebaseerde en embedded route vergelijken, en de scope bijstellen op basis van ranking, onzekerheid en willingness to pay.
+
+Een specialistische business rond EUR~1 tot 2,5 miljoen jaarlijkse omzet verantwoordt de investering. Met één embedded partner of internationaal labnetwerk loopt dat op naar EUR~5 miljoen of meer.
+
+De sterkste commerciële vorm is de combinatie van snelle screening en full-wave verificatie. Het IOF-project moet aantonen hoeveel full-wave werk die combinatie werkelijk vermijdt en welke partij voor die besparing wil betalen.
+
+\begingroup
+\footnotesize
+\begin{thebibliography}{99}
+
+\bibitem{goliat_docs}
+Geautomatiseerde Sim4Life-workflow, ontwikkeld in het EU-project GOLIAT, documentatie.
+\url{https://docs.goliat.waves-ugent.be/}
+
+\bibitem{fcc_eas}
+FCC Equipment Authorization System, eigen extractie en deduplicatie per FCC-ID, 2019--2026.
+\url{https://apps.fcc.gov/oetcf/eas/reports/GenericSearch.cfm}
+
+\bibitem{ctia_labs}
+CTIA, overzicht van geautoriseerde testlabo's.
+\url{https://www.ctia.org/certification/eval_criteria/index.cfm}
+
+\bibitem{samsung_s24_part0}
+Samsung Galaxy S24, Part~0 Power Density Report, FCC-ID A3LSMS921U.
+\url{https://fcc.report/FCC-ID/A3LSMS921U/6902432.pdf}
+
+\bibitem{samsung_s24_final}
+Samsung Galaxy S24, finaal Power Density Evaluation Report, FCC-ID A3LSMS921U.
+\url{https://fcc.report/FCC-ID/A3LSMS921U/6959656.pdf}
+
+\bibitem{sim4life_v9}
+Sim4Life V9 pluginframework.
+\url{https://forum.zmt.swiss/topic/720/sim4life-v9.0-release}
+
+\bibitem{ansys_rf}
+Ansys RF Advisor.
+\url{https://www.ansys.com/campaigns/rf-advisor}
+
+\bibitem{speag_dasy8}
+SPEAG DASY8 mmWave.
+\url{https://speag.swiss/products/dasy8/m-mmwave}
+
+\bibitem{ieee_p63195}
+IEEE/IEC P63195-4, Measurement and computational assessment of human exposure to RF EMF from wireless devices in close proximity to the head and body (computational).
+\url{https://standards.ieee.org/ieee/63195-4/11782/}
+
+\bibitem{ised_rss102}
+ISED RSS-102.IPD.SIM, Simulation procedure for assessing IPD compliance.
+\url{https://ised-isde.canada.ca/site/spectrum-management-telecommunications/en/devices-and-equipment/radio-equipment-standards/radio-standards-specifications-rss/rss-102ipdsim-simulation-procedure-assessing-incident-power-density-ipd-compliance-accordance-rss}
+
+\bibitem{fcc_26_28}
+FCC 26-28, Report and Order and Second Further Notice of Proposed Rulemaking.
+\url{https://docs.fcc.gov/public/attachments/FCC-26-28A1.pdf}
+
+\end{thebibliography}
+\endgroup
+
+\end{document}
