@@ -36,7 +36,8 @@ docs.aegis.waves-ugent.be {
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
     }
-    basic_auth {
+    @password_required expression `{env.AEGIS_PUBLIC_ACCESS} != "true"`
+    basic_auth @password_required {
         aegis {env.DOCS_PASSWORD_HASH}
     }
     root * /srv/docs

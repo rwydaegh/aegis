@@ -1,9 +1,0 @@
-# CPU/GPU environment for the dense Mapillary baseline.
-numpy>=2.0
-pillow>=11
-scipy>=1.14
-torch>=2.7
-transformers>=4.57,<5
-safetensors>=0.7
-huggingface-hub>=0.34,<1
-torchvision==0.27.0

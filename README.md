@@ -14,7 +14,7 @@
 [![Lines of code](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rwydaegh/b0a80da23c17e3afdb6b8e2be66b54b8/raw/loc.json)](https://github.com/rwydaegh/aegis)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-3506%20cases-brightgreen.svg?logo=pytest)](tests/)
 [![JAX](https://img.shields.io/badge/optional-JAX-blue.svg?logo=google&logoColor=white)](https://jax.readthedocs.io/)
 [![Viewer](https://img.shields.io/badge/viewer-React%20%2B%20Three.js-blue.svg?logo=react&logoColor=white)](https://react.dev/)

@@ -1,8 +1,0 @@
-{
-  "name": "brussels_2007_strict",
-  "comment": "Pre-2014 Brussels arrete (3 V/m cumulative outdoor), 30 dBm conducted on 8x8. Mild binding (P95 only).",
-  "tx_power_dbm": 30.0,
-  "reference_level_vpm": 3.0,
-  "n_array_per_side": 8,
-  "label_suffix": "bind_brussels2007"
-}

@@ -109,7 +109,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           SSH="ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key root@$HOST"
           scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key \
-            docker-compose.yml Caddyfile root@$HOST:/opt/aegis/
+            docker-compose.yml Caddyfile access.env root@$HOST:/opt/aegis/
           $SSH "echo '$GH_TOKEN' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && \
             cd /opt/aegis && \
             grep -q AEGIS_GIT_COMMIT app.env && sed -i 's/^AEGIS_GIT_COMMIT=.*/AEGIS_GIT_COMMIT=${{ github.sha }}/' app.env || echo 'AEGIS_GIT_COMMIT=${{ github.sha }}' >> app.env && \

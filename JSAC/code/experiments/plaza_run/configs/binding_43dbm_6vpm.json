@@ -1,8 +1,0 @@
-{
-  "name": "binding_43dbm_6vpm",
-  "comment": "Medium binding regime: macro 20W (43 dBm) on 8x8 panel against post-2014 Brussels / Italy attention level (6 V/m). Oracle Newton converges ~60% of slots, proposed (with Cauchy on tier-C envelopes) hits min-absorption fallback - which is exactly the gap the paper's pose-info-gain story wants to show.",
-  "tx_power_dbm": 43.0,
-  "reference_level_vpm": 6.0,
-  "n_array_per_side": 8,
-  "label_suffix": "bind_43_6vpm"
-}

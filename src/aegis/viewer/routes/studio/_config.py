@@ -67,5 +67,5 @@ def paper_fork_paths_dir() -> Path | None:
     coherent-exposure-operator paper. Never call this at request time: the
     runtime viewer must stay fork-free.
     """
-    candidate = _REPO_ROOT / "papers" / "coherent-exposure-operator" / "data" / "e11_paths"
+    candidate = _REPO_ROOT / "private" / "papers" / "coherent-exposure-operator" / "data" / "e11_paths"
     return candidate if candidate.is_dir() else None

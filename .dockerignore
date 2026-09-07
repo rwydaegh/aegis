@@ -15,3 +15,9 @@ basestations/.git
 basestations/output
 basestations/**/*.pkl
 basestations/**/*.mat
+
+# Private workspace and local credential variants
+private/
+.env.*
+app.env
+runpod_april26

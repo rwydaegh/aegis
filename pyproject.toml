@@ -16,7 +16,7 @@ dependencies = [
     "scipy>=1.17.1,<2",
     # sympy (via the body extra's torch) caps mpmath below 1.4, so this floor
     # must stay at 1.3 while ``all`` includes ``body``.
-    "mpmath>=1.4.1",
+    "mpmath>=1.3.0,<1.4",
     "pyyaml>=6.0.3",
 ]
 
@@ -108,6 +108,12 @@ version-file = "src/aegis/_version.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/aegis"]
 artifacts = ["src/aegis/viewer/static/**"]
+
+[tool.hatch.build]
+exclude = ["/private"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/configs", "/docs", "/README.md", "/LICENSE", "/pyproject.toml", "/uv.lock", "/mkdocs.yml"]
 
 [tool.ruff]
 line-length = 120
