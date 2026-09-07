@@ -60,8 +60,16 @@ EXPECTED_ZERO_DIRECT = {
     "Toulouse": (),
 }
 CITY_ORDER = (
-    "Brussels", "Ghent", "Krakow", "London", "Madrid",
-    "Mexico City", "Milan", "Prague", "Tokyo Hachiko", "Toulouse",
+    "Brussels",
+    "Ghent",
+    "Krakow",
+    "London",
+    "Madrid",
+    "Mexico City",
+    "Milan",
+    "Prague",
+    "Tokyo Hachiko",
+    "Toulouse",
 )
 CITY_LABELS = {city: city for city in CITY_ORDER}
 CITY_TICK_LABELS = {
@@ -442,9 +450,7 @@ def _render_deterministically(cities: dict[str, Any]) -> dict[str, str]:
     return first
 
 
-def _write_audit(
-    cities: dict[str, Any], validation: dict[str, Any], hashes: dict[str, str]
-) -> None:
+def _write_audit(cities: dict[str, Any], validation: dict[str, Any], hashes: dict[str, str]) -> None:
     pdf_width_in = 4.55
     png = plt.imread(OUTPUT_PNG)
     audit_cities = {}

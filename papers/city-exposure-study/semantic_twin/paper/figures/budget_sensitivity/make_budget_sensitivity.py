@@ -139,9 +139,7 @@ def _plot_report(report: dict[str, Any]) -> None:
         city_lines = []
         for site, label, color in sites:
             q50 = [
-                db_change_to_percent(
-                    row["sites"][site]["normalized_wbSAR"]["route_quantile_difference_db"]["q50"]
-                )
+                db_change_to_percent(row["sites"][site]["normalized_wbSAR"]["route_quantile_difference_db"]["q50"])
                 for row in rows
             ]
             directional = [
@@ -157,10 +155,7 @@ def _plot_report(report: dict[str, Any]) -> None:
         # shadowed points. Showing that controlling case alone avoids an
         # unreadable axis with the other two curves compressed against zero.
         mexico = "mexico_zocalo"
-        shadow = [
-            db_change_to_percent(row["sites"][mexico]["normalized_wbSAR"]["maximum_absolute_db"])
-            for row in rows
-        ]
+        shadow = [db_change_to_percent(row["sites"][mexico]["normalized_wbSAR"]["maximum_absolute_db"]) for row in rows]
         axes[0, 1].plot(x, shadow, marker="s", markersize=3.4, color="#D55E00", linestyle="--")
 
         axes[0, 0].set_title("(a) Route-median SAR", loc="left")
