@@ -1,0 +1,601 @@
+country,band,scenario,mean_mw_m2,median_mw_m2,iqr_mw_m2,availability_note,available
+Austria,Broadcast,NU,0.05,0.01,0.03,,true
+Austria,Broadcast,DL,,,,NA*,false
+Austria,Broadcast,UL,,,,NA,false
+Austria,DECT,NU,0.00,0.00,0.00,,true
+Austria,DECT,DL,,,,NA*,false
+Austria,DECT,UL,,,,NA,false
+Austria,WiFi 5 GHz,NU,0.01,0.00,0.00,,true
+Austria,WiFi 5 GHz,DL,,,,NA*,false
+Austria,WiFi 5 GHz,UL,,,,NA,false
+Austria,ISM/WiFi 2.4 GHz,NU,0.01,0.00,0.00,,true
+Austria,ISM/WiFi 2.4 GHz,DL,,,,NA*,false
+Austria,ISM/WiFi 2.4 GHz,UL,,,,NA,false
+Austria,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+Austria,Mobile SDL 700 MHz,DL,,,,NA*,false
+Austria,Mobile SDL 700 MHz,UL,,,,NA,false
+Austria,Mobile DL 700 MHz,NU,0.00,0.00,0.00,,true
+Austria,Mobile DL 700 MHz,DL,,,,NA*,false
+Austria,Mobile DL 700 MHz,UL,,,,NA,false
+Austria,Mobile DL 800 MHz,NU,0.08,0.01,0.04,,true
+Austria,Mobile DL 800 MHz,DL,,,,NA*,false
+Austria,Mobile DL 800 MHz,UL,,,,NA,false
+Austria,Mobile DL 900 MHz,NU,0.27,0.03,0.17,,true
+Austria,Mobile DL 900 MHz,DL,,,,NA*,false
+Austria,Mobile DL 900 MHz,UL,,,,NA,false
+Austria,Mobile DL 1.4 GHz,NU,0.00,0.00,0.00,,true
+Austria,Mobile DL 1.4 GHz,DL,,,,NA*,false
+Austria,Mobile DL 1.4 GHz,UL,,,,NA,false
+Austria,Mobile DL 1.8 GHz,NU,0.34,0.05,0.21,,true
+Austria,Mobile DL 1.8 GHz,DL,,,,NA*,false
+Austria,Mobile DL 1.8 GHz,UL,,,,NA,false
+Austria,Mobile DL 2.1 GHz,NU,0.15,0.02,0.09,,true
+Austria,Mobile DL 2.1 GHz,DL,,,,NA*,false
+Austria,Mobile DL 2.1 GHz,UL,,,,NA,false
+Austria,Mobile DL 2.6 GHz,NU,0.10,0.01,0.06,,true
+Austria,Mobile DL 2.6 GHz,DL,,,,NA*,false
+Austria,Mobile DL 2.6 GHz,UL,,,,NA,false
+Austria,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+Austria,Mobile UL 700 MHz,DL,,,,NA*,false
+Austria,Mobile UL 700 MHz,UL,,,,NA,false
+Austria,Mobile UL 800 MHz,NU,0.00,0.00,0.00,,true
+Austria,Mobile UL 800 MHz,DL,,,,NA*,false
+Austria,Mobile UL 800 MHz,UL,,,,NA,false
+Austria,Mobile UL 900 MHz,NU,0.00,0.00,0.00,,true
+Austria,Mobile UL 900 MHz,DL,,,,NA*,false
+Austria,Mobile UL 900 MHz,UL,,,,NA,false
+Austria,Mobile UL 1.8 GHz,NU,0.03,0.00,0.00,,true
+Austria,Mobile UL 1.8 GHz,DL,,,,NA*,false
+Austria,Mobile UL 1.8 GHz,UL,,,,NA,false
+Austria,Mobile UL 2.1 GHz,NU,0.01,0.00,0.00,,true
+Austria,Mobile UL 2.1 GHz,DL,,,,NA*,false
+Austria,Mobile UL 2.1 GHz,UL,,,,NA,false
+Austria,Mobile UL 2.6 GHz,NU,0.00,0.00,0.00,,true
+Austria,Mobile UL 2.6 GHz,DL,,,,NA*,false
+Austria,Mobile UL 2.6 GHz,UL,,,,NA,false
+Austria,Mobile TDD 2.6 GHz,NU,0.00,0.00,0.00,,true
+Austria,Mobile TDD 2.6 GHz,DL,,,,NA*,false
+Austria,Mobile TDD 2.6 GHz,UL,,,,NA,false
+Austria,Mobile TDD 3.5 GHz,NU,0.14,0.01,0.05,,true
+Austria,Mobile TDD 3.5 GHz,DL,,,,NA*,false
+Austria,Mobile TDD 3.5 GHz,UL,,,,NA,false
+Belgium,Broadcast,NU,0.12,0.00,0.03,,true
+Belgium,Broadcast,DL,0.12,0.00,0.02,,true
+Belgium,Broadcast,UL,0.11,0.01,0.03,,true
+Belgium,DECT,NU,0.00,0.00,0.00,,true
+Belgium,DECT,DL,0.00,0.00,0.00,,true
+Belgium,DECT,UL,0.01,0.00,0.00,,true
+Belgium,WiFi 5 GHz,NU,0.00,0.00,0.00,,true
+Belgium,WiFi 5 GHz,DL,0.00,0.00,0.00,,true
+Belgium,WiFi 5 GHz,UL,0.00,0.00,0.00,,true
+Belgium,ISM/WiFi 2.4 GHz,NU,0.01,0.00,0.00,,true
+Belgium,ISM/WiFi 2.4 GHz,DL,0.01,0.00,0.01,,true
+Belgium,ISM/WiFi 2.4 GHz,UL,0.08,0.00,0.00,,true
+Belgium,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+Belgium,Mobile SDL 700 MHz,DL,0.00,0.00,0.00,,true
+Belgium,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+Belgium,Mobile DL 700 MHz,NU,0.01,0.00,0.00,,true
+Belgium,Mobile DL 700 MHz,DL,0.00,0.00,0.00,,true
+Belgium,Mobile DL 700 MHz,UL,0.00,0.00,0.00,,true
+Belgium,Mobile DL 800 MHz,NU,0.11,0.01,0.05,,true
+Belgium,Mobile DL 800 MHz,DL,0.11,0.01,0.05,,true
+Belgium,Mobile DL 800 MHz,UL,0.10,0.01,0.05,,true
+Belgium,Mobile DL 900 MHz,NU,0.10,0.01,0.05,,true
+Belgium,Mobile DL 900 MHz,DL,0.08,0.01,0.04,,true
+Belgium,Mobile DL 900 MHz,UL,0.07,0.01,0.04,,true
+Belgium,Mobile DL 1.4 GHz,NU,0.00,0.00,0.00,,true
+Belgium,Mobile DL 1.4 GHz,DL,0.00,0.00,0.00,,true
+Belgium,Mobile DL 1.4 GHz,UL,0.00,0.00,0.00,,true
+Belgium,Mobile DL 1.8 GHz,NU,0.08,0.00,0.03,,true
+Belgium,Mobile DL 1.8 GHz,DL,0.07,0.00,0.02,,true
+Belgium,Mobile DL 1.8 GHz,UL,0.06,0.00,0.02,,true
+Belgium,Mobile DL 2.1 GHz,NU,0.06,0.00,0.02,,true
+Belgium,Mobile DL 2.1 GHz,DL,0.06,0.00,0.01,,true
+Belgium,Mobile DL 2.1 GHz,UL,0.04,0.00,0.01,,true
+Belgium,Mobile DL 2.6 GHz,NU,0.04,0.00,0.01,,true
+Belgium,Mobile DL 2.6 GHz,DL,0.03,0.00,0.01,,true
+Belgium,Mobile DL 2.6 GHz,UL,0.02,0.00,0.01,,true
+Belgium,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+Belgium,Mobile UL 700 MHz,DL,0.00,0.00,0.00,,true
+Belgium,Mobile UL 700 MHz,UL,0.01,0.00,0.00,,true
+Belgium,Mobile UL 800 MHz,NU,0.03,0.00,0.00,,true
+Belgium,Mobile UL 800 MHz,DL,1.11,0.00,0.06,,true
+Belgium,Mobile UL 800 MHz,UL,3.02,0.00,0.06,,true
+Belgium,Mobile UL 900 MHz,NU,0.01,0.00,0.00,,true
+Belgium,Mobile UL 900 MHz,DL,0.06,0.00,0.00,,true
+Belgium,Mobile UL 900 MHz,UL,0.09,0.00,0.00,,true
+Belgium,Mobile UL 1.8 GHz,NU,0.02,0.00,0.00,,true
+Belgium,Mobile UL 1.8 GHz,DL,0.80,0.00,0.12,,true
+Belgium,Mobile UL 1.8 GHz,UL,6.81,0.00,10.09,,true
+Belgium,Mobile UL 2.1 GHz,NU,0.00,0.00,0.00,,true
+Belgium,Mobile UL 2.1 GHz,DL,0.28,0.00,0.00,,true
+Belgium,Mobile UL 2.1 GHz,UL,0.87,0.00,0.00,,true
+Belgium,Mobile UL 2.6 GHz,NU,0.00,0.00,0.00,,true
+Belgium,Mobile UL 2.6 GHz,DL,0.41,0.00,0.00,,true
+Belgium,Mobile UL 2.6 GHz,UL,6.71,0.00,0.00,,true
+Belgium,Mobile TDD 2.6 GHz,NU,0.00,0.00,0.00,,true
+Belgium,Mobile TDD 2.6 GHz,DL,0.00,0.00,0.00,,true
+Belgium,Mobile TDD 2.6 GHz,UL,0.00,0.00,0.00,,true
+Belgium,Mobile TDD 3.5 GHz,NU,0.02,0.00,0.00,,true
+Belgium,Mobile TDD 3.5 GHz,DL,0.45,0.00,0.00,,true
+Belgium,Mobile TDD 3.5 GHz,UL,0.70,0.00,0.00,,true
+France,Broadcast,NU,0.04,0.01,0.02,,true
+France,Broadcast,DL,0.05,0.01,0.02,,true
+France,Broadcast,UL,0.04,0.01,0.01,,true
+France,DECT,NU,0.01,0.00,0.00,,true
+France,DECT,DL,0.01,0.00,0.00,,true
+France,DECT,UL,0.09,0.00,0.00,,true
+France,WiFi 5 GHz,NU,0.02,0.01,0.00,,true
+France,WiFi 5 GHz,DL,0.02,0.01,0.01,,true
+France,WiFi 5 GHz,UL,0.02,0.01,0.01,,true
+France,ISM/WiFi 2.4 GHz,NU,0.01,0.00,0.01,,true
+France,ISM/WiFi 2.4 GHz,DL,0.06,0.00,0.01,,true
+France,ISM/WiFi 2.4 GHz,UL,0.07,0.00,0.01,,true
+France,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+France,Mobile SDL 700 MHz,DL,0.00,0.00,0.00,,true
+France,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+France,Mobile DL 700 MHz,NU,0.16,0.01,0.06,,true
+France,Mobile DL 700 MHz,DL,0.13,0.01,0.04,,true
+France,Mobile DL 700 MHz,UL,0.16,0.01,0.03,,true
+France,Mobile DL 800 MHz,NU,0.24,0.02,0.12,,true
+France,Mobile DL 800 MHz,DL,0.16,0.02,0.09,,true
+France,Mobile DL 800 MHz,UL,0.15,0.01,0.07,,true
+France,Mobile DL 900 MHz,NU,0.16,0.02,0.10,,true
+France,Mobile DL 900 MHz,DL,0.12,0.01,0.06,,true
+France,Mobile DL 900 MHz,UL,0.11,0.01,0.05,,true
+France,Mobile DL 1.4 GHz,NU,0.00,0.00,0.00,,true
+France,Mobile DL 1.4 GHz,DL,0.00,0.00,0.00,,true
+France,Mobile DL 1.4 GHz,UL,0.00,0.00,0.00,,true
+France,Mobile DL 1.8 GHz,NU,0.39,0.03,0.15,,true
+France,Mobile DL 1.8 GHz,DL,0.26,0.02,0.11,,true
+France,Mobile DL 1.8 GHz,UL,0.19,0.02,0.09,,true
+France,Mobile DL 2.1 GHz,NU,0.22,0.02,0.11,,true
+France,Mobile DL 2.1 GHz,DL,0.17,0.02,0.09,,true
+France,Mobile DL 2.1 GHz,UL,0.12,0.01,0.07,,true
+France,Mobile DL 2.6 GHz,NU,0.18,0.02,0.09,,true
+France,Mobile DL 2.6 GHz,DL,0.12,0.01,0.06,,true
+France,Mobile DL 2.6 GHz,UL,0.10,0.01,0.05,,true
+France,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+France,Mobile UL 700 MHz,DL,0.00,0.00,0.00,,true
+France,Mobile UL 700 MHz,UL,0.00,0.00,0.00,,true
+France,Mobile UL 800 MHz,NU,0.00,0.00,0.00,,true
+France,Mobile UL 800 MHz,DL,0.03,0.00,0.00,,true
+France,Mobile UL 800 MHz,UL,0.09,0.00,0.00,,true
+France,Mobile UL 900 MHz,NU,0.02,0.00,0.00,,true
+France,Mobile UL 900 MHz,DL,0.01,0.00,0.00,,true
+France,Mobile UL 900 MHz,UL,0.04,0.00,0.00,,true
+France,Mobile UL 1.8 GHz,NU,0.01,0.00,0.00,,true
+France,Mobile UL 1.8 GHz,DL,0.36,0.00,0.00,,true
+France,Mobile UL 1.8 GHz,UL,6.32,0.00,0.12,,true
+France,Mobile UL 2.1 GHz,NU,0.01,0.00,0.00,,true
+France,Mobile UL 2.1 GHz,DL,0.91,0.00,0.32,,true
+France,Mobile UL 2.1 GHz,UL,6.18,0.00,3.67,,true
+France,Mobile UL 2.6 GHz,NU,0.01,0.00,0.00,,true
+France,Mobile UL 2.6 GHz,DL,0.90,0.00,0.00,,true
+France,Mobile UL 2.6 GHz,UL,1.00,0.00,0.00,,true
+France,Mobile TDD 2.6 GHz,NU,0.00,0.00,0.00,,true
+France,Mobile TDD 2.6 GHz,DL,0.00,0.00,0.00,,true
+France,Mobile TDD 2.6 GHz,UL,0.00,0.00,0.00,,true
+France,Mobile TDD 3.5 GHz,NU,0.24,0.01,0.05,,true
+France,Mobile TDD 3.5 GHz,DL,3.71,0.07,1.60,,true
+France,Mobile TDD 3.5 GHz,UL,1.78,0.01,0.11,,true
+Hungary,Broadcast,NU,0.07,0.01,0.02,,true
+Hungary,Broadcast,DL,0.07,0.01,0.01,,true
+Hungary,Broadcast,UL,0.05,0.01,0.02,,true
+Hungary,DECT,NU,0.00,0.00,0.00,,true
+Hungary,DECT,DL,0.00,0.00,0.00,,true
+Hungary,DECT,UL,0.00,0.00,0.00,,true
+Hungary,WiFi 5 GHz,NU,0.01,0.01,0.00,,true
+Hungary,WiFi 5 GHz,DL,0.01,0.01,0.00,,true
+Hungary,WiFi 5 GHz,UL,0.01,0.01,0.00,,true
+Hungary,ISM/WiFi 2.4 GHz,NU,0.01,0.00,0.00,,true
+Hungary,ISM/WiFi 2.4 GHz,DL,0.02,0.00,0.00,,true
+Hungary,ISM/WiFi 2.4 GHz,UL,0.01,0.00,0.00,,true
+Hungary,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+Hungary,Mobile SDL 700 MHz,DL,0.00,0.00,0.00,,true
+Hungary,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+Hungary,Mobile DL 700 MHz,NU,0.03,0.00,0.01,,true
+Hungary,Mobile DL 700 MHz,DL,0.03,0.00,0.01,,true
+Hungary,Mobile DL 700 MHz,UL,0.03,0.00,0.01,,true
+Hungary,Mobile DL 800 MHz,NU,0.12,0.01,0.06,,true
+Hungary,Mobile DL 800 MHz,DL,0.10,0.01,0.05,,true
+Hungary,Mobile DL 800 MHz,UL,0.09,0.01,0.05,,true
+Hungary,Mobile DL 900 MHz,NU,0.16,0.02,0.11,,true
+Hungary,Mobile DL 900 MHz,DL,0.14,0.01,0.08,,true
+Hungary,Mobile DL 900 MHz,UL,0.13,0.02,0.09,,true
+Hungary,Mobile DL 1.4 GHz,NU,0.00,0.00,0.00,,true
+Hungary,Mobile DL 1.4 GHz,DL,0.00,0.00,0.00,,true
+Hungary,Mobile DL 1.4 GHz,UL,0.00,0.00,0.00,,true
+Hungary,Mobile DL 1.8 GHz,NU,0.20,0.02,0.12,,true
+Hungary,Mobile DL 1.8 GHz,DL,0.16,0.02,0.10,,true
+Hungary,Mobile DL 1.8 GHz,UL,0.15,0.02,0.11,,true
+Hungary,Mobile DL 2.1 GHz,NU,0.07,0.01,0.04,,true
+Hungary,Mobile DL 2.1 GHz,DL,0.06,0.00,0.03,,true
+Hungary,Mobile DL 2.1 GHz,UL,0.05,0.00,0.03,,true
+Hungary,Mobile DL 2.6 GHz,NU,0.02,0.00,0.00,,true
+Hungary,Mobile DL 2.6 GHz,DL,0.01,0.00,0.00,,true
+Hungary,Mobile DL 2.6 GHz,UL,0.03,0.00,0.00,,true
+Hungary,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+Hungary,Mobile UL 700 MHz,DL,0.18,0.00,0.03,,true
+Hungary,Mobile UL 700 MHz,UL,0.53,0.00,0.13,,true
+Hungary,Mobile UL 800 MHz,NU,0.00,0.00,0.00,,true
+Hungary,Mobile UL 800 MHz,DL,0.38,0.00,0.20,,true
+Hungary,Mobile UL 800 MHz,UL,1.04,0.00,0.05,,true
+Hungary,Mobile UL 900 MHz,NU,0.01,0.00,0.00,,true
+Hungary,Mobile UL 900 MHz,DL,0.00,0.00,0.00,,true
+Hungary,Mobile UL 900 MHz,UL,0.00,0.00,0.00,,true
+Hungary,Mobile UL 1.8 GHz,NU,0.01,0.00,0.00,,true
+Hungary,Mobile UL 1.8 GHz,DL,0.44,0.00,0.03,,true
+Hungary,Mobile UL 1.8 GHz,UL,5.24,0.01,4.42,,true
+Hungary,Mobile UL 2.1 GHz,NU,0.00,0.00,0.00,,true
+Hungary,Mobile UL 2.1 GHz,DL,0.41,0.00,0.00,,true
+Hungary,Mobile UL 2.1 GHz,UL,0.51,0.00,0.00,,true
+Hungary,Mobile UL 2.6 GHz,NU,0.00,0.00,0.00,,true
+Hungary,Mobile UL 2.6 GHz,DL,0.15,0.00,0.00,,true
+Hungary,Mobile UL 2.6 GHz,UL,1.67,0.00,0.00,,true
+Hungary,Mobile TDD 2.6 GHz,NU,0.00,0.00,0.00,,true
+Hungary,Mobile TDD 2.6 GHz,DL,0.00,0.00,0.00,,true
+Hungary,Mobile TDD 2.6 GHz,UL,0.00,0.00,0.00,,true
+Hungary,Mobile TDD 3.5 GHz,NU,0.02,0.00,0.00,,true
+Hungary,Mobile TDD 3.5 GHz,DL,0.46,0.00,0.00,,true
+Hungary,Mobile TDD 3.5 GHz,UL,0.14,0.00,0.00,,true
+Italy,Broadcast,NU,0.11,0.02,0.09,,true
+Italy,Broadcast,DL,0.12,0.02,0.09,,true
+Italy,Broadcast,UL,0.17,0.02,0.12,,true
+Italy,DECT,NU,0.00,0.00,0.00,,true
+Italy,DECT,DL,0.00,0.00,0.00,,true
+Italy,DECT,UL,0.00,0.00,0.00,,true
+Italy,WiFi 5 GHz,NU,0.01,0.01,0.00,,true
+Italy,WiFi 5 GHz,DL,0.01,0.01,0.00,,true
+Italy,WiFi 5 GHz,UL,0.01,0.01,0.00,,true
+Italy,ISM/WiFi 2.4 GHz,NU,0.01,0.00,0.00,,true
+Italy,ISM/WiFi 2.4 GHz,DL,0.00,0.00,0.00,,true
+Italy,ISM/WiFi 2.4 GHz,UL,0.00,0.00,0.00,,true
+Italy,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+Italy,Mobile SDL 700 MHz,DL,0.00,0.00,0.00,,true
+Italy,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+Italy,Mobile DL 700 MHz,NU,0.02,0.00,0.00,,true
+Italy,Mobile DL 700 MHz,DL,0.01,0.00,0.00,,true
+Italy,Mobile DL 700 MHz,UL,0.02,0.00,0.00,,true
+Italy,Mobile DL 800 MHz,NU,0.09,0.01,0.05,,true
+Italy,Mobile DL 800 MHz,DL,0.08,0.01,0.05,,true
+Italy,Mobile DL 800 MHz,UL,0.09,0.02,0.05,,true
+Italy,Mobile DL 900 MHz,NU,0.04,0.01,0.03,,true
+Italy,Mobile DL 900 MHz,DL,0.03,0.01,0.02,,true
+Italy,Mobile DL 900 MHz,UL,0.04,0.01,0.03,,true
+Italy,Mobile DL 1.4 GHz,NU,0.01,0.00,0.00,,true
+Italy,Mobile DL 1.4 GHz,DL,0.00,0.00,0.00,,true
+Italy,Mobile DL 1.4 GHz,UL,0.00,0.00,0.00,,true
+Italy,Mobile DL 1.8 GHz,NU,0.11,0.02,0.08,,true
+Italy,Mobile DL 1.8 GHz,DL,0.07,0.01,0.06,,true
+Italy,Mobile DL 1.8 GHz,UL,0.11,0.02,0.07,,true
+Italy,Mobile DL 2.1 GHz,NU,0.08,0.02,0.06,,true
+Italy,Mobile DL 2.1 GHz,DL,0.06,0.01,0.05,,true
+Italy,Mobile DL 2.1 GHz,UL,0.08,0.02,0.06,,true
+Italy,Mobile DL 2.6 GHz,NU,0.06,0.01,0.04,,true
+Italy,Mobile DL 2.6 GHz,DL,0.04,0.01,0.03,,true
+Italy,Mobile DL 2.6 GHz,UL,0.05,0.01,0.04,,true
+Italy,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+Italy,Mobile UL 700 MHz,DL,0.00,0.00,0.00,,true
+Italy,Mobile UL 700 MHz,UL,0.00,0.00,0.00,,true
+Italy,Mobile UL 800 MHz,NU,0.00,0.00,0.00,,true
+Italy,Mobile UL 800 MHz,DL,0.17,0.00,0.00,,true
+Italy,Mobile UL 800 MHz,UL,0.17,0.00,0.00,,true
+Italy,Mobile UL 900 MHz,NU,0.00,0.00,0.00,,true
+Italy,Mobile UL 900 MHz,DL,0.01,0.00,0.00,,true
+Italy,Mobile UL 900 MHz,UL,0.00,0.00,0.00,,true
+Italy,Mobile UL 1.8 GHz,NU,0.01,0.00,0.00,,true
+Italy,Mobile UL 1.8 GHz,DL,2.05,0.30,1.54,,true
+Italy,Mobile UL 1.8 GHz,UL,14.72,8.62,20.84,,true
+Italy,Mobile UL 2.1 GHz,NU,0.01,0.00,0.00,,true
+Italy,Mobile UL 2.1 GHz,DL,0.32,0.00,0.00,,true
+Italy,Mobile UL 2.1 GHz,UL,0.26,0.00,0.00,,true
+Italy,Mobile UL 2.6 GHz,NU,0.01,0.00,0.00,,true
+Italy,Mobile UL 2.6 GHz,DL,0.28,0.00,0.00,,true
+Italy,Mobile UL 2.6 GHz,UL,7.62,0.00,0.00,,true
+Italy,Mobile TDD 2.6 GHz,NU,0.00,0.00,0.00,,true
+Italy,Mobile TDD 2.6 GHz,DL,0.00,0.00,0.00,,true
+Italy,Mobile TDD 2.6 GHz,UL,0.00,0.00,0.00,,true
+Italy,Mobile TDD 3.5 GHz,NU,0.06,0.00,0.02,,true
+Italy,Mobile TDD 3.5 GHz,DL,0.04,0.00,0.01,,true
+Italy,Mobile TDD 3.5 GHz,UL,0.06,0.00,0.01,,true
+Netherlands,Broadcast,NU,0.07,0.01,0.02,,true
+Netherlands,Broadcast,DL,0.03,0.01,0.02,,true
+Netherlands,Broadcast,UL,0.03,0.01,0.02,,true
+Netherlands,DECT,NU,0.00,0.00,0.00,,true
+Netherlands,DECT,DL,0.00,0.00,0.00,,true
+Netherlands,DECT,UL,0.00,0.00,0.00,,true
+Netherlands,WiFi 5 GHz,NU,0.00,0.00,0.00,,true
+Netherlands,WiFi 5 GHz,DL,0.00,0.00,0.00,,true
+Netherlands,WiFi 5 GHz,UL,0.00,0.00,0.00,,true
+Netherlands,ISM/WiFi 2.4 GHz,NU,0.01,0.00,0.00,,true
+Netherlands,ISM/WiFi 2.4 GHz,DL,0.00,0.00,0.00,,true
+Netherlands,ISM/WiFi 2.4 GHz,UL,0.00,0.00,0.00,,true
+Netherlands,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+Netherlands,Mobile SDL 700 MHz,DL,0.00,0.00,0.00,,true
+Netherlands,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+Netherlands,Mobile DL 700 MHz,NU,0.08,0.01,0.03,,true
+Netherlands,Mobile DL 700 MHz,DL,0.13,0.01,0.06,,true
+Netherlands,Mobile DL 700 MHz,UL,0.08,0.01,0.04,,true
+Netherlands,Mobile DL 800 MHz,NU,0.17,0.02,0.11,,true
+Netherlands,Mobile DL 800 MHz,DL,0.25,0.04,0.19,,true
+Netherlands,Mobile DL 800 MHz,UL,0.16,0.03,0.12,,true
+Netherlands,Mobile DL 900 MHz,NU,0.16,0.03,0.12,,true
+Netherlands,Mobile DL 900 MHz,DL,0.21,0.04,0.18,,true
+Netherlands,Mobile DL 900 MHz,UL,0.17,0.03,0.13,,true
+Netherlands,Mobile DL 1.4 GHz,NU,0.05,0.00,0.01,,true
+Netherlands,Mobile DL 1.4 GHz,DL,0.07,0.00,0.02,,true
+Netherlands,Mobile DL 1.4 GHz,UL,0.04,0.00,0.01,,true
+Netherlands,Mobile DL 1.8 GHz,NU,0.23,0.03,0.14,,true
+Netherlands,Mobile DL 1.8 GHz,DL,0.43,0.06,0.32,,true
+Netherlands,Mobile DL 1.8 GHz,UL,0.25,0.03,0.18,,true
+Netherlands,Mobile DL 2.1 GHz,NU,0.22,0.03,0.14,,true
+Netherlands,Mobile DL 2.1 GHz,DL,0.33,0.04,0.28,,true
+Netherlands,Mobile DL 2.1 GHz,UL,0.24,0.03,0.17,,true
+Netherlands,Mobile DL 2.6 GHz,NU,0.07,0.00,0.02,,true
+Netherlands,Mobile DL 2.6 GHz,DL,0.09,0.01,0.04,,true
+Netherlands,Mobile DL 2.6 GHz,UL,0.06,0.00,0.04,,true
+Netherlands,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 700 MHz,DL,0.02,0.00,0.00,,true
+Netherlands,Mobile UL 700 MHz,UL,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 800 MHz,NU,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 800 MHz,DL,0.30,0.01,0.13,,true
+Netherlands,Mobile UL 800 MHz,UL,3.47,0.29,5.08,,true
+Netherlands,Mobile UL 900 MHz,NU,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 900 MHz,DL,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 900 MHz,UL,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 1.8 GHz,NU,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 1.8 GHz,DL,9.12,0.93,6.20,,true
+Netherlands,Mobile UL 1.8 GHz,UL,19.01,11.75,26.68,,true
+Netherlands,Mobile UL 2.1 GHz,NU,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 2.1 GHz,DL,0.04,0.00,0.00,,true
+Netherlands,Mobile UL 2.1 GHz,UL,2.29,0.00,0.00,,true
+Netherlands,Mobile UL 2.6 GHz,NU,0.00,0.00,0.00,,true
+Netherlands,Mobile UL 2.6 GHz,DL,0.05,0.00,0.00,,true
+Netherlands,Mobile UL 2.6 GHz,UL,0.48,0.00,0.00,,true
+Netherlands,Mobile TDD 2.6 GHz,NU,0.04,0.00,0.01,,true
+Netherlands,Mobile TDD 2.6 GHz,DL,0.05,0.00,0.01,,true
+Netherlands,Mobile TDD 2.6 GHz,UL,0.03,0.00,0.01,,true
+Netherlands,Mobile TDD 3.5 GHz,NU,0.00,0.00,0.00,,true
+Netherlands,Mobile TDD 3.5 GHz,DL,0.00,0.00,0.00,,true
+Netherlands,Mobile TDD 3.5 GHz,UL,0.00,0.00,0.00,,true
+Poland,Broadcast,NU,0.13,0.00,0.01,,true
+Poland,Broadcast,DL,0.17,0.00,0.01,,true
+Poland,Broadcast,UL,0.17,0.00,0.01,,true
+Poland,DECT,NU,0.00,0.00,0.00,,true
+Poland,DECT,DL,0.00,0.00,0.00,,true
+Poland,DECT,UL,0.00,0.00,0.00,,true
+Poland,WiFi 5 GHz,NU,0.00,0.00,0.00,,true
+Poland,WiFi 5 GHz,DL,0.00,0.00,0.00,,true
+Poland,WiFi 5 GHz,UL,0.00,0.00,0.00,,true
+Poland,ISM/WiFi 2.4 GHz,NU,0.01,0.00,0.00,,true
+Poland,ISM/WiFi 2.4 GHz,DL,0.01,0.00,0.00,,true
+Poland,ISM/WiFi 2.4 GHz,UL,0.01,0.00,0.00,,true
+Poland,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile SDL 700 MHz,DL,0.00,0.00,0.00,,true
+Poland,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+Poland,Mobile DL 700 MHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile DL 700 MHz,DL,0.00,0.00,0.00,,true
+Poland,Mobile DL 700 MHz,UL,0.00,0.00,0.00,,true
+Poland,Mobile DL 800 MHz,NU,0.13,0.01,0.08,,true
+Poland,Mobile DL 800 MHz,DL,0.13,0.01,0.07,,true
+Poland,Mobile DL 800 MHz,UL,0.11,0.01,0.07,,true
+Poland,Mobile DL 900 MHz,NU,0.22,0.03,0.16,,true
+Poland,Mobile DL 900 MHz,DL,0.19,0.02,0.12,,true
+Poland,Mobile DL 900 MHz,UL,0.18,0.02,0.13,,true
+Poland,Mobile DL 1.4 GHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile DL 1.4 GHz,DL,0.00,0.00,0.00,,true
+Poland,Mobile DL 1.4 GHz,UL,0.00,0.00,0.00,,true
+Poland,Mobile DL 1.8 GHz,NU,0.27,0.04,0.16,,true
+Poland,Mobile DL 1.8 GHz,DL,0.26,0.02,0.14,,true
+Poland,Mobile DL 1.8 GHz,UL,0.23,0.03,0.13,,true
+Poland,Mobile DL 2.1 GHz,NU,0.30,0.03,0.15,,true
+Poland,Mobile DL 2.1 GHz,DL,0.28,0.02,0.13,,true
+Poland,Mobile DL 2.1 GHz,UL,0.26,0.02,0.13,,true
+Poland,Mobile DL 2.6 GHz,NU,0.15,0.02,0.10,,true
+Poland,Mobile DL 2.6 GHz,DL,0.14,0.01,0.06,,true
+Poland,Mobile DL 2.6 GHz,UL,0.12,0.01,0.06,,true
+Poland,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile UL 700 MHz,DL,0.00,0.00,0.00,,true
+Poland,Mobile UL 700 MHz,UL,0.00,0.00,0.00,,true
+Poland,Mobile UL 800 MHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile UL 800 MHz,DL,0.13,0.00,0.00,,true
+Poland,Mobile UL 800 MHz,UL,0.14,0.00,0.00,,true
+Poland,Mobile UL 900 MHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile UL 900 MHz,DL,0.03,0.00,0.00,,true
+Poland,Mobile UL 900 MHz,UL,0.02,0.00,0.00,,true
+Poland,Mobile UL 1.8 GHz,NU,0.01,0.00,0.00,,true
+Poland,Mobile UL 1.8 GHz,DL,0.35,0.00,0.11,,true
+Poland,Mobile UL 1.8 GHz,UL,2.13,0.00,0.34,,true
+Poland,Mobile UL 2.1 GHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile UL 2.1 GHz,DL,0.54,0.04,0.40,,true
+Poland,Mobile UL 2.1 GHz,UL,2.87,0.30,3.45,,true
+Poland,Mobile UL 2.6 GHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile UL 2.6 GHz,DL,0.47,0.00,0.00,,true
+Poland,Mobile UL 2.6 GHz,UL,4.98,0.00,0.35,,true
+Poland,Mobile TDD 2.6 GHz,NU,0.01,0.00,0.00,,true
+Poland,Mobile TDD 2.6 GHz,DL,0.01,0.00,0.00,,true
+Poland,Mobile TDD 2.6 GHz,UL,0.01,0.00,0.00,,true
+Poland,Mobile TDD 3.5 GHz,NU,0.00,0.00,0.00,,true
+Poland,Mobile TDD 3.5 GHz,DL,0.00,0.00,0.00,,true
+Poland,Mobile TDD 3.5 GHz,UL,0.00,0.00,0.00,,true
+Spain,Broadcast,NU,0.07,0.01,0.03,,true
+Spain,Broadcast,DL,0.06,0.02,0.03,,true
+Spain,Broadcast,UL,0.07,0.01,0.03,,true
+Spain,DECT,NU,0.00,0.00,0.00,,true
+Spain,DECT,DL,0.00,0.00,0.00,,true
+Spain,DECT,UL,0.00,0.00,0.00,,true
+Spain,WiFi 5 GHz,NU,0.01,0.01,0.02,,true
+Spain,WiFi 5 GHz,DL,0.02,0.02,0.01,,true
+Spain,WiFi 5 GHz,UL,0.02,0.02,0.01,,true
+Spain,ISM/WiFi 2.4 GHz,NU,0.01,0.00,0.00,,true
+Spain,ISM/WiFi 2.4 GHz,DL,0.01,0.00,0.00,,true
+Spain,ISM/WiFi 2.4 GHz,UL,0.01,0.00,0.00,,true
+Spain,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+Spain,Mobile SDL 700 MHz,DL,0.00,0.00,0.00,,true
+Spain,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+Spain,Mobile DL 700 MHz,NU,0.03,0.00,0.01,,true
+Spain,Mobile DL 700 MHz,DL,0.04,0.00,0.02,,true
+Spain,Mobile DL 700 MHz,UL,0.04,0.00,0.02,,true
+Spain,Mobile DL 800 MHz,NU,0.08,0.01,0.03,,true
+Spain,Mobile DL 800 MHz,DL,0.09,0.01,0.04,,true
+Spain,Mobile DL 800 MHz,UL,0.10,0.01,0.04,,true
+Spain,Mobile DL 900 MHz,NU,0.10,0.01,0.03,,true
+Spain,Mobile DL 900 MHz,DL,0.15,0.01,0.05,,true
+Spain,Mobile DL 900 MHz,UL,0.18,0.01,0.05,,true
+Spain,Mobile DL 1.4 GHz,NU,0.00,0.00,0.00,,true
+Spain,Mobile DL 1.4 GHz,DL,0.00,0.00,0.00,,true
+Spain,Mobile DL 1.4 GHz,UL,0.00,0.00,0.00,,true
+Spain,Mobile DL 1.8 GHz,NU,0.16,0.01,0.05,,true
+Spain,Mobile DL 1.8 GHz,DL,0.24,0.02,0.09,,true
+Spain,Mobile DL 1.8 GHz,UL,0.22,0.02,0.09,,true
+Spain,Mobile DL 2.1 GHz,NU,0.09,0.00,0.02,,true
+Spain,Mobile DL 2.1 GHz,DL,0.14,0.01,0.04,,true
+Spain,Mobile DL 2.1 GHz,UL,0.14,0.01,0.03,,true
+Spain,Mobile DL 2.6 GHz,NU,0.04,0.00,0.01,,true
+Spain,Mobile DL 2.6 GHz,DL,0.07,0.00,0.02,,true
+Spain,Mobile DL 2.6 GHz,UL,0.06,0.00,0.02,,true
+Spain,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+Spain,Mobile UL 700 MHz,DL,0.00,0.00,0.00,,true
+Spain,Mobile UL 700 MHz,UL,0.05,0.00,0.00,,true
+Spain,Mobile UL 800 MHz,NU,0.00,0.00,0.00,,true
+Spain,Mobile UL 800 MHz,DL,0.02,0.00,0.00,,true
+Spain,Mobile UL 800 MHz,UL,0.07,0.00,0.00,,true
+Spain,Mobile UL 900 MHz,NU,0.00,0.00,0.00,,true
+Spain,Mobile UL 900 MHz,DL,0.02,0.00,0.00,,true
+Spain,Mobile UL 900 MHz,UL,0.45,0.00,0.00,,true
+Spain,Mobile UL 1.8 GHz,NU,0.02,0.00,0.00,,true
+Spain,Mobile UL 1.8 GHz,DL,0.26,0.01,0.19,,true
+Spain,Mobile UL 1.8 GHz,UL,2.61,0.29,2.47,,true
+Spain,Mobile UL 2.1 GHz,NU,0.02,0.00,0.00,,true
+Spain,Mobile UL 2.1 GHz,DL,0.21,0.00,0.00,,true
+Spain,Mobile UL 2.1 GHz,UL,2.85,0.00,0.00,,true
+Spain,Mobile UL 2.6 GHz,NU,0.01,0.00,0.00,,true
+Spain,Mobile UL 2.6 GHz,DL,0.18,0.00,0.00,,true
+Spain,Mobile UL 2.6 GHz,UL,2.15,0.00,0.00,,true
+Spain,Mobile TDD 2.6 GHz,NU,0.00,0.00,0.00,,true
+Spain,Mobile TDD 2.6 GHz,DL,0.00,0.00,0.00,,true
+Spain,Mobile TDD 2.6 GHz,UL,0.00,0.00,0.00,,true
+Spain,Mobile TDD 3.5 GHz,NU,0.06,0.01,0.01,,true
+Spain,Mobile TDD 3.5 GHz,DL,2.21,0.01,0.08,,true
+Spain,Mobile TDD 3.5 GHz,UL,1.89,0.01,0.04,,true
+Switzerland,Broadcast,NU,0.03,0.01,0.02,,true
+Switzerland,Broadcast,DL,0.05,0.01,0.02,,true
+Switzerland,Broadcast,UL,0.04,0.01,0.02,,true
+Switzerland,DECT,NU,0.00,0.00,0.00,,true
+Switzerland,DECT,DL,0.00,0.00,0.00,,true
+Switzerland,DECT,UL,0.00,0.00,0.00,,true
+Switzerland,WiFi 5 GHz,NU,0.01,0.01,0.01,,true
+Switzerland,WiFi 5 GHz,DL,0.01,0.01,0.01,,true
+Switzerland,WiFi 5 GHz,UL,0.01,0.01,0.01,,true
+Switzerland,ISM/WiFi 2.4 GHz,NU,0.02,0.00,0.01,,true
+Switzerland,ISM/WiFi 2.4 GHz,DL,0.01,0.00,0.00,,true
+Switzerland,ISM/WiFi 2.4 GHz,UL,0.01,0.00,0.00,,true
+Switzerland,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+Switzerland,Mobile SDL 700 MHz,DL,0.01,0.00,0.00,,true
+Switzerland,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+Switzerland,Mobile DL 700 MHz,NU,0.01,0.00,0.00,,true
+Switzerland,Mobile DL 700 MHz,DL,0.01,0.00,0.00,,true
+Switzerland,Mobile DL 700 MHz,UL,0.01,0.00,0.00,,true
+Switzerland,Mobile DL 800 MHz,NU,0.04,0.01,0.02,,true
+Switzerland,Mobile DL 800 MHz,DL,0.04,0.01,0.03,,true
+Switzerland,Mobile DL 800 MHz,UL,0.05,0.01,0.03,,true
+Switzerland,Mobile DL 900 MHz,NU,0.03,0.00,0.01,,true
+Switzerland,Mobile DL 900 MHz,DL,0.02,0.00,0.01,,true
+Switzerland,Mobile DL 900 MHz,UL,0.02,0.00,0.01,,true
+Switzerland,Mobile DL 1.4 GHz,NU,0.00,0.00,0.00,,true
+Switzerland,Mobile DL 1.4 GHz,DL,0.00,0.00,0.00,,true
+Switzerland,Mobile DL 1.4 GHz,UL,0.00,0.00,0.00,,true
+Switzerland,Mobile DL 1.8 GHz,NU,0.04,0.01,0.03,,true
+Switzerland,Mobile DL 1.8 GHz,DL,0.06,0.01,0.04,,true
+Switzerland,Mobile DL 1.8 GHz,UL,0.06,0.01,0.04,,true
+Switzerland,Mobile DL 2.1 GHz,NU,0.05,0.01,0.03,,true
+Switzerland,Mobile DL 2.1 GHz,DL,0.06,0.01,0.04,,true
+Switzerland,Mobile DL 2.1 GHz,UL,0.05,0.01,0.03,,true
+Switzerland,Mobile DL 2.6 GHz,NU,0.02,0.00,0.01,,true
+Switzerland,Mobile DL 2.6 GHz,DL,0.02,0.00,0.01,,true
+Switzerland,Mobile DL 2.6 GHz,UL,0.02,0.00,0.01,,true
+Switzerland,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+Switzerland,Mobile UL 700 MHz,DL,0.08,0.00,0.00,,true
+Switzerland,Mobile UL 700 MHz,UL,0.16,0.00,0.00,,true
+Switzerland,Mobile UL 800 MHz,NU,0.01,0.00,0.00,,true
+Switzerland,Mobile UL 800 MHz,DL,0.02,0.00,0.00,,true
+Switzerland,Mobile UL 800 MHz,UL,0.02,0.00,0.00,,true
+Switzerland,Mobile UL 900 MHz,NU,0.00,0.00,0.00,,true
+Switzerland,Mobile UL 900 MHz,DL,0.01,0.00,0.00,,true
+Switzerland,Mobile UL 900 MHz,UL,0.02,0.00,0.00,,true
+Switzerland,Mobile UL 1.8 GHz,NU,0.02,0.00,0.00,,true
+Switzerland,Mobile UL 1.8 GHz,DL,0.25,0.00,0.01,,true
+Switzerland,Mobile UL 1.8 GHz,UL,1.62,0.00,0.60,,true
+Switzerland,Mobile UL 2.1 GHz,NU,0.01,0.00,0.00,,true
+Switzerland,Mobile UL 2.1 GHz,DL,0.85,0.00,0.10,,true
+Switzerland,Mobile UL 2.1 GHz,UL,10.58,0.08,10.25,,true
+Switzerland,Mobile UL 2.6 GHz,NU,0.00,0.00,0.00,,true
+Switzerland,Mobile UL 2.6 GHz,DL,0.03,0.00,0.00,,true
+Switzerland,Mobile UL 2.6 GHz,UL,0.82,0.00,0.00,,true
+Switzerland,Mobile TDD 2.6 GHz,NU,0.00,0.00,0.00,,true
+Switzerland,Mobile TDD 2.6 GHz,DL,0.00,0.00,0.00,,true
+Switzerland,Mobile TDD 2.6 GHz,UL,0.00,0.00,0.00,,true
+Switzerland,Mobile TDD 3.5 GHz,NU,0.04,0.00,0.01,,true
+Switzerland,Mobile TDD 3.5 GHz,DL,5.22,0.20,5.97,,true
+Switzerland,Mobile TDD 3.5 GHz,UL,4.05,0.00,2.43,,true
+UK,Broadcast,NU,0.03,0.01,0.01,,true
+UK,Broadcast,DL,0.04,0.01,0.01,,true
+UK,Broadcast,UL,0.02,0.01,0.01,,true
+UK,DECT,NU,0.00,0.00,0.00,,true
+UK,DECT,DL,0.00,0.00,0.00,,true
+UK,DECT,UL,0.00,0.00,0.00,,true
+UK,WiFi 5 GHz,NU,0.01,0.01,0.01,,true
+UK,WiFi 5 GHz,DL,0.01,0.01,0.01,,true
+UK,WiFi 5 GHz,UL,0.01,0.01,0.01,,true
+UK,ISM/WiFi 2.4 GHz,NU,0.03,0.00,0.01,,true
+UK,ISM/WiFi 2.4 GHz,DL,0.03,0.00,0.02,,true
+UK,ISM/WiFi 2.4 GHz,UL,0.05,0.00,0.02,,true
+UK,Mobile SDL 700 MHz,NU,0.00,0.00,0.00,,true
+UK,Mobile SDL 700 MHz,DL,0.00,0.00,0.00,,true
+UK,Mobile SDL 700 MHz,UL,0.00,0.00,0.00,,true
+UK,Mobile DL 700 MHz,NU,0.01,0.00,0.00,,true
+UK,Mobile DL 700 MHz,DL,0.00,0.00,0.00,,true
+UK,Mobile DL 700 MHz,UL,0.00,0.00,0.00,,true
+UK,Mobile DL 800 MHz,NU,0.11,0.01,0.04,,true
+UK,Mobile DL 800 MHz,DL,0.09,0.00,0.02,,true
+UK,Mobile DL 800 MHz,UL,0.09,0.00,0.03,,true
+UK,Mobile DL 900 MHz,NU,0.12,0.01,0.05,,true
+UK,Mobile DL 900 MHz,DL,0.08,0.00,0.02,,true
+UK,Mobile DL 900 MHz,UL,0.10,0.00,0.03,,true
+UK,Mobile DL 1.4 GHz,NU,0.02,0.00,0.00,,true
+UK,Mobile DL 1.4 GHz,DL,0.01,0.00,0.00,,true
+UK,Mobile DL 1.4 GHz,UL,0.01,0.00,0.00,,true
+UK,Mobile DL 1.8 GHz,NU,0.21,0.01,0.08,,true
+UK,Mobile DL 1.8 GHz,DL,0.11,0.00,0.04,,true
+UK,Mobile DL 1.8 GHz,UL,0.15,0.01,0.05,,true
+UK,Mobile DL 2.1 GHz,NU,0.18,0.01,0.09,,true
+UK,Mobile DL 2.1 GHz,DL,0.19,0.00,0.04,,true
+UK,Mobile DL 2.1 GHz,UL,0.18,0.01,0.05,,true
+UK,Mobile DL 2.6 GHz,NU,0.05,0.00,0.02,,true
+UK,Mobile DL 2.6 GHz,DL,0.04,0.00,0.01,,true
+UK,Mobile DL 2.6 GHz,UL,0.04,0.00,0.01,,true
+UK,Mobile UL 700 MHz,NU,0.00,0.00,0.00,,true
+UK,Mobile UL 700 MHz,DL,0.06,0.00,0.00,,true
+UK,Mobile UL 700 MHz,UL,0.01,0.00,0.00,,true
+UK,Mobile UL 800 MHz,NU,0.01,0.00,0.00,,true
+UK,Mobile UL 800 MHz,DL,0.15,0.00,0.01,,true
+UK,Mobile UL 800 MHz,UL,0.72,0.00,0.00,,true
+UK,Mobile UL 900 MHz,NU,0.02,0.00,0.00,,true
+UK,Mobile UL 900 MHz,DL,0.96,0.00,0.00,,true
+UK,Mobile UL 900 MHz,UL,0.36,0.00,0.00,,true
+UK,Mobile UL 1.8 GHz,NU,0.01,0.00,0.00,,true
+UK,Mobile UL 1.8 GHz,DL,0.05,0.00,0.00,,true
+UK,Mobile UL 1.8 GHz,UL,0.07,0.00,0.00,,true
+UK,Mobile UL 2.1 GHz,NU,0.01,0.00,0.00,,true
+UK,Mobile UL 2.1 GHz,DL,1.54,0.01,0.49,,true
+UK,Mobile UL 2.1 GHz,UL,7.23,0.00,1.57,,true
+UK,Mobile UL 2.6 GHz,NU,0.00,0.00,0.00,,true
+UK,Mobile UL 2.6 GHz,DL,0.00,0.00,0.00,,true
+UK,Mobile UL 2.6 GHz,UL,0.00,0.00,0.00,,true
+UK,Mobile TDD 2.6 GHz,NU,0.00,0.00,0.00,,true
+UK,Mobile TDD 2.6 GHz,DL,0.00,0.00,0.00,,true
+UK,Mobile TDD 2.6 GHz,UL,0.00,0.00,0.00,,true
+UK,Mobile TDD 3.5 GHz,NU,0.21,0.01,0.06,,true
+UK,Mobile TDD 3.5 GHz,DL,6.33,0.01,3.14,,true
+UK,Mobile TDD 3.5 GHz,UL,3.19,0.01,0.23,,true

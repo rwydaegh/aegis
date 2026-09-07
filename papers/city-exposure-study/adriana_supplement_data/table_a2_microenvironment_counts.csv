@@ -1,0 +1,2101 @@
+study_area,microenvironment,country,scenario,reported_result,successful_measurements,status
+LC,Urban centre,Austria,NU,2,2,ok
+LC,Urban centre,Austria,DL,F*,,failed_phone_settings
+LC,Urban centre,Austria,UL,F,,failed_phone_settings
+LC,Urban centre,Belgium,NU,2,2,ok
+LC,Urban centre,Belgium,DL,1,1,ok
+LC,Urban centre,Belgium,UL,1,1,ok
+LC,Urban centre,France,NU,2,2,ok
+LC,Urban centre,France,DL,1,1,ok
+LC,Urban centre,France,UL,1,1,ok
+LC,Urban centre,Hungary,NU,2,2,ok
+LC,Urban centre,Hungary,DL,1,1,ok
+LC,Urban centre,Hungary,UL,1,1,ok
+LC,Urban centre,Italy,NU,2,2,ok
+LC,Urban centre,Italy,DL,1,1,ok
+LC,Urban centre,Italy,UL,1,1,ok
+LC,Urban centre,Netherlands,NU,1,1,ok
+LC,Urban centre,Netherlands,DL,0,0,ok
+LC,Urban centre,Netherlands,UL,0,0,ok
+LC,Urban centre,Poland,NU,2,2,ok
+LC,Urban centre,Poland,DL,2,2,ok
+LC,Urban centre,Poland,UL,2,2,ok
+LC,Urban centre,Spain,NU,2,2,ok
+LC,Urban centre,Spain,DL,2,2,ok
+LC,Urban centre,Spain,UL,2,2,ok
+LC,Urban centre,Switzerland,NU,2,2,ok
+LC,Urban centre,Switzerland,DL,1,1,ok
+LC,Urban centre,Switzerland,UL,1,1,ok
+LC,Urban centre,UK,NU,2,2,ok
+LC,Urban centre,UK,DL,1,1,ok
+LC,Urban centre,UK,UL,1,1,ok
+LC,Industrial area,Austria,NU,1,1,ok
+LC,Industrial area,Austria,DL,F*,,failed_phone_settings
+LC,Industrial area,Austria,UL,F,,failed_phone_settings
+LC,Industrial area,Belgium,NU,1,1,ok
+LC,Industrial area,Belgium,DL,1,1,ok
+LC,Industrial area,Belgium,UL,1,1,ok
+LC,Industrial area,France,NU,0,0,ok
+LC,Industrial area,France,DL,0,0,ok
+LC,Industrial area,France,UL,0,0,ok
+LC,Industrial area,Hungary,NU,1,1,ok
+LC,Industrial area,Hungary,DL,1,1,ok
+LC,Industrial area,Hungary,UL,1,1,ok
+LC,Industrial area,Italy,NU,1,1,ok
+LC,Industrial area,Italy,DL,1,1,ok
+LC,Industrial area,Italy,UL,1,1,ok
+LC,Industrial area,Netherlands,NU,1,1,ok
+LC,Industrial area,Netherlands,DL,1,1,ok
+LC,Industrial area,Netherlands,UL,1,1,ok
+LC,Industrial area,Poland,NU,1,1,ok
+LC,Industrial area,Poland,DL,1,1,ok
+LC,Industrial area,Poland,UL,FT**,,failed_low_throughput
+LC,Industrial area,Spain,NU,1,1,ok
+LC,Industrial area,Spain,DL,1,1,ok
+LC,Industrial area,Spain,UL,1,1,ok
+LC,Industrial area,Switzerland,NU,1,1,ok
+LC,Industrial area,Switzerland,DL,1,1,ok
+LC,Industrial area,Switzerland,UL,1,1,ok
+LC,Industrial area,UK,NU,1,1,ok
+LC,Industrial area,UK,DL,1,1,ok
+LC,Industrial area,UK,UL,1,1,ok
+LC,Urban business area,Austria,NU,1,1,ok
+LC,Urban business area,Austria,DL,F*,,failed_phone_settings
+LC,Urban business area,Austria,UL,F,,failed_phone_settings
+LC,Urban business area,Belgium,NU,1,1,ok
+LC,Urban business area,Belgium,DL,1,1,ok
+LC,Urban business area,Belgium,UL,1,1,ok
+LC,Urban business area,France,NU,1,1,ok
+LC,Urban business area,France,DL,0,0,ok
+LC,Urban business area,France,UL,0,0,ok
+LC,Urban business area,Hungary,NU,1,1,ok
+LC,Urban business area,Hungary,DL,1,1,ok
+LC,Urban business area,Hungary,UL,1,1,ok
+LC,Urban business area,Italy,NU,1,1,ok
+LC,Urban business area,Italy,DL,1,1,ok
+LC,Urban business area,Italy,UL,1,1,ok
+LC,Urban business area,Netherlands,NU,1,1,ok
+LC,Urban business area,Netherlands,DL,1,1,ok
+LC,Urban business area,Netherlands,UL,1,1,ok
+LC,Urban business area,Poland,NU,1,1,ok
+LC,Urban business area,Poland,DL,1,1,ok
+LC,Urban business area,Poland,UL,1,1,ok
+LC,Urban business area,Spain,NU,1,1,ok
+LC,Urban business area,Spain,DL,1,1,ok
+LC,Urban business area,Spain,UL,1,1,ok
+LC,Urban business area,Switzerland,NU,1,1,ok
+LC,Urban business area,Switzerland,DL,1,1,ok
+LC,Urban business area,Switzerland,UL,1,1,ok
+LC,Urban business area,UK,NU,1,1,ok
+LC,Urban business area,UK,DL,1,1,ok
+LC,Urban business area,UK,UL,1,1,ok
+LC,Urban residential central,Austria,NU,3,3,ok
+LC,Urban residential central,Austria,DL,F*,,failed_phone_settings
+LC,Urban residential central,Austria,UL,F,,failed_phone_settings
+LC,Urban residential central,Belgium,NU,3,3,ok
+LC,Urban residential central,Belgium,DL,1,1,ok
+LC,Urban residential central,Belgium,UL,1,1,ok
+LC,Urban residential central,France,NU,6,6,ok
+LC,Urban residential central,France,DL,3,3,ok
+LC,Urban residential central,France,UL,2,2,ok
+LC,Urban residential central,Hungary,NU,3,3,ok
+LC,Urban residential central,Hungary,DL,1,1,ok
+LC,Urban residential central,Hungary,UL,1,1,ok
+LC,Urban residential central,Italy,NU,3,3,ok
+LC,Urban residential central,Italy,DL,1,1,ok
+LC,Urban residential central,Italy,UL,1,1,ok
+LC,Urban residential central,Netherlands,NU,1,1,ok
+LC,Urban residential central,Netherlands,DL,1,1,ok
+LC,Urban residential central,Netherlands,UL,1,1,ok
+LC,Urban residential central,Poland,NU,3,3,ok
+LC,Urban residential central,Poland,DL,1,1,ok
+LC,Urban residential central,Poland,UL,1,1,ok
+LC,Urban residential central,Spain,NU,3,3,ok
+LC,Urban residential central,Spain,DL,3,3,ok
+LC,Urban residential central,Spain,UL,3,3,ok
+LC,Urban residential central,Switzerland,NU,3,3,ok
+LC,Urban residential central,Switzerland,DL,1,1,ok
+LC,Urban residential central,Switzerland,UL,1,1,ok
+LC,Urban residential central,UK,NU,3,3,ok
+LC,Urban residential central,UK,DL,1,1,ok
+LC,Urban residential central,UK,UL,1,1,ok
+LC,Urban residential non-central,Austria,NU,3,3,ok
+LC,Urban residential non-central,Austria,DL,F*,,failed_phone_settings
+LC,Urban residential non-central,Austria,UL,F,,failed_phone_settings
+LC,Urban residential non-central,Belgium,NU,3,3,ok
+LC,Urban residential non-central,Belgium,DL,1,1,ok
+LC,Urban residential non-central,Belgium,UL,1,1,ok
+LC,Urban residential non-central,France,NU,2,2,ok
+LC,Urban residential non-central,France,DL,4,4,ok
+LC,Urban residential non-central,France,UL,1,1,ok
+LC,Urban residential non-central,Hungary,NU,3,3,ok
+LC,Urban residential non-central,Hungary,DL,3,3,ok
+LC,Urban residential non-central,Hungary,UL,1,1,ok
+LC,Urban residential non-central,Italy,NU,3,3,ok
+LC,Urban residential non-central,Italy,DL,1,1,ok
+LC,Urban residential non-central,Italy,UL,2,2,ok
+LC,Urban residential non-central,Netherlands,NU,3,3,ok
+LC,Urban residential non-central,Netherlands,DL,1,1,ok
+LC,Urban residential non-central,Netherlands,UL,1,1,ok
+LC,Urban residential non-central,Poland,NU,3,3,ok
+LC,Urban residential non-central,Poland,DL,1,1,ok
+LC,Urban residential non-central,Poland,UL,1,1,ok
+LC,Urban residential non-central,Spain,NU,2,2,ok
+LC,Urban residential non-central,Spain,DL,1,1,ok
+LC,Urban residential non-central,Spain,UL,1,1,ok
+LC,Urban residential non-central,Switzerland,NU,3,3,ok
+LC,Urban residential non-central,Switzerland,DL,1,1,ok
+LC,Urban residential non-central,Switzerland,UL,1,1,ok
+LC,Urban residential non-central,UK,NU,3,3,ok
+LC,Urban residential non-central,UK,DL,1,1,ok
+LC,Urban residential non-central,UK,UL,1,1,ok
+LC,Urban residential outskirts,Austria,NU,3,3,ok
+LC,Urban residential outskirts,Austria,DL,F*,,failed_phone_settings
+LC,Urban residential outskirts,Austria,UL,F,,failed_phone_settings
+LC,Urban residential outskirts,Belgium,NU,3,3,ok
+LC,Urban residential outskirts,Belgium,DL,1,1,ok
+LC,Urban residential outskirts,Belgium,UL,1,1,ok
+LC,Urban residential outskirts,France,NU,6,6,ok
+LC,Urban residential outskirts,France,DL,5,5,ok
+LC,Urban residential outskirts,France,UL,4,4,ok
+LC,Urban residential outskirts,Hungary,NU,3,3,ok
+LC,Urban residential outskirts,Hungary,DL,1,1,ok
+LC,Urban residential outskirts,Hungary,UL,1,1,ok
+LC,Urban residential outskirts,Italy,NU,3,3,ok
+LC,Urban residential outskirts,Italy,DL,2,2,ok
+LC,Urban residential outskirts,Italy,UL,1,1,ok
+LC,Urban residential outskirts,Netherlands,NU,3,3,ok
+LC,Urban residential outskirts,Netherlands,DL,1,1,ok
+LC,Urban residential outskirts,Netherlands,UL,1,1,ok
+LC,Urban residential outskirts,Poland,NU,3,3,ok
+LC,Urban residential outskirts,Poland,DL,1,1,ok
+LC,Urban residential outskirts,Poland,UL,1,1,ok
+LC,Urban residential outskirts,Spain,NU,3,3,ok
+LC,Urban residential outskirts,Spain,DL,3,3,ok
+LC,Urban residential outskirts,Spain,UL,3,3,ok
+LC,Urban residential outskirts,Switzerland,NU,3,3,ok
+LC,Urban residential outskirts,Switzerland,DL,1,1,ok
+LC,Urban residential outskirts,Switzerland,UL,1,1,ok
+LC,Urban residential outskirts,UK,NU,3,3,ok
+LC,Urban residential outskirts,UK,DL,1,1,ok
+LC,Urban residential outskirts,UK,UL,1,1,ok
+LC,Urban park: central,Austria,NU,1,1,ok
+LC,Urban park: central,Austria,DL,F*,,failed_phone_settings
+LC,Urban park: central,Austria,UL,F,,failed_phone_settings
+LC,Urban park: central,Belgium,NU,1,1,ok
+LC,Urban park: central,Belgium,DL,1,1,ok
+LC,Urban park: central,Belgium,UL,1,1,ok
+LC,Urban park: central,France,NU,1,1,ok
+LC,Urban park: central,France,DL,1,1,ok
+LC,Urban park: central,France,UL,1,1,ok
+LC,Urban park: central,Hungary,NU,1,1,ok
+LC,Urban park: central,Hungary,DL,1,1,ok
+LC,Urban park: central,Hungary,UL,1,1,ok
+LC,Urban park: central,Italy,NU,1,1,ok
+LC,Urban park: central,Italy,DL,1,1,ok
+LC,Urban park: central,Italy,UL,1,1,ok
+LC,Urban park: central,Netherlands,NU,1,1,ok
+LC,Urban park: central,Netherlands,DL,1,1,ok
+LC,Urban park: central,Netherlands,UL,1,1,ok
+LC,Urban park: central,Poland,NU,1,1,ok
+LC,Urban park: central,Poland,DL,1,1,ok
+LC,Urban park: central,Poland,UL,1,1,ok
+LC,Urban park: central,Spain,NU,1,1,ok
+LC,Urban park: central,Spain,DL,1,1,ok
+LC,Urban park: central,Spain,UL,1,1,ok
+LC,Urban park: central,Switzerland,NU,1,1,ok
+LC,Urban park: central,Switzerland,DL,1,1,ok
+LC,Urban park: central,Switzerland,UL,1,1,ok
+LC,Urban park: central,UK,NU,1,1,ok
+LC,Urban park: central,UK,DL,1,1,ok
+LC,Urban park: central,UK,UL,1,1,ok
+LC,Urban park: non central,Austria,NU,1,1,ok
+LC,Urban park: non central,Austria,DL,F*,,failed_phone_settings
+LC,Urban park: non central,Austria,UL,F,,failed_phone_settings
+LC,Urban park: non central,Belgium,NU,2,2,ok
+LC,Urban park: non central,Belgium,DL,1,1,ok
+LC,Urban park: non central,Belgium,UL,1,1,ok
+LC,Urban park: non central,France,NU,1,1,ok
+LC,Urban park: non central,France,DL,1,1,ok
+LC,Urban park: non central,France,UL,1,1,ok
+LC,Urban park: non central,Hungary,NU,1,1,ok
+LC,Urban park: non central,Hungary,DL,1,1,ok
+LC,Urban park: non central,Hungary,UL,3,3,ok
+LC,Urban park: non central,Italy,NU,1,1,ok
+LC,Urban park: non central,Italy,DL,1,1,ok
+LC,Urban park: non central,Italy,UL,1,1,ok
+LC,Urban park: non central,Netherlands,NU,1,1,ok
+LC,Urban park: non central,Netherlands,DL,1,1,ok
+LC,Urban park: non central,Netherlands,UL,1,1,ok
+LC,Urban park: non central,Poland,NU,1,1,ok
+LC,Urban park: non central,Poland,DL,1,1,ok
+LC,Urban park: non central,Poland,UL,1,1,ok
+LC,Urban park: non central,Spain,NU,1,1,ok
+LC,Urban park: non central,Spain,DL,F,,failed_phone_settings
+LC,Urban park: non central,Spain,UL,F,,failed_phone_settings
+LC,Urban park: non central,Switzerland,NU,1,1,ok
+LC,Urban park: non central,Switzerland,DL,1,1,ok
+LC,Urban park: non central,Switzerland,UL,1,1,ok
+LC,Urban park: non central,UK,NU,1,1,ok
+LC,Urban park: non central,UK,DL,1,1,ok
+LC,Urban park: non central,UK,UL,2,2,ok
+LC,Urban park: outskirts,Austria,NU,1,1,ok
+LC,Urban park: outskirts,Austria,DL,F*,,failed_phone_settings
+LC,Urban park: outskirts,Austria,UL,F,,failed_phone_settings
+LC,Urban park: outskirts,Belgium,NU,1,1,ok
+LC,Urban park: outskirts,Belgium,DL,1,1,ok
+LC,Urban park: outskirts,Belgium,UL,1,1,ok
+LC,Urban park: outskirts,France,NU,1,1,ok
+LC,Urban park: outskirts,France,DL,1,1,ok
+LC,Urban park: outskirts,France,UL,1,1,ok
+LC,Urban park: outskirts,Hungary,NU,1,1,ok
+LC,Urban park: outskirts,Hungary,DL,1,1,ok
+LC,Urban park: outskirts,Hungary,UL,0,0,ok
+LC,Urban park: outskirts,Italy,NU,0,0,ok
+LC,Urban park: outskirts,Italy,DL,1,1,ok
+LC,Urban park: outskirts,Italy,UL,1,1,ok
+LC,Urban park: outskirts,Netherlands,NU,0,0,ok
+LC,Urban park: outskirts,Netherlands,DL,0,0,ok
+LC,Urban park: outskirts,Netherlands,UL,0,0,ok
+LC,Urban park: outskirts,Poland,NU,1,1,ok
+LC,Urban park: outskirts,Poland,DL,2,2,ok
+LC,Urban park: outskirts,Poland,UL,0,0,ok
+LC,Urban park: outskirts,Spain,NU,1,1,ok
+LC,Urban park: outskirts,Spain,DL,1,1,ok
+LC,Urban park: outskirts,Spain,UL,1,1,ok
+LC,Urban park: outskirts,Switzerland,NU,1,1,ok
+LC,Urban park: outskirts,Switzerland,DL,1,1,ok
+LC,Urban park: outskirts,Switzerland,UL,1,1,ok
+LC,Urban park: outskirts,UK,NU,1,1,ok
+LC,Urban park: outskirts,UK,DL,1,1,ok
+LC,Urban park: outskirts,UK,UL,2,2,ok
+LC,Urban school: Primary school,Austria,NU,0,0,ok
+LC,Urban school: Primary school,Austria,DL,F*,,failed_phone_settings
+LC,Urban school: Primary school,Austria,UL,F,,failed_phone_settings
+LC,Urban school: Primary school,Belgium,NU,1,1,ok
+LC,Urban school: Primary school,Belgium,DL,1,1,ok
+LC,Urban school: Primary school,Belgium,UL,1,1,ok
+LC,Urban school: Primary school,France,NU,0,0,ok
+LC,Urban school: Primary school,France,DL,0,0,ok
+LC,Urban school: Primary school,France,UL,0,0,ok
+LC,Urban school: Primary school,Hungary,NU,1,1,ok
+LC,Urban school: Primary school,Hungary,DL,2,2,ok
+LC,Urban school: Primary school,Hungary,UL,0,0,ok
+LC,Urban school: Primary school,Italy,NU,0,0,ok
+LC,Urban school: Primary school,Italy,DL,0,0,ok
+LC,Urban school: Primary school,Italy,UL,0,0,ok
+LC,Urban school: Primary school,Netherlands,NU,0,0,ok
+LC,Urban school: Primary school,Netherlands,DL,0,0,ok
+LC,Urban school: Primary school,Netherlands,UL,0,0,ok
+LC,Urban school: Primary school,Poland,NU,1,1,ok
+LC,Urban school: Primary school,Poland,DL,1,1,ok
+LC,Urban school: Primary school,Poland,UL,1,1,ok
+LC,Urban school: Primary school,Spain,NU,1,1,ok
+LC,Urban school: Primary school,Spain,DL,F,,failed_phone_settings
+LC,Urban school: Primary school,Spain,UL,F,,failed_phone_settings
+LC,Urban school: Primary school,Switzerland,NU,1,1,ok
+LC,Urban school: Primary school,Switzerland,DL,1,1,ok
+LC,Urban school: Primary school,Switzerland,UL,1,1,ok
+LC,Urban school: Primary school,UK,NU,0,0,ok
+LC,Urban school: Primary school,UK,DL,0,0,ok
+LC,Urban school: Primary school,UK,UL,0,0,ok
+LC,Urban school: High school,Austria,NU,2,2,ok
+LC,Urban school: High school,Austria,DL,F*,,failed_phone_settings
+LC,Urban school: High school,Austria,UL,F,,failed_phone_settings
+LC,Urban school: High school,Belgium,NU,1,1,ok
+LC,Urban school: High school,Belgium,DL,1,1,ok
+LC,Urban school: High school,Belgium,UL,1,1,ok
+LC,Urban school: High school,France,NU,0,0,ok
+LC,Urban school: High school,France,DL,0,0,ok
+LC,Urban school: High school,France,UL,0,0,ok
+LC,Urban school: High school,Hungary,NU,1,1,ok
+LC,Urban school: High school,Hungary,DL,1,1,ok
+LC,Urban school: High school,Hungary,UL,1,1,ok
+LC,Urban school: High school,Italy,NU,0,0,ok
+LC,Urban school: High school,Italy,DL,0,0,ok
+LC,Urban school: High school,Italy,UL,0,0,ok
+LC,Urban school: High school,Netherlands,NU,0,0,ok
+LC,Urban school: High school,Netherlands,DL,0,0,ok
+LC,Urban school: High school,Netherlands,UL,0,0,ok
+LC,Urban school: High school,Poland,NU,1,1,ok
+LC,Urban school: High school,Poland,DL,FT,,failed_low_throughput
+LC,Urban school: High school,Poland,UL,FT,,failed_low_throughput
+LC,Urban school: High school,Spain,NU,0,0,ok
+LC,Urban school: High school,Spain,DL,0,0,ok
+LC,Urban school: High school,Spain,UL,0,0,ok
+LC,Urban school: High school,Switzerland,NU,1,1,ok
+LC,Urban school: High school,Switzerland,DL,1,1,ok
+LC,Urban school: High school,Switzerland,UL,1,1,ok
+LC,Urban school: High school,UK,NU,0,0,ok
+LC,Urban school: High school,UK,DL,0,0,ok
+LC,Urban school: High school,UK,UL,0,0,ok
+LC,University,Austria,NU,0,0,ok
+LC,University,Austria,DL,F*,,failed_phone_settings
+LC,University,Austria,UL,F,,failed_phone_settings
+LC,University,Belgium,NU,1,1,ok
+LC,University,Belgium,DL,1,1,ok
+LC,University,Belgium,UL,1,1,ok
+LC,University,France,NU,1,1,ok
+LC,University,France,DL,1,1,ok
+LC,University,France,UL,1,1,ok
+LC,University,Hungary,NU,1,1,ok
+LC,University,Hungary,DL,1,1,ok
+LC,University,Hungary,UL,1,1,ok
+LC,University,Italy,NU,1,1,ok
+LC,University,Italy,DL,1,1,ok
+LC,University,Italy,UL,1,1,ok
+LC,University,Netherlands,NU,1,1,ok
+LC,University,Netherlands,DL,1,1,ok
+LC,University,Netherlands,UL,1,1,ok
+LC,University,Poland,NU,1,1,ok
+LC,University,Poland,DL,1,1,ok
+LC,University,Poland,UL,FT,,failed_low_throughput
+LC,University,Spain,NU,1,1,ok
+LC,University,Spain,DL,1,1,ok
+LC,University,Spain,UL,F,,failed_phone_settings
+LC,University,Switzerland,NU,1,1,ok
+LC,University,Switzerland,DL,1,1,ok
+LC,University,Switzerland,UL,1,1,ok
+LC,University,UK,NU,1,1,ok
+LC,University,UK,DL,1,1,ok
+LC,University,UK,UL,1,1,ok
+LC,Shopping mall,Austria,NU,1,1,ok
+LC,Shopping mall,Austria,DL,F*,,failed_phone_settings
+LC,Shopping mall,Austria,UL,F,,failed_phone_settings
+LC,Shopping mall,Belgium,NU,1,1,ok
+LC,Shopping mall,Belgium,DL,0,0,ok
+LC,Shopping mall,Belgium,UL,0,0,ok
+LC,Shopping mall,France,NU,1,1,ok
+LC,Shopping mall,France,DL,1,1,ok
+LC,Shopping mall,France,UL,1,1,ok
+LC,Shopping mall,Hungary,NU,1,1,ok
+LC,Shopping mall,Hungary,DL,0,0,ok
+LC,Shopping mall,Hungary,UL,0,0,ok
+LC,Shopping mall,Italy,NU,1,1,ok
+LC,Shopping mall,Italy,DL,0,0,ok
+LC,Shopping mall,Italy,UL,0,0,ok
+LC,Shopping mall,Netherlands,NU,1,1,ok
+LC,Shopping mall,Netherlands,DL,1,1,ok
+LC,Shopping mall,Netherlands,UL,1,1,ok
+LC,Shopping mall,Poland,NU,1,1,ok
+LC,Shopping mall,Poland,DL,1,1,ok
+LC,Shopping mall,Poland,UL,1,1,ok
+LC,Shopping mall,Spain,NU,1,1,ok
+LC,Shopping mall,Spain,DL,1,1,ok
+LC,Shopping mall,Spain,UL,1,1,ok
+LC,Shopping mall,Switzerland,NU,1,1,ok
+LC,Shopping mall,Switzerland,DL,0,0,ok
+LC,Shopping mall,Switzerland,UL,0,0,ok
+LC,Shopping mall,UK,NU,1,1,ok
+LC,Shopping mall,UK,DL,0,0,ok
+LC,Shopping mall,UK,UL,0,0,ok
+LC,Bus stations,Austria,NU,2,2,ok
+LC,Bus stations,Austria,DL,F*,,failed_phone_settings
+LC,Bus stations,Austria,UL,F,,failed_phone_settings
+LC,Bus stations,Belgium,NU,2,2,ok
+LC,Bus stations,Belgium,DL,0,0,ok
+LC,Bus stations,Belgium,UL,0,0,ok
+LC,Bus stations,France,NU,2,2,ok
+LC,Bus stations,France,DL,2,2,ok
+LC,Bus stations,France,UL,2,2,ok
+LC,Bus stations,Hungary,NU,3,3,ok
+LC,Bus stations,Hungary,DL,0,0,ok
+LC,Bus stations,Hungary,UL,0,0,ok
+LC,Bus stations,Italy,NU,2,2,ok
+LC,Bus stations,Italy,DL,0,0,ok
+LC,Bus stations,Italy,UL,0,0,ok
+LC,Bus stations,Netherlands,NU,2,2,ok
+LC,Bus stations,Netherlands,DL,2,2,ok
+LC,Bus stations,Netherlands,UL,2,2,ok
+LC,Bus stations,Poland,NU,2,2,ok
+LC,Bus stations,Poland,DL,1,1,ok
+LC,Bus stations,Poland,UL,1,1,ok
+LC,Bus stations,Spain,NU,2,2,ok
+LC,Bus stations,Spain,DL,1,1,ok
+LC,Bus stations,Spain,UL,1,1,ok
+LC,Bus stations,Switzerland,NU,2,2,ok
+LC,Bus stations,Switzerland,DL,0,0,ok
+LC,Bus stations,Switzerland,UL,0,0,ok
+LC,Bus stations,UK,NU,2,2,ok
+LC,Bus stations,UK,DL,0,0,ok
+LC,Bus stations,UK,UL,0,0,ok
+LC,Train stations,Austria,NU,2,2,ok
+LC,Train stations,Austria,DL,F*,,failed_phone_settings
+LC,Train stations,Austria,UL,F,,failed_phone_settings
+LC,Train stations,Belgium,NU,2,2,ok
+LC,Train stations,Belgium,DL,0,0,ok
+LC,Train stations,Belgium,UL,0,0,ok
+LC,Train stations,France,NU,2,2,ok
+LC,Train stations,France,DL,1,1,ok
+LC,Train stations,France,UL,1,1,ok
+LC,Train stations,Hungary,NU,3,3,ok
+LC,Train stations,Hungary,DL,0,0,ok
+LC,Train stations,Hungary,UL,0,0,ok
+LC,Train stations,Italy,NU,3,3,ok
+LC,Train stations,Italy,DL,0,0,ok
+LC,Train stations,Italy,UL,0,0,ok
+LC,Train stations,Netherlands,NU,2,2,ok
+LC,Train stations,Netherlands,DL,2,2,ok
+LC,Train stations,Netherlands,UL,2,2,ok
+LC,Train stations,Poland,NU,2,2,ok
+LC,Train stations,Poland,DL,3,3,ok
+LC,Train stations,Poland,UL,FT,,failed_low_throughput
+LC,Train stations,Spain,NU,3,3,ok
+LC,Train stations,Spain,DL,1,1,ok
+LC,Train stations,Spain,UL,1,1,ok
+LC,Train stations,Switzerland,NU,3,3,ok
+LC,Train stations,Switzerland,DL,0,0,ok
+LC,Train stations,Switzerland,UL,0,0,ok
+LC,Train stations,UK,NU,3,3,ok
+LC,Train stations,UK,DL,0,0,ok
+LC,Train stations,UK,UL,0,0,ok
+LC,Metro station,Austria,NU,5,5,ok
+LC,Metro station,Austria,DL,F*,,failed_phone_settings
+LC,Metro station,Austria,UL,F,,failed_phone_settings
+LC,Metro station,Belgium,NU,1,1,ok
+LC,Metro station,Belgium,DL,0,0,ok
+LC,Metro station,Belgium,UL,0,0,ok
+LC,Metro station,France,NU,2,2,ok
+LC,Metro station,France,DL,3,3,ok
+LC,Metro station,France,UL,2,2,ok
+LC,Metro station,Hungary,NU,1,1,ok
+LC,Metro station,Hungary,DL,0,0,ok
+LC,Metro station,Hungary,UL,0,0,ok
+LC,Metro station,Italy,NU,0,0,ok
+LC,Metro station,Italy,DL,0,0,ok
+LC,Metro station,Italy,UL,0,0,ok
+LC,Metro station,Netherlands,NU,1,1,ok
+LC,Metro station,Netherlands,DL,1,1,ok
+LC,Metro station,Netherlands,UL,1,1,ok
+LC,Metro station,Poland,NU,0,0,ok
+LC,Metro station,Poland,DL,0,0,ok
+LC,Metro station,Poland,UL,0,0,ok
+LC,Metro station,Spain,NU,1,1,ok
+LC,Metro station,Spain,DL,1,1,ok
+LC,Metro station,Spain,UL,1,1,ok
+LC,Metro station,Switzerland,NU,0,0,ok
+LC,Metro station,Switzerland,DL,0,0,ok
+LC,Metro station,Switzerland,UL,0,0,ok
+LC,Metro station,UK,NU,1,1,ok
+LC,Metro station,UK,DL,0,0,ok
+LC,Metro station,UK,UL,0,0,ok
+LC,Bus,Austria,NU,1,1,ok
+LC,Bus,Austria,DL,F*,,failed_phone_settings
+LC,Bus,Austria,UL,F,,failed_phone_settings
+LC,Bus,Belgium,NU,0,0,ok
+LC,Bus,Belgium,DL,0,0,ok
+LC,Bus,Belgium,UL,1,1,ok
+LC,Bus,France,NU,2,2,ok
+LC,Bus,France,DL,2,2,ok
+LC,Bus,France,UL,2,2,ok
+LC,Bus,Hungary,NU,4,4,ok
+LC,Bus,Hungary,DL,2,2,ok
+LC,Bus,Hungary,UL,2,2,ok
+LC,Bus,Italy,NU,3,3,ok
+LC,Bus,Italy,DL,1,1,ok
+LC,Bus,Italy,UL,0,0,ok
+LC,Bus,Netherlands,NU,1,1,ok
+LC,Bus,Netherlands,DL,2,2,ok
+LC,Bus,Netherlands,UL,1,1,ok
+LC,Bus,Poland,NU,2,2,ok
+LC,Bus,Poland,DL,1,1,ok
+LC,Bus,Poland,UL,1,1,ok
+LC,Bus,Spain,NU,9,9,ok
+LC,Bus,Spain,DL,1,1,ok
+LC,Bus,Spain,UL,1,1,ok
+LC,Bus,Switzerland,NU,7,7,ok
+LC,Bus,Switzerland,DL,0,0,ok
+LC,Bus,Switzerland,UL,2,2,ok
+LC,Bus,UK,NU,7,7,ok
+LC,Bus,UK,DL,4,4,ok
+LC,Bus,UK,UL,4,4,ok
+LC,Train,Austria,NU,3,3,ok
+LC,Train,Austria,DL,F*,,failed_phone_settings
+LC,Train,Austria,UL,F,,failed_phone_settings
+LC,Train,Belgium,NU,7,7,ok
+LC,Train,Belgium,DL,7,7,ok
+LC,Train,Belgium,UL,4,4,ok
+LC,Train,France,NU,1,1,ok
+LC,Train,France,DL,2,2,ok
+LC,Train,France,UL,1,1,ok
+LC,Train,Hungary,NU,3,3,ok
+LC,Train,Hungary,DL,1,1,ok
+LC,Train,Hungary,UL,1,1,ok
+LC,Train,Italy,NU,0,0,ok
+LC,Train,Italy,DL,0,0,ok
+LC,Train,Italy,UL,0,0,ok
+LC,Train,Netherlands,NU,0,0,ok
+LC,Train,Netherlands,DL,0,0,ok
+LC,Train,Netherlands,UL,0,0,ok
+LC,Train,Poland,NU,1,1,ok
+LC,Train,Poland,DL,2,2,ok
+LC,Train,Poland,UL,1,1,ok
+LC,Train,Spain,NU,1,1,ok
+LC,Train,Spain,DL,F,,failed_phone_settings
+LC,Train,Spain,UL,F,,failed_phone_settings
+LC,Train,Switzerland,NU,10,10,ok
+LC,Train,Switzerland,DL,2,2,ok
+LC,Train,Switzerland,UL,2,2,ok
+LC,Train,UK,NU,1,1,ok
+LC,Train,UK,DL,1,1,ok
+LC,Train,UK,UL,3,3,ok
+LC,Metro,Austria,NU,3,3,ok
+LC,Metro,Austria,DL,F*,,failed_phone_settings
+LC,Metro,Austria,UL,F,,failed_phone_settings
+LC,Metro,Belgium,NU,2,2,ok
+LC,Metro,Belgium,DL,1,1,ok
+LC,Metro,Belgium,UL,2,2,ok
+LC,Metro,France,NU,2,2,ok
+LC,Metro,France,DL,2,2,ok
+LC,Metro,France,UL,2,2,ok
+LC,Metro,Hungary,NU,2,2,ok
+LC,Metro,Hungary,DL,0,0,ok
+LC,Metro,Hungary,UL,0,0,ok
+LC,Metro,Italy,NU,1,1,ok
+LC,Metro,Italy,DL,0,0,ok
+LC,Metro,Italy,UL,0,0,ok
+LC,Metro,Netherlands,NU,1,1,ok
+LC,Metro,Netherlands,DL,0,0,ok
+LC,Metro,Netherlands,UL,0,0,ok
+LC,Metro,Poland,NU,1,1,ok
+LC,Metro,Poland,DL,2,2,ok
+LC,Metro,Poland,UL,1,1,ok
+LC,Metro,Spain,NU,3,3,ok
+LC,Metro,Spain,DL,1,1,ok
+LC,Metro,Spain,UL,1,1,ok
+LC,Metro,Switzerland,NU,0,0,ok
+LC,Metro,Switzerland,DL,0,0,ok
+LC,Metro,Switzerland,UL,0,0,ok
+LC,Metro,UK,NU,9,9,ok
+LC,Metro,UK,DL,3,3,ok
+LC,Metro,UK,UL,4,4,ok
+LC,Tram,Austria,NU,4,4,ok
+LC,Tram,Austria,DL,F*,,failed_phone_settings
+LC,Tram,Austria,UL,F,,failed_phone_settings
+LC,Tram,Belgium,NU,3,3,ok
+LC,Tram,Belgium,DL,3,3,ok
+LC,Tram,Belgium,UL,2,2,ok
+LC,Tram,France,NU,2,2,ok
+LC,Tram,France,DL,1,1,ok
+LC,Tram,France,UL,1,1,ok
+LC,Tram,Hungary,NU,4,4,ok
+LC,Tram,Hungary,DL,0,0,ok
+LC,Tram,Hungary,UL,0,0,ok
+LC,Tram,Italy,NU,2,2,ok
+LC,Tram,Italy,DL,0,0,ok
+LC,Tram,Italy,UL,0,0,ok
+LC,Tram,Netherlands,NU,1,1,ok
+LC,Tram,Netherlands,DL,0,0,ok
+LC,Tram,Netherlands,UL,1,1,ok
+LC,Tram,Poland,NU,1,1,ok
+LC,Tram,Poland,DL,FT,,failed_low_throughput
+LC,Tram,Poland,UL,1,1,ok
+LC,Tram,Spain,NU,3,3,ok
+LC,Tram,Spain,DL,1,1,ok
+LC,Tram,Spain,UL,1,1,ok
+LC,Tram,Switzerland,NU,5,5,ok
+LC,Tram,Switzerland,DL,2,2,ok
+LC,Tram,Switzerland,UL,2,2,ok
+LC,Tram,UK,NU,1,1,ok
+LC,Tram,UK,DL,1,1,ok
+LC,Tram,UK,UL,1,1,ok
+SC,Urban centre,Austria,NU,1,1,ok
+SC,Urban centre,Austria,DL,F,,failed_phone_settings
+SC,Urban centre,Austria,UL,F,,failed_phone_settings
+SC,Urban centre,Belgium,NU,1,1,ok
+SC,Urban centre,Belgium,DL,1,1,ok
+SC,Urban centre,Belgium,UL,1,1,ok
+SC,Urban centre,France,NU,1,1,ok
+SC,Urban centre,France,DL,1,1,ok
+SC,Urban centre,France,UL,1,1,ok
+SC,Urban centre,Hungary,NU,1,1,ok
+SC,Urban centre,Hungary,DL,1,1,ok
+SC,Urban centre,Hungary,UL,1,1,ok
+SC,Urban centre,Italy,NU,1,1,ok
+SC,Urban centre,Italy,DL,1,1,ok
+SC,Urban centre,Italy,UL,1,1,ok
+SC,Urban centre,Netherlands,NU,1,1,ok
+SC,Urban centre,Netherlands,DL,1,1,ok
+SC,Urban centre,Netherlands,UL,1,1,ok
+SC,Urban centre,Poland,NU,1,1,ok
+SC,Urban centre,Poland,DL,1,1,ok
+SC,Urban centre,Poland,UL,1,1,ok
+SC,Urban centre,Spain,NU,1,1,ok
+SC,Urban centre,Spain,DL,1,1,ok
+SC,Urban centre,Spain,UL,1,1,ok
+SC,Urban centre,Switzerland,NU,1,1,ok
+SC,Urban centre,Switzerland,DL,1,1,ok
+SC,Urban centre,Switzerland,UL,1,1,ok
+SC,Urban centre,UK,NU,2,2,ok
+SC,Urban centre,UK,DL,2,2,ok
+SC,Urban centre,UK,UL,2,2,ok
+SC,Industrial area,Austria,NU,1,1,ok
+SC,Industrial area,Austria,DL,F,,failed_phone_settings
+SC,Industrial area,Austria,UL,F,,failed_phone_settings
+SC,Industrial area,Belgium,NU,1,1,ok
+SC,Industrial area,Belgium,DL,1,1,ok
+SC,Industrial area,Belgium,UL,1,1,ok
+SC,Industrial area,France,NU,1,1,ok
+SC,Industrial area,France,DL,0,0,ok
+SC,Industrial area,France,UL,0,0,ok
+SC,Industrial area,Hungary,NU,1,1,ok
+SC,Industrial area,Hungary,DL,1,1,ok
+SC,Industrial area,Hungary,UL,1,1,ok
+SC,Industrial area,Italy,NU,1,1,ok
+SC,Industrial area,Italy,DL,1,1,ok
+SC,Industrial area,Italy,UL,1,1,ok
+SC,Industrial area,Netherlands,NU,1,1,ok
+SC,Industrial area,Netherlands,DL,1,1,ok
+SC,Industrial area,Netherlands,UL,1,1,ok
+SC,Industrial area,Poland,NU,1,1,ok
+SC,Industrial area,Poland,DL,1,1,ok
+SC,Industrial area,Poland,UL,1,1,ok
+SC,Industrial area,Spain,NU,1,1,ok
+SC,Industrial area,Spain,DL,1,1,ok
+SC,Industrial area,Spain,UL,1,1,ok
+SC,Industrial area,Switzerland,NU,1,1,ok
+SC,Industrial area,Switzerland,DL,1,1,ok
+SC,Industrial area,Switzerland,UL,1,1,ok
+SC,Industrial area,UK,NU,2,2,ok
+SC,Industrial area,UK,DL,2,2,ok
+SC,Industrial area,UK,UL,3,3,ok
+SC,Urban business area,Austria,NU,1,1,ok
+SC,Urban business area,Austria,DL,F,,failed_phone_settings
+SC,Urban business area,Austria,UL,F,,failed_phone_settings
+SC,Urban business area,Belgium,NU,0,0,ok
+SC,Urban business area,Belgium,DL,1,1,ok
+SC,Urban business area,Belgium,UL,1,1,ok
+SC,Urban business area,France,NU,1,1,ok
+SC,Urban business area,France,DL,1,1,ok
+SC,Urban business area,France,UL,1,1,ok
+SC,Urban business area,Hungary,NU,1,1,ok
+SC,Urban business area,Hungary,DL,1,1,ok
+SC,Urban business area,Hungary,UL,1,1,ok
+SC,Urban business area,Italy,NU,1,1,ok
+SC,Urban business area,Italy,DL,1,1,ok
+SC,Urban business area,Italy,UL,1,1,ok
+SC,Urban business area,Netherlands,NU,1,1,ok
+SC,Urban business area,Netherlands,DL,1,1,ok
+SC,Urban business area,Netherlands,UL,1,1,ok
+SC,Urban business area,Poland,NU,1,1,ok
+SC,Urban business area,Poland,DL,1,1,ok
+SC,Urban business area,Poland,UL,1,1,ok
+SC,Urban business area,Spain,NU,1,1,ok
+SC,Urban business area,Spain,DL,1,1,ok
+SC,Urban business area,Spain,UL,1,1,ok
+SC,Urban business area,Switzerland,NU,1,1,ok
+SC,Urban business area,Switzerland,DL,1,1,ok
+SC,Urban business area,Switzerland,UL,1,1,ok
+SC,Urban business area,UK,NU,1,1,ok
+SC,Urban business area,UK,DL,1,1,ok
+SC,Urban business area,UK,UL,1,1,ok
+SC,Urban residential central,Austria,NU,2,2,ok
+SC,Urban residential central,Austria,DL,F,,failed_phone_settings
+SC,Urban residential central,Austria,UL,F,,failed_phone_settings
+SC,Urban residential central,Belgium,NU,2,2,ok
+SC,Urban residential central,Belgium,DL,1,1,ok
+SC,Urban residential central,Belgium,UL,1,1,ok
+SC,Urban residential central,France,NU,3,3,ok
+SC,Urban residential central,France,DL,3,3,ok
+SC,Urban residential central,France,UL,3,3,ok
+SC,Urban residential central,Hungary,NU,2,2,ok
+SC,Urban residential central,Hungary,DL,1,1,ok
+SC,Urban residential central,Hungary,UL,1,1,ok
+SC,Urban residential central,Italy,NU,2,2,ok
+SC,Urban residential central,Italy,DL,1,1,ok
+SC,Urban residential central,Italy,UL,1,1,ok
+SC,Urban residential central,Netherlands,NU,3,3,ok
+SC,Urban residential central,Netherlands,DL,1,1,ok
+SC,Urban residential central,Netherlands,UL,1,1,ok
+SC,Urban residential central,Poland,NU,2,2,ok
+SC,Urban residential central,Poland,DL,1,1,ok
+SC,Urban residential central,Poland,UL,1,1,ok
+SC,Urban residential central,Spain,NU,2,2,ok
+SC,Urban residential central,Spain,DL,1,1,ok
+SC,Urban residential central,Spain,UL,1,1,ok
+SC,Urban residential central,Switzerland,NU,2,2,ok
+SC,Urban residential central,Switzerland,DL,1,1,ok
+SC,Urban residential central,Switzerland,UL,1,1,ok
+SC,Urban residential central,UK,NU,3,3,ok
+SC,Urban residential central,UK,DL,2,2,ok
+SC,Urban residential central,UK,UL,2,2,ok
+SC,Urban residential non-central,Austria,NU,2,2,ok
+SC,Urban residential non-central,Austria,DL,F,,failed_phone_settings
+SC,Urban residential non-central,Austria,UL,F,,failed_phone_settings
+SC,Urban residential non-central,Belgium,NU,2,2,ok
+SC,Urban residential non-central,Belgium,DL,1,1,ok
+SC,Urban residential non-central,Belgium,UL,1,1,ok
+SC,Urban residential non-central,France,NU,2,2,ok
+SC,Urban residential non-central,France,DL,2,2,ok
+SC,Urban residential non-central,France,UL,2,2,ok
+SC,Urban residential non-central,Hungary,NU,2,2,ok
+SC,Urban residential non-central,Hungary,DL,1,1,ok
+SC,Urban residential non-central,Hungary,UL,1,1,ok
+SC,Urban residential non-central,Italy,NU,2,2,ok
+SC,Urban residential non-central,Italy,DL,1,1,ok
+SC,Urban residential non-central,Italy,UL,1,1,ok
+SC,Urban residential non-central,Netherlands,NU,2,2,ok
+SC,Urban residential non-central,Netherlands,DL,1,1,ok
+SC,Urban residential non-central,Netherlands,UL,1,1,ok
+SC,Urban residential non-central,Poland,NU,4,4,ok
+SC,Urban residential non-central,Poland,DL,2,2,ok
+SC,Urban residential non-central,Poland,UL,2,2,ok
+SC,Urban residential non-central,Spain,NU,2,2,ok
+SC,Urban residential non-central,Spain,DL,1,1,ok
+SC,Urban residential non-central,Spain,UL,1,1,ok
+SC,Urban residential non-central,Switzerland,NU,2,2,ok
+SC,Urban residential non-central,Switzerland,DL,1,1,ok
+SC,Urban residential non-central,Switzerland,UL,1,1,ok
+SC,Urban residential non-central,UK,NU,2,2,ok
+SC,Urban residential non-central,UK,DL,1,1,ok
+SC,Urban residential non-central,UK,UL,1,1,ok
+SC,Urban residential outskirts,Austria,NU,2,2,ok
+SC,Urban residential outskirts,Austria,DL,F,,failed_phone_settings
+SC,Urban residential outskirts,Austria,UL,F,,failed_phone_settings
+SC,Urban residential outskirts,Belgium,NU,2,2,ok
+SC,Urban residential outskirts,Belgium,DL,1,1,ok
+SC,Urban residential outskirts,Belgium,UL,1,1,ok
+SC,Urban residential outskirts,France,NU,3,3,ok
+SC,Urban residential outskirts,France,DL,1,1,ok
+SC,Urban residential outskirts,France,UL,2,2,ok
+SC,Urban residential outskirts,Hungary,NU,2,2,ok
+SC,Urban residential outskirts,Hungary,DL,1,1,ok
+SC,Urban residential outskirts,Hungary,UL,1,1,ok
+SC,Urban residential outskirts,Italy,NU,2,2,ok
+SC,Urban residential outskirts,Italy,DL,1,1,ok
+SC,Urban residential outskirts,Italy,UL,1,1,ok
+SC,Urban residential outskirts,Netherlands,NU,2,2,ok
+SC,Urban residential outskirts,Netherlands,DL,1,1,ok
+SC,Urban residential outskirts,Netherlands,UL,1,1,ok
+SC,Urban residential outskirts,Poland,NU,2,2,ok
+SC,Urban residential outskirts,Poland,DL,1,1,ok
+SC,Urban residential outskirts,Poland,UL,1,1,ok
+SC,Urban residential outskirts,Spain,NU,2,2,ok
+SC,Urban residential outskirts,Spain,DL,2,2,ok
+SC,Urban residential outskirts,Spain,UL,2,2,ok
+SC,Urban residential outskirts,Switzerland,NU,2,2,ok
+SC,Urban residential outskirts,Switzerland,DL,1,1,ok
+SC,Urban residential outskirts,Switzerland,UL,1,1,ok
+SC,Urban residential outskirts,UK,NU,2,2,ok
+SC,Urban residential outskirts,UK,DL,1,1,ok
+SC,Urban residential outskirts,UK,UL,1,1,ok
+SC,Urban park: central,Austria,NU,2,2,ok
+SC,Urban park: central,Austria,DL,F,,failed_phone_settings
+SC,Urban park: central,Austria,UL,F,,failed_phone_settings
+SC,Urban park: central,Belgium,NU,1,1,ok
+SC,Urban park: central,Belgium,DL,1,1,ok
+SC,Urban park: central,Belgium,UL,1,1,ok
+SC,Urban park: central,France,NU,1,1,ok
+SC,Urban park: central,France,DL,1,1,ok
+SC,Urban park: central,France,UL,1,1,ok
+SC,Urban park: central,Hungary,NU,1,1,ok
+SC,Urban park: central,Hungary,DL,1,1,ok
+SC,Urban park: central,Hungary,UL,1,1,ok
+SC,Urban park: central,Italy,NU,1,1,ok
+SC,Urban park: central,Italy,DL,1,1,ok
+SC,Urban park: central,Italy,UL,1,1,ok
+SC,Urban park: central,Netherlands,NU,1,1,ok
+SC,Urban park: central,Netherlands,DL,1,1,ok
+SC,Urban park: central,Netherlands,UL,1,1,ok
+SC,Urban park: central,Poland,NU,1,1,ok
+SC,Urban park: central,Poland,DL,1,1,ok
+SC,Urban park: central,Poland,UL,1,1,ok
+SC,Urban park: central,Spain,NU,1,1,ok
+SC,Urban park: central,Spain,DL,1,1,ok
+SC,Urban park: central,Spain,UL,1,1,ok
+SC,Urban park: central,Switzerland,NU,1,1,ok
+SC,Urban park: central,Switzerland,DL,1,1,ok
+SC,Urban park: central,Switzerland,UL,1,1,ok
+SC,Urban park: central,UK,NU,1,1,ok
+SC,Urban park: central,UK,DL,1,1,ok
+SC,Urban park: central,UK,UL,1,1,ok
+SC,Urban park: non central,Austria,NU,1,1,ok
+SC,Urban park: non central,Austria,DL,F,,failed_phone_settings
+SC,Urban park: non central,Austria,UL,F,,failed_phone_settings
+SC,Urban park: non central,Belgium,NU,1,1,ok
+SC,Urban park: non central,Belgium,DL,1,1,ok
+SC,Urban park: non central,Belgium,UL,1,1,ok
+SC,Urban park: non central,France,NU,1,1,ok
+SC,Urban park: non central,France,DL,1,1,ok
+SC,Urban park: non central,France,UL,1,1,ok
+SC,Urban park: non central,Hungary,NU,1,1,ok
+SC,Urban park: non central,Hungary,DL,1,1,ok
+SC,Urban park: non central,Hungary,UL,1,1,ok
+SC,Urban park: non central,Italy,NU,1,1,ok
+SC,Urban park: non central,Italy,DL,1,1,ok
+SC,Urban park: non central,Italy,UL,1,1,ok
+SC,Urban park: non central,Netherlands,NU,1,1,ok
+SC,Urban park: non central,Netherlands,DL,1,1,ok
+SC,Urban park: non central,Netherlands,UL,1,1,ok
+SC,Urban park: non central,Poland,NU,1,1,ok
+SC,Urban park: non central,Poland,DL,1,1,ok
+SC,Urban park: non central,Poland,UL,1,1,ok
+SC,Urban park: non central,Spain,NU,1,1,ok
+SC,Urban park: non central,Spain,DL,1,1,ok
+SC,Urban park: non central,Spain,UL,1,1,ok
+SC,Urban park: non central,Switzerland,NU,1,1,ok
+SC,Urban park: non central,Switzerland,DL,1,1,ok
+SC,Urban park: non central,Switzerland,UL,1,1,ok
+SC,Urban park: non central,UK,NU,1,1,ok
+SC,Urban park: non central,UK,DL,1,1,ok
+SC,Urban park: non central,UK,UL,1,1,ok
+SC,Urban park: outskirts,Austria,NU,1,1,ok
+SC,Urban park: outskirts,Austria,DL,F,,failed_phone_settings
+SC,Urban park: outskirts,Austria,UL,F,,failed_phone_settings
+SC,Urban park: outskirts,Belgium,NU,1,1,ok
+SC,Urban park: outskirts,Belgium,DL,1,1,ok
+SC,Urban park: outskirts,Belgium,UL,1,1,ok
+SC,Urban park: outskirts,France,NU,1,1,ok
+SC,Urban park: outskirts,France,DL,1,1,ok
+SC,Urban park: outskirts,France,UL,1,1,ok
+SC,Urban park: outskirts,Hungary,NU,1,1,ok
+SC,Urban park: outskirts,Hungary,DL,1,1,ok
+SC,Urban park: outskirts,Hungary,UL,1,1,ok
+SC,Urban park: outskirts,Italy,NU,1,1,ok
+SC,Urban park: outskirts,Italy,DL,1,1,ok
+SC,Urban park: outskirts,Italy,UL,1,1,ok
+SC,Urban park: outskirts,Netherlands,NU,1,1,ok
+SC,Urban park: outskirts,Netherlands,DL,0,0,ok
+SC,Urban park: outskirts,Netherlands,UL,0,0,ok
+SC,Urban park: outskirts,Poland,NU,1,1,ok
+SC,Urban park: outskirts,Poland,DL,2,2,ok
+SC,Urban park: outskirts,Poland,UL,0,0,ok
+SC,Urban park: outskirts,Spain,NU,1,1,ok
+SC,Urban park: outskirts,Spain,DL,F,,failed_phone_settings
+SC,Urban park: outskirts,Spain,UL,F,,failed_phone_settings
+SC,Urban park: outskirts,Switzerland,NU,1,1,ok
+SC,Urban park: outskirts,Switzerland,DL,1,1,ok
+SC,Urban park: outskirts,Switzerland,UL,1,1,ok
+SC,Urban park: outskirts,UK,NU,1,1,ok
+SC,Urban park: outskirts,UK,DL,1,1,ok
+SC,Urban park: outskirts,UK,UL,1,1,ok
+SC,Urban school: Primary school,Austria,NU,0,0,ok
+SC,Urban school: Primary school,Austria,DL,F,,failed_phone_settings
+SC,Urban school: Primary school,Austria,UL,F,,failed_phone_settings
+SC,Urban school: Primary school,Belgium,NU,1,1,ok
+SC,Urban school: Primary school,Belgium,DL,1,1,ok
+SC,Urban school: Primary school,Belgium,UL,1,1,ok
+SC,Urban school: Primary school,France,NU,0,0,ok
+SC,Urban school: Primary school,France,DL,0,0,ok
+SC,Urban school: Primary school,France,UL,0,0,ok
+SC,Urban school: Primary school,Hungary,NU,1,1,ok
+SC,Urban school: Primary school,Hungary,DL,1,1,ok
+SC,Urban school: Primary school,Hungary,UL,1,1,ok
+SC,Urban school: Primary school,Italy,NU,0,0,ok
+SC,Urban school: Primary school,Italy,DL,0,0,ok
+SC,Urban school: Primary school,Italy,UL,0,0,ok
+SC,Urban school: Primary school,Netherlands,NU,0,0,ok
+SC,Urban school: Primary school,Netherlands,DL,0,0,ok
+SC,Urban school: Primary school,Netherlands,UL,0,0,ok
+SC,Urban school: Primary school,Poland,NU,1,1,ok
+SC,Urban school: Primary school,Poland,DL,1,1,ok
+SC,Urban school: Primary school,Poland,UL,1,1,ok
+SC,Urban school: Primary school,Spain,NU,0,0,ok
+SC,Urban school: Primary school,Spain,DL,0,0,ok
+SC,Urban school: Primary school,Spain,UL,0,0,ok
+SC,Urban school: Primary school,Switzerland,NU,1,1,ok
+SC,Urban school: Primary school,Switzerland,DL,F,,failed_phone_settings
+SC,Urban school: Primary school,Switzerland,UL,F,,failed_phone_settings
+SC,Urban school: Primary school,UK,NU,0,0,ok
+SC,Urban school: Primary school,UK,DL,0,0,ok
+SC,Urban school: Primary school,UK,UL,0,0,ok
+SC,Urban school: High school,Austria,NU,0,0,ok
+SC,Urban school: High school,Austria,DL,F,,failed_phone_settings
+SC,Urban school: High school,Austria,UL,F,,failed_phone_settings
+SC,Urban school: High school,Belgium,NU,0,0,ok
+SC,Urban school: High school,Belgium,DL,1,1,ok
+SC,Urban school: High school,Belgium,UL,1,1,ok
+SC,Urban school: High school,France,NU,0,0,ok
+SC,Urban school: High school,France,DL,0,0,ok
+SC,Urban school: High school,France,UL,0,0,ok
+SC,Urban school: High school,Hungary,NU,1,1,ok
+SC,Urban school: High school,Hungary,DL,1,1,ok
+SC,Urban school: High school,Hungary,UL,1,1,ok
+SC,Urban school: High school,Italy,NU,0,0,ok
+SC,Urban school: High school,Italy,DL,0,0,ok
+SC,Urban school: High school,Italy,UL,0,0,ok
+SC,Urban school: High school,Netherlands,NU,0,0,ok
+SC,Urban school: High school,Netherlands,DL,0,0,ok
+SC,Urban school: High school,Netherlands,UL,0,0,ok
+SC,Urban school: High school,Poland,NU,1,1,ok
+SC,Urban school: High school,Poland,DL,1,1,ok
+SC,Urban school: High school,Poland,UL,1,1,ok
+SC,Urban school: High school,Spain,NU,0,0,ok
+SC,Urban school: High school,Spain,DL,0,0,ok
+SC,Urban school: High school,Spain,UL,0,0,ok
+SC,Urban school: High school,Switzerland,NU,0,0,ok
+SC,Urban school: High school,Switzerland,DL,0,0,ok
+SC,Urban school: High school,Switzerland,UL,0,0,ok
+SC,Urban school: High school,UK,NU,0,0,ok
+SC,Urban school: High school,UK,DL,0,0,ok
+SC,Urban school: High school,UK,UL,0,0,ok
+SC,University,Austria,NU,1,1,ok
+SC,University,Austria,DL,F,,failed_phone_settings
+SC,University,Austria,UL,F,,failed_phone_settings
+SC,University,Belgium,NU,1,1,ok
+SC,University,Belgium,DL,1,1,ok
+SC,University,Belgium,UL,1,1,ok
+SC,University,France,NU,1,1,ok
+SC,University,France,DL,1,1,ok
+SC,University,France,UL,1,1,ok
+SC,University,Hungary,NU,1,1,ok
+SC,University,Hungary,DL,1,1,ok
+SC,University,Hungary,UL,1,1,ok
+SC,University,Italy,NU,1,1,ok
+SC,University,Italy,DL,1,1,ok
+SC,University,Italy,UL,1,1,ok
+SC,University,Netherlands,NU,2,2,ok
+SC,University,Netherlands,DL,1,1,ok
+SC,University,Netherlands,UL,1,1,ok
+SC,University,Poland,NU,1,1,ok
+SC,University,Poland,DL,1,1,ok
+SC,University,Poland,UL,1,1,ok
+SC,University,Spain,NU,1,1,ok
+SC,University,Spain,DL,F,,failed_phone_settings
+SC,University,Spain,UL,F,,failed_phone_settings
+SC,University,Switzerland,NU,1,1,ok
+SC,University,Switzerland,DL,1,1,ok
+SC,University,Switzerland,UL,1,1,ok
+SC,University,UK,NU,1,1,ok
+SC,University,UK,DL,1,1,ok
+SC,University,UK,UL,1,1,ok
+SC,Shopping centre,Austria,NU,1,1,ok
+SC,Shopping centre,Austria,DL,F,,failed_phone_settings
+SC,Shopping centre,Austria,UL,F,,failed_phone_settings
+SC,Shopping centre,Belgium,NU,1,1,ok
+SC,Shopping centre,Belgium,DL,FT,,failed_low_throughput
+SC,Shopping centre,Belgium,UL,FT,,failed_low_throughput
+SC,Shopping centre,France,NU,1,1,ok
+SC,Shopping centre,France,DL,1,1,ok
+SC,Shopping centre,France,UL,1,1,ok
+SC,Shopping centre,Hungary,NU,1,1,ok
+SC,Shopping centre,Hungary,DL,0,0,ok
+SC,Shopping centre,Hungary,UL,0,0,ok
+SC,Shopping centre,Italy,NU,1,1,ok
+SC,Shopping centre,Italy,DL,0,0,ok
+SC,Shopping centre,Italy,UL,0,0,ok
+SC,Shopping centre,Netherlands,NU,2,2,ok
+SC,Shopping centre,Netherlands,DL,0,0,ok
+SC,Shopping centre,Netherlands,UL,0,0,ok
+SC,Shopping centre,Poland,NU,1,1,ok
+SC,Shopping centre,Poland,DL,0,0,ok
+SC,Shopping centre,Poland,UL,0,0,ok
+SC,Shopping centre,Spain,NU,1,1,ok
+SC,Shopping centre,Spain,DL,F,,failed_phone_settings
+SC,Shopping centre,Spain,UL,F,,failed_phone_settings
+SC,Shopping centre,Switzerland,NU,1,1,ok
+SC,Shopping centre,Switzerland,DL,0,0,ok
+SC,Shopping centre,Switzerland,UL,0,0,ok
+SC,Shopping centre,UK,NU,1,1,ok
+SC,Shopping centre,UK,DL,0,0,ok
+SC,Shopping centre,UK,UL,0,0,ok
+SC,Bus stations,Austria,NU,1,1,ok
+SC,Bus stations,Austria,DL,F,,failed_phone_settings
+SC,Bus stations,Austria,UL,F,,failed_phone_settings
+SC,Bus stations,Belgium,NU,2,2,ok
+SC,Bus stations,Belgium,DL,0,0,ok
+SC,Bus stations,Belgium,UL,0,0,ok
+SC,Bus stations,France,NU,3,3,ok
+SC,Bus stations,France,DL,4,4,ok
+SC,Bus stations,France,UL,4,4,ok
+SC,Bus stations,Hungary,NU,1,1,ok
+SC,Bus stations,Hungary,DL,0,0,ok
+SC,Bus stations,Hungary,UL,0,0,ok
+SC,Bus stations,Italy,NU,1,1,ok
+SC,Bus stations,Italy,DL,0,0,ok
+SC,Bus stations,Italy,UL,0,0,ok
+SC,Bus stations,Netherlands,NU,0,0,ok
+SC,Bus stations,Netherlands,DL,0,0,ok
+SC,Bus stations,Netherlands,UL,0,0,ok
+SC,Bus stations,Poland,NU,1,1,ok
+SC,Bus stations,Poland,DL,0,0,ok
+SC,Bus stations,Poland,UL,0,0,ok
+SC,Bus stations,Spain,NU,1,1,ok
+SC,Bus stations,Spain,DL,F,,failed_phone_settings
+SC,Bus stations,Spain,UL,F,,failed_phone_settings
+SC,Bus stations,Switzerland,NU,4,4,ok
+SC,Bus stations,Switzerland,DL,0,0,ok
+SC,Bus stations,Switzerland,UL,0,0,ok
+SC,Bus stations,UK,NU,4,4,ok
+SC,Bus stations,UK,DL,0,0,ok
+SC,Bus stations,UK,UL,0,0,ok
+SC,Train stations,Austria,NU,1,1,ok
+SC,Train stations,Austria,DL,F,,failed_phone_settings
+SC,Train stations,Austria,UL,F,,failed_phone_settings
+SC,Train stations,Belgium,NU,2,2,ok
+SC,Train stations,Belgium,DL,0,0,ok
+SC,Train stations,Belgium,UL,0,0,ok
+SC,Train stations,France,NU,2,2,ok
+SC,Train stations,France,DL,2,2,ok
+SC,Train stations,France,UL,2,2,ok
+SC,Train stations,Hungary,NU,2,2,ok
+SC,Train stations,Hungary,DL,0,0,ok
+SC,Train stations,Hungary,UL,0,0,ok
+SC,Train stations,Italy,NU,1,1,ok
+SC,Train stations,Italy,DL,0,0,ok
+SC,Train stations,Italy,UL,0,0,ok
+SC,Train stations,Netherlands,NU,2,2,ok
+SC,Train stations,Netherlands,DL,0,0,ok
+SC,Train stations,Netherlands,UL,0,0,ok
+SC,Train stations,Poland,NU,2,2,ok
+SC,Train stations,Poland,DL,0,0,ok
+SC,Train stations,Poland,UL,0,0,ok
+SC,Train stations,Spain,NU,1,1,ok
+SC,Train stations,Spain,DL,1,1,ok
+SC,Train stations,Spain,UL,1,1,ok
+SC,Train stations,Switzerland,NU,3,3,ok
+SC,Train stations,Switzerland,DL,0,0,ok
+SC,Train stations,Switzerland,UL,0,0,ok
+SC,Train stations,UK,NU,2,2,ok
+SC,Train stations,UK,DL,0,0,ok
+SC,Train stations,UK,UL,0,0,ok
+SC,Metro station,Austria,NU,0,0,ok
+SC,Metro station,Austria,DL,F,,failed_phone_settings
+SC,Metro station,Austria,UL,F,,failed_phone_settings
+SC,Metro station,Belgium,NU,0,0,ok
+SC,Metro station,Belgium,DL,0,0,ok
+SC,Metro station,Belgium,UL,0,0,ok
+SC,Metro station,France,NU,0,0,ok
+SC,Metro station,France,DL,0,0,ok
+SC,Metro station,France,UL,0,0,ok
+SC,Metro station,Hungary,NU,0,0,ok
+SC,Metro station,Hungary,DL,0,0,ok
+SC,Metro station,Hungary,UL,0,0,ok
+SC,Metro station,Italy,NU,1,1,ok
+SC,Metro station,Italy,DL,0,0,ok
+SC,Metro station,Italy,UL,0,0,ok
+SC,Metro station,Netherlands,NU,0,0,ok
+SC,Metro station,Netherlands,DL,0,0,ok
+SC,Metro station,Netherlands,UL,0,0,ok
+SC,Metro station,Poland,NU,0,0,ok
+SC,Metro station,Poland,DL,0,0,ok
+SC,Metro station,Poland,UL,0,0,ok
+SC,Metro station,Spain,NU,0,0,ok
+SC,Metro station,Spain,DL,0,0,ok
+SC,Metro station,Spain,UL,0,0,ok
+SC,Metro station,Switzerland,NU,0,0,ok
+SC,Metro station,Switzerland,DL,0,0,ok
+SC,Metro station,Switzerland,UL,0,0,ok
+SC,Metro station,UK,NU,0,0,ok
+SC,Metro station,UK,DL,0,0,ok
+SC,Metro station,UK,UL,0,0,ok
+SC,Bus,Austria,NU,2,2,ok
+SC,Bus,Austria,DL,F,,failed_phone_settings
+SC,Bus,Austria,UL,F,,failed_phone_settings
+SC,Bus,Belgium,NU,6,6,ok
+SC,Bus,Belgium,DL,4,4,ok
+SC,Bus,Belgium,UL,2,2,ok
+SC,Bus,France,NU,1,1,ok
+SC,Bus,France,DL,1,1,ok
+SC,Bus,France,UL,1,1,ok
+SC,Bus,Hungary,NU,2,2,ok
+SC,Bus,Hungary,DL,1,1,ok
+SC,Bus,Hungary,UL,1,1,ok
+SC,Bus,Italy,NU,1,1,ok
+SC,Bus,Italy,DL,1,1,ok
+SC,Bus,Italy,UL,1,1,ok
+SC,Bus,Netherlands,NU,1,1,ok
+SC,Bus,Netherlands,DL,0,0,ok
+SC,Bus,Netherlands,UL,1,1,ok
+SC,Bus,Poland,NU,1,1,ok
+SC,Bus,Poland,DL,1,1,ok
+SC,Bus,Poland,UL,0,0,ok
+SC,Bus,Spain,NU,1,1,ok
+SC,Bus,Spain,DL,F,,failed_phone_settings
+SC,Bus,Spain,UL,0,0,ok
+SC,Bus,Switzerland,NU,9,9,ok
+SC,Bus,Switzerland,DL,6,6,ok
+SC,Bus,Switzerland,UL,6,6,ok
+SC,Bus,UK,NU,15,15,ok
+SC,Bus,UK,DL,5,5,ok
+SC,Bus,UK,UL,4,4,ok
+SC,Train,Austria,NU,2,2,ok
+SC,Train,Austria,DL,F,,failed_phone_settings
+SC,Train,Austria,UL,F,,failed_phone_settings
+SC,Train,Belgium,NU,1,1,ok
+SC,Train,Belgium,DL,0,0,ok
+SC,Train,Belgium,UL,1,1,ok
+SC,Train,France,NU,1,1,ok
+SC,Train,France,DL,1,1,ok
+SC,Train,France,UL,1,1,ok
+SC,Train,Hungary,NU,4,4,ok
+SC,Train,Hungary,DL,3,3,ok
+SC,Train,Hungary,UL,2,2,ok
+SC,Train,Italy,NU,1,1,ok
+SC,Train,Italy,DL,1,1,ok
+SC,Train,Italy,UL,1,1,ok
+SC,Train,Netherlands,NU,1,1,ok
+SC,Train,Netherlands,DL,0,0,ok
+SC,Train,Netherlands,UL,0,0,ok
+SC,Train,Poland,NU,2,2,ok
+SC,Train,Poland,DL,2,2,ok
+SC,Train,Poland,UL,2,2,ok
+SC,Train,Spain,NU,3,3,ok
+SC,Train,Spain,DL,1,1,ok
+SC,Train,Spain,UL,1,1,ok
+SC,Train,Switzerland,NU,11,11,ok
+SC,Train,Switzerland,DL,5,5,ok
+SC,Train,Switzerland,UL,5,5,ok
+SC,Train,UK,NU,5,5,ok
+SC,Train,UK,DL,4,4,ok
+SC,Train,UK,UL,3,3,ok
+SC,Metro,Austria,NU,0,0,ok
+SC,Metro,Austria,DL,F,,failed_phone_settings
+SC,Metro,Austria,UL,F,,failed_phone_settings
+SC,Metro,Belgium,NU,0,0,ok
+SC,Metro,Belgium,DL,0,0,ok
+SC,Metro,Belgium,UL,0,0,ok
+SC,Metro,France,NU,0,0,ok
+SC,Metro,France,DL,0,0,ok
+SC,Metro,France,UL,0,0,ok
+SC,Metro,Hungary,NU,0,0,ok
+SC,Metro,Hungary,DL,0,0,ok
+SC,Metro,Hungary,UL,0,0,ok
+SC,Metro,Italy,NU,1,1,ok
+SC,Metro,Italy,DL,0,0,ok
+SC,Metro,Italy,UL,0,0,ok
+SC,Metro,Netherlands,NU,0,0,ok
+SC,Metro,Netherlands,DL,0,0,ok
+SC,Metro,Netherlands,UL,0,0,ok
+SC,Metro,Poland,NU,0,0,ok
+SC,Metro,Poland,DL,0,0,ok
+SC,Metro,Poland,UL,0,0,ok
+SC,Metro,Spain,NU,0,0,ok
+SC,Metro,Spain,DL,0,0,ok
+SC,Metro,Spain,UL,0,0,ok
+SC,Metro,Switzerland,NU,0,0,ok
+SC,Metro,Switzerland,DL,0,0,ok
+SC,Metro,Switzerland,UL,0,0,ok
+SC,Metro,UK,NU,0,0,ok
+SC,Metro,UK,DL,0,0,ok
+SC,Metro,UK,UL,0,0,ok
+SC,Tram,Austria,NU,0,0,ok
+SC,Tram,Austria,DL,F,,failed_phone_settings
+SC,Tram,Austria,UL,F,,failed_phone_settings
+SC,Tram,Belgium,NU,3,3,ok
+SC,Tram,Belgium,DL,1,1,ok
+SC,Tram,Belgium,UL,2,2,ok
+SC,Tram,France,NU,0,0,ok
+SC,Tram,France,DL,0,0,ok
+SC,Tram,France,UL,0,0,ok
+SC,Tram,Hungary,NU,0,0,ok
+SC,Tram,Hungary,DL,0,0,ok
+SC,Tram,Hungary,UL,0,0,ok
+SC,Tram,Italy,NU,0,0,ok
+SC,Tram,Italy,DL,0,0,ok
+SC,Tram,Italy,UL,0,0,ok
+SC,Tram,Netherlands,NU,1,1,ok
+SC,Tram,Netherlands,DL,0,0,ok
+SC,Tram,Netherlands,UL,1,1,ok
+SC,Tram,Poland,NU,1,1,ok
+SC,Tram,Poland,DL,1,1,ok
+SC,Tram,Poland,UL,1,1,ok
+SC,Tram,Spain,NU,0,0,ok
+SC,Tram,Spain,DL,0,0,ok
+SC,Tram,Spain,UL,0,0,ok
+SC,Tram,Switzerland,NU,5,5,ok
+SC,Tram,Switzerland,DL,2,2,ok
+SC,Tram,Switzerland,UL,4,4,ok
+SC,Tram,UK,NU,0,0,ok
+SC,Tram,UK,DL,0,0,ok
+SC,Tram,UK,UL,0,0,ok
+RA1,Rural centre,Austria,NU,1,1,ok
+RA1,Rural centre,Austria,DL,F,,failed_phone_settings
+RA1,Rural centre,Austria,UL,F,,failed_phone_settings
+RA1,Rural centre,Belgium,NU,1,1,ok
+RA1,Rural centre,Belgium,DL,1,1,ok
+RA1,Rural centre,Belgium,UL,1,1,ok
+RA1,Rural centre,France,NU,1,1,ok
+RA1,Rural centre,France,DL,1,1,ok
+RA1,Rural centre,France,UL,1,1,ok
+RA1,Rural centre,Hungary,NU,1,1,ok
+RA1,Rural centre,Hungary,DL,1,1,ok
+RA1,Rural centre,Hungary,UL,1,1,ok
+RA1,Rural centre,Italy,NU,1,1,ok
+RA1,Rural centre,Italy,DL,1,1,ok
+RA1,Rural centre,Italy,UL,1,1,ok
+RA1,Rural centre,Netherlands,NU,1,1,ok
+RA1,Rural centre,Netherlands,DL,1,1,ok
+RA1,Rural centre,Netherlands,UL,1,1,ok
+RA1,Rural centre,Poland,NU,1,1,ok
+RA1,Rural centre,Poland,DL,1,1,ok
+RA1,Rural centre,Poland,UL,1,1,ok
+RA1,Rural centre,Spain,NU,1,1,ok
+RA1,Rural centre,Spain,DL,F,,failed_phone_settings
+RA1,Rural centre,Spain,UL,F,,failed_phone_settings
+RA1,Rural centre,Switzerland,NU,1,1,ok
+RA1,Rural centre,Switzerland,DL,1,1,ok
+RA1,Rural centre,Switzerland,UL,1,1,ok
+RA1,Rural centre,UK,NU,1,1,ok
+RA1,Rural centre,UK,DL,1,1,ok
+RA1,Rural centre,UK,UL,1,1,ok
+RA1,Industrial area,Austria,NU,1,1,ok
+RA1,Industrial area,Austria,DL,F,,failed_phone_settings
+RA1,Industrial area,Austria,UL,F,,failed_phone_settings
+RA1,Industrial area,Belgium,NU,1,1,ok
+RA1,Industrial area,Belgium,DL,0,0,ok
+RA1,Industrial area,Belgium,UL,FT,,failed_low_throughput
+RA1,Industrial area,France,NU,1,1,ok
+RA1,Industrial area,France,DL,1,1,ok
+RA1,Industrial area,France,UL,1,1,ok
+RA1,Industrial area,Hungary,NU,0,0,ok
+RA1,Industrial area,Hungary,DL,0,0,ok
+RA1,Industrial area,Hungary,UL,0,0,ok
+RA1,Industrial area,Italy,NU,1,1,ok
+RA1,Industrial area,Italy,DL,1,1,ok
+RA1,Industrial area,Italy,UL,1,1,ok
+RA1,Industrial area,Netherlands,NU,0,0,ok
+RA1,Industrial area,Netherlands,DL,0,0,ok
+RA1,Industrial area,Netherlands,UL,0,0,ok
+RA1,Industrial area,Poland,NU,1,1,ok
+RA1,Industrial area,Poland,DL,1,1,ok
+RA1,Industrial area,Poland,UL,1,1,ok
+RA1,Industrial area,Spain,NU,1,1,ok
+RA1,Industrial area,Spain,DL,F,,failed_phone_settings
+RA1,Industrial area,Spain,UL,F,,failed_phone_settings
+RA1,Industrial area,Switzerland,NU,1,1,ok
+RA1,Industrial area,Switzerland,DL,1,1,ok
+RA1,Industrial area,Switzerland,UL,1,1,ok
+RA1,Industrial area,UK,NU,0,0,ok
+RA1,Industrial area,UK,DL,0,0,ok
+RA1,Industrial area,UK,UL,0,0,ok
+RA1,Rural residential,Austria,NU,1,1,ok
+RA1,Rural residential,Austria,DL,F,,failed_phone_settings
+RA1,Rural residential,Austria,UL,F,,failed_phone_settings
+RA1,Rural residential,Belgium,NU,1,1,ok
+RA1,Rural residential,Belgium,DL,1,1,ok
+RA1,Rural residential,Belgium,UL,1,1,ok
+RA1,Rural residential,France,NU,1,1,ok
+RA1,Rural residential,France,DL,1,1,ok
+RA1,Rural residential,France,UL,1,1,ok
+RA1,Rural residential,Hungary,NU,1,1,ok
+RA1,Rural residential,Hungary,DL,1,1,ok
+RA1,Rural residential,Hungary,UL,1,1,ok
+RA1,Rural residential,Italy,NU,1,1,ok
+RA1,Rural residential,Italy,DL,1,1,ok
+RA1,Rural residential,Italy,UL,1,1,ok
+RA1,Rural residential,Netherlands,NU,1,1,ok
+RA1,Rural residential,Netherlands,DL,1,1,ok
+RA1,Rural residential,Netherlands,UL,1,1,ok
+RA1,Rural residential,Poland,NU,1,1,ok
+RA1,Rural residential,Poland,DL,1,1,ok
+RA1,Rural residential,Poland,UL,1,1,ok
+RA1,Rural residential,Spain,NU,2,2,ok
+RA1,Rural residential,Spain,DL,F,,failed_phone_settings
+RA1,Rural residential,Spain,UL,2,2,ok
+RA1,Rural residential,Switzerland,NU,1,1,ok
+RA1,Rural residential,Switzerland,DL,1,1,ok
+RA1,Rural residential,Switzerland,UL,1,1,ok
+RA1,Rural residential,UK,NU,1,1,ok
+RA1,Rural residential,UK,DL,1,1,ok
+RA1,Rural residential,UK,UL,1,1,ok
+RA1,Rural park,Austria,NU,1,1,ok
+RA1,Rural park,Austria,DL,F,,failed_phone_settings
+RA1,Rural park,Austria,UL,F,,failed_phone_settings
+RA1,Rural park,Belgium,NU,1,1,ok
+RA1,Rural park,Belgium,DL,1,1,ok
+RA1,Rural park,Belgium,UL,1,1,ok
+RA1,Rural park,France,NU,1,1,ok
+RA1,Rural park,France,DL,1,1,ok
+RA1,Rural park,France,UL,1,1,ok
+RA1,Rural park,Hungary,NU,1,1,ok
+RA1,Rural park,Hungary,DL,1,1,ok
+RA1,Rural park,Hungary,UL,1,1,ok
+RA1,Rural park,Italy,NU,1,1,ok
+RA1,Rural park,Italy,DL,1,1,ok
+RA1,Rural park,Italy,UL,1,1,ok
+RA1,Rural park,Netherlands,NU,1,1,ok
+RA1,Rural park,Netherlands,DL,1,1,ok
+RA1,Rural park,Netherlands,UL,1,1,ok
+RA1,Rural park,Poland,NU,1,1,ok
+RA1,Rural park,Poland,DL,1,1,ok
+RA1,Rural park,Poland,UL,1,1,ok
+RA1,Rural park,Spain,NU,1,1,ok
+RA1,Rural park,Spain,DL,F,,failed_phone_settings
+RA1,Rural park,Spain,UL,F,,failed_phone_settings
+RA1,Rural park,Switzerland,NU,1,1,ok
+RA1,Rural park,Switzerland,DL,1,1,ok
+RA1,Rural park,Switzerland,UL,1,1,ok
+RA1,Rural park,UK,NU,1,1,ok
+RA1,Rural park,UK,DL,1,1,ok
+RA1,Rural park,UK,UL,1,1,ok
+RA1,Rural school,Austria,NU,3,3,ok
+RA1,Rural school,Austria,DL,F,,failed_phone_settings
+RA1,Rural school,Austria,UL,F,,failed_phone_settings
+RA1,Rural school,Belgium,NU,1,1,ok
+RA1,Rural school,Belgium,DL,1,1,ok
+RA1,Rural school,Belgium,UL,1,1,ok
+RA1,Rural school,France,NU,0,0,ok
+RA1,Rural school,France,DL,0,0,ok
+RA1,Rural school,France,UL,0,0,ok
+RA1,Rural school,Hungary,NU,1,1,ok
+RA1,Rural school,Hungary,DL,1,1,ok
+RA1,Rural school,Hungary,UL,1,1,ok
+RA1,Rural school,Italy,NU,1,1,ok
+RA1,Rural school,Italy,DL,1,1,ok
+RA1,Rural school,Italy,UL,1,1,ok
+RA1,Rural school,Netherlands,NU,0,0,ok
+RA1,Rural school,Netherlands,DL,0,0,ok
+RA1,Rural school,Netherlands,UL,0,0,ok
+RA1,Rural school,Poland,NU,1,1,ok
+RA1,Rural school,Poland,DL,1,1,ok
+RA1,Rural school,Poland,UL,1,1,ok
+RA1,Rural school,Spain,NU,0,0,ok
+RA1,Rural school,Spain,DL,F,,failed_phone_settings
+RA1,Rural school,Spain,UL,F,,failed_phone_settings
+RA1,Rural school,Switzerland,NU,0,0,ok
+RA1,Rural school,Switzerland,DL,0,0,ok
+RA1,Rural school,Switzerland,UL,0,0,ok
+RA1,Rural school,UK,NU,1,1,ok
+RA1,Rural school,UK,DL,1,1,ok
+RA1,Rural school,UK,UL,1,1,ok
+RA1,Shopping centre,Austria,NU,0,0,ok
+RA1,Shopping centre,Austria,DL,F,,failed_phone_settings
+RA1,Shopping centre,Austria,UL,F,,failed_phone_settings
+RA1,Shopping centre,Belgium,NU,1,1,ok
+RA1,Shopping centre,Belgium,DL,0,0,ok
+RA1,Shopping centre,Belgium,UL,0,0,ok
+RA1,Shopping centre,France,NU,1,1,ok
+RA1,Shopping centre,France,DL,1,1,ok
+RA1,Shopping centre,France,UL,1,1,ok
+RA1,Shopping centre,Hungary,NU,0,0,ok
+RA1,Shopping centre,Hungary,DL,0,0,ok
+RA1,Shopping centre,Hungary,UL,0,0,ok
+RA1,Shopping centre,Italy,NU,1,1,ok
+RA1,Shopping centre,Italy,DL,1,1,ok
+RA1,Shopping centre,Italy,UL,FT,,failed_low_throughput
+RA1,Shopping centre,Netherlands,NU,0,0,ok
+RA1,Shopping centre,Netherlands,DL,0,0,ok
+RA1,Shopping centre,Netherlands,UL,0,0,ok
+RA1,Shopping centre,Poland,NU,0,0,ok
+RA1,Shopping centre,Poland,DL,0,0,ok
+RA1,Shopping centre,Poland,UL,0,0,ok
+RA1,Shopping centre,Spain,NU,0,0,ok
+RA1,Shopping centre,Spain,DL,F,,failed_phone_settings
+RA1,Shopping centre,Spain,UL,F,,failed_phone_settings
+RA1,Shopping centre,Switzerland,NU,0,0,ok
+RA1,Shopping centre,Switzerland,DL,0,0,ok
+RA1,Shopping centre,Switzerland,UL,0,0,ok
+RA1,Shopping centre,UK,NU,0,0,ok
+RA1,Shopping centre,UK,DL,0,0,ok
+RA1,Shopping centre,UK,UL,0,0,ok
+RA1,Bus station,Austria,NU,0,0,ok
+RA1,Bus station,Austria,DL,F,,failed_phone_settings
+RA1,Bus station,Austria,UL,F,,failed_phone_settings
+RA1,Bus station,Belgium,NU,1,1,ok
+RA1,Bus station,Belgium,DL,0,0,ok
+RA1,Bus station,Belgium,UL,FT,,failed_low_throughput
+RA1,Bus station,France,NU,1,1,ok
+RA1,Bus station,France,DL,1,1,ok
+RA1,Bus station,France,UL,1,1,ok
+RA1,Bus station,Hungary,NU,1,1,ok
+RA1,Bus station,Hungary,DL,0,0,ok
+RA1,Bus station,Hungary,UL,0,0,ok
+RA1,Bus station,Italy,NU,0,0,ok
+RA1,Bus station,Italy,DL,0,0,ok
+RA1,Bus station,Italy,UL,0,0,ok
+RA1,Bus station,Netherlands,NU,1,1,ok
+RA1,Bus station,Netherlands,DL,0,0,ok
+RA1,Bus station,Netherlands,UL,0,0,ok
+RA1,Bus station,Poland,NU,0,0,ok
+RA1,Bus station,Poland,DL,0,0,ok
+RA1,Bus station,Poland,UL,0,0,ok
+RA1,Bus station,Spain,NU,0,0,ok
+RA1,Bus station,Spain,DL,F,,failed_phone_settings
+RA1,Bus station,Spain,UL,F,,failed_phone_settings
+RA1,Bus station,Switzerland,NU,1,1,ok
+RA1,Bus station,Switzerland,DL,0,0,ok
+RA1,Bus station,Switzerland,UL,0,0,ok
+RA1,Bus station,UK,NU,2,2,ok
+RA1,Bus station,UK,DL,0,0,ok
+RA1,Bus station,UK,UL,0,0,ok
+RA1,Train station,Austria,NU,1,1,ok
+RA1,Train station,Austria,DL,F,,failed_phone_settings
+RA1,Train station,Austria,UL,F,,failed_phone_settings
+RA1,Train station,Belgium,NU,1,1,ok
+RA1,Train station,Belgium,DL,0,0,ok
+RA1,Train station,Belgium,UL,0,0,ok
+RA1,Train station,France,NU,1,1,ok
+RA1,Train station,France,DL,1,1,ok
+RA1,Train station,France,UL,1,1,ok
+RA1,Train station,Hungary,NU,1,1,ok
+RA1,Train station,Hungary,DL,0,0,ok
+RA1,Train station,Hungary,UL,0,0,ok
+RA1,Train station,Italy,NU,0,0,ok
+RA1,Train station,Italy,DL,0,0,ok
+RA1,Train station,Italy,UL,0,0,ok
+RA1,Train station,Netherlands,NU,0,0,ok
+RA1,Train station,Netherlands,DL,0,0,ok
+RA1,Train station,Netherlands,UL,0,0,ok
+RA1,Train station,Poland,NU,0,0,ok
+RA1,Train station,Poland,DL,0,0,ok
+RA1,Train station,Poland,UL,0,0,ok
+RA1,Train station,Spain,NU,0,0,ok
+RA1,Train station,Spain,DL,F,,failed_phone_settings
+RA1,Train station,Spain,UL,F,,failed_phone_settings
+RA1,Train station,Switzerland,NU,1,1,ok
+RA1,Train station,Switzerland,DL,0,0,ok
+RA1,Train station,Switzerland,UL,0,0,ok
+RA1,Train station,UK,NU,0,0,ok
+RA1,Train station,UK,DL,0,0,ok
+RA1,Train station,UK,UL,0,0,ok
+RA1,Bus,Austria,NU,0,0,ok
+RA1,Bus,Austria,DL,F,,failed_phone_settings
+RA1,Bus,Austria,UL,F,,failed_phone_settings
+RA1,Bus,Belgium,NU,3,3,ok
+RA1,Bus,Belgium,DL,1,1,ok
+RA1,Bus,Belgium,UL,1,1,ok
+RA1,Bus,France,NU,2,2,ok
+RA1,Bus,France,DL,2,2,ok
+RA1,Bus,France,UL,1,1,ok
+RA1,Bus,Hungary,NU,1,1,ok
+RA1,Bus,Hungary,DL,1,1,ok
+RA1,Bus,Hungary,UL,1,1,ok
+RA1,Bus,Italy,NU,0,0,ok
+RA1,Bus,Italy,DL,0,0,ok
+RA1,Bus,Italy,UL,0,0,ok
+RA1,Bus,Netherlands,NU,1,1,ok
+RA1,Bus,Netherlands,DL,0,0,ok
+RA1,Bus,Netherlands,UL,0,0,ok
+RA1,Bus,Poland,NU,0,0,ok
+RA1,Bus,Poland,DL,0,0,ok
+RA1,Bus,Poland,UL,0,0,ok
+RA1,Bus,Spain,NU,0,0,ok
+RA1,Bus,Spain,DL,F,,failed_phone_settings
+RA1,Bus,Spain,UL,F,,failed_phone_settings
+RA1,Bus,Switzerland,NU,0,0,ok
+RA1,Bus,Switzerland,DL,0,0,ok
+RA1,Bus,Switzerland,UL,0,0,ok
+RA1,Bus,UK,NU,4,4,ok
+RA1,Bus,UK,DL,3,3,ok
+RA1,Bus,UK,UL,3,3,ok
+RA1,Train,Austria,NU,0,0,ok
+RA1,Train,Austria,DL,F,,failed_phone_settings
+RA1,Train,Austria,UL,F,,failed_phone_settings
+RA1,Train,Belgium,NU,2,2,ok
+RA1,Train,Belgium,DL,2,2,ok
+RA1,Train,Belgium,UL,1,1,ok
+RA1,Train,France,NU,1,1,ok
+RA1,Train,France,DL,1,1,ok
+RA1,Train,France,UL,1,1,ok
+RA1,Train,Hungary,NU,1,1,ok
+RA1,Train,Hungary,DL,1,1,ok
+RA1,Train,Hungary,UL,1,1,ok
+RA1,Train,Italy,NU,0,0,ok
+RA1,Train,Italy,DL,0,0,ok
+RA1,Train,Italy,UL,0,0,ok
+RA1,Train,Netherlands,NU,0,0,ok
+RA1,Train,Netherlands,DL,0,0,ok
+RA1,Train,Netherlands,UL,0,0,ok
+RA1,Train,Poland,NU,0,0,ok
+RA1,Train,Poland,DL,0,0,ok
+RA1,Train,Poland,UL,0,0,ok
+RA1,Train,Spain,NU,0,0,ok
+RA1,Train,Spain,DL,F,,failed_phone_settings
+RA1,Train,Spain,UL,F,,failed_phone_settings
+RA1,Train,Switzerland,NU,1,1,ok
+RA1,Train,Switzerland,DL,1,1,ok
+RA1,Train,Switzerland,UL,1,1,ok
+RA1,Train,UK,NU,0,0,ok
+RA1,Train,UK,DL,0,0,ok
+RA1,Train,UK,UL,0,0,ok
+RA2,Rural centre,Austria,NU,1,1,ok
+RA2,Rural centre,Austria,DL,F,,failed_phone_settings
+RA2,Rural centre,Austria,UL,F,,failed_phone_settings
+RA2,Rural centre,Belgium,NU,1,1,ok
+RA2,Rural centre,Belgium,DL,1,1,ok
+RA2,Rural centre,Belgium,UL,1,1,ok
+RA2,Rural centre,France,NU,1,1,ok
+RA2,Rural centre,France,DL,1,1,ok
+RA2,Rural centre,France,UL,1,1,ok
+RA2,Rural centre,Hungary,NU,1,1,ok
+RA2,Rural centre,Hungary,DL,1,1,ok
+RA2,Rural centre,Hungary,UL,1,1,ok
+RA2,Rural centre,Italy,NU,1,1,ok
+RA2,Rural centre,Italy,DL,1,1,ok
+RA2,Rural centre,Italy,UL,1,1,ok
+RA2,Rural centre,Netherlands,NU,1,1,ok
+RA2,Rural centre,Netherlands,DL,1,1,ok
+RA2,Rural centre,Netherlands,UL,1,1,ok
+RA2,Rural centre,Poland,NU,1,1,ok
+RA2,Rural centre,Poland,DL,1,1,ok
+RA2,Rural centre,Poland,UL,1,1,ok
+RA2,Rural centre,Spain,NU,1,1,ok
+RA2,Rural centre,Spain,DL,F,,failed_phone_settings
+RA2,Rural centre,Spain,UL,F,,failed_phone_settings
+RA2,Rural centre,Switzerland,NU,1,1,ok
+RA2,Rural centre,Switzerland,DL,1,1,ok
+RA2,Rural centre,Switzerland,UL,1,1,ok
+RA2,Rural centre,UK,NU,1,1,ok
+RA2,Rural centre,UK,DL,1,1,ok
+RA2,Rural centre,UK,UL,1,1,ok
+RA2,Industrial area,Austria,NU,1,1,ok
+RA2,Industrial area,Austria,DL,F,,failed_phone_settings
+RA2,Industrial area,Austria,UL,F,,failed_phone_settings
+RA2,Industrial area,Belgium,NU,0,0,ok
+RA2,Industrial area,Belgium,DL,0,0,ok
+RA2,Industrial area,Belgium,UL,0,0,ok
+RA2,Industrial area,France,NU,0,0,ok
+RA2,Industrial area,France,DL,0,0,ok
+RA2,Industrial area,France,UL,0,0,ok
+RA2,Industrial area,Hungary,NU,0,0,ok
+RA2,Industrial area,Hungary,DL,0,0,ok
+RA2,Industrial area,Hungary,UL,0,0,ok
+RA2,Industrial area,Italy,NU,1,1,ok
+RA2,Industrial area,Italy,DL,0,0,ok
+RA2,Industrial area,Italy,UL,0,0,ok
+RA2,Industrial area,Netherlands,NU,0,0,ok
+RA2,Industrial area,Netherlands,DL,0,0,ok
+RA2,Industrial area,Netherlands,UL,0,0,ok
+RA2,Industrial area,Poland,NU,0,0,ok
+RA2,Industrial area,Poland,DL,0,0,ok
+RA2,Industrial area,Poland,UL,0,0,ok
+RA2,Industrial area,Spain,NU,1,1,ok
+RA2,Industrial area,Spain,DL,F,,failed_phone_settings
+RA2,Industrial area,Spain,UL,F,,failed_phone_settings
+RA2,Industrial area,Switzerland,NU,0,0,ok
+RA2,Industrial area,Switzerland,DL,0,0,ok
+RA2,Industrial area,Switzerland,UL,0,0,ok
+RA2,Industrial area,UK,NU,0,0,ok
+RA2,Industrial area,UK,DL,0,0,ok
+RA2,Industrial area,UK,UL,0,0,ok
+RA2,Rural residential,Austria,NU,1,1,ok
+RA2,Rural residential,Austria,DL,F,,failed_phone_settings
+RA2,Rural residential,Austria,UL,F,,failed_phone_settings
+RA2,Rural residential,Belgium,NU,1,1,ok
+RA2,Rural residential,Belgium,DL,1,1,ok
+RA2,Rural residential,Belgium,UL,1,1,ok
+RA2,Rural residential,France,NU,1,1,ok
+RA2,Rural residential,France,DL,1,1,ok
+RA2,Rural residential,France,UL,1,1,ok
+RA2,Rural residential,Hungary,NU,1,1,ok
+RA2,Rural residential,Hungary,DL,1,1,ok
+RA2,Rural residential,Hungary,UL,1,1,ok
+RA2,Rural residential,Italy,NU,1,1,ok
+RA2,Rural residential,Italy,DL,1,1,ok
+RA2,Rural residential,Italy,UL,1,1,ok
+RA2,Rural residential,Netherlands,NU,1,1,ok
+RA2,Rural residential,Netherlands,DL,FT,,failed_low_throughput
+RA2,Rural residential,Netherlands,UL,1,1,ok
+RA2,Rural residential,Poland,NU,1,1,ok
+RA2,Rural residential,Poland,DL,1,1,ok
+RA2,Rural residential,Poland,UL,2,2,ok
+RA2,Rural residential,Spain,NU,1,1,ok
+RA2,Rural residential,Spain,DL,F,,failed_phone_settings
+RA2,Rural residential,Spain,UL,F,,failed_phone_settings
+RA2,Rural residential,Switzerland,NU,1,1,ok
+RA2,Rural residential,Switzerland,DL,1,1,ok
+RA2,Rural residential,Switzerland,UL,1,1,ok
+RA2,Rural residential,UK,NU,1,1,ok
+RA2,Rural residential,UK,DL,1,1,ok
+RA2,Rural residential,UK,UL,1,1,ok
+RA2,Rural park,Austria,NU,1,1,ok
+RA2,Rural park,Austria,DL,F,,failed_phone_settings
+RA2,Rural park,Austria,UL,F,,failed_phone_settings
+RA2,Rural park,Belgium,NU,1,1,ok
+RA2,Rural park,Belgium,DL,1,1,ok
+RA2,Rural park,Belgium,UL,1,1,ok
+RA2,Rural park,France,NU,1,1,ok
+RA2,Rural park,France,DL,1,1,ok
+RA2,Rural park,France,UL,1,1,ok
+RA2,Rural park,Hungary,NU,1,1,ok
+RA2,Rural park,Hungary,DL,1,1,ok
+RA2,Rural park,Hungary,UL,1,1,ok
+RA2,Rural park,Italy,NU,1,1,ok
+RA2,Rural park,Italy,DL,1,1,ok
+RA2,Rural park,Italy,UL,1,1,ok
+RA2,Rural park,Netherlands,NU,1,1,ok
+RA2,Rural park,Netherlands,DL,0,0,ok
+RA2,Rural park,Netherlands,UL,2,2,ok
+RA2,Rural park,Poland,NU,1,1,ok
+RA2,Rural park,Poland,DL,1,1,ok
+RA2,Rural park,Poland,UL,1,1,ok
+RA2,Rural park,Spain,NU,1,1,ok
+RA2,Rural park,Spain,DL,F,,failed_phone_settings
+RA2,Rural park,Spain,UL,F,,failed_phone_settings
+RA2,Rural park,Switzerland,NU,1,1,ok
+RA2,Rural park,Switzerland,DL,1,1,ok
+RA2,Rural park,Switzerland,UL,1,1,ok
+RA2,Rural park,UK,NU,1,1,ok
+RA2,Rural park,UK,DL,1,1,ok
+RA2,Rural park,UK,UL,1,1,ok
+RA2,Rural school,Austria,NU,0,0,ok
+RA2,Rural school,Austria,DL,F,,failed_phone_settings
+RA2,Rural school,Austria,UL,F,,failed_phone_settings
+RA2,Rural school,Belgium,NU,1,1,ok
+RA2,Rural school,Belgium,DL,1,1,ok
+RA2,Rural school,Belgium,UL,1,1,ok
+RA2,Rural school,France,NU,0,0,ok
+RA2,Rural school,France,DL,0,0,ok
+RA2,Rural school,France,UL,0,0,ok
+RA2,Rural school,Hungary,NU,1,1,ok
+RA2,Rural school,Hungary,DL,1,1,ok
+RA2,Rural school,Hungary,UL,1,1,ok
+RA2,Rural school,Italy,NU,0,0,ok
+RA2,Rural school,Italy,DL,0,0,ok
+RA2,Rural school,Italy,UL,0,0,ok
+RA2,Rural school,Netherlands,NU,0,0,ok
+RA2,Rural school,Netherlands,DL,0,0,ok
+RA2,Rural school,Netherlands,UL,0,0,ok
+RA2,Rural school,Poland,NU,1,1,ok
+RA2,Rural school,Poland,DL,1,1,ok
+RA2,Rural school,Poland,UL,1,1,ok
+RA2,Rural school,Spain,NU,0,0,ok
+RA2,Rural school,Spain,DL,F,,failed_phone_settings
+RA2,Rural school,Spain,UL,F,,failed_phone_settings
+RA2,Rural school,Switzerland,NU,0,0,ok
+RA2,Rural school,Switzerland,DL,0,0,ok
+RA2,Rural school,Switzerland,UL,0,0,ok
+RA2,Rural school,UK,NU,0,0,ok
+RA2,Rural school,UK,DL,0,0,ok
+RA2,Rural school,UK,UL,0,0,ok
+RA2,Shopping centre,Austria,NU,0,0,ok
+RA2,Shopping centre,Austria,DL,F,,failed_phone_settings
+RA2,Shopping centre,Austria,UL,F,,failed_phone_settings
+RA2,Shopping centre,Belgium,NU,0,0,ok
+RA2,Shopping centre,Belgium,DL,0,0,ok
+RA2,Shopping centre,Belgium,UL,0,0,ok
+RA2,Shopping centre,France,NU,1,1,ok
+RA2,Shopping centre,France,DL,1,1,ok
+RA2,Shopping centre,France,UL,1,1,ok
+RA2,Shopping centre,Hungary,NU,0,0,ok
+RA2,Shopping centre,Hungary,DL,0,0,ok
+RA2,Shopping centre,Hungary,UL,0,0,ok
+RA2,Shopping centre,Italy,NU,1,1,ok
+RA2,Shopping centre,Italy,DL,0,0,ok
+RA2,Shopping centre,Italy,UL,0,0,ok
+RA2,Shopping centre,Netherlands,NU,0,0,ok
+RA2,Shopping centre,Netherlands,DL,0,0,ok
+RA2,Shopping centre,Netherlands,UL,0,0,ok
+RA2,Shopping centre,Poland,NU,0,0,ok
+RA2,Shopping centre,Poland,DL,0,0,ok
+RA2,Shopping centre,Poland,UL,0,0,ok
+RA2,Shopping centre,Spain,NU,0,0,ok
+RA2,Shopping centre,Spain,DL,F,,failed_phone_settings
+RA2,Shopping centre,Spain,UL,F,,failed_phone_settings
+RA2,Shopping centre,Switzerland,NU,0,0,ok
+RA2,Shopping centre,Switzerland,DL,0,0,ok
+RA2,Shopping centre,Switzerland,UL,0,0,ok
+RA2,Shopping centre,UK,NU,0,0,ok
+RA2,Shopping centre,UK,DL,0,0,ok
+RA2,Shopping centre,UK,UL,0,0,ok
+RA2,Bus station,Austria,NU,0,0,ok
+RA2,Bus station,Austria,DL,F,,failed_phone_settings
+RA2,Bus station,Austria,UL,F,,failed_phone_settings
+RA2,Bus station,Belgium,NU,1,1,ok
+RA2,Bus station,Belgium,DL,0,0,ok
+RA2,Bus station,Belgium,UL,0,0,ok
+RA2,Bus station,France,NU,1,1,ok
+RA2,Bus station,France,DL,1,1,ok
+RA2,Bus station,France,UL,1,1,ok
+RA2,Bus station,Hungary,NU,1,1,ok
+RA2,Bus station,Hungary,DL,0,0,ok
+RA2,Bus station,Hungary,UL,0,0,ok
+RA2,Bus station,Italy,NU,1,1,ok
+RA2,Bus station,Italy,DL,0,0,ok
+RA2,Bus station,Italy,UL,0,0,ok
+RA2,Bus station,Netherlands,NU,1,1,ok
+RA2,Bus station,Netherlands,DL,0,0,ok
+RA2,Bus station,Netherlands,UL,0,0,ok
+RA2,Bus station,Poland,NU,0,0,ok
+RA2,Bus station,Poland,DL,0,0,ok
+RA2,Bus station,Poland,UL,0,0,ok
+RA2,Bus station,Spain,NU,0,0,ok
+RA2,Bus station,Spain,DL,F,,failed_phone_settings
+RA2,Bus station,Spain,UL,F,,failed_phone_settings
+RA2,Bus station,Switzerland,NU,1,1,ok
+RA2,Bus station,Switzerland,DL,0,0,ok
+RA2,Bus station,Switzerland,UL,0,0,ok
+RA2,Bus station,UK,NU,2,2,ok
+RA2,Bus station,UK,DL,0,0,ok
+RA2,Bus station,UK,UL,0,0,ok
+RA2,Train station,Austria,NU,0,0,ok
+RA2,Train station,Austria,DL,F,,failed_phone_settings
+RA2,Train station,Austria,UL,F,,failed_phone_settings
+RA2,Train station,Belgium,NU,1,1,ok
+RA2,Train station,Belgium,DL,0,0,ok
+RA2,Train station,Belgium,UL,0,0,ok
+RA2,Train station,France,NU,0,0,ok
+RA2,Train station,France,DL,0,0,ok
+RA2,Train station,France,UL,0,0,ok
+RA2,Train station,Hungary,NU,0,0,ok
+RA2,Train station,Hungary,DL,0,0,ok
+RA2,Train station,Hungary,UL,0,0,ok
+RA2,Train station,Italy,NU,1,1,ok
+RA2,Train station,Italy,DL,0,0,ok
+RA2,Train station,Italy,UL,0,0,ok
+RA2,Train station,Netherlands,NU,0,0,ok
+RA2,Train station,Netherlands,DL,0,0,ok
+RA2,Train station,Netherlands,UL,0,0,ok
+RA2,Train station,Poland,NU,1,1,ok
+RA2,Train station,Poland,DL,1,1,ok
+RA2,Train station,Poland,UL,1,1,ok
+RA2,Train station,Spain,NU,0,0,ok
+RA2,Train station,Spain,DL,F,,failed_phone_settings
+RA2,Train station,Spain,UL,F,,failed_phone_settings
+RA2,Train station,Switzerland,NU,1,1,ok
+RA2,Train station,Switzerland,DL,0,0,ok
+RA2,Train station,Switzerland,UL,0,0,ok
+RA2,Train station,UK,NU,1,1,ok
+RA2,Train station,UK,DL,0,0,ok
+RA2,Train station,UK,UL,0,0,ok
+RA2,Bus,Austria,NU,1,1,ok
+RA2,Bus,Austria,DL,F,,failed_phone_settings
+RA2,Bus,Austria,UL,F,,failed_phone_settings
+RA2,Bus,Belgium,NU,0,0,ok
+RA2,Bus,Belgium,DL,0,0,ok
+RA2,Bus,Belgium,UL,0,0,ok
+RA2,Bus,France,NU,1,1,ok
+RA2,Bus,France,DL,1,1,ok
+RA2,Bus,France,UL,1,1,ok
+RA2,Bus,Hungary,NU,1,1,ok
+RA2,Bus,Hungary,DL,1,1,ok
+RA2,Bus,Hungary,UL,1,1,ok
+RA2,Bus,Italy,NU,1,1,ok
+RA2,Bus,Italy,DL,1,1,ok
+RA2,Bus,Italy,UL,1,1,ok
+RA2,Bus,Netherlands,NU,0,0,ok
+RA2,Bus,Netherlands,DL,0,0,ok
+RA2,Bus,Netherlands,UL,0,0,ok
+RA2,Bus,Poland,NU,0,0,ok
+RA2,Bus,Poland,DL,0,0,ok
+RA2,Bus,Poland,UL,0,0,ok
+RA2,Bus,Spain,NU,0,0,ok
+RA2,Bus,Spain,DL,F,,failed_phone_settings
+RA2,Bus,Spain,UL,F,,failed_phone_settings
+RA2,Bus,Switzerland,NU,0,0,ok
+RA2,Bus,Switzerland,DL,0,0,ok
+RA2,Bus,Switzerland,UL,0,0,ok
+RA2,Bus,UK,NU,0,0,ok
+RA2,Bus,UK,DL,1,1,ok
+RA2,Bus,UK,UL,2,2,ok
+RA2,Train,Austria,NU,0,0,ok
+RA2,Train,Austria,DL,F,,failed_phone_settings
+RA2,Train,Austria,UL,F,,failed_phone_settings
+RA2,Train,Belgium,NU,2,2,ok
+RA2,Train,Belgium,DL,1,1,ok
+RA2,Train,Belgium,UL,1,1,ok
+RA2,Train,France,NU,1,1,ok
+RA2,Train,France,DL,1,1,ok
+RA2,Train,France,UL,1,1,ok
+RA2,Train,Hungary,NU,0,0,ok
+RA2,Train,Hungary,DL,0,0,ok
+RA2,Train,Hungary,UL,0,0,ok
+RA2,Train,Italy,NU,0,0,ok
+RA2,Train,Italy,DL,0,0,ok
+RA2,Train,Italy,UL,0,0,ok
+RA2,Train,Netherlands,NU,0,0,ok
+RA2,Train,Netherlands,DL,0,0,ok
+RA2,Train,Netherlands,UL,0,0,ok
+RA2,Train,Poland,NU,0,0,ok
+RA2,Train,Poland,DL,0,0,ok
+RA2,Train,Poland,UL,0,0,ok
+RA2,Train,Spain,NU,0,0,ok
+RA2,Train,Spain,DL,F,,failed_phone_settings
+RA2,Train,Spain,UL,F,,failed_phone_settings
+RA2,Train,Switzerland,NU,1,1,ok
+RA2,Train,Switzerland,DL,1,1,ok
+RA2,Train,Switzerland,UL,0,0,ok
+RA2,Train,UK,NU,1,1,ok
+RA2,Train,UK,DL,1,1,ok
+RA2,Train,UK,UL,1,1,ok
+RA3,Rural centre,Austria,NU,1,1,ok
+RA3,Rural centre,Austria,DL,F,,failed_phone_settings
+RA3,Rural centre,Austria,UL,F,,failed_phone_settings
+RA3,Rural centre,Belgium,NU,1,1,ok
+RA3,Rural centre,Belgium,DL,1,1,ok
+RA3,Rural centre,Belgium,UL,1,1,ok
+RA3,Rural centre,France,NU,1,1,ok
+RA3,Rural centre,France,DL,1,1,ok
+RA3,Rural centre,France,UL,1,1,ok
+RA3,Rural centre,Hungary,NU,1,1,ok
+RA3,Rural centre,Hungary,DL,1,1,ok
+RA3,Rural centre,Hungary,UL,1,1,ok
+RA3,Rural centre,Italy,NU,1,1,ok
+RA3,Rural centre,Italy,DL,1,1,ok
+RA3,Rural centre,Italy,UL,1,1,ok
+RA3,Rural centre,Netherlands,NU,3ǂ,,not_reported
+RA3,Rural centre,Netherlands,DL,1,1,ok
+RA3,Rural centre,Netherlands,UL,1,1,ok
+RA3,Rural centre,Poland,NU,1,1,ok
+RA3,Rural centre,Poland,DL,1,1,ok
+RA3,Rural centre,Poland,UL,1,1,ok
+RA3,Rural centre,Spain,NU,1,1,ok
+RA3,Rural centre,Spain,DL,F,,failed_phone_settings
+RA3,Rural centre,Spain,UL,F,,failed_phone_settings
+RA3,Rural centre,Switzerland,NU,1,1,ok
+RA3,Rural centre,Switzerland,DL,1,1,ok
+RA3,Rural centre,Switzerland,UL,1,1,ok
+RA3,Rural centre,UK,NU,1,1,ok
+RA3,Rural centre,UK,DL,1,1,ok
+RA3,Rural centre,UK,UL,1,1,ok
+RA3,Industrial area,Austria,NU,0,0,ok
+RA3,Industrial area,Austria,DL,F,,failed_phone_settings
+RA3,Industrial area,Austria,UL,F,,failed_phone_settings
+RA3,Industrial area,Belgium,NU,1,1,ok
+RA3,Industrial area,Belgium,DL,FT,,failed_low_throughput
+RA3,Industrial area,Belgium,UL,1,1,ok
+RA3,Industrial area,France,NU,0,0,ok
+RA3,Industrial area,France,DL,0,0,ok
+RA3,Industrial area,France,UL,0,0,ok
+RA3,Industrial area,Hungary,NU,1,1,ok
+RA3,Industrial area,Hungary,DL,1,1,ok
+RA3,Industrial area,Hungary,UL,1,1,ok
+RA3,Industrial area,Italy,NU,0,0,ok
+RA3,Industrial area,Italy,DL,0,0,ok
+RA3,Industrial area,Italy,UL,0,0,ok
+RA3,Industrial area,Netherlands,NU,0,0,ok
+RA3,Industrial area,Netherlands,DL,0,0,ok
+RA3,Industrial area,Netherlands,UL,0,0,ok
+RA3,Industrial area,Poland,NU,0,0,ok
+RA3,Industrial area,Poland,DL,0,0,ok
+RA3,Industrial area,Poland,UL,0,0,ok
+RA3,Industrial area,Spain,NU,1,1,ok
+RA3,Industrial area,Spain,DL,F,,failed_phone_settings
+RA3,Industrial area,Spain,UL,F,,failed_phone_settings
+RA3,Industrial area,Switzerland,NU,1,1,ok
+RA3,Industrial area,Switzerland,DL,1,1,ok
+RA3,Industrial area,Switzerland,UL,1,1,ok
+RA3,Industrial area,UK,NU,0,0,ok
+RA3,Industrial area,UK,DL,0,0,ok
+RA3,Industrial area,UK,UL,0,0,ok
+RA3,Rural residential,Austria,NU,1,1,ok
+RA3,Rural residential,Austria,DL,F,,failed_phone_settings
+RA3,Rural residential,Austria,UL,F,,failed_phone_settings
+RA3,Rural residential,Belgium,NU,1,1,ok
+RA3,Rural residential,Belgium,DL,1,1,ok
+RA3,Rural residential,Belgium,UL,FT,,failed_low_throughput
+RA3,Rural residential,France,NU,1,1,ok
+RA3,Rural residential,France,DL,1,1,ok
+RA3,Rural residential,France,UL,1,1,ok
+RA3,Rural residential,Hungary,NU,1,1,ok
+RA3,Rural residential,Hungary,DL,1,1,ok
+RA3,Rural residential,Hungary,UL,1,1,ok
+RA3,Rural residential,Italy,NU,1,1,ok
+RA3,Rural residential,Italy,DL,1,1,ok
+RA3,Rural residential,Italy,UL,1,1,ok
+RA3,Rural residential,Netherlands,NU,2ǂ,,not_reported
+RA3,Rural residential,Netherlands,DL,1,1,ok
+RA3,Rural residential,Netherlands,UL,1,1,ok
+RA3,Rural residential,Poland,NU,1,1,ok
+RA3,Rural residential,Poland,DL,1,1,ok
+RA3,Rural residential,Poland,UL,1,1,ok
+RA3,Rural residential,Spain,NU,1,1,ok
+RA3,Rural residential,Spain,DL,F,,failed_phone_settings
+RA3,Rural residential,Spain,UL,F,,failed_phone_settings
+RA3,Rural residential,Switzerland,NU,1,1,ok
+RA3,Rural residential,Switzerland,DL,1,1,ok
+RA3,Rural residential,Switzerland,UL,1,1,ok
+RA3,Rural residential,UK,NU,1,1,ok
+RA3,Rural residential,UK,DL,1,1,ok
+RA3,Rural residential,UK,UL,1,1,ok
+RA3,Rural park,Austria,NU,0,0,ok
+RA3,Rural park,Austria,DL,F,,failed_phone_settings
+RA3,Rural park,Austria,UL,F,,failed_phone_settings
+RA3,Rural park,Belgium,NU,1,1,ok
+RA3,Rural park,Belgium,DL,1,1,ok
+RA3,Rural park,Belgium,UL,1,1,ok
+RA3,Rural park,France,NU,1,1,ok
+RA3,Rural park,France,DL,1,1,ok
+RA3,Rural park,France,UL,1,1,ok
+RA3,Rural park,Hungary,NU,1,1,ok
+RA3,Rural park,Hungary,DL,1,1,ok
+RA3,Rural park,Hungary,UL,1,1,ok
+RA3,Rural park,Italy,NU,1,1,ok
+RA3,Rural park,Italy,DL,1,1,ok
+RA3,Rural park,Italy,UL,1,1,ok
+RA3,Rural park,Netherlands,NU,1,1,ok
+RA3,Rural park,Netherlands,DL,1,1,ok
+RA3,Rural park,Netherlands,UL,1,1,ok
+RA3,Rural park,Poland,NU,1,1,ok
+RA3,Rural park,Poland,DL,1,1,ok
+RA3,Rural park,Poland,UL,1,1,ok
+RA3,Rural park,Spain,NU,1,1,ok
+RA3,Rural park,Spain,DL,F,,failed_phone_settings
+RA3,Rural park,Spain,UL,F,,failed_phone_settings
+RA3,Rural park,Switzerland,NU,1,1,ok
+RA3,Rural park,Switzerland,DL,1,1,ok
+RA3,Rural park,Switzerland,UL,1,1,ok
+RA3,Rural park,UK,NU,1,1,ok
+RA3,Rural park,UK,DL,2,2,ok
+RA3,Rural park,UK,UL,1,1,ok
+RA3,Rural school,Austria,NU,1,1,ok
+RA3,Rural school,Austria,DL,F,,failed_phone_settings
+RA3,Rural school,Austria,UL,F,,failed_phone_settings
+RA3,Rural school,Belgium,NU,1,1,ok
+RA3,Rural school,Belgium,DL,1,1,ok
+RA3,Rural school,Belgium,UL,1,1,ok
+RA3,Rural school,France,NU,0,0,ok
+RA3,Rural school,France,DL,0,0,ok
+RA3,Rural school,France,UL,0,0,ok
+RA3,Rural school,Hungary,NU,1,1,ok
+RA3,Rural school,Hungary,DL,1,1,ok
+RA3,Rural school,Hungary,UL,1,1,ok
+RA3,Rural school,Italy,NU,0,0,ok
+RA3,Rural school,Italy,DL,0,0,ok
+RA3,Rural school,Italy,UL,0,0,ok
+RA3,Rural school,Netherlands,NU,0,0,ok
+RA3,Rural school,Netherlands,DL,0,0,ok
+RA3,Rural school,Netherlands,UL,0,0,ok
+RA3,Rural school,Poland,NU,1,1,ok
+RA3,Rural school,Poland,DL,1,1,ok
+RA3,Rural school,Poland,UL,1,1,ok
+RA3,Rural school,Spain,NU,0,0,ok
+RA3,Rural school,Spain,DL,F,,failed_phone_settings
+RA3,Rural school,Spain,UL,F,,failed_phone_settings
+RA3,Rural school,Switzerland,NU,0,0,ok
+RA3,Rural school,Switzerland,DL,0,0,ok
+RA3,Rural school,Switzerland,UL,0,0,ok
+RA3,Rural school,UK,NU,0,0,ok
+RA3,Rural school,UK,DL,0,0,ok
+RA3,Rural school,UK,UL,0,0,ok
+RA3,Shopping centre,Austria,NU,0,0,ok
+RA3,Shopping centre,Austria,DL,F,,failed_phone_settings
+RA3,Shopping centre,Austria,UL,F,,failed_phone_settings
+RA3,Shopping centre,Belgium,NU,0,0,ok
+RA3,Shopping centre,Belgium,DL,0,0,ok
+RA3,Shopping centre,Belgium,UL,0,0,ok
+RA3,Shopping centre,France,NU,1,1,ok
+RA3,Shopping centre,France,DL,1,1,ok
+RA3,Shopping centre,France,UL,1,1,ok
+RA3,Shopping centre,Hungary,NU,0,0,ok
+RA3,Shopping centre,Hungary,DL,0,0,ok
+RA3,Shopping centre,Hungary,UL,0,0,ok
+RA3,Shopping centre,Italy,NU,0,0,ok
+RA3,Shopping centre,Italy,DL,0,0,ok
+RA3,Shopping centre,Italy,UL,0,0,ok
+RA3,Shopping centre,Netherlands,NU,0,0,ok
+RA3,Shopping centre,Netherlands,DL,0,0,ok
+RA3,Shopping centre,Netherlands,UL,0,0,ok
+RA3,Shopping centre,Poland,NU,1,1,ok
+RA3,Shopping centre,Poland,DL,0,0,ok
+RA3,Shopping centre,Poland,UL,0,0,ok
+RA3,Shopping centre,Spain,NU,0,0,ok
+RA3,Shopping centre,Spain,DL,F,,failed_phone_settings
+RA3,Shopping centre,Spain,UL,F,,failed_phone_settings
+RA3,Shopping centre,Switzerland,NU,1,1,ok
+RA3,Shopping centre,Switzerland,DL,0,0,ok
+RA3,Shopping centre,Switzerland,UL,0,0,ok
+RA3,Shopping centre,UK,NU,0,0,ok
+RA3,Shopping centre,UK,DL,0,0,ok
+RA3,Shopping centre,UK,UL,0,0,ok
+RA3,Bus station,Austria,NU,0,0,ok
+RA3,Bus station,Austria,DL,F,,failed_phone_settings
+RA3,Bus station,Austria,UL,F,,failed_phone_settings
+RA3,Bus station,Belgium,NU,1,1,ok
+RA3,Bus station,Belgium,DL,0,0,ok
+RA3,Bus station,Belgium,UL,0,0,ok
+RA3,Bus station,France,NU,1,1,ok
+RA3,Bus station,France,DL,1,1,ok
+RA3,Bus station,France,UL,1,1,ok
+RA3,Bus station,Hungary,NU,1,1,ok
+RA3,Bus station,Hungary,DL,0,0,ok
+RA3,Bus station,Hungary,UL,0,0,ok
+RA3,Bus station,Italy,NU,0,0,ok
+RA3,Bus station,Italy,DL,0,0,ok
+RA3,Bus station,Italy,UL,0,0,ok
+RA3,Bus station,Netherlands,NU,1,1,ok
+RA3,Bus station,Netherlands,DL,0,0,ok
+RA3,Bus station,Netherlands,UL,0,0,ok
+RA3,Bus station,Poland,NU,1,1,ok
+RA3,Bus station,Poland,DL,1,1,ok
+RA3,Bus station,Poland,UL,1,1,ok
+RA3,Bus station,Spain,NU,0,0,ok
+RA3,Bus station,Spain,DL,F,,failed_phone_settings
+RA3,Bus station,Spain,UL,F,,failed_phone_settings
+RA3,Bus station,Switzerland,NU,1,1,ok
+RA3,Bus station,Switzerland,DL,0,0,ok
+RA3,Bus station,Switzerland,UL,0,0,ok
+RA3,Bus station,UK,NU,1,1,ok
+RA3,Bus station,UK,DL,0,0,ok
+RA3,Bus station,UK,UL,0,0,ok
+RA3,Train station,Austria,NU,0,0,ok
+RA3,Train station,Austria,DL,F,,failed_phone_settings
+RA3,Train station,Austria,UL,F,,failed_phone_settings
+RA3,Train station,Belgium,NU,1,1,ok
+RA3,Train station,Belgium,DL,0,0,ok
+RA3,Train station,Belgium,UL,0,0,ok
+RA3,Train station,France,NU,1,1,ok
+RA3,Train station,France,DL,1,1,ok
+RA3,Train station,France,UL,1,1,ok
+RA3,Train station,Hungary,NU,0,0,ok
+RA3,Train station,Hungary,DL,0,0,ok
+RA3,Train station,Hungary,UL,0,0,ok
+RA3,Train station,Italy,NU,0,0,ok
+RA3,Train station,Italy,DL,0,0,ok
+RA3,Train station,Italy,UL,0,0,ok
+RA3,Train station,Netherlands,NU,0,0,ok
+RA3,Train station,Netherlands,DL,0,0,ok
+RA3,Train station,Netherlands,UL,0,0,ok
+RA3,Train station,Poland,NU,0,0,ok
+RA3,Train station,Poland,DL,0,0,ok
+RA3,Train station,Poland,UL,0,0,ok
+RA3,Train station,Spain,NU,1,1,ok
+RA3,Train station,Spain,DL,F,,failed_phone_settings
+RA3,Train station,Spain,UL,F,,failed_phone_settings
+RA3,Train station,Switzerland,NU,1,1,ok
+RA3,Train station,Switzerland,DL,0,0,ok
+RA3,Train station,Switzerland,UL,0,0,ok
+RA3,Train station,UK,NU,0,0,ok
+RA3,Train station,UK,DL,0,0,ok
+RA3,Train station,UK,UL,0,0,ok
+RA3,Bus,Austria,NU,1,1,ok
+RA3,Bus,Austria,DL,F,,failed_phone_settings
+RA3,Bus,Austria,UL,F,,failed_phone_settings
+RA3,Bus,Belgium,NU,1,1,ok
+RA3,Bus,Belgium,DL,0,0,ok
+RA3,Bus,Belgium,UL,0,0,ok
+RA3,Bus,France,NU,1,1,ok
+RA3,Bus,France,DL,1,1,ok
+RA3,Bus,France,UL,1,1,ok
+RA3,Bus,Hungary,NU,2,2,ok
+RA3,Bus,Hungary,DL,1,1,ok
+RA3,Bus,Hungary,UL,1,1,ok
+RA3,Bus,Italy,NU,0,0,ok
+RA3,Bus,Italy,DL,0,0,ok
+RA3,Bus,Italy,UL,0,0,ok
+RA3,Bus,Netherlands,NU,1,1,ok
+RA3,Bus,Netherlands,DL,0,0,ok
+RA3,Bus,Netherlands,UL,0,0,ok
+RA3,Bus,Poland,NU,0,0,ok
+RA3,Bus,Poland,DL,0,0,ok
+RA3,Bus,Poland,UL,0,0,ok
+RA3,Bus,Spain,NU,0,0,ok
+RA3,Bus,Spain,DL,F,,failed_phone_settings
+RA3,Bus,Spain,UL,F,,failed_phone_settings
+RA3,Bus,Switzerland,NU,1,1,ok
+RA3,Bus,Switzerland,DL,1,1,ok
+RA3,Bus,Switzerland,UL,1,1,ok
+RA3,Bus,UK,NU,2,2,ok
+RA3,Bus,UK,DL,1,1,ok
+RA3,Bus,UK,UL,2,2,ok
+RA3,Train,Austria,NU,0,0,ok
+RA3,Train,Austria,DL,F,,failed_phone_settings
+RA3,Train,Austria,UL,F,,failed_phone_settings
+RA3,Train,Belgium,NU,1,1,ok
+RA3,Train,Belgium,DL,1,1,ok
+RA3,Train,Belgium,UL,1,1,ok
+RA3,Train,France,NU,1,1,ok
+RA3,Train,France,DL,1,1,ok
+RA3,Train,France,UL,1,1,ok
+RA3,Train,Hungary,NU,2,2,ok
+RA3,Train,Hungary,DL,1,1,ok
+RA3,Train,Hungary,UL,1,1,ok
+RA3,Train,Italy,NU,0,0,ok
+RA3,Train,Italy,DL,0,0,ok
+RA3,Train,Italy,UL,0,0,ok
+RA3,Train,Netherlands,NU,0,0,ok
+RA3,Train,Netherlands,DL,0,0,ok
+RA3,Train,Netherlands,UL,0,0,ok
+RA3,Train,Poland,NU,0,0,ok
+RA3,Train,Poland,DL,0,0,ok
+RA3,Train,Poland,UL,0,0,ok
+RA3,Train,Spain,NU,0,0,ok
+RA3,Train,Spain,DL,F,,failed_phone_settings
+RA3,Train,Spain,UL,F,,failed_phone_settings
+RA3,Train,Switzerland,NU,0,0,ok
+RA3,Train,Switzerland,DL,0,0,ok
+RA3,Train,Switzerland,UL,0,0,ok
+RA3,Train,UK,NU,0,0,ok
+RA3,Train,UK,DL,0,0,ok
+RA3,Train,UK,UL,0,0,ok

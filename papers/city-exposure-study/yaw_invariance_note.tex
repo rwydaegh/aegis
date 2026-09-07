@@ -1,0 +1,310 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=25mm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{proposition}{Proposition}
+\newcommand{\ReLU}[1]{\left[#1\right]_{+}}
+\newcommand{\SARwb}{\mathrm{SAR}_{\mathrm{wb}}}
+\newcommand{\APDmax}{\mathrm{APD}_{\mathrm{max}}}
+
+\title{Yaw in deterministic human exposure models\\
+\large An engineering note}
+\author{Working note}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Absolute compass direction should not affect human RF exposure when the source
+and propagation model has no preferred horizontal direction. This does not mean
+that rotating a body inside one fixed street or one fixed set of multipath
+components leaves exposure unchanged. The useful engineering result is more
+specific. An axisymmetric local field gives exact yaw independence. An
+isotropic city model gives yaw independence across the population or ensemble.
+When body heading is unknown and uniform, its effect on whole-body SAR can be
+averaged exactly without rerunning propagation. This note states these claims,
+their limits, and what they imply for deterministic exposure studies.
+\end{abstract}
+
+\section{The claim in engineering terms}
+
+There are three different statements that are easy to conflate.
+
+\begin{enumerate}
+  \item \textbf{Compass neutrality.} Rotating the complete scene, the body, and
+  every field vector together cannot change the exposure result. North is only
+  a coordinate label.
+
+  \item \textbf{Yaw independence in one scene.} Rotating the body while keeping
+  one street, base station, or dominant path fixed can change exposure. This is
+  a physical change in relative orientation.
+
+  \item \textbf{Population yaw independence.} If body heading is independent of
+  the local field and has no preferred horizontal direction, population
+  exposure does not depend on the compass yaw chosen by the modeler.
+\end{enumerate}
+
+The first statement is always required of a physically consistent model. The
+second is generally false in a deterministic city realization. The third is
+the relevant statement for a compass-neutral population.
+
+No symmetry of the human body is needed. The body may be anatomically
+asymmetric and may have different tissue distributions on its front, back, and
+sides. The symmetry assumption belongs to the environment or to the heading
+distribution.
+
+\section{A compact deterministic statement}
+
+Represent the local incoherent field by multipath components
+
+\begin{equation}
+  \mathcal{P}=\{(S_i,\widehat{\mathbf{k}}_i)\}_{i=1}^{N},
+\end{equation}
+
+where $S_i$ is incident power density and
+$\widehat{\mathbf{k}}_i$ is the propagation direction. Let
+$D(B,\mathcal{P})$ be a scalar endpoint computed for body $B$. Examples are
+absorbed power and whole-body SAR. A physically consistent endpoint obeys
+
+\begin{equation}\label{eq:common-rotation}
+  D(R_\psi B,R_\psi\mathcal{P})=D(B,\mathcal{P}),
+\end{equation}
+
+where $R_\psi$ is a yaw rotation about the vertical axis. This equation only
+says that rotating the coordinate system changes nothing.
+
+\begin{proposition}[Exact yaw independence]
+If the local incident field is unchanged by every yaw rotation,
+
+\begin{equation}\label{eq:axisymmetric-field}
+  R_\psi\mathcal{P}=\mathcal{P}
+  \quad\text{for all }\psi,
+\end{equation}
+
+then $D(R_\psi B,\mathcal{P})=D(B,\mathcal{P})$ for every body yaw.
+\end{proposition}
+
+\begin{proof}
+Use Eq.~\eqref{eq:axisymmetric-field} to rotate the field together with the
+body, then apply Eq.~\eqref{eq:common-rotation}.
+\end{proof}
+
+Equation~\eqref{eq:axisymmetric-field} does not require equal power at every
+elevation. Base stations may be above the person, ground reflections may arrive
+from below, and antenna downtilt may be retained. Only horizontal azimuth is
+removed.
+
+This exact proposition is deliberately strong. A finite set of paths from one
+ray-traced site will almost never satisfy it. It is best understood as the
+limit reached after azimuthal averaging, not as a description of every street.
+
+\section{What flat ground does and does not prove}
+
+An infinite flat homogeneous ground plane has no preferred horizontal
+direction. Its reflection coefficient may depend on frequency, material,
+polarization, and elevation angle without introducing a compass direction.
+Flat ground therefore handles the ground part of the symmetry argument.
+
+It does not make a complete deterministic scene yaw-independent. A wall, street
+canyon, antenna sector, or single line-of-sight path can still select one
+horizontal direction. Flat ground is sufficient only when the remaining source
+and propagation description is also horizontally symmetric.
+
+A weaker and more realistic assumption is statistical isotropy. Suppose base
+station locations, heights, powers, antenna marks, and multipath directions
+have the same joint distribution after any common yaw rotation. Then
+
+\begin{equation}\label{eq:distributional-result}
+  D(R_\psi B,\mathcal{P})
+  \overset{d}{=}
+  D(B,\mathcal{P}).
+\end{equation}
+
+This is an ensemble statement. A single realization can remain strongly
+yaw-sensitive. For example, one dominant line-of-sight component has a uniform
+azimuth across many sites, but it still illuminates a particular side of the
+body at any one site.
+
+The minimal reasonable assumptions for Eq.~\eqref{eq:distributional-result}
+are:
+
+\begin{itemize}
+  \item the exposure solver is covariant under a common rotation
+
+  \item the joint source and propagation law has no preferred horizontal
+  direction
+
+  \item any correlation between body heading and the environment is either
+  absent or modeled explicitly
+\end{itemize}
+
+Poisson base stations, independent paths, equal heights, and a symmetric human
+phantom are not required.
+
+\section{Unknown yaw can be removed exactly for whole-body SAR}
+
+For a fixed deterministic field, let the body yaw
+$\Theta\sim\mathrm{Uniform}(0,2\pi)$. Whole-body absorbed power and whole-body
+SAR are linear in incoherent path power. Therefore the yaw mean can be computed
+either by averaging body orientations or by spreading every path uniformly in
+azimuth:
+
+\begin{equation}\label{eq:yaw-average}
+  \mathbb{E}_{\Theta}
+  \left[\SARwb(R_\Theta B,\mathcal{P})\right]
+  =
+  \SARwb(B,\overline{\mathcal{P}}),
+\end{equation}
+
+where $\overline{\mathcal{P}}$ is the azimuthally averaged angular power
+distribution. Propagation is run once. Only the body coupling is averaged.
+
+At AEGIS level 2 this average has a closed form for every triangle and path.
+Let $\widehat{\mathbf{n}}$ be a body-surface normal and let
+$\mathbf{q}=-\widehat{\mathbf{k}}$ be the direction used in the incidence law.
+Define
+
+\begin{equation}
+  a=n_zq_z,
+  \qquad
+  b=\lVert\mathbf{n}_{\mathrm{h}}\rVert
+    \lVert\mathbf{q}_{\mathrm{h}}\rVert.
+\end{equation}
+
+The exact uniform-yaw mean of the incidence factor is
+
+\begin{equation}\label{eq:closed-form}
+  F(a,b)=
+  \frac{1}{2\pi}\int_0^{2\pi}\ReLU{a+b\cos\psi}\,\mathrm{d}\psi
+  =
+  \begin{cases}
+    \ReLU{a}, & b=0,\\
+    0, & a\leq-b,\\
+    a, & a\geq b,\\
+    \dfrac{a\arccos(-a/b)+\sqrt{b^2-a^2}}{\pi}, & |a|<b.
+  \end{cases}
+\end{equation}
+
+This is the main computational result. After yaw averaging, the coupling
+depends on path elevation and surface slope, but not on either azimuth. A
+dedicated semantic-twin coupling endpoint implements
+Eq.~\eqref{eq:closed-form} exactly at AEGIS level 2. The current production
+campaign does not call that endpoint. It uses fixed route-tangent yaw.
+
+\subsection{The important exception for peak APD}
+
+The same shortcut cannot be applied blindly to $\APDmax$. In general,
+
+\begin{equation}\label{eq:peak-warning}
+  \max_{\mathbf{r}}
+  \mathbb{E}_{\Theta}[S_{\mathrm{ab}}(\mathbf{r},\Theta)]
+  \neq
+  \mathbb{E}_{\Theta}
+  \left[\max_{\mathbf{r}}S_{\mathrm{ab}}(\mathbf{r},\Theta)\right].
+\end{equation}
+
+The first quantity is the peak of the yaw-mean surface field. The second is the
+mean of the peak exposure experienced at each yaw. The second quantity is the
+natural population endpoint if each person has one unknown yaw. It requires
+evaluating the surface maximum for each sampled orientation, although the
+propagation paths still need to be computed only once.
+
+\section{Consequences for deterministic modeling}
+
+The correct treatment of yaw depends on the estimand.
+
+\begin{table}[ht]
+\centering
+\caption{Recommended yaw treatment by study target.}
+\label{tab:recommendations}
+\begin{tabular}{p{0.34\linewidth}p{0.58\linewidth}}
+\toprule
+Study target & Recommended treatment \\
+\midrule
+One specified route traversal
+& Retain route-tangent yaw. Report that the result describes a person facing
+the walking direction. \\
+
+Compass-neutral population
+& Use the exact uniform-yaw mean for absorbed power and whole-body SAR. For
+peak APD, average the per-yaw peaks. \\
+
+One site with unknown heading
+& Report the yaw mean and a sensitivity interval, such as the minimum and
+maximum or selected quantiles over yaw. \\
+
+Statistically isotropic city ensemble
+& A fixed yaw has the correct marginal distribution across ideal independent
+realizations. Verify that the simulated site sample is large and balanced
+enough for this approximation. \\
+
+Body-fixed phone source
+& Absolute compass yaw is irrelevant because the phone rotates with the body.
+Phone position and orientation relative to the anatomy remain essential. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For the present semantic twin, fixed route-tangent yaw is a legitimate answer
+to a narrow question about a prescribed pedestrian traversal. It should not be
+presented as a generic population estimate. A stronger result set would report:
+
+\begin{enumerate}
+  \item the route-tangent value
+
+  \item the exact uniform-yaw mean for whole-body SAR
+
+  \item a yaw sensitivity range for whole-body SAR and peak APD
+\end{enumerate}
+
+This separates information supplied by the scene from an arbitrary heading
+choice. If the range is small, detailed azimuth reconstruction adds little to
+the endpoint. If the range is large, the field contains a dominant direction
+and fixed yaw needs a behavioral justification.
+
+\section{A practical validation experiment}
+
+One numerical experiment is enough to test the relevance of yaw in the current
+pipeline.
+
+\begin{enumerate}
+  \item Select representative standpoints with line-of-sight, obstructed, and
+  multipath-rich conditions.
+
+  \item Keep the traced paths fixed and rotate the body through 24 yaw angles.
+
+  \item For whole-body SAR, compare the numerical mean with the exact result in
+  Eq.~\eqref{eq:closed-form}.
+
+  \item Report the mean, coefficient of variation, minimum, and maximum. For
+  peak APD, also report the mean of the per-yaw peaks.
+\end{enumerate}
+
+A short harmonic summary can be useful as a diagnostic, but it need not become
+the paper's mathematical center. The zero-order azimuthal component gives the
+yaw mean. The remaining components measure yaw sensitivity. In practice, the
+24-angle sweep communicates the same result more directly.
+
+\section{Limits}
+
+The argument above assumes incoherent power addition. For coherent fields, the
+full complex field and its spatial coherence must transform consistently.
+Azimuthal isotropy of scalar path powers alone is not enough.
+
+Polarization can be retained, but its joint directional distribution must also
+be horizontally rotation invariant for the ensemble claim. Sloped terrain,
+fixed antenna sectors, aligned street grids, and correlations between walking
+direction and street direction are genuine sources of anisotropy. They should
+be modeled as such.
+
+The central engineering conclusion is modest. Absolute north is not an exposure
+variable. Relative body-to-field orientation can be. When that relative yaw is
+unknown and unstructured, whole-body SAR should be marginalized over it rather
+than fixed by convenience.
+
+\end{document}

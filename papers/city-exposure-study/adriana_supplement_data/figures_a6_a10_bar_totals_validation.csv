@@ -1,0 +1,151 @@
+figure,pdf_page,study_area,study_area_label,country,scenario,available,successful_microenvironment_measurements,availability_note,digitized_total_mw_m2,reported_table_a6_total_mw_m2,digitized_minus_reported_mw_m2,pixel_resolution_mw_m2
+A6,22,LC,"Urban area, large city",Austria,NU,true,39,,1.282932,1.260000,0.022932,0.045819
+A6,22,LC,"Urban area, large city",Belgium,NU,true,38,,0.733104,0.710000,0.023104,0.045819
+A6,22,LC,"Urban area, large city",France,NU,true,35,,3.207331,3.170000,0.037331,0.045819
+A6,22,LC,"Urban area, large city",Hungary,NU,true,40,,1.099656,1.090000,0.009656,0.045819
+A6,22,LC,"Urban area, large city",Italy,NU,true,28,,0.824742,0.820000,0.004742,0.045819
+A6,22,LC,"Urban area, large city",Netherlands,NU,true,22,,1.420389,1.420000,0.000389,0.045819
+A6,22,LC,"Urban area, large city",Poland,NU,true,29,,1.786942,1.770000,0.016942,0.045819
+A6,22,LC,"Urban area, large city",Spain,NU,true,40,,1.008018,0.980000,0.028018,0.045819
+A6,22,LC,"Urban area, large city",Switzerland,NU,true,47,,0.366552,0.370000,-0.003448,0.045819
+A6,22,LC,"Urban area, large city",UK,NU,true,42,,1.328751,1.310000,0.018751,0.045819
+A6,22,LC,"Urban area, large city",Austria,DL,false,0,No successful measurements in Table A2,,,,0.045819
+A6,22,LC,"Urban area, large city",Belgium,DL,true,23,,3.253150,3.220000,0.033150,0.045819
+A6,22,LC,"Urban area, large city",France,DL,true,31,,7.651775,7.640000,0.011775,0.045819
+A6,22,LC,"Urban area, large city",Hungary,DL,true,18,,4.352806,4.320000,0.032806,0.045819
+A6,22,LC,"Urban area, large city",Italy,DL,true,12,,2.794960,2.780000,0.014960,0.045819
+A6,22,LC,"Urban area, large city",Netherlands,DL,true,16,,10.171821,10.170000,0.001821,0.045819
+A6,22,LC,"Urban area, large city",Poland,DL,true,23,,3.757159,3.730000,0.027159,0.045819
+A6,22,LC,"Urban area, large city",Spain,DL,true,21,,4.077892,4.060000,0.017892,0.045819
+A6,22,LC,"Urban area, large city",Switzerland,DL,true,16,,6.689576,6.670000,0.019576,0.045819
+A6,22,LC,"Urban area, large city",UK,DL,true,19,,6.231386,6.230000,0.001386,0.045819
+A6,22,LC,"Urban area, large city",Austria,UL,false,0,No successful measurements in Table A2,,,,0.045819
+A6,22,LC,"Urban area, large city",Belgium,UL,true,21,,17.777778,17.780000,-0.002222,0.045819
+A6,22,LC,"Urban area, large city",France,UL,true,24,,11.225659,11.210000,0.015659,0.045819
+A6,22,LC,"Urban area, large city",Hungary,UL,true,15,,7.331042,7.310000,0.021042,0.045819
+A6,22,LC,"Urban area, large city",Italy,UL,true,11,,20.389462,20.380000,0.009462,0.045819
+A6,22,LC,"Urban area, large city",Netherlands,UL,true,16,,21.947308,21.920000,0.027308,0.045819
+A6,22,LC,"Urban area, large city",Poland,UL,true,15,,8.293242,8.660000,-0.366758,0.045819
+A6,22,LC,"Urban area, large city",Spain,UL,true,20,,11.775487,11.740000,0.035487,0.045819
+A6,22,LC,"Urban area, large city",Switzerland,UL,true,18,,15.120275,15.110000,0.010275,0.045819
+A6,22,LC,"Urban area, large city",UK,UL,true,24,,7.926690,7.900000,0.026690,0.045819
+A7,23,SC,"Urban area, secondary city",Austria,NU,true,21,,1.420389,1.390000,0.030389,0.045819
+A7,23,SC,"Urban area, secondary city",Belgium,NU,true,28,,0.778923,0.780000,-0.001077,0.045819
+A7,23,SC,"Urban area, secondary city",France,NU,true,23,,0.778923,0.780000,-0.001077,0.045819
+A7,23,SC,"Urban area, secondary city",Hungary,NU,true,25,,0.687285,0.670000,0.017285,0.045819
+A7,23,SC,"Urban area, secondary city",Italy,NU,true,20,,0.687285,0.690000,-0.002715,0.045819
+A7,23,SC,"Urban area, secondary city",Netherlands,NU,true,22,,1.328751,1.300000,0.028751,0.045819
+A7,23,SC,"Urban area, secondary city",Poland,NU,true,25,,1.191294,1.150000,0.041294,0.045819
+A7,23,SC,"Urban area, secondary city",Spain,NU,true,20,,0.549828,0.530000,0.019828,0.045819
+A7,23,SC,"Urban area, secondary city",Switzerland,NU,true,47,,0.366552,0.370000,-0.003448,0.045819
+A7,23,SC,"Urban area, secondary city",UK,NU,true,43,,1.099656,1.070000,0.029656,0.045819
+A7,23,SC,"Urban area, secondary city",Austria,DL,false,0,No successful measurements in Table A2,,,,0.045819
+A7,23,SC,"Urban area, secondary city",Belgium,DL,true,17,,2.657503,2.660000,-0.002497,0.045819
+A7,23,SC,"Urban area, secondary city",France,DL,true,21,,6.414662,6.430000,-0.015338,0.045819
+A7,23,SC,"Urban area, secondary city",Hungary,DL,true,16,,2.153494,2.160000,-0.006506,0.045819
+A7,23,SC,"Urban area, secondary city",Italy,DL,true,12,,2.932417,2.920000,0.012417,0.045819
+A7,23,SC,"Urban area, secondary city",Netherlands,DL,true,9,,4.215349,4.190000,0.025349,0.045819
+A7,23,SC,"Urban area, secondary city",Poland,DL,true,18,,2.611684,2.610000,0.001684,0.045819
+A7,23,SC,"Urban area, secondary city",Spain,DL,true,11,,3.069874,3.060000,0.009874,0.045819
+A7,23,SC,"Urban area, secondary city",Switzerland,DL,true,23,,6.781214,6.780000,0.001214,0.045819
+A7,23,SC,"Urban area, secondary city",UK,DL,true,22,,15.624284,15.630000,-0.005716,0.045819
+A7,23,SC,"Urban area, secondary city",Austria,UL,false,0,No successful measurements in Table A2,,,,0.045819
+A7,23,SC,"Urban area, secondary city",Belgium,UL,true,17,,14.936999,14.910000,0.026999,0.045819
+A7,23,SC,"Urban area, secondary city",France,UL,true,22,,13.241695,13.240000,0.001695,0.045819
+A7,23,SC,"Urban area, secondary city",Hungary,UL,true,15,,9.759450,9.730000,0.029450,0.045819
+A7,23,SC,"Urban area, secondary city",Italy,UL,true,12,,21.764032,21.740000,0.024032,0.045819
+A7,23,SC,"Urban area, secondary city",Netherlands,UL,true,11,,26.345934,26.320000,0.025934,0.045819
+A7,23,SC,"Urban area, secondary city",Poland,UL,true,15,,14.891180,14.570000,0.321180,0.045819
+A7,23,SC,"Urban area, secondary city",Spain,UL,true,11,,10.492554,10.500000,-0.007446,0.045819
+A7,23,SC,"Urban area, secondary city",Switzerland,UL,true,25,,13.379152,13.370000,0.009152,0.045819
+A7,23,SC,"Urban area, secondary city",UK,UL,true,21,,17.502864,17.510000,-0.007136,0.045819
+A8,24,RA1,Rural area 1,Austria,NU,true,8,,0.882016,,,0.080183
+A8,24,RA1,Rural area 1,Belgium,NU,true,13,,0.400916,,,0.080183
+A8,24,RA1,Rural area 1,France,NU,true,10,,0.240550,,,0.080183
+A8,24,RA1,Rural area 1,Hungary,NU,true,8,,0.240550,,,0.080183
+A8,24,RA1,Rural area 1,Italy,NU,true,6,,0.160367,,,0.080183
+A8,24,RA1,Rural area 1,Netherlands,NU,true,5,,0.561283,,,0.080183
+A8,24,RA1,Rural area 1,Poland,NU,true,5,,0.160367,,,0.080183
+A8,24,RA1,Rural area 1,Spain,NU,true,5,,0.320733,,,0.080183
+A8,24,RA1,Rural area 1,Switzerland,NU,true,7,,0.240550,,,0.080183
+A8,24,RA1,Rural area 1,UK,NU,true,10,,0.320733,,,0.080183
+A8,24,RA1,Rural area 1,Austria,DL,false,0,No successful measurements in Table A2,,,,0.080183
+A8,24,RA1,Rural area 1,Belgium,DL,true,7,,2.886598,,,0.080183
+A8,24,RA1,Rural area 1,France,DL,true,10,,5.131730,,,0.080183
+A8,24,RA1,Rural area 1,Hungary,DL,true,6,,1.042383,,,0.080183
+A8,24,RA1,Rural area 1,Italy,DL,true,6,,7.537228,,,0.080183
+A8,24,RA1,Rural area 1,Netherlands,DL,true,3,,45.784651,,,0.080183
+A8,24,RA1,Rural area 1,Poland,DL,true,5,,0.641466,,,0.080183
+A8,24,RA1,Rural area 1,Spain,DL,false,0,No successful measurements in Table A2,,,,0.080183
+A8,24,RA1,Rural area 1,Switzerland,DL,true,5,,5.773196,,,0.080183
+A8,24,RA1,Rural area 1,UK,DL,true,7,,8.419244,,,0.080183
+A8,24,RA1,Rural area 1,Austria,UL,false,0,No successful measurements in Table A2,,,,0.080183
+A8,24,RA1,Rural area 1,Belgium,UL,true,6,,36.002291,,,0.080183
+A8,24,RA1,Rural area 1,France,UL,true,9,,37.205040,,,0.080183
+A8,24,RA1,Rural area 1,Hungary,UL,true,6,,6.174112,,,0.080183
+A8,24,RA1,Rural area 1,Italy,UL,true,5,,6.093929,,,0.080183
+A8,24,RA1,Rural area 1,Netherlands,UL,true,3,,68.556701,,,0.080183
+A8,24,RA1,Rural area 1,Poland,UL,true,5,,17.800687,,,0.080183
+A8,24,RA1,Rural area 1,Spain,UL,true,2,,3.447881,,,0.080183
+A8,24,RA1,Rural area 1,Switzerland,UL,true,5,,43.619702,,,0.080183
+A8,24,RA1,Rural area 1,UK,UL,true,7,,13.711340,,,0.080183
+A9,25,RA2,Rural area 2,Austria,NU,true,5,,0.721649,,,0.080183
+A9,25,RA2,Rural area 2,Belgium,NU,true,8,,0.160367,,,0.080183
+A9,25,RA2,Rural area 2,France,NU,true,7,,0.400916,,,0.080183
+A9,25,RA2,Rural area 2,Hungary,NU,true,6,,0.320733,,,0.080183
+A9,25,RA2,Rural area 2,Italy,NU,true,8,,0.320733,,,0.080183
+A9,25,RA2,Rural area 2,Netherlands,NU,true,4,,0.400916,,,0.080183
+A9,25,RA2,Rural area 2,Poland,NU,true,5,,0.080183,,,0.080183
+A9,25,RA2,Rural area 2,Spain,NU,true,4,,0.080183,,,0.080183
+A9,25,RA2,Rural area 2,Switzerland,NU,true,6,,0.160367,,,0.080183
+A9,25,RA2,Rural area 2,UK,NU,true,7,,0.801833,,,0.080183
+A9,25,RA2,Rural area 2,Austria,DL,false,0,No successful measurements in Table A2,,,,0.080183
+A9,25,RA2,Rural area 2,Belgium,DL,true,5,,8.339061,,,0.080183
+A9,25,RA2,Rural area 2,France,DL,true,7,,4.730813,,,0.080183
+A9,25,RA2,Rural area 2,Hungary,DL,true,5,,1.683849,,,0.080183
+A9,25,RA2,Rural area 2,Italy,DL,true,4,,0.882016,,,0.080183
+A9,25,RA2,Rural area 2,Netherlands,DL,true,1,,21.328751,,,0.080183
+A9,25,RA2,Rural area 2,Poland,DL,true,5,,1.042383,,,0.080183
+A9,25,RA2,Rural area 2,Spain,DL,false,0,No successful measurements in Table A2,,,,0.080183
+A9,25,RA2,Rural area 2,Switzerland,DL,true,4,,13.230241,,,0.080183
+A9,25,RA2,Rural area 2,UK,DL,true,5,,4.009164,,,0.080183
+A9,25,RA2,Rural area 2,Austria,UL,false,0,No successful measurements in Table A2,,,,0.080183
+A9,25,RA2,Rural area 2,Belgium,UL,true,5,,15.074456,,,0.080183
+A9,25,RA2,Rural area 2,France,UL,true,7,,18.682703,,,0.080183
+A9,25,RA2,Rural area 2,Hungary,UL,true,5,,20.366552,,,0.080183
+A9,25,RA2,Rural area 2,Italy,UL,true,4,,58.453608,,,0.080183
+A9,25,RA2,Rural area 2,Netherlands,UL,true,4,,21.088202,,,0.080183
+A9,25,RA2,Rural area 2,Poland,UL,true,6,,12.749141,,,0.080183
+A9,25,RA2,Rural area 2,Spain,UL,false,0,No successful measurements in Table A2,,,,0.080183
+A9,25,RA2,Rural area 2,Switzerland,UL,true,3,,14.352806,,,0.080183
+A9,25,RA2,Rural area 2,UK,UL,true,6,,3.688431,,,0.080183
+A10,26,RA3,Rural area 3,Austria,NU,true,4,,0.641466,,,0.080183
+A10,26,RA3,Rural area 3,Belgium,NU,true,9,,0.400916,,,0.080183
+A10,26,RA3,Rural area 3,France,NU,true,8,,0.320733,,,0.080183
+A10,26,RA3,Rural area 3,Hungary,NU,true,10,,0.160367,,,0.080183
+A10,26,RA3,Rural area 3,Italy,NU,true,3,,0.080183,,,0.080183
+A10,26,RA3,Rural area 3,Netherlands,NU,true,3,,0.240550,,,0.080183
+A10,26,RA3,Rural area 3,Poland,NU,true,6,,0.561283,,,0.080183
+A10,26,RA3,Rural area 3,Spain,NU,true,5,,0.721649,,,0.080183
+A10,26,RA3,Rural area 3,Switzerland,NU,true,8,,0.160367,,,0.080183
+A10,26,RA3,Rural area 3,UK,NU,true,6,,0.240550,,,0.080183
+A10,26,RA3,Rural area 3,Austria,DL,false,0,No successful measurements in Table A2,,,,0.080183
+A10,26,RA3,Rural area 3,Belgium,DL,true,5,,5.211913,,,0.080183
+A10,26,RA3,Rural area 3,France,DL,true,8,,10.504009,,,0.080183
+A10,26,RA3,Rural area 3,Hungary,DL,true,7,,1.443299,,,0.080183
+A10,26,RA3,Rural area 3,Italy,DL,true,3,,2.405498,,,0.080183
+A10,26,RA3,Rural area 3,Netherlands,DL,true,3,,7.537228,,,0.080183
+A10,26,RA3,Rural area 3,Poland,DL,true,5,,1.202749,,,0.080183
+A10,26,RA3,Rural area 3,Spain,DL,false,0,No successful measurements in Table A2,,,,0.080183
+A10,26,RA3,Rural area 3,Switzerland,DL,true,5,,3.688431,,,0.080183
+A10,26,RA3,Rural area 3,UK,DL,true,5,,6.494845,,,0.080183
+A10,26,RA3,Rural area 3,Austria,UL,false,0,No successful measurements in Table A2,,,,0.080183
+A10,26,RA3,Rural area 3,Belgium,UL,true,5,,21.489118,,,0.080183
+A10,26,RA3,Rural area 3,France,UL,true,8,,17.079038,,,0.080183
+A10,26,RA3,Rural area 3,Hungary,UL,true,7,,10.263459,,,0.080183
+A10,26,RA3,Rural area 3,Italy,UL,true,3,,20.687285,,,0.080183
+A10,26,RA3,Rural area 3,Netherlands,UL,true,3,,29.026346,,,0.080183
+A10,26,RA3,Rural area 3,Poland,UL,true,5,,4.891180,,,0.080183
+A10,26,RA3,Rural area 3,Spain,UL,false,0,No successful measurements in Table A2,,,,0.080183
+A10,26,RA3,Rural area 3,Switzerland,UL,true,5,,22.130584,,,0.080183
+A10,26,RA3,Rural area 3,UK,UL,true,5,,15.796105,,,0.080183

@@ -1,0 +1,36 @@
+band_name,start_mhz,stop_mhz,center_mhz,bandwidth_mhz,kind
+FM Radio*,80.25,115.25,97.75,35,broadcast
+DAB/DAB+ *,164.5,239.5,202,75,broadcast
+Polycom / TETRAPOL *,367.5,402.5,385,35,infrastructure
+"TETRAPOL, amateur, ISM 433 *",405,440,422.5,35,"ISM, public"
+PMR/PAMR (mobile radio) *,435,470,452.5,35,infrastructure
+Broadcasting (1) *,470,545,507.5,75,broadcast
+Broadcasting (2) *,546,621,583.5,75,broadcast
+Broadcasting (3) *,622,697,659.5,75,broadcast
+Mobile 700 uplink,700.5,735.5,718,35,cellular uplink
+Mobile 700 supplementary downlink,730.5,765.5,748,35,cellular downlink
+Mobile 700 downlink,753,788,770.5,35,cellular downlink
+Mobile 800 downlink,791,826,808.5,35,cellular downlink
+Mobile 800 uplink,829.5,864.5,847,35,cellular uplink
+Mobile 900 uplink,880,915,897.5,35,cellular uplink
+Mobile 900 downlink,925,960,942.5,35,cellular downlink
+Mobile 1400 supplementary downlink,1442,1517,1479.5,75,cellular downlink
+Mobile 1800 uplink,1710,1785,1747.5,75,cellular uplink
+Mobile 1800 downlink,1805,1880,1842.5,75,cellular uplink
+DECT,1880,1915,1897.5,35,cordless phone
+Mobile 2100 uplink,1919.5,1994.5,1957,75,cellular uplink
+Mobile 2100  downlink,2107.5,2182.5,2145,75,cellular downlink
+ISM 2.4 GHz,2388,2488,2438,100,WiFi/ISM
+Mobile 2600 uplink,2497.5,2572.5,2535,75,cellular uplink
+Mobile 2600 TDD,2575,2610,2592.5,35,cellular TDD
+Mobile 2600 downlink,2619.5,2694.5,2657,75,cellular downlink
+Mobile 3500 TDD (1) †,3425,3525,3475,100,cellular TDD
+Mobile 3500 TDD (2) †,3555,3655,3605,100,cellular TDD
+Mobile 3500 TDD (3) †,3685,3785,3735,100,cellular TDD
+WiFi 5 GHz (1) #,5150,5250,5200,100,WiFi
+WiFi 5 GHz (2) #,5275,5375,5325,100,WiFi
+WiFi 5 GHz (3) #,5400,5500,5450,100,WiFi
+WiFi 5 GHz (4) #,5525,5625,5575,100,WiFi
+WiFi 5 GHz (5) #,5650,5750,5700,100,WiFi
+WiFi / SRD 5.8 GHz (1) #,5775,5875,5825,100,WiFi
+WiFi / SRD 5.8 GHz (2) #,5900,6000,5950,100,WiFi
