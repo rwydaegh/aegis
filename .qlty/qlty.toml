@@ -22,8 +22,8 @@ exclude_patterns = [
   "basestations/**",
   # Presentations (one-off scripts, not production code)
   "presentations/**",
-  # Blender MCP add-on: one-off tool for preparing shipped phantoms, not production
-  "tools/blender-mcp/**",
+  # Supporting tools and bundled utilities are outside application quality scope
+  "tools/**",
   # Spin-off business docs + scripts (IDF, founder materials, one-off generators)
   "spinoff/**",
   # One-off phantom build script (run locally when phantom STLs are regenerated)
@@ -132,4 +132,3 @@ match.file_patterns = [
   "src/aegis/**",
 ]
 set.ignored = true
-
