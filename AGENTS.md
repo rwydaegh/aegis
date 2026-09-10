@@ -98,9 +98,13 @@ Read the relevant rule file before working in that area.
 - Project-scoped Codex hooks live in `.codex/hooks.json`.
 - Supplemental project memory still lives outside the repo at `~/.claude/projects/-home-user-aegis/memory/`. Use the `$aegis-memory` skill when a task depends on long-lived context such as commercialization, deployment history, local agents, DiffeRT collaboration, or Robin-specific preferences.
 
-## When you're stuck, ask Robin
+## Resolve routine blockers yourself; ask Robin when human help is required
 
-If you hit a tooling blocker (missing API keys, can't access a website, need browser interaction, need an MCP server installed, need a manual download), STOP and ask. Do not silently fall back to an inferior approach. Robin can provide API keys, run browser steps, install tools, download files, or grant permissions. He wants the most ambitious result, not the fastest fallback.
+Resolve routine, reversible setup and tooling problems autonomously within the authorized task, including installing Python dependencies and tools, repairing project environments, fixing configuration, and downloading publicly available files. These do not require confirmation. Follow the Python environment rules in ~/.codex/AGENTS.md.
+
+Ask Robin only when progress requires human help, such as credentials or API keys you cannot obtain, account access, an interactive login or CAPTCHA, or permissions beyond the authorized scope. Explain the specific blocker and the smallest action needed. Pause only dependent work and continue independent work where possible.
+
+Do not silently downgrade to an inferior approach because of a solvable tooling problem. Robin wants the most ambitious result and independent execution.
 
 ## Public and private workspace
 

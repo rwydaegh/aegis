@@ -76,9 +76,13 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 
 Reddit has honest, unfiltered opinions. Use the Reddit MCP (`reddit-mcp-server`) proactively for library comparisons, debugging, community opinions, and tool evaluations. Read threads one by one (the API is per-post). `WebFetch` cannot access Reddit or Twitter (bot-blocking).
 
-## When you're stuck, ask Robin
+## Resolve routine blockers yourself; ask Robin when human help is required
 
-If you or a subagent hits a tooling blocker (missing API keys, can't access a website, need browser interaction, need an MCP server installed, need a manual download), STOP and ask. Do not silently fall back to an inferior approach. Robin can provide API keys, run browser steps, install tools, download files, or grant permissions. He wants the most ambitious result, not the fastest fallback. This applies to subagent prompts too: always include instructions to report NEEDS_CONTEXT instead of downgrading quality.
+Resolve routine, reversible setup and tooling problems autonomously within the authorized task, including installing Python dependencies and tools, repairing project environments, fixing configuration, and downloading publicly available files. These do not require confirmation. Follow the Python environment rules in ~/.codex/AGENTS.md.
+
+Ask Robin only when progress requires human help, such as credentials or API keys you cannot obtain, account access, an interactive login or CAPTCHA, or permissions beyond the authorized scope. Explain the specific blocker and the smallest action needed. Pause only dependent work and continue independent work where possible.
+
+Do not silently downgrade to an inferior approach because of a solvable tooling problem. Robin wants the most ambitious result and independent execution.
 
 ## Self-evolution
 
