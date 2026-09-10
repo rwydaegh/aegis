@@ -38,8 +38,10 @@ class PhoneSource:
     pattern : AntennaPattern3D directivity pattern
     radiated_power_w : total radiated power P_rad [W]. The EIRP along a
         direction is ``P_rad * D(k)``. Default 1 W gives results normalised
-        per watt of radiated power (W/m^2 per W), matching the GOLIAT
-        "normalized SAR" convention once divided by tissue density.
+        per watt of radiated power (W/m^2 per W). This is not the GOLIAT
+        near-field normalization: that uses a band-specific CNR input power
+        calibrated on a flat phantom. Conversion requires an explicit
+        input-to-radiated power relationship or empirical calibration.
     """
 
     position: np.ndarray

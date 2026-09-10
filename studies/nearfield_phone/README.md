@@ -43,6 +43,19 @@ cd report && latexmk -pdf technical_report.tex
 The free-space antenna patterns are read from `../../goliat_farfield_results/`
 (eight FR1 bands, Sim4Life near-to-far transform).
 
+## Normalization scope
+
+The original sweep and its generated report/workbook use **1 W radiated**.
+They are not CNR-normalized near-field deliverables. CNR specifies a
+band-dependent **input power** calibrated on a flat phantom. Applying that
+convention requires an explicit input-to-radiated conversion or empirical
+calibration, followed by the target input power exactly once.
+
+The original distance/orientation study uses geometric landmark proxies and
+omits the body argument needed to activate the current Fock gate. Its fitted
+distance correction is not a direct mass-averaged brain calculation. Re-run
+and validate the requested physics and normalization before partner release.
+
 ## Headline results (Duke, front of eyes, 2450 MHz, per 1 W radiated)
 
 - Distance law: `S(d) = S_ref * ((d_ref + delta)/(d + delta))^2`,

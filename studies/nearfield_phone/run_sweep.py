@@ -7,9 +7,11 @@ ensemble is a set of uniformly random device rotations, giving the variability
 envelope used for the uncertainty estimates; the boresight-at-body "nominal"
 pose is included and flagged.
 
-Everything is normalised per watt of radiated power, so the recorded SAR values
-are directly the GOLIAT "normalized SAR" (W/kg per W) and APD values are W/m^2
-per W.
+Everything is normalised per watt of radiated power: SAR is W/kg per W_rad
+and APD is W/m^2 per W_rad. These are not the GOLIAT near-field deliverable
+values. GOLIAT uses CNR's band-specific input powers calibrated on a flat
+phantom. An explicit input-to-radiated conversion or empirical calibration
+must precede that comparison.
 
 Output: ``out/sweep_<tag>.parquet`` (long form, one row per configuration).
 
