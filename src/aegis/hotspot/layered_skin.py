@@ -177,8 +177,9 @@ def solve_layered(
     Y_in = C / B  # input admittance at the air/skin interface
     r0 = (eta[0] - Y_in) / (eta[0] + Y_in)
 
-    # Tangential fields at the air/skin interface (z=0), incident |E|=incident.
-    a_in = incident_amplitude
+    # The characteristic matrix uses tangential E. For TM, project the
+    # specified total incident |E| onto the interface once.
+    a_in = incident_amplitude * (np.cos(theta_inc) if pol == "TM" else 1.0)
     E_tan0 = a_in * (1.0 + r0)
     H_tan0 = a_in * eta[0] * (1.0 - r0)
 
