@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 
+{% block extrahead %}
+  {{ super() }}
+  <script defer src="https://analytics.waves-ugent.be/script.js"
+          data-website-id="e068f879-5f00-4ceb-b9f9-dd2c10afb683"
+          data-domains="docs.aegis.waves-ugent.be"></script>
+{% endblock %}
+
 {% block footer %}
   {{ super() }}
   <div class="aegis-affiliations">

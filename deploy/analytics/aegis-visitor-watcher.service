@@ -1,0 +1,12 @@
+[Unit]
+Description=Email Robin about AEGIS app and docs visitors outside Ghent
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/aegis/visitor-watcher.env
+ExecStart=/usr/bin/python3 /opt/aegis/analytics/visitor_watcher.py
+StateDirectory=aegis-visitor-watcher
+UMask=0077
+TimeoutStartSec=5min
