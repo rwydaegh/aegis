@@ -6,7 +6,7 @@ on:
 
 # Serialize deploys: only one deploy workflow runs per branch at a time. Parallel
 # deploys (several master pushes landing close together) contend for the shared
-# ubicloud runner pool and the shared ghcr :buildcache, which has produced builds
+# ghcr :buildcache, which has produced builds
 # that die mid-image with no output. Queue rather than cancel so an in-flight
 # deploy (mid SSH restart of the single Hetzner box) is never left half-applied.
 concurrency:
@@ -19,11 +19,10 @@ jobs:
 
   deploy:
     needs: ci
-    # standard-4 (more RAM/disk): the Docker image build (torch + sionna +
-    # differt + scientific stack) exhausted the 7.75 GiB standard-2 runner and
-    # the job died mid-build with no step-level error. loc-badge and modal-deploy
-    # are lighter and stay on standard-2.
-    runs-on: ubicloud-standard-4
+    # Standard GitHub-hosted Linux runners provide 16 GB RAM for this public
+    # repo. The scientific Docker image build previously exhausted an 8 GB
+    # runner, so reassess capacity if the repository becomes private.
+    runs-on: ubuntu-24.04
     if: github.ref == 'refs/heads/master'
     permissions:
       contents: read
@@ -149,7 +148,7 @@ jobs:
           sentry-cli releases deploys "${{ github.sha }}" new -e production
 
   loc-badge:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v7
@@ -177,7 +176,7 @@ jobs:
 
   modal-deploy:
     needs: ci
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v7

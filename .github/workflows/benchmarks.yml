@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   benchmarks:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 

@@ -161,5 +161,5 @@ The `Release` workflow runs visual regression in two modes:
   `update_snapshots=true` to regenerate the baselines and upload them
   as an artifact for review.
 
-Runtime budget: ~3-5 min on `ubicloud-standard-2` (frontend build +
+Runtime budget: ~3-5 min on `ubuntu-24.04` (frontend build +
 Playwright install dominate; the spec itself runs in ~60-90s).
