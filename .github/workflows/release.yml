@@ -14,7 +14,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubicloud-standard-2, windows-latest]
+        os: [ubuntu-24.04, windows-latest]
         python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
@@ -36,7 +36,7 @@ jobs:
       - run: uv sync --python ${{ matrix.python-version }} --extra dev --extra viewer
       - run: uv run pytest tests/ --cov=src/aegis --cov-report=xml -x
       - name: Upload coverage
-        if: matrix.os == 'ubicloud-standard-2' && matrix.python-version == '3.12'
+        if: matrix.os == 'ubuntu-24.04' && matrix.python-version == '3.12'
         uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
@@ -46,7 +46,7 @@ jobs:
   schemathesis:
     needs: [lint]
     if: github.event_name == 'push'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     # Patch-release tier: catch HTTP-layer regressions (schema drift, 5xx on
     # fuzzed inputs) that PR-tier doesn't afford. Budget ~5 min.
     timeout-minutes: 10
@@ -91,7 +91,7 @@ jobs:
     # audit (docs/internal/mutation_audit_2026-04-18.md) for the score baseline.
     if: endsWith(github.ref_name, '.0')
     needs: [lint]
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     continue-on-error: true
     steps:
@@ -138,7 +138,7 @@ jobs:
     # Does NOT block the release — `release` only needs lint/test/schemathesis.
     needs: [lint]
     if: github.event_name == 'workflow_dispatch' || endsWith(github.ref_name, '.0')
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     continue-on-error: true
     steps:
@@ -207,7 +207,7 @@ jobs:
     # Only create a GitHub release on actual tag pushes, not on
     # workflow_dispatch.
     if: github.event_name == 'push'
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

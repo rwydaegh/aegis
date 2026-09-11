@@ -14,7 +14,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -24,7 +24,7 @@ jobs:
       - run: uv run basedpyright
 
   test:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -38,7 +38,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   frontend-coverage:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: aegis-web

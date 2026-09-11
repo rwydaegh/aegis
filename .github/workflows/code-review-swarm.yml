@@ -12,7 +12,7 @@ on:
 
 jobs:
   manager:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write
@@ -166,7 +166,7 @@ jobs:
 
   reviewer:
     needs: manager
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write
