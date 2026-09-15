@@ -1,4 +1,12 @@
+(access_filter) {
+    @restricted remote_ip {$AEGIS_PASSWORD_IP_RANGES:192.0.2.0/32}
+    basic_auth @restricted {
+        aegis {env.DOCS_PASSWORD_HASH}
+    }
+}
+
 aegis.waves-ugent.be {
+    import access_filter
     log {
         output file /data/access.log {
             roll_size 50MiB
@@ -30,6 +38,7 @@ analytics.waves-ugent.be {
 }
 
 docs.aegis.waves-ugent.be {
+    import access_filter
     header {
         Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
